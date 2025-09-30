@@ -6,22 +6,22 @@
   "tags": ["type:app", "scope:backend"],
   "targets": {
     "build": {
-      "executor": "@nx/js:tsc",
+      "executor": "@nx/webpack:webpack",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
+        "target": "node",
+        "compiler": "tsc",
         "outputPath": "dist/apps/backend",
         "main": "apps/backend/src/main.ts",
         "tsConfig": "apps/backend/tsconfig.json",
-        "assets": []
+        "assets": [],
+        "isolatedConfig": true,
+        "webpackConfig": "apps/backend/webpack.config.js"
       },
       "configurations": {
         "development": {},
-        "production": {
-          "optimization": true,
-          "extractLicenses": true,
-          "inspect": false
-        }
+        "production": {}
       }
     },
     "serve": {
