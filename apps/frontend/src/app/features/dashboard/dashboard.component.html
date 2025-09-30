@@ -1,0 +1,87 @@
+<div class="dashboard">
+  <header class="dashboard__header">
+    <h1>MediaInsight Analytics</h1>
+    <button class="dashboard__scan-button" (click)="triggerScan()" [disabled]="isLoading$ | async">
+      @if (isLoading$ | async) {
+        <span>Scanning...</span>
+      } @else {
+        <span>Scan Library</span>
+      }
+    </button>
+  </header>
+
+  @if (error$ | async; as error) {
+    <div class="dashboard__error">
+      <p>{{ error }}</p>
+    </div>
+  }
+
+  @if (isLoading$ | async) {
+    <div class="dashboard__loading">
+      <div class="spinner"></div>
+      <p>Loading media statistics...</p>
+    </div>
+  }
+
+  @if (stats$ | async; as stats) {
+    <div class="dashboard__content">
+      <div class="dashboard__stats-grid">
+        <div class="dashboard__stat-card">
+          <h3>Total Size</h3>
+          <p class="dashboard__stat-value">{{ stats.totalSizeFormatted }}</p>
+        </div>
+
+        <div class="dashboard__stat-card">
+          <h3>Total Files</h3>
+          <p class="dashboard__stat-value">{{ stats.totalFiles }}</p>
+        </div>
+
+        <div class="dashboard__stat-card">
+          <h3>Average Bitrate</h3>
+          <p class="dashboard__stat-value">{{ stats.averageBitrateMbps.toFixed(2) }} Mbps</p>
+        </div>
+      </div>
+
+      <div class="dashboard__codec-distribution">
+        <h2>Codec Distribution</h2>
+        <div class="dashboard__codec-grid">
+          <div class="dashboard__codec-card">
+            <h4>H.265/HEVC</h4>
+            <p class="dashboard__codec-count">{{ stats.codecDistribution.hevc }} files</p>
+            <p class="dashboard__codec-percentage">{{ stats.hevcPercentage.toFixed(1) }}%</p>
+          </div>
+
+          <div class="dashboard__codec-card">
+            <h4>H.264</h4>
+            <p class="dashboard__codec-count">{{ stats.codecDistribution.h264 }} files</p>
+            <p class="dashboard__codec-percentage">{{ stats.h264Percentage.toFixed(1) }}%</p>
+          </div>
+
+          <div class="dashboard__codec-card">
+            <h4>AV1</h4>
+            <p class="dashboard__codec-count">{{ stats.codecDistribution.av1 }} files</p>
+            <p class="dashboard__codec-percentage">{{ stats.av1Percentage.toFixed(1) }}%</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard__folders">
+        <h2>Folder Statistics</h2>
+        @for (folder of stats.folders; track folder.path) {
+          <div class="dashboard__folder-card">
+            <h3>{{ folder.name }}</h3>
+            <div class="dashboard__folder-stats">
+              <span>{{ folder.totalSizeFormatted }}</span>
+              <span>{{ folder.fileCount }} files</span>
+              <span>{{ folder.hevcPercentage.toFixed(1) }}% HEVC</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="dashboard__scan-time">
+        <p>Last scanned: {{ stats.scanTimestampFormatted }}</p>
+      </div>
+    </div>
+  }
+</div>

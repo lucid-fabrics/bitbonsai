@@ -1,0 +1,185 @@
+@import '../../../styles/variables';
+
+.dashboard {
+  padding: $spacing-xl;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xl;
+
+    h1 {
+      font-size: 2.5rem;
+    }
+  }
+
+  &__scan-button {
+    padding: $spacing-md $spacing-lg;
+    background: $primary-gradient;
+    color: white;
+    border: none;
+    border-radius: $border-radius-md;
+    font-size: 1rem;
+    font-weight: $font-weight-bold;
+    cursor: pointer;
+    transition: opacity 0.2s;
+
+    &:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    color: white;
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: $spacing-md;
+    }
+  }
+
+  &__error {
+    padding: $spacing-lg;
+    background: rgba($danger, 0.1);
+    border: 2px solid $danger;
+    border-radius: $border-radius-md;
+    margin-bottom: $spacing-xl;
+
+    p {
+      color: $danger;
+      margin: 0;
+    }
+  }
+
+  &__content {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl;
+  }
+
+  &__stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: $spacing-lg;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__stat-card {
+    padding: $spacing-lg;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-radius: $border-radius-md;
+    text-align: center;
+
+    h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: $spacing-sm;
+      color: #666;
+    }
+  }
+
+  &__stat-value {
+    font-size: 2rem;
+    font-weight: $font-weight-bold;
+    color: $primary-start;
+    margin: 0;
+  }
+
+  &__codec-distribution {
+    margin-bottom: $spacing-xl;
+
+    h2 {
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  &__codec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: $spacing-md;
+  }
+
+  &__codec-card {
+    padding: $spacing-md;
+    background: rgba($success, 0.1);
+    border-radius: $border-radius-md;
+    border-left: 4px solid $success;
+
+    h4 {
+      margin-bottom: $spacing-sm;
+      color: $success;
+    }
+  }
+
+  &__codec-count {
+    font-size: 1.25rem;
+    font-weight: $font-weight-bold;
+    margin: $spacing-xs 0;
+  }
+
+  &__codec-percentage {
+    font-size: 0.875rem;
+    color: #666;
+    margin: 0;
+  }
+
+  &__folders {
+    margin-bottom: $spacing-xl;
+
+    h2 {
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  &__folder-card {
+    padding: $spacing-lg;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: $border-radius-md;
+    margin-bottom: $spacing-md;
+
+    h3 {
+      margin-bottom: $spacing-sm;
+    }
+  }
+
+  &__folder-stats {
+    display: flex;
+    gap: $spacing-lg;
+    color: #666;
+
+    span {
+      font-size: 0.875rem;
+    }
+  }
+
+  &__scan-time {
+    text-align: center;
+    color: #999;
+    font-size: 0.875rem;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

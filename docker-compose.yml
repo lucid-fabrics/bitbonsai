@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  media-insight:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lucidfabrics/media-insight:latest
+    container_name: media-insight
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # API port
+      - "4200:4200"  # Frontend dev port (optional)
+    environment:
+      - NODE_ENV=production
+      - API_PORT=3000
+      - API_PREFIX=api/v1
+      - TZ=America/New_York
+    volumes:
+      # Mount your media directories (READ-ONLY recommended)
+      - /mnt/user/media:/media:ro
+      - /mnt/user/Downloads:/downloads:ro
+      # Persistent app data
+      - ./appdata:/app/data
+    networks:
+      - media-insight-network
+    labels:
+      - "com.github.wassimmehanna.media-insight.version=0.1.0"
+      - "com.github.wassimmehanna.media-insight.description=Media library analytics dashboard"
+
+networks:
+  media-insight-network:
+    driver: bridge

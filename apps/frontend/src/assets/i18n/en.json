@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "title": "MediaInsight Analytics",
+    "totalSize": "Total Size",
+    "totalFiles": "Total Files",
+    "averageBitrate": "Average Bitrate",
+    "codecDistribution": "Codec Distribution",
+    "folderStatistics": "Folder Statistics",
+    "scanButton": "Scan Library",
+    "scanning": "Scanning...",
+    "lastScan": "Last scanned: {{timestamp}}"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "files": "files"
+  }
+}
