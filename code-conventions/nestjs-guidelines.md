@@ -10,6 +10,32 @@
 - **NO MOCK DATA ALLOWED** - All data must come from real sources, never use mock/fake data.
 - **NO SIMULATION CODE** - Do not implement placeholder/simulation code (e.g., fake connection tests, simulated responses) unless explicitly requested. Methods should either be fully implemented or throw `NotImplementedException`.
 
+## ⚠️ CRITICAL: Swagger Documentation Requirements
+
+**MANDATORY FOR ALL API CHANGES:**
+- Every new endpoint MUST have comprehensive Swagger documentation
+- Every modified endpoint MUST have updated Swagger documentation immediately
+- DTOs MUST use `@ApiProperty()` decorators with detailed descriptions and examples
+- Controllers MUST use `@ApiTags()`, `@ApiOperation()`, `@ApiResponse()` decorators
+- All request/response examples MUST be documented
+- **Update Swagger BEFORE merging any API changes** - No exceptions
+
+**Documentation Standards:**
+1. **Endpoint Documentation**: Use `@ApiOperation({ summary, description })` with clear, detailed descriptions
+2. **Response Documentation**: Use `@ApiResponse()` for all status codes (200, 400, 404, 500, etc.)
+3. **DTO Documentation**: Every property needs `@ApiProperty({ description, example, type })`
+4. **Request Body**: Use `@ApiBody()` for POST/PUT/PATCH endpoints
+5. **Query Parameters**: Use `@ApiQuery()` for all query params
+6. **Path Parameters**: Use `@ApiParam()` for all path params
+7. **Include Constraints**: Use `minimum`, `maximum`, `minLength`, `maxLength` where applicable
+
+**Swagger MUST be:**
+- Comprehensive (every field explained in detail)
+- Accurate (reflects actual API behavior)
+- Up-to-date (updated with every API change)
+- Developer-friendly (includes examples and use cases)
+- Production-ready (suitable for external API consumers)
+
 ## External API Integration Pattern
 - **Controller → Service → Proxy → External API**
 - Proxy classes (`.proxy.ts`) handle external API calls and response transformation
