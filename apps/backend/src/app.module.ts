@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { CommonModule } from './common/common.module';
+import { EncodingModule } from './encoding/encoding.module';
 import { InsightsModule } from './insights/insights.module';
 import { LibrariesModule } from './libraries/libraries.module';
 import { LicenseModule } from './license/license.module';
@@ -8,10 +10,12 @@ import { OverviewModule } from './overview/overview.module';
 import { PoliciesModule } from './policies/policies.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
     PrismaModule,
+    CommonModule,
     MediaStatsModule,
     PoliciesModule,
     LicenseModule,
@@ -20,6 +24,8 @@ import { QueueModule } from './queue/queue.module';
     InsightsModule,
     NodesModule,
     QueueModule,
+    SettingsModule,
+    EncodingModule,
   ],
   controllers: [],
   providers: [],

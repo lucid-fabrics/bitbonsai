@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { AccelerationType, License, Library, NodeRole, NodeStatus } from '@prisma/client';
+import type { AccelerationType, Library, License, NodeRole, NodeStatus } from '@prisma/client';
 
 /**
  * DTO for node statistics with related data

@@ -18,6 +18,7 @@ async function bootstrap() {
     .addTag('media-stats', 'Media library statistics and analytics')
     .addTag('libraries', 'Media library CRUD operations')
     .addTag('licenses', 'License validation and management')
+    .addTag('settings', 'System settings and environment detection')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

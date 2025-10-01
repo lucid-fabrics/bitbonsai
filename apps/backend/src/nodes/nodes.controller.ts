@@ -11,12 +11,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Node } from '@prisma/client';
-import { HeartbeatDto } from './dto/heartbeat.dto';
+import type { HeartbeatDto } from './dto/heartbeat.dto';
 import { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
-import { PairNodeDto } from './dto/pair-node.dto';
-import { RegisterNodeDto } from './dto/register-node.dto';
-import { NodesService } from './nodes.service';
+import type { PairNodeDto } from './dto/pair-node.dto';
+import type { RegisterNodeDto } from './dto/register-node.dto';
+import type { NodesService } from './nodes.service';
 
 @ApiTags('nodes')
 @Controller('nodes')
