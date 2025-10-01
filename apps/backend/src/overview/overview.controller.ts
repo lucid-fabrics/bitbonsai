@@ -6,7 +6,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { OverviewStatsDto } from './dto/overview-stats.dto';
-import { OverviewService } from './overview.service';
+import type { OverviewService } from './overview.service';
 
 /**
  * OverviewController

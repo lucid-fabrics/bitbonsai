@@ -27,7 +27,7 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
 import { JobStatsDto } from './dto/job-stats.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
-import { QueueService } from './queue.service';
+import type { QueueService } from './queue.service';
 
 @ApiTags('queue')
 @Controller('queue')

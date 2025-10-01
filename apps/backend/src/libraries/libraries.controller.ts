@@ -23,7 +23,7 @@ import type { Library } from '@prisma/client';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { LibraryStatsDto } from './dto/library-stats.dto';
 import { UpdateLibraryDto } from './dto/update-library.dto';
-import { LibrariesService } from './libraries.service';
+import type { LibrariesService } from './libraries.service';
 
 @ApiTags('libraries')
 @Controller('libraries')

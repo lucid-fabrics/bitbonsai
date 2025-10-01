@@ -24,7 +24,7 @@ import {
 import type { CreatePolicyDto } from './dto/create-policy.dto';
 import { PolicyDto, PolicyStatsDto, PresetInfoDto } from './dto/policy-stats.dto';
 import type { UpdatePolicyDto } from './dto/update-policy.dto';
-import { PoliciesService } from './policies.service';
+import type { PoliciesService } from './policies.service';
 
 @ApiTags('policies')
 @Controller('policies')
