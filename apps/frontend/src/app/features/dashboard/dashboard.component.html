@@ -2,27 +2,28 @@
   <!-- Header -->
   <header class="header">
     <div class="brand">
-      <div class="brand-logo">
-        <fa-icon [icon]="['fas', 'chart-line']"></fa-icon>
-      </div>
-      <div class="brand-text">
-        <h1 class="brand-title">MediaInsight Analytics</h1>
-        <p class="brand-tagline">Professional codec analytics & encoding progress tracker</p>
-      </div>
-    </div>
-    <div class="header-meta">
-      @if (stats$ | async; as stats) {
-        <div class="last-scan">
-          <strong>Last Scan:</strong> {{ stats.scanTimestampFormatted }}
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="brand-logo">
+          <fa-icon [icon]="['fas', 'chart-line']"></fa-icon>
         </div>
-      }
-      <button class="refresh-btn" (click)="triggerScan()" [disabled]="isLoading$ | async">
-        @if (isLoading$ | async) {
-          <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> Scanning...
-        } @else {
-          <fa-icon [icon]="['fas', 'sync']"></fa-icon> Refresh Now
+        <div class="brand-text">
+          <h1 class="brand-title">MediaInsight Analytics</h1>
+        </div>
+      </div>
+      <div class="header-meta">
+        @if (stats$ | async; as stats) {
+          <div class="last-scan">
+            <strong>Last Scan:</strong> {{ stats.scanTimestampFormatted }}
+          </div>
         }
-      </button>
+        <button class="refresh-btn" (click)="triggerScan()" [disabled]="isLoading$ | async">
+          @if (isLoading$ | async) {
+            <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> Scanning...
+          } @else {
+            <fa-icon [icon]="['fas', 'sync']"></fa-icon> Refresh
+          }
+        </button>
+      </div>
     </div>
   </header>
 
