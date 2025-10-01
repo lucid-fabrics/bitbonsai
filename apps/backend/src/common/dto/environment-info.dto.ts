@@ -5,25 +5,25 @@ export class HardwareAccelerationDto {
     description: 'Whether NVIDIA GPU acceleration is available',
     example: true,
   })
-  nvidia: boolean;
+  nvidia!: boolean;
 
   @ApiProperty({
     description: 'Whether Intel Quick Sync Video is available',
     example: false,
   })
-  intelQsv: boolean;
+  intelQsv!: boolean;
 
   @ApiProperty({
     description: 'Whether AMD GPU acceleration is available',
     example: false,
   })
-  amd: boolean;
+  amd!: boolean;
 
   @ApiProperty({
     description: 'Whether Apple VideoToolbox (Apple Silicon) is available',
     example: false,
   })
-  appleVideoToolbox: boolean;
+  appleVideoToolbox!: boolean;
 }
 
 export class SystemInfoDto {
@@ -31,25 +31,25 @@ export class SystemInfoDto {
     description: 'Number of CPU cores available',
     example: 8,
   })
-  cpuCores: number;
+  cpuCores!: number;
 
   @ApiProperty({
     description: 'CPU architecture',
     example: 'x64',
   })
-  architecture: string;
+  architecture!: string;
 
   @ApiProperty({
     description: 'Operating system platform',
     example: 'linux',
   })
-  platform: string;
+  platform!: string;
 
   @ApiProperty({
     description: 'Total system memory in GB',
     example: 16,
   })
-  totalMemoryGb: number;
+  totalMemoryGb!: number;
 
   @ApiProperty({
     description: 'Container runtime if running in Docker',
@@ -71,19 +71,19 @@ export class DefaultPathsDto {
     description: 'Default path for media library storage',
     example: '/mnt/user/media',
   })
-  mediaPath: string;
+  mediaPath!: string;
 
   @ApiProperty({
     description: 'Default path for download directory',
     example: '/mnt/user/Downloads',
   })
-  downloadsPath: string;
+  downloadsPath!: string;
 
   @ApiProperty({
     description: 'Default path for application config and data',
     example: '/mnt/user/appdata/bitbonsai',
   })
-  configPath: string;
+  configPath!: string;
 }
 
 export class EnvironmentInfoDto {
@@ -92,43 +92,43 @@ export class EnvironmentInfoDto {
     enum: ['UNRAID', 'DOCKER', 'BARE_METAL'],
     example: 'UNRAID',
   })
-  environment: 'UNRAID' | 'DOCKER' | 'BARE_METAL';
+  environment!: 'UNRAID' | 'DOCKER' | 'BARE_METAL';
 
   @ApiProperty({
     description: 'Whether running on Unraid OS',
     example: true,
   })
-  isUnraid: boolean;
+  isUnraid!: boolean;
 
   @ApiProperty({
     description: 'Whether running in Docker container',
     example: true,
   })
-  isDocker: boolean;
+  isDocker!: boolean;
 
   @ApiProperty({
     description: 'Available hardware acceleration options',
     type: HardwareAccelerationDto,
   })
-  hardwareAcceleration: HardwareAccelerationDto;
+  hardwareAcceleration!: HardwareAccelerationDto;
 
   @ApiProperty({
     description: 'Environment-specific default paths',
     type: DefaultPathsDto,
   })
-  defaultPaths: DefaultPathsDto;
+  defaultPaths!: DefaultPathsDto;
 
   @ApiProperty({
     description: 'System information',
     type: SystemInfoDto,
   })
-  systemInfo: SystemInfoDto;
+  systemInfo!: SystemInfoDto;
 
   @ApiProperty({
     description: 'Link to environment-specific documentation',
     example: 'https://docs.bitbonsai.com/setup/unraid',
   })
-  docsLink: string;
+  docsLink!: string;
 
   @ApiProperty({
     description: 'Environment-specific setup recommendations',
@@ -138,5 +138,5 @@ export class EnvironmentInfoDto {
     ],
     type: [String],
   })
-  recommendations: string[];
+  recommendations!: string[];
 }
