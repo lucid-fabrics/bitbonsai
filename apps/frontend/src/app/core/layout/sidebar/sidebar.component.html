@@ -1,0 +1,25 @@
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <span class="logo-icon">🎬</span>
+      <span class="logo-text">MediaInsight</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    @for (item of menuItems; track item.route) {
+      <a
+        [routerLink]="item.route"
+        routerLinkActive="active"
+        class="nav-item"
+      >
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span class="nav-label">{{ item.label }}</span>
+      </a>
+    }
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="version">v0.1.0</div>
+  </div>
+</aside>
