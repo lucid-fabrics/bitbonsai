@@ -13,6 +13,8 @@ async function bootstrap() {
     .setTitle('BitBonsai API')
     .setDescription('REST API for analyzing video media libraries')
     .setVersion('0.1.0')
+    .addTag('overview', 'Dashboard overview with aggregated metrics')
+    .addTag('nodes', 'Node registration, pairing, and cluster management')
     .addTag('media-stats', 'Media library statistics and analytics')
     .addTag('libraries', 'Media library CRUD operations')
     .addTag('licenses', 'License validation and management')
