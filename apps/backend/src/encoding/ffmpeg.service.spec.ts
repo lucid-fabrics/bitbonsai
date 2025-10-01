@@ -308,19 +308,24 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(true);
       mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
-      // Create mock ffmpeg process
+      // Mock hardware acceleration detection to avoid spawning nvidia-smi
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
+      // Create mock ffmpeg process with proper stderr
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
       // Simulate progress updates
       setTimeout(() => {
-        (mockProcess as any).stderr.emit(
-          'data',
-          Buffer.from('frame= 1000 fps= 50.0 time=00:00:30.00')
-        );
+        stderrEmitter.emit('data', Buffer.from('frame= 1000 fps= 50.0 time=00:00:30.00\n'));
       }, 10);
 
       // Simulate successful completion
@@ -342,18 +347,23 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(true);
       mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
       // Emit progress data
       setTimeout(() => {
-        (mockProcess as any).stderr.emit(
-          'data',
-          Buffer.from('frame= 500 fps= 30.0 time=00:00:20.00\n')
-        );
+        stderrEmitter.emit('data', Buffer.from('frame= 500 fps= 30.0 time=00:00:20.00\n'));
       }, 10);
 
       setTimeout(() => {
@@ -377,8 +387,16 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(true);
       mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
@@ -405,8 +423,16 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(true);
       mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
@@ -427,13 +453,21 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(true);
       mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
       const nonAtomicPolicy = {
         ...mockPolicy,
         atomicReplace: false,
       };
 
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, nonAtomicPolicy);
@@ -452,32 +486,46 @@ describe('FfmpegService', () => {
   describe('cancelEncoding', () => {
     it('should cancel active encoding', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
+
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
 
       // Start encoding
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       (mockProcess as any).kill = jest.fn();
       (mockProcess as any).killed = false;
       mockSpawn.mockReturnValue(mockProcess);
 
+      // Start encoding (don't await - we want it running in background)
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
+      // Wait for encoding to start and be registered
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Cancel the encoding
       const cancelPromise = service.cancelEncoding(mockJob.id);
 
-      // Simulate process killed
+      // Simulate process killed after SIGTERM
       setTimeout(() => {
         (mockProcess as any).killed = true;
-      }, 100);
+      }, 10);
 
       const result = await cancelPromise;
 
       expect(result).toBe(true);
       expect((mockProcess as any).kill).toHaveBeenCalledWith('SIGTERM');
       expect(queueService.cancelJob).toHaveBeenCalledWith(mockJob.id);
+
+      // Clean up the encoding promise by making it complete
+      setTimeout(() => mockProcess.emit('close', 1), 10);
+      await encodePromise.catch(() => {}); // Ignore error from cancelled job
     });
 
     it('should return false when job is not encoding', async () => {
@@ -494,14 +542,23 @@ describe('FfmpegService', () => {
 
     it('should return active job IDs', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
+      // Wait for encoding to start and be registered
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const activeJobs = service.getActiveEncodings();
@@ -521,14 +578,23 @@ describe('FfmpegService', () => {
 
     it('should return status for active encoding', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
+      // Mock hardware acceleration detection
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+
+      const stderrEmitter = new EventEmitter();
       const mockProcess = new EventEmitter() as ChildProcess;
-      (mockProcess as any).stderr = new EventEmitter();
+      (mockProcess as any).stderr = stderrEmitter;
       mockSpawn.mockReturnValue(mockProcess);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
+      // Wait for encoding to start and be registered
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const status = service.getEncodingStatus(mockJob.id);
