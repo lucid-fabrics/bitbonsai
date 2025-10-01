@@ -108,9 +108,13 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="folder.percentH265">
-                {{ folder.percentH265 }}% Encoded
+            <div class="progress-container">
+              <div class="progress-header">
+                <span class="progress-label">H.265 Encoding Progress</span>
+                <span class="progress-percentage">{{ folder.percentH265 }}%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="folder.percentH265"></div>
               </div>
             </div>
 

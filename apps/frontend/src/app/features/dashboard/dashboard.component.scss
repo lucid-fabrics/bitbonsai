@@ -268,13 +268,38 @@
 }
 
 // Progress Bar
+.progress-container {
+  margin: 20px 0;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-label {
+  font-size: 11px;
+  color: $text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.progress-percentage {
+  font-size: 14px;
+  font-weight: 700;
+  color: $accent-primary;
+  font-variant-numeric: tabular-nums;
+}
+
 .progress-bar {
   width: 100%;
   height: 6px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 3px;
   overflow: hidden;
-  margin: 20px 0;
   position: relative;
 }
 
@@ -283,15 +308,6 @@
   background: linear-gradient(90deg, $accent-primary 0%, lighten($accent-primary, 10%) 100%);
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 8px;
-  color: $text-white;
-  font-weight: 600;
-  font-size: 11px;
-  min-width: fit-content;
-  white-space: nowrap;
 
   &::after {
     content: '';
