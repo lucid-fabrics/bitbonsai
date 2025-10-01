@@ -22,11 +22,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { type Job, JobStage } from '@prisma/client';
-import { CreateJobDto } from './dto/create-job.dto';
-import { UpdateJobDto } from './dto/update-job.dto';
 import { CompleteJobDto } from './dto/complete-job.dto';
+import { CreateJobDto } from './dto/create-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
 import { JobStatsDto } from './dto/job-stats.dto';
+import { UpdateJobDto } from './dto/update-job.dto';
 import type { QueueService } from './queue.service';
 
 @ApiTags('queue')

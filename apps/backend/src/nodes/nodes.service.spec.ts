@@ -290,18 +290,18 @@ describe('NodesService', () => {
     it('should update status if provided in heartbeat data', async () => {
       const updatedNode = {
         ...mockNode,
-        status: NodeStatus.MAINTENANCE,
+        status: NodeStatus.ERROR,
       };
 
       jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
       jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as any);
 
-      await service.heartbeat('node-1', { status: NodeStatus.MAINTENANCE });
+      await service.heartbeat('node-1', { status: NodeStatus.ERROR });
 
       expect(prisma.node.update).toHaveBeenCalledWith({
         where: { id: 'node-1' },
         data: {
-          status: NodeStatus.MAINTENANCE,
+          status: NodeStatus.ERROR,
           lastHeartbeat: expect.any(Date),
           uptimeSeconds: { increment: 60 },
         },

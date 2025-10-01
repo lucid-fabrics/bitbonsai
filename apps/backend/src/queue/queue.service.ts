@@ -1,10 +1,10 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Job, JobStage } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
-import type { CreateJobDto } from './dto/create-job.dto';
-import type { UpdateJobDto } from './dto/update-job.dto';
 import type { CompleteJobDto } from './dto/complete-job.dto';
+import type { CreateJobDto } from './dto/create-job.dto';
 import type { JobStatsDto } from './dto/job-stats.dto';
+import type { UpdateJobDto } from './dto/update-job.dto';
 
 /**
  * QueueService
@@ -500,18 +500,17 @@ export class QueueService {
       });
 
       // License-wide metric (nodeId: null for system-wide metrics)
-      // @ts-expect-error - Prisma allows null for nodeId but TypeScript doesn't know this
       await this.prisma.metric.upsert({
         where: {
           date_nodeId_licenseId: {
             date: today,
-            nodeId: null,
+            nodeId: null as unknown as string,
             licenseId: job.node.licenseId,
           },
         },
         create: {
           date: today,
-          nodeId: null,
+          nodeId: null as unknown as string,
           licenseId: job.node.licenseId,
           jobsCompleted: 1,
           totalSavedBytes: job.savedBytes || BigInt(0),

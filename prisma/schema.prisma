@@ -124,16 +124,17 @@ model License {
 // ============================================================================
 
 model Node {
-  id            String           @id @default(cuid())
-  name          String
-  role          NodeRole
-  status        NodeStatus
-  version       String
-  acceleration  AccelerationType
-  pairingToken  String?          @unique // Used during pairing process, null after paired
-  apiKey        String           @unique // For node authentication
-  lastHeartbeat DateTime
-  uptimeSeconds Int              @default(0)
+  id                String           @id @default(cuid())
+  name              String
+  role              NodeRole
+  status            NodeStatus
+  version           String
+  acceleration      AccelerationType
+  pairingToken      String?          @unique // Used during pairing process, null after paired
+  pairingExpiresAt  DateTime? // Pairing token expiration (10 minutes)
+  apiKey            String           @unique // For node authentication
+  lastHeartbeat     DateTime
+  uptimeSeconds     Int              @default(0)
 
   // Relations
   licenseId String

@@ -26,7 +26,7 @@ export class NodeStatsDto {
 
   @ApiProperty({
     description: 'Current operational status of the node',
-    enum: ['ONLINE', 'OFFLINE', 'MAINTENANCE'],
+    enum: ['ONLINE', 'OFFLINE', 'ERROR'],
     example: 'ONLINE',
   })
   status!: NodeStatus;
