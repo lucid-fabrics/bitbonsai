@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CommonModule } from './common/common.module';
 import { EncodingModule } from './encoding/encoding.module';
+import { HealthModule } from './health/health.module';
 import { InsightsModule } from './insights/insights.module';
 import { LibrariesModule } from './libraries/libraries.module';
 import { LicenseModule } from './license/license.module';
@@ -17,6 +18,7 @@ import { SettingsModule } from './settings/settings.module';
   imports: [
     PrismaModule,
     CommonModule,
+    HealthModule,
     MediaStatsModule,
     PoliciesModule,
     LicenseModule,

@@ -7,12 +7,14 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
   app.enableCors();
+  app.enableShutdownHooks();
 
   // Swagger API Documentation Configuration
   const config = new DocumentBuilder()
     .setTitle('BitBonsai API')
     .setDescription('REST API for analyzing video media libraries')
     .setVersion('0.1.0')
+    .addTag('health', 'Health check and monitoring endpoints')
     .addTag('overview', 'Dashboard overview with aggregated metrics')
     .addTag('nodes', 'Node registration, pairing, and cluster management')
     .addTag('media-stats', 'Media library statistics and analytics')
