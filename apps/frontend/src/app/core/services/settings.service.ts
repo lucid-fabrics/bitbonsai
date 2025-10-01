@@ -1,0 +1,44 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import type {
+  EnvironmentInfo,
+  SystemSettings,
+  UpdateSystemSettings,
+} from '../models/settings.model';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class SettingsService {
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = `${environment.apiUrl}/settings`;
+
+  getEnvironmentInfo(): Observable<EnvironmentInfo> {
+    return this.http.get<EnvironmentInfo>(`${this.apiUrl}/environment`);
+  }
+
+  getSystemSettings(): Observable<SystemSettings> {
+    return this.http.get<SystemSettings>(`${this.apiUrl}/system`);
+  }
+
+  updateSystemSettings(updateDto: UpdateSystemSettings): Observable<SystemSettings> {
+    return this.http.patch<SystemSettings>(`${this.apiUrl}/system`, updateDto);
+  }
+
+  backupDatabase(): Observable<{ backupPath: string; timestamp: string }> {
+    return this.http.post<{ backupPath: string; timestamp: string }>(
+      `${this.apiUrl}/system/backup`,
+      {}
+    );
+  }
+
+  resetToDefaults(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/system/reset`, {});
+  }
+
+  regenerateApiKey(): Observable<{ apiKey: string }> {
+    return this.http.post<{ apiKey: string }>(`${this.apiUrl}/system/api-key/regenerate`, {});
+  }
+}

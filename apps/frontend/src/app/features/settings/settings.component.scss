@@ -6,7 +6,7 @@
 }
 
 .page-header {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 
   h1 {
     font-size: 32px;
@@ -22,16 +22,637 @@
   }
 }
 
-.content-area {
+// Message notifications
+.message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+
+  i {
+    font-size: 16px;
+  }
+
+  &.message-success {
+    background: $success-bg;
+    border: 1px solid $success;
+    color: $success;
+  }
+
+  &.message-error {
+    background: $danger-bg;
+    border: 1px solid $danger;
+    color: $danger;
+  }
+}
+
+// Layout
+.settings-layout {
+  display: flex;
+  gap: 24px;
+}
+
+// Vertical Tab Navigation
+.tab-nav {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: $bg-secondary;
+  border-radius: 8px;
+  padding: 16px;
+  height: fit-content;
+  border: 1px solid $border-primary;
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: $transition-fast;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+
+  i {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+  }
+
+  &:hover {
+    background: $bg-tertiary;
+    color: $text-primary;
+  }
+
+  &.active {
+    background: $bg-tertiary;
+    color: $accent-primary;
+    border-left: 3px solid $accent-primary;
+    padding-left: 13px;
+
+    i {
+      color: $accent-primary;
+    }
+  }
+}
+
+// Tab Content
+.tab-content {
+  flex: 1;
   background: $bg-secondary;
   border-radius: 8px;
   border: 1px solid $border-primary;
-  padding: 24px;
+  padding: 32px;
+  min-height: 600px;
 }
 
-.placeholder {
-  text-align: center;
-  padding: 64px 24px;
+.tab-panel {
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: $text-white;
+    margin: 0 0 24px 0;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: $text-white;
+    margin: 0 0 16px 0;
+  }
+}
+
+// License Tab
+.license-card {
+  background: $bg-tertiary;
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid $border-primary;
+}
+
+.license-header {
+  margin-bottom: 24px;
+}
+
+.tier-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.tier-free {
+    background: #2d2d2d;
+    color: #888;
+  }
+
+  &.tier-patreon {
+    background: rgba(249, 190, 3, 0.15);
+    color: $accent-primary;
+    border: 1px solid $accent-primary;
+  }
+
+  &.tier-commercial {
+    background: rgba(74, 222, 128, 0.15);
+    color: $success;
+    border: 1px solid $success;
+  }
+}
+
+.license-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid $border-primary;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .label {
+    color: $text-secondary;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .value {
+    color: $text-primary;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .value-with-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .key-value {
+    color: $text-primary;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+  }
+}
+
+.features-section {
+  margin-bottom: 24px;
+}
+
+.features-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: $bg-secondary;
+  border-radius: 6px;
+  font-size: 13px;
+  color: $text-primary;
+
+  i {
+    color: $success;
+    font-size: 14px;
+  }
+
+  &.disabled {
+    opacity: 0.5;
+
+    i {
+      color: $text-tertiary;
+    }
+  }
+}
+
+.btn-upgrade {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.license-activation {
+  margin-top: 32px;
+}
+
+// Info Cards (Environment, System tabs)
+.info-card {
+  background: $bg-tertiary;
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid $border-primary;
+  margin-bottom: 24px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &.recommendations {
+    background: rgba(249, 190, 3, 0.05);
+    border-color: rgba(249, 190, 3, 0.3);
+  }
+
+  &.danger-zone {
+    background: rgba(255, 107, 107, 0.05);
+    border-color: rgba(255, 107, 107, 0.3);
+  }
+}
+
+.env-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+
+  &.env-unraid {
+    background: rgba(249, 190, 3, 0.15);
+    color: $accent-primary;
+  }
+
+  &.env-docker {
+    background: rgba(74, 222, 128, 0.15);
+    color: $success;
+  }
+
+  &.env-bare_metal {
+    background: #2d2d2d;
+    color: $text-secondary;
+  }
+}
+
+.env-description {
   color: $text-secondary;
   font-size: 14px;
+  margin: 8px 0 0 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .label {
+    color: $text-secondary;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .value {
+    color: $text-primary;
+    font-size: 14px;
+  }
+}
+
+.hw-accel-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.hw-accel-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: $bg-secondary;
+  border-radius: 6px;
+  font-size: 13px;
+  color: $text-tertiary;
+
+  i {
+    color: $text-tertiary;
+    font-size: 14px;
+  }
+
+  &.available {
+    color: $text-primary;
+
+    i {
+      color: $success;
+    }
+  }
+}
+
+.path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.path-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .label {
+    color: $text-secondary;
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 80px;
+  }
+
+  .path-value {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    code {
+      flex: 1;
+      background: $bg-secondary;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: $accent-primary;
+      overflow-x: auto;
+    }
+  }
+}
+
+.recommendation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    color: $text-primary;
+    font-size: 14px;
+
+    i {
+      color: $accent-primary;
+      font-size: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+  }
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .version-label {
+    color: $text-secondary;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .version-number {
+    color: $accent-primary;
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.storage-info {
+  margin-top: 16px;
+}
+
+.storage-bar {
+  width: 100%;
+  height: 8px;
+  background: $bg-secondary;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.storage-fill {
+  height: 100%;
+  background: linear-gradient(to right, $accent-primary, $success);
+  transition: width 0.3s ease;
+}
+
+.storage-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+.warning-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: $danger;
+  font-size: 14px;
+  margin: 0 0 16px 0;
+
+  i {
+    font-size: 16px;
+  }
+}
+
+// Forms
+.form-group {
+  margin-bottom: 20px;
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: $text-primary;
+    font-size: 14px;
+    font-weight: 500;
+
+    &.checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+
+      input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+    }
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    background: $bg-primary;
+    border: 1px solid $border-primary;
+    border-radius: 6px;
+    color: $text-primary;
+    font-size: 14px;
+    transition: $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $accent-primary;
+    }
+
+    &.invalid {
+      border-color: $danger;
+    }
+  }
+
+  .error-message {
+    display: block;
+    margin-top: 6px;
+    color: $danger;
+    font-size: 12px;
+  }
+
+  .help-text {
+    margin: 6px 0 0 0;
+    color: $text-secondary;
+    font-size: 12px;
+  }
+}
+
+// API Key Section
+.api-key-section {
+  margin-top: 32px;
+}
+
+.api-key-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 12px;
+  background: $bg-primary;
+  border-radius: 6px;
+  border: 1px solid $border-primary;
+
+  .api-key-value {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    color: $accent-primary;
+    font-size: 13px;
+  }
+}
+
+// Buttons
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: $text-secondary;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: $transition-fast;
+  font-size: 14px;
+
+  &:hover {
+    background: $bg-secondary;
+    color: $accent-primary;
+  }
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: $transition-fast;
+
+  i {
+    font-size: 14px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background: $accent-primary;
+  color: $text-dark;
+
+  &:hover:not(:disabled) {
+    background: $accent-primary-hover;
+  }
+}
+
+.btn-secondary {
+  background: $bg-tertiary;
+  color: $text-primary;
+  border: 1px solid $border-primary;
+
+  &:hover:not(:disabled) {
+    background: $bg-primary;
+    border-color: $border-secondary;
+  }
+}
+
+.btn-danger {
+  background: rgba(255, 107, 107, 0.15);
+  color: $danger;
+  border: 1px solid $danger;
+
+  &:hover:not(:disabled) {
+    background: $danger;
+    color: $text-white;
+  }
+}
+
+.btn-link {
+  background: transparent;
+  color: $accent-primary;
+  text-decoration: none;
+  padding: 8px 16px;
+
+  &:hover {
+    background: rgba(249, 190, 3, 0.1);
+  }
+}
+
+.section-divider {
+  height: 1px;
+  background: $border-primary;
+  margin: 32px 0;
 }
