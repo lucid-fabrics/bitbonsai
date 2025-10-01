@@ -3,7 +3,15 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
-import { faChartLine } from '@fortawesome/pro-solid-svg-icons';
+import {
+  faChartBar,
+  faChartLine,
+  faFolderOpen,
+  faGear,
+  faListCheck,
+  faServer,
+  faSliders,
+} from '@fortawesome/pro-solid-svg-icons';
 
 interface MenuItem {
   label: string;
@@ -20,5 +28,13 @@ interface MenuItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent {
-  readonly menuItems: MenuItem[] = [{ label: 'Dashboard', icon: faChartLine, route: '/dashboard' }];
+  readonly menuItems: MenuItem[] = [
+    { label: 'Overview', icon: faChartLine, route: '/overview' },
+    { label: 'Queue', icon: faListCheck, route: '/queue' },
+    { label: 'Libraries', icon: faFolderOpen, route: '/libraries' },
+    { label: 'Policies', icon: faSliders, route: '/policies' },
+    { label: 'Nodes', icon: faServer, route: '/nodes' },
+    { label: 'Insights', icon: faChartBar, route: '/insights' },
+    { label: 'Settings', icon: faGear, route: '/settings' },
+  ];
 }

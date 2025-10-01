@@ -25,7 +25,7 @@ import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 
     .main-content {
       flex: 1;
-      margin-left: 220px;
+      margin-left: 240px;
       background: #1a1a1a;
     }
 

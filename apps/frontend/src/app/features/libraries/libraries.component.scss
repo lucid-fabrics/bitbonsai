@@ -1,0 +1,37 @@
+@import '../../../../styles/variables';
+
+.libraries-container {
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.page-header {
+  margin-bottom: 32px;
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: $text-white;
+    margin: 0 0 8px 0;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: $text-secondary;
+    margin: 0;
+  }
+}
+
+.content-area {
+  background: $bg-secondary;
+  border-radius: 8px;
+  border: 1px solid $border-primary;
+  padding: 24px;
+}
+
+.placeholder {
+  text-align: center;
+  padding: 64px 24px;
+  color: $text-secondary;
+  font-size: 14px;
+}
