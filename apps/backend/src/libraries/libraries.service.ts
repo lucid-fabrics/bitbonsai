@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Library } from '@prisma/client';
-import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type { CreateLibraryDto } from './dto/create-library.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
 import type { UpdateLibraryDto } from './dto/update-library.dto';

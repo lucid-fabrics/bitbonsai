@@ -396,8 +396,10 @@ describe('EncodingProcessorService', () => {
   describe('metrics calculation', () => {
     it('should calculate correct savings percentages', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 1000000000 }); // 1GB
-      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 750000000 }); // 750MB
+      // statSync is called 3 times: line 136, line 257 (before), line 290 (after)
+      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 1000000000 }); // Line 136 - before
+      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 1000000000 }); // Line 257 - before (again)
+      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 750000000 }); // Line 290 - after
       (fs.renameSync as jest.Mock).mockImplementation(() => {});
       (fs.unlinkSync as jest.Mock).mockImplementation(() => {});
 

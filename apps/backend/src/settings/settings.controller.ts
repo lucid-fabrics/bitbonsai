@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
-import type { EnvironmentService } from '../common/environment.service';
+import { EnvironmentService } from '../common/environment.service';
 import {
   DatabaseType,
   LogLevel,

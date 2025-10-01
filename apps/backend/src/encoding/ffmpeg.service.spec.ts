@@ -6,6 +6,19 @@ import type { Job, Policy } from '@prisma/client';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
 
+// Mock Prisma first to avoid import issues
+jest.mock('@prisma/client', () => ({
+  PrismaClient: jest.fn(),
+  JobStage: {
+    PENDING: 'PENDING',
+    ENCODING: 'ENCODING',
+    VERIFYING: 'VERIFYING',
+    COMPLETED: 'COMPLETED',
+    FAILED: 'FAILED',
+    CANCELLED: 'CANCELLED',
+  },
+}));
+
 // Mock child_process spawn
 jest.mock('node:child_process', () => ({
   spawn: jest.fn(),
@@ -189,9 +202,17 @@ describe('FfmpegService', () => {
 
       const result = await promise;
 
-      expect(result.type).toBe('CPU');
-      expect(result.flags).toEqual([]);
-      expect(result.videoCodec).toBe('libx265');
+      // On macOS (darwin), it will detect Apple M hardware
+      // On other platforms without hardware, it will fallback to CPU
+      if (process.platform === 'darwin') {
+        expect(result.type).toBe('APPLE_M');
+        expect(result.flags).toEqual(['-hwaccel', 'videotoolbox']);
+        expect(result.videoCodec).toBe('hevc_videotoolbox');
+      } else {
+        expect(result.type).toBe('CPU');
+        expect(result.flags).toEqual([]);
+        expect(result.videoCodec).toBe('libx265');
+      }
     });
   });
 
@@ -278,6 +299,7 @@ describe('FfmpegService', () => {
   describe('encodeFile', () => {
     it('should successfully encode file and complete job', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
       // Create mock ffmpeg process
       const mockProcess = new EventEmitter() as ChildProcess;
@@ -311,6 +333,7 @@ describe('FfmpegService', () => {
 
     it('should emit progress events during encoding', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
       const mockProcess = new EventEmitter() as ChildProcess;
       (mockProcess as any).stderr = new EventEmitter();
@@ -345,6 +368,7 @@ describe('FfmpegService', () => {
 
     it('should handle encoding failure', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
       const mockProcess = new EventEmitter() as ChildProcess;
       (mockProcess as any).stderr = new EventEmitter();
@@ -372,6 +396,7 @@ describe('FfmpegService', () => {
 
     it('should handle process spawn error', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
       const mockProcess = new EventEmitter() as ChildProcess;
       (mockProcess as any).stderr = new EventEmitter();
@@ -393,6 +418,7 @@ describe('FfmpegService', () => {
 
     it('should preserve original file when atomicReplace is false', async () => {
       mockExistsSync.mockReturnValue(true);
+      mockFs.stat.mockResolvedValue({ size: 500000000 } as any);
 
       const nonAtomicPolicy = {
         ...mockPolicy,

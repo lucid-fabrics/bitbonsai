@@ -27,7 +27,7 @@ describe('NodesService', () => {
     status: NodeStatus.ONLINE,
     version: '1.0.0',
     acceleration: AccelerationType.NVIDIA,
-    apiKey: 'bb_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2',
+    apiKey: 'bb_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
     pairingToken: '123456',
     pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
     lastHeartbeat: new Date(),
