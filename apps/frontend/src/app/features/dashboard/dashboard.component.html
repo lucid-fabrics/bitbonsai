@@ -2,7 +2,9 @@
   <!-- Header -->
   <header class="header">
     <div class="brand">
-      <div class="brand-logo">📊</div>
+      <div class="brand-logo">
+        <fa-icon [icon]="['fas', 'chart-line']"></fa-icon>
+      </div>
       <div class="brand-text">
         <h1 class="brand-title">MediaInsight Analytics</h1>
         <p class="brand-tagline">Professional codec analytics & encoding progress tracker</p>
@@ -16,9 +18,9 @@
       }
       <button class="refresh-btn" (click)="triggerScan()" [disabled]="isLoading$ | async">
         @if (isLoading$ | async) {
-          🔄 Scanning...
+          <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> Scanning...
         } @else {
-          🔄 Refresh Now
+          <fa-icon [icon]="['fas', 'sync']"></fa-icon> Refresh Now
         }
       </button>
     </div>
@@ -27,7 +29,7 @@
   <!-- Error State -->
   @if (error$ | async; as error) {
     <div class="error-message">
-      <h2>❌ Error loading statistics</h2>
+      <h2><fa-icon [icon]="['fas', 'exclamation-circle']"></fa-icon> Error loading statistics</h2>
       <p>{{ error }}</p>
     </div>
   }
@@ -46,7 +48,7 @@
     <div class="content">
       <!-- Library Overview Summary -->
       <div class="summary-card">
-        <h2>📈 Library Overview</h2>
+        <h2><fa-icon [icon]="['fas', 'chart-line']"></fa-icon> Library Overview</h2>
         <div class="summary-stats">
           <div class="summary-item">
             <div class="summary-number">{{ stats.totalFiles.toLocaleString() }}</div>
@@ -130,12 +132,12 @@
             </div>
 
             <div class="sampled-note">
-              📊 Based on {{ folder.sampled }} sampled files
+              <fa-icon [icon]="['fas', 'database']"></fa-icon> Based on {{ folder.sampled }} sampled files
             </div>
 
             @if (folder.codecDistribution.h264 > 0) {
               <button class="view-files-btn" (click)="viewFilesToEncode(folder)">
-                📋 View {{ folder.codecDistribution.h264 }} Files to Encode
+                <fa-icon [icon]="['fas', 'list']"></fa-icon> View {{ folder.codecDistribution.h264 }} Files to Encode
               </button>
             }
           </div>

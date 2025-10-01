@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Store } from '@ngrx/store';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
 import { FilesDialogComponent } from './files-dialog/files-dialog.component';
@@ -10,7 +11,7 @@ import { FileInfoBo } from '../../core/business-objects/file-info.bo';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FilesDialogComponent],
+  imports: [CommonModule, FontAwesomeModule, FilesDialogComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
