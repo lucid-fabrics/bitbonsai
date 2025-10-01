@@ -4,9 +4,208 @@
     <p class="subtitle">Dashboard with system health and queue statistics</p>
   </div>
 
-  <div class="content-area">
-    <div class="placeholder">
-      <p>System health metrics and queue statistics will be displayed here.</p>
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <fa-icon [icon]="icons.queueStatus" [spin]="true" size="2x"></fa-icon>
+      <p>Loading dashboard...</p>
     </div>
-  </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !isLoading()) {
+    <div class="error-state">
+      <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Main Dashboard Content -->
+  @if (hasData() && !isLoading()) {
+    <div class="dashboard-grid">
+      <!-- System Health Cards (Top Row) -->
+      <section class="system-health">
+        <div class="health-card health-card--success">
+          <div class="health-card__icon">
+            <fa-icon [icon]="icons.activeNodes" size="2x"></fa-icon>
+          </div>
+          <div class="health-card__content">
+            <h3 class="health-card__title">Active Nodes</h3>
+            <p class="health-card__value">
+              {{ overviewData()!.system_health.active_nodes.current }} /
+              {{ overviewData()!.system_health.active_nodes.total }}
+            </p>
+          </div>
+        </div>
+
+        <div class="health-card health-card--warning">
+          <div class="health-card__icon">
+            <fa-icon [icon]="icons.queueStatus" [spin]="overviewData()!.system_health.queue_status.encoding_count > 0" size="2x"></fa-icon>
+          </div>
+          <div class="health-card__content">
+            <h3 class="health-card__title">Queue Status</h3>
+            <p class="health-card__value">
+              {{ overviewData()!.system_health.queue_status.encoding_count }} encoding
+            </p>
+          </div>
+        </div>
+
+        <div class="health-card health-card--info">
+          <div class="health-card__icon">
+            <fa-icon [icon]="icons.storageSaved" size="2x"></fa-icon>
+          </div>
+          <div class="health-card__content">
+            <h3 class="health-card__title">Storage Saved</h3>
+            <p class="health-card__value">
+              {{ overviewData()!.system_health.storage_saved.total_tb }} TB
+            </p>
+          </div>
+        </div>
+
+        <div class="health-card health-card--primary">
+          <div class="health-card__icon">
+            <fa-icon [icon]="icons.successRate" size="2x"></fa-icon>
+          </div>
+          <div class="health-card__content">
+            <h3 class="health-card__title">Success Rate</h3>
+            <p class="health-card__value">
+              {{ overviewData()!.system_health.success_rate.percentage }}%
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Queue Summary (Second Row) -->
+      <section class="queue-summary">
+        <h2 class="section-title">Queue Summary</h2>
+        <div class="queue-flow">
+          <div class="queue-stage">
+            <div class="queue-stage__header">
+              <fa-icon [icon]="icons.queued" size="lg"></fa-icon>
+              <span class="queue-stage__label">Queued</span>
+            </div>
+            <p class="queue-stage__count">{{ overviewData()!.queue_summary.queued }}</p>
+            <div class="queue-stage__progress">
+              <div
+                class="queue-stage__bar queue-stage__bar--queued"
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.queued, totalQueueItems())">
+              </div>
+            </div>
+          </div>
+
+          <div class="queue-arrow">→</div>
+
+          <div class="queue-stage">
+            <div class="queue-stage__header">
+              <fa-icon [icon]="icons.encoding" size="lg"></fa-icon>
+              <span class="queue-stage__label">Encoding</span>
+            </div>
+            <p class="queue-stage__count">{{ overviewData()!.queue_summary.encoding }}</p>
+            <div class="queue-stage__progress">
+              <div
+                class="queue-stage__bar queue-stage__bar--encoding"
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.encoding, totalQueueItems())">
+              </div>
+            </div>
+          </div>
+
+          <div class="queue-arrow">→</div>
+
+          <div class="queue-stage">
+            <div class="queue-stage__header">
+              <fa-icon [icon]="icons.completed" size="lg"></fa-icon>
+              <span class="queue-stage__label">Completed</span>
+            </div>
+            <p class="queue-stage__count">{{ overviewData()!.queue_summary.completed }}</p>
+            <div class="queue-stage__progress">
+              <div
+                class="queue-stage__bar queue-stage__bar--completed"
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.completed, totalQueueItems())">
+              </div>
+            </div>
+          </div>
+
+          <div class="queue-arrow">→</div>
+
+          <div class="queue-stage">
+            <div class="queue-stage__header">
+              <fa-icon [icon]="icons.failed" size="lg"></fa-icon>
+              <span class="queue-stage__label">Failed</span>
+            </div>
+            <p class="queue-stage__count">{{ overviewData()!.queue_summary.failed }}</p>
+            <div class="queue-stage__progress">
+              <div
+                class="queue-stage__bar queue-stage__bar--failed"
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.failed, totalQueueItems())">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent Activity (Left Column) -->
+      <section class="recent-activity">
+        <h2 class="section-title">Recent Activity</h2>
+        <div class="activity-table">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Library</th>
+                <th>Codec Change</th>
+                <th>Savings</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (activity of overviewData()!.recent_activity; track activity.id) {
+                <tr>
+                  <td class="file-name">{{ activity.file_name }}</td>
+                  <td>{{ activity.library }}</td>
+                  <td class="codec-change">{{ activity.codec_change }}</td>
+                  <td class="savings">{{ formatBytes(activity.savings_gb) }}</td>
+                  <td class="time">{{ formatTime(activity.completed_at) }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="no-data">No recent activity</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Top Libraries (Right Column) -->
+      <section class="top-libraries">
+        <h2 class="section-title">Top Libraries</h2>
+        <div class="library-cards">
+          @for (library of overviewData()!.top_libraries; track library.name) {
+            <div class="library-card">
+              <h3 class="library-card__name">{{ library.name }}</h3>
+              <div class="library-card__stats">
+                <div class="library-card__stat">
+                  <span class="library-card__label">Jobs</span>
+                  <span class="library-card__value">{{ library.job_count }}</span>
+                </div>
+                <div class="library-card__stat">
+                  <span class="library-card__label">Savings</span>
+                  <span class="library-card__value">{{ formatBytes(library.total_savings_gb) }}</span>
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <div class="no-data">No library data available</div>
+          }
+        </div>
+      </section>
+    </div>
+
+    <!-- Last Updated Footer -->
+    <div class="dashboard-footer">
+      <p class="last-updated">
+        Last updated: {{ formatTime(overviewData()!.last_updated) }}
+      </p>
+    </div>
+  }
 </div>

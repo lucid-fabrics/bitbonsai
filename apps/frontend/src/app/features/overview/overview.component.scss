@@ -22,16 +22,409 @@
   }
 }
 
-.content-area {
+// Loading & Error States
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  gap: 16px;
+  color: $text-secondary;
+
+  fa-icon {
+    color: $accent-primary;
+  }
+
+  p {
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+.error-state {
+  fa-icon {
+    color: $danger;
+  }
+}
+
+// Dashboard Grid Layout
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+}
+
+// System Health Cards (Top Row - 4 columns)
+.system-health {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.health-card {
   background: $bg-secondary;
-  border-radius: 8px;
   border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: $border-secondary;
+    transform: translateY(-2px);
+    box-shadow: $shadow-sm;
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: $border-radius-md;
+    background: rgba($accent-primary, 0.1);
+
+    fa-icon {
+      color: $accent-primary;
+    }
+  }
+
+  &__content {
+    flex: 1;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 500;
+    color: $text-secondary;
+    margin: 0 0 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__value {
+    font-size: 24px;
+    font-weight: 700;
+    color: $text-white;
+    margin: 0;
+  }
+
+  // Color variants
+  &--success .health-card__icon {
+    background: rgba($success, 0.15);
+    fa-icon { color: $success; }
+  }
+
+  &--warning .health-card__icon {
+    background: rgba($warning, 0.15);
+    fa-icon { color: $warning; }
+  }
+
+  &--info .health-card__icon {
+    background: rgba(#60a5fa, 0.15);
+    fa-icon { color: #60a5fa; }
+  }
+
+  &--primary .health-card__icon {
+    background: rgba(#a78bfa, 0.15);
+    fa-icon { color: #a78bfa; }
+  }
+}
+
+// Queue Summary (Second Row - Full Width)
+.queue-summary {
+  grid-column: 1 / -1;
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
   padding: 24px;
 }
 
-.placeholder {
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0 0 20px 0;
+}
+
+.queue-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.queue-arrow {
+  font-size: 24px;
+  color: $text-tertiary;
   text-align: center;
-  padding: 64px 24px;
-  color: $text-secondary;
+}
+
+.queue-stage {
+  text-align: center;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    fa-icon {
+      color: $accent-primary;
+    }
+  }
+
+  &__label {
+    font-size: 14px;
+    font-weight: 500;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__count {
+    font-size: 28px;
+    font-weight: 700;
+    color: $text-white;
+    margin: 0 0 12px 0;
+  }
+
+  &__progress {
+    height: 8px;
+    background: $bg-tertiary;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  &__bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: $transition-smooth;
+
+    &--queued { background: $warning; }
+    &--encoding { background: $accent-primary; }
+    &--completed { background: $success; }
+    &--failed { background: $danger; }
+  }
+}
+
+// Recent Activity (Left Column - 60%)
+.recent-activity {
+  grid-column: 1 / 8;
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 24px;
+}
+
+.activity-table {
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+
+    thead {
+      tr {
+        border-bottom: 1px solid $border-primary;
+
+        th {
+          padding: 12px 16px;
+          text-align: left;
+          font-size: 12px;
+          font-weight: 600;
+          color: $text-secondary;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+      }
+    }
+
+    tbody {
+      tr {
+        border-bottom: 1px solid $border-primary;
+        transition: $transition-fast;
+
+        &:hover {
+          background: $bg-tertiary;
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        td {
+          padding: 16px;
+          font-size: 14px;
+          color: $text-primary;
+
+          &.file-name {
+            font-weight: 500;
+            color: $text-white;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          &.codec-change {
+            font-family: 'Courier New', monospace;
+            color: $accent-primary;
+          }
+
+          &.savings {
+            font-weight: 600;
+            color: $success;
+          }
+
+          &.time {
+            color: $text-secondary;
+            font-size: 13px;
+          }
+
+          &.no-data {
+            text-align: center;
+            color: $text-tertiary;
+            padding: 32px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Top Libraries (Right Column - 40%)
+.top-libraries {
+  grid-column: 8 / -1;
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 24px;
+}
+
+.library-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.library-card {
+  background: $bg-tertiary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 16px;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: $accent-primary;
+    transform: translateX(4px);
+  }
+
+  &__name {
+    font-size: 16px;
+    font-weight: 600;
+    color: $text-white;
+    margin: 0 0 12px 0;
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 500;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__value {
+    font-size: 18px;
+    font-weight: 700;
+    color: $accent-primary;
+  }
+}
+
+.no-data {
+  text-align: center;
+  color: $text-tertiary;
+  padding: 32px;
   font-size: 14px;
+}
+
+// Dashboard Footer
+.dashboard-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.last-updated {
+  font-size: 13px;
+  color: $text-tertiary;
+  margin: 0;
+}
+
+// Responsive Design
+@media (max-width: 1200px) {
+  .queue-flow {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .queue-arrow {
+    display: none;
+  }
+
+  .recent-activity {
+    grid-column: 1 / -1;
+  }
+
+  .top-libraries {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .overview-container {
+    padding: 16px;
+  }
+
+  .system-health {
+    grid-template-columns: 1fr;
+  }
+
+  .health-card {
+    &__value {
+      font-size: 20px;
+    }
+  }
+
+  .queue-stage__count {
+    font-size: 24px;
+  }
+
+  .activity-table {
+    table {
+      font-size: 13px;
+
+      th, td {
+        padding: 12px 8px;
+      }
+    }
+  }
 }
