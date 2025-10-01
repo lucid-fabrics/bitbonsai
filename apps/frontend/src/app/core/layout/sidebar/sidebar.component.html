@@ -1,7 +1,7 @@
 <aside class="sidebar">
   <div class="sidebar-header">
     <div class="logo">
-      <span class="logo-icon">🎬</span>
+      <fa-icon [icon]="['fas', 'film']" class="logo-icon"></fa-icon>
       <span class="logo-text">MediaInsight</span>
     </div>
   </div>
@@ -13,7 +13,7 @@
         routerLinkActive="active"
         class="nav-item"
       >
-        <span class="nav-icon">{{ item.icon }}</span>
+        <fa-icon [icon]="item.icon" class="nav-icon"></fa-icon>
         <span class="nav-label">{{ item.label }}</span>
       </a>
     }
