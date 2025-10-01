@@ -47,4 +47,19 @@ export class MediaStatsBo {
   get scanTimestampFormatted(): string {
     return this.scanTimestamp.toLocaleString();
   }
+
+  get totalSizeFormattedLarge(): string {
+    if (this.totalSizeGB >= 1000) {
+      return `${(this.totalSizeGB / 1000).toFixed(2)} TB`;
+    }
+    return `${this.totalSizeGB.toFixed(2)} GB`;
+  }
+
+  get completionPercentage(): number {
+    return this.totalFiles > 0 ? Math.round((this.codecDistribution.hevc / this.totalFiles) * 100) : 0;
+  }
+
+  get h264RemainingCount(): number {
+    return this.codecDistribution.h264;
+  }
 }

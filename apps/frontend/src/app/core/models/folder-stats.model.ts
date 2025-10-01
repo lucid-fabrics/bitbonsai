@@ -9,4 +9,8 @@ export interface FolderStatsModel {
     av1: number;
     other: number;
   };
+  percent_h265: number;
+  sampled: number;
+  avg_bitrate_mbps: number;
+  space_saved_estimate_gb: number;
 }
