@@ -1,0 +1,57 @@
+@if (isOpen) {
+  <div class="dialog-backdrop" (click)="onBackdropClick($event)">
+    <div class="dialog-container">
+      <div class="dialog-header">
+        <h2>📋 Files to Encode</h2>
+        <button class="close-btn" (click)="onClose()" aria-label="Close dialog">✕</button>
+      </div>
+
+      <div class="dialog-info">
+        <div class="info-item">
+          <strong>Folder:</strong> {{ folderName }}
+        </div>
+        <div class="info-item">
+          <strong>Codec:</strong> {{ codec.toUpperCase() }}
+        </div>
+        <div class="info-item">
+          <strong>Total Files:</strong> {{ files.length }}
+        </div>
+      </div>
+
+      <div class="dialog-content">
+        @if (files.length === 0) {
+          <div class="empty-state">
+            <p>No files found matching the criteria.</p>
+          </div>
+        } @else {
+          <div class="files-table">
+            <div class="table-header">
+              <div class="col-filename">File Name</div>
+              <div class="col-size">Size</div>
+              <div class="col-bitrate">Bitrate</div>
+              <div class="col-codec">Codec</div>
+            </div>
+            <div class="table-body">
+              @for (file of files; track file.filePath) {
+                <div class="table-row">
+                  <div class="col-filename" [title]="file.filePath">
+                    {{ file.fileName }}
+                  </div>
+                  <div class="col-size">{{ file.sizeFormatted }}</div>
+                  <div class="col-bitrate">{{ file.bitrateFormatted }}</div>
+                  <div class="col-codec">
+                    <span class="codec-badge">{{ file.codec.toUpperCase() }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="dialog-footer">
+        <button class="action-btn" (click)="onClose()">Close</button>
+      </div>
+    </div>
+  </div>
+}
