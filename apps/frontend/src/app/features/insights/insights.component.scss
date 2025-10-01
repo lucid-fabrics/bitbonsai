@@ -8,6 +8,14 @@
 .page-header {
   margin-bottom: 32px;
 
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
   h1 {
     font-size: 32px;
     font-weight: 700;
@@ -22,16 +30,362 @@
   }
 }
 
-.content-area {
+// Time Range Selector
+.time-range-selector {
+  display: flex;
+  gap: 8px;
   background: $bg-secondary;
-  border-radius: 8px;
+  padding: 4px;
+  border-radius: $border-radius-md;
   border: 1px solid $border-primary;
-  padding: 24px;
+
+  .range-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: $text-secondary;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: $border-radius-sm;
+    cursor: pointer;
+    transition: $transition-fast;
+
+    &:hover {
+      background: $bg-tertiary;
+      color: $text-primary;
+    }
+
+    &.active {
+      background: $accent-primary;
+      color: $text-dark;
+      font-weight: 600;
+    }
+  }
 }
 
-.placeholder {
-  text-align: center;
-  padding: 64px 24px;
+// Loading Skeleton
+.loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  .skeleton-chart {
+    background: $bg-secondary;
+    border: 1px solid $border-primary;
+    border-radius: $border-radius-md;
+    height: 400px;
+    position: relative;
+    overflow: hidden;
+
+    &.large {
+      height: 400px;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(249, 190, 3, 0.05),
+        transparent
+      );
+      animation: skeleton-loading 1.5s infinite;
+    }
+  }
+
+  .skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .skeleton-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+
+  .skeleton-metric {
+    background: $bg-secondary;
+    border: 1px solid $border-primary;
+    border-radius: $border-radius-md;
+    height: 140px;
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(249, 190, 3, 0.05),
+        transparent
+      );
+      animation: skeleton-loading 1.5s infinite;
+    }
+  }
+}
+
+@keyframes skeleton-loading {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+// Charts Container
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+// Chart Card
+.chart-card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 24px;
+  transition: $transition-smooth;
+
+  &:hover {
+    border-color: $border-secondary;
+  }
+
+  &.full-width {
+    width: 100%;
+  }
+
+  .chart-header {
+    margin-bottom: 24px;
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: $text-white;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      fa-icon {
+        color: $accent-primary;
+      }
+    }
+
+    .chart-subtitle {
+      font-size: 13px;
+      color: $text-secondary;
+    }
+  }
+
+  .chart-content {
+    position: relative;
+    height: 400px;
+
+    canvas {
+      max-height: 400px;
+    }
+  }
+}
+
+// Chart Grid
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Empty State
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
   color: $text-secondary;
-  font-size: 14px;
+
+  fa-icon {
+    color: $border-secondary;
+  }
+
+  p {
+    font-size: 16px;
+    font-weight: 500;
+    color: $text-secondary;
+    margin: 0;
+  }
+
+  span {
+    font-size: 13px;
+    color: $text-tertiary;
+  }
+}
+
+// Metrics Grid
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Metric Card
+.metric-card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: $transition-smooth;
+
+  &:hover {
+    border-color: $border-secondary;
+    transform: translateY(-2px);
+    box-shadow: $shadow-sm;
+  }
+
+  .metric-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: $border-radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+
+    &.jobs {
+      background: rgba(74, 222, 128, 0.1);
+      color: $success;
+    }
+
+    &.savings {
+      background: rgba(249, 190, 3, 0.1);
+      color: $accent-primary;
+    }
+
+    &.success {
+      background: rgba(74, 222, 128, 0.1);
+      color: $success;
+    }
+
+    &.throughput {
+      background: rgba(96, 165, 250, 0.1);
+      color: #60a5fa;
+    }
+  }
+
+  .metric-content {
+    flex: 1;
+    min-width: 0;
+
+    h4 {
+      font-size: 13px;
+      font-weight: 500;
+      color: $text-secondary;
+      margin: 0 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: $text-white;
+      margin: 0 0 4px 0;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: $text-tertiary;
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .insights-container {
+    padding: 16px;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+
+    .header-content {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+  }
+
+  .time-range-selector {
+    width: 100%;
+
+    .range-btn {
+      flex: 1;
+      text-align: center;
+    }
+  }
+
+  .chart-card {
+    padding: 16px;
+
+    .chart-content {
+      height: 300px;
+
+      canvas {
+        max-height: 300px;
+      }
+    }
+  }
+
+  .metric-card {
+    padding: 16px;
+
+    .metric-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 20px;
+    }
+
+    .metric-content {
+      .metric-value {
+        font-size: 24px;
+      }
+    }
+  }
 }
