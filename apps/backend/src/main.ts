@@ -14,6 +14,8 @@ async function bootstrap() {
     .setDescription('REST API for analyzing video media libraries')
     .setVersion('0.1.0')
     .addTag('media-stats', 'Media library statistics and analytics')
+    .addTag('libraries', 'Media library CRUD operations')
+    .addTag('licenses', 'License validation and management')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
