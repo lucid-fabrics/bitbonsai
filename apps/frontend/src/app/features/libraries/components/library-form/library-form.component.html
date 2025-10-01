@@ -1,0 +1,118 @@
+<form [formGroup]="libraryForm" (ngSubmit)="onSubmit()" class="library-form">
+  <div class="form-header">
+    <h2>{{ isEditMode ? 'Edit Library' : 'Add New Library' }}</h2>
+  </div>
+
+  <div class="form-body">
+    <!-- Name Field -->
+    <div class="form-group">
+      <label for="name">
+        <i class="fas fa-tag"></i>
+        Library Name *
+      </label>
+      <input
+        id="name"
+        type="text"
+        formControlName="name"
+        placeholder="e.g., Main Movie Collection"
+        [class.error]="nameControl?.invalid && nameControl?.touched"
+      />
+      <div class="validation-error" *ngIf="nameControl?.invalid && nameControl?.touched">
+        <span *ngIf="nameControl?.errors?.['required']">Library name is required</span>
+        <span *ngIf="nameControl?.errors?.['maxlength']">Name must be less than 255 characters</span>
+      </div>
+    </div>
+
+    <!-- Path Field -->
+    <div class="form-group">
+      <label for="path">
+        <i class="fas fa-folder-open"></i>
+        Library Path *
+      </label>
+      <input
+        id="path"
+        type="text"
+        formControlName="path"
+        placeholder="/mnt/user/media/Movies"
+        [class.error]="pathControl?.invalid && pathControl?.touched"
+      />
+      <div class="field-hint">Absolute path to the media folder on the node filesystem</div>
+      <div class="validation-error" *ngIf="pathControl?.invalid && pathControl?.touched">
+        <span *ngIf="pathControl?.errors?.['required']">Path is required</span>
+        <span *ngIf="pathControl?.errors?.['pattern']">Path must be an absolute path (start with /)</span>
+      </div>
+    </div>
+
+    <!-- Media Type Field -->
+    <div class="form-group">
+      <label for="mediaType">
+        <i class="fas fa-film"></i>
+        Media Type *
+      </label>
+      <select
+        id="mediaType"
+        formControlName="mediaType"
+        [class.error]="mediaTypeControl?.invalid && mediaTypeControl?.touched"
+      >
+        <option *ngFor="let type of mediaTypes" [value]="type">
+          {{ type.replace('_', ' ') }}
+        </option>
+      </select>
+      <div class="field-hint">Type of media content in this library</div>
+    </div>
+
+    <!-- Node Selector Field -->
+    <div class="form-group">
+      <label for="nodeId">
+        <i class="fas fa-server"></i>
+        Node *
+      </label>
+      <select
+        id="nodeId"
+        formControlName="nodeId"
+        [class.error]="nodeIdControl?.invalid && nodeIdControl?.touched"
+      >
+        <option value="" disabled>Select a node</option>
+        <option *ngFor="let node of nodes" [value]="node.id">
+          {{ node.name }}
+          <span *ngIf="node.status !== 'ONLINE'"> ({{ node.status }})</span>
+        </option>
+      </select>
+      <div class="validation-error" *ngIf="nodeIdControl?.invalid && nodeIdControl?.touched">
+        <span *ngIf="nodeIdControl?.errors?.['required']">Node selection is required</span>
+      </div>
+    </div>
+
+    <!-- Enabled Toggle -->
+    <div class="form-group toggle-group">
+      <label for="enabled">
+        <i class="fas fa-power-off"></i>
+        Enable Library
+      </label>
+      <div class="toggle-wrapper">
+        <input
+          id="enabled"
+          type="checkbox"
+          formControlName="enabled"
+          class="toggle-checkbox"
+        />
+        <label for="enabled" class="toggle-label">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-status">{{ enabledControl?.value ? 'Enabled' : 'Disabled' }}</span>
+      </div>
+      <div class="field-hint">Disabled libraries will not be scanned or processed</div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <button type="button" class="btn btn-secondary" (click)="onCancel()">
+      <i class="fas fa-times"></i>
+      Cancel
+    </button>
+    <button type="submit" class="btn btn-primary" [disabled]="libraryForm.invalid">
+      <i class="fas fa-check"></i>
+      {{ isEditMode ? 'Update Library' : 'Create Library' }}
+    </button>
+  </div>
+</form>

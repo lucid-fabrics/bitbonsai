@@ -1,12 +1,84 @@
 <div class="libraries-container">
+  <!-- Header Section -->
   <div class="page-header">
-    <h1>Libraries</h1>
-    <p class="subtitle">Configure and manage media libraries</p>
-  </div>
-
-  <div class="content-area">
-    <div class="placeholder">
-      <p>Media library configuration interface will be displayed here.</p>
+    <div class="header-content">
+      <div class="header-left">
+        <h1>Libraries</h1>
+        <p class="subtitle">Configure and manage media libraries</p>
+      </div>
+      <div class="header-right">
+        <div class="library-count" *ngIf="!isLoading()">
+          <i class="fas fa-folder-open"></i>
+          <span>{{ totalLibraries }} {{ totalLibraries === 1 ? 'Library' : 'Libraries' }}</span>
+        </div>
+        <button class="btn btn-primary" (click)="onAddLibrary()">
+          <i class="fas fa-plus"></i>
+          Add Library
+        </button>
+      </div>
     </div>
   </div>
+
+  <!-- Error Alert -->
+  <div class="error-alert" *ngIf="error()">
+    <i class="fas fa-exclamation-circle"></i>
+    <span>{{ error() }}</span>
+    <button class="close-btn" (click)="error.set(null)">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Loading libraries...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading() && !hasLibraries">
+    <div class="empty-icon">
+      <i class="fas fa-folder-open"></i>
+    </div>
+    <h2>No Libraries Configured</h2>
+    <p>Get started by adding your first media library to begin encoding and managing your content.</p>
+    <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
+      <i class="fas fa-plus"></i>
+      Add Your First Library
+    </button>
+  </div>
+
+  <!-- Libraries Grid -->
+  <div class="libraries-grid" *ngIf="!isLoading() && hasLibraries">
+    <app-library-card
+      *ngFor="let library of libraries()"
+      [library]="library"
+      (edit)="onEditLibrary($event)"
+      (scan)="onScanLibrary($event)"
+      (delete)="onDeleteLibrary($event)"
+    />
+  </div>
+
+  <!-- Library Form Modal -->
+  <div class="modal-backdrop" *ngIf="showForm()" (click)="onFormCancel()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <app-library-form
+        [library]="selectedLibrary()"
+        [nodes]="nodes()"
+        (formSubmit)="onFormSubmit($event)"
+        (formCancel)="onFormCancel()"
+      />
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Dialog -->
+  <app-confirmation-dialog
+    [isVisible]="showDeleteDialog()"
+    [title]="'Delete Library'"
+    [message]="'Are you sure you want to delete \"' + libraryToDelete()?.name + '\"? This will permanently delete all associated jobs and cannot be undone.'"
+    [confirmText]="'Delete Library'"
+    [cancelText]="'Cancel'"
+    [isDangerous]="true"
+    (confirm)="onConfirmDelete()"
+    (cancel)="onCancelDelete()"
+  />
 </div>
