@@ -1,6 +1,8 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
+import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { configureFontAwesome } from './core/config/font-awesome.config';
 
 @Component({
   selector: 'app-root',
@@ -36,4 +38,9 @@ import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 })
 export class AppComponent {
   title = 'MediaInsight';
+
+  constructor() {
+    const library = inject(FaIconLibrary);
+    configureFontAwesome(library);
+  }
 }
