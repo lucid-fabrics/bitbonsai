@@ -25,10 +25,12 @@ services:
       dockerfile: Dockerfile.dev
     container_name: media-insight-backend
     ports:
-      - "3000:3000"
+      - "3000:3001"
+      - "9229:9229"
     environment:
       - NODE_ENV=development
-      - MEDIA_PATHS=/media/TV,/media/Movies,/media/Anime
+      - MEDIA_PATHS=`/media/TV,/media/Movies,/media/Anime
+      - PORT=3001
     volumes:
       - ./apps/backend:/app/apps/backend:cached
       - ./package.json:/app/package.json:ro
