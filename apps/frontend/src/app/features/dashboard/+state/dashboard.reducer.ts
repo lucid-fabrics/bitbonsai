@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
+import type { MediaStatsBo } from '../../../core/business-objects/media-stats.bo';
 import { MediaStatsActions } from './dashboard.actions';
-import { MediaStatsBo } from '../../../core/business-objects/media-stats.bo';
 
 export interface MediaStatsState {
   stats: MediaStatsBo | null;
@@ -11,7 +11,7 @@ export interface MediaStatsState {
 export const initialState: MediaStatsState = {
   stats: null,
   isLoading: false,
-  error: null
+  error: null,
 };
 
 export const mediaStatsReducer = createReducer(
@@ -19,31 +19,31 @@ export const mediaStatsReducer = createReducer(
   on(MediaStatsActions.loadMediaStats, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(MediaStatsActions.loadMediaStatsSuccess, (state, { stats }) => ({
     ...state,
     stats,
     isLoading: false,
-    error: null
+    error: null,
   })),
   on(MediaStatsActions.loadMediaStatsFailure, (state, { error }) => ({
     ...state,
     isLoading: false,
-    error
+    error,
   })),
   on(MediaStatsActions.triggerScan, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(MediaStatsActions.triggerScanSuccess, (state) => ({
     ...state,
-    isLoading: false
+    isLoading: false,
   })),
   on(MediaStatsActions.triggerScanFailure, (state, { error }) => ({
     ...state,
     isLoading: false,
-    error
+    error,
   }))
 );

@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  media-insight:
+  bitbonsai:
     build:
       context: .
       dockerfile: Dockerfile
-    image: lucidfabrics/media-insight:latest
-    container_name: media-insight
+    image: lucidfabrics/bitbonsai:latest
+    container_name: bitbonsai
     restart: unless-stopped
     ports:
       - "3000:3000"  # API port
@@ -23,11 +23,11 @@ services:
       # Persistent app data
       - ./appdata:/app/data
     networks:
-      - media-insight-network
+      - bitbonsai-network
     labels:
-      - "com.github.wassimmehanna.media-insight.version=0.1.0"
-      - "com.github.wassimmehanna.media-insight.description=Media library analytics dashboard"
+      - "com.github.wassimmehanna.bitbonsai.version=0.1.0"
+      - "com.github.wassimmehanna.bitbonsai.description=Media library analytics dashboard"
 
 networks:
-  media-insight-network:
+  bitbonsai-network:
     driver: bridge

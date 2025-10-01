@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: media-insight-frontend
+    container_name: bitbonsai-frontend
     ports:
       - "4200:4200"
     environment:
@@ -23,7 +23,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: media-insight-backend
+    container_name: bitbonsai-backend
     ports:
       - "3000:3001"
       - "9229:9229"

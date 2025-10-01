@@ -1,5 +1,5 @@
 {
-  "name": "media-insight",
+  "name": "bitbonsai",
   "$schema": "./node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": ".",
@@ -7,10 +7,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": [
-          "nx serve frontend",
-          "nx serve backend"
-        ],
+        "commands": ["nx serve frontend", "nx serve backend"],
         "parallel": true
       }
     },

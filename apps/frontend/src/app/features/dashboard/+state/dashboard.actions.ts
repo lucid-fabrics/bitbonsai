@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { MediaStatsBo } from '../../../core/business-objects/media-stats.bo';
+import type { MediaStatsBo } from '../../../core/business-objects/media-stats.bo';
 
 export const MediaStatsActions = createActionGroup({
   source: 'Media Stats',
@@ -9,6 +9,6 @@ export const MediaStatsActions = createActionGroup({
     'Load Media Stats Failure': props<{ error: string }>(),
     'Trigger Scan': emptyProps(),
     'Trigger Scan Success': emptyProps(),
-    'Trigger Scan Failure': props<{ error: string }>()
-  }
+    'Trigger Scan Failure': props<{ error: string }>(),
+  },
 });

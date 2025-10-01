@@ -1,5 +1,5 @@
 #!/bin/bash
-# 🎬 MediaInsight Docker Hub Publishing Script
+# 🌳 BitBonsai Docker Hub Publishing Script
 # Builds and publishes Docker images with semantic versioning
 
 set -e  # Exit on error
@@ -12,13 +12,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 DOCKER_USER="lucidfabrics"
-DOCKER_REPO="media-insight"
+DOCKER_REPO="bitbonsai"
 DOCKER_IMAGE="${DOCKER_USER}/${DOCKER_REPO}"
 
 # Get version from package.json
 VERSION=$(node -p "require('./package.json').version")
 
-echo -e "${GREEN}🎬 MediaInsight Docker Publishing Script${NC}"
+echo -e "${GREEN}🌳 BitBonsai Docker Publishing Script${NC}"
 echo -e "${YELLOW}Version: ${VERSION}${NC}"
 echo ""
 

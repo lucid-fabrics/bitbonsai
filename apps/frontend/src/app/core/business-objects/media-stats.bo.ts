@@ -1,4 +1,4 @@
-import { MediaStatsModel } from '../models/media-stats.model';
+import type { MediaStatsModel } from '../models/media-stats.model';
 import { FolderStatsBo } from './folder-stats.bo';
 
 export class MediaStatsBo {
@@ -22,9 +22,9 @@ export class MediaStatsBo {
       hevc: model.codec_distribution?.hevc || 0,
       h264: model.codec_distribution?.h264 || 0,
       av1: model.codec_distribution?.av1 || 0,
-      other: model.codec_distribution?.other || 0
+      other: model.codec_distribution?.other || 0,
     };
-    this.folders = model.folders?.map(f => new FolderStatsBo(f)) || [];
+    this.folders = model.folders?.map((f) => new FolderStatsBo(f)) || [];
     this.scanTimestamp = new Date(model.scan_timestamp);
   }
 
@@ -56,7 +56,9 @@ export class MediaStatsBo {
   }
 
   get completionPercentage(): number {
-    return this.totalFiles > 0 ? Math.round((this.codecDistribution.hevc / this.totalFiles) * 100) : 0;
+    return this.totalFiles > 0
+      ? Math.round((this.codecDistribution.hevc / this.totalFiles) * 100)
+      : 0;
   }
 
   get h264RemainingCount(): number {

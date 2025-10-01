@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { MediaStatsDto, CodecDistributionDto, FolderStatsDto } from './dto/media-stats.dto';
-import { FolderFilesDto, FileInfoDto } from './dto/file-info.dto';
 import { execSync } from 'child_process';
 import { readdirSync, statSync } from 'fs';
-import { join, basename } from 'path';
+import { basename, join } from 'path';
+import type { FileInfoDto, FolderFilesDto } from './dto/file-info.dto';
+import type { FolderStatsDto, MediaStatsDto } from './dto/media-stats.dto';
 
 interface VideoInfo {
   codec: string;
@@ -56,13 +56,12 @@ export class MediaStatsService {
       folderStats.push(stats);
     }
 
-    const avgBitrate = allStats.bitrateCount > 0
-      ? allStats.totalBitrate / allStats.bitrateCount
-      : 0;
+    const avgBitrate =
+      allStats.bitrateCount > 0 ? allStats.totalBitrate / allStats.bitrateCount : 0;
 
     this.statsCache = {
       total_files: allStats.totalFiles,
-      total_size_gb: Math.round((allStats.totalSizeBytes / (1024 ** 3)) * 100) / 100,
+      total_size_gb: Math.round((allStats.totalSizeBytes / 1024 ** 3) * 100) / 100,
       average_bitrate_mbps: Math.round(avgBitrate * 100) / 100,
       codec_distribution: {
         hevc: allStats.hevcCount,
@@ -135,7 +134,7 @@ export class MediaStatsService {
     const h264Total = Math.round(codecCounts.h264 * ratio);
     const av1Total = Math.round(codecCounts.av1 * ratio);
     const otherTotal = Math.round(codecCounts.other * ratio);
-    const totalSizeGb = (totalSize * ratio) / (1024 ** 3);
+    const totalSizeGb = (totalSize * ratio) / 1024 ** 3;
     const avgBitrate = bitrateCount > 0 ? totalBitrate / bitrateCount : 0;
 
     // Calculate percentage of H.265 files
@@ -143,7 +142,7 @@ export class MediaStatsService {
 
     // Estimate space saved (H.265 typically 40-50% smaller than H.264)
     const h264SizeEstimate = (codecCounts.h264 / sampleSize) * totalSize * ratio;
-    const spaceSavedGb = (h264SizeEstimate * 0.45) / (1024 ** 3);
+    const spaceSavedGb = (h264SizeEstimate * 0.45) / 1024 ** 3;
 
     return {
       name: folderPath.split('/').pop() || folderPath,
@@ -210,8 +209,8 @@ export class MediaStatsService {
   }
 
   private getMediaPaths(): string[] {
-    const pathsEnv = process.env['MEDIA_PATHS'] || '/media';
-    return pathsEnv.split(',').map(p => p.trim());
+    const pathsEnv = process.env.MEDIA_PATHS || '/media';
+    return pathsEnv.split(',').map((p) => p.trim());
   }
 
   private getRandomSample<T>(array: T[], size: number): T[] {
@@ -223,7 +222,12 @@ export class MediaStatsService {
     this.logger.log(`Getting files for folder: ${folderName}, codec: ${codec || 'all'}`);
 
     const mediaPaths = this.getMediaPaths();
-    const folderPath = mediaPaths.find(p => p.endsWith(`/${folderName}`) || p.endsWith(`\\${folderName}`) || p === `/media/${folderName}`);
+    const folderPath = mediaPaths.find(
+      (p) =>
+        p.endsWith(`/${folderName}`) ||
+        p.endsWith(`\\${folderName}`) ||
+        p === `/media/${folderName}`
+    );
 
     if (!folderPath) {
       throw new NotFoundException(`Folder "${folderName}" not found in configured media paths`);
@@ -243,7 +247,7 @@ export class MediaStatsService {
       fileInfoList.push({
         file_path: filePath,
         file_name: basename(filePath),
-        size_gb: Math.round((info.size / (1024 ** 3)) * 100) / 100,
+        size_gb: Math.round((info.size / 1024 ** 3) * 100) / 100,
         codec: info.codec,
         bitrate_mbps: Math.round((info.bitrate / 1_000_000) * 100) / 100,
       });

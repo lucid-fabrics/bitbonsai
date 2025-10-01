@@ -1,24 +1,20 @@
-import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
-
+import type { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+// Regular icons
+import { faChartLine as farChartLine } from '@fortawesome/pro-regular-svg-icons';
 // Solid icons
 import {
+  faBolt,
   faChartLine,
-  faSync,
+  faCheckCircle,
+  faDatabase,
+  faExclamationCircle,
+  faFileVideo,
   faFilm,
   faFolder,
-  faFileVideo,
-  faExclamationCircle,
-  faCheckCircle,
-  faBolt,
-  faTimes,
   faList,
-  faDatabase,
+  faSync,
+  faTimes,
 } from '@fortawesome/pro-solid-svg-icons';
-
-// Regular icons
-import {
-  faChartLine as farChartLine,
-} from '@fortawesome/pro-regular-svg-icons';
 
 export function configureFontAwesome(library: FaIconLibrary): void {
   // Add solid icons
@@ -33,11 +29,9 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faBolt,
     faTimes,
     faList,
-    faDatabase,
+    faDatabase
   );
 
   // Add regular icons
-  library.addIcons(
-    farChartLine,
-  );
+  library.addIcons(farChartLine);
 }

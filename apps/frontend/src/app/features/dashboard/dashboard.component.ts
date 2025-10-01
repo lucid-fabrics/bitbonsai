@@ -1,12 +1,12 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Store } from '@ngrx/store';
+import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { Store } from '@ngrx/store';
+import { FileInfoBo } from '../../core/business-objects/file-info.bo';
+import { MediaStatsApiService } from '../../core/services/media-stats-api.service';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
 import { FilesDialogComponent } from './files-dialog/files-dialog.component';
-import { MediaStatsApiService } from '../../core/services/media-stats-api.service';
-import { FileInfoBo } from '../../core/business-objects/file-info.bo';
 
 @Component({
   selector: 'app-dashboard',
@@ -14,7 +14,7 @@ import { FileInfoBo } from '../../core/business-objects/file-info.bo';
   imports: [CommonModule, FontAwesomeModule, FilesDialogComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit {
   private readonly store = inject(Store);
@@ -47,7 +47,7 @@ export class DashboardComponent implements OnInit {
 
     this.mediaStatsApi.getFolderFiles(folder.name, 'h264').subscribe({
       next: (response) => {
-        const files = response.files.map(f => new FileInfoBo(f));
+        const files = response.files.map((f) => new FileInfoBo(f));
         this.dialogFiles.set(files);
         this.dialogLoading.set(false);
       },
@@ -55,7 +55,7 @@ export class DashboardComponent implements OnInit {
         console.error('Failed to load files:', error);
         this.dialogLoading.set(false);
         this.dialogOpen.set(false);
-      }
+      },
     });
   }
 

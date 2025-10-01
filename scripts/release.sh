@@ -1,5 +1,5 @@
 #!/bin/bash
-# 🎬 MediaInsight Release Automation Script
+# 🌳 BitBonsai Release Automation Script
 # Handles versioning, tagging, Docker building, and publishing
 
 set -e
@@ -18,7 +18,7 @@ if [[ ! "$BUMP_TYPE" =~ ^(patch|minor|major)$ ]]; then
   exit 1
 fi
 
-echo -e "${BLUE}🎬 MediaInsight Release Script${NC}"
+echo -e "${BLUE}🌳 BitBonsai Release Script${NC}"
 echo -e "${YELLOW}Bump Type: ${BUMP_TYPE}${NC}"
 echo ""
 
@@ -59,13 +59,13 @@ echo ""
 
 # Step 6: Update Unraid template version
 echo -e "${YELLOW}📝 Updating Unraid template...${NC}"
-sed -i.bak "s|<Repository>.*</Repository>|<Repository>lucidfabrics/media-insight:${NEW_VERSION}</Repository>|" unraid/media-insight.xml
-rm -f unraid/media-insight.xml.bak
+sed -i.bak "s|<Repository>.*</Repository>|<Repository>lucidfabrics/bitbonsai:${NEW_VERSION}</Repository>|" unraid/bitbonsai.xml
+rm -f unraid/bitbonsai.xml.bak
 echo ""
 
 # Step 7: Git commit and tag
 echo -e "${YELLOW}📝 Creating git commit and tag...${NC}"
-git add package.json package-lock.json unraid/media-insight.xml
+git add package.json package-lock.json unraid/bitbonsai.xml
 git commit -m "chore: bump version to ${NEW_VERSION}"
 git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
 echo -e "${GREEN}✅ Git commit and tag created${NC}"
@@ -89,7 +89,7 @@ echo -e "${GREEN}✅ Release ${NEW_VERSION} Complete!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo -e "${YELLOW}📦 Published:${NC}"
-echo -e "   • Docker Hub: https://hub.docker.com/r/lucidfabrics/media-insight"
+echo -e "   • Docker Hub: https://hub.docker.com/r/lucidfabrics/bitbonsai"
 echo -e "   • GitHub Tag: v${NEW_VERSION}"
 echo ""
 echo -e "${YELLOW}📝 Next Steps:${NC}"

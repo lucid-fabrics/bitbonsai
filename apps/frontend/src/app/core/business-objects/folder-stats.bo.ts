@@ -1,4 +1,4 @@
-import { FolderStatsModel } from '../models/folder-stats.model';
+import type { FolderStatsModel } from '../models/folder-stats.model';
 
 export class FolderStatsBo {
   name: string;
@@ -25,7 +25,7 @@ export class FolderStatsBo {
       hevc: model.codec_distribution?.hevc || 0,
       h264: model.codec_distribution?.h264 || 0,
       av1: model.codec_distribution?.av1 || 0,
-      other: model.codec_distribution?.other || 0
+      other: model.codec_distribution?.other || 0,
     };
     this.percentH265 = model.percent_h265 || 0;
     this.sampled = model.sampled || 0;

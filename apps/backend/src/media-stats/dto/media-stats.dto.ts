@@ -23,8 +23,7 @@ export class CodecDistributionDto {
   av1!: number;
 
   @ApiProperty({
-    description:
-      'Number of files using other codecs (VP9, MPEG-2, MPEG-4, etc.)',
+    description: 'Number of files using other codecs (VP9, MPEG-2, MPEG-4, etc.)',
     example: 8,
     minimum: 0,
   })
@@ -96,8 +95,7 @@ export class FolderStatsDto {
 
 export class MediaStatsDto {
   @ApiProperty({
-    description:
-      'Total storage used across all media directories in gigabytes',
+    description: 'Total storage used across all media directories in gigabytes',
     example: 1247.83,
     minimum: 0,
   })
@@ -118,15 +116,13 @@ export class MediaStatsDto {
   average_bitrate_mbps!: number;
 
   @ApiProperty({
-    description:
-      'Distribution of video codecs across the entire media library',
+    description: 'Distribution of video codecs across the entire media library',
     type: CodecDistributionDto,
   })
   codec_distribution!: CodecDistributionDto;
 
   @ApiProperty({
-    description:
-      'Detailed statistics for each media folder configured in MEDIA_PATHS',
+    description: 'Detailed statistics for each media folder configured in MEDIA_PATHS',
     type: [FolderStatsDto],
     example: [
       {
@@ -155,8 +151,7 @@ export class MediaStatsDto {
   folders!: FolderStatsDto[];
 
   @ApiProperty({
-    description:
-      'ISO 8601 timestamp of when the media library was last scanned',
+    description: 'ISO 8601 timestamp of when the media library was last scanned',
     example: '2025-09-30T21:45:32.123Z',
     format: 'date-time',
   })

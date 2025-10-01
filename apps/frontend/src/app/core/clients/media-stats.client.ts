@@ -1,7 +1,7 @@
-import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { MediaStatsModel } from '../models/media-stats.model';
+import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import type { MediaStatsModel } from '../models/media-stats.model';
 
 @Injectable({ providedIn: 'root' })
 export class MediaStatsClient {

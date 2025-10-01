@@ -1,11 +1,11 @@
-# 🎬 MediaInsight - Unraid Community Apps Template
+# 🌳 BitBonsai - Unraid Community Apps Template
 
 ## Installation on Unraid
 
 ### Method 1: Community Applications (Recommended - Coming Soon)
 1. Open Unraid WebUI
 2. Navigate to **Apps** tab
-3. Search for **"MediaInsight"**
+3. Search for **"BitBonsai"**
 4. Click **Install**
 5. Configure paths and ports
 6. Click **Apply**
@@ -14,14 +14,14 @@
 1. Navigate to **Docker** tab in Unraid
 2. Click **Add Container** at the bottom
 3. Click **Template repositories**
-4. Add this URL: `https://github.com/wassimmehanna/media-insight`
-5. Select **MediaInsight** template
+4. Add this URL: `https://github.com/wassimmehanna/bitbonsai`
+5. Select **BitBonsai** template
 6. Configure and apply
 
 ### Method 3: Direct Docker Command
 ```bash
 docker run -d \
-  --name=media-insight \
+  --name=bitbonsai \
   --restart=unless-stopped \
   -p 3000:3000 \
   -e TZ=America/New_York \
@@ -29,8 +29,8 @@ docker run -d \
   -e API_PREFIX=api/v1 \
   -v /mnt/user/media:/media:ro \
   -v /mnt/user/Downloads:/downloads:ro \
-  -v /mnt/user/appdata/media-insight:/app/data \
-  lucidfabrics/media-insight:latest
+  -v /mnt/user/appdata/bitbonsai:/app/data \
+  lucidfabrics/bitbonsai:latest
 ```
 
 ## Configuration
@@ -41,12 +41,12 @@ docker run -d \
 
 ### Optional Settings
 - **Downloads Path**: `/mnt/user/Downloads` - Your downloads folder (read-only)
-- **App Data**: `/mnt/user/appdata/media-insight` - Scan results and config storage
+- **App Data**: `/mnt/user/appdata/bitbonsai` - Scan results and config storage
 - **Timezone**: `America/New_York` - Your timezone for scheduled scans
 - **Node Environment**: `production` - Leave as default
 - **API Prefix**: `api/v1` - Leave as default
 
-## Accessing MediaInsight
+## Accessing BitBonsai
 
 After installation, access the web interface at:
 ```
@@ -67,11 +67,11 @@ Example: `http://192.168.1.100:3000`
 │   └── Anime Movies/
 ├── Downloads/          # Downloads folder (optional)
 └── appdata/
-    └── media-insight/  # App configuration and scan results
+    └── bitbonsai/  # App configuration and scan results
 ```
 
 ### Integration with Media Servers
-MediaInsight works great alongside:
+BitBonsai works great alongside:
 - **Plex** - Analyze your Plex library structure
 - **Jellyfin** - Understand codec distribution
 - **Emby** - Track storage usage
@@ -83,7 +83,7 @@ MediaInsight works great alongside:
 3. **Scheduled Scans**: Configure auto-refresh interval in settings
 4. **Resource Usage**: Minimal CPU/RAM usage during scans
 
-## Updating MediaInsight
+## Updating BitBonsai
 
 ### Via Unraid Docker Manager
 1. Navigate to **Docker** tab
@@ -93,9 +93,9 @@ MediaInsight works great alongside:
 
 ### Via Docker Command
 ```bash
-docker pull lucidfabrics/media-insight:latest
-docker stop media-insight
-docker rm media-insight
+docker pull lucidfabrics/bitbonsai:latest
+docker stop bitbonsai
+docker rm bitbonsai
 # Run installation command again
 ```
 
@@ -103,13 +103,13 @@ docker rm media-insight
 
 ### Cannot Access Web UI
 - Verify port 3000 is not in use: `netstat -tuln | grep 3000`
-- Check container logs: `docker logs media-insight`
+- Check container logs: `docker logs bitbonsai`
 - Ensure firewall allows port 3000
 
 ### Scan Not Working
-- Verify media path is mounted correctly: `docker exec media-insight ls /media`
+- Verify media path is mounted correctly: `docker exec bitbonsai ls /media`
 - Check folder permissions (container runs as user 99:100 by default)
-- Review logs for errors: `docker logs media-insight`
+- Review logs for errors: `docker logs bitbonsai`
 
 ### Empty Statistics
 - Ensure media folders contain video files (.mp4, .mkv, .avi)
@@ -118,8 +118,8 @@ docker rm media-insight
 
 ## Support
 
-- **GitHub Issues**: https://github.com/lucidfabrics/media-insight/issues
-- **Docker Hub**: https://hub.docker.com/r/lucidfabrics/media-insight
+- **GitHub Issues**: https://github.com/lucidfabrics/bitbonsai/issues
+- **Docker Hub**: https://hub.docker.com/r/lucidfabrics/bitbonsai
 
 ## Version History
 

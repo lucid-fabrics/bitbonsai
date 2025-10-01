@@ -1,8 +1,8 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faChartLine } from '@fortawesome/pro-solid-svg-icons';
 
 interface MenuItem {
@@ -17,10 +17,8 @@ interface MenuItem {
   imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent {
-  readonly menuItems: MenuItem[] = [
-    { label: 'Dashboard', icon: faChartLine, route: '/dashboard' }
-  ];
+  readonly menuItems: MenuItem[] = [{ label: 'Dashboard', icon: faChartLine, route: '/dashboard' }];
 }

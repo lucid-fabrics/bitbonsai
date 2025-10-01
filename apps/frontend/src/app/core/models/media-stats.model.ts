@@ -1,4 +1,4 @@
-import { FolderStatsModel } from './folder-stats.model';
+import type { FolderStatsModel } from './folder-stats.model';
 
 export interface MediaStatsModel {
   total_size_gb: number;

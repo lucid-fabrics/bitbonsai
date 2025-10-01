@@ -1,4 +1,4 @@
-import { FileInfoModel } from '../models/file-info.model';
+import type { FileInfoModel } from '../models/file-info.model';
 
 export class FileInfoBo {
   filePath: string;

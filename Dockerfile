@@ -1,4 +1,4 @@
-# 🎬 MediaInsight Multi-Stage Dockerfile
+# 🌳 BitBonsai Multi-Stage Dockerfile
 # Builds both Angular frontend and NestJS backend in one optimized image
 
 # Stage 1: Build Angular Frontend

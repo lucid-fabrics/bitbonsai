@@ -10,7 +10,7 @@ async function bootstrap() {
 
   // Swagger API Documentation Configuration
   const config = new DocumentBuilder()
-    .setTitle('MediaInsight API')
+    .setTitle('BitBonsai API')
     .setDescription('REST API for analyzing video media libraries')
     .setVersion('0.1.0')
     .addTag('media-stats', 'Media library statistics and analytics')
@@ -18,7 +18,7 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
-    customSiteTitle: 'MediaInsight API Documentation',
+    customSiteTitle: 'BitBonsai API Documentation',
     customfavIcon: '/favicon.ico',
     customCss: '.swagger-ui .topbar { display: none }',
     swaggerOptions: {
@@ -30,9 +30,9 @@ async function bootstrap() {
     },
   });
 
-  const port = process.env['PORT'] || 3000;
+  const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 MediaInsight API running on: http://localhost:${port}/api/v1`);
+  console.log(`🚀 BitBonsai API running on: http://localhost:${port}/api/v1`);
   console.log(`📚 Swagger API Docs available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();

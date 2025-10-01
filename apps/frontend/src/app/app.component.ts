@@ -1,8 +1,8 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { configureFontAwesome } from './core/config/font-awesome.config';
+import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +16,8 @@ import { configureFontAwesome } from './core/config/font-awesome.config';
       </main>
     </div>
   `,
-  styles: [`
+  styles: [
+    `
     .app-layout {
       min-height: 100vh;
       display: flex;
@@ -33,11 +34,12 @@ import { configureFontAwesome } from './core/config/font-awesome.config';
         margin-left: 60px;
       }
     }
-  `],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  `,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent {
-  title = 'MediaInsight';
+  title = 'BitBonsai';
 
   constructor() {
     const library = inject(FaIconLibrary);

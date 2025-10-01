@@ -1,19 +1,19 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { MediaStatsClient } from '../clients/media-stats.client';
 import { MediaStatsBo } from '../business-objects/media-stats.bo';
+import { MediaStatsClient } from '../clients/media-stats.client';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class MediaStatsService {
   private readonly mediaStatsClient = inject(MediaStatsClient);
 
   public getMediaStats(): Observable<MediaStatsBo> {
-    return this.mediaStatsClient.getStats().pipe(
-      map((responseModel) => new MediaStatsBo(responseModel))
-    );
+    return this.mediaStatsClient
+      .getStats()
+      .pipe(map((responseModel) => new MediaStatsBo(responseModel)));
   }
 
   public triggerScan(): Observable<void> {

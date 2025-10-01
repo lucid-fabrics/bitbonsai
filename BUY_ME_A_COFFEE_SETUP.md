@@ -20,7 +20,7 @@
    - **Display name**: "Wassim Mehanna" or "Lucid Fabrics"
    - **Bio**: Write a short description
      ```
-     Creator of MediaInsight - A beautiful media library analytics tool
+     Creator of BitBonsai - A beautiful media library analytics tool
      Building open-source tools for media enthusiasts
      ```
    - **Thank you message**: Customize what supporters see after donating

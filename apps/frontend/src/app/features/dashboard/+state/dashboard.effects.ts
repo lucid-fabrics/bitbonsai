@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
-import { MediaStatsActions } from './dashboard.actions';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { MediaStatsService } from '../../../core/services/media-stats.service';
+import { MediaStatsActions } from './dashboard.actions';
 
 @Injectable()
 export class MediaStatsEffects {
@@ -16,7 +16,9 @@ export class MediaStatsEffects {
       switchMap(() =>
         this.mediaStatsService.getMediaStats().pipe(
           map((stats) => MediaStatsActions.loadMediaStatsSuccess({ stats })),
-          catchError((error) => of(MediaStatsActions.loadMediaStatsFailure({ error: error.message })))
+          catchError((error) =>
+            of(MediaStatsActions.loadMediaStatsFailure({ error: error.message }))
+          )
         )
       )
     )

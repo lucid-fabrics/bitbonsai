@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "media-insight": {
+    "bitbonsai": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -22,9 +22,7 @@
             "outputPath": "dist/apps/frontend",
             "index": "apps/frontend/src/index.html",
             "browser": "apps/frontend/src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": ["zone.js"],
             "tsConfig": "apps/frontend/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -33,9 +31,7 @@
                 "input": "apps/frontend/public"
               }
             ],
-            "styles": [
-              "apps/frontend/src/styles.scss"
-            ],
+            "styles": ["apps/frontend/src/styles.scss"],
             "scripts": []
           },
           "configurations": {
@@ -66,10 +62,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "media-insight:build:production"
+              "buildTarget": "bitbonsai:build:production"
             },
             "development": {
-              "buildTarget": "media-insight:build:development"
+              "buildTarget": "bitbonsai:build:development"
             }
           },
           "defaultConfiguration": "development",
@@ -83,10 +79,7 @@
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
+            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "apps/frontend/tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -95,19 +88,14 @@
                 "input": "apps/frontend/public"
               }
             ],
-            "styles": [
-              "apps/frontend/src/styles.scss"
-            ],
+            "styles": ["apps/frontend/src/styles.scss"],
             "scripts": []
           }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "apps/frontend/src/**/*.ts",
-              "apps/frontend/src/**/*.html"
-            ]
+            "lintFilePatterns": ["apps/frontend/src/**/*.ts", "apps/frontend/src/**/*.html"]
           }
         }
       }
@@ -115,9 +103,6 @@
   },
   "cli": {
     "analytics": false,
-    "schematicCollections": [
-      "@ngrx/schematics",
-      "@angular/cli"
-    ]
+    "schematicCollections": ["@ngrx/schematics", "@angular/cli"]
   }
 }
