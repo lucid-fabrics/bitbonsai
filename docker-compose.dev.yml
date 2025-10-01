@@ -1,8 +1,47 @@
+version: '3.8'
+
 services:
-  frontend:
+  bitbonsai-backend:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      target: backend
+    container_name: bitbonsai-backend
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Node.js debug port
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/data/bitbonsai.db
+      - PORT=3000
+      - MEDIA_PATHS=/media/TV,/media/Movies,/media/Anime
+      - LOG_LEVEL=debug
+    volumes:
+      - ./apps/backend:/app/apps/backend:cached
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./nx.json:/app/nx.json:ro
+      - ./apps/backend/project.json:/app/apps/backend/project.json:ro
+      - ./apps/backend/webpack.config.js:/app/apps/backend/webpack.config.js:ro
+      - ./test-media:/media:ro
+      - bitbonsai-data:/data
+      - /app/node_modules
+    command: npx nx serve backend --host 0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - bitbonsai-network
+
+  bitbonsai-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: frontend
     container_name: bitbonsai-frontend
     ports:
       - "4200:4200"
@@ -14,29 +53,63 @@ services:
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./nx.json:/app/nx.json:ro
       - ./angular.json:/app/angular.json:ro
+      - ./apps/frontend/project.json:/app/apps/frontend/project.json:ro
       - ./proxy.conf.json:/app/proxy.conf.json:ro
       - /app/node_modules
     command: npx nx serve frontend --host 0.0.0.0
     restart: unless-stopped
+    depends_on:
+      bitbonsai-backend:
+        condition: service_healthy
+    networks:
+      - bitbonsai-network
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: bitbonsai-backend
-    ports:
-      - "3000:3001"
-      - "9229:9229"
-    environment:
-      - NODE_ENV=development
-      - MEDIA_PATHS=`/media/TV,/media/Movies,/media/Anime
-      - PORT=3001
-    volumes:
-      - ./apps/backend:/app/apps/backend:cached
-      - ./package.json:/app/package.json:ro
-      - ./tsconfig.json:/app/tsconfig.json:ro
-      - ./nx.json:/app/nx.json:ro
-      - ./test-media:/media:ro
-      - /app/node_modules
-    command: npx nx serve backend
-    restart: unless-stopped
+  # Optional: PostgreSQL for commercial tier (uncomment to enable)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: bitbonsai-postgres
+  #   environment:
+  #     - POSTGRES_DB=bitbonsai
+  #     - POSTGRES_USER=bitbonsai
+  #     - POSTGRES_PASSWORD=bitbonsai_secure_password
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U bitbonsai"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - bitbonsai-network
+
+  # Optional: Redis for BullMQ commercial tier (uncomment to enable)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: bitbonsai-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - bitbonsai-network
+
+volumes:
+  bitbonsai-data:
+    driver: local
+  # postgres-data:
+  #   driver: local
+  # redis-data:
+  #   driver: local
+
+networks:
+  bitbonsai-network:
+    driver: bridge

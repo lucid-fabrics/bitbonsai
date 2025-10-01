@@ -1,0 +1,184 @@
+version: '3.8'
+
+services:
+  bitbonsai-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      target: backend
+      args:
+        - NODE_ENV=production
+    container_name: bitbonsai-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-file:/data/bitbonsai.db}
+      - PORT=3000
+      - MEDIA_PATHS=${MEDIA_PATHS:-/media}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ${MEDIA_PATH:-./media}:/media:ro
+      - bitbonsai-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - bitbonsai-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  bitbonsai-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      target: frontend
+      args:
+        - NODE_ENV=production
+    container_name: bitbonsai-frontend
+    ports:
+      - "4200:80"
+    environment:
+      - NODE_ENV=production
+      - API_URL=${API_URL:-http://bitbonsai-backend:3000}
+    restart: unless-stopped
+    depends_on:
+      bitbonsai-backend:
+        condition: service_healthy
+    networks:
+      - bitbonsai-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # Nginx reverse proxy (optional - for single entry point)
+  nginx:
+    image: nginx:alpine
+    container_name: bitbonsai-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped
+    depends_on:
+      - bitbonsai-backend
+      - bitbonsai-frontend
+    networks:
+      - bitbonsai-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # PostgreSQL for commercial tier (uncomment to enable)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: bitbonsai-postgres
+  #   environment:
+  #     - POSTGRES_DB=${POSTGRES_DB:-bitbonsai}
+  #     - POSTGRES_USER=${POSTGRES_USER:-bitbonsai}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bitbonsai}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - bitbonsai-network
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '2'
+  #         memory: 2G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+
+  # Redis for BullMQ commercial tier (uncomment to enable)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: bitbonsai-redis
+  #   command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - bitbonsai-network
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "3"
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1'
+  #         memory: 512M
+  #       reservations:
+  #         cpus: '0.25'
+  #         memory: 128M
+
+volumes:
+  bitbonsai-data:
+    driver: local
+  # postgres-data:
+  #   driver: local
+  # redis-data:
+  #   driver: local
+
+networks:
+  bitbonsai-network:
+    driver: bridge
