@@ -2,8 +2,10 @@
   <div class="dialog-backdrop" (click)="onBackdropClick($event)">
     <div class="dialog-container">
       <div class="dialog-header">
-        <h2>📋 Files to Encode</h2>
-        <button class="close-btn" (click)="onClose()" aria-label="Close dialog">✕</button>
+        <h2><fa-icon [icon]="['fas', 'list']"></fa-icon> Files to Encode</h2>
+        <button class="close-btn" (click)="onClose()" aria-label="Close dialog">
+          <fa-icon [icon]="['fas', 'times']"></fa-icon>
+        </button>
       </div>
 
       <div class="dialog-info">
