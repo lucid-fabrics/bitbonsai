@@ -15,8 +15,6 @@ import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
     </div>
   `,
   styles: [`
-    @import './styles/variables';
-
     .app-layout {
       min-height: 100vh;
       display: flex;
@@ -25,7 +23,7 @@ import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
     .main-content {
       flex: 1;
       margin-left: 220px;
-      background: var(--bg-primary, #1a1a1a);
+      background: #1a1a1a;
     }
 
     @media (max-width: 768px) {
