@@ -2,25 +2,25 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  OnDestroy,
-  OnInit,
   computed,
   inject,
+  type OnDestroy,
+  type OnInit,
   signal,
 } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
-  faCheckCircle,
-  faSpinner,
-  faHardDrive,
   faChartLine,
-  faClock,
-  faPlay,
   faCheck,
+  faCheckCircle,
+  faClock,
+  faHardDrive,
+  faPlay,
+  faSpinner,
   faTimes,
 } from '@fortawesome/pro-solid-svg-icons';
-import { Subject, interval } from 'rxjs';
-import { switchMap, takeUntil, startWith } from 'rxjs/operators';
+import { interval, Subject } from 'rxjs';
+import { startWith, switchMap, takeUntil } from 'rxjs/operators';
 import type { OverviewModel } from '../../core/models/overview.model';
 import { OverviewApiService } from '../../core/services/overview-api.service';
 

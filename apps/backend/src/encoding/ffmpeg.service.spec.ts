@@ -86,10 +86,10 @@ describe('FfmpegService', () => {
 
     const fs = await import('node:fs');
     mockExistsSync = fs.existsSync as jest.Mock;
-    mockFs = fs.promises as {
-      stat: jest.Mock;
-      rename: jest.Mock;
-      unlink: jest.Mock;
+    mockFs = {
+      stat: fs.promises.stat as jest.Mock,
+      rename: fs.promises.rename as jest.Mock,
+      unlink: fs.promises.unlink as jest.Mock,
     };
 
     // Create mock services

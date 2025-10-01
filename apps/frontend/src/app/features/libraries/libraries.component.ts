@@ -3,8 +3,8 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  OnInit,
   inject,
+  type OnInit,
   signal,
 } from '@angular/core';
 import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../../core/models/library.model';

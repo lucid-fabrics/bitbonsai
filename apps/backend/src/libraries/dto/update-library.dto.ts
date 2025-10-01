@@ -1,4 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 import { CreateLibraryDto } from './create-library.dto';
 
 /**
@@ -12,4 +13,12 @@ export class UpdateLibraryDto extends PartialType(CreateLibraryDto) {
     required: false,
   })
   enabled?: boolean;
+
+  @ApiProperty({
+    description: 'Total size of all media files in bytes',
+    example: 1073741824,
+    required: false,
+  })
+  @IsOptional()
+  totalSizeBytes?: bigint;
 }

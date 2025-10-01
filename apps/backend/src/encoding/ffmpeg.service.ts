@@ -26,6 +26,18 @@ interface ActiveEncoding {
 }
 
 /**
+ * FFmpeg progress information
+ */
+export interface FfmpegProgress {
+  jobId: string;
+  frame: number;
+  fps: number;
+  currentTime: string;
+  progress: number;
+  etaSeconds?: number;
+}
+
+/**
  * FfmpegService
  *
  * Comprehensive ffmpeg wrapper service for video encoding with:
@@ -163,12 +175,12 @@ export class FfmpegService {
 
     // Audio codec (from policy advanced settings)
     const advancedSettings = policy.advancedSettings as Record<string, unknown>;
-    const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
+    const audioCodec = (advancedSettings['audioCodec'] as string) || 'copy';
     args.push('-c:a', audioCodec);
 
     // Additional ffmpeg flags from policy
-    if (advancedSettings.ffmpegFlags) {
-      const customFlags = advancedSettings.ffmpegFlags as string[];
+    if (advancedSettings['ffmpegFlags']) {
+      const customFlags = advancedSettings['ffmpegFlags'] as string[];
       args.push(...customFlags);
     }
 
@@ -488,5 +500,111 @@ export class FfmpegService {
       startTime: activeEncoding.startTime,
       elapsedSeconds,
     };
+  }
+
+  /**
+   * Encode a file with custom options (simplified interface)
+   *
+   * @param jobId - Job unique identifier
+   * @param options - Encoding options
+   */
+  async encode(
+    jobId: string,
+    options: {
+      inputPath: string;
+      outputPath: string;
+      targetCodec: string;
+      targetQuality: number;
+      hwAccel?: string;
+      advancedSettings?: any;
+    }
+  ): Promise<void> {
+    // Create a minimal job object for encodeFile
+    const job = {
+      id: jobId,
+      filePath: options.inputPath,
+      fileLabel: '',
+      sourceCodec: '',
+      targetCodec: options.targetCodec,
+      stage: 'ENCODING' as const,
+      progress: 0,
+      etaSeconds: null,
+      beforeSizeBytes: BigInt(0),
+      afterSizeBytes: null,
+      savedBytes: null,
+      savedPercent: null,
+      startedAt: new Date(),
+      completedAt: null,
+      error: null,
+      nodeId: '',
+      libraryId: '',
+      policyId: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Job;
+
+    const policy = {
+      id: '',
+      name: '',
+      preset: 'CUSTOM' as const,
+      targetCodec: options.targetCodec,
+      targetQuality: options.targetQuality,
+      deviceProfiles: {},
+      advancedSettings: options.advancedSettings || {},
+      atomicReplace: false,
+      verifyOutput: false,
+      skipSeeding: false,
+      libraryId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Policy;
+
+    await this.encodeFile(job, policy);
+  }
+
+  /**
+   * Verify that an encoded file is valid and playable
+   *
+   * Uses ffprobe to check file integrity.
+   *
+   * @param filePath - Path to file to verify
+   * @returns True if file is valid, false otherwise
+   */
+  async verifyFile(filePath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const ffprobe = spawn('ffprobe', [
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
+        filePath,
+      ]);
+
+      let output = '';
+      let hasError = false;
+
+      ffprobe.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      ffprobe.stderr?.on('data', () => {
+        hasError = true;
+      });
+
+      ffprobe.on('close', (code) => {
+        if (code !== 0 || hasError || !output.trim()) {
+          resolve(false);
+        } else {
+          // File is valid if we got a duration
+          resolve(true);
+        }
+      });
+
+      ffprobe.on('error', () => {
+        resolve(false);
+      });
+    });
   }
 }

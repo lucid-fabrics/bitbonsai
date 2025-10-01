@@ -4,11 +4,11 @@ import {
   Component,
   EventEmitter,
   Input,
-  OnInit,
-  Output,
   inject,
+  type OnInit,
+  Output,
 } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type {
   CreateLibraryDto,
   Library,

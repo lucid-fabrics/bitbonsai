@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import type { OverviewModel } from '../models/overview.model';
 import type { MediaStatsModel } from '../models/media-stats.model';
+import type { OverviewModel } from '../models/overview.model';
 
 @Injectable({
   providedIn: 'root',

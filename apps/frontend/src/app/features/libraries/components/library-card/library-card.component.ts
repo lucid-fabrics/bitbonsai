@@ -51,7 +51,7 @@ export class LibraryCardComponent {
     if (bytes === 0n) return '0 B';
 
     const i = Math.floor(Math.log(Number(bytes)) / Math.log(1024));
-    const value = Number(bytes) / Math.pow(1024, i);
+    const value = Number(bytes) / 1024 ** i;
 
     return `${value.toFixed(2)} ${sizes[i]}`;
   }
