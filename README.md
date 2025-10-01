@@ -191,6 +191,7 @@ apps/backend/
 - Node.js 20+ LTS
 - Angular CLI 19+
 - NestJS CLI 10+
+- Docker (optional, for containerized development)
 
 ### Installation
 ```bash
@@ -198,20 +199,65 @@ cd ~/git/media-insight
 npm install
 ```
 
-### Development Servers
+### Development Options
 
-**Frontend (Angular):**
+MediaInsight supports two development workflows:
+
+#### Option 1: Local Development (Mac/Linux/Windows)
+
+**Run both frontend and backend simultaneously:**
 ```bash
-npm start
+npx nx dev
+# Frontend: http://localhost:4200 (with HMR)
+# Backend: http://localhost:3000/api/v1 (with auto-reload)
+```
+
+**Or run individually:**
+
+**Frontend only:**
+```bash
+npx nx serve frontend
 # Navigate to http://localhost:4200
 # API requests proxied to http://localhost:3000
 ```
 
-**Backend (NestJS):**
+**Backend only:**
 ```bash
-npm run start:api
+npx nx serve backend
 # API running at http://localhost:3000/api/v1
 ```
+
+#### Option 2: Docker Development (Recommended for Testing)
+
+Run the entire stack in Docker with **Hot Module Replacement (HMR)** and live reload:
+
+```bash
+npx nx docker:dev
+# Frontend: http://localhost:4200 (with HMR)
+# Backend: http://localhost:3000/api/v1 (with auto-reload)
+# Media path: ./test-media mounted to /media
+```
+
+**Stop Docker development:**
+```bash
+npx nx docker:dev:down
+```
+
+**Benefits of Docker Development:**
+- ✅ Identical to production environment
+- ✅ Includes ffmpeg/ffprobe for media analysis
+- ✅ Test media directories pre-configured
+- ✅ Full HMR support via volume mounts
+- ✅ No need to install system dependencies
+
+### Test Media
+
+Sample videos are provided in `test-media/` directory:
+- **Movies**: 2 sample files (H.264 + H.265)
+- **TV**: 2 sample episodes (H.264 + H.265)
+- **Anime**: 3 sample episodes (H.264 + H.265)
+
+These are automatically mounted in Docker development mode.
 
 ### Build
 
@@ -399,6 +445,18 @@ Before contributing, please review our [Code Conventions](./code-conventions/REA
 - Follow [NestJS Guidelines](./code-conventions/nestjs-guidelines.md) for backend code
 - Write tests per [Testing Guidelines](./code-conventions/testing-guidelines.md)
 - Use proper [Git Workflow](./code-conventions/git-commit-instructions.md)
+
+## ☕ Support the Project
+
+If MediaInsight helps you organize your media library, consider buying me a coffee!
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/YOUR_USERNAME)
+
+Your support helps maintain and improve MediaInsight with new features like:
+- Real-time scan progress tracking
+- Advanced codec analytics
+- Storage optimization recommendations
+- Multi-language support
 
 ## 📄 License
 

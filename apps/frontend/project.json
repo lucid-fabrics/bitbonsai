@@ -51,7 +51,11 @@
       "defaultConfiguration": "development",
       "options": {
         "buildTarget": "frontend:build",
-        "proxyConfig": "proxy.conf.json"
+        "proxyConfig": "proxy.conf.json",
+        "port": 4200,
+        "host": "0.0.0.0",
+        "liveReload": true,
+        "hmr": true
       },
       "configurations": {
         "production": {

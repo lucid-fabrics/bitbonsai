@@ -46,3 +46,6 @@ Thumbs.db
 
 # Nx cache
 .nx/
+
+# Test media files (generated, not committed)
+/test-media/

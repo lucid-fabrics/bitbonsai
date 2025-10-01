@@ -1,0 +1,40 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: media-insight-frontend
+    ports:
+      - "4200:4200"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./apps/frontend:/app/apps/frontend:cached
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./nx.json:/app/nx.json:ro
+      - ./angular.json:/app/angular.json:ro
+      - ./proxy.conf.json:/app/proxy.conf.json:ro
+      - /app/node_modules
+    command: npx nx serve frontend --host 0.0.0.0
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: media-insight-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MEDIA_PATHS=/media/TV,/media/Movies,/media/Anime
+    volumes:
+      - ./apps/backend:/app/apps/backend:cached
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./nx.json:/app/nx.json:ro
+      - ./test-media:/media:ro
+      - /app/node_modules
+    command: npx nx serve backend
+    restart: unless-stopped
