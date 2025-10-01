@@ -44,6 +44,9 @@ describe('EncodingProcessorService', () => {
   };
 
   beforeEach(async () => {
+    // Reset all mocks
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EncodingProcessorService,
@@ -60,7 +63,13 @@ describe('EncodingProcessorService', () => {
           provide: FfmpegService,
           useValue: {
             encode: jest.fn(),
+            encodeFile: jest.fn(),
             verifyFile: jest.fn(),
+            detectHardwareAcceleration: jest.fn(),
+            buildFfmpegCommand: jest.fn(),
+            cancelEncoding: jest.fn(),
+            getActiveEncodings: jest.fn(),
+            getEncodingStatus: jest.fn(),
           },
         },
         {
@@ -74,6 +83,10 @@ describe('EncodingProcessorService', () => {
           provide: EventEmitter2,
           useValue: {
             emit: jest.fn(),
+            on: jest.fn(),
+            once: jest.fn(),
+            removeListener: jest.fn(),
+            removeAllListeners: jest.fn(),
           },
         },
       ],
@@ -84,9 +97,6 @@ describe('EncodingProcessorService', () => {
     ffmpegService = module.get(FfmpegService);
     librariesService = module.get(LibrariesService);
     eventEmitter = module.get(EventEmitter2);
-
-    // Reset all mocks
-    jest.clearAllMocks();
   });
 
   it('should be defined', () => {

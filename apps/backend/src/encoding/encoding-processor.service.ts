@@ -5,7 +5,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import type { Job } from '@prisma/client';
 import { LibrariesService } from '../libraries/libraries.service';
 import { QueueService } from '../queue/queue.service';
-import type { FfmpegProgress, FfmpegService } from './ffmpeg.service';
+import { FfmpegService, type FfmpegProgress } from './ffmpeg.service';
 
 interface WorkerState {
   nodeId: string;

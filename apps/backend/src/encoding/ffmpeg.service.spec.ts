@@ -37,7 +37,7 @@ jest.mock('node:fs', () => ({
 describe('FfmpegService', () => {
   let service: FfmpegService;
   let queueService: jest.Mocked<QueueService>;
-  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let eventEmitter: EventEmitter2;
   let mockSpawn: jest.Mock;
   let mockExistsSync: jest.Mock;
   let mockFs: {
@@ -113,8 +113,12 @@ describe('FfmpegService', () => {
       cancelJob: jest.fn().mockResolvedValue(mockJob),
     };
 
-    const mockEventEmitter = {
+    const mockEventEmitterInstance = {
       emit: jest.fn(),
+      on: jest.fn(),
+      once: jest.fn(),
+      removeListener: jest.fn(),
+      removeAllListeners: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -126,14 +130,17 @@ describe('FfmpegService', () => {
         },
         {
           provide: EventEmitter2,
-          useValue: mockEventEmitter,
+          useValue: mockEventEmitterInstance,
         },
       ],
     }).compile();
 
     service = module.get<FfmpegService>(FfmpegService);
     queueService = module.get(QueueService) as jest.Mocked<QueueService>;
-    eventEmitter = module.get(EventEmitter2) as jest.Mocked<EventEmitter2>;
+    eventEmitter = module.get(EventEmitter2);
+
+    // Spy on eventEmitter methods
+    jest.spyOn(eventEmitter, 'emit');
 
     // Default mock implementations
     mockExistsSync.mockReturnValue(true);
