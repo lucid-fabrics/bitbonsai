@@ -16,7 +16,7 @@ import { NodeRegistrationResponseDto } from './dto/node-registration-response.dt
 import { NodeStatsDto } from './dto/node-stats.dto';
 import type { PairNodeDto } from './dto/pair-node.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
-import type { NodesService } from './nodes.service';
+import { NodesService } from './nodes.service';
 
 @ApiTags('nodes')
 @Controller('nodes')

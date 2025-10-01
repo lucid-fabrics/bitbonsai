@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
+import { NodeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type {
   BasicHealthDto,
@@ -134,7 +135,7 @@ export class HealthService {
   async checkRedisHealth(): Promise<ServiceHealthDto | undefined> {
     // Redis is optional in the current implementation
     // This is a placeholder for future Redis integration
-    const redisEnabled = process.env.REDIS_URL !== undefined;
+    const redisEnabled = process.env['REDIS_URL'] !== undefined;
 
     if (!redisEnabled) {
       return undefined;
@@ -264,7 +265,7 @@ export class HealthService {
       });
 
       const total = nodes.length;
-      const online = nodes.filter((node) => node.status === 'online').length;
+      const online = nodes.filter((node) => node.status === NodeStatus.ONLINE).length;
       const offline = total - online;
 
       return {
@@ -288,17 +289,17 @@ export class HealthService {
   async checkQueueHealth(): Promise<QueueHealthDto> {
     try {
       const [queued, encoding, completed, failed] = await Promise.all([
-        this.prisma.encodingTask.count({
-          where: { status: 'QUEUED' },
+        this.prisma.job.count({
+          where: { stage: 'QUEUED' },
         }),
-        this.prisma.encodingTask.count({
-          where: { status: 'ENCODING' },
+        this.prisma.job.count({
+          where: { stage: 'ENCODING' },
         }),
-        this.prisma.encodingTask.count({
-          where: { status: 'COMPLETED' },
+        this.prisma.job.count({
+          where: { stage: 'COMPLETED' },
         }),
-        this.prisma.encodingTask.count({
-          where: { status: 'FAILED' },
+        this.prisma.job.count({
+          where: { stage: 'FAILED' },
         }),
       ]);
 

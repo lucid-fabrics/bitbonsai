@@ -22,7 +22,7 @@ describe('HealthService', () => {
     node: {
       findMany: jest.fn(),
     },
-    encodingTask: {
+    job: {
       count: jest.fn(),
     },
   };
@@ -95,8 +95,8 @@ describe('HealthService', () => {
 
   describe('checkRedisHealth', () => {
     it('should return undefined when Redis is not configured', async () => {
-      const originalEnv = process.env.REDIS_URL;
-      delete process.env.REDIS_URL;
+      const originalEnv = process.env['REDIS_URL'];
+      delete process.env['REDIS_URL'];
 
       const result = await service.checkRedisHealth();
 
@@ -104,13 +104,13 @@ describe('HealthService', () => {
 
       // Restore
       if (originalEnv) {
-        process.env.REDIS_URL = originalEnv;
+        process.env['REDIS_URL'] = originalEnv;
       }
     });
 
     it('should return ok status when Redis is configured', async () => {
-      const originalEnv = process.env.REDIS_URL;
-      process.env.REDIS_URL = 'redis://localhost:6379';
+      const originalEnv = process.env['REDIS_URL'];
+      process.env['REDIS_URL'] = 'redis://localhost:6379';
 
       const result = await service.checkRedisHealth();
 
@@ -119,9 +119,9 @@ describe('HealthService', () => {
 
       // Restore
       if (originalEnv) {
-        process.env.REDIS_URL = originalEnv;
+        process.env['REDIS_URL'] = originalEnv;
       } else {
-        delete process.env.REDIS_URL;
+        delete process.env['REDIS_URL'];
       }
     });
   });
@@ -130,11 +130,8 @@ describe('HealthService', () => {
     it('should return ok status for normal disk usage', async () => {
       // Mock execAsync to return df output with 50% usage
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
-        callback(null, {
-          stdout:
-            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
-        });
+      exec.mockImplementation((cmd: any, callback: any) => {
+        callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /', '');
       });
 
       const result = await service.checkDiskHealth();
@@ -146,11 +143,8 @@ describe('HealthService', () => {
 
     it('should return warning status for high disk usage', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
-        callback(null, {
-          stdout:
-            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /',
-        });
+      exec.mockImplementation((cmd: any, callback: any) => {
+        callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /', '');
       });
 
       const result = await service.checkDiskHealth();
@@ -161,11 +155,8 @@ describe('HealthService', () => {
 
     it('should return critical status for very high disk usage', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
-        callback(null, {
-          stdout:
-            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
-        });
+      exec.mockImplementation((cmd: any, callback: any) => {
+        callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /', '');
       });
 
       const result = await service.checkDiskHealth();
@@ -176,7 +167,7 @@ describe('HealthService', () => {
 
     it('should handle errors gracefully', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
+      exec.mockImplementation((cmd: any, callback: any) => {
         callback(new Error('Command failed'));
       });
 
@@ -222,10 +213,8 @@ describe('HealthService', () => {
   describe('checkFfmpegHealth', () => {
     it('should return ok status when ffmpeg is available', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
-        callback(null, {
-          stdout: 'ffmpeg version 5.1.2 Copyright (c) 2000-2022',
-        });
+      exec.mockImplementation((cmd: any, callback: any) => {
+        callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
       });
 
       const result = await service.checkFfmpegHealth();
@@ -237,7 +226,7 @@ describe('HealthService', () => {
 
     it('should return error status when ffmpeg is not found', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
+      exec.mockImplementation((cmd: any, callback: any) => {
         callback(new Error('Command not found'));
       });
 
@@ -251,9 +240,9 @@ describe('HealthService', () => {
   describe('checkNodeHealth', () => {
     it('should return node statistics', async () => {
       mockPrismaService.node.findMany.mockResolvedValue([
-        { status: 'online' },
-        { status: 'online' },
-        { status: 'offline' },
+        { status: 'ONLINE' },
+        { status: 'ONLINE' },
+        { status: 'OFFLINE' },
       ]);
 
       const result = await service.checkNodeHealth();
@@ -276,7 +265,7 @@ describe('HealthService', () => {
 
   describe('checkQueueHealth', () => {
     it('should return queue statistics', async () => {
-      mockPrismaService.encodingTask.count
+      mockPrismaService.job.count
         .mockResolvedValueOnce(5) // queued
         .mockResolvedValueOnce(2) // encoding
         .mockResolvedValueOnce(150) // completed
@@ -291,7 +280,7 @@ describe('HealthService', () => {
     });
 
     it('should handle database errors', async () => {
-      mockPrismaService.encodingTask.count.mockRejectedValue(new Error('Database error'));
+      mockPrismaService.job.count.mockRejectedValue(new Error('Database error'));
 
       const result = await service.checkQueueHealth();
 
@@ -307,26 +296,21 @@ describe('HealthService', () => {
       // Setup default mocks for detailed health
       mockPrismaService.$queryRaw.mockResolvedValue([{ 1: 1 }]);
       mockPrismaService.node.findMany.mockResolvedValue([
-        { status: 'online' },
-        { status: 'online' },
+        { status: 'ONLINE' },
+        { status: 'ONLINE' },
       ]);
-      mockPrismaService.encodingTask.count
+      mockPrismaService.job.count
         .mockResolvedValueOnce(5)
         .mockResolvedValueOnce(2)
         .mockResolvedValueOnce(150)
         .mockResolvedValueOnce(3);
 
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
+      exec.mockImplementation((cmd: any, callback: any) => {
         if (cmd.includes('df')) {
-          callback(null, {
-            stdout:
-              'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
-          });
+          callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /', '');
         } else if (cmd.includes('ffmpeg')) {
-          callback(null, {
-            stdout: 'ffmpeg version 5.1.2 Copyright (c) 2000-2022',
-          });
+          callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
         }
       });
     });
@@ -354,12 +338,9 @@ describe('HealthService', () => {
 
     it('should return degraded status when non-critical service fails', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd, callback) => {
+      exec.mockImplementation((cmd: any, callback: any) => {
         if (cmd.includes('df')) {
-          callback(null, {
-            stdout:
-              'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
-          });
+          callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /', '');
         } else if (cmd.includes('ffmpeg')) {
           callback(new Error('Command not found'));
         }
