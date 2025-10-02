@@ -147,6 +147,9 @@ export class LibrariesController {
     description: 'Library updated successfully',
     type: UpdateLibraryDto,
   })
+  @ApiBadRequestResponse({
+    description: 'Invalid library data provided',
+  })
   @ApiNotFoundResponse({
     description: 'Library not found',
   })
@@ -218,6 +221,9 @@ export class LibrariesController {
   @ApiOkResponse({
     description: 'Library scan initiated successfully',
     type: LibraryStatsDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Library is disabled or node is offline',
   })
   @ApiNotFoundResponse({
     description: 'Library not found',

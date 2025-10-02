@@ -120,6 +120,9 @@ export class NodesController {
     description: 'New pairing token generated successfully',
     type: NodeRegistrationResponseDto,
   })
+  @ApiBadRequestResponse({
+    description: 'Node already paired or in invalid state',
+  })
   @ApiNotFoundResponse({
     description: 'Node not found',
   })
@@ -156,6 +159,9 @@ export class NodesController {
   @ApiOkResponse({
     description: 'Heartbeat recorded successfully',
     type: NodeStatsDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid heartbeat data provided',
   })
   @ApiNotFoundResponse({
     description: 'Node not found',

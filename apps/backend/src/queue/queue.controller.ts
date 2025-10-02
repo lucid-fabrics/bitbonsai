@@ -249,6 +249,9 @@ export class QueueController {
     description: 'Job progress updated successfully',
     type: UpdateJobDto,
   })
+  @ApiBadRequestResponse({
+    description: 'Invalid progress data provided',
+  })
   @ApiNotFoundResponse({
     description: 'Job not found',
   })
@@ -286,6 +289,9 @@ export class QueueController {
   @ApiOkResponse({
     description: 'Job completed successfully',
     type: CompleteJobDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid completion data or job not in correct state',
   })
   @ApiNotFoundResponse({
     description: 'Job not found',
@@ -325,6 +331,9 @@ export class QueueController {
   @ApiOkResponse({
     description: 'Job marked as failed',
     type: FailJobDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid error data or job not in correct state',
   })
   @ApiNotFoundResponse({
     description: 'Job not found',

@@ -57,6 +57,9 @@ export class MediaStatsController {
     status: 202,
     description: 'Media library scan completed successfully.',
   })
+  @ApiBadRequestResponse({
+    description: 'No media paths configured or paths are inaccessible',
+  })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while initiating media scan',
   })
@@ -88,6 +91,9 @@ export class MediaStatsController {
     status: 200,
     description: 'Successfully retrieved file list',
     type: FolderFilesDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Folder not found or not configured in MEDIA_PATHS',
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while retrieving file list',

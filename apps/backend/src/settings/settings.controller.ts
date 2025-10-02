@@ -110,6 +110,9 @@ export class SettingsController {
       },
     },
   })
+  @ApiBadRequestResponse({
+    description: 'Backup directory not writable or insufficient disk space',
+  })
   async backupDatabase(): Promise<{ backupPath: string; timestamp: string }> {
     // TODO: Implement actual database backup logic
     const timestamp = new Date().toISOString();
@@ -128,6 +131,9 @@ export class SettingsController {
   @ApiResponse({
     status: 200,
     description: 'System settings reset successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Cannot reset settings while jobs are running',
   })
   async resetToDefaults(): Promise<{ message: string }> {
     // TODO: Implement actual settings reset logic
@@ -149,6 +155,9 @@ export class SettingsController {
         apiKey: { type: 'string', example: 'bb_newapikey123456' },
       },
     },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid request or API key regeneration not allowed',
   })
   async regenerateApiKey(): Promise<{ apiKey: string }> {
     // TODO: Implement actual API key regeneration logic

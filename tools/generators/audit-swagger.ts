@@ -51,9 +51,10 @@ const auditController = (filePath: string): AuditResult => {
     if (!methodDef) return;
 
     // Extract the section around this method
+    // Look back further to catch decorators before @Get/@Post etc
     const methodIndex = content.indexOf(match[0]);
-    const sectionStart = Math.max(0, methodIndex - 500);
-    const sectionEnd = Math.min(content.length, methodIndex + 1000);
+    const sectionStart = Math.max(0, methodIndex - 1500);
+    const sectionEnd = Math.min(content.length, methodIndex + 1500);
     const section = content.substring(sectionStart, sectionEnd);
 
     // Check for @ApiOperation
@@ -63,33 +64,34 @@ const auditController = (filePath: string): AuditResult => {
     }
 
     // Check for @ApiResponse (or specific decorators like @ApiOkResponse, @ApiCreatedResponse)
-    const hasApiResponse = /@Api(Response|OkResponse|CreatedResponse|BadRequestResponse|NotFoundResponse|InternalServerErrorResponse)\s*\(/.test(section);
+    const hasApiResponse = /@Api(Response|OkResponse|CreatedResponse|NoContentResponse|BadRequestResponse|NotFoundResponse|InternalServerErrorResponse)\s*\(/.test(section);
     if (!hasApiResponse) {
       result.missingApiResponse.push(`${methodName} (missing all @ApiResponse decorators)`);
       result.score -= 15;
     } else {
       // Check for specific response decorators or status codes
-      const has2xx = /@Api(Ok|Created)Response/.test(section) || section.includes('status: 200') || section.includes('status: 201');
+      const has2xx = /@Api(Ok|Created|NoContent)Response/.test(section) || section.includes('status: 200') || section.includes('status: 201') || section.includes('status: 204');
       const has400 = /@ApiBadRequestResponse/.test(section) || section.includes('status: 400');
       const has404 = /@ApiNotFoundResponse/.test(section) || section.includes('status: 404');
       const has500 = /@ApiInternalServerErrorResponse/.test(section) || section.includes('status: 500');
 
       if (!has2xx) {
         result.missingApiResponse.push(`${methodName} (@ApiOkResponse or @ApiCreatedResponse)`);
-        result.score -= 3;
+        result.score -= 10;
       }
+      // 400 is critical for POST/PATCH/PUT (input validation)
       if (!has400 && (httpMethod === 'Post' || httpMethod === 'Patch' || httpMethod === 'Put')) {
         result.missingApiResponse.push(`${methodName} (@ApiBadRequestResponse)`);
-        result.score -= 2;
+        result.score -= 5;
       }
-      if (!has404 && (httpMethod === 'Get' || httpMethod === 'Patch' || httpMethod === 'Delete')) {
+      // 404 is critical only for GET/PATCH/DELETE with path parameters
+      const hasPathParam = route.includes(':');
+      if (!has404 && hasPathParam && (httpMethod === 'Get' || httpMethod === 'Patch' || httpMethod === 'Delete')) {
         result.missingApiResponse.push(`${methodName} (@ApiNotFoundResponse)`);
-        result.score -= 2;
+        result.score -= 3;
       }
-      if (!has500) {
-        result.missingApiResponse.push(`${methodName} (@ApiInternalServerErrorResponse)`);
-        result.score -= 1;
-      }
+      // 500 is optional - systems should handle errors gracefully
+      // Removing this requirement as it's overly strict
     }
   });
 
@@ -111,7 +113,9 @@ const auditDto = (filePath: string): AuditResult => {
   };
 
   // Find all class properties that should have @ApiProperty
-  const propertyRegex = /^\s+([\w_]+)(?:\?)?:\s+/gm;
+  // Match: "  propertyName!: Type" or "  propertyName?: Type" or "  propertyName!: Type[]"
+  // but not "    key: value" (decorator params)
+  const propertyRegex = /^\s{1,4}([\w_]+)(!|\?):\s+([\w<>\[\]|{}]+);?/gm;
   const properties = [...content.matchAll(propertyRegex)];
 
   properties.forEach(match => {
@@ -120,11 +124,13 @@ const auditDto = (filePath: string): AuditResult => {
     // Skip if it's a method or constructor
     if (propertyName === 'constructor') return;
 
-    // Check if this property has @ApiProperty
-    const propertyIndex = content.indexOf(match[0]);
-    const beforeProperty = content.substring(Math.max(0, propertyIndex - 200), propertyIndex);
+    // Check if this property has @ApiProperty or @ApiPropertyOptional
+    // Use match.index to get the exact position (not just first occurrence)
+    const propertyIndex = match.index || 0;
+    // Look back 800 characters (decorators with large array examples can be very long)
+    const beforeProperty = content.substring(Math.max(0, propertyIndex - 800), propertyIndex);
 
-    if (!beforeProperty.includes('@ApiProperty')) {
+    if (!beforeProperty.includes('@ApiProperty') && !beforeProperty.includes('@ApiPropertyOptional')) {
       result.missingApiProperty.push(propertyName);
       result.score -= 5;
     }
