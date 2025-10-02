@@ -41,8 +41,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
-# Private/internal documentation
-.claude/
+# Private/internal documentation (.claude/ files except agents)
+.claude/*
+!.claude/agents/
 
 # AI-generated documentation (never commit these)
 *REFACTORING*.md
