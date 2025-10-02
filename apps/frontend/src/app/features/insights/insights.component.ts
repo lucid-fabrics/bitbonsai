@@ -1,39 +1,33 @@
 import { CommonModule } from '@angular/common';
-import type { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, type OnInit, signal } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-solid-svg-icons';
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
+import { lastValueFrom } from 'rxjs';
+import {
+  CodecDistributionBO,
+  InsightsStatsBO,
+  NodePerformanceBO,
+  SavingsTrendBO,
+} from '../../core/business-objects/insights.bo';
+import { InsightsService } from '../../core/services/insights.service';
 
 // Register Chart.js components
 Chart.register(...registerables);
 
-interface SavingsTrendData {
-  date: string;
-  savingsGB: number;
-}
-
-interface CodecDistribution {
-  codec: string;
-  count: number;
-  percentage: number;
-}
-
-interface NodePerformance {
-  nodeName: string;
-  jobsCompleted: number;
-  successRate: number;
-}
-
-interface InsightsStats {
-  totalJobsCompleted: number;
-  totalStorageSavedGB: number;
-  averageSuccessRate: number;
-  averageThroughput: number;
-}
-
 type TimeRange = 7 | 30 | 90;
+
+// Custom dataset type with raw data for tooltips
+interface NodePerformanceDataset {
+  label: string;
+  data: number[];
+  backgroundColor: string[];
+  borderColor: string;
+  borderWidth: number;
+  borderRadius: number;
+  _rawData?: NodePerformanceBO[];
+}
 
 @Component({
   selector: 'app-insights',
@@ -55,12 +49,9 @@ export class InsightsComponent implements OnInit {
   loading = signal(true);
 
   // Stats
-  stats = signal<InsightsStats>({
-    totalJobsCompleted: 0,
-    totalStorageSavedGB: 0,
-    averageSuccessRate: 0,
-    averageThroughput: 0,
-  });
+  stats = signal<InsightsStatsBO>(
+    new InsightsStatsBO(0, 0, 0, 0)
+  );
 
   // Savings Trend Chart
   savingsTrendData = signal<ChartConfiguration<'line'>['data']>({
@@ -108,7 +99,6 @@ export class InsightsComponent implements OnInit {
       x: {
         grid: {
           color: '#333333',
-          drawBorder: false,
         },
         ticks: {
           color: '#888',
@@ -120,7 +110,6 @@ export class InsightsComponent implements OnInit {
       y: {
         grid: {
           color: '#333333',
-          drawBorder: false,
         },
         ticks: {
           color: '#888',
@@ -188,7 +177,7 @@ export class InsightsComponent implements OnInit {
   });
 
   // Node Performance Chart
-  nodePerformanceData = signal<ChartConfiguration<'bar'>['data']>({
+  nodePerformanceData = signal<{ labels: string[]; datasets: NodePerformanceDataset[] }>({
     labels: [],
     datasets: [
       {
@@ -220,8 +209,8 @@ export class InsightsComponent implements OnInit {
         callbacks: {
           label: (context) => {
             const dataIndex = context.dataIndex;
-            const rawData = (context.chart.data.datasets[0] as any)._rawData;
-            const successRate = rawData?.[dataIndex]?.successRate || 0;
+            const dataset = context.chart.data.datasets[0] as NodePerformanceDataset;
+            const successRate = dataset._rawData?.[dataIndex]?.successRate || 0;
             return [`Jobs: ${context.parsed.y}`, `Success Rate: ${successRate.toFixed(1)}%`];
           },
         },
@@ -242,7 +231,6 @@ export class InsightsComponent implements OnInit {
       y: {
         grid: {
           color: '#333333',
-          drawBorder: false,
         },
         ticks: {
           color: '#888',
@@ -256,7 +244,7 @@ export class InsightsComponent implements OnInit {
     },
   });
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly insightsService: InsightsService) {}
 
   ngOnInit(): void {
     this.loadAllData();
@@ -283,13 +271,11 @@ export class InsightsComponent implements OnInit {
   private async loadSavingsTrend(): Promise<void> {
     try {
       const days = this.selectedTimeRange();
-      const data = await this.http
-        .get<SavingsTrendData[]>(`/api/v1/insights/savings?days=${days}`)
-        .toPromise();
+      const data = await lastValueFrom(this.insightsService.getSavingsTrend(days));
 
       if (data) {
         const currentData = this.savingsTrendData();
-        currentData.labels = data.map((d) => this.formatDate(d.date));
+        currentData.labels = data.map((d) => d.formatDate());
         currentData.datasets[0].data = data.map((d) => d.savingsGB);
         this.savingsTrendData.set({ ...currentData });
       }
@@ -305,7 +291,7 @@ export class InsightsComponent implements OnInit {
 
   private async loadCodecDistribution(): Promise<void> {
     try {
-      const data = await this.http.get<CodecDistribution[]>('/api/v1/insights/codecs').toPromise();
+      const data = await lastValueFrom(this.insightsService.getCodecDistribution());
 
       if (data) {
         const currentData = this.codecDistributionData();
@@ -325,22 +311,18 @@ export class InsightsComponent implements OnInit {
 
   private async loadNodePerformance(): Promise<void> {
     try {
-      const data = await this.http.get<NodePerformance[]>('/api/v1/insights/nodes').toPromise();
+      const data = await lastValueFrom(this.insightsService.getNodePerformance());
 
       if (data) {
         const currentData = this.nodePerformanceData();
         currentData.labels = data.map((d) => d.nodeName);
         currentData.datasets[0].data = data.map((d) => d.jobsCompleted);
 
-        // Color bars based on success rate
-        currentData.datasets[0].backgroundColor = data.map((d) => {
-          if (d.successRate >= 90) return '#4ade80'; // Green - high success
-          if (d.successRate >= 70) return '#fbbf24'; // Yellow - medium success
-          return '#ff6b6b'; // Red - low success
-        });
+        // Color bars based on success rate using BO logic
+        currentData.datasets[0].backgroundColor = data.map((d) => d.statusColor);
 
         // Store raw data for tooltip
-        (currentData.datasets[0] as any)._rawData = data;
+        currentData.datasets[0]._rawData = data;
 
         this.nodePerformanceData.set({ ...currentData });
       }
@@ -357,7 +339,7 @@ export class InsightsComponent implements OnInit {
 
   private async loadStats(): Promise<void> {
     try {
-      const data = await this.http.get<InsightsStats>('/api/v1/insights/stats').toPromise();
+      const data = await lastValueFrom(this.insightsService.getStats());
 
       if (data) {
         this.stats.set(data);
@@ -366,13 +348,6 @@ export class InsightsComponent implements OnInit {
       console.error('Failed to load stats:', error);
       // Keep default stats on error
     }
-  }
-
-  private formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    const month = date.toLocaleString('default', { month: 'short' });
-    const day = date.getDate();
-    return `${month} ${day}`;
   }
 
   formatStorageSize(gb: number): string {

@@ -3,10 +3,14 @@ import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Store } from '@ngrx/store';
 import { FileInfoBo } from '../../core/business-objects/file-info.bo';
-import { MediaStatsApiService } from '../../core/services/media-stats-api.service';
+import { MediaStatsClient } from '../../core/clients/media-stats.client';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
 import { FilesDialogComponent } from './files-dialog/files-dialog.component';
+
+interface FolderInfo {
+  name: string;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -18,7 +22,7 @@ import { FilesDialogComponent } from './files-dialog/files-dialog.component';
 })
 export class DashboardComponent implements OnInit {
   private readonly store = inject(Store);
-  private readonly mediaStatsApi = inject(MediaStatsApiService);
+  private readonly mediaStatsApi = inject(MediaStatsClient);
 
   readonly stats$ = this.store.select(MediaStatsSelectors.selectMediaStats);
   readonly isLoading$ = this.store.select(MediaStatsSelectors.selectIsLoading);
@@ -39,7 +43,7 @@ export class DashboardComponent implements OnInit {
     this.store.dispatch(MediaStatsActions.triggerScan());
   }
 
-  viewFilesToEncode(folder: any): void {
+  viewFilesToEncode(folder: FolderInfo): void {
     this.dialogFolderName.set(folder.name);
     this.dialogCodec.set('h264');
     this.dialogLoading.set(true);
