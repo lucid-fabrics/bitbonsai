@@ -49,6 +49,7 @@ Thumbs.db
 
 # Test media files (generated, not committed)
 /test-media/
+/test-data/
 
 # Prisma / Database
 *.db

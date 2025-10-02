@@ -62,6 +62,8 @@ tests
 .env.production
 .env.test
 
+# IMPORTANT: .npmrc is NOT ignored - needed for Font Awesome Pro authentication
+
 # Logs
 *.log
 logs

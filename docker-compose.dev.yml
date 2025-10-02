@@ -26,10 +26,10 @@ services:
       - ./test-media:/media:ro
       - bitbonsai-data:/data
       - /app/node_modules
-    command: npx nx serve backend --host 0.0.0.0
+    command: sh -c "npx nx build backend --watch & sleep 5 && npx nodemon dist/apps/backend/main.js"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 10s
       retries: 3

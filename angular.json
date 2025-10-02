@@ -32,7 +32,10 @@
               }
             ],
             "styles": ["apps/frontend/src/styles.scss"],
-            "scripts": []
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["apps/frontend/src/styles"]
+            }
           },
           "configurations": {
             "production": {
@@ -89,7 +92,10 @@
               }
             ],
             "styles": ["apps/frontend/src/styles.scss"],
-            "scripts": []
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["apps/frontend/src/styles"]
+            }
           }
         },
         "lint": {
