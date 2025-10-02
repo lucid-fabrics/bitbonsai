@@ -44,6 +44,18 @@ Thumbs.db
 # Private/internal documentation
 .claude/
 
+# AI-generated documentation (never commit these)
+*REFACTORING*.md
+*COMPLETE*.md
+*REPORT*.md
+*SUMMARY*.md
+*SESSION*.md
+*TRANSCRIPT*.txt
+*conversation*.txt
+*-lets-*.txt
+AI_*.md
+PRISMA_SCHEMA_COMPLETE.md
+
 # Nx cache
 .nx/
 
