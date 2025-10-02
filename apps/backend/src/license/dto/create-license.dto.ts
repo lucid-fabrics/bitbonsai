@@ -13,7 +13,7 @@ export class CreateLicenseDto {
   })
   @IsEnum(LicenseTier)
   @IsNotEmpty()
-  tier: LicenseTier;
+  tier!: LicenseTier;
 
   @ApiProperty({
     description: 'Email address associated with the license',
@@ -21,7 +21,7 @@ export class CreateLicenseDto {
   })
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @ApiPropertyOptional({
     description:

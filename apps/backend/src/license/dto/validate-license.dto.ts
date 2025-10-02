@@ -12,5 +12,5 @@ export class ValidateLicenseDto {
   })
   @IsString()
   @IsNotEmpty()
-  key: string;
+  key!: string;
 }

@@ -3,7 +3,6 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
-  IsJSON,
   IsNotEmpty,
   IsObject,
   IsOptional,
@@ -11,37 +10,12 @@ import {
   Max,
   Min,
 } from 'class-validator';
-
-export enum PolicyPreset {
-  BALANCED_HEVC = 'BALANCED_HEVC',
-  FAST_HEVC = 'FAST_HEVC',
-  QUALITY_AV1 = 'QUALITY_AV1',
-  COPY_IF_COMPLIANT = 'COPY_IF_COMPLIANT',
-  CUSTOM = 'CUSTOM',
-}
-
-export enum TargetCodec {
-  HEVC = 'HEVC',
-  AV1 = 'AV1',
-  VP9 = 'VP9',
-  H264 = 'H264',
-}
-
-export interface DeviceProfiles {
-  appleTv: boolean;
-  roku: boolean;
-  web: boolean;
-  chromecast: boolean;
-  ps5: boolean;
-  xbox: boolean;
-}
-
-export interface AdvancedSettings {
-  ffmpegFlags: string[];
-  hwaccel: string;
-  audioCodec: string;
-  subtitleHandling: string;
-}
+import {
+  PolicyPreset,
+  TargetCodec,
+  DeviceProfiles,
+  AdvancedSettings,
+} from '@bitbonsai/shared-models';
 
 export class CreatePolicyDto {
   @ApiProperty({
@@ -85,10 +59,11 @@ export class CreatePolicyDto {
   @ApiPropertyOptional({
     description: 'Optional library ID to associate this policy with a specific media library',
     example: 'clxxxx123456789',
+    nullable: true,
   })
   @IsOptional()
   @IsString()
-  libraryId?: string;
+  libraryId?: string | null;
 
   @ApiPropertyOptional({
     description: 'Device compatibility profile settings',

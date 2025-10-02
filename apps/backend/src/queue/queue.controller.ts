@@ -181,7 +181,6 @@ export class QueueController {
   @ApiOkResponse({
     description: 'Next job retrieved and started, or null if none available',
     type: CreateJobDto,
-    nullable: true,
   })
   @ApiNotFoundResponse({
     description: 'Node not found',

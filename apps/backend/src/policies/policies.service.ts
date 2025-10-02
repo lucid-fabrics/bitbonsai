@@ -1,19 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { JobStage } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import {
-  type AdvancedSettings,
-  type CreatePolicyDto,
-  type DeviceProfiles,
   PolicyPreset,
   TargetCodec,
-} from './dto/create-policy.dto';
-import type { PolicyDto, PolicyStatsDto, PresetInfoDto } from './dto/policy-stats.dto';
+  DeviceProfiles,
+  AdvancedSettings,
+} from '@bitbonsai/shared-models';
+import { PolicyRepository } from './repositories/policy.repository';
+import type { CreatePolicyDto } from './dto/create-policy.dto';
+import type { PolicyDto } from './dto/policy.dto';
+import type { PolicyStatsDto } from './dto/policy-stats.dto';
+import type { PresetInfoDto } from './dto/preset-info.dto';
 import type { UpdatePolicyDto } from './dto/update-policy.dto';
 
 @Injectable()
 export class PoliciesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly policyRepository: PolicyRepository) {}
 
   /**
    * Create a new encoding policy
@@ -35,19 +36,17 @@ export class PoliciesService {
       subtitleHandling: 'copy',
     };
 
-    const policy = await this.prisma.policy.create({
-      data: {
-        name: createPolicyDto.name,
-        preset: createPolicyDto.preset,
-        targetCodec: createPolicyDto.targetCodec,
-        targetQuality: createPolicyDto.targetQuality,
-        deviceProfiles: deviceProfiles as object,
-        advancedSettings: advancedSettings as object,
-        atomicReplace: createPolicyDto.atomicReplace ?? true,
-        verifyOutput: createPolicyDto.verifyOutput ?? true,
-        skipSeeding: createPolicyDto.skipSeeding ?? true,
-        libraryId: createPolicyDto.libraryId,
-      },
+    const policy = await this.policyRepository.create({
+      name: createPolicyDto.name,
+      preset: createPolicyDto.preset,
+      targetCodec: createPolicyDto.targetCodec,
+      targetQuality: createPolicyDto.targetQuality,
+      deviceProfiles: deviceProfiles as object,
+      advancedSettings: advancedSettings as object,
+      atomicReplace: createPolicyDto.atomicReplace ?? true,
+      verifyOutput: createPolicyDto.verifyOutput ?? true,
+      skipSeeding: createPolicyDto.skipSeeding ?? true,
+      libraryId: createPolicyDto.libraryId,
     });
 
     return this.mapPolicyToDto(policy);
@@ -57,10 +56,7 @@ export class PoliciesService {
    * Get all policies
    */
   async findAll(): Promise<PolicyDto[]> {
-    const policies = await this.prisma.policy.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-
+    const policies = await this.policyRepository.findAll();
     return policies.map((policy) => this.mapPolicyToDto(policy));
   }
 
@@ -68,26 +64,7 @@ export class PoliciesService {
    * Get policy with job statistics
    */
   async findOne(id: string): Promise<PolicyStatsDto> {
-    const policy = await this.prisma.policy.findUnique({
-      where: { id },
-      include: {
-        library: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            jobs: {
-              where: {
-                stage: JobStage.COMPLETED,
-              },
-            },
-          },
-        },
-      },
-    });
+    const policy = await this.policyRepository.findByIdWithStats(id);
 
     if (!policy) {
       throw new NotFoundException(`Policy with ID "${id}" not found`);
@@ -103,20 +80,17 @@ export class PoliciesService {
     // Check if policy exists
     await this.findOne(id);
 
-    const policy = await this.prisma.policy.update({
-      where: { id },
-      data: {
-        name: updatePolicyDto.name,
-        preset: updatePolicyDto.preset,
-        targetCodec: updatePolicyDto.targetCodec,
-        targetQuality: updatePolicyDto.targetQuality,
-        deviceProfiles: updatePolicyDto.deviceProfiles as object | undefined,
-        advancedSettings: updatePolicyDto.advancedSettings as object | undefined,
-        atomicReplace: updatePolicyDto.atomicReplace,
-        verifyOutput: updatePolicyDto.verifyOutput,
-        skipSeeding: updatePolicyDto.skipSeeding,
-        libraryId: updatePolicyDto.libraryId,
-      },
+    const policy = await this.policyRepository.update(id, {
+      name: updatePolicyDto.name,
+      preset: updatePolicyDto.preset,
+      targetCodec: updatePolicyDto.targetCodec,
+      targetQuality: updatePolicyDto.targetQuality,
+      deviceProfiles: updatePolicyDto.deviceProfiles as object | undefined,
+      advancedSettings: updatePolicyDto.advancedSettings as object | undefined,
+      atomicReplace: updatePolicyDto.atomicReplace,
+      verifyOutput: updatePolicyDto.verifyOutput,
+      skipSeeding: updatePolicyDto.skipSeeding,
+      libraryId: updatePolicyDto.libraryId,
     });
 
     return this.mapPolicyToDto(policy);
@@ -129,9 +103,7 @@ export class PoliciesService {
     // Check if policy exists
     await this.findOne(id);
 
-    await this.prisma.policy.delete({
-      where: { id },
-    });
+    await this.policyRepository.delete(id);
   }
 
   /**

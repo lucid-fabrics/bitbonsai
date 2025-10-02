@@ -2,12 +2,9 @@ import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { EnvironmentService } from '../common/environment.service';
-import {
-  DatabaseType,
-  LogLevel,
-  SystemSettingsDto,
-  type UpdateSystemSettingsDto,
-} from './dto/system-settings.dto';
+import { DatabaseType, LogLevel } from '@bitbonsai/shared-models';
+import { SystemSettingsDto } from './dto/system-settings.dto';
+import { UpdateSystemSettingsDto } from './dto/update-system-settings.dto';
 
 @ApiTags('settings')
 @Controller('settings')

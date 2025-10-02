@@ -1,36 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-
-export enum DatabaseType {
-  SQLITE = 'SQLITE',
-  POSTGRESQL = 'POSTGRESQL',
-}
-
-export enum LogLevel {
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARN = 'WARN',
-  ERROR = 'ERROR',
-}
-
-export class StorageInfoDto {
-  @ApiProperty({
-    description: 'Used storage in GB',
-    example: 15.3,
-  })
-  usedGb!: number;
-
-  @ApiProperty({
-    description: 'Total storage in GB',
-    example: 100.0,
-  })
-  totalGb!: number;
-
-  @ApiProperty({
-    description: 'Storage usage percentage',
-    example: 15.3,
-  })
-  usagePercent!: number;
-}
+import { DatabaseType, LogLevel } from '@bitbonsai/shared-models';
+import { StorageInfoDto } from './storage-info.dto';
 
 export class SystemSettingsDto {
   @ApiProperty({
@@ -86,38 +56,6 @@ export class SystemSettingsDto {
   @ApiProperty({
     description: 'Webhook URL for notifications',
     example: 'https://example.com/webhook',
-    required: false,
-  })
-  webhookUrl?: string;
-}
-
-export class UpdateSystemSettingsDto {
-  @ApiProperty({
-    description: 'FFmpeg executable path',
-    example: '/usr/bin/ffmpeg',
-    required: false,
-  })
-  ffmpegPath?: string;
-
-  @ApiProperty({
-    description: 'Log level',
-    enum: LogLevel,
-    example: LogLevel.INFO,
-    required: false,
-  })
-  logLevel?: LogLevel;
-
-  @ApiProperty({
-    description: 'Whether analytics are enabled',
-    example: true,
-    required: false,
-  })
-  analyticsEnabled?: boolean;
-
-  @ApiProperty({
-    description: 'Webhook URL for notifications (must be HTTPS)',
-    example: 'https://example.com/webhook',
-    pattern: '^https://.+',
     required: false,
   })
   webhookUrl?: string;

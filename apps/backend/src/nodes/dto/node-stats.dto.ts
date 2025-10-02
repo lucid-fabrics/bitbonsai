@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { AccelerationType, Library, License, NodeRole, NodeStatus } from '@prisma/client';
 
 /**
@@ -69,17 +69,13 @@ export class NodeStatsDto {
   })
   createdAt!: Date;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Associated license information',
-    type: 'object',
-    required: false,
   })
   license?: Partial<License>;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'List of libraries managed by this node',
-    type: 'array',
-    required: false,
   })
   libraries?: Partial<Library>[];
 

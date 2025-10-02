@@ -21,9 +21,11 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import type { CreatePolicyDto } from './dto/create-policy.dto';
-import { PolicyDto, PolicyStatsDto, PresetInfoDto } from './dto/policy-stats.dto';
-import type { UpdatePolicyDto } from './dto/update-policy.dto';
+import { CreatePolicyDto } from './dto/create-policy.dto';
+import { PolicyDto } from './dto/policy.dto';
+import { PolicyStatsDto } from './dto/policy-stats.dto';
+import { PresetInfoDto } from './dto/preset-info.dto';
+import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PoliciesService } from './policies.service';
 
 @ApiTags('policies')

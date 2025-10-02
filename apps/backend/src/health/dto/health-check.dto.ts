@@ -6,28 +6,28 @@ export class BasicHealthDto {
     enum: ['ok', 'error'],
     example: 'ok',
   })
-  status: 'ok' | 'error';
+  status!: 'ok' | 'error';
 
   @ApiProperty({
     description: 'Current timestamp',
     type: Date,
     example: '2025-10-01T12:00:00Z',
   })
-  timestamp: Date;
+  timestamp!: Date;
 
   @ApiProperty({
     description: 'Application uptime in seconds',
     type: Number,
     example: 3600,
   })
-  uptime: number;
+  uptime!: number;
 
   @ApiProperty({
     description: 'Application version',
     type: String,
     example: '0.1.0',
   })
-  version: string;
+  version!: string;
 }
 
 export class ServiceHealthDto {
@@ -36,7 +36,7 @@ export class ServiceHealthDto {
     enum: ['ok', 'error', 'unavailable'],
     example: 'ok',
   })
-  status: 'ok' | 'error' | 'unavailable';
+  status!: 'ok' | 'error' | 'unavailable';
 
   @ApiProperty({
     description: 'Response time in milliseconds',
@@ -69,21 +69,21 @@ export class DiskHealthDto {
     enum: ['ok', 'warning', 'critical'],
     example: 'ok',
   })
-  status: 'ok' | 'warning' | 'critical';
+  status!: 'ok' | 'warning' | 'critical';
 
   @ApiProperty({
     description: 'Percentage of disk space used',
     type: String,
     example: '50%',
   })
-  used: string;
+  used!: string;
 
   @ApiProperty({
     description: 'Available disk space',
     type: String,
     example: '500GB',
   })
-  available: string;
+  available!: string;
 }
 
 export class MemoryHealthDto {
@@ -92,28 +92,28 @@ export class MemoryHealthDto {
     enum: ['ok', 'warning', 'critical'],
     example: 'ok',
   })
-  status: 'ok' | 'warning' | 'critical';
+  status!: 'ok' | 'warning' | 'critical';
 
   @ApiProperty({
     description: 'Used memory',
     type: String,
     example: '2GB',
   })
-  used: string;
+  used!: string;
 
   @ApiProperty({
     description: 'Total memory',
     type: String,
     example: '16GB',
   })
-  total: string;
+  total!: string;
 
   @ApiProperty({
     description: 'Memory usage percentage',
     type: Number,
     example: 12.5,
   })
-  percentage: number;
+  percentage!: number;
 }
 
 export class NodeHealthDto {
@@ -122,21 +122,21 @@ export class NodeHealthDto {
     type: Number,
     example: 2,
   })
-  total: number;
+  total!: number;
 
   @ApiProperty({
     description: 'Number of online nodes',
     type: Number,
     example: 2,
   })
-  online: number;
+  online!: number;
 
   @ApiProperty({
     description: 'Number of offline nodes',
     type: Number,
     example: 0,
   })
-  offline: number;
+  offline!: number;
 }
 
 export class QueueHealthDto {
@@ -145,28 +145,28 @@ export class QueueHealthDto {
     type: Number,
     example: 5,
   })
-  queued: number;
+  queued!: number;
 
   @ApiProperty({
     description: 'Number of actively encoding tasks',
     type: Number,
     example: 2,
   })
-  encoding: number;
+  encoding!: number;
 
   @ApiProperty({
     description: 'Number of completed tasks',
     type: Number,
     example: 150,
   })
-  completed: number;
+  completed!: number;
 
   @ApiProperty({
     description: 'Number of failed tasks',
     type: Number,
     example: 3,
   })
-  failed: number;
+  failed!: number;
 }
 
 export class HealthChecksDto {
@@ -174,7 +174,7 @@ export class HealthChecksDto {
     description: 'Database health status',
     type: ServiceHealthDto,
   })
-  database: ServiceHealthDto;
+  database!: ServiceHealthDto;
 
   @ApiProperty({
     description: 'Redis health status',
@@ -187,19 +187,19 @@ export class HealthChecksDto {
     description: 'Disk health status',
     type: DiskHealthDto,
   })
-  disk: DiskHealthDto;
+  disk!: DiskHealthDto;
 
   @ApiProperty({
     description: 'Memory health status',
     type: MemoryHealthDto,
   })
-  memory: MemoryHealthDto;
+  memory!: MemoryHealthDto;
 
   @ApiProperty({
     description: 'FFmpeg availability status',
     type: ServiceHealthDto,
   })
-  ffmpeg: ServiceHealthDto;
+  ffmpeg!: ServiceHealthDto;
 }
 
 export class DetailedHealthDto {
@@ -208,32 +208,32 @@ export class DetailedHealthDto {
     enum: ['ok', 'degraded', 'error'],
     example: 'ok',
   })
-  status: 'ok' | 'degraded' | 'error';
+  status!: 'ok' | 'degraded' | 'error';
 
   @ApiProperty({
     description: 'Current timestamp',
     type: Date,
     example: '2025-10-01T12:00:00Z',
   })
-  timestamp: Date;
+  timestamp!: Date;
 
   @ApiProperty({
     description: 'Health check results for all services',
     type: HealthChecksDto,
   })
-  checks: HealthChecksDto;
+  checks!: HealthChecksDto;
 
   @ApiProperty({
     description: 'Node cluster health',
     type: NodeHealthDto,
   })
-  nodes: NodeHealthDto;
+  nodes!: NodeHealthDto;
 
   @ApiProperty({
     description: 'Queue status',
     type: QueueHealthDto,
   })
-  queue: QueueHealthDto;
+  queue!: QueueHealthDto;
 }
 
 export class ReadinessDto {
@@ -242,7 +242,7 @@ export class ReadinessDto {
     type: Boolean,
     example: true,
   })
-  ready: boolean;
+  ready!: boolean;
 
   @ApiProperty({
     description: 'Reason if not ready',
@@ -259,5 +259,5 @@ export class LivenessDto {
     type: Boolean,
     example: true,
   })
-  alive: boolean;
+  alive!: boolean;
 }
