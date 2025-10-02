@@ -6,7 +6,7 @@ import { FileInfoBo } from './bos/file-info.bo';
 import { MediaStatsClient } from './services/media-stats.client';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
-import { FilesDialogComponent } from './files-dialog/files-dialog.modal';
+import { FilesDialogComponent } from './modals/files-dialog/files-dialog.modal';
 
 interface FolderInfo {
   name: string;
