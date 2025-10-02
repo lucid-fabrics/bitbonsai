@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { LicenseService } from './license.service';
-import { LicenseClient } from '../clients/license.service';
-import { LicenseBo } from '../business-objects/license.service';
+import { LicenseClient } from './license.service';
+import { LicenseBo } from '../bos/license.service';
 
 describe('LicenseService', () => {
   let service: LicenseService;

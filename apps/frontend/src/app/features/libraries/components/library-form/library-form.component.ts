@@ -12,9 +12,9 @@ import type {
   CreateLibraryDto,
   Library,
   UpdateLibraryDto,
-} from '../models/library.model';
-import { MediaType } from '../models/library.model';
-import type { Node } from '../../../../core/models/node.model';
+} from '../../models/library.model';
+import { MediaType } from '../../models/library.model';
+import type { Node } from '../../../nodes/models/node.model';
 
 interface LibraryFormControls {
   name: FormControl<string>;

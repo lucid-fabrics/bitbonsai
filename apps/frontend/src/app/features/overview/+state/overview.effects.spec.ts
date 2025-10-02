@@ -4,15 +4,15 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { OverviewEffects } from './overview.effects';
 import * as overviewActions from './overview.actions';
-import { OverviewService } from '../../../core/services/overview.service';
+import { OverviewClient } from '../services/overview.client';
 
 describe('OverviewEffects', () => {
   let actions$: Observable<Action>;
   let effects: OverviewEffects;
-  let service: jasmine.SpyObj<OverviewService>;
+  let service: jasmine.SpyObj<OverviewClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('OverviewService', [
+    const serviceSpy = jasmine.createSpyObj('OverviewClient', [
       'getAll',
       'getById',
       'create',
@@ -24,12 +24,12 @@ describe('OverviewEffects', () => {
       providers: [
         OverviewEffects,
         provideMockActions(() => actions$),
-        { provide: OverviewService, useValue: serviceSpy },
+        { provide: OverviewClient, useValue: serviceSpy },
       ],
     });
 
     effects = TestBed.inject(OverviewEffects);
-    service = TestBed.inject(OverviewService) as jasmine.SpyObj<OverviewService>;
+    service = TestBed.inject(OverviewClient) as jasmine.SpyObj<OverviewClient>;
   });
 
   it('should be created', () => {

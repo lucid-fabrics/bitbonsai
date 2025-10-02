@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { InsightsService } from './insights.service';
-import { InsightsClient } from '../clients/insights.service';
-import { InsightsBo } from '../business-objects/insights.service';
+import { InsightsClient } from './insights.service';
+import { InsightsBo } from '../bos/insights.service';
 
 describe('InsightsService', () => {
   let service: InsightsService;

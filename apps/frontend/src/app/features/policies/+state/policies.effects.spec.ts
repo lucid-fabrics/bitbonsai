@@ -4,15 +4,15 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { PoliciesEffects } from './policies.effects';
 import * as policiesActions from './policies.actions';
-import { PoliciesService } from '../../../core/services/policies.service';
+import { PolicyClient } from '../services/policy.client';
 
 describe('PoliciesEffects', () => {
   let actions$: Observable<Action>;
   let effects: PoliciesEffects;
-  let service: jasmine.SpyObj<PoliciesService>;
+  let service: jasmine.SpyObj<PolicyClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('PoliciesService', [
+    const serviceSpy = jasmine.createSpyObj('PolicyClient', [
       'getAll',
       'getById',
       'create',
@@ -24,12 +24,12 @@ describe('PoliciesEffects', () => {
       providers: [
         PoliciesEffects,
         provideMockActions(() => actions$),
-        { provide: PoliciesService, useValue: serviceSpy },
+        { provide: PolicyClient, useValue: serviceSpy },
       ],
     });
 
     effects = TestBed.inject(PoliciesEffects);
-    service = TestBed.inject(PoliciesService) as jasmine.SpyObj<PoliciesService>;
+    service = TestBed.inject(PolicyClient) as jasmine.SpyObj<PolicyClient>;
   });
 
   it('should be created', () => {

@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FormBuilder, FormControl, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import type { License } from '../models/license.model';
-import { LicenseTier } from '../models/license.model';
-import type { EnvironmentInfo, SystemSettings } from '../models/settings.model';
-import { LogLevel } from '../models/settings.model';
-import { LicenseService } from '../services/license.service';
-import { SettingsService } from '../services/settings.service';
+import type { License } from './models/license.model';
+import { LicenseTier } from './models/license.model';
+import type { EnvironmentInfo, SystemSettings } from './models/settings.model';
+import { LogLevel } from './models/settings.model';
+import { LicenseService } from './services/license.service';
+import { SettingsService } from './services/settings.service';
 
 type SettingsTab = 'license' | 'environment' | 'system' | 'advanced';
 

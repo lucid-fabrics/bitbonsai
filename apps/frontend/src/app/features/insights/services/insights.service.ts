@@ -6,8 +6,8 @@ import {
   InsightsStatsBO,
   NodePerformanceBO,
   SavingsTrendBO,
-} from '../business-objects/insights.bo';
-import { InsightsClient } from '../clients/insights.client';
+} from '../bos/insights.bo';
+import { InsightsClient } from './insights.client';
 
 /**
  * Service for insights-related business logic

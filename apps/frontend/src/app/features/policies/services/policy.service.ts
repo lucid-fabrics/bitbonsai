@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { PolicyBo } from '../business-objects/policy.bo';
-import { PolicyClient } from '../clients/policy.client';
+import { PolicyBo } from '../bos/policy.bo';
+import { PolicyClient } from './policy.client';
 import { CreatePolicyRequest, PresetInfoModel, UpdatePolicyRequest } from '../models/policy.model';
 
 @Injectable({

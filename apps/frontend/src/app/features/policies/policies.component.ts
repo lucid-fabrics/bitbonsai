@@ -12,7 +12,7 @@ import {
   faTv,
 } from '@fortawesome/pro-solid-svg-icons';
 import { Store } from '@ngrx/store';
-import { PolicyBo } from '../bos/policy.bo';
+import { PolicyBo } from './bos/policy.bo';
 import {
   AudioHandling,
   CreatePolicyRequest,
@@ -20,7 +20,7 @@ import {
   type PresetInfoModel,
   PolicyPreset,
   TargetCodec,
-} from '../models/policy.model';
+} from './models/policy.model';
 import { PoliciesActions } from './+state/policies.actions';
 import { PoliciesSelectors } from './+state/policies.selectors';
 

@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { MediaStatsService } from './media-stats.service';
-import { MediaStatsClient } from '../clients/media-stats.service';
-import { MediaStatsBo } from '../business-objects/media-stats.service';
+import { MediaStatsClient } from './media-stats.service';
+import { MediaStatsBo } from '../bos/media-stats.service';
 
 describe('MediaStatsService', () => {
   let service: MediaStatsService;

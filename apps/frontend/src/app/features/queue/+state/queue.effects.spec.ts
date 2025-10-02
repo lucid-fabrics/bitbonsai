@@ -4,15 +4,15 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { QueueEffects } from './queue.effects';
 import * as queueActions from './queue.actions';
-import { QueueService } from '../../../core/services/queue.service';
+import { QueueClient } from '../services/queue.client';
 
 describe('QueueEffects', () => {
   let actions$: Observable<Action>;
   let effects: QueueEffects;
-  let service: jasmine.SpyObj<QueueService>;
+  let service: jasmine.SpyObj<QueueClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('QueueService', [
+    const serviceSpy = jasmine.createSpyObj('QueueClient', [
       'getAll',
       'getById',
       'create',
@@ -24,12 +24,12 @@ describe('QueueEffects', () => {
       providers: [
         QueueEffects,
         provideMockActions(() => actions$),
-        { provide: QueueService, useValue: serviceSpy },
+        { provide: QueueClient, useValue: serviceSpy },
       ],
     });
 
     effects = TestBed.inject(QueueEffects);
-    service = TestBed.inject(QueueService) as jasmine.SpyObj<QueueService>;
+    service = TestBed.inject(QueueClient) as jasmine.SpyObj<QueueClient>;
   });
 
   it('should be created', () => {

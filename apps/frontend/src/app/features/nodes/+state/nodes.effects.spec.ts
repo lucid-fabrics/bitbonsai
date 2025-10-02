@@ -3,65 +3,65 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { NodesEffects } from './nodes.effects';
-import * as nodesActions from './nodes.actions';
-import { NodesService } from '../../../core/services/nodes.service';
+import { NodesActions } from './nodes.actions';
+import { NodesClient } from '../services/nodes.client';
 
 describe('NodesEffects', () => {
   let actions$: Observable<Action>;
   let effects: NodesEffects;
-  let service: jasmine.SpyObj<NodesService>;
+  let client: jasmine.SpyObj<NodesClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('NodesService', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
+    const clientSpy = jasmine.createSpyObj('NodesClient', [
+      'getNodes',
+      'getNode',
+      'register',
+      'pair',
+      'deleteNode',
     ]);
 
     TestBed.configureTestingModule({
       providers: [
         NodesEffects,
         provideMockActions(() => actions$),
-        { provide: NodesService, useValue: serviceSpy },
+        { provide: NodesClient, useValue: clientSpy },
       ],
     });
 
     effects = TestBed.inject(NodesEffects);
-    service = TestBed.inject(NodesService) as jasmine.SpyObj<NodesService>;
+    client = TestBed.inject(NodesClient) as jasmine.SpyObj<NodesClient>;
   });
 
   it('should be created', () => {
     expect(effects).toBeTruthy();
   });
 
-  describe('load data effect', () => {
-    it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', name: 'Test' }] as any;
-      service.getAll.and.returnValue(of(mockData));
+  describe('loadNodes$ effect', () => {
+    it('should return loadNodesSuccess action on success', (done) => {
+      const mockNodes = [{ id: '1', name: 'Test Node' }] as any;
+      client.getNodes.and.returnValue(of(mockNodes));
 
-      actions$ = of(nodesActions.load());
+      actions$ = of(NodesActions.loadNodes());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(nodesActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadNodes$.subscribe((action) => {
+        expect(action.type).toBe(NodesActions.loadNodesSuccess.type);
+        expect(client.getNodes).toHaveBeenCalled();
         done();
       });
     });
 
-    it('should return loadFailure action on error', (done) => {
+    it('should return loadNodesFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      client.getNodes.and.returnValue(throwError(() => error));
 
-      actions$ = of(nodesActions.load());
+      actions$ = of(NodesActions.loadNodes());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(nodesActions.loadFailure.type);
+      effects.loadNodes$.subscribe((action) => {
+        expect(action.type).toBe(NodesActions.loadNodesFailure.type);
         done();
       });
     });
   });
 
-  // TODO: Add tests for other effects (create, update, delete)
+  // TODO: Add tests for registerNode$, pairNode$, deleteNode$ effects
 });

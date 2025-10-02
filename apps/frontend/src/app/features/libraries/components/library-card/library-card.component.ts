@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import type { Library } from '../models/library.model';
+import type { Library } from '../../models/library.model';
 
 @Component({
   selector: 'app-library-card',

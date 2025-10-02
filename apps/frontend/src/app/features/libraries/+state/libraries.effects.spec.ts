@@ -4,15 +4,15 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { LibrariesEffects } from './libraries.effects';
 import * as librariesActions from './libraries.actions';
-import { LibrariesService } from '../../../core/services/libraries.service';
+import { LibrariesClient } from '../services/libraries.client';
 
 describe('LibrariesEffects', () => {
   let actions$: Observable<Action>;
   let effects: LibrariesEffects;
-  let service: jasmine.SpyObj<LibrariesService>;
+  let service: jasmine.SpyObj<LibrariesClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('LibrariesService', [
+    const serviceSpy = jasmine.createSpyObj('LibrariesClient', [
       'getAll',
       'getById',
       'create',
@@ -24,12 +24,12 @@ describe('LibrariesEffects', () => {
       providers: [
         LibrariesEffects,
         provideMockActions(() => actions$),
-        { provide: LibrariesService, useValue: serviceSpy },
+        { provide: LibrariesClient, useValue: serviceSpy },
       ],
     });
 
     effects = TestBed.inject(LibrariesEffects);
-    service = TestBed.inject(LibrariesService) as jasmine.SpyObj<LibrariesService>;
+    service = TestBed.inject(LibrariesClient) as jasmine.SpyObj<LibrariesClient>;
   });
 
   it('should be created', () => {

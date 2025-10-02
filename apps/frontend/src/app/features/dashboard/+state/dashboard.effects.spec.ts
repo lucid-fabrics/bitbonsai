@@ -4,15 +4,15 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { MediaStatsEffects } from './dashboard.effects';
 import * as dashboardActions from './dashboard.actions';
-import { DashboardService } from '../../../core/services/dashboard.service';
+import { MediaStatsClient } from '../services/media-stats.client';
 
 describe('MediaStatsEffects', () => {
   let actions$: Observable<Action>;
   let effects: MediaStatsEffects;
-  let service: jasmine.SpyObj<DashboardService>;
+  let service: jasmine.SpyObj<MediaStatsClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('DashboardService', [
+    const serviceSpy = jasmine.createSpyObj('MediaStatsClient', [
       'getAll',
       'getById',
       'create',
@@ -24,12 +24,12 @@ describe('MediaStatsEffects', () => {
       providers: [
         MediaStatsEffects,
         provideMockActions(() => actions$),
-        { provide: DashboardService, useValue: serviceSpy },
+        { provide: MediaStatsClient, useValue: serviceSpy },
       ],
     });
 
     effects = TestBed.inject(MediaStatsEffects);
-    service = TestBed.inject(DashboardService) as jasmine.SpyObj<DashboardService>;
+    service = TestBed.inject(MediaStatsClient) as jasmine.SpyObj<MediaStatsClient>;
   });
 
   it('should be created', () => {
