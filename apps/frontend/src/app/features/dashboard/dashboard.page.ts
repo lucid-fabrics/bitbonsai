@@ -6,7 +6,7 @@ import { FileInfoBo } from './bos/file-info.bo';
 import { MediaStatsClient } from './services/media-stats.client';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
-import { FilesDialogComponent } from './files-dialog/files-dialog.component';
+import { FilesDialogComponent } from './files-dialog/files-dialog.modal';
 
 interface FolderInfo {
   name: string;
@@ -16,8 +16,8 @@ interface FolderInfo {
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule, FontAwesomeModule, FilesDialogComponent],
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss'],
+  templateUrl: './dashboard.page.html',
+  styleUrls: ['./dashboard.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit {

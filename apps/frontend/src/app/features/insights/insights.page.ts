@@ -33,8 +33,8 @@ interface NodePerformanceDataset {
   selector: 'app-insights',
   standalone: true,
   imports: [CommonModule, BaseChartDirective, FontAwesomeModule],
-  templateUrl: './insights.component.html',
-  styleUrls: ['./insights.component.scss'],
+  templateUrl: './insights.page.html',
+  styleUrls: ['./insights.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InsightsComponent implements OnInit {

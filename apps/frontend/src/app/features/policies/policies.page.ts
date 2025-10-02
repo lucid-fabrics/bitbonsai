@@ -39,8 +39,8 @@ interface PolicyFormData {
   selector: 'app-policies',
   standalone: true,
   imports: [CommonModule, FontAwesomeModule, FormsModule],
-  templateUrl: './policies.component.html',
-  styleUrls: ['./policies.component.scss'],
+  templateUrl: './policies.page.html',
+  styleUrls: ['./policies.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PoliciesComponent implements OnInit {

@@ -7,8 +7,8 @@ import type { FileInfoBo } from '../bos/file-info.bo';
   selector: 'app-files-dialog',
   standalone: true,
   imports: [CommonModule, FontAwesomeModule],
-  templateUrl: './files-dialog.component.html',
-  styleUrls: ['./files-dialog.component.scss'],
+  templateUrl: './files-dialog.modal.html',
+  styleUrls: ['./files-dialog.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FilesDialogComponent {

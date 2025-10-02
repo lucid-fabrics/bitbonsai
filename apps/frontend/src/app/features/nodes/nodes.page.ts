@@ -13,7 +13,7 @@ import { switchMap } from 'rxjs/operators';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import { NodesClient } from './services/nodes.client';
-import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.modal';
 
 enum PairingStep {
   INSTRUCTIONS = 1,
@@ -25,8 +25,8 @@ enum PairingStep {
   selector: 'app-nodes',
   standalone: true,
   imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
-  templateUrl: './nodes.component.html',
-  styleUrls: ['./nodes.component.scss'],
+  templateUrl: './nodes.page.html',
+  styleUrls: ['./nodes.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NodesComponent implements OnInit, OnDestroy {

@@ -5,8 +5,8 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   selector: 'app-confirmation-dialog',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './confirmation-dialog.component.html',
-  styleUrls: ['./confirmation-dialog.component.scss'],
+  templateUrl: './confirmation-dialog.modal.html',
+  styleUrls: ['./confirmation-dialog.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmationDialogComponent {

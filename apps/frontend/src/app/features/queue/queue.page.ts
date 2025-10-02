@@ -22,8 +22,8 @@ import { QueueClient } from './services/queue.client';
   selector: 'app-queue',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './queue.component.html',
-  styleUrls: ['./queue.component.scss'],
+  templateUrl: './queue.page.html',
+  styleUrls: ['./queue.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QueueComponent implements OnInit {

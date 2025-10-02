@@ -28,8 +28,8 @@ import { OverviewClient } from './services/overview.client';
   selector: 'app-overview',
   standalone: true,
   imports: [CommonModule, FontAwesomeModule],
-  templateUrl: './overview.component.html',
-  styleUrls: ['./overview.component.scss'],
+  templateUrl: './overview.page.html',
+  styleUrls: ['./overview.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OverviewComponent implements OnInit, OnDestroy {

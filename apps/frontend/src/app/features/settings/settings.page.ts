@@ -26,8 +26,8 @@ interface SystemSettingsFormControls {
   selector: 'app-settings',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './settings.component.html',
-  styleUrls: ['./settings.component.scss'],
+  templateUrl: './settings.page.html',
+  styleUrls: ['./settings.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsComponent implements OnInit {

@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { Store } from '@ngrx/store';
 import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/library.model';
-import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.modal';
 import { LibraryCardComponent } from './components/library-card/library-card.component';
 import { LibraryFormComponent } from './components/library-form/library-form.component';
 import { LibrariesActions } from './+state/libraries.actions';
@@ -20,8 +20,8 @@ import { NodesSelectors } from '../nodes/+state/nodes.selectors';
   selector: 'app-libraries',
   standalone: true,
   imports: [CommonModule, LibraryCardComponent, LibraryFormComponent, ConfirmationDialogComponent],
-  templateUrl: './libraries.component.html',
-  styleUrls: ['./libraries.component.scss'],
+  templateUrl: './libraries.page.html',
+  styleUrls: ['./libraries.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LibrariesComponent implements OnInit {
