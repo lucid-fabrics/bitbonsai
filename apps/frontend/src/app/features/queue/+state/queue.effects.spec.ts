@@ -1,0 +1,67 @@
+import { TestBed } from '@angular/core/testing';
+import { provideMockActions } from '@ngrx/effects/testing';
+import { Observable, of, throwError } from 'rxjs';
+import { Action } from '@ngrx/store';
+import { QueueEffects } from './queue.effects';
+import * as queueActions from './queue.actions';
+import { QueueService } from '../../../core/services/queue.service';
+
+describe('QueueEffects', () => {
+  let actions$: Observable<Action>;
+  let effects: QueueEffects;
+  let service: jasmine.SpyObj<QueueService>;
+
+  beforeEach(() => {
+    const serviceSpy = jasmine.createSpyObj('QueueService', [
+      'getAll',
+      'getById',
+      'create',
+      'update',
+      'delete',
+    ]);
+
+    TestBed.configureTestingModule({
+      providers: [
+        QueueEffects,
+        provideMockActions(() => actions$),
+        { provide: QueueService, useValue: serviceSpy },
+      ],
+    });
+
+    effects = TestBed.inject(QueueEffects);
+    service = TestBed.inject(QueueService) as jasmine.SpyObj<QueueService>;
+  });
+
+  it('should be created', () => {
+    expect(effects).toBeTruthy();
+  });
+
+  describe('load data effect', () => {
+    it('should return loadSuccess action on success', (done) => {
+      const mockData = [{ id: '1', name: 'Test' }] as any;
+      service.getAll.and.returnValue(of(mockData));
+
+      actions$ = of(queueActions.load());
+
+      effects.load$.subscribe((action) => {
+        expect(action.type).toBe(queueActions.loadSuccess.type);
+        expect(service.getAll).toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it('should return loadFailure action on error', (done) => {
+      const error = new Error('Load failed');
+      service.getAll.and.returnValue(throwError(() => error));
+
+      actions$ = of(queueActions.load());
+
+      effects.load$.subscribe((action) => {
+        expect(action.type).toBe(queueActions.loadFailure.type);
+        done();
+      });
+    });
+  });
+
+  // TODO: Add tests for other effects (create, update, delete)
+});
