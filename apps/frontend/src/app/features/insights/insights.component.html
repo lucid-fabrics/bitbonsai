@@ -33,19 +33,24 @@
   </div>
 
   <!-- Loading State -->
-  <div *ngIf="loading()" class="loading-skeleton">
-    <div class="skeleton-chart large"></div>
-    <div class="skeleton-grid">
-      <div class="skeleton-chart"></div>
-      <div class="skeleton-chart"></div>
+  @if (loading()) {
+    <div class="loading-skeleton">
+      <div class="skeleton-chart large"></div>
+      <div class="skeleton-grid">
+        <div class="skeleton-chart"></div>
+        <div class="skeleton-chart"></div>
+      </div>
+      <div class="skeleton-metrics">
+        @for (i of [1,2,3,4]; track i) {
+          <div class="skeleton-metric"></div>
+        }
+      </div>
     </div>
-    <div class="skeleton-metrics">
-      <div class="skeleton-metric" *ngFor="let i of [1,2,3,4]"></div>
-    </div>
-  </div>
+  }
 
   <!-- Main Content -->
-  <div *ngIf="!loading()" class="charts-container">
+  @if (!loading()) {
+    <div class="charts-container">
 
     <!-- Savings Trend Chart (Full Width) -->
     <div class="chart-card full-width">
@@ -57,18 +62,21 @@
         <span class="chart-subtitle">Daily savings over the last {{ selectedTimeRange() }} days</span>
       </div>
       <div class="chart-content">
-        <div *ngIf="savingsTrendData().labels?.length === 0" class="empty-state">
-          <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
-          <p>No savings data available yet</p>
-          <span>Start processing media files to see your savings trend</span>
-        </div>
-        <canvas
-          *ngIf="savingsTrendData().labels?.length > 0"
-          baseChart
-          [data]="savingsTrendData()"
-          [options]="savingsTrendOptions()"
-          type="line"
-        ></canvas>
+        @if (savingsTrendData().labels && savingsTrendData().labels!.length === 0) {
+          <div class="empty-state">
+            <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
+            <p>No savings data available yet</p>
+            <span>Start processing media files to see your savings trend</span>
+          </div>
+        }
+        @if (savingsTrendData().labels && savingsTrendData().labels!.length > 0) {
+          <canvas
+            baseChart
+            [data]="savingsTrendData()"
+            [options]="savingsTrendOptions()"
+            type="line"
+          ></canvas>
+        }
       </div>
     </div>
 
@@ -82,18 +90,21 @@
           <span class="chart-subtitle">Usage breakdown by codec type</span>
         </div>
         <div class="chart-content">
-          <div *ngIf="codecDistributionData().labels?.length === 0" class="empty-state">
-            <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
-            <p>No codec data available</p>
-            <span>Process files to see codec distribution</span>
-          </div>
-          <canvas
-            *ngIf="codecDistributionData().labels?.length > 0"
-            baseChart
-            [data]="codecDistributionData()"
-            [options]="codecDistributionOptions()"
-            type="doughnut"
-          ></canvas>
+          @if (codecDistributionData().labels?.length === 0) {
+            <div class="empty-state">
+              <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
+              <p>No codec data available</p>
+              <span>Process files to see codec distribution</span>
+            </div>
+          }
+          @if (codecDistributionData().labels && codecDistributionData().labels!.length > 0) {
+            <canvas
+              baseChart
+              [data]="codecDistributionData()"
+              [options]="codecDistributionOptions()"
+              type="doughnut"
+            ></canvas>
+          }
         </div>
       </div>
 
@@ -104,18 +115,21 @@
           <span class="chart-subtitle">Jobs completed by node</span>
         </div>
         <div class="chart-content">
-          <div *ngIf="nodePerformanceData().labels?.length === 0" class="empty-state">
-            <fa-icon [icon]="faGauge" size="3x"></fa-icon>
-            <p>No node data available</p>
-            <span>Add worker nodes to see performance metrics</span>
-          </div>
-          <canvas
-            *ngIf="nodePerformanceData().labels?.length > 0"
-            baseChart
-            [data]="nodePerformanceData()"
-            [options]="nodePerformanceOptions()"
-            type="bar"
-          ></canvas>
+          @if (nodePerformanceData().labels?.length === 0) {
+            <div class="empty-state">
+              <fa-icon [icon]="faGauge" size="3x"></fa-icon>
+              <p>No node data available</p>
+              <span>Add worker nodes to see performance metrics</span>
+            </div>
+          }
+          @if (nodePerformanceData().labels && nodePerformanceData().labels!.length > 0) {
+            <canvas
+              baseChart
+              [data]="nodePerformanceData()"
+              [options]="nodePerformanceOptions()"
+              type="bar"
+            ></canvas>
+          }
         </div>
       </div>
     </div>
@@ -167,6 +181,5 @@
         </div>
       </div>
     </div>
-
-  </div>
+  }
 </div>
