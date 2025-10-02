@@ -21,8 +21,8 @@ import {
 } from '@fortawesome/pro-solid-svg-icons';
 import { interval, Subject } from 'rxjs';
 import { startWith, switchMap, takeUntil } from 'rxjs/operators';
-import type { OverviewModel } from '../../core/models/overview.model';
-import { OverviewClient } from '../../core/clients/overview.client';
+import type { OverviewModel } from '../models/overview.model';
+import { OverviewClient } from '../services/overview.client';
 
 @Component({
   selector: 'app-overview',

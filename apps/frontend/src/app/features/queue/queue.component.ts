@@ -15,8 +15,8 @@ import type {
   QueueFilters,
   QueueJob,
   QueueResponse,
-} from '../../core/models/queue.model';
-import { QueueClient } from '../../core/clients/queue.client';
+} from '../models/queue.model';
+import { QueueClient } from '../services/queue.client';
 
 @Component({
   selector: 'app-queue',

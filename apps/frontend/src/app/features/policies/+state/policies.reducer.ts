@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
-import { PolicyBo } from '../../../core/business-objects/policy.bo';
-import { PresetInfoModel } from '../../../core/models/policy.model';
+import { PolicyBo } from '../bos/policy.bo';
+import { PresetInfoModel } from '../models/policy.model';
 import { PoliciesActions } from './policies.actions';
 
 export interface PoliciesState {

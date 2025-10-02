@@ -10,9 +10,9 @@ import {
 import { FormsModule } from '@angular/forms';
 import { interval, type Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import type { Node } from '../../core/models/node.model';
-import { AccelerationType, NodeRole, NodeStatus } from '../../core/models/node.model';
-import { NodesClient } from '../../core/clients/nodes.client';
+import type { Node } from './models/node.model';
+import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
+import { NodesClient } from './services/nodes.client';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
 enum PairingStep {

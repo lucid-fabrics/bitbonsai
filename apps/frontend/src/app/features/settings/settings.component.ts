@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FormBuilder, FormControl, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import type { License } from '../../core/models/license.model';
-import { LicenseTier } from '../../core/models/license.model';
-import type { EnvironmentInfo, SystemSettings } from '../../core/models/settings.model';
-import { LogLevel } from '../../core/models/settings.model';
-import { LicenseService } from '../../core/services/license.service';
-import { SettingsService } from '../../core/services/settings.service';
+import type { License } from '../models/license.model';
+import { LicenseTier } from '../models/license.model';
+import type { EnvironmentInfo, SystemSettings } from '../models/settings.model';
+import { LogLevel } from '../models/settings.model';
+import { LicenseService } from '../services/license.service';
+import { SettingsService } from '../services/settings.service';
 
 type SettingsTab = 'license' | 'environment' | 'system' | 'advanced';
 
@@ -220,11 +220,11 @@ export class SettingsComponent implements OnInit {
     this.clearMessages();
 
     this.settingsService.backupDatabase().subscribe({
-      next: (result) => {
+      next: (result: { backupPath: string }) => {
         this.loading.set(false);
         this.successMessage.set(`Database backed up to: ${result.backupPath}`);
       },
-      error: (_err) => {
+      error: (_err: Error) => {
         this.error.set('Failed to backup database');
         this.loading.set(false);
       },
@@ -241,12 +241,12 @@ export class SettingsComponent implements OnInit {
       this.clearMessages();
 
       this.settingsService.resetToDefaults().subscribe({
-        next: (result) => {
+        next: (result: { message: string }) => {
           this.loading.set(false);
           this.successMessage.set(result.message);
           this.loadSystemSettings();
         },
-        error: (_err) => {
+        error: (_err: Error) => {
           this.error.set('Failed to reset settings');
           this.loading.set(false);
         },
@@ -264,7 +264,7 @@ export class SettingsComponent implements OnInit {
       this.clearMessages();
 
       this.settingsService.regenerateApiKey().subscribe({
-        next: (result) => {
+        next: (result: { apiKey: string }) => {
           const currentSettings = this.systemSettings();
           if (currentSettings) {
             this.systemSettings.set({ ...currentSettings, apiKey: result.apiKey });
@@ -272,7 +272,7 @@ export class SettingsComponent implements OnInit {
           this.loading.set(false);
           this.successMessage.set('API key regenerated successfully!');
         },
-        error: (_err) => {
+        error: (_err: Error) => {
           this.error.set('Failed to regenerate API key');
           this.loading.set(false);
         },

@@ -1,6 +1,6 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { PolicyBo } from '../../../core/business-objects/policy.bo';
-import { CreatePolicyRequest, PresetInfoModel, UpdatePolicyRequest } from '../../../core/models/policy.model';
+import { PolicyBo } from '../bos/policy.bo';
+import { CreatePolicyRequest, PresetInfoModel, UpdatePolicyRequest } from '../models/policy.model';
 
 export const PoliciesActions = createActionGroup({
   source: 'Policies',

@@ -4,7 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { SettingsEffects } from './settings.effects';
 import * as settingsActions from './settings.actions';
-import { SettingsService } from '../../../core/services/settings.service';
+import { SettingsService } from '../services/settings.service';
 
 describe('SettingsEffects', () => {
   let actions$: Observable<Action>;

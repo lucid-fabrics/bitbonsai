@@ -4,7 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { Action } from '@ngrx/store';
 import { InsightsEffects } from './insights.effects';
 import * as insightsActions from './insights.actions';
-import { InsightsService } from '../../../core/services/insights.service';
+import { InsightsService } from '../services/insights.service';
 
 describe('InsightsEffects', () => {
   let actions$: Observable<Action>;

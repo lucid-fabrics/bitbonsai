@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { CreateLibraryDto, Library, UpdateLibraryDto } from '../../../core/models/library.model';
+import { CreateLibraryDto, Library, UpdateLibraryDto } from '../models/library.model';
 
 export const LibrariesActions = createActionGroup({
   source: 'Libraries',

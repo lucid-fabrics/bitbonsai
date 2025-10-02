@@ -2,8 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { LicenseService } from '../../../core/services/license.service';
-import { SettingsService } from '../../../core/services/settings.service';
+import { LicenseService } from '../services/license.service';
+import { SettingsService } from '../services/settings.service';
 import { SettingsActions } from './settings.actions';
 
 @Injectable()

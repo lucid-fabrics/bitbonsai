@@ -10,8 +10,8 @@ import {
   InsightsStatsBO,
   NodePerformanceBO,
   SavingsTrendBO,
-} from '../../core/business-objects/insights.bo';
-import { InsightsService } from '../../core/services/insights.service';
+} from '../bos/insights.bo';
+import { InsightsService } from '../services/insights.service';
 
 // Register Chart.js components
 Chart.register(...registerables);

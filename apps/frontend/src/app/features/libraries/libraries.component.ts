@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { Store } from '@ngrx/store';
-import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../../core/models/library.model';
+import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../models/library.model';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { LibraryCardComponent } from './components/library-card/library-card.component';
 import { LibraryFormComponent } from './components/library-form/library-form.component';

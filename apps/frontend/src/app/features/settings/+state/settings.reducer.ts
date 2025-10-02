@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
-import { License } from '../../../core/models/license.model';
-import { EnvironmentInfo, SystemSettings } from '../../../core/models/settings.model';
+import { License } from '../models/license.model';
+import { EnvironmentInfo, SystemSettings } from '../models/settings.model';
 import { SettingsActions } from './settings.actions';
 
 export interface SettingsState {

@@ -4,7 +4,7 @@ import {
   InsightsStatsBO,
   NodePerformanceBO,
   SavingsTrendBO,
-} from '../../../core/business-objects/insights.bo';
+} from '../bos/insights.bo';
 import { InsightsActions } from './insights.actions';
 
 export interface InsightsState {

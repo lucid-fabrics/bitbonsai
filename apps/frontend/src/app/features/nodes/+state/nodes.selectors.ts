@@ -1,6 +1,6 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { NodesState } from './nodes.reducer';
-import { NodeStatus } from '../../../core/models/node.model';
+import { NodeStatus } from '../models/node.model';
 
 export const selectNodesState = createFeatureSelector<NodesState>('nodes');
 

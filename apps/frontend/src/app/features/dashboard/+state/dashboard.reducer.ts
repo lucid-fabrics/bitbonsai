@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import type { MediaStatsBo } from '../../../core/business-objects/media-stats.bo';
+import type { MediaStatsBo } from '../bos/media-stats.bo';
 import { MediaStatsActions } from './dashboard.actions';
 
 export interface MediaStatsState {

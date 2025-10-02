@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
-import { Node } from '../../../core/models/node.model';
-import { RegisterResponse } from '../../../core/clients/nodes.client';
+import { Node } from '../models/node.model';
+import { RegisterResponse } from '../services/nodes.client';
 import { NodesActions } from './nodes.actions';
 
 export interface NodesState {

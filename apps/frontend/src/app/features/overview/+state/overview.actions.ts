@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { OverviewModel } from '../../../core/models/overview.model';
+import { OverviewModel } from '../models/overview.model';
 
 export const OverviewActions = createActionGroup({
   source: 'Overview',

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import type { FileInfoBo } from '../../../core/business-objects/file-info.bo';
+import type { FileInfoBo } from '../bos/file-info.bo';
 
 @Component({
   selector: 'app-files-dialog',

@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import { Library } from '../../../core/models/library.model';
+import { Library } from '../models/library.model';
 import { LibrariesActions } from './libraries.actions';
 
 export interface LibrariesState {

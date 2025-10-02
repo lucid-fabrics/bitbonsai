@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { OverviewClient } from '../../../core/clients/overview.client';
+import { OverviewClient } from '../services/overview.client';
 import { OverviewActions } from './overview.actions';
 
 @Injectable()

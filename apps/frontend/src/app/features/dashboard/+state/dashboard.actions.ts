@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import type { MediaStatsBo } from '../../../core/business-objects/media-stats.bo';
+import type { MediaStatsBo } from '../bos/media-stats.bo';
 
 export const MediaStatsActions = createActionGroup({
   source: 'Media Stats',

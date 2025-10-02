@@ -12,8 +12,8 @@ import type {
   CreateLibraryDto,
   Library,
   UpdateLibraryDto,
-} from '../../../../core/models/library.model';
-import { MediaType } from '../../../../core/models/library.model';
+} from '../models/library.model';
+import { MediaType } from '../models/library.model';
 import type { Node } from '../../../../core/models/node.model';
 
 interface LibraryFormControls {
