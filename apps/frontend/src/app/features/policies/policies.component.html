@@ -5,10 +5,10 @@
   </div>
 
   <!-- Error Banner -->
-  @if (error()) {
+  @if (error$ | async; as error) {
     <div class="error-banner">
       <fa-icon [icon]="icons.times"></fa-icon>
-      <span>{{ error() }}</span>
+      <span>{{ error }}</span>
     </div>
   }
 
@@ -22,11 +22,11 @@
       </button>
     </div>
 
-    @if (isLoading()) {
+    @if (isLoading$ | async) {
       <div class="loading-state">Loading presets...</div>
     } @else {
       <div class="preset-gallery">
-        @for (preset of presets(); track preset.preset) {
+        @for (preset of (presets$ | async) || []; track preset.preset) {
           <div
             class="preset-card"
             [class.recommended]="preset.recommended"
@@ -67,9 +67,9 @@
       <h2>Active Policies</h2>
     </div>
 
-    @if (isLoading()) {
+    @if (isLoading$ | async) {
       <div class="loading-state">Loading policies...</div>
-    } @else if (policies().length === 0) {
+    } @else if ((policies$ | async)?.length === 0) {
       <div class="empty-state">
         <p>No policies created yet. Select a preset template above to get started.</p>
       </div>
@@ -88,7 +88,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (policy of policies(); track policy.id) {
+            @for (policy of (policies$ | async) || []; track policy.id) {
               <tr>
                 <td class="policy-name">
                   <span class="preset-icon-small">{{ getPresetIcon(policy.preset) }}</span>
@@ -96,14 +96,14 @@
                 </td>
                 <td>{{ policy.preset }}</td>
                 <td>
-                  <span class="codec-badge">{{ policy.target_codec }}</span>
+                  <span class="codec-badge">{{ policy.targetCodec }}</span>
                 </td>
                 <td>
-                  <span class="crf-value">{{ policy.crf }}</span>
-                  <span class="crf-label">({{ getCRFLabel(policy.crf) }})</span>
+                  <span class="crf-value">{{ policy.targetQuality }}</span>
+                  <span class="crf-label">({{ getCRFLabel(policy.targetQuality) }})</span>
                 </td>
-                <td>{{ policy.library_id || 'All Libraries' }}</td>
-                <td class="text-center">{{ policy.completed_jobs }}</td>
+                <td>{{ policy.libraryId || 'All Libraries' }}</td>
+                <td class="text-center">{{ policy.completedJobs }}</td>
                 <td class="actions-cell">
                   <button
                     class="btn-icon"
@@ -180,7 +180,7 @@
               <label for="codec">Target Codec *</label>
               <select
                 id="codec"
-                [(ngModel)]="formData().target_codec"
+                [(ngModel)]="formData().targetCodec"
                 name="codec"
               >
                 <option [value]="TargetCodec.HEVC">HEVC (H.265)</option>
@@ -192,18 +192,18 @@
 
             <!-- Quality Slider -->
             <div class="form-group">
-              <label for="crf">
+              <label for="targetQuality">
                 Quality (CRF) *
-                <span class="quality-indicator">{{ getCRFLabel(formData().crf) }}</span>
+                <span class="quality-indicator">{{ getCRFLabel(formData().targetQuality) }}</span>
               </label>
               <div class="slider-container">
                 <input
-                  id="crf"
+                  id="targetQuality"
                   type="range"
                   min="0"
                   max="51"
-                  [(ngModel)]="formData().crf"
-                  name="crf"
+                  [(ngModel)]="formData().targetQuality"
+                  name="targetQuality"
                   class="quality-slider"
                 />
                 <div class="slider-labels">
@@ -214,9 +214,9 @@
                   <span>51 (Worst)</span>
                 </div>
               </div>
-              <div class="crf-value-display">Current: {{ formData().crf }}</div>
-              @if (formErrors()['crf']) {
-                <span class="error-message">{{ formErrors()['crf'] }}</span>
+              <div class="crf-value-display">Current: {{ formData().targetQuality }}</div>
+              @if (formErrors()['targetQuality']) {
+                <span class="error-message">{{ formErrors()['targetQuality'] }}</span>
               }
             </div>
 
@@ -226,7 +226,7 @@
               <input
                 id="library"
                 type="text"
-                [(ngModel)]="formData().library_id"
+                [(ngModel)]="formData().libraryId"
                 name="library"
                 placeholder="Leave empty for all libraries"
               />
@@ -248,19 +248,19 @@
                   <button
                     type="button"
                     class="device-profile-btn"
-                    [class.active]="formData().device_profiles.has(profile)"
+                    [class.active]="formData().deviceProfiles.has(profile)"
                     (click)="toggleDeviceProfile(profile)"
                   >
                     <fa-icon [icon]="getDeviceIcon(profile)"></fa-icon>
                     <span>{{ getDeviceLabel(profile) }}</span>
-                    @if (formData().device_profiles.has(profile)) {
+                    @if (formData().deviceProfiles.has(profile)) {
                       <fa-icon [icon]="icons.check" class="check-icon"></fa-icon>
                     }
                   </button>
                 }
               </div>
-              @if (formErrors()['device_profiles']) {
-                <span class="error-message">{{ formErrors()['device_profiles'] }}</span>
+              @if (formErrors()['deviceProfiles']) {
+                <span class="error-message">{{ formErrors()['deviceProfiles'] }}</span>
               }
             </div>
 
@@ -281,7 +281,7 @@
                     <label for="audio">Audio Handling</label>
                     <select
                       id="audio"
-                      [(ngModel)]="formData().audio_handling"
+                      [(ngModel)]="formData().audioHandling"
                       name="audio"
                     >
                       <option [value]="AudioHandling.COPY">Copy Original</option>
@@ -295,7 +295,7 @@
                     <label for="ffmpeg">Custom FFmpeg Flags</label>
                     <textarea
                       id="ffmpeg"
-                      [(ngModel)]="formData().ffmpeg_flags"
+                      [(ngModel)]="formData().ffmpegFlags"
                       name="ffmpeg"
                       placeholder="-preset slow -tune film"
                       rows="3"
@@ -313,7 +313,7 @@
               <button type="button" class="btn-secondary" (click)="closeForm()">
                 Cancel
               </button>
-              <button type="submit" class="btn-primary">
+              <button type="submit" class="btn-primary" [disabled]="!isFormValid()">
                 <fa-icon [icon]="icons.check"></fa-icon>
                 {{ isEditMode() ? 'Update Policy' : 'Create Policy' }}
               </button>

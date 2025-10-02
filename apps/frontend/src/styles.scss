@@ -1,6 +1,6 @@
 /* BitBonsai Global Styles - Dark Theme with Golden Accent */
-@import './styles/variables';
-@import './styles/reset';
+@use './styles/variables' as *;
+@use './styles/reset';
 
 * {
   box-sizing: border-box;

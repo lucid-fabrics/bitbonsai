@@ -7,7 +7,7 @@
   <!-- Loading State -->
   @if (isLoading()) {
     <div class="loading-state">
-      <fa-icon [icon]="icons.queueStatus" [spin]="true" size="2x"></fa-icon>
+      <fa-icon [icon]="icons.queueStatus" [animation]="'spin'" size="2x"></fa-icon>
       <p>Loading dashboard...</p>
     </div>
   }
@@ -40,7 +40,7 @@
 
         <div class="health-card health-card--warning">
           <div class="health-card__icon">
-            <fa-icon [icon]="icons.queueStatus" [spin]="overviewData()!.system_health.queue_status.encoding_count > 0" size="2x"></fa-icon>
+            <fa-icon [icon]="icons.queueStatus" [animation]="overviewData()!.system_health.queue_status.encoding_count > 0 ? 'spin' : undefined" size="2x"></fa-icon>
           </div>
           <div class="health-card__content">
             <h3 class="health-card__title">Queue Status</h3>

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-confirmation-dialog',
@@ -10,15 +10,15 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmationDialogComponent {
-  @Input() title = 'Confirm Action';
-  @Input() message = 'Are you sure you want to proceed?';
-  @Input() confirmText = 'Confirm';
-  @Input() cancelText = 'Cancel';
-  @Input() isDangerous = false;
-  @Input() isVisible = false;
+  readonly title = input<string>('Confirm Action');
+  readonly message = input<string>('Are you sure you want to proceed?');
+  readonly confirmText = input<string>('Confirm');
+  readonly cancelText = input<string>('Cancel');
+  readonly isDangerous = input<boolean>(false);
+  readonly isVisible = input<boolean>(false);
 
-  @Output() readonly confirm = new EventEmitter<void>();
-  @Output() readonly cancel = new EventEmitter<void>();
+  readonly confirm = output<void>();
+  readonly cancel = output<void>();
 
   onConfirm(): void {
     this.confirm.emit();

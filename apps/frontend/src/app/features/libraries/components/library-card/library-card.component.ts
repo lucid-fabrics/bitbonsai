@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import type { Library } from '../../../../core/models/library.model';
 
 @Component({
@@ -11,21 +11,21 @@ import type { Library } from '../../../../core/models/library.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LibraryCardComponent {
-  @Input({ required: true }) library!: Library;
-  @Output() readonly edit = new EventEmitter<Library>();
-  @Output() readonly scan = new EventEmitter<Library>();
-  @Output() readonly delete = new EventEmitter<Library>();
+  readonly library = input.required<Library>();
+  readonly edit = output<Library>();
+  readonly scan = output<Library>();
+  readonly delete = output<Library>();
 
   onEdit(): void {
-    this.edit.emit(this.library);
+    this.edit.emit(this.library());
   }
 
   onScan(): void {
-    this.scan.emit(this.library);
+    this.scan.emit(this.library());
   }
 
   onDelete(): void {
-    this.delete.emit(this.library);
+    this.delete.emit(this.library());
   }
 
   getMediaTypeIcon(mediaType: string): string {

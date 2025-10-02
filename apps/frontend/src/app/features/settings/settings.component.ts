@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
-import { FormBuilder, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { License } from '../../core/models/license.model';
 import { LicenseTier } from '../../core/models/license.model';
 import type { EnvironmentInfo, SystemSettings } from '../../core/models/settings.model';
@@ -9,6 +9,18 @@ import { LicenseService } from '../../core/services/license.service';
 import { SettingsService } from '../../core/services/settings.service';
 
 type SettingsTab = 'license' | 'environment' | 'system' | 'advanced';
+
+interface LicenseFormControls {
+  licenseKey: FormControl<string>;
+  email: FormControl<string>;
+}
+
+interface SystemSettingsFormControls {
+  ffmpegPath: FormControl<string>;
+  logLevel: FormControl<string>;
+  analyticsEnabled: FormControl<boolean>;
+  webhookUrl: FormControl<string>;
+}
 
 @Component({
   selector: 'app-settings',
@@ -35,8 +47,8 @@ export class SettingsComponent implements OnInit {
   apiKeyRevealed = signal(false);
 
   // Forms
-  licenseForm!: FormGroup;
-  settingsForm!: FormGroup;
+  licenseForm!: FormGroup<LicenseFormControls>;
+  settingsForm!: FormGroup<SystemSettingsFormControls>;
 
   // Enums for template
   LicenseTier = LicenseTier;

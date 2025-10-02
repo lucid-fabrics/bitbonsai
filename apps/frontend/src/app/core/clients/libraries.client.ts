@@ -6,7 +6,7 @@ import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../models/libr
 @Injectable({
   providedIn: 'root',
 })
-export class LibrariesApiService {
+export class LibrariesClient {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/v1/libraries';
 

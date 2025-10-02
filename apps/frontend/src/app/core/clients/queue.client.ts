@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { Observable } from 'rxjs';
-import type { QueueFilters, QueueResponse } from '../models/queue.model';
+import { combineLatest, map, type Observable } from 'rxjs';
+import type { QueueFilters, QueueJob, QueueResponse, QueueStats } from '../models/queue.model';
 
 @Injectable({
   providedIn: 'root',
 })
-export class QueueApiService {
+export class QueueClient {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/v1/queue';
 
@@ -16,7 +16,13 @@ export class QueueApiService {
     if (filters?.nodeId) params.nodeId = filters.nodeId;
     if (filters?.search) params.search = filters.search;
 
-    return this.http.get<QueueResponse>(this.apiUrl, { params });
+    // Combine jobs and stats into QueueResponse
+    return combineLatest([
+      this.http.get<QueueJob[]>(this.apiUrl, { params }),
+      this.http.get<QueueStats>(`${this.apiUrl}/stats`)
+    ]).pipe(
+      map(([jobs, stats]) => ({ jobs, stats }))
+    );
   }
 
   cancelJob(jobId: string): Observable<void> {

@@ -12,7 +12,7 @@ import { interval, type Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import type { Node } from '../../core/models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from '../../core/models/node.model';
-import { NodesApiService } from '../../core/services/nodes-api.service';
+import { NodesClient } from '../../core/clients/nodes.client';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
 enum PairingStep {
@@ -30,7 +30,7 @@ enum PairingStep {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NodesComponent implements OnInit, OnDestroy {
-  private readonly nodesApi = inject(NodesApiService);
+  private readonly nodesApi = inject(NodesClient);
 
   // Expose enums to template
   readonly NodeStatus = NodeStatus;
@@ -358,6 +358,12 @@ export class NodesComponent implements OnInit, OnDestroy {
   onRemoveNode(node: Node): void {
     this.nodeToDelete.set(node);
     this.showDeleteDialog.set(true);
+  }
+
+  getDeleteMessage(): string {
+    const node = this.nodeToDelete();
+    if (!node) return 'Are you sure?';
+    return `Are you sure you want to remove "${node.name}"? This will permanently remove the node and cannot be undone.`;
   }
 
   /**

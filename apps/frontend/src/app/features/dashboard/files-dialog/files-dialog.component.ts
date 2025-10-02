@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { FileInfoBo } from '../../../core/business-objects/file-info.bo';
 
@@ -12,11 +12,11 @@ import type { FileInfoBo } from '../../../core/business-objects/file-info.bo';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FilesDialogComponent {
-  @Input() folderName = '';
-  @Input() codec = '';
-  @Input() files: FileInfoBo[] = [];
-  @Input() isOpen = false;
-  @Output() close = new EventEmitter<void>();
+  readonly folderName = input<string>('');
+  readonly codec = input<string>('');
+  readonly files = input<FileInfoBo[]>([]);
+  readonly isOpen = input<boolean>(false);
+  readonly close = output<void>();
 
   onClose(): void {
     this.close.emit();

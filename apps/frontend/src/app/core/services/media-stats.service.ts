@@ -12,7 +12,7 @@ export class MediaStatsService {
 
   public getMediaStats(): Observable<MediaStatsBo> {
     return this.mediaStatsClient
-      .getStats()
+      .getMediaStats()
       .pipe(map((responseModel) => new MediaStatsBo(responseModel)));
   }
 

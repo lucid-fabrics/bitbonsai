@@ -17,10 +17,16 @@
         placeholder="e.g., Main Movie Collection"
         [class.error]="nameControl?.invalid && nameControl?.touched"
       />
-      <div class="validation-error" *ngIf="nameControl?.invalid && nameControl?.touched">
-        <span *ngIf="nameControl?.errors?.['required']">Library name is required</span>
-        <span *ngIf="nameControl?.errors?.['maxlength']">Name must be less than 255 characters</span>
-      </div>
+      @if (nameControl?.invalid && nameControl?.touched) {
+        <div class="validation-error">
+          @if (nameControl?.errors?.['required']) {
+            <span>Library name is required</span>
+          }
+          @if (nameControl?.errors?.['maxlength']) {
+            <span>Name must be less than 255 characters</span>
+          }
+        </div>
+      }
     </div>
 
     <!-- Path Field -->
@@ -37,10 +43,16 @@
         [class.error]="pathControl?.invalid && pathControl?.touched"
       />
       <div class="field-hint">Absolute path to the media folder on the node filesystem</div>
-      <div class="validation-error" *ngIf="pathControl?.invalid && pathControl?.touched">
-        <span *ngIf="pathControl?.errors?.['required']">Path is required</span>
-        <span *ngIf="pathControl?.errors?.['pattern']">Path must be an absolute path (start with /)</span>
-      </div>
+      @if (pathControl?.invalid && pathControl?.touched) {
+        <div class="validation-error">
+          @if (pathControl?.errors?.['required']) {
+            <span>Path is required</span>
+          }
+          @if (pathControl?.errors?.['pattern']) {
+            <span>Path must be an absolute path (start with /)</span>
+          }
+        </div>
+      }
     </div>
 
     <!-- Media Type Field -->
@@ -54,9 +66,11 @@
         formControlName="mediaType"
         [class.error]="mediaTypeControl?.invalid && mediaTypeControl?.touched"
       >
-        <option *ngFor="let type of mediaTypes" [value]="type">
-          {{ type.replace('_', ' ') }}
-        </option>
+        @for (type of mediaTypes; track type) {
+          <option [value]="type">
+            {{ type.replace('_', ' ') }}
+          </option>
+        }
       </select>
       <div class="field-hint">Type of media content in this library</div>
     </div>
@@ -73,14 +87,22 @@
         [class.error]="nodeIdControl?.invalid && nodeIdControl?.touched"
       >
         <option value="" disabled>Select a node</option>
-        <option *ngFor="let node of nodes" [value]="node.id">
-          {{ node.name }}
-          <span *ngIf="node.status !== 'ONLINE'"> ({{ node.status }})</span>
-        </option>
+        @for (node of nodes(); track node.id) {
+          <option [value]="node.id">
+            {{ node.name }}
+            @if (node.status !== 'ONLINE') {
+              <span> ({{ node.status }})</span>
+            }
+          </option>
+        }
       </select>
-      <div class="validation-error" *ngIf="nodeIdControl?.invalid && nodeIdControl?.touched">
-        <span *ngIf="nodeIdControl?.errors?.['required']">Node selection is required</span>
-      </div>
+      @if (nodeIdControl?.invalid && nodeIdControl?.touched) {
+        <div class="validation-error">
+          @if (nodeIdControl?.errors?.['required']) {
+            <span>Node selection is required</span>
+          }
+        </div>
+      }
     </div>
 
     <!-- Enabled Toggle -->

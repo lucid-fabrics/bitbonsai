@@ -1,4 +1,4 @@
-@import '../../../../styles/variables';
+@use '../../../styles/variables' as *;
 
 .libraries-container {
   padding: 32px;
@@ -52,7 +52,7 @@
   color: $text-white;
 
   i {
-    color: $accent-color;
+    color: $accent-primary;
   }
 }
 
@@ -79,11 +79,11 @@
 }
 
 .btn-primary {
-  background: $accent-color;
-  color: white;
+  background: $accent-primary;
+  color: $text-dark;
 
   &:hover:not(:disabled) {
-    background: #5558e3;
+    background: $accent-primary-hover;
   }
 }
 
@@ -100,13 +100,13 @@
 .error-alert {
   margin-bottom: 24px;
   padding: 16px 20px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
+  background: $danger-bg;
+  border: 1px solid $danger;
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #fca5a5;
+  color: $danger;
   font-size: 14px;
   animation: slideDown 0.3s ease;
 
@@ -121,13 +121,13 @@
   .close-btn {
     background: transparent;
     border: none;
-    color: #fca5a5;
+    color: $danger;
     cursor: pointer;
     padding: 4px;
     transition: color 0.2s ease;
 
     &:hover {
-      color: #f87171;
+      color: lighten($danger, 10%);
     }
   }
 }

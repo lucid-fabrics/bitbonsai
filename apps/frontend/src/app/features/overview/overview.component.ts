@@ -22,7 +22,7 @@ import {
 import { interval, Subject } from 'rxjs';
 import { startWith, switchMap, takeUntil } from 'rxjs/operators';
 import type { OverviewModel } from '../../core/models/overview.model';
-import { OverviewApiService } from '../../core/services/overview-api.service';
+import { OverviewClient } from '../../core/clients/overview.client';
 
 @Component({
   selector: 'app-overview',
@@ -33,7 +33,7 @@ import { OverviewApiService } from '../../core/services/overview-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OverviewComponent implements OnInit, OnDestroy {
-  private readonly overviewApi = inject(OverviewApiService);
+  private readonly overviewApi = inject(OverviewClient);
   private readonly destroy$ = new Subject<void>();
 
   // Signals for reactive state

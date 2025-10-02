@@ -8,7 +8,7 @@ import type { OverviewModel } from '../models/overview.model';
 @Injectable({
   providedIn: 'root',
 })
-export class OverviewApiService {
+export class OverviewClient {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/v1/media-stats';
 

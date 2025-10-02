@@ -1,4 +1,4 @@
-@import '../../../../styles/variables';
+@use '../../../styles/variables' as *;
 
 .overview-container {
   padding: 32px;
@@ -126,13 +126,13 @@
   }
 
   &--info .health-card__icon {
-    background: rgba(#60a5fa, 0.15);
-    fa-icon { color: #60a5fa; }
+    background: rgba(96, 165, 250, 0.15);
+    fa-icon { color: #60a5fa; } // Blue accent
   }
 
   &--primary .health-card__icon {
-    background: rgba(#a78bfa, 0.15);
-    fa-icon { color: #a78bfa; }
+    background: rgba(167, 139, 250, 0.15);
+    fa-icon { color: #a78bfa; } // Purple accent
   }
 }
 

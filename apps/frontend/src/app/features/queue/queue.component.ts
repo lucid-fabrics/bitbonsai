@@ -16,7 +16,7 @@ import type {
   QueueJob,
   QueueResponse,
 } from '../../core/models/queue.model';
-import { QueueApiService } from '../../core/services/queue-api.service';
+import { QueueClient } from '../../core/clients/queue.client';
 
 @Component({
   selector: 'app-queue',
@@ -27,7 +27,7 @@ import { QueueApiService } from '../../core/services/queue-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QueueComponent implements OnInit {
-  private readonly queueApi = inject(QueueApiService);
+  private readonly queueApi = inject(QueueClient);
   private readonly destroyRef = inject(DestroyRef);
 
   // State signals

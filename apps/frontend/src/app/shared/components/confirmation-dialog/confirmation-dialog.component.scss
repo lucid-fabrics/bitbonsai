@@ -1,4 +1,4 @@
-@import '../../../../../styles/variables';
+@use '../../../../styles/variables' as *;
 
 .dialog-backdrop {
   position: fixed;
@@ -33,7 +33,7 @@
   animation: slideUp 0.2s ease;
 
   &.dangerous {
-    border-color: #ef4444;
+    border-color: $danger;
   }
 }
 
@@ -97,20 +97,20 @@
 }
 
 .btn-primary {
-  background: $accent-color;
-  color: white;
+  background: $accent-primary;
+  color: $text-dark;
 
   &:hover {
-    background: #5558e3;
+    background: $accent-primary-hover;
   }
 }
 
 .btn-danger {
-  background: #ef4444;
-  color: white;
+  background: $danger;
+  color: $text-white;
 
   &:hover {
-    background: #dc2626;
+    background: darken($danger, 10%);
   }
 }
 

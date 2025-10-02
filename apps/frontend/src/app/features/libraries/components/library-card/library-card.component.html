@@ -1,18 +1,18 @@
-<div class="library-card" [class.disabled]="!library.enabled">
+<div class="library-card" [class.disabled]="!library().enabled">
   <div class="card-header">
     <div class="header-left">
       <h3 class="library-name">
         <i class="fas fa-folder-open"></i>
-        {{ library.name }}
+        {{ library().name }}
       </h3>
-      <span class="media-type-badge" [attr.data-type]="library.mediaType">
-        <i class="fas" [ngClass]="getMediaTypeIcon(library.mediaType)"></i>
-        {{ getMediaTypeLabel(library.mediaType) }}
+      <span class="media-type-badge" [attr.data-type]="library().mediaType">
+        <i class="fas" [ngClass]="getMediaTypeIcon(library().mediaType)"></i>
+        {{ getMediaTypeLabel(library().mediaType) }}
       </span>
     </div>
     <div class="header-right">
-      <span class="status-badge" [class.online]="library.node.status === 'ONLINE'">
-        {{ library.node.name }}
+      <span class="status-badge" [class.online]="library().node.status === 'ONLINE'">
+        {{ library().node.name }}
       </span>
     </div>
   </div>
@@ -20,14 +20,14 @@
   <div class="card-body">
     <div class="library-path">
       <i class="fas fa-folder"></i>
-      <span>{{ library.path }}</span>
+      <span>{{ library().path }}</span>
     </div>
 
     <div class="stats-grid">
       <div class="stat-item">
         <i class="fas fa-file-video"></i>
         <div class="stat-content">
-          <div class="stat-value">{{ library.totalFiles.toLocaleString() }}</div>
+          <div class="stat-value">{{ library().totalFiles.toLocaleString() }}</div>
           <div class="stat-label">Files</div>
         </div>
       </div>
@@ -35,7 +35,7 @@
       <div class="stat-item">
         <i class="fas fa-database"></i>
         <div class="stat-content">
-          <div class="stat-value">{{ formatSize(library.totalSizeBytes) }}</div>
+          <div class="stat-value">{{ formatSize(library().totalSizeBytes) }}</div>
           <div class="stat-label">Total Size</div>
         </div>
       </div>
@@ -43,7 +43,7 @@
       <div class="stat-item">
         <i class="fas fa-clock"></i>
         <div class="stat-content">
-          <div class="stat-value">{{ formatDate(library.lastScanAt) }}</div>
+          <div class="stat-value">{{ formatDate(library().lastScanAt) }}</div>
           <div class="stat-label">Last Scan</div>
         </div>
       </div>
@@ -51,7 +51,7 @@
       <div class="stat-item">
         <i class="fas fa-tasks"></i>
         <div class="stat-content">
-          <div class="stat-value">{{ library._count.jobs }}</div>
+          <div class="stat-value">{{ library()._count.jobs }}</div>
           <div class="stat-label">Jobs</div>
         </div>
       </div>

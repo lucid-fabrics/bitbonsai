@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faApple, faChrome, faGoogle } from '@fortawesome/free-brands-svg-icons';
 import {
   faCheck,
   faEdit,
@@ -11,26 +10,29 @@ import {
   faTimes,
   faTrash,
   faTv,
-} from '@fortawesome/free-solid-svg-icons';
-import { PolicyClient } from '../../core/clients/policy.client';
+} from '@fortawesome/pro-solid-svg-icons';
+import { Store } from '@ngrx/store';
+import { PolicyBo } from '../../core/business-objects/policy.bo';
 import {
   AudioHandling,
+  CreatePolicyRequest,
   DeviceProfile,
-  type PolicyModel,
-  PolicyPreset,
   type PresetInfoModel,
+  PolicyPreset,
   TargetCodec,
 } from '../../core/models/policy.model';
+import { PoliciesActions } from './+state/policies.actions';
+import { PoliciesSelectors } from './+state/policies.selectors';
 
 interface PolicyFormData {
   name: string;
   preset: PolicyPreset;
-  target_codec: TargetCodec;
-  crf: number;
-  library_id: string;
-  device_profiles: Set<DeviceProfile>;
-  ffmpeg_flags: string;
-  audio_handling: AudioHandling;
+  targetCodec: TargetCodec;
+  targetQuality: number;
+  libraryId: string;
+  deviceProfiles: Set<DeviceProfile>;
+  ffmpegFlags: string;
+  audioHandling: AudioHandling;
 }
 
 @Component({
@@ -42,7 +44,7 @@ interface PolicyFormData {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PoliciesComponent implements OnInit {
-  private readonly policyClient = inject(PolicyClient);
+  private readonly store = inject(Store);
 
   // Icons
   readonly icons = {
@@ -53,9 +55,6 @@ export class PoliciesComponent implements OnInit {
     times: faTimes,
     check: faCheck,
     tv: faTv,
-    apple: faApple,
-    chrome: faChrome,
-    google: faGoogle,
   };
 
   // Enums for template
@@ -64,13 +63,13 @@ export class PoliciesComponent implements OnInit {
   readonly DeviceProfile = DeviceProfile;
   readonly AudioHandling = AudioHandling;
 
-  // State
-  readonly policies = signal<PolicyModel[]>([]);
-  readonly presets = signal<PresetInfoModel[]>([]);
-  readonly isLoading = signal(true);
-  readonly error = signal<string | null>(null);
+  // NgRx State
+  readonly policies$ = this.store.select(PoliciesSelectors.selectPolicies);
+  readonly presets$ = this.store.select(PoliciesSelectors.selectPresets);
+  readonly isLoading$ = this.store.select(PoliciesSelectors.selectIsLoading);
+  readonly error$ = this.store.select(PoliciesSelectors.selectError);
 
-  // Form state
+  // Local Form State
   readonly showFormModal = signal(false);
   readonly isEditMode = signal(false);
   readonly editingPolicyId = signal<string | null>(null);
@@ -83,38 +82,15 @@ export class PoliciesComponent implements OnInit {
   readonly deletingPolicyId = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.loadData();
-  }
-
-  private loadData(): void {
-    this.isLoading.set(true);
-    this.policyClient.getPolicies().subscribe({
-      next: (policies) => {
-        this.policies.set(policies);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to load policies');
-        this.isLoading.set(false);
-        console.error(err);
-      },
-    });
-
-    this.policyClient.getPresets().subscribe({
-      next: (presets) => {
-        this.presets.set(presets);
-      },
-      error: (err) => {
-        console.error('Failed to load presets:', err);
-      },
-    });
+    this.store.dispatch(PoliciesActions.loadPolicies());
+    this.store.dispatch(PoliciesActions.loadPresets());
   }
 
   selectPreset(preset: PresetInfoModel): void {
     const formData = this.formData();
     formData.preset = preset.preset;
-    formData.target_codec = preset.codec;
-    formData.crf = preset.crf;
+    formData.targetCodec = preset.codec;
+    formData.targetQuality = preset.crf;
     formData.name = preset.name;
     this.formData.set({ ...formData });
     this.showFormModal.set(true);
@@ -129,16 +105,16 @@ export class PoliciesComponent implements OnInit {
     this.showAdvancedSettings.set(false);
   }
 
-  openEditForm(policy: PolicyModel): void {
+  openEditForm(policy: PolicyBo): void {
     this.formData.set({
       name: policy.name,
       preset: policy.preset,
-      target_codec: policy.target_codec,
-      crf: policy.crf,
-      library_id: policy.library_id || '',
-      device_profiles: new Set(policy.device_profiles),
-      ffmpeg_flags: policy.ffmpeg_flags || '',
-      audio_handling: policy.audio_handling || AudioHandling.COPY,
+      targetCodec: policy.targetCodec,
+      targetQuality: policy.targetQuality,
+      libraryId: policy.libraryId || '',
+      deviceProfiles: new Set(policy.deviceProfiles),
+      ffmpegFlags: policy.ffmpegFlags || '',
+      audioHandling: policy.audioHandling || AudioHandling.COPY,
     });
     this.formErrors.set({});
     this.editingPolicyId.set(policy.id);
@@ -156,13 +132,13 @@ export class PoliciesComponent implements OnInit {
 
   toggleDeviceProfile(profile: DeviceProfile): void {
     const formData = this.formData();
-    const profiles = new Set(formData.device_profiles);
+    const profiles = new Set(formData.deviceProfiles);
     if (profiles.has(profile)) {
       profiles.delete(profile);
     } else {
       profiles.add(profile);
     }
-    formData.device_profiles = profiles;
+    formData.deviceProfiles = profiles;
     this.formData.set({ ...formData });
   }
 
@@ -182,16 +158,20 @@ export class PoliciesComponent implements OnInit {
       errors.name = 'Name must be 50 characters or less';
     }
 
-    if (formData.crf < 0 || formData.crf > 51) {
-      errors.crf = 'CRF must be between 0 and 51';
+    if (formData.targetQuality < 0 || formData.targetQuality > 51) {
+      errors.targetQuality = 'Quality must be between 0 and 51';
     }
 
-    if (formData.device_profiles.size === 0) {
-      errors.device_profiles = 'At least one device profile must be selected';
+    if (formData.deviceProfiles.size === 0) {
+      errors.deviceProfiles = 'At least one device profile must be selected';
     }
 
     this.formErrors.set(errors);
     return Object.keys(errors).length === 0;
+  }
+
+  isFormValid(): boolean {
+    return this.validateForm();
   }
 
   submitForm(): void {
@@ -200,44 +180,34 @@ export class PoliciesComponent implements OnInit {
     }
 
     const formData = this.formData();
-    const request = {
+    const request: CreatePolicyRequest = {
       name: formData.name.trim(),
       preset: formData.preset,
-      target_codec: formData.target_codec,
-      crf: formData.crf,
-      library_id: formData.library_id || undefined,
-      device_profiles: Array.from(formData.device_profiles),
-      ffmpeg_flags: formData.ffmpeg_flags || undefined,
-      audio_handling: formData.audio_handling,
+      targetCodec: formData.targetCodec,
+      targetQuality: formData.targetQuality,
+      libraryId: formData.libraryId || undefined,
+      deviceProfiles: {
+        appleTV: formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
+        chromecast: formData.deviceProfiles.has(DeviceProfile.CHROMECAST),
+        roku: formData.deviceProfiles.has(DeviceProfile.ROKU),
+        web: formData.deviceProfiles.has(DeviceProfile.WEB),
+      },
+      advancedSettings: {
+        ffmpegFlags: formData.ffmpegFlags || undefined,
+        audioHandling: formData.audioHandling,
+      },
     };
 
     if (this.isEditMode()) {
       const policyId = this.editingPolicyId();
       if (!policyId) return;
 
-      this.policyClient.updatePolicy(policyId, request).subscribe({
-        next: (updated) => {
-          const policies = this.policies().map((p) => (p.id === policyId ? updated : p));
-          this.policies.set(policies);
-          this.closeForm();
-        },
-        error: (err) => {
-          this.error.set('Failed to update policy');
-          console.error(err);
-        },
-      });
+      this.store.dispatch(PoliciesActions.updatePolicy({ id: policyId, request }));
     } else {
-      this.policyClient.createPolicy(request).subscribe({
-        next: (created) => {
-          this.policies.set([...this.policies(), created]);
-          this.closeForm();
-        },
-        error: (err) => {
-          this.error.set('Failed to create policy');
-          console.error(err);
-        },
-      });
+      this.store.dispatch(PoliciesActions.createPolicy({ request }));
     }
+
+    this.closeForm();
   }
 
   confirmDelete(policyId: string): void {
@@ -254,33 +224,12 @@ export class PoliciesComponent implements OnInit {
     const policyId = this.deletingPolicyId();
     if (!policyId) return;
 
-    this.policyClient.deletePolicy(policyId).subscribe({
-      next: () => {
-        const policies = this.policies().filter((p) => p.id !== policyId);
-        this.policies.set(policies);
-        this.cancelDelete();
-      },
-      error: (err) => {
-        this.error.set('Failed to delete policy');
-        console.error(err);
-        this.cancelDelete();
-      },
-    });
+    this.store.dispatch(PoliciesActions.deletePolicy({ id: policyId }));
+    this.cancelDelete();
   }
 
   getDeviceIcon(profile: DeviceProfile) {
-    switch (profile) {
-      case DeviceProfile.APPLE_TV:
-        return this.icons.apple;
-      case DeviceProfile.ROKU:
-        return this.icons.tv;
-      case DeviceProfile.WEB:
-        return this.icons.chrome;
-      case DeviceProfile.CHROMECAST:
-        return this.icons.google;
-      default:
-        return this.icons.tv;
-    }
+    return this.icons.tv;
   }
 
   getDeviceLabel(profile: DeviceProfile): string {
@@ -308,12 +257,12 @@ export class PoliciesComponent implements OnInit {
     return {
       name: '',
       preset: PolicyPreset.CUSTOM,
-      target_codec: TargetCodec.HEVC,
-      crf: 23,
-      library_id: '',
-      device_profiles: new Set(),
-      ffmpeg_flags: '',
-      audio_handling: AudioHandling.COPY,
+      targetCodec: TargetCodec.HEVC,
+      targetQuality: 23,
+      libraryId: '',
+      deviceProfiles: new Set(),
+      ffmpegFlags: '',
+      audioHandling: AudioHandling.COPY,
     };
   }
 }

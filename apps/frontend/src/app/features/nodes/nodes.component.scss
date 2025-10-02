@@ -1,4 +1,4 @@
-@import '../../../../styles/variables';
+@use '../../../styles/variables' as *;
 
 .nodes-container {
   padding: 32px;
@@ -64,13 +64,13 @@
     font-weight: 500;
 
     &.online {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
+      background: rgba(74, 222, 128, 0.15);
+      color: $success;
     }
 
     &.offline {
-      background: rgba(107, 114, 128, 0.15);
-      color: #6b7280;
+      background: rgba(136, 136, 136, 0.15);
+      color: $text-secondary;
     }
   }
 }
@@ -130,13 +130,13 @@
 .error-alert {
   margin-bottom: 24px;
   padding: 16px 20px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
+  background: $danger-bg;
+  border: 1px solid $danger;
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #fca5a5;
+  color: $danger;
   font-size: 14px;
   animation: slideDown 0.3s ease;
 
@@ -151,13 +151,13 @@
   .close-btn {
     background: transparent;
     border: none;
-    color: #fca5a5;
+    color: $danger;
     cursor: pointer;
     padding: 4px;
     transition: color 0.2s ease;
 
     &:hover {
-      color: #f87171;
+      color: lighten($danger, 10%);
     }
   }
 }
@@ -304,8 +304,8 @@
   }
 
   &[data-role='LINKED'] {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa; // Blue accent for linked nodes
   }
 }
 
@@ -330,29 +330,29 @@
   }
 
   &.online {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
+    background: rgba(74, 222, 128, 0.15);
+    color: $success;
 
     i {
-      color: #10b981;
+      color: $success;
     }
   }
 
   &.offline {
-    background: rgba(107, 114, 128, 0.15);
-    color: #6b7280;
+    background: rgba(136, 136, 136, 0.15);
+    color: $text-secondary;
 
     i {
-      color: #6b7280;
+      color: $text-secondary;
     }
   }
 
   &.error {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    background: rgba(255, 107, 107, 0.15);
+    color: $danger;
 
     i {
-      color: #ef4444;
+      color: $danger;
     }
   }
 }
@@ -432,9 +432,9 @@
 
 .btn-danger {
   &:hover {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: #ef4444;
-    color: #fca5a5;
+    background: $danger-bg;
+    border-color: $danger;
+    color: $danger;
   }
 }
 
@@ -700,21 +700,21 @@
 
 .expired-message {
   padding: 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
+  background: $danger-bg;
+  border: 1px solid $danger;
   border-radius: 6px;
   text-align: center;
   margin-top: 16px;
 
   i {
     font-size: 24px;
-    color: #ef4444;
+    color: $danger;
     margin-bottom: 8px;
   }
 
   p {
     font-size: 14px;
-    color: #fca5a5;
+    color: $danger;
     margin: 0 0 16px 0;
   }
 }
@@ -787,13 +787,13 @@
 // Error Message
 .error-message {
   padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
+  background: $danger-bg;
+  border: 1px solid $danger;
   border-radius: 6px;
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #fca5a5;
+  color: $danger;
   font-size: 14px;
   margin-top: 16px;
 

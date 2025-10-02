@@ -1,84 +1,101 @@
 <div class="libraries-container">
-  <!-- Header Section -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1>Libraries</h1>
-        <p class="subtitle">Configure and manage media libraries</p>
-      </div>
-      <div class="header-right">
-        <div class="library-count" *ngIf="!isLoading()">
-          <i class="fas fa-folder-open"></i>
-          <span>{{ totalLibraries }} {{ totalLibraries === 1 ? 'Library' : 'Libraries' }}</span>
-        </div>
-        <button class="btn btn-primary" (click)="onAddLibrary()">
-          <i class="fas fa-plus"></i>
-          Add Library
-        </button>
-      </div>
-    </div>
-  </div>
+  @if (libraries$ | async; as libraries) {
+    @if (isLoading$ | async; as isLoading) {
+      @if (nodes$ | async; as nodes) {
+        @if (error$ | async; as error) {
+          <!-- Header Section -->
+          <div class="page-header">
+            <div class="header-content">
+              <div class="header-left">
+                <h1>Libraries</h1>
+                <p class="subtitle">Configure and manage media libraries</p>
+              </div>
+              <div class="header-right">
+                @if (!isLoading) {
+                  <div class="library-count">
+                    <i class="fas fa-folder-open"></i>
+                    <span>{{ libraries.length }} {{ libraries.length === 1 ? 'Library' : 'Libraries' }}</span>
+                  </div>
+                }
+                <button class="btn btn-primary" (click)="onAddLibrary()">
+                  <i class="fas fa-plus"></i>
+                  Add Library
+                </button>
+              </div>
+            </div>
+          </div>
 
-  <!-- Error Alert -->
-  <div class="error-alert" *ngIf="error()">
-    <i class="fas fa-exclamation-circle"></i>
-    <span>{{ error() }}</span>
-    <button class="close-btn" (click)="error.set(null)">
-      <i class="fas fa-times"></i>
-    </button>
-  </div>
+          <!-- Error Alert -->
+          @if (error) {
+            <div class="error-alert">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>{{ error }}</span>
+            </div>
+          }
 
-  <!-- Loading State -->
-  <div class="loading-state" *ngIf="isLoading()">
-    <i class="fas fa-spinner fa-spin"></i>
-    <p>Loading libraries...</p>
-  </div>
+          <!-- Loading State -->
+          @if (isLoading) {
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading libraries...</p>
+            </div>
+          }
 
-  <!-- Empty State -->
-  <div class="empty-state" *ngIf="!isLoading() && !hasLibraries">
-    <div class="empty-icon">
-      <i class="fas fa-folder-open"></i>
-    </div>
-    <h2>No Libraries Configured</h2>
-    <p>Get started by adding your first media library to begin encoding and managing your content.</p>
-    <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
-      <i class="fas fa-plus"></i>
-      Add Your First Library
-    </button>
-  </div>
+          <!-- Empty State -->
+          @if (!isLoading && libraries.length === 0) {
+            <div class="empty-state">
+              <div class="empty-icon">
+                <i class="fas fa-folder-open"></i>
+              </div>
+              <h2>No Libraries Configured</h2>
+              <p>Get started by adding your first media library to begin encoding and managing your content.</p>
+              <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
+                <i class="fas fa-plus"></i>
+                Add Your First Library
+              </button>
+            </div>
+          }
 
-  <!-- Libraries Grid -->
-  <div class="libraries-grid" *ngIf="!isLoading() && hasLibraries">
-    <app-library-card
-      *ngFor="let library of libraries()"
-      [library]="library"
-      (edit)="onEditLibrary($event)"
-      (scan)="onScanLibrary($event)"
-      (delete)="onDeleteLibrary($event)"
-    />
-  </div>
+          <!-- Libraries Grid -->
+          @if (!isLoading && libraries.length > 0) {
+            <div class="libraries-grid">
+              @for (library of libraries; track library.id) {
+                <app-library-card
+                  [library]="library"
+                  (edit)="onEditLibrary($event)"
+                  (scan)="onScanLibrary($event)"
+                  (delete)="onDeleteLibrary($event)"
+                />
+              }
+            </div>
+          }
 
-  <!-- Library Form Modal -->
-  <div class="modal-backdrop" *ngIf="showForm()" (click)="onFormCancel()">
-    <div class="modal-container" (click)="$event.stopPropagation()">
-      <app-library-form
-        [library]="selectedLibrary()"
-        [nodes]="nodes()"
-        (formSubmit)="onFormSubmit($event)"
-        (formCancel)="onFormCancel()"
-      />
-    </div>
-  </div>
+          <!-- Library Form Modal -->
+          @if (showForm()) {
+            <div class="modal-backdrop" (click)="onFormCancel()">
+              <div class="modal-container" (click)="$event.stopPropagation()">
+                <app-library-form
+                  [library]="selectedLibrary()"
+                  [nodes]="nodes"
+                  (formSubmit)="onFormSubmit($event)"
+                  (formCancel)="onFormCancel()"
+                />
+              </div>
+            </div>
+          }
+        }
+      }
+    }
+  }
 
-  <!-- Delete Confirmation Dialog -->
   <app-confirmation-dialog
     [isVisible]="showDeleteDialog()"
     [title]="'Delete Library'"
-    [message]="'Are you sure you want to delete \"' + libraryToDelete()?.name + '\"? This will permanently delete all associated jobs and cannot be undone.'"
+    [message]="getDeleteMessage()"
     [confirmText]="'Delete Library'"
     [cancelText]="'Cancel'"
     [isDangerous]="true"
     (confirm)="onConfirmDelete()"
-    (cancel)="onCancelDelete()"
-  />
+    (cancel)="onCancelDelete()">
+  </app-confirmation-dialog>
 </div>

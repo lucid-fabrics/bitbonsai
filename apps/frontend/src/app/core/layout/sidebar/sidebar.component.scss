@@ -1,9 +1,9 @@
-@import '../../../../styles/variables';
+@use '../../../../styles/variables' as *;
 
 .sidebar {
   width: 240px;
   height: 100vh;
-  background: #1a1a1a;
+  background: $bg-primary;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -50,11 +50,11 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #3d3d3d;
+    background: $border-secondary;
     border-radius: 3px;
 
     &:hover {
-      background: #4d4d4d;
+      background: lighten($border-secondary, 10%);
     }
   }
 }
@@ -64,7 +64,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  color: #b0b0b0;
+  color: $text-secondary;
   text-decoration: none;
   transition: $transition-fast;
   cursor: pointer;

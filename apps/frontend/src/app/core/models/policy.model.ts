@@ -52,23 +52,33 @@ export interface PresetInfoModel {
   recommended?: boolean;
 }
 
+export interface DeviceProfiles {
+  appleTV: boolean;
+  chromecast: boolean;
+  roku: boolean;
+  web: boolean;
+}
+
+export interface AdvancedSettings {
+  ffmpegFlags?: string;
+  audioHandling: AudioHandling;
+}
+
 export interface CreatePolicyRequest {
   name: string;
   preset: PolicyPreset;
-  target_codec: TargetCodec;
-  crf: number;
-  library_id?: string;
-  device_profiles: DeviceProfile[];
-  ffmpeg_flags?: string;
-  audio_handling?: AudioHandling;
+  targetCodec: TargetCodec;
+  targetQuality: number;
+  libraryId?: string;
+  deviceProfiles: DeviceProfiles;
+  advancedSettings: AdvancedSettings;
 }
 
 export interface UpdatePolicyRequest {
   name?: string;
-  target_codec?: TargetCodec;
-  crf?: number;
-  library_id?: string;
-  device_profiles?: DeviceProfile[];
-  ffmpeg_flags?: string;
-  audio_handling?: AudioHandling;
+  targetCodec?: TargetCodec;
+  targetQuality?: number;
+  libraryId?: string;
+  deviceProfiles?: DeviceProfiles;
+  advancedSettings?: AdvancedSettings;
 }

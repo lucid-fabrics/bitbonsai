@@ -1,4 +1,4 @@
-@import '../../../../styles/variables';
+@use '../../../styles/variables' as *;
 
 .insights-container {
   padding: 32px;
@@ -298,7 +298,7 @@
 
     &.throughput {
       background: rgba(96, 165, 250, 0.1);
-      color: #60a5fa;
+      color: #60a5fa; // Blue accent for throughput
     }
   }
 

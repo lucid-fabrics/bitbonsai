@@ -20,12 +20,11 @@ export interface QueueJob {
 }
 
 export interface QueueStats {
-  totalJobs: number;
-  queuedJobs: number;
-  encodingJobs: number;
-  completedJobs: number;
-  failedJobs: number;
-  totalSavings: number;
+  queued: number;
+  encoding: number;
+  completed: number;
+  failed: number;
+  totalSavedBytes: string;
 }
 
 export interface QueueResponse {

@@ -1,19 +1,20 @@
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   inject,
   type OnInit,
   signal,
 } from '@angular/core';
+import { Store } from '@ngrx/store';
 import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../../core/models/library.model';
-import type { Node } from '../../core/models/node.model';
-import { LibrariesApiService } from '../../core/services/libraries-api.service';
-import { NodesApiService } from '../../core/services/nodes-api.service';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { LibraryCardComponent } from './components/library-card/library-card.component';
 import { LibraryFormComponent } from './components/library-form/library-form.component';
+import { LibrariesActions } from './+state/libraries.actions';
+import { selectAllLibraries, selectLibrariesLoading, selectLibrariesError } from './+state/libraries.selectors';
+import { NodesActions } from '../nodes/+state/nodes.actions';
+import { NodesSelectors } from '../nodes/+state/nodes.selectors';
 
 @Component({
   selector: 'app-libraries',
@@ -24,14 +25,13 @@ import { LibraryFormComponent } from './components/library-form/library-form.com
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LibrariesComponent implements OnInit {
-  private readonly librariesApi = inject(LibrariesApiService);
-  private readonly nodesApi = inject(NodesApiService);
-  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly store = inject(Store);
 
-  libraries = signal<Library[]>([]);
-  nodes = signal<Node[]>([]);
-  isLoading = signal(true);
-  error = signal<string | null>(null);
+  // NgRx State
+  readonly libraries$ = this.store.select(selectAllLibraries);
+  readonly nodes$ = this.store.select(NodesSelectors.selectAllNodes);
+  readonly isLoading$ = this.store.select(selectLibrariesLoading);
+  readonly error$ = this.store.select(selectLibrariesError);
 
   // Form state
   showForm = signal(false);
@@ -45,29 +45,8 @@ export class LibrariesComponent implements OnInit {
   scanningLibraryId = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.loadData();
-  }
-
-  private loadData(): void {
-    this.isLoading.set(true);
-    this.error.set(null);
-
-    // Load both libraries and nodes in parallel
-    Promise.all([
-      this.librariesApi.getLibraries().toPromise(),
-      this.nodesApi.getNodes().toPromise(),
-    ])
-      .then(([libraries, nodes]) => {
-        this.libraries.set(libraries || []);
-        this.nodes.set(nodes || []);
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
-      })
-      .catch((err) => {
-        this.error.set(err.message || 'Failed to load data');
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
-      });
+    this.store.dispatch(LibrariesActions.loadLibraries());
+    this.store.dispatch(NodesActions.loadNodes());
   }
 
   onAddLibrary(): void {
@@ -85,32 +64,19 @@ export class LibrariesComponent implements OnInit {
 
     if (selectedLib) {
       // Update existing library
-      this.librariesApi
-        .updateLibrary(selectedLib.id, data as UpdateLibraryDto)
-        .toPromise()
-        .then(() => {
-          this.showForm.set(false);
-          this.selectedLibrary.set(undefined);
-          this.loadData();
-        })
-        .catch((err) => {
-          this.error.set(err.message || 'Failed to update library');
-          this.cdr.markForCheck();
-        });
+      this.store.dispatch(LibrariesActions.updateLibrary({
+        id: selectedLib.id,
+        library: data as UpdateLibraryDto
+      }));
     } else {
       // Create new library
-      this.librariesApi
-        .createLibrary(data as CreateLibraryDto)
-        .toPromise()
-        .then(() => {
-          this.showForm.set(false);
-          this.loadData();
-        })
-        .catch((err) => {
-          this.error.set(err.message || 'Failed to create library');
-          this.cdr.markForCheck();
-        });
+      this.store.dispatch(LibrariesActions.createLibrary({
+        library: data as CreateLibraryDto
+      }));
     }
+
+    this.showForm.set(false);
+    this.selectedLibrary.set(undefined);
   }
 
   onFormCancel(): void {
@@ -123,24 +89,19 @@ export class LibrariesComponent implements OnInit {
     this.showDeleteDialog.set(true);
   }
 
+  getDeleteMessage(): string {
+    const library = this.libraryToDelete();
+    if (!library) return 'Are you sure?';
+    return `Are you sure you want to delete "${library.name}"? This will permanently delete all associated jobs and cannot be undone.`;
+  }
+
   onConfirmDelete(): void {
     const library = this.libraryToDelete();
     if (!library) return;
 
-    this.librariesApi
-      .deleteLibrary(library.id)
-      .toPromise()
-      .then(() => {
-        this.showDeleteDialog.set(false);
-        this.libraryToDelete.set(undefined);
-        this.loadData();
-      })
-      .catch((err) => {
-        this.error.set(err.message || 'Failed to delete library');
-        this.showDeleteDialog.set(false);
-        this.libraryToDelete.set(undefined);
-        this.cdr.markForCheck();
-      });
+    this.store.dispatch(LibrariesActions.deleteLibrary({ id: library.id }));
+    this.showDeleteDialog.set(false);
+    this.libraryToDelete.set(undefined);
   }
 
   onCancelDelete(): void {
@@ -150,30 +111,12 @@ export class LibrariesComponent implements OnInit {
 
   onScanLibrary(library: Library): void {
     this.scanningLibraryId.set(library.id);
-
-    this.librariesApi
-      .scanLibrary(library.id)
-      .toPromise()
-      .then(() => {
-        this.scanningLibraryId.set(null);
-        this.loadData();
-      })
-      .catch((err) => {
-        this.error.set(err.message || 'Failed to scan library');
-        this.scanningLibraryId.set(null);
-        this.cdr.markForCheck();
-      });
+    this.store.dispatch(LibrariesActions.scanLibrary({ id: library.id }));
+    // Reset scanning state after a delay (scan is async on backend)
+    setTimeout(() => this.scanningLibraryId.set(null), 1000);
   }
 
   isScanning(libraryId: string): boolean {
     return this.scanningLibraryId() === libraryId;
-  }
-
-  get hasLibraries(): boolean {
-    return this.libraries().length > 0;
-  }
-
-  get totalLibraries(): number {
-    return this.libraries().length;
   }
 }

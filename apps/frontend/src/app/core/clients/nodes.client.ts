@@ -31,7 +31,7 @@ export interface NodeStats {
 @Injectable({
   providedIn: 'root',
 })
-export class NodesApiService {
+export class NodesClient {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/v1/nodes';
 

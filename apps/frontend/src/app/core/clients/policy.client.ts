@@ -17,6 +17,10 @@ export class PolicyClient {
     return this.http.get<PolicyModel[]>(`${this.apiUrl}/policies`);
   }
 
+  getPolicy(id: string): Observable<PolicyModel> {
+    return this.http.get<PolicyModel>(`${this.apiUrl}/policies/${id}`);
+  }
+
   getPresets(): Observable<PresetInfoModel[]> {
     return this.http.get<PresetInfoModel[]>(`${this.apiUrl}/policies/presets`);
   }

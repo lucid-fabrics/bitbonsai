@@ -1,4 +1,4 @@
-@import '../../../../styles/variables';
+@use '../../../styles/variables' as *;
 
 .settings-container {
   padding: 32px;
@@ -155,8 +155,8 @@
   letter-spacing: 0.5px;
 
   &.tier-free {
-    background: #2d2d2d;
-    color: #888;
+    background: $border-primary;
+    color: $text-secondary;
   }
 
   &.tier-patreon {
@@ -300,7 +300,7 @@
   }
 
   &.env-bare_metal {
-    background: #2d2d2d;
+    background: $border-primary;
     color: $text-secondary;
   }
 }
