@@ -203,6 +203,82 @@ async function main() {
   // ============================================================================
   console.log('📜 Creating policies...');
 
+  // ============================================================================
+  // DEFAULT POLICY - Sweet Spot for H.265 (No configuration needed)
+  // ============================================================================
+  // This is the optimal default policy that works great for 99% of content
+  // CRF 20: Sweet spot between quality and size (visually transparent)
+  // Preset: medium - Best balance of speed and compression
+  // Works on ALL hardware acceleration types
+  const defaultPolicy = await prisma.policy.create({
+    data: {
+      name: 'Default - Universal H.265 (Recommended)',
+      preset: 'BALANCED_HEVC',
+      targetCodec: 'HEVC',
+      targetQuality: 20, // CRF 20 = "sweet spot" - visually lossless for most content
+      deviceProfiles: {
+        appleTv: true,
+        roku: true,
+        web: true,
+        chromecast: true,
+        ps5: true,
+        xbox: true,
+        fireTV: true,
+        androidTV: true,
+        lgTV: true,
+        samsungTV: true,
+      },
+      advancedSettings: {
+        // Encoding settings
+        preset: 'medium', // Best balance of speed/compression
+        tune: 'film', // Optimized for film content (works well for TV too)
+
+        // Quality settings
+        minCRF: 18, // Don't go below this even for complex scenes
+        maxCRF: 22, // Don't go above this even for simple scenes
+
+        // Frame settings
+        keyframeInterval: 240, // 10 seconds at 24fps (good for seeking)
+        bframes: 4, // B-frames for better compression
+        refs: 3, // Reference frames
+
+        // Motion estimation
+        meMethod: 'umh', // Good quality motion search
+        subme: 7, // Subpixel motion estimation quality
+
+        // Hardware acceleration
+        hwaccel: 'auto', // Auto-detect (NVENC, QSV, VCE, VideoToolbox)
+
+        // Audio handling
+        audioCodec: 'copy', // Keep original audio (AAC/DTS/TrueHD/etc)
+        audioFallback: 'aac', // Convert to AAC if codec incompatible
+        audioBitrate: '256k', // Fallback AAC bitrate
+
+        // Subtitle handling
+        subtitleHandling: 'copy', // Keep all subtitle tracks
+
+        // Container format
+        containerFormat: 'mkv', // MKV supports everything
+
+        // Advanced options
+        fastdecode: false, // Don't sacrifice compression for decode speed
+        zerolatency: false, // Not needed for stored content
+
+        // Filters
+        deinterlace: 'auto', // Auto-detect and deinterlace if needed
+        denoise: 'none', // Don't denoise by default (preserves grain)
+
+        // Two-pass encoding (disabled for speed, single-pass CRF is excellent)
+        twoPass: false,
+      },
+      atomicReplace: true, // Safe replacement (rename, not overwrite)
+      verifyOutput: true, // Always verify playback after encoding
+      skipSeeding: true, // Don't encode files being seeded
+      libraryId: null, // Global policy - not tied to specific library
+    },
+  });
+  console.log(`  ✅ DEFAULT Universal H.265 policy (CRF 20, medium, universal compatibility)`);
+
   const balancedPolicy = await prisma.policy.create({
     data: {
       name: 'Balanced HEVC Encoding',
@@ -503,9 +579,18 @@ async function main() {
   console.log(`   • 3 licenses (FREE, PATREON, COMMERCIAL_PRO)`);
   console.log(`   • 3 nodes (1 main + 2 workers)`);
   console.log(`   • 3 libraries (Movies, TV, Anime)`);
-  console.log(`   • 3 policies (Balanced HEVC, Fast HEVC, Quality AV1)`);
+  console.log(`   • 4 policies (1 DEFAULT + Balanced HEVC, Fast HEVC, Quality AV1)`);
   console.log(`   • 6 jobs (2 completed, 1 encoding, 2 queued, 1 failed)`);
   console.log(`   • 10 metrics (7 system-wide + 3 node-specific)\n`);
+
+  console.log('⭐ DEFAULT POLICY:');
+  console.log(`   Name:     "Default - Universal H.265 (Recommended)"`);
+  console.log(`   CRF:      20 (visually lossless sweet spot)`);
+  console.log(`   Preset:   medium (best balance)`);
+  console.log(`   Hardware: Auto-detect (NVENC/QSV/VCE/VideoToolbox)`);
+  console.log(`   Audio:    Copy original (AAC fallback)`);
+  console.log(`   Features: Universal device compatibility`);
+  console.log(`   Use:      Works great for 99% of content - no config needed!\n`);
 
   console.log('🔐 Test License Keys:');
   console.log(`   FREE:            ${freeLicense.key}`);
