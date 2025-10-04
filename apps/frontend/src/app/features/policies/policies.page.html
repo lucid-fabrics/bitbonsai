@@ -16,7 +16,14 @@
   <div class="presets-section">
     <div class="section-header">
       <h2>Quick Start Templates</h2>
-      <button class="btn-secondary" (click)="openCreateForm()">
+      <button
+        class="btn-secondary"
+        (click)="openCreateForm()"
+        bbTooltip
+        tooltipTitle="Create Custom Policy"
+        tooltipContent="Start from scratch to create a fully customized encoding policy. Choose your own codec, quality settings, device profiles, and advanced FFmpeg options."
+        tooltipWhen="You need specific encoding settings that don't match any preset template, or you want complete control over all encoding parameters."
+        tooltipPlacement="bottom">
         <fa-icon [icon]="icons.plus"></fa-icon>
         Custom Policy
       </button>
@@ -31,6 +38,12 @@
             class="preset-card"
             [class.recommended]="preset.recommended"
             (click)="selectPreset(preset)"
+            bbTooltip
+            [tooltipTitle]="preset.name"
+            [tooltipContent]="preset.description"
+            [tooltipWhen]="preset.use_case"
+            tooltipPlacement="top"
+            [tooltipDelay]="300"
           >
             @if (preset.recommended) {
               <div class="recommended-badge">
@@ -71,7 +84,41 @@
       <div class="loading-state">Loading policies...</div>
     } @else if ((policies$ | async)?.length === 0) {
       <div class="empty-state">
-        <p>No policies created yet. Select a preset template above to get started.</p>
+        <div class="empty-icon">
+          <i class="fas fa-file-contract"></i>
+        </div>
+        <h2>No Policies Yet</h2>
+        <p class="empty-description">
+          Policies define how your media files should be encoded. They control the codec,
+          quality, and device compatibility for your video files.
+        </p>
+
+        <div class="getting-started">
+          <h3>Getting Started:</h3>
+          <ol>
+            <li>Browse the "Quick Start Templates" above to see preset options</li>
+            <li>Click on a recommended template (like "Balanced HEVC") to get started</li>
+            <li>Give your policy a memorable name</li>
+            <li>Adjust quality settings if needed (lower CRF = better quality)</li>
+            <li>Select which devices should play your encoded files</li>
+          </ol>
+          <p class="help-tip">
+            <i class="fas fa-lightbulb"></i>
+            <strong>Tip:</strong> Start with "Balanced HEVC" for a great mix of quality and file size savings!
+          </p>
+        </div>
+
+        <button
+          class="btn btn-primary btn-large"
+          (click)="openCreateForm()"
+          bbTooltip
+          tooltipTitle="Create Your First Policy"
+          tooltipContent="Policies define how your media should be encoded. Start by choosing a preset template above, or create a custom policy from scratch with your own settings."
+          tooltipWhen="You're ready to set up encoding rules for your media library. Choose 'Balanced HEVC' preset for a great starting point."
+          tooltipPlacement="top">
+          <i class="fas fa-plus"></i>
+          Create Your First Policy
+        </button>
       </div>
     } @else {
       <div class="table-container">
@@ -108,14 +155,22 @@
                   <button
                     class="btn-icon"
                     (click)="openEditForm(policy)"
-                    title="Edit Policy"
+                    bbTooltip
+                    tooltipTitle="Edit Policy"
+                    tooltipContent="Modify this policy's settings including codec, quality (CRF), device profiles, and advanced encoding options. Changes only affect future encoding jobs."
+                    tooltipWhen="You need to adjust encoding quality, change target devices, or update advanced FFmpeg settings for this policy."
+                    tooltipPlacement="top"
                   >
                     <fa-icon [icon]="icons.edit"></fa-icon>
                   </button>
                   <button
                     class="btn-icon btn-danger"
-                    (click)="confirmDelete(policy.id)"
-                    title="Delete Policy"
+                    (click)="confirmDelete(policy)"
+                    bbTooltip
+                    tooltipTitle="Delete Policy"
+                    tooltipContent="Permanently remove this policy from BitBonsai. Existing encoded videos are not affected. Jobs currently using this policy will complete, but no new jobs can use it."
+                    tooltipWhen="This policy is no longer needed or you want to consolidate your encoding strategies. Cannot be undone."
+                    tooltipPlacement="top"
                   >
                     <fa-icon [icon]="icons.trash"></fa-icon>
                   </button>
@@ -194,8 +249,20 @@
             <div class="form-group">
               <label for="targetQuality">
                 Quality (CRF) *
-                <span class="quality-indicator">{{ getCRFLabel(formData().targetQuality) }}</span>
+                <span
+                  class="quality-indicator"
+                  bbTooltip
+                  tooltipTitle="CRF Quality Scale"
+                  tooltipContent="CRF (Constant Rate Factor) ranges from 0-51. Lower = better quality but larger files. Higher = smaller files but lower quality. Sweet spot is usually 18-23 for near-lossless quality with good compression."
+                  tooltipWhen="You need to balance file size vs quality. Use 18-20 for archival, 21-23 for streaming, 24-28 for fast/low-priority encoding."
+                  tooltipPlacement="right">
+                  {{ getCRFLabel(formData().targetQuality) }}
+                </span>
               </label>
+              <div class="field-hint">
+                <i class="fas fa-info-circle"></i>
+                CRF (Constant Rate Factor) controls video quality. <strong>Lower values = better quality + larger files.</strong> Higher values = smaller files + lower quality. Most users should use 18-23 for excellent quality with good compression.
+              </div>
               <div class="slider-container">
                 <input
                   id="targetQuality"
@@ -238,6 +305,10 @@
             <!-- Device Profiles -->
             <div class="form-group">
               <label>Device Profiles *</label>
+              <div class="field-hint">
+                <i class="fas fa-info-circle"></i>
+                Select which devices should be able to play your encoded videos. BitBonsai will ensure compatibility with all selected devices. At least one device profile is required.
+              </div>
               <div class="device-profiles">
                 @for (profile of [
                   DeviceProfile.APPLE_TV,
@@ -250,6 +321,11 @@
                     class="device-profile-btn"
                     [class.active]="formData().deviceProfiles.has(profile)"
                     (click)="toggleDeviceProfile(profile)"
+                    bbTooltip
+                    [tooltipTitle]="getDeviceLabel(profile)"
+                    [tooltipContent]="getDeviceProfileExplanation(profile)"
+                    tooltipWhen="Your encoded files will be played on this device type."
+                    tooltipPlacement="top"
                   >
                     <fa-icon [icon]="getDeviceIcon(profile)"></fa-icon>
                     <span>{{ getDeviceLabel(profile) }}</span>
@@ -319,27 +395,6 @@
               </button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Delete Confirmation Modal -->
-  @if (showDeleteConfirm()) {
-    <div class="modal-overlay" (click)="cancelDelete()">
-      <div class="modal-content confirm-dialog" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h2>Confirm Deletion</h2>
-        </div>
-        <div class="modal-body">
-          <p>Are you sure you want to delete this policy? This action cannot be undone.</p>
-        </div>
-        <div class="form-actions">
-          <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
-          <button class="btn-danger" (click)="deletePolicy()">
-            <fa-icon [icon]="icons.trash"></fa-icon>
-            Delete Policy
-          </button>
         </div>
       </div>
     </div>

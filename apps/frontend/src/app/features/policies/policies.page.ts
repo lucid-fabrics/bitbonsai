@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +13,11 @@ import {
   faTv,
 } from '@fortawesome/pro-solid-svg-icons';
 import { Store } from '@ngrx/store';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { PoliciesActions } from './+state/policies.actions';
 import { PoliciesSelectors } from './+state/policies.selectors';
 import type { PolicyBo } from './bos/policy.bo';
@@ -38,13 +44,14 @@ interface PolicyFormData {
 @Component({
   selector: 'app-policies',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, FormsModule],
+  imports: [CommonModule, FontAwesomeModule, FormsModule, RichTooltipDirective],
   templateUrl: './policies.page.html',
   styleUrls: ['./policies.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PoliciesComponent implements OnInit {
   private readonly store = inject(Store);
+  private readonly dialog = inject(Dialog);
 
   // Icons
   readonly icons = {
@@ -76,10 +83,6 @@ export class PoliciesComponent implements OnInit {
   readonly showAdvancedSettings = signal(false);
   readonly formData = signal<PolicyFormData>(this.getEmptyFormData());
   readonly formErrors = signal<Record<string, string>>({});
-
-  // Delete confirmation
-  readonly showDeleteConfirm = signal(false);
-  readonly deletingPolicyId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.store.dispatch(PoliciesActions.loadPolicies());
@@ -210,22 +213,37 @@ export class PoliciesComponent implements OnInit {
     this.closeForm();
   }
 
-  confirmDelete(policyId: string): void {
-    this.deletingPolicyId.set(policyId);
-    this.showDeleteConfirm.set(true);
-  }
+  confirmDelete(policy: PolicyBo): void {
+    const dialogData: ConfirmationDialogData = {
+      title: 'Delete Policy?',
+      itemName: policy.name,
+      itemType: 'policy',
+      willHappen: [
+        'Remove the policy from BitBonsai',
+        'Stop using this policy for future encoding jobs',
+        'Delete the policy configuration and settings',
+      ],
+      wontHappen: [
+        'Delete any already-encoded videos',
+        'Cancel currently running encoding jobs',
+        'Affect your media files in any way',
+        'Delete other policies or their settings',
+      ],
+      irreversible: true,
+      confirmButtonText: 'Delete Policy',
+      cancelButtonText: 'Keep Policy',
+    };
 
-  cancelDelete(): void {
-    this.showDeleteConfirm.set(false);
-    this.deletingPolicyId.set(null);
-  }
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
 
-  deletePolicy(): void {
-    const policyId = this.deletingPolicyId();
-    if (!policyId) return;
-
-    this.store.dispatch(PoliciesActions.deletePolicy({ id: policyId }));
-    this.cancelDelete();
+    dialogRef.closed.subscribe((result) => {
+      if (result === true) {
+        this.store.dispatch(PoliciesActions.deletePolicy({ id: policy.id }));
+      }
+    });
   }
 
   getDeviceIcon(_profile: DeviceProfile) {
@@ -234,6 +252,21 @@ export class PoliciesComponent implements OnInit {
 
   getDeviceLabel(profile: DeviceProfile): string {
     return profile.replace('_', ' ');
+  }
+
+  getDeviceProfileExplanation(profile: DeviceProfile): string {
+    switch (profile) {
+      case DeviceProfile.APPLE_TV:
+        return "Optimizes encoding for Apple TV devices. Ensures compatibility with Apple's hardware decoders and supports features like HDR when available.";
+      case DeviceProfile.ROKU:
+        return 'Ensures compatibility with Roku streaming devices. Uses codec settings that work across the Roku device family.';
+      case DeviceProfile.WEB:
+        return 'Optimizes for web browser playback. Ensures compatibility with modern browsers like Chrome, Firefox, Safari, and Edge.';
+      case DeviceProfile.CHROMECAST:
+        return 'Optimizes for Google Chromecast devices. Ensures smooth streaming and playback on all Chromecast generations.';
+      default:
+        return 'Device-specific optimization for playback compatibility.';
+    }
   }
 
   getPresetIcon(preset: PolicyPreset): string {

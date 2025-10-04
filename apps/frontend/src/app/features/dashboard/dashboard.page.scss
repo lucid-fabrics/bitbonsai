@@ -285,6 +285,18 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-detail {
+  font-size: 10px;
+  color: $text-tertiary;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-style: italic;
 }
 
 .progress-percentage {

@@ -16,7 +16,15 @@
             <strong>Last Scan:</strong> {{ stats.scanTimestampFormatted }}
           </div>
         }
-        <button class="refresh-btn" (click)="triggerScan()" [disabled]="isLoading$ | async">
+        <button
+          class="refresh-btn"
+          (click)="triggerScan()"
+          [disabled]="isLoading$ | async"
+          bbTooltip
+          tooltipTitle="Refresh Analytics"
+          tooltipContent="Scans all media libraries and updates statistics. This will analyze file codecs, sizes, bitrates, and calculate potential space savings."
+          tooltipWhen="Your library has changed or you want to see the latest encoding progress."
+          tooltipPlacement="bottom">
           @if (isLoading$ | async) {
             <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> Scanning...
           } @else {
@@ -84,7 +92,16 @@
           <div class="stat-card">
             <div class="stat-card-header">
               <h3>{{ folder.name }}</h3>
-              <span class="badge" [class]="folder.badge.class">{{ folder.badge.text }}</span>
+              <span
+                class="badge"
+                [class]="folder.badge.class"
+                bbTooltip
+                tooltipTitle="Encoding Status"
+                tooltipContent="Indicates the progress of H.265 encoding for this library."
+                [tooltipWhen]="getBadgeExplanation(folder.badge.text)"
+                tooltipPlacement="top">
+                {{ folder.badge.text }}
+              </span>
             </div>
 
             <div class="stat-row">
@@ -110,8 +127,15 @@
             <!-- Progress Bar -->
             <div class="progress-container">
               <div class="progress-header">
-                <span class="progress-label">H.265 Encoding Progress</span>
-                <span class="progress-percentage">{{ folder.percentH265 }}%</span>
+                <span class="progress-label">
+                  H.265 Encoding Progress
+                  <small class="progress-detail">
+                    {{ folder.codecDistribution.hevc }} of {{ folder.fileCount }} files encoded
+                  </small>
+                </span>
+                <span class="progress-percentage" [title]="'Completion: ' + folder.percentH265 + '%'">
+                  {{ folder.percentH265 }}%
+                </span>
               </div>
               <div class="progress-bar">
                 <div class="progress-fill" [style.width.%]="folder.percentH265"></div>
@@ -141,7 +165,14 @@
             </div>
 
             @if (folder.codecDistribution.h264 > 0) {
-              <button class="view-files-btn" (click)="viewFilesToEncode(folder)">
+              <button
+                class="view-files-btn"
+                (click)="viewFilesToEncode(folder)"
+                bbTooltip
+                tooltipTitle="View Encodable Files"
+                tooltipContent="Shows a detailed list of all H.264 files that can be re-encoded to H.265 for better compression."
+                tooltipWhen="You want to see which specific files are candidates for encoding and their current sizes."
+                tooltipPlacement="top">
                 <fa-icon [icon]="['fas', 'list']"></fa-icon> View {{ folder.codecDistribution.h264 }} Files to Encode
               </button>
             }

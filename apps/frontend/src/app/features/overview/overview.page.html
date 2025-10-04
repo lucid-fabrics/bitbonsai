@@ -79,64 +79,92 @@
       <section class="queue-summary">
         <h2 class="section-title">Queue Summary</h2>
         <div class="queue-flow">
-          <div class="queue-stage">
+          <div class="queue-stage"
+            bbTooltip
+            tooltipTitle="Queued Jobs"
+            tooltipContent="Jobs waiting in the queue for an available encoding node. These jobs will start automatically when a node becomes free."
+            tooltipWhen="You want to understand how many jobs are waiting to be processed and their position in the encoding pipeline."
+            tooltipPlacement="top">
             <div class="queue-stage__header">
               <fa-icon [icon]="icons.queued" size="lg"></fa-icon>
               <span class="queue-stage__label">Queued</span>
             </div>
             <p class="queue-stage__count">{{ overviewData()!.queue_summary.queued }}</p>
+            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.queued }} of {{ totalQueueItems() }} jobs</p>
             <div class="queue-stage__progress">
               <div
                 class="queue-stage__bar queue-stage__bar--queued"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.queued, totalQueueItems())">
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.queued, totalQueueItems())"
+                [title]="overviewData()!.queue_summary.queued + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.queued, totalQueueItems()) + '%)'">
               </div>
             </div>
           </div>
 
           <div class="queue-arrow">→</div>
 
-          <div class="queue-stage">
+          <div class="queue-stage"
+            bbTooltip
+            tooltipTitle="Encoding Jobs"
+            tooltipContent="Jobs currently being processed by your encoding nodes. These jobs are actively transcoding media files and show real-time progress."
+            tooltipWhen="You want to monitor active encoding work and see how many nodes are currently busy processing files."
+            tooltipPlacement="top">
             <div class="queue-stage__header">
               <fa-icon [icon]="icons.encoding" size="lg"></fa-icon>
               <span class="queue-stage__label">Encoding</span>
             </div>
             <p class="queue-stage__count">{{ overviewData()!.queue_summary.encoding }}</p>
+            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.encoding }} of {{ totalQueueItems() }} jobs</p>
             <div class="queue-stage__progress">
               <div
                 class="queue-stage__bar queue-stage__bar--encoding"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.encoding, totalQueueItems())">
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.encoding, totalQueueItems())"
+                [title]="overviewData()!.queue_summary.encoding + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.encoding, totalQueueItems()) + '%)'">
               </div>
             </div>
           </div>
 
           <div class="queue-arrow">→</div>
 
-          <div class="queue-stage">
+          <div class="queue-stage"
+            bbTooltip
+            tooltipTitle="Completed Jobs"
+            tooltipContent="Jobs that have successfully finished encoding. These files have been optimized and space savings are displayed. Original files are replaced or backed up based on your settings."
+            tooltipWhen="You want to see your encoding success rate and total completed work. Visit the Queue page for detailed savings information."
+            tooltipPlacement="top">
             <div class="queue-stage__header">
               <fa-icon [icon]="icons.completed" size="lg"></fa-icon>
               <span class="queue-stage__label">Completed</span>
             </div>
             <p class="queue-stage__count">{{ overviewData()!.queue_summary.completed }}</p>
+            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.completed }} of {{ totalQueueItems() }} jobs</p>
             <div class="queue-stage__progress">
               <div
                 class="queue-stage__bar queue-stage__bar--completed"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.completed, totalQueueItems())">
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.completed, totalQueueItems())"
+                [title]="overviewData()!.queue_summary.completed + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.completed, totalQueueItems()) + '%)'">
               </div>
             </div>
           </div>
 
           <div class="queue-arrow">→</div>
 
-          <div class="queue-stage">
+          <div class="queue-stage"
+            bbTooltip
+            tooltipTitle="Failed Jobs"
+            tooltipContent="Jobs that encountered errors during encoding. Common causes include corrupted source files, insufficient disk space, or node crashes. These jobs can be retried from the Queue page."
+            tooltipWhen="You need to troubleshoot encoding problems or identify files that need attention. Click to view error details and retry options."
+            tooltipPlacement="top">
             <div class="queue-stage__header">
               <fa-icon [icon]="icons.failed" size="lg"></fa-icon>
               <span class="queue-stage__label">Failed</span>
             </div>
             <p class="queue-stage__count">{{ overviewData()!.queue_summary.failed }}</p>
+            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.failed }} of {{ totalQueueItems() }} jobs</p>
             <div class="queue-stage__progress">
               <div
                 class="queue-stage__bar queue-stage__bar--failed"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.failed, totalQueueItems())">
+                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.failed, totalQueueItems())"
+                [title]="overviewData()!.queue_summary.failed + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.failed, totalQueueItems()) + '%)'">
               </div>
             </div>
           </div>

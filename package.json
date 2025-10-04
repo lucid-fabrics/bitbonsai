@@ -39,6 +39,7 @@
   "private": false,
   "dependencies": {
     "@angular/animations": "^19.0.0",
+    "@angular/cdk": "^20.2.7",
     "@angular/common": "^19.0.0",
     "@angular/compiler": "^19.0.0",
     "@angular/core": "^19.0.0",
@@ -46,6 +47,7 @@
     "@angular/platform-browser": "^19.0.0",
     "@angular/platform-browser-dynamic": "^19.0.0",
     "@angular/router": "^19.0.0",
+    "@floating-ui/dom": "^1.7.4",
     "@fortawesome/angular-fontawesome": "^0.15.0",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/pro-duotone-svg-icons": "^6.7.2",
@@ -69,6 +71,7 @@
     "luxon": "^3.7.2",
     "nest-winston": "^1.10.2",
     "ng2-charts": "^8.0.0",
+    "ngx-float-ui": "^20.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

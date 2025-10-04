@@ -192,7 +192,15 @@
     font-size: 28px;
     font-weight: 700;
     color: $text-white;
+    margin: 0 0 4px 0;
+  }
+
+  &__detail {
+    font-size: 11px;
+    color: $text-tertiary;
     margin: 0 0 12px 0;
+    font-style: italic;
+    font-weight: 400;
   }
 
   &__progress {

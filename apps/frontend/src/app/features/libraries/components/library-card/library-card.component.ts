@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { RichTooltipDirective } from '../../../../shared/directives/rich-tooltip.directive';
 import type { Library } from '../../models/library.model';
 
 @Component({
   selector: 'app-library-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RichTooltipDirective],
   templateUrl: './library-card.component.html',
   styleUrls: ['./library-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

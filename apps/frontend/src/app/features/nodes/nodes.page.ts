@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -10,7 +11,11 @@ import {
 import { FormsModule } from '@angular/forms';
 import { interval, type Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.modal';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import { NodesClient } from './services/nodes.client';
@@ -24,13 +29,14 @@ enum PairingStep {
 @Component({
   selector: 'app-nodes',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
+  imports: [CommonModule, FormsModule, RichTooltipDirective],
   templateUrl: './nodes.page.html',
   styleUrls: ['./nodes.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NodesComponent implements OnInit, OnDestroy {
   private readonly nodesApi = inject(NodesClient);
+  private readonly dialog = inject(Dialog);
 
   // Expose enums to template
   readonly NodeStatus = NodeStatus;
@@ -50,10 +56,6 @@ export class NodesComponent implements OnInit, OnDestroy {
   pairingError = signal<string | null>(null);
   countdownSeconds = signal(600); // 10 minutes
   pairedNode = signal<Node | null>(null);
-
-  // Delete confirmation state
-  showDeleteDialog = signal(false);
-  nodeToDelete = signal<Node | null>(null);
 
   // Subscriptions
   private pollingSubscription?: Subscription;
@@ -325,6 +327,19 @@ export class NodesComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get status explanation for tooltip
+   */
+  getStatusExplanation(node: Node): string {
+    if (this.isNodeOffline(node.lastHeartbeat)) {
+      return 'This node has not sent a heartbeat in over 2 minutes. It may be powered off, disconnected, or experiencing network issues.';
+    }
+    if (node.status === NodeStatus.ONLINE) {
+      return 'This node is online and ready to accept encoding jobs. It is actively communicating with BitBonsai.';
+    }
+    return 'This node has encountered an error and may not be able to accept jobs. Check the node logs for details.';
+  }
+
+  /**
    * Get acceleration display name
    */
   getAccelerationLabel(acceleration: AccelerationType): string {
@@ -356,42 +371,43 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Initiate node deletion
    */
   onRemoveNode(node: Node): void {
-    this.nodeToDelete.set(node);
-    this.showDeleteDialog.set(true);
-  }
+    const dialogData: ConfirmationDialogData = {
+      title: 'Remove Node?',
+      itemName: node.name,
+      itemType: 'node',
+      willHappen: [
+        'Unpair the node from BitBonsai',
+        'Stop sending encoding jobs to this node',
+        'Remove node configuration and statistics',
+        'Cancel any jobs currently assigned to this node',
+      ],
+      wontHappen: [
+        'Uninstall the node software from your machine',
+        'Delete any encoded videos',
+        'Affect other nodes or their jobs',
+        'Lose completed encoding history',
+      ],
+      irreversible: false,
+      confirmButtonText: 'Remove Node',
+      cancelButtonText: 'Keep Node',
+    };
 
-  getDeleteMessage(): string {
-    const node = this.nodeToDelete();
-    if (!node) return 'Are you sure?';
-    return `Are you sure you want to remove "${node.name}"? This will permanently remove the node and cannot be undone.`;
-  }
-
-  /**
-   * Confirm node deletion
-   */
-  onConfirmDelete(): void {
-    const node = this.nodeToDelete();
-    if (!node) return;
-
-    this.nodesApi.deleteNode(node.id).subscribe({
-      next: () => {
-        this.nodes.update((nodes) => nodes.filter((n) => n.id !== node.id));
-        this.showDeleteDialog.set(false);
-        this.nodeToDelete.set(null);
-      },
-      error: (err) => {
-        this.error.set(err.error?.message || 'Failed to delete node');
-        this.showDeleteDialog.set(false);
-        this.nodeToDelete.set(null);
-      },
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
     });
-  }
 
-  /**
-   * Cancel node deletion
-   */
-  onCancelDelete(): void {
-    this.showDeleteDialog.set(false);
-    this.nodeToDelete.set(null);
+    dialogRef.closed.subscribe((result) => {
+      if (result === true) {
+        this.nodesApi.deleteNode(node.id).subscribe({
+          next: () => {
+            this.nodes.update((nodes) => nodes.filter((n) => n.id !== node.id));
+          },
+          error: (err) => {
+            this.error.set(err.error?.message || 'Failed to delete node');
+          },
+        });
+      }
+    });
   }
 }
