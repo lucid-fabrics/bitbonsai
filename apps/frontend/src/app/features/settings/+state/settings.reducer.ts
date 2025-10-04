@@ -150,19 +150,19 @@ export const settingsReducer = createReducer(
   })),
 
   // Regenerate API Key
-  on(SettingsActions.regenerateApiKey, (state) => ({
+  on(SettingsActions.regenerateAPIKey, (state) => ({
     ...state,
     isLoading: true,
     error: null,
     successMessage: null,
   })),
-  on(SettingsActions.regenerateApiKeySuccess, (state, { apiKey }) => ({
+  on(SettingsActions.regenerateAPIKeySuccess, (state, { apiKey }) => ({
     ...state,
     systemSettings: state.systemSettings ? { ...state.systemSettings, apiKey } : null,
     isLoading: false,
     successMessage: 'API key regenerated successfully!',
   })),
-  on(SettingsActions.regenerateApiKeyFailure, (state, { error }) => ({
+  on(SettingsActions.regenerateAPIKeyFailure, (state, { error }) => ({
     ...state,
     error,
     isLoading: false,

@@ -108,12 +108,12 @@ export class SettingsEffects {
 
   regenerateApiKey$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(SettingsActions.regenerateApiKey),
+      ofType(SettingsActions.regenerateAPIKey),
       switchMap(() =>
         this.settingsService.regenerateApiKey().pipe(
-          map((result) => SettingsActions.regenerateApiKeySuccess(result)),
+          map((result) => SettingsActions.regenerateAPIKeySuccess(result)),
           catchError((error) =>
-            of(SettingsActions.regenerateApiKeyFailure({ error: error.message }))
+            of(SettingsActions.regenerateAPIKeyFailure({ error: error.message }))
           )
         )
       )
