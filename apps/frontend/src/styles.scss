@@ -1,6 +1,7 @@
 /* BitBonsai Global Styles - Dark Theme with Golden Accent */
 @use './styles/variables' as *;
 @use './styles/reset';
+@use './app/shared/directives/rich-tooltip.styles';
 
 * {
   box-sizing: border-box;
@@ -19,4 +20,198 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: $font-weight-bold;
   margin: 0;
   color: $text-white;
+}
+
+/* ============================================
+   Empty States - Comprehensive Styling
+   ============================================ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto;
+  min-height: 400px;
+
+  .empty-icon {
+    font-size: 5rem;
+    color: $accent-primary;
+    margin-bottom: 1.5rem;
+    opacity: 0.8;
+
+    i {
+      display: block;
+    }
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: $font-weight-bold;
+    color: $text-white;
+    margin-bottom: 1rem;
+  }
+
+  .empty-description {
+    font-size: 1.125rem;
+    color: $text-secondary;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    max-width: 600px;
+  }
+
+  .getting-started {
+    background: rgba($accent-primary, 0.05);
+    border: 1px solid rgba($accent-primary, 0.2);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: left;
+    width: 100%;
+    max-width: 600px;
+
+    h3 {
+      font-size: 1.25rem;
+      color: $accent-primary;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      i {
+        font-size: 1.125rem;
+      }
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 1.5rem;
+      color: $text-primary;
+
+      li {
+        font-size: 1rem;
+        line-height: 1.8;
+        margin-bottom: 0.75rem;
+        color: $text-primary;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+
+    .help-tip {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: rgba($accent-primary, 0.1);
+      border-left: 3px solid $accent-primary;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      color: $text-primary;
+
+      i {
+        color: $accent-primary;
+        margin-right: 0.5rem;
+      }
+
+      strong {
+        color: $accent-primary;
+        font-weight: $font-weight-bold;
+      }
+    }
+  }
+
+  .btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+    font-weight: $font-weight-bold;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+
+    i {
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba($accent-primary, 0.3);
+    }
+  }
+
+  .empty-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    .btn {
+      min-width: 200px;
+    }
+  }
+}
+
+/* Loading States */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  min-height: 400px;
+
+  i {
+    font-size: 3rem;
+    color: $accent-primary;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.125rem;
+    color: $text-secondary;
+  }
+}
+
+/* Responsive adjustments for empty states */
+@media (max-width: 768px) {
+  .empty-state {
+    padding: 3rem 1.5rem;
+    min-height: 300px;
+
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+    }
+
+    .empty-description {
+      font-size: 1rem;
+    }
+
+    .getting-started {
+      padding: 1.5rem;
+
+      h3 {
+        font-size: 1.125rem;
+      }
+
+      ol li {
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+    }
+
+    .btn-large {
+      width: 100%;
+      padding: 0.875rem 1.5rem;
+      font-size: 1rem;
+    }
+  }
 }

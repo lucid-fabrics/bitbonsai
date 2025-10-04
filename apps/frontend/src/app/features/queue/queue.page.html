@@ -79,7 +79,13 @@
                 class="job-row"
               >
                 <td class="col-status">
-                  <span [class]="'status-badge ' + getStatusClass(job.status)">
+                  <span
+                    [class]="'status-badge ' + getStatusClass(job.status)"
+                    bbTooltip
+                    [tooltipTitle]="job.status"
+                    [tooltipContent]="getStatusExplanation(job.status)"
+                    tooltipWhen="Check job status to understand what's happening with this encoding task."
+                    tooltipPlacement="right">
                     <i [class]="'fas ' + getStatusIcon(job.status)"></i>
                     {{ job.status }}
                   </span>
@@ -117,8 +123,11 @@
                       <button
                         (click)="openCancelDialog(job.id, $event)"
                         class="action-btn cancel-btn"
-                        title="Cancel Job"
-                      >
+                        bbTooltip
+                        tooltipTitle="Cancel Job"
+                        tooltipContent="Removes this job from the encoding queue. The file will remain in its original format and won't be encoded."
+                        tooltipWhen="You no longer want to encode this file, or you need to free up queue space for higher priority jobs."
+                        tooltipPlacement="top">
                         <i class="fas fa-times"></i>
                       </button>
                     }
@@ -126,8 +135,11 @@
                       <button
                         (click)="retryJob(job.id, $event)"
                         class="action-btn retry-btn"
-                        title="Retry Job"
-                      >
+                        bbTooltip
+                        tooltipTitle="Retry Failed Job"
+                        tooltipContent="Attempts to re-encode this file. Useful if the failure was due to temporary issues like network problems or node availability."
+                        tooltipWhen="The job failed but you believe the issue has been resolved, or you want to give it another chance."
+                        tooltipPlacement="top">
                         <i class="fas fa-redo"></i>
                       </button>
                     }
@@ -200,9 +212,36 @@
       </div>
     } @else {
       <div class="empty-state">
-        <i class="fas fa-inbox"></i>
-        <h3>No jobs found</h3>
-        <p>No jobs match the current filters</p>
+        <div class="empty-icon">
+          <i class="fas fa-inbox"></i>
+        </div>
+        <h2>No Jobs Yet</h2>
+        <p class="empty-description">
+          The queue shows all your encoding jobs - past, present, and future. Jobs are created
+          automatically when BitBonsai finds media files that need optimization.
+        </p>
+
+        <div class="getting-started">
+          <h3>Getting Started:</h3>
+          <ol>
+            <li>First, set up a Library to tell BitBonsai where your media files are</li>
+            <li>Create a Policy to define how files should be encoded</li>
+            <li>Register a Node to do the actual encoding work</li>
+            <li>Scan your library or add files - jobs will appear here automatically!</li>
+            <li>Watch as your nodes process jobs and optimize your media</li>
+          </ol>
+          <p class="help-tip">
+            <i class="fas fa-lightbulb"></i>
+            <strong>Tip:</strong> Jobs start automatically once you have libraries, policies, and nodes configured!
+          </p>
+        </div>
+
+        <div class="empty-actions">
+          <a href="/libraries" class="btn btn-primary btn-large">
+            <i class="fas fa-folder"></i>
+            Set Up Your First Library
+          </a>
+        </div>
       </div>
     }
   </div>

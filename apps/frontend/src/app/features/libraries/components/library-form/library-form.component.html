@@ -123,7 +123,36 @@
         </label>
         <span class="toggle-status">{{ enabledControl?.value ? 'Enabled' : 'Disabled' }}</span>
       </div>
-      <div class="field-hint">Disabled libraries will not be scanned or processed</div>
+      <div class="field-hint">
+        <i class="fas fa-info-circle"></i>
+        <strong>When enabled:</strong> This library will be scanned for media files and encoding jobs will be created based on your policies.
+        <strong>When disabled:</strong> The library is completely ignored by BitBonsai - no scanning, no jobs, no processing. Use this to temporarily pause a library without deleting it.
+      </div>
+    </div>
+
+    <!-- Watch Enabled Toggle -->
+    <div class="form-group toggle-group">
+      <label for="watchEnabled">
+        <i class="fas fa-eye"></i>
+        Auto-Detect New Files
+      </label>
+      <div class="toggle-wrapper">
+        <input
+          id="watchEnabled"
+          type="checkbox"
+          formControlName="watchEnabled"
+          class="toggle-checkbox"
+        />
+        <label for="watchEnabled" class="toggle-label">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-status">{{ watchEnabledControl?.value ? 'Watching' : 'Not Watching' }}</span>
+      </div>
+      <div class="field-hint">
+        <i class="fas fa-info-circle"></i>
+        <strong>When enabled:</strong> BitBonsai automatically detects new files added to this library in real-time using file system monitoring (inotify). New files are immediately queued for processing without needing to manually scan.
+        <strong>When disabled:</strong> You need to manually click "Scan" to detect new files. This uses less system resources but requires manual action.
+      </div>
     </div>
   </div>
 

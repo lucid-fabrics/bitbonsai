@@ -10,13 +10,14 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { interval, startWith, switchMap } from 'rxjs';
+import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { JobStatus, QueueFilters, QueueResponse } from './models/queue.model';
 import { QueueClient } from './services/queue.client';
 
 @Component({
   selector: 'app-queue',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RichTooltipDirective],
   templateUrl: './queue.page.html',
   styleUrls: ['./queue.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -183,6 +184,23 @@ export class QueueComponent implements OnInit {
         return 'fa-ban';
       default:
         return 'fa-question-circle';
+    }
+  }
+
+  protected getStatusExplanation(status: JobStatus): string {
+    switch (status) {
+      case 'QUEUED':
+        return 'This job is waiting in the queue for an available encoding node. It will start automatically when a node becomes free.';
+      case 'ENCODING':
+        return 'This job is currently being encoded by a node. Progress is shown as a percentage. Encoding time depends on file size, quality settings, and node hardware.';
+      case 'COMPLETED':
+        return 'This job has finished encoding successfully. The file has been optimized and space savings are shown. The original file has been replaced or backed up according to your settings.';
+      case 'FAILED':
+        return 'This job encountered an error during encoding. Common causes include corrupted source files, insufficient disk space, or node crashes. You can retry the job or check the error details.';
+      case 'CANCELLED':
+        return "This job was manually cancelled and won't be encoded. The original file remains unchanged.";
+      default:
+        return 'Unknown job status.';
     }
   }
 

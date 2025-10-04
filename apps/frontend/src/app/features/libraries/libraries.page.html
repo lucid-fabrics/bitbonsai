@@ -47,8 +47,23 @@
               <div class="empty-icon">
                 <i class="fas fa-folder-open"></i>
               </div>
-              <h2>No Libraries Configured</h2>
-              <p>Get started by adding your first media library to begin encoding and managing your content.</p>
+              <h2>No Libraries Yet</h2>
+              <p class="empty-description">
+                Libraries are collections of media files that BitBonsai monitors and optimizes.
+                Think of them as folders containing your videos that need encoding.
+              </p>
+
+              <div class="getting-started">
+                <h3>Getting Started:</h3>
+                <ol>
+                  <li>Click the "Add Your First Library" button below</li>
+                  <li>Choose a name for your library (e.g., "Movies", "TV Shows")</li>
+                  <li>Select the folder path containing your media files</li>
+                  <li>Pick a node to handle the encoding work</li>
+                  <li>Enable file watching to automatically detect new files</li>
+                </ol>
+              </div>
+
               <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
                 <i class="fas fa-plus"></i>
                 Add Your First Library
@@ -88,15 +103,4 @@
       }
     }
   }
-
-  <app-confirmation-dialog
-    [isVisible]="showDeleteDialog()"
-    [title]="'Delete Library'"
-    [message]="getDeleteMessage()"
-    [confirmText]="'Delete Library'"
-    [cancelText]="'Cancel'"
-    [isDangerous]="true"
-    (confirm)="onConfirmDelete()"
-    (cancel)="onCancelDelete()">
-  </app-confirmation-dialog>
 </div>

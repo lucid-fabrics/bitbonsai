@@ -21,13 +21,14 @@ import {
 } from '@fortawesome/pro-solid-svg-icons';
 import { interval, Subject } from 'rxjs';
 import { startWith, switchMap, takeUntil } from 'rxjs/operators';
+import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { OverviewModel } from './models/overview.model';
 import { OverviewClient } from './services/overview.client';
 
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [CommonModule, FontAwesomeModule, RichTooltipDirective],
   templateUrl: './overview.page.html',
   styleUrls: ['./overview.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

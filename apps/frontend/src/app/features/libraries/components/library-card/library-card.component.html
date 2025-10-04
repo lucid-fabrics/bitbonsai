@@ -60,25 +60,61 @@
 
   <div class="card-footer">
     <div class="footer-left">
-      <button
-        class="btn btn-icon btn-toggle"
-        [class.active]="library().watchEnabled"
-        (click)="onToggleWatch()"
-        [title]="library().watchEnabled ? 'Disable file watching' : 'Enable file watching'">
-        <i class="fas" [ngClass]="library().watchEnabled ? 'fa-eye' : 'fa-eye-slash'"></i>
-        {{ library().watchEnabled ? 'Watching' : 'Watch' }}
-      </button>
+      <div class="watch-toggle-section">
+        <button
+          class="btn btn-icon btn-toggle"
+          [class.active]="library().watchEnabled"
+          (click)="onToggleWatch()"
+          bbTooltip
+          [tooltipTitle]="library().watchEnabled ? 'Disable File Watching' : 'Enable File Watching'"
+          tooltipContent="Automatically monitors this library folder for new or modified files in real-time. When enabled, BitBonsai will detect changes without manual scanning."
+          [tooltipWhen]="library().watchEnabled ? 'You want to temporarily stop monitoring for changes (e.g., during bulk file operations).' : 'You want BitBonsai to automatically detect new files as they are added to this library.'"
+          tooltipPlacement="top">
+          <i class="fas" [ngClass]="library().watchEnabled ? 'fa-eye' : 'fa-eye-slash'"></i>
+          {{ library().watchEnabled ? 'Watching' : 'Watch' }}
+        </button>
+        <div class="watch-help-text">
+          @if (library().watchEnabled) {
+            <i class="fas fa-check-circle"></i>
+            <span>Auto-detecting new files in real-time</span>
+          } @else {
+            <i class="fas fa-info-circle"></i>
+            <span>Click to enable automatic file detection</span>
+          }
+        </div>
+      </div>
     </div>
     <div class="footer-right">
-      <button class="btn btn-icon" (click)="onEdit()" title="Edit library">
+      <button
+        class="btn btn-icon"
+        (click)="onEdit()"
+        bbTooltip
+        tooltipTitle="Edit Library Settings"
+        tooltipContent="Modify library configuration including name, path, media type, and other settings. Does not affect existing files or encoding jobs."
+        tooltipWhen="You need to change the library name, update the path, or adjust media type classification."
+        tooltipPlacement="top">
         <i class="fas fa-edit"></i>
         Edit
       </button>
-      <button class="btn btn-icon" (click)="onScan()" title="Scan library">
+      <button
+        class="btn btn-icon"
+        (click)="onScan()"
+        bbTooltip
+        tooltipTitle="Scan Library Now"
+        tooltipContent="Manually triggers a full library scan to discover new files, update metadata, and refresh statistics. This analyzes file codecs, sizes, and identifies encoding candidates."
+        tooltipWhen="You've added new files and want to update the library immediately, or when file watching is disabled."
+        tooltipPlacement="top">
         <i class="fas fa-sync-alt"></i>
         Scan
       </button>
-      <button class="btn btn-icon btn-danger" (click)="onDelete()" title="Delete library">
+      <button
+        class="btn btn-icon btn-danger"
+        (click)="onDelete()"
+        bbTooltip
+        tooltipTitle="Delete Library"
+        tooltipContent="Removes this library from BitBonsai. IMPORTANT: Your actual media files will NOT be deleted - only the library configuration and tracking data will be removed."
+        tooltipWhen="You no longer need BitBonsai to manage this library. Your files will remain untouched on disk."
+        tooltipPlacement="top">
         <i class="fas fa-trash"></i>
         Delete
       </button>

@@ -1,0 +1,61 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div class="dialog-container dangerous">
+    <div class="dialog-header">
+      <div class="header-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <h2>{{ data.title }}</h2>
+    </div>
+
+    <div class="dialog-body">
+      <div class="item-name-section">
+        <p class="item-context">You are about to delete:</p>
+        <p class="item-name">{{ data.itemName }}</p>
+      </div>
+
+      <div class="consequences-section">
+        <div class="will-happen">
+          <h3>
+            <i class="fas fa-check-circle"></i>
+            What WILL happen:
+          </h3>
+          <ul>
+            @for (item of data.willHappen; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </div>
+
+        <div class="wont-happen">
+          <h3>
+            <i class="fas fa-shield-alt"></i>
+            What WON'T happen:
+          </h3>
+          <ul>
+            @for (item of data.wontHappen; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      @if (data.irreversible) {
+        <div class="warning-banner">
+          <i class="fas fa-exclamation-circle"></i>
+          <span>This action cannot be undone</span>
+        </div>
+      }
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        <i class="fas fa-times"></i>
+        {{ data.cancelButtonText }}
+      </button>
+      <button type="button" class="btn btn-danger" (click)="onConfirm()">
+        <i class="fas fa-trash"></i>
+        {{ data.confirmButtonText }}
+      </button>
+    </div>
+  </div>
+</div>

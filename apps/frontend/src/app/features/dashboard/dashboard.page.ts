@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Store } from '@ngrx/store';
+import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
 import { FileInfoBo } from './bos/file-info.bo';
@@ -15,7 +16,7 @@ interface FolderInfo {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, FilesDialogComponent],
+  imports: [CommonModule, FontAwesomeModule, FilesDialogComponent, RichTooltipDirective],
   templateUrl: './dashboard.page.html',
   styleUrls: ['./dashboard.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,5 +67,18 @@ export class DashboardComponent implements OnInit {
   closeDialog(): void {
     this.dialogOpen.set(false);
     this.dialogFiles.set([]);
+  }
+
+  getBadgeExplanation(badgeText: string): string {
+    switch (badgeText.toLowerCase()) {
+      case 'complete':
+        return 'All files in this library have been encoded to H.265. No further encoding needed.';
+      case 'in progress':
+        return 'Some files are encoded, but there are still H.264 files that can be optimized.';
+      case 'not started':
+        return 'No files have been encoded yet. This library is a good candidate for encoding.';
+      default:
+        return 'This badge shows the encoding status for this library.';
+    }
   }
 }

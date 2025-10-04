@@ -15,7 +15,14 @@
             <span class="status-indicator offline">{{ offlineNodes }} offline</span>
           </div>
         }
-        <button class="btn btn-primary" (click)="onRegisterNode()">
+        <button
+          class="btn btn-primary"
+          (click)="onRegisterNode()"
+          bbTooltip
+          tooltipTitle="Register New Encoding Node"
+          tooltipContent="Start the pairing process to add a new encoding node to your BitBonsai cluster. Nodes can be any computer with encoding capabilities."
+          tooltipWhen="You want to add another computer to help with encoding workload, or you're setting up your first encoding node."
+          tooltipPlacement="bottom">
           <i class="fas fa-plus"></i>
           Register New Node
         </button>
@@ -48,8 +55,28 @@
       <div class="empty-icon">
         <i class="fas fa-server"></i>
       </div>
-      <h2>No Nodes Registered</h2>
-      <p>Get started by registering your first encoding node to begin processing media files.</p>
+      <h2>No Nodes Yet</h2>
+      <p class="empty-description">
+        Nodes are the workers that handle all your video encoding. They can be your local machine,
+        a dedicated server, or multiple computers working together.
+      </p>
+
+      <div class="getting-started">
+        <h3>Getting Started:</h3>
+        <ol>
+          <li>Click "Register Your First Node" below</li>
+          <li>A registration command will appear - copy it</li>
+          <li>Open a terminal on the machine you want to use as a node</li>
+          <li>Paste and run the command to install the node software</li>
+          <li>Enter the 6-digit pairing code shown on your node into BitBonsai</li>
+          <li>Your node will appear here and start accepting encoding jobs!</li>
+        </ol>
+        <p class="help-tip">
+          <i class="fas fa-lightbulb"></i>
+          <strong>Tip:</strong> Nodes with GPU acceleration (NVIDIA, AMD, Apple Silicon) encode much faster!
+        </p>
+      </div>
+
       <button class="btn btn-primary btn-large" (click)="onRegisterNode()">
         <i class="fas fa-plus"></i>
         Register Your First Node
@@ -74,7 +101,14 @@
           </span>
         </div>
         <div class="header-right">
-          <span class="status-badge" [ngClass]="getStatusClass(node)">
+          <span
+            class="status-badge"
+            [ngClass]="getStatusClass(node)"
+            bbTooltip
+            [tooltipTitle]="getStatusText(node)"
+            [tooltipContent]="getStatusExplanation(node)"
+            tooltipWhen="Check this to understand if the node is available for encoding jobs."
+            tooltipPlacement="top">
             <i class="fas fa-circle"></i>
             {{ getStatusText(node) }}
           </span>
@@ -133,11 +167,25 @@
 
       <!-- Card Footer -->
       <div class="card-footer">
-        <button class="btn btn-icon" (click)="onViewStats(node)" title="View statistics">
+        <button
+          class="btn btn-icon"
+          (click)="onViewStats(node)"
+          bbTooltip
+          tooltipTitle="View Node Statistics"
+          tooltipContent="Shows detailed performance metrics, encoding history, and resource utilization for this node."
+          tooltipWhen="You want to monitor node performance or troubleshoot encoding issues."
+          tooltipPlacement="top">
           <i class="fas fa-chart-bar"></i>
           View Stats
         </button>
-        <button class="btn btn-icon btn-danger" (click)="onRemoveNode(node)" title="Remove node">
+        <button
+          class="btn btn-icon btn-danger"
+          (click)="onRemoveNode(node)"
+          bbTooltip
+          tooltipTitle="Remove Node"
+          tooltipContent="Unpairs this node from BitBonsai. The node software will continue running but won't receive new jobs. You can re-pair it later if needed."
+          tooltipWhen="This node is being decommissioned or you want to stop it from accepting new encoding jobs."
+          tooltipPlacement="top">
           <i class="fas fa-trash"></i>
           Remove
         </button>
@@ -355,15 +403,4 @@
     </div>
     </div>
   }
-
-  <app-confirmation-dialog
-    [isVisible]="showDeleteDialog()"
-    [title]="'Remove Node'"
-    [message]="getDeleteMessage()"
-    [confirmText]="'Remove Node'"
-    [cancelText]="'Cancel'"
-    [isDangerous]="true"
-    (confirm)="onConfirmDelete()"
-    (cancel)="onCancelDelete()">
-  </app-confirmation-dialog>
 </div>

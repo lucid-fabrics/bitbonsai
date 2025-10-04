@@ -24,6 +24,7 @@ interface LibraryFormControls {
   mediaType: FormControl<MediaType>;
   nodeId: FormControl<string>;
   enabled: FormControl<boolean>;
+  watchEnabled: FormControl<boolean>;
 }
 
 @Component({
@@ -72,6 +73,7 @@ export class LibraryFormComponent implements OnInit {
         nonNullable: true,
       }),
       enabled: this.fb.control(lib?.enabled ?? true, { nonNullable: true }),
+      watchEnabled: this.fb.control(lib?.watchEnabled ?? false, { nonNullable: true }),
     });
   }
 
@@ -88,6 +90,8 @@ export class LibraryFormComponent implements OnInit {
         if (formValue.mediaType !== lib.mediaType) updates.mediaType = formValue.mediaType;
         if (formValue.nodeId !== lib.node.id) updates.nodeId = formValue.nodeId;
         if (formValue.enabled !== lib.enabled) updates.enabled = formValue.enabled;
+        if (formValue.watchEnabled !== lib.watchEnabled)
+          updates.watchEnabled = formValue.watchEnabled;
 
         this.formSubmit.emit(updates);
       } else {
@@ -125,5 +129,9 @@ export class LibraryFormComponent implements OnInit {
 
   get enabledControl() {
     return this.libraryForm.get('enabled');
+  }
+
+  get watchEnabledControl() {
+    return this.libraryForm.get('watchEnabled');
   }
 }

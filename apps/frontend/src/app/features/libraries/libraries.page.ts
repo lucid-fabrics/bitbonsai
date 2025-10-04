@@ -1,7 +1,11 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.modal';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { NodesActions } from '../nodes/+state/nodes.actions';
 import { NodesSelectors } from '../nodes/+state/nodes.selectors';
 import { LibrariesActions } from './+state/libraries.actions';
@@ -17,13 +21,14 @@ import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/libra
 @Component({
   selector: 'app-libraries',
   standalone: true,
-  imports: [CommonModule, LibraryCardComponent, LibraryFormComponent, ConfirmationDialogComponent],
+  imports: [CommonModule, LibraryCardComponent, LibraryFormComponent],
   templateUrl: './libraries.page.html',
   styleUrls: ['./libraries.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LibrariesComponent implements OnInit {
   private readonly store = inject(Store);
+  private readonly dialog = inject(Dialog);
 
   // NgRx State
   readonly libraries$ = this.store.select(selectAllLibraries);
@@ -34,10 +39,6 @@ export class LibrariesComponent implements OnInit {
   // Form state
   showForm = signal(false);
   selectedLibrary = signal<Library | undefined>(undefined);
-
-  // Delete confirmation state
-  showDeleteDialog = signal(false);
-  libraryToDelete = signal<Library | undefined>(undefined);
 
   // Scan state
   scanningLibraryId = signal<string | null>(null);
@@ -87,28 +88,36 @@ export class LibrariesComponent implements OnInit {
   }
 
   onDeleteLibrary(library: Library): void {
-    this.libraryToDelete.set(library);
-    this.showDeleteDialog.set(true);
-  }
+    const dialogData: ConfirmationDialogData = {
+      title: 'Delete Library?',
+      itemName: library.name,
+      itemType: 'library',
+      willHappen: [
+        'Remove the library from BitBonsai',
+        'Cancel any pending encoding jobs for this library',
+        'Stop file watching for this directory',
+        'Delete all associated job history and metadata',
+      ],
+      wontHappen: [
+        'Delete your actual media files',
+        'Remove files from your hard drive',
+        'Affect other libraries or their settings',
+      ],
+      irreversible: true,
+      confirmButtonText: 'Delete Library',
+      cancelButtonText: 'Keep Library',
+    };
 
-  getDeleteMessage(): string {
-    const library = this.libraryToDelete();
-    if (!library) return 'Are you sure?';
-    return `Are you sure you want to delete "${library.name}"? This will permanently delete all associated jobs and cannot be undone.`;
-  }
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
 
-  onConfirmDelete(): void {
-    const library = this.libraryToDelete();
-    if (!library) return;
-
-    this.store.dispatch(LibrariesActions.deleteLibrary({ id: library.id }));
-    this.showDeleteDialog.set(false);
-    this.libraryToDelete.set(undefined);
-  }
-
-  onCancelDelete(): void {
-    this.showDeleteDialog.set(false);
-    this.libraryToDelete.set(undefined);
+    dialogRef.closed.subscribe((result) => {
+      if (result === true) {
+        this.store.dispatch(LibrariesActions.deleteLibrary({ id: library.id }));
+      }
+    });
   }
 
   onScanLibrary(library: Library): void {
