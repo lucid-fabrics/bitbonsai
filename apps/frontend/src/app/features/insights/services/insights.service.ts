@@ -7,7 +7,8 @@ import {
   NodePerformanceBO,
   SavingsTrendBO,
 } from '../bos/insights.bo';
-import type { InsightsClient } from './insights.client';
+// biome-ignore lint/style/useImportType: Angular DI requires regular import for injection token
+import { InsightsClient } from './insights.client';
 
 /**
  * Service for insights-related business logic

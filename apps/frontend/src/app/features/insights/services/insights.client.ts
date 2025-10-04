@@ -1,4 +1,5 @@
-import type { HttpClient } from '@angular/common/http';
+// biome-ignore lint/style/useImportType: Angular DI requires regular import for injection token
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import type { Observable } from 'rxjs';
 
