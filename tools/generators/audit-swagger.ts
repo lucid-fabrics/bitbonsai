@@ -236,17 +236,23 @@ results.forEach((result) => {
 
     if (result.missingApiOperation.length > 0) {
       console.log(`   Missing @ApiOperation:`);
-      result.missingApiOperation.forEach((item) => console.log(`     - ${item}`));
+      result.missingApiOperation.forEach((item) => {
+        console.log(`     - ${item}`);
+      });
     }
 
     if (result.missingApiResponse.length > 0) {
       console.log(`   Missing @ApiResponse:`);
-      result.missingApiResponse.forEach((item) => console.log(`     - ${item}`));
+      result.missingApiResponse.forEach((item) => {
+        console.log(`     - ${item}`);
+      });
     }
 
     if (result.missingApiProperty.length > 0) {
       console.log(`   Missing @ApiProperty:`);
-      result.missingApiProperty.slice(0, 10).forEach((item) => console.log(`     - ${item}`));
+      result.missingApiProperty.slice(0, 10).forEach((item) => {
+        console.log(`     - ${item}`);
+      });
       if (result.missingApiProperty.length > 10) {
         console.log(`     ... and ${result.missingApiProperty.length - 10} more`);
       }

@@ -395,7 +395,9 @@ describe('SettingsComponent', () => {
       component.backupDatabase();
 
       expect(settingsService.backupDatabase).toHaveBeenCalled();
-      expect(component.successMessage()).toBe('Database backed up to: /backups/db-2025-10-03.sqlite');
+      expect(component.successMessage()).toBe(
+        'Database backed up to: /backups/db-2025-10-03.sqlite'
+      );
       expect(component.loading()).toBe(false);
     });
 

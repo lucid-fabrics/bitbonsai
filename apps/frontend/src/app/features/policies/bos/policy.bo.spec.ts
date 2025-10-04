@@ -22,7 +22,7 @@ describe('PolicyBo', () => {
         name: 'Test',
       };
 
-      const bo = new PolicyBo(mockModel as any);
+      const bo = new PolicyBo(mockModel as never);
 
       expect(bo.id).toBe('1');
       expect(bo.name).toBe('Test');
@@ -34,7 +34,7 @@ describe('PolicyBo', () => {
         name: null,
       };
 
-      expect(() => new PolicyBo(mockModel as any)).not.toThrow();
+      expect(() => new PolicyBo(mockModel as never)).not.toThrow();
     });
   });
 

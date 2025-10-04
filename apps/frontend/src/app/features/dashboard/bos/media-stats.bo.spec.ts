@@ -22,7 +22,7 @@ describe('MediaStatsBo', () => {
         name: 'Test',
       };
 
-      const bo = new MediaStatsBo(mockModel as any);
+      const bo = new MediaStatsBo(mockModel as never);
 
       expect(bo.id).toBe('1');
       expect(bo.name).toBe('Test');
@@ -34,7 +34,7 @@ describe('MediaStatsBo', () => {
         name: null,
       };
 
-      expect(() => new MediaStatsBo(mockModel as any)).not.toThrow();
+      expect(() => new MediaStatsBo(mockModel as never)).not.toThrow();
     });
   });
 

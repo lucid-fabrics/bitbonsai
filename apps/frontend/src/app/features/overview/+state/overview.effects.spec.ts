@@ -38,7 +38,7 @@ describe('OverviewEffects', () => {
 
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', name: 'Test' }] as any;
+      const mockData = [{ id: '1', name: 'Test' }] as never;
       service.getAll.and.returnValue(of(mockData));
 
       actions$ = of(overviewActions.load());

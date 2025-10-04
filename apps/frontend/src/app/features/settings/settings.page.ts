@@ -212,7 +212,9 @@ export class SettingsComponent implements OnInit {
       const updates = {
         ...(formValue.ffmpegPath && { ffmpegPath: formValue.ffmpegPath }),
         ...(formValue.logLevel && { logLevel: formValue.logLevel as LogLevel }),
-        ...(formValue.analyticsEnabled !== null && { analyticsEnabled: formValue.analyticsEnabled }),
+        ...(formValue.analyticsEnabled !== null && {
+          analyticsEnabled: formValue.analyticsEnabled,
+        }),
         ...(formValue.webhookUrl && { webhookUrl: formValue.webhookUrl }),
       };
 

@@ -390,7 +390,7 @@ npm run docker:build-push
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests with coverage
 npm test
 
 # Run frontend tests
@@ -399,9 +399,43 @@ npx nx test frontend
 # Run backend tests
 npx nx test backend
 
-# E2E tests
-npm run e2e
+# E2E tests (Playwright)
+npm run test:e2e
+
+# Code quality check
+npm run check
+
+# Auto-fix linter issues
+npm run check:fix
 ```
+
+### Git Hooks & Quality Gates
+
+BitBonsai enforces code quality through automated Git hooks powered by **Husky**:
+
+#### Pre-commit Hook
+Automatically runs before each commit:
+- Runs Biome linter and auto-fixes issues
+- Stages fixed files
+- Verifies zero linter errors remain
+- **Prevents commits with code quality issues**
+
+#### Pre-push Hook
+Automatically runs before pushing to remote:
+- Builds backend and frontend (ensures compilation success)
+- Runs all unit and integration tests
+- Runs Playwright E2E tests
+- Verifies test coverage ≥95%
+- **Prevents pushing broken code**
+
+#### Bypassing Hooks (Not Recommended)
+```bash
+# Only use in emergencies with explicit approval
+git commit --no-verify
+git push --no-verify
+```
+
+**Note**: All contributions MUST pass these quality gates. CI/CD will reject PRs that bypass hooks.
 
 ---
 

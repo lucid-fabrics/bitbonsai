@@ -25,11 +25,6 @@ interface ServiceConfig {
   methods: string[]; // e.g., ["create", "findAll", "findOne", "update", "remove"]
 }
 
-interface TestTemplate {
-  integration: string;
-  e2e: string;
-}
-
 function analyzeService(serviceName: string): ServiceConfig {
   const baseDir = path.join(process.cwd(), 'apps', 'backend', 'src', serviceName);
   const serviceFile = path.join(baseDir, `${serviceName}.service.ts`);
@@ -80,8 +75,7 @@ function analyzeService(serviceName: string): ServiceConfig {
 }
 
 function generateIntegrationTests(config: ServiceConfig): string {
-  const { name, className, entityName, hasNodeFK, hasLibraryFK, uniqueConstraints, methods } =
-    config;
+  const { name, className, entityName, hasNodeFK, hasLibraryFK, methods } = config;
 
   return `import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -183,7 +177,7 @@ ${methods.includes('remove') ? generateRemoveTests(config) : ''}
 }
 
 function generateCreateTests(config: ServiceConfig): string {
-  const { entityName, hasNodeFK, hasLibraryFK } = config;
+  const { hasNodeFK, hasLibraryFK } = config;
 
   return `
   describe('create', () => {
@@ -256,7 +250,7 @@ function generateCreateTests(config: ServiceConfig): string {
 }
 
 function generateFindAllTests(config: ServiceConfig): string {
-  const { entityName, hasNodeFK, hasLibraryFK } = config;
+  const { hasNodeFK, hasLibraryFK } = config;
 
   return `
   describe('findAll', () => {
@@ -284,7 +278,7 @@ function generateFindAllTests(config: ServiceConfig): string {
 }
 
 function generateFindOneTests(config: ServiceConfig): string {
-  const { entityName, hasNodeFK, hasLibraryFK } = config;
+  const { hasNodeFK, hasLibraryFK } = config;
 
   return `
   describe('findOne', () => {
@@ -307,7 +301,7 @@ function generateFindOneTests(config: ServiceConfig): string {
 }
 
 function generateUpdateTests(config: ServiceConfig): string {
-  const { entityName, hasNodeFK, hasLibraryFK } = config;
+  const { hasNodeFK, hasLibraryFK } = config;
 
   return `
   describe('update', () => {

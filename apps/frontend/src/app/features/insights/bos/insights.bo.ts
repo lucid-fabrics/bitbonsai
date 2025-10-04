@@ -66,6 +66,8 @@ export class NodePerformanceBO {
         return '#fbbf24'; // Yellow
       case 'low':
         return '#ff6b6b'; // Red
+      default:
+        return '#9ca3af'; // Gray
     }
   }
 }

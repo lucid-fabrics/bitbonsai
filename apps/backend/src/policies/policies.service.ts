@@ -5,6 +5,7 @@ import {
   TargetCodec,
 } from '@bitbonsai/shared-models';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import type { CreatePolicyDto } from './dto/create-policy.dto';
 import type { PolicyDto } from './dto/policy.dto';
 import type { PolicyStatsDto } from './dto/policy-stats.dto';
@@ -162,8 +163,8 @@ export class PoliciesService {
     preset: string;
     targetCodec: string;
     targetQuality: number;
-    deviceProfiles: any;
-    advancedSettings: any;
+    deviceProfiles: Prisma.JsonValue;
+    advancedSettings: Prisma.JsonValue;
     atomicReplace: boolean;
     verifyOutput: boolean;
     skipSeeding: boolean;
@@ -197,8 +198,8 @@ export class PoliciesService {
     preset: string;
     targetCodec: string;
     targetQuality: number;
-    deviceProfiles: any;
-    advancedSettings: any;
+    deviceProfiles: Prisma.JsonValue;
+    advancedSettings: Prisma.JsonValue;
     atomicReplace: boolean;
     verifyOutput: boolean;
     skipSeeding: boolean;

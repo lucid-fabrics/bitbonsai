@@ -1,40 +1,44 @@
+import type { FileInfoModel } from '../models/file-info.model';
 import { FileInfoBo } from './file-info.bo';
 
 describe('FileInfoBo', () => {
   describe('constructor and mapping', () => {
     it('should create instance from model', () => {
-      const mockModel = {
-        id: '1',
-        name: 'Test',
-        createdAt: new Date('2025-01-01'),
+      const mockModel: FileInfoModel = {
+        file_path: '/test/path',
+        file_name: 'test.mp4',
+        size_gb: 1.5,
+        codec: 'h264',
+        bitrate_mbps: 5.0,
       };
 
       const bo = new FileInfoBo(mockModel);
 
-      expect(bo.id).toBe('1');
-      expect(bo.name).toBe('Test');
-      expect(bo.createdAt).toEqual(new Date('2025-01-01'));
+      expect(bo.filePath).toBe('/test/path');
+      expect(bo.fileName).toBe('test.mp4');
+      expect(bo.sizeGb).toBe(1.5);
     });
 
     it('should handle missing optional fields', () => {
-      const mockModel = {
-        id: '1',
-        name: 'Test',
+      const mockModel: Partial<FileInfoModel> = {
+        file_path: '/test/path',
+        file_name: 'test.mp4',
+        size_gb: 1.5,
       };
 
-      const bo = new FileInfoBo(mockModel as any);
+      const bo = new FileInfoBo(mockModel as FileInfoModel);
 
-      expect(bo.id).toBe('1');
-      expect(bo.name).toBe('Test');
+      expect(bo.filePath).toBe('/test/path');
+      expect(bo.fileName).toBe('test.mp4');
     });
 
     it('should handle null/undefined values gracefully', () => {
-      const mockModel = {
-        id: '1',
-        name: null,
+      const mockModel: Partial<FileInfoModel> = {
+        file_path: '/test/path',
+        file_name: 'test.mp4',
       };
 
-      expect(() => new FileInfoBo(mockModel as any)).not.toThrow();
+      expect(() => new FileInfoBo(mockModel as FileInfoModel)).not.toThrow();
     });
   });
 

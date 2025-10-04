@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
+import type { MediaStatsModel } from '../models/media-stats.model';
 import { MediaStatsClient } from '../services/media-stats.client';
 import * as dashboardActions from './dashboard.actions';
 import { MediaStatsEffects } from './dashboard.effects';
@@ -38,7 +39,14 @@ describe('MediaStatsEffects', () => {
 
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', name: 'Test' }] as any;
+      const mockData: Partial<MediaStatsModel> = {
+        total_size_gb: 100,
+        total_files: 10,
+        average_bitrate_mbps: 5.5,
+        codec_distribution: { hevc: 5, h264: 3, av1: 1, other: 1 },
+        folders: [],
+        scan_timestamp: new Date().toISOString(),
+      };
       service.getAll.and.returnValue(of(mockData));
 
       actions$ = of(dashboardActions.load());

@@ -247,6 +247,117 @@ export class FfmpegService {
   }
 
   /**
+   * Handle progress data from ffmpeg stderr
+   *
+   * @param progressData - Parsed progress data
+   * @param job - Job entity
+   * @param activeEncoding - Active encoding state
+   * @param estimatedDurationSeconds - Estimated video duration
+   * @private
+   */
+  private handleProgressUpdate(
+    progressData: Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'>,
+    job: Job,
+    activeEncoding: ActiveEncoding,
+    estimatedDurationSeconds: number
+  ): void {
+    const progress = this.calculateProgressPercentage(
+      progressData.currentTime,
+      estimatedDurationSeconds
+    );
+
+    // Calculate ETA
+    const elapsed = Date.now() - activeEncoding.startTime.getTime();
+    const eta = progress > 0 ? Math.round(((elapsed / progress) * (100 - progress)) / 1000) : 0;
+
+    // Emit progress event
+    const progressDto: EncodingProgressDto = {
+      jobId: job.id,
+      frame: progressData.frame,
+      fps: progressData.fps,
+      currentTime: progressData.currentTime,
+      progress,
+      eta,
+    };
+
+    this.eventEmitter.emit('encoding.progress', progressDto);
+
+    // Update job progress (throttle to every 5%)
+    if (progress - activeEncoding.lastProgress >= 5) {
+      this.queueService
+        .updateProgress(job.id, {
+          progress,
+          etaSeconds: eta,
+        })
+        .catch((error) => {
+          this.logger.error(`Failed to update job progress: ${error.message}`);
+        });
+      activeEncoding.lastProgress = progress;
+    }
+  }
+
+  /**
+   * Handle successful encoding completion
+   *
+   * @param job - Job entity
+   * @param policy - Policy entity
+   * @param tempOutput - Temporary output file path
+   * @private
+   */
+  private async handleEncodingSuccess(job: Job, policy: Policy, tempOutput: string): Promise<void> {
+    // Get output file size
+    const stats = await fs.stat(tempOutput);
+    const afterSizeBytes = stats.size;
+    const savedBytes = Number(job.beforeSizeBytes) - afterSizeBytes;
+    const savedPercent = (savedBytes / Number(job.beforeSizeBytes)) * 100;
+
+    // Atomic replacement: rename temp file to original
+    if (policy.atomicReplace) {
+      await fs.rename(tempOutput, job.filePath);
+    } else {
+      // Keep both files (add .original extension)
+      await fs.rename(job.filePath, `${job.filePath}.original`);
+      await fs.rename(tempOutput, job.filePath);
+    }
+
+    // Complete job
+    await this.queueService.completeJob(job.id, {
+      afterSizeBytes: BigInt(afterSizeBytes).toString(),
+      savedBytes: BigInt(savedBytes).toString(),
+      savedPercent,
+    });
+
+    this.logger.log(`Encoding completed for job ${job.id}: saved ${savedPercent.toFixed(2)}%`);
+  }
+
+  /**
+   * Handle encoding failure
+   *
+   * @param job - Job entity
+   * @param tempOutput - Temporary output file path
+   * @param errorMessage - Error message
+   * @private
+   */
+  private async handleEncodingFailure(
+    job: Job,
+    tempOutput: string,
+    errorMessage: string
+  ): Promise<void> {
+    this.logger.error(`Encoding failed for job ${job.id}: ${errorMessage}`);
+
+    // Clean up temp file
+    try {
+      if (existsSync(tempOutput)) {
+        await fs.unlink(tempOutput);
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    await this.queueService.failJob(job.id, errorMessage);
+  }
+
+  /**
    * Encode file using ffmpeg
    *
    * Process:
@@ -310,40 +421,7 @@ export class FfmpegService {
         for (const line of lines) {
           const progressData = this.parseProgress(line);
           if (progressData) {
-            const progress = this.calculateProgressPercentage(
-              progressData.currentTime,
-              estimatedDurationSeconds
-            );
-
-            // Calculate ETA
-            const elapsed = Date.now() - activeEncoding.startTime.getTime();
-            const eta =
-              progress > 0 ? Math.round(((elapsed / progress) * (100 - progress)) / 1000) : 0;
-
-            // Emit progress event
-            const progressDto: EncodingProgressDto = {
-              jobId: job.id,
-              frame: progressData.frame,
-              fps: progressData.fps,
-              currentTime: progressData.currentTime,
-              progress,
-              eta,
-            };
-
-            this.eventEmitter.emit('encoding.progress', progressDto);
-
-            // Update job progress (throttle to every 5%)
-            if (progress - activeEncoding.lastProgress >= 5) {
-              this.queueService
-                .updateProgress(job.id, {
-                  progress,
-                  etaSeconds: eta,
-                })
-                .catch((error) => {
-                  this.logger.error(`Failed to update job progress: ${error.message}`);
-                });
-              activeEncoding.lastProgress = progress;
-            }
+            this.handleProgressUpdate(progressData, job, activeEncoding, estimatedDurationSeconds);
           }
         }
       });
@@ -354,52 +432,16 @@ export class FfmpegService {
 
         if (code === 0) {
           try {
-            // Get output file size
-            const stats = await fs.stat(tempOutput);
-            const afterSizeBytes = stats.size;
-            const savedBytes = Number(job.beforeSizeBytes) - afterSizeBytes;
-            const savedPercent = (savedBytes / Number(job.beforeSizeBytes)) * 100;
-
-            // Atomic replacement: rename temp file to original
-            if (policy.atomicReplace) {
-              await fs.rename(tempOutput, job.filePath);
-            } else {
-              // Keep both files (add .original extension)
-              await fs.rename(job.filePath, `${job.filePath}.original`);
-              await fs.rename(tempOutput, job.filePath);
-            }
-
-            // Complete job
-            await this.queueService.completeJob(job.id, {
-              afterSizeBytes: BigInt(afterSizeBytes).toString(),
-              savedBytes: BigInt(savedBytes).toString(),
-              savedPercent,
-            });
-
-            this.logger.log(
-              `Encoding completed for job ${job.id}: saved ${savedPercent.toFixed(2)}%`
-            );
+            await this.handleEncodingSuccess(job, policy, tempOutput);
             resolve();
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            this.logger.error(`Failed to finalize encoding: ${errorMessage}`);
-            await this.queueService.failJob(job.id, errorMessage);
+            await this.handleEncodingFailure(job, tempOutput, errorMessage);
             reject(error);
           }
         } else {
           const errorMessage = `ffmpeg exited with code ${code}`;
-          this.logger.error(`Encoding failed for job ${job.id}: ${errorMessage}`);
-
-          // Clean up temp file
-          try {
-            if (existsSync(tempOutput)) {
-              await fs.unlink(tempOutput);
-            }
-          } catch {
-            // Ignore cleanup errors
-          }
-
-          await this.queueService.failJob(job.id, errorMessage);
+          await this.handleEncodingFailure(job, tempOutput, errorMessage);
           reject(new Error(errorMessage));
         }
       });
@@ -408,18 +450,7 @@ export class FfmpegService {
       ffmpegProcess.on('error', async (error) => {
         this.activeEncodings.delete(job.id);
         const errorMessage = `ffmpeg process error: ${error.message}`;
-        this.logger.error(`Encoding error for job ${job.id}: ${errorMessage}`);
-
-        // Clean up temp file
-        try {
-          if (existsSync(tempOutput)) {
-            await fs.unlink(tempOutput);
-          }
-        } catch {
-          // Ignore cleanup errors
-        }
-
-        await this.queueService.failJob(job.id, errorMessage);
+        await this.handleEncodingFailure(job, tempOutput, errorMessage);
         reject(error);
       });
     });
@@ -516,7 +547,7 @@ export class FfmpegService {
       targetCodec: string;
       targetQuality: number;
       hwAccel?: string;
-      advancedSettings?: any;
+      advancedSettings?: Record<string, unknown>;
     }
   ): Promise<void> {
     // Create a minimal job object for encodeFile

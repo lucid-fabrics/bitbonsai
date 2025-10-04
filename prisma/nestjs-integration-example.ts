@@ -93,7 +93,7 @@ export class LicenseService {
     return this.prisma.license.create({
       data: {
         key: this.generateLicenseKey(data.tier),
-        tier: data.tier as any,
+        tier: data.tier,
         status: LicenseStatus.ACTIVE,
         email: data.email,
         maxNodes: config.maxNodes,
@@ -160,7 +160,7 @@ export class NodeService {
         role: license._count.nodes === 0 ? 'MAIN' : 'LINKED',
         status: 'ONLINE',
         version: data.version,
-        acceleration: data.acceleration as any,
+        acceleration: data.acceleration,
         apiKey: this.generateApiKey(),
         lastHeartbeat: new Date(),
         licenseId: license.id,
@@ -380,7 +380,12 @@ export class JobService {
     };
   }
 
-  private async updateMetrics(job: any) {
+  private async updateMetrics(job: {
+    id: string;
+    nodeId: string;
+    savedBytes: bigint | null;
+    node: { licenseId: string };
+  }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -450,7 +455,7 @@ export class LibraryService {
       data: {
         name: data.name,
         path: data.path,
-        mediaType: data.mediaType as any,
+        mediaType: data.mediaType,
         nodeId: data.nodeId,
       },
     });
@@ -539,8 +544,8 @@ export class PolicyService {
     return this.prisma.policy.create({
       data: {
         name: data.name,
-        preset: data.preset as any,
-        targetCodec: data.targetCodec as any,
+        preset: data.preset,
+        targetCodec: data.targetCodec,
         targetQuality: data.targetQuality,
         deviceProfiles,
         advancedSettings,
