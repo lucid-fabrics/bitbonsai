@@ -5,7 +5,6 @@ import { HealthService } from './health.service';
 
 describe('HealthController', () => {
   let controller: HealthController;
-  let service: HealthService;
 
   const mockHealthService = {
     getBasicHealth: jest.fn(),
@@ -26,7 +25,6 @@ describe('HealthController', () => {
     }).compile();
 
     controller = module.get<HealthController>(HealthController);
-    service = module.get<HealthService>(HealthService);
 
     // Reset all mocks
     jest.clearAllMocks();

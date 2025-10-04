@@ -42,11 +42,11 @@ function analyzeService(serviceName: string): ServiceConfig {
 
   // Extract class name
   const classMatch = serviceContent.match(/export class (\w+Service)/);
-  const className = classMatch ? classMatch[1] : capitalize(serviceName) + 'Service';
+  const className = classMatch ? classMatch[1] : `${capitalize(serviceName)}Service`;
 
   // Extract entity name (singular)
   const entityName = serviceName.endsWith('ies')
-    ? serviceName.slice(0, -3) + 'y' // libraries -> Library
+    ? `${serviceName.slice(0, -3)}y` // libraries -> Library
     : serviceName.slice(0, -1); // nodes -> Node
   const entityClassName = capitalize(entityName);
 

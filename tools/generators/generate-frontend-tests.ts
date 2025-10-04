@@ -21,7 +21,7 @@ const generateServiceTest = (serviceName: string, className: string): string => 
   const clientClassName = className.replace('Service', 'Client');
   const boName = serviceName.replace('Service', 'Bo');
   const boClassName = className.replace('Service', 'Bo');
-  const modelName = serviceName.replace('Service', 'Model');
+  const _modelName = serviceName.replace('Service', 'Model');
 
   return `import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
@@ -89,7 +89,7 @@ describe('${className}', () => {
 
 // Template for Business Object Tests
 const generateBoTest = (boName: string, className: string): string => {
-  const modelName = boName.replace('.bo', '');
+  const _modelName = boName.replace('.bo', '');
 
   return `import { ${className} } from './${boName}';
 
@@ -309,11 +309,11 @@ const generateServiceTests = (): number => {
     const filePath = path.join(servicesDir, file);
     const className =
       extractClassName(filePath) ||
-      serviceName
+      `${serviceName
         .split('.')[0]
         .split('-')
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join('') + 'Service';
+        .join('')}Service`;
 
     const testContent = generateServiceTest(serviceName, className);
     const testPath = path.join(servicesDir, `${serviceName}.spec.ts`);
@@ -343,11 +343,11 @@ const generateBoTests = (): number => {
     const filePath = path.join(bosDir, file);
     const className =
       extractClassName(filePath) ||
-      boName
+      `${boName
         .split('.')[0]
         .split('-')
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join('') + 'Bo';
+        .join('')}Bo`;
 
     const testContent = generateBoTest(boName, className);
     const testPath = path.join(bosDir, `${boName}.spec.ts`);
@@ -385,7 +385,7 @@ const generateEffectsTests = (): number => {
       const filePath = path.join(stateDir, file);
       const className =
         extractClassName(filePath) ||
-        feature.charAt(0).toUpperCase() + feature.slice(1) + 'Effects';
+        `${feature.charAt(0).toUpperCase() + feature.slice(1)}Effects`;
 
       const testContent = generateEffectsTest(effectsName, className, feature);
       const testPath = path.join(stateDir, `${effectsName}.spec.ts`);
@@ -422,7 +422,7 @@ const generateComponentTests = (): number => {
       const filePath = path.join(featureDir, file);
       const className =
         extractClassName(filePath) ||
-        feature.charAt(0).toUpperCase() + feature.slice(1) + 'Component';
+        `${feature.charAt(0).toUpperCase() + feature.slice(1)}Component`;
 
       const testContent = generateComponentTest(componentName, className);
       const testPath = path.join(featureDir, `${componentName}.spec.ts`);
@@ -456,7 +456,7 @@ const effectsGenerated = generateEffectsTests();
 console.log('\n📝 Generating Component Tests...');
 const componentsGenerated = generateComponentTests();
 
-console.log('\n' + '='.repeat(60));
+console.log(`\n${'='.repeat(60)}`);
 console.log('✨ Test Generation Complete!');
 console.log('='.repeat(60));
 console.log(`Services:    ${servicesGenerated} files generated`);

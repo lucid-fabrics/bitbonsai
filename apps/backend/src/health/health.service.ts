@@ -1,5 +1,4 @@
 import { exec } from 'node:child_process';
-import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
@@ -135,7 +134,7 @@ export class HealthService {
   async checkRedisHealth(): Promise<ServiceHealthDto | undefined> {
     // Redis is optional in the current implementation
     // This is a placeholder for future Redis integration
-    const redisEnabled = process.env['REDIS_URL'] !== undefined;
+    const redisEnabled = process.env.REDIS_URL !== undefined;
 
     if (!redisEnabled) {
       return undefined;
@@ -170,7 +169,7 @@ export class HealthService {
 
       const usedPercent = Number.parseFloat(parts[4]?.replace('%', '') || '0');
       const available = parts[3] || 'Unknown';
-      const used = parts[2] || 'Unknown';
+      const _used = parts[2] || 'Unknown';
 
       let status: 'ok' | 'warning' | 'critical' = 'ok';
       if (usedPercent > 90) {

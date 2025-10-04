@@ -5,12 +5,7 @@ import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-so
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { lastValueFrom } from 'rxjs';
-import {
-  CodecDistributionBO,
-  InsightsStatsBO,
-  type NodePerformanceBO,
-  SavingsTrendBO,
-} from './bos/insights.bo';
+import { InsightsStatsBO, type NodePerformanceBO } from './bos/insights.bo';
 import type { InsightsService } from './services/insights.service';
 
 // Register Chart.js components

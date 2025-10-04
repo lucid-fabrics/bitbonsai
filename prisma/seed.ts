@@ -210,7 +210,7 @@ async function main() {
   // CRF 20: Sweet spot between quality and size (visually transparent)
   // Preset: medium - Best balance of speed and compression
   // Works on ALL hardware acceleration types
-  const defaultPolicy = await prisma.policy.create({
+  const _defaultPolicy = await prisma.policy.create({
     data: {
       name: 'Default - Universal H.265 (Recommended)',
       preset: 'BALANCED_HEVC',
@@ -369,7 +369,7 @@ async function main() {
   console.log('🎬 Creating sample jobs...');
 
   // Completed jobs
-  const completedJob1 = await prisma.job.create({
+  const _completedJob1 = await prisma.job.create({
     data: {
       filePath: '/media/Movies/The Matrix (1999)/The Matrix (1999).mkv',
       fileLabel: 'The Matrix (1999).mkv',
@@ -389,7 +389,7 @@ async function main() {
     },
   });
 
-  const completedJob2 = await prisma.job.create({
+  const _completedJob2 = await prisma.job.create({
     data: {
       filePath: '/media/TV/Breaking Bad/Season 1/Breaking Bad - S01E01.mkv',
       fileLabel: 'Breaking Bad - S01E01.mkv',
@@ -412,7 +412,7 @@ async function main() {
   console.log(`  ✅ 2 completed jobs`);
 
   // Active encoding jobs
-  const encodingJob = await prisma.job.create({
+  const _encodingJob = await prisma.job.create({
     data: {
       filePath: '/media/Movies/Inception (2010)/Inception (2010).mkv',
       fileLabel: 'Inception (2010).mkv',
@@ -432,7 +432,7 @@ async function main() {
   console.log(`  ✅ 1 encoding job (67.5% complete)`);
 
   // Queued jobs
-  const queuedJob1 = await prisma.job.create({
+  const _queuedJob1 = await prisma.job.create({
     data: {
       filePath: '/media/Anime/Attack on Titan/Season 1/Attack on Titan - S01E01.mkv',
       fileLabel: 'Attack on Titan - S01E01.mkv',
@@ -447,7 +447,7 @@ async function main() {
     },
   });
 
-  const queuedJob2 = await prisma.job.create({
+  const _queuedJob2 = await prisma.job.create({
     data: {
       filePath: '/media/TV/The Office/Season 1/The Office - S01E01.mkv',
       fileLabel: 'The Office - S01E01.mkv',
@@ -465,7 +465,7 @@ async function main() {
   console.log(`  ✅ 2 queued jobs`);
 
   // Failed job
-  const failedJob = await prisma.job.create({
+  const _failedJob = await prisma.job.create({
     data: {
       filePath: '/media/Movies/Corrupted File (2020)/Corrupted File.mkv',
       fileLabel: 'Corrupted File (2020).mkv',

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { JobStage, NodeStatus } from '@prisma/client';
+import { JobStage } from '@prisma/client';
 
 /**
  * System health information

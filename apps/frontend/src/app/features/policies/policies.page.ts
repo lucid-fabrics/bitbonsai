@@ -228,7 +228,7 @@ export class PoliciesComponent implements OnInit {
     this.cancelDelete();
   }
 
-  getDeviceIcon(profile: DeviceProfile) {
+  getDeviceIcon(_profile: DeviceProfile) {
     return this.icons.tv;
   }
 

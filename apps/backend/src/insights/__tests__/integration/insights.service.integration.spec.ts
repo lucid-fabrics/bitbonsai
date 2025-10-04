@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Job, Library, License, Node, Policy } from '@prisma/client';
+import type { Library, License, Node, Policy } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { InsightsService } from '../../insights.service';
 

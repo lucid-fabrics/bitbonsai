@@ -7,7 +7,7 @@ import { LicenseService } from './license.service';
 
 describe('LicenseService', () => {
   let service: LicenseService;
-  let prisma: PrismaService;
+  let _prisma: PrismaService;
 
   const mockPrismaService = {
     license: {
@@ -28,7 +28,7 @@ describe('LicenseService', () => {
     }).compile();
 
     service = module.get<LicenseService>(LicenseService);
-    prisma = module.get<PrismaService>(PrismaService);
+    _prisma = module.get<PrismaService>(PrismaService);
 
     jest.clearAllMocks();
   });

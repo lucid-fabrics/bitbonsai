@@ -1,13 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { JobStage } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PolicyPreset, TargetCodec } from './dto/create-policy.dto';
 import { PoliciesService } from './policies.service';
 
 describe('PoliciesService', () => {
   let service: PoliciesService;
-  let prisma: PrismaService;
+  let _prisma: PrismaService;
 
   const mockPrismaService = {
     policy: {
@@ -31,7 +30,7 @@ describe('PoliciesService', () => {
     }).compile();
 
     service = module.get<PoliciesService>(PoliciesService);
-    prisma = module.get<PrismaService>(PrismaService);
+    _prisma = module.get<PrismaService>(PrismaService);
 
     // Clear all mocks before each test
     jest.clearAllMocks();

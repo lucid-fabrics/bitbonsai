@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Job, Library, License, Node, Policy } from '@prisma/client';
+import type { Library, License, Node, Policy } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
 import { FfmpegService } from '../../ffmpeg.service';
@@ -194,8 +194,8 @@ describe('EncodingProcessorService Integration Tests', () => {
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
       expect(updated?.completedAt).toBeDefined();
-      expect(updated?.completedAt!.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(updated?.completedAt!.getTime()).toBeLessThanOrEqual(after.getTime());
+      expect(updated?.completedAt?.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(updated?.completedAt?.getTime()).toBeLessThanOrEqual(after.getTime());
     });
   });
 
@@ -217,7 +217,7 @@ describe('EncodingProcessorService Integration Tests', () => {
         },
       });
 
-      const newJob = await prisma.job.create({
+      const _newJob = await prisma.job.create({
         data: {
           libraryId: testLibrary.id,
           policyId: testPolicy.id,

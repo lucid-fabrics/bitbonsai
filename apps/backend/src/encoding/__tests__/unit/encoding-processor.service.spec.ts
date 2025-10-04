@@ -15,7 +15,7 @@ describe('EncodingProcessorService', () => {
   let queueService: jest.Mocked<QueueService>;
   let ffmpegService: jest.Mocked<FfmpegService>;
   let librariesService: jest.Mocked<LibrariesService>;
-  let eventEmitter: EventEmitter2;
+  let _eventEmitter: EventEmitter2;
 
   const mockJob = {
     id: 'job-123',
@@ -96,7 +96,7 @@ describe('EncodingProcessorService', () => {
     queueService = module.get(QueueService);
     ffmpegService = module.get(FfmpegService);
     librariesService = module.get(LibrariesService);
-    eventEmitter = module.get(EventEmitter2);
+    _eventEmitter = module.get(EventEmitter2);
   });
 
   it('should be defined', () => {
