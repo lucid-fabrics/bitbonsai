@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import { OverviewModel } from '../models/overview.model';
+import type { OverviewModel } from '../models/overview.model';
 import { OverviewActions } from './overview.actions';
 
 export interface OverviewState {
@@ -11,7 +11,7 @@ export interface OverviewState {
 export const initialState: OverviewState = {
   data: null,
   isLoading: false,
-  error: null
+  error: null,
 };
 
 export const overviewReducer = createReducer(
@@ -21,16 +21,16 @@ export const overviewReducer = createReducer(
   on(OverviewActions.loadOverview, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(OverviewActions.loadOverviewSuccess, (state, { data }) => ({
     ...state,
     data,
-    isLoading: false
+    isLoading: false,
   })),
   on(OverviewActions.loadOverviewFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   }))
 );

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { FolderFilesDto } from './dto/file-info.dto';
 import { MediaStatsDto } from './dto/media-stats.dto';
-import { MediaStatsService } from './media-stats.service';
+import type { MediaStatsService } from './media-stats.service';
 
 @ApiTags('media-stats')
 @Controller('media-stats')

@@ -1,4 +1,4 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { License } from '@prisma/client';
 import * as request from 'supertest';
@@ -64,10 +64,7 @@ describe('NodesController (E2E)', () => {
 
   describe('GET /api/v1/nodes', () => {
     it('should return empty array when no nodes exist', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/nodes')
-        .expect(200)
-        .expect([]);
+      return request(app.getHttpServer()).get('/api/v1/nodes').expect(200).expect([]);
     });
 
     it('should return all nodes', async () => {
@@ -133,9 +130,7 @@ describe('NodesController (E2E)', () => {
     });
 
     it('should return 404 for non-existent node', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/nodes/non-existent-id')
-        .expect(404);
+      return request(app.getHttpServer()).get('/api/v1/nodes/non-existent-id').expect(404);
     });
   });
 
@@ -345,9 +340,7 @@ describe('NodesController (E2E)', () => {
         },
       });
 
-      await request(app.getHttpServer())
-        .delete(`/api/v1/nodes/${node.id}`)
-        .expect(200);
+      await request(app.getHttpServer()).delete(`/api/v1/nodes/${node.id}`).expect(200);
 
       const deleted = await prisma.node.findUnique({ where: { id: node.id } });
 
@@ -355,9 +348,7 @@ describe('NodesController (E2E)', () => {
     });
 
     it('should return 404 for non-existent node', () => {
-      return request(app.getHttpServer())
-        .delete('/api/v1/nodes/non-existent-id')
-        .expect(404);
+      return request(app.getHttpServer()).delete('/api/v1/nodes/non-existent-id').expect(404);
     });
   });
 });

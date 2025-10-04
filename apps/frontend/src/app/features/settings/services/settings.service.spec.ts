@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { SettingsService } from './settings.service';
-import { SettingsClient } from './settings.service';
 import { SettingsBo } from '../bos/settings.service';
+import { SettingsClient, SettingsService } from './settings.service';
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -18,10 +17,7 @@ describe('SettingsService', () => {
     ]);
 
     TestBed.configureTestingModule({
-      providers: [
-        SettingsService,
-        { provide: SettingsClient, useValue: clientSpy },
-      ],
+      providers: [SettingsService, { provide: SettingsClient, useValue: clientSpy }],
     });
 
     service = TestBed.inject(SettingsService);

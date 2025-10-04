@@ -131,7 +131,11 @@ describe('HealthService', () => {
       // Mock execAsync to return df output with 50% usage
       const { exec } = require('node:child_process');
       exec.mockImplementation((cmd: any, callback: any) => {
-        callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /', '');
+        callback(
+          null,
+          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
+          ''
+        );
       });
 
       const result = await service.checkDiskHealth();
@@ -144,7 +148,11 @@ describe('HealthService', () => {
     it('should return warning status for high disk usage', async () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation((cmd: any, callback: any) => {
-        callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /', '');
+        callback(
+          null,
+          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /',
+          ''
+        );
       });
 
       const result = await service.checkDiskHealth();
@@ -156,7 +164,11 @@ describe('HealthService', () => {
     it('should return critical status for very high disk usage', async () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation((cmd: any, callback: any) => {
-        callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /', '');
+        callback(
+          null,
+          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
+          ''
+        );
       });
 
       const result = await service.checkDiskHealth();
@@ -308,7 +320,11 @@ describe('HealthService', () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation((cmd: any, callback: any) => {
         if (cmd.includes('df')) {
-          callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /', '');
+          callback(
+            null,
+            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
+            ''
+          );
         } else if (cmd.includes('ffmpeg')) {
           callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
         }
@@ -340,7 +356,11 @@ describe('HealthService', () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation((cmd: any, callback: any) => {
         if (cmd.includes('df')) {
-          callback(null, 'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /', '');
+          callback(
+            null,
+            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
+            ''
+          );
         } else if (cmd.includes('ffmpeg')) {
           callback(new Error('Command not found'));
         }

@@ -19,10 +19,8 @@ export class QueueClient {
     // Combine jobs and stats into QueueResponse
     return combineLatest([
       this.http.get<QueueJob[]>(this.apiUrl, { params }),
-      this.http.get<QueueStats>(`${this.apiUrl}/stats`)
-    ]).pipe(
-      map(([jobs, stats]) => ({ jobs, stats }))
-    );
+      this.http.get<QueueStats>(`${this.apiUrl}/stats`),
+    ]).pipe(map(([jobs, stats]) => ({ jobs, stats })));
   }
 
   cancelJob(jobId: string): Observable<void> {

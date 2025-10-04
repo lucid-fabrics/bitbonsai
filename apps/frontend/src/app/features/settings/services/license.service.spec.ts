@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { LicenseService } from './license.service';
-import { LicenseClient } from './license.service';
 import { LicenseBo } from '../bos/license.service';
+import { LicenseClient, LicenseService } from './license.service';
 
 describe('LicenseService', () => {
   let service: LicenseService;
@@ -18,10 +17,7 @@ describe('LicenseService', () => {
     ]);
 
     TestBed.configureTestingModule({
-      providers: [
-        LicenseService,
-        { provide: LicenseClient, useValue: clientSpy },
-      ],
+      providers: [LicenseService, { provide: LicenseClient, useValue: clientSpy }],
     });
 
     service = TestBed.inject(LicenseService);

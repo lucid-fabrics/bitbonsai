@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { SettingsEffects } from './settings.effects';
-import * as settingsActions from './settings.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { SettingsService } from '../services/settings.service';
+import * as settingsActions from './settings.actions';
+import { SettingsEffects } from './settings.effects';
 
 describe('SettingsEffects', () => {
   let actions$: Observable<Action>;

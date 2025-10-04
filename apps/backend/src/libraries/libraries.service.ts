@@ -1,7 +1,14 @@
-import { ConflictException, Injectable, Logger, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import {
+  ConflictException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Library } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import { FileWatcherService } from '../file-watcher/file-watcher.service';
+import type { PrismaService } from '../prisma/prisma.service';
 import type { CreateLibraryDto } from './dto/create-library.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
 import type { UpdateLibraryDto } from './dto/update-library.dto';
@@ -19,7 +26,7 @@ export class LibrariesService {
   constructor(
     private prisma: PrismaService,
     @Inject(forwardRef(() => FileWatcherService))
-    private fileWatcher: FileWatcherService,
+    private fileWatcher: FileWatcherService
   ) {}
 
   /**
@@ -166,7 +173,10 @@ export class LibrariesService {
 
     try {
       // Handle file watcher toggle if watchEnabled is being changed
-      if (updateLibraryDto.watchEnabled !== undefined && updateLibraryDto.watchEnabled !== existingLibrary.watchEnabled) {
+      if (
+        updateLibraryDto.watchEnabled !== undefined &&
+        updateLibraryDto.watchEnabled !== existingLibrary.watchEnabled
+      ) {
         if (updateLibraryDto.watchEnabled) {
           await this.fileWatcher.enableWatcher(id);
         } else {

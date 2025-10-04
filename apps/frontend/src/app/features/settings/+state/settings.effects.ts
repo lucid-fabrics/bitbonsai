@@ -30,7 +30,9 @@ export class SettingsEffects {
       switchMap(({ request }) =>
         this.licenseService.activateLicense(request).pipe(
           map((license) => SettingsActions.activateLicenseSuccess({ license })),
-          catchError((error) => of(SettingsActions.activateLicenseFailure({ error: error.message })))
+          catchError((error) =>
+            of(SettingsActions.activateLicenseFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -42,7 +44,9 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.getEnvironmentInfo().pipe(
           map((info) => SettingsActions.loadEnvironmentInfoSuccess({ info })),
-          catchError((error) => of(SettingsActions.loadEnvironmentInfoFailure({ error: error.message })))
+          catchError((error) =>
+            of(SettingsActions.loadEnvironmentInfoFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -54,7 +58,9 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.getSystemSettings().pipe(
           map((settings) => SettingsActions.loadSystemSettingsSuccess({ settings })),
-          catchError((error) => of(SettingsActions.loadSystemSettingsFailure({ error: error.message })))
+          catchError((error) =>
+            of(SettingsActions.loadSystemSettingsFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -66,7 +72,9 @@ export class SettingsEffects {
       switchMap(({ updates }) =>
         this.settingsService.updateSystemSettings(updates).pipe(
           map((settings) => SettingsActions.updateSystemSettingsSuccess({ settings })),
-          catchError((error) => of(SettingsActions.updateSystemSettingsFailure({ error: error.message })))
+          catchError((error) =>
+            of(SettingsActions.updateSystemSettingsFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -90,7 +98,9 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.resetToDefaults().pipe(
           map((result) => SettingsActions.resetToDefaultsSuccess(result)),
-          catchError((error) => of(SettingsActions.resetToDefaultsFailure({ error: error.message })))
+          catchError((error) =>
+            of(SettingsActions.resetToDefaultsFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -102,7 +112,9 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.regenerateApiKey().pipe(
           map((result) => SettingsActions.regenerateApiKeySuccess(result)),
-          catchError((error) => of(SettingsActions.regenerateApiKeyFailure({ error: error.message })))
+          catchError((error) =>
+            of(SettingsActions.regenerateApiKeyFailure({ error: error.message }))
+          )
         )
       )
     )

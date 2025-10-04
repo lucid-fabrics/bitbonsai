@@ -39,13 +39,15 @@ const auditController = (filePath: string): AuditResult => {
   const methodRegex = /@(Get|Post|Put|Patch|Delete)\(['"](.*?)['"]\)/g;
   const methods = [...content.matchAll(methodRegex)];
 
-  methods.forEach(match => {
+  methods.forEach((match) => {
     const httpMethod = match[1];
     const route = match[2];
     const methodName = `${httpMethod} ${route}`;
 
     // Find the method definition
-    const methodDefRegex = new RegExp(`@${httpMethod}\\(['"]${route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\)[\\s\\S]*?async\\s+(\\w+)\\s*\\(`);
+    const methodDefRegex = new RegExp(
+      `@${httpMethod}\\(['"]${route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\)[\\s\\S]*?async\\s+(\\w+)\\s*\\(`
+    );
     const methodDef = content.match(methodDefRegex);
 
     if (!methodDef) return;
@@ -64,16 +66,24 @@ const auditController = (filePath: string): AuditResult => {
     }
 
     // Check for @ApiResponse (or specific decorators like @ApiOkResponse, @ApiCreatedResponse)
-    const hasApiResponse = /@Api(Response|OkResponse|CreatedResponse|NoContentResponse|BadRequestResponse|NotFoundResponse|InternalServerErrorResponse)\s*\(/.test(section);
+    const hasApiResponse =
+      /@Api(Response|OkResponse|CreatedResponse|NoContentResponse|BadRequestResponse|NotFoundResponse|InternalServerErrorResponse)\s*\(/.test(
+        section
+      );
     if (!hasApiResponse) {
       result.missingApiResponse.push(`${methodName} (missing all @ApiResponse decorators)`);
       result.score -= 15;
     } else {
       // Check for specific response decorators or status codes
-      const has2xx = /@Api(Ok|Created|NoContent)Response/.test(section) || section.includes('status: 200') || section.includes('status: 201') || section.includes('status: 204');
+      const has2xx =
+        /@Api(Ok|Created|NoContent)Response/.test(section) ||
+        section.includes('status: 200') ||
+        section.includes('status: 201') ||
+        section.includes('status: 204');
       const has400 = /@ApiBadRequestResponse/.test(section) || section.includes('status: 400');
       const has404 = /@ApiNotFoundResponse/.test(section) || section.includes('status: 404');
-      const has500 = /@ApiInternalServerErrorResponse/.test(section) || section.includes('status: 500');
+      const has500 =
+        /@ApiInternalServerErrorResponse/.test(section) || section.includes('status: 500');
 
       if (!has2xx) {
         result.missingApiResponse.push(`${methodName} (@ApiOkResponse or @ApiCreatedResponse)`);
@@ -86,7 +96,11 @@ const auditController = (filePath: string): AuditResult => {
       }
       // 404 is critical only for GET/PATCH/DELETE with path parameters
       const hasPathParam = route.includes(':');
-      if (!has404 && hasPathParam && (httpMethod === 'Get' || httpMethod === 'Patch' || httpMethod === 'Delete')) {
+      if (
+        !has404 &&
+        hasPathParam &&
+        (httpMethod === 'Get' || httpMethod === 'Patch' || httpMethod === 'Delete')
+      ) {
         result.missingApiResponse.push(`${methodName} (@ApiNotFoundResponse)`);
         result.score -= 3;
       }
@@ -115,10 +129,10 @@ const auditDto = (filePath: string): AuditResult => {
   // Find all class properties that should have @ApiProperty
   // Match: "  propertyName!: Type" or "  propertyName?: Type" or "  propertyName!: Type[]"
   // but not "    key: value" (decorator params)
-  const propertyRegex = /^\s{1,4}([\w_]+)(!|\?):\s+([\w<>\[\]|{}]+);?/gm;
+  const propertyRegex = /^\s{1,4}([\w_]+)(!|\?):\s+([\w<>[\]|{}]+);?/gm;
   const properties = [...content.matchAll(propertyRegex)];
 
-  properties.forEach(match => {
+  properties.forEach((match) => {
     const propertyName = match[1];
 
     // Skip if it's a method or constructor
@@ -130,7 +144,10 @@ const auditDto = (filePath: string): AuditResult => {
     // Look back 800 characters (decorators with large array examples can be very long)
     const beforeProperty = content.substring(Math.max(0, propertyIndex - 800), propertyIndex);
 
-    if (!beforeProperty.includes('@ApiProperty') && !beforeProperty.includes('@ApiPropertyOptional')) {
+    if (
+      !beforeProperty.includes('@ApiProperty') &&
+      !beforeProperty.includes('@ApiPropertyOptional')
+    ) {
       result.missingApiProperty.push(propertyName);
       result.score -= 5;
     }
@@ -145,7 +162,7 @@ const findControllers = (dir: string): string[] => {
   const files = fs.readdirSync(dir);
   let controllers: string[] = [];
 
-  files.forEach(file => {
+  files.forEach((file) => {
     const fullPath = path.join(dir, file);
     const stat = fs.statSync(fullPath);
 
@@ -164,7 +181,7 @@ const findDtos = (dir: string): string[] => {
   const files = fs.readdirSync(dir);
   let dtos: string[] = [];
 
-  files.forEach(file => {
+  files.forEach((file) => {
     const fullPath = path.join(dir, file);
     const stat = fs.statSync(fullPath);
 
@@ -184,14 +201,14 @@ console.log('Auditing API documentation per nestjs-guidelines.md...\n');
 
 console.log('📋 Auditing Controllers...');
 const controllers = findControllers(BACKEND_SRC);
-controllers.forEach(controller => {
+controllers.forEach((controller) => {
   const result = auditController(controller);
   results.push(result);
 });
 
 console.log(`\n📋 Auditing DTOs...`);
 const dtos = findDtos(BACKEND_SRC);
-dtos.forEach(dto => {
+dtos.forEach((dto) => {
   const result = auditDto(dto);
   if (result.missingApiProperty.length > 0) {
     results.push(result);
@@ -208,26 +225,28 @@ console.log('='.repeat(80));
 let totalScore = 0;
 let filesAudited = 0;
 
-results.forEach(result => {
+results.forEach((result) => {
   if (result.score < 100) {
     filesAudited++;
     totalScore += result.score;
 
-    console.log(`\n${result.score >= 80 ? '🟡' : result.score >= 50 ? '🟠' : '🔴'} ${result.file} - Score: ${result.score}%`);
+    console.log(
+      `\n${result.score >= 80 ? '🟡' : result.score >= 50 ? '🟠' : '🔴'} ${result.file} - Score: ${result.score}%`
+    );
 
     if (result.missingApiOperation.length > 0) {
       console.log(`   Missing @ApiOperation:`);
-      result.missingApiOperation.forEach(item => console.log(`     - ${item}`));
+      result.missingApiOperation.forEach((item) => console.log(`     - ${item}`));
     }
 
     if (result.missingApiResponse.length > 0) {
       console.log(`   Missing @ApiResponse:`);
-      result.missingApiResponse.forEach(item => console.log(`     - ${item}`));
+      result.missingApiResponse.forEach((item) => console.log(`     - ${item}`));
     }
 
     if (result.missingApiProperty.length > 0) {
       console.log(`   Missing @ApiProperty:`);
-      result.missingApiProperty.slice(0, 10).forEach(item => console.log(`     - ${item}`));
+      result.missingApiProperty.slice(0, 10).forEach((item) => console.log(`     - ${item}`));
       if (result.missingApiProperty.length > 10) {
         console.log(`     ... and ${result.missingApiProperty.length - 10} more`);
       }
@@ -236,7 +255,7 @@ results.forEach(result => {
 });
 
 const averageScore = filesAudited > 0 ? Math.round(totalScore / filesAudited) : 100;
-const perfectFiles = results.filter(r => r.score === 100).length;
+const perfectFiles = results.filter((r) => r.score === 100).length;
 
 console.log('\n' + '='.repeat(80));
 console.log('📈 Summary');
@@ -245,7 +264,9 @@ console.log(`Total files audited: ${controllers.length + dtos.length}`);
 console.log(`Files with issues: ${filesAudited}`);
 console.log(`Perfect files (100%): ${perfectFiles}`);
 console.log(`Average score: ${averageScore}%`);
-console.log(`\n${averageScore >= 90 ? '✅ EXCELLENT' : averageScore >= 70 ? '🟡 GOOD' : averageScore >= 50 ? '🟠 NEEDS WORK' : '🔴 CRITICAL'} - Overall API documentation quality`);
+console.log(
+  `\n${averageScore >= 90 ? '✅ EXCELLENT' : averageScore >= 70 ? '🟡 GOOD' : averageScore >= 50 ? '🟠 NEEDS WORK' : '🔴 CRITICAL'} - Overall API documentation quality`
+);
 
 if (averageScore < 90) {
   console.log('\n💡 Action Required:');

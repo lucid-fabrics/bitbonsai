@@ -25,7 +25,7 @@ export class TestDatabaseHelper {
 
     process.env.DATABASE_URL = dbUrl;
 
-    this.prismaClient = new PrismaClient({
+    TestDatabaseHelper.prismaClient = new PrismaClient({
       datasources: {
         db: {
           url: dbUrl,
@@ -33,7 +33,7 @@ export class TestDatabaseHelper {
       },
     });
 
-    await this.prismaClient.$connect();
+    await TestDatabaseHelper.prismaClient.$connect();
 
     // Run migrations
     try {
@@ -49,7 +49,7 @@ export class TestDatabaseHelper {
       });
     }
 
-    return this.prismaClient;
+    return TestDatabaseHelper.prismaClient;
   }
 
   /**
@@ -61,17 +61,17 @@ export class TestDatabaseHelper {
       fs.mkdirSync(testDbDir, { recursive: true });
     }
 
-    this.testDbPath = path.join(testDbDir, dbName);
+    TestDatabaseHelper.testDbPath = path.join(testDbDir, dbName);
 
     // Remove existing test DB
-    if (fs.existsSync(this.testDbPath)) {
-      fs.unlinkSync(this.testDbPath);
+    if (fs.existsSync(TestDatabaseHelper.testDbPath)) {
+      fs.unlinkSync(TestDatabaseHelper.testDbPath);
     }
 
-    const dbUrl = `file:${this.testDbPath}`;
+    const dbUrl = `file:${TestDatabaseHelper.testDbPath}`;
     process.env.DATABASE_URL = dbUrl;
 
-    this.prismaClient = new PrismaClient({
+    TestDatabaseHelper.prismaClient = new PrismaClient({
       datasources: {
         db: {
           url: dbUrl,
@@ -79,7 +79,7 @@ export class TestDatabaseHelper {
       },
     });
 
-    await this.prismaClient.$connect();
+    await TestDatabaseHelper.prismaClient.$connect();
 
     // Run migrations
     execSync('npx prisma db push --skip-generate', {
@@ -87,7 +87,7 @@ export class TestDatabaseHelper {
       stdio: 'pipe',
     });
 
-    return this.prismaClient;
+    return TestDatabaseHelper.prismaClient;
   }
 
   /**
@@ -107,12 +107,12 @@ export class TestDatabaseHelper {
    * Teardown test database
    */
   static async teardownTestDatabase(): Promise<void> {
-    if (this.prismaClient) {
-      await this.prismaClient.$disconnect();
+    if (TestDatabaseHelper.prismaClient) {
+      await TestDatabaseHelper.prismaClient.$disconnect();
     }
 
-    if (this.testDbPath && fs.existsSync(this.testDbPath)) {
-      fs.unlinkSync(this.testDbPath);
+    if (TestDatabaseHelper.testDbPath && fs.existsSync(TestDatabaseHelper.testDbPath)) {
+      fs.unlinkSync(TestDatabaseHelper.testDbPath);
     }
   }
 

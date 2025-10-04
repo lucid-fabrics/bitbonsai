@@ -1,6 +1,6 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { License, Node, Library, Policy } from '@prisma/client';
+import type { Library, License, Node, Policy } from '@prisma/client';
 import * as request from 'supertest';
 import { AppModule } from '../../../app.module';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -173,9 +173,7 @@ describe('InsightsController (E2E)', () => {
     });
 
     it('should support 90 day period', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/insights/savings-trend?days=90')
-        .expect(200);
+      return request(app.getHttpServer()).get('/api/v1/insights/savings-trend?days=90').expect(200);
     });
 
     it('should validate days parameter', () => {

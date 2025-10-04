@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import {
+import type {
   CodecDistributionBO,
   InsightsStatsBO,
   NodePerformanceBO,
@@ -24,7 +24,7 @@ export const initialState: InsightsState = {
   stats: null,
   selectedTimeRange: 30,
   isLoading: false,
-  error: null
+  error: null,
 };
 
 export const insightsReducer = createReducer(
@@ -34,73 +34,73 @@ export const insightsReducer = createReducer(
   on(InsightsActions.loadSavingsTrend, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(InsightsActions.loadSavingsTrendSuccess, (state, { data }) => ({
     ...state,
     savingsTrend: data,
-    isLoading: false
+    isLoading: false,
   })),
   on(InsightsActions.loadSavingsTrendFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Load Codec Distribution
   on(InsightsActions.loadCodecDistribution, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(InsightsActions.loadCodecDistributionSuccess, (state, { data }) => ({
     ...state,
     codecDistribution: data,
-    isLoading: false
+    isLoading: false,
   })),
   on(InsightsActions.loadCodecDistributionFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Load Node Performance
   on(InsightsActions.loadNodePerformance, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(InsightsActions.loadNodePerformanceSuccess, (state, { data }) => ({
     ...state,
     nodePerformance: data,
-    isLoading: false
+    isLoading: false,
   })),
   on(InsightsActions.loadNodePerformanceFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Load Stats
   on(InsightsActions.loadStats, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(InsightsActions.loadStatsSuccess, (state, { data }) => ({
     ...state,
     stats: data,
-    isLoading: false
+    isLoading: false,
   })),
   on(InsightsActions.loadStatsFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Update Time Range
   on(InsightsActions.updateTimeRange, (state, { days }) => ({
     ...state,
-    selectedTimeRange: days
+    selectedTimeRange: days,
   }))
 );

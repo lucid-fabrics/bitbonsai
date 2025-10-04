@@ -17,8 +17,6 @@ describe('LicenseService Integration Tests', () => {
   let service: LicenseService;
   let prisma: PrismaService;
   let testLicense: License;
-  
-  
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
@@ -40,14 +38,11 @@ describe('LicenseService Integration Tests', () => {
         features: {},
       },
     });
-
-
   });
 
   afterAll(async () => {
     await prisma.licens.deleteMany({});
-    
-    
+
     await prisma.license.deleteMany({});
     await prisma.$disconnect();
     await module.close();
@@ -56,10 +51,4 @@ describe('LicenseService Integration Tests', () => {
   afterEach(async () => {
     await prisma.licens.deleteMany({});
   });
-
-
-
-
-
-
 });

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
   CodecDistributionBO,
@@ -7,7 +7,7 @@ import {
   NodePerformanceBO,
   SavingsTrendBO,
 } from '../bos/insights.bo';
-import { InsightsClient } from './insights.client';
+import type { InsightsClient } from './insights.client';
 
 /**
  * Service for insights-related business logic
@@ -27,7 +27,9 @@ export class InsightsService {
    * Get savings trend data mapped to business objects
    */
   getSavingsTrend(days: number): Observable<SavingsTrendBO[]> {
-    return this.insightsClient.getSavingsTrend(days).pipe(map((dtos) => dtos.map(SavingsTrendBO.fromDto)));
+    return this.insightsClient
+      .getSavingsTrend(days)
+      .pipe(map((dtos) => dtos.map(SavingsTrendBO.fromDto)));
   }
 
   /**
@@ -43,7 +45,9 @@ export class InsightsService {
    * Get node performance data mapped to business objects
    */
   getNodePerformance(): Observable<NodePerformanceBO[]> {
-    return this.insightsClient.getNodePerformance().pipe(map((dtos) => dtos.map(NodePerformanceBO.fromDto)));
+    return this.insightsClient
+      .getNodePerformance()
+      .pipe(map((dtos) => dtos.map(NodePerformanceBO.fromDto)));
   }
 
   /**

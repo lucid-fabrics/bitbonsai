@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { QueueFilters, QueueResponse } from '../models/queue.model';
+import type { QueueFilters, QueueResponse } from '../models/queue.model';
 
 export const QueueActions = createActionGroup({
   source: 'Queue',
@@ -17,5 +17,5 @@ export const QueueActions = createActionGroup({
     'Retry Job Failure': props<{ error: string }>(),
 
     'Update Filters': props<{ filters: QueueFilters }>(),
-  }
+  },
 });

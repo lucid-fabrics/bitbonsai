@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { QueueEffects } from './queue.effects';
-import * as queueActions from './queue.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { QueueClient } from '../services/queue.client';
+import * as queueActions from './queue.actions';
+import { QueueEffects } from './queue.effects';
 
 describe('QueueEffects', () => {
   let actions$: Observable<Action>;

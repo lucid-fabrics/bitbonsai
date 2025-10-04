@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import {
+import type {
   CodecDistributionBO,
   InsightsStatsBO,
   NodePerformanceBO,
@@ -26,5 +26,5 @@ export const InsightsActions = createActionGroup({
     'Load Stats Failure': props<{ error: string }>(),
 
     'Update Time Range': props<{ days: number }>(),
-  }
+  },
 });

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { FileWatcherService } from './file-watcher.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { FileWatcherService } from './file-watcher.service';
 
 @Module({
   imports: [PrismaModule],

@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { OverviewModel } from '../models/overview.model';
+import type { OverviewModel } from '../models/overview.model';
 
 export const OverviewActions = createActionGroup({
   source: 'Overview',
@@ -7,5 +7,5 @@ export const OverviewActions = createActionGroup({
     'Load Overview': emptyProps(),
     'Load Overview Success': props<{ data: OverviewModel }>(),
     'Load Overview Failure': props<{ error: string }>(),
-  }
+  },
 });

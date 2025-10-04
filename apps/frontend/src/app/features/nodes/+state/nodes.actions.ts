@@ -1,6 +1,6 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { Node } from '../models/node.model';
-import { PairRequest, PairResponse, RegisterResponse } from '../services/nodes.client';
+import type { Node } from '../models/node.model';
+import type { PairRequest, PairResponse, RegisterResponse } from '../services/nodes.client';
 
 export const NodesActions = createActionGroup({
   source: 'Nodes',
@@ -20,5 +20,5 @@ export const NodesActions = createActionGroup({
     'Delete Node': props<{ id: string }>(),
     'Delete Node Success': props<{ id: string }>(),
     'Delete Node Failure': props<{ error: string }>(),
-  }
+  },
 });

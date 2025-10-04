@@ -1,5 +1,5 @@
-import { Injectable, LoggerService as NestLoggerService, Scope } from '@nestjs/common';
-import { Logger } from 'winston';
+import { Injectable, type LoggerService as NestLoggerService, Scope } from '@nestjs/common';
+import type { Logger } from 'winston';
 
 /**
  * Custom logger service that wraps Winston logger

@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { mockApiResponses, testLibrary } from '../fixtures/test-data';
 import { LibrariesPage } from '../page-objects/LibrariesPage';
-import { testLibrary, mockApiResponses } from '../fixtures/test-data';
 
 test.describe('Libraries Page', () => {
   let librariesPage: LibrariesPage;
@@ -52,7 +52,9 @@ test.describe('Libraries Page', () => {
     await librariesPage.clickAddLibrary();
 
     // Check if form modal is visible
-    await expect(librariesPage.page.getByRole('heading', { name: /add new library/i })).toBeVisible();
+    await expect(
+      librariesPage.page.getByRole('heading', { name: /add new library/i })
+    ).toBeVisible();
     await expect(librariesPage.page.getByLabel(/library name/i)).toBeVisible();
   });
 

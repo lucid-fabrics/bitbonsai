@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { LibrariesEffects } from './libraries.effects';
-import * as librariesActions from './libraries.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { LibrariesClient } from '../services/libraries.client';
+import * as librariesActions from './libraries.actions';
+import { LibrariesEffects } from './libraries.effects';
 
 describe('LibrariesEffects', () => {
   let actions$: Observable<Action>;

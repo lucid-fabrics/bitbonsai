@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { PolicyService } from './policy.service';
-import { PolicyClient } from './policy.client';
 import { PolicyBo } from '../bos/policy.bo';
-import { PolicyModel } from '../models/policy.model';
+import type { PolicyModel } from '../models/policy.model';
+import { PolicyClient } from './policy.client';
+import { PolicyService } from './policy.service';
 
 describe('PolicyService', () => {
   let service: PolicyService;
@@ -31,10 +31,7 @@ describe('PolicyService', () => {
     ]);
 
     TestBed.configureTestingModule({
-      providers: [
-        PolicyService,
-        { provide: PolicyClient, useValue: policyClientSpy },
-      ],
+      providers: [PolicyService, { provide: PolicyClient, useValue: policyClientSpy }],
     });
 
     service = TestBed.inject(PolicyService);

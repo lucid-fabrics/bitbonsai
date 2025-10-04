@@ -1,16 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  type AdvancedSettings,
+  type DeviceProfiles,
   PolicyPreset,
   TargetCodec,
-  DeviceProfiles,
-  AdvancedSettings,
 } from '@bitbonsai/shared-models';
-import { PolicyRepository } from './repositories/policy.repository';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { CreatePolicyDto } from './dto/create-policy.dto';
 import type { PolicyDto } from './dto/policy.dto';
 import type { PolicyStatsDto } from './dto/policy-stats.dto';
 import type { PresetInfoDto } from './dto/preset-info.dto';
 import type { UpdatePolicyDto } from './dto/update-policy.dto';
+import type { PolicyRepository } from './repositories/policy.repository';
 
 @Injectable()
 export class PoliciesService {

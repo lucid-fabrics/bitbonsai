@@ -3,9 +3,9 @@ import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import type { Job } from '@prisma/client';
-import { LibrariesService } from '../libraries/libraries.service';
-import { QueueService } from '../queue/queue.service';
-import { FfmpegService, type FfmpegProgress } from './ffmpeg.service';
+import type { LibrariesService } from '../libraries/libraries.service';
+import type { QueueService } from '../queue/queue.service';
+import type { FfmpegProgress, FfmpegService } from './ffmpeg.service';
 
 interface WorkerState {
   nodeId: string;

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Queu, License, Node, Library } from '@prisma/client';
+import type { Library, License, Node, Queu } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from './queue.service';
 
@@ -80,7 +80,6 @@ describe('QueueService Integration Tests', () => {
     await prisma.queu.deleteMany({});
   });
 
-
   describe('create', () => {
     it('should create queu with valid data', async () => {
       const createDto = {
@@ -96,20 +95,22 @@ describe('QueueService Integration Tests', () => {
       expect(result.name).toBe(createDto.name);
     });
 
-    
     it('should throw NotFoundException for non-existent nodeId', async () => {
-      await expect(service.create({
-        name: 'Test',
-        nodeId: 'non-existent-id',
-      })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.create({
+          name: 'Test',
+          nodeId: 'non-existent-id',
+        })
+      ).rejects.toThrow(NotFoundException);
     });
 
-    
     it('should throw error for non-existent libraryId', async () => {
-      await expect(service.create({
-        name: 'Test',
-        libraryId: 'non-existent-id',
-      })).rejects.toThrow();
+      await expect(
+        service.create({
+          name: 'Test',
+          libraryId: 'non-existent-id',
+        })
+      ).rejects.toThrow();
     });
 
     it('should persist to database', async () => {
@@ -182,7 +183,6 @@ describe('QueueService Integration Tests', () => {
     });
   });
 
-
   describe('remove', () => {
     it('should delete existing record', async () => {
       const created = await service.create({
@@ -200,8 +200,7 @@ describe('QueueService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.remove('non-existent-id'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

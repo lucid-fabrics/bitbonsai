@@ -150,7 +150,11 @@ describe('${className}', () => {
 };
 
 // Template for Effects Tests
-const generateEffectsTest = (effectsName: string, className: string, featureName: string): string => {
+const generateEffectsTest = (
+  effectsName: string,
+  className: string,
+  featureName: string
+): string => {
   const serviceName = `${featureName.charAt(0).toUpperCase() + featureName.slice(1)}Service`;
   const actionsName = effectsName.replace('.effects', '');
 
@@ -295,14 +299,21 @@ const extractClassName = (filePath: string): string => {
 // Generate tests for services
 const generateServiceTests = (): number => {
   const servicesDir = path.join(FRONTEND_SRC, 'core/services');
-  const serviceFiles = fs.readdirSync(servicesDir)
-    .filter(f => f.endsWith('.service.ts') && !f.endsWith('.spec.ts'));
+  const serviceFiles = fs
+    .readdirSync(servicesDir)
+    .filter((f) => f.endsWith('.service.ts') && !f.endsWith('.spec.ts'));
 
   let generated = 0;
-  serviceFiles.forEach(file => {
+  serviceFiles.forEach((file) => {
     const serviceName = file.replace('.ts', '');
     const filePath = path.join(servicesDir, file);
-    const className = extractClassName(filePath) || serviceName.split('.')[0].split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('') + 'Service';
+    const className =
+      extractClassName(filePath) ||
+      serviceName
+        .split('.')[0]
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('') + 'Service';
 
     const testContent = generateServiceTest(serviceName, className);
     const testPath = path.join(servicesDir, `${serviceName}.spec.ts`);
@@ -322,14 +333,21 @@ const generateServiceTests = (): number => {
 // Generate tests for Business Objects
 const generateBoTests = (): number => {
   const bosDir = path.join(FRONTEND_SRC, 'core/business-objects');
-  const boFiles = fs.readdirSync(bosDir)
-    .filter(f => f.endsWith('.bo.ts') && !f.endsWith('.spec.ts'));
+  const boFiles = fs
+    .readdirSync(bosDir)
+    .filter((f) => f.endsWith('.bo.ts') && !f.endsWith('.spec.ts'));
 
   let generated = 0;
-  boFiles.forEach(file => {
+  boFiles.forEach((file) => {
     const boName = file.replace('.ts', '');
     const filePath = path.join(bosDir, file);
-    const className = extractClassName(filePath) || boName.split('.')[0].split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('') + 'Bo';
+    const className =
+      extractClassName(filePath) ||
+      boName
+        .split('.')[0]
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('') + 'Bo';
 
     const testContent = generateBoTest(boName, className);
     const testPath = path.join(bosDir, `${boName}.spec.ts`);
@@ -349,21 +367,25 @@ const generateBoTests = (): number => {
 // Generate tests for Effects
 const generateEffectsTests = (): number => {
   const featuresDir = path.join(FRONTEND_SRC, 'features');
-  const features = fs.readdirSync(featuresDir)
-    .filter(f => fs.statSync(path.join(featuresDir, f)).isDirectory());
+  const features = fs
+    .readdirSync(featuresDir)
+    .filter((f) => fs.statSync(path.join(featuresDir, f)).isDirectory());
 
   let generated = 0;
-  features.forEach(feature => {
+  features.forEach((feature) => {
     const stateDir = path.join(featuresDir, feature, '+state');
     if (!fs.existsSync(stateDir)) return;
 
-    const effectsFiles = fs.readdirSync(stateDir)
-      .filter(f => f.endsWith('.effects.ts') && !f.endsWith('.spec.ts'));
+    const effectsFiles = fs
+      .readdirSync(stateDir)
+      .filter((f) => f.endsWith('.effects.ts') && !f.endsWith('.spec.ts'));
 
-    effectsFiles.forEach(file => {
+    effectsFiles.forEach((file) => {
       const effectsName = file.replace('.ts', '');
       const filePath = path.join(stateDir, file);
-      const className = extractClassName(filePath) || feature.charAt(0).toUpperCase() + feature.slice(1) + 'Effects';
+      const className =
+        extractClassName(filePath) ||
+        feature.charAt(0).toUpperCase() + feature.slice(1) + 'Effects';
 
       const testContent = generateEffectsTest(effectsName, className, feature);
       const testPath = path.join(stateDir, `${effectsName}.spec.ts`);
@@ -384,19 +406,23 @@ const generateEffectsTests = (): number => {
 // Generate tests for Components
 const generateComponentTests = (): number => {
   const featuresDir = path.join(FRONTEND_SRC, 'features');
-  const features = fs.readdirSync(featuresDir)
-    .filter(f => fs.statSync(path.join(featuresDir, f)).isDirectory());
+  const features = fs
+    .readdirSync(featuresDir)
+    .filter((f) => fs.statSync(path.join(featuresDir, f)).isDirectory());
 
   let generated = 0;
-  features.forEach(feature => {
+  features.forEach((feature) => {
     const featureDir = path.join(featuresDir, feature);
-    const componentFiles = fs.readdirSync(featureDir)
-      .filter(f => f.endsWith('.component.ts') && !f.endsWith('.spec.ts'));
+    const componentFiles = fs
+      .readdirSync(featureDir)
+      .filter((f) => f.endsWith('.component.ts') && !f.endsWith('.spec.ts'));
 
-    componentFiles.forEach(file => {
+    componentFiles.forEach((file) => {
       const componentName = file.replace('.ts', '');
       const filePath = path.join(featureDir, file);
-      const className = extractClassName(filePath) || feature.charAt(0).toUpperCase() + feature.slice(1) + 'Component';
+      const className =
+        extractClassName(filePath) ||
+        feature.charAt(0).toUpperCase() + feature.slice(1) + 'Component';
 
       const testContent = generateComponentTest(componentName, className);
       const testPath = path.join(featureDir, `${componentName}.spec.ts`);
@@ -437,7 +463,9 @@ console.log(`Services:    ${servicesGenerated} files generated`);
 console.log(`BOs:         ${bosGenerated} files generated`);
 console.log(`Effects:     ${effectsGenerated} files generated`);
 console.log(`Components:  ${componentsGenerated} files generated`);
-console.log(`Total:       ${servicesGenerated + bosGenerated + effectsGenerated + componentsGenerated} test files`);
+console.log(
+  `Total:       ${servicesGenerated + bosGenerated + effectsGenerated + componentsGenerated} test files`
+);
 console.log('\n💡 Next steps:');
 console.log('1. Review generated tests and customize assertions');
 console.log('2. Add specific test cases for each component/service');

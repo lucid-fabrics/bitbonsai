@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
-import { License } from '../models/license.model';
-import { EnvironmentInfo, SystemSettings } from '../models/settings.model';
+import type { License } from '../models/license.model';
+import type { EnvironmentInfo, SystemSettings } from '../models/settings.model';
 import { SettingsActions } from './settings.actions';
 
 export interface SettingsState {
@@ -18,7 +18,7 @@ export const initialState: SettingsState = {
   systemSettings: null,
   isLoading: false,
   error: null,
-  successMessage: null
+  successMessage: null,
 };
 
 export const settingsReducer = createReducer(
@@ -28,17 +28,17 @@ export const settingsReducer = createReducer(
   on(SettingsActions.loadLicense, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(SettingsActions.loadLicenseSuccess, (state, { license }) => ({
     ...state,
     license,
-    isLoading: false
+    isLoading: false,
   })),
   on(SettingsActions.loadLicenseFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Activate License
@@ -46,52 +46,52 @@ export const settingsReducer = createReducer(
     ...state,
     isLoading: true,
     error: null,
-    successMessage: null
+    successMessage: null,
   })),
   on(SettingsActions.activateLicenseSuccess, (state, { license }) => ({
     ...state,
     license,
     isLoading: false,
-    successMessage: 'License activated successfully!'
+    successMessage: 'License activated successfully!',
   })),
   on(SettingsActions.activateLicenseFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Load Environment Info
   on(SettingsActions.loadEnvironmentInfo, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(SettingsActions.loadEnvironmentInfoSuccess, (state, { info }) => ({
     ...state,
     environmentInfo: info,
-    isLoading: false
+    isLoading: false,
   })),
   on(SettingsActions.loadEnvironmentInfoFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Load System Settings
   on(SettingsActions.loadSystemSettings, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(SettingsActions.loadSystemSettingsSuccess, (state, { settings }) => ({
     ...state,
     systemSettings: settings,
-    isLoading: false
+    isLoading: false,
   })),
   on(SettingsActions.loadSystemSettingsFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Update System Settings
@@ -99,18 +99,18 @@ export const settingsReducer = createReducer(
     ...state,
     isLoading: true,
     error: null,
-    successMessage: null
+    successMessage: null,
   })),
   on(SettingsActions.updateSystemSettingsSuccess, (state, { settings }) => ({
     ...state,
     systemSettings: settings,
     isLoading: false,
-    successMessage: 'Settings updated successfully!'
+    successMessage: 'Settings updated successfully!',
   })),
   on(SettingsActions.updateSystemSettingsFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Backup Database
@@ -118,17 +118,17 @@ export const settingsReducer = createReducer(
     ...state,
     isLoading: true,
     error: null,
-    successMessage: null
+    successMessage: null,
   })),
   on(SettingsActions.backupDatabaseSuccess, (state, { backupPath }) => ({
     ...state,
     isLoading: false,
-    successMessage: `Database backed up to: ${backupPath}`
+    successMessage: `Database backed up to: ${backupPath}`,
   })),
   on(SettingsActions.backupDatabaseFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Reset To Defaults
@@ -136,17 +136,17 @@ export const settingsReducer = createReducer(
     ...state,
     isLoading: true,
     error: null,
-    successMessage: null
+    successMessage: null,
   })),
   on(SettingsActions.resetToDefaultsSuccess, (state, { message }) => ({
     ...state,
     isLoading: false,
-    successMessage: message
+    successMessage: message,
   })),
   on(SettingsActions.resetToDefaultsFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Regenerate API Key
@@ -154,19 +154,17 @@ export const settingsReducer = createReducer(
     ...state,
     isLoading: true,
     error: null,
-    successMessage: null
+    successMessage: null,
   })),
   on(SettingsActions.regenerateApiKeySuccess, (state, { apiKey }) => ({
     ...state,
-    systemSettings: state.systemSettings
-      ? { ...state.systemSettings, apiKey }
-      : null,
+    systemSettings: state.systemSettings ? { ...state.systemSettings, apiKey } : null,
     isLoading: false,
-    successMessage: 'API key regenerated successfully!'
+    successMessage: 'API key regenerated successfully!',
   })),
   on(SettingsActions.regenerateApiKeyFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   }))
 );

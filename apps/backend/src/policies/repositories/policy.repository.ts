@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Policy, JobStage } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobStage, type Policy } from '@prisma/client';
+import type { PrismaService } from '../../prisma/prisma.service';
 
 export interface PolicyWithStats extends Policy {
   library?: { id: string; name: string } | null;

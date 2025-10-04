@@ -1,6 +1,6 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { License, Node, Library, Policy } from '@prisma/client';
+import type { Library, License, Node, Policy } from '@prisma/client';
 import * as request from 'supertest';
 import { AppModule } from '../../../app.module';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -103,10 +103,7 @@ describe('QueueController (E2E)', () => {
 
   describe('GET /api/v1/queue', () => {
     it('should return empty array when no jobs exist', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/queue')
-        .expect(200)
-        .expect([]);
+      return request(app.getHttpServer()).get('/api/v1/queue').expect(200).expect([]);
     });
 
     it('should return all jobs', async () => {
@@ -213,9 +210,7 @@ describe('QueueController (E2E)', () => {
     });
 
     it('should return 404 for non-existent job', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/queue/non-existent-id')
-        .expect(404);
+      return request(app.getHttpServer()).get('/api/v1/queue/non-existent-id').expect(404);
     });
   });
 
@@ -342,9 +337,7 @@ describe('QueueController (E2E)', () => {
         },
       });
 
-      await request(app.getHttpServer())
-        .delete(`/api/v1/queue/${job.id}`)
-        .expect(200);
+      await request(app.getHttpServer()).delete(`/api/v1/queue/${job.id}`).expect(200);
 
       const deleted = await prisma.job.findUnique({ where: { id: job.id } });
 
@@ -352,9 +345,7 @@ describe('QueueController (E2E)', () => {
     });
 
     it('should return 404 for non-existent job', () => {
-      return request(app.getHttpServer())
-        .delete('/api/v1/queue/non-existent-id')
-        .expect(404);
+      return request(app.getHttpServer()).delete('/api/v1/queue/non-existent-id').expect(404);
     });
 
     it('should prevent deletion of encoding jobs', async () => {
@@ -368,9 +359,7 @@ describe('QueueController (E2E)', () => {
         },
       });
 
-      return request(app.getHttpServer())
-        .delete(`/api/v1/queue/${job.id}`)
-        .expect(400);
+      return request(app.getHttpServer()).delete(`/api/v1/queue/${job.id}`).expect(400);
     });
   });
 

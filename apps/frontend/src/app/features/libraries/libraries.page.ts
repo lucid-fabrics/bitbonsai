@@ -1,20 +1,18 @@
 import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  type OnInit,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { Store } from '@ngrx/store';
-import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/library.model';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.modal';
-import { LibraryCardComponent } from './components/library-card/library-card.component';
-import { LibraryFormComponent } from './components/library-form/library-form.component';
-import { LibrariesActions } from './+state/libraries.actions';
-import { selectAllLibraries, selectLibrariesLoading, selectLibrariesError } from './+state/libraries.selectors';
 import { NodesActions } from '../nodes/+state/nodes.actions';
 import { NodesSelectors } from '../nodes/+state/nodes.selectors';
+import { LibrariesActions } from './+state/libraries.actions';
+import {
+  selectAllLibraries,
+  selectLibrariesError,
+  selectLibrariesLoading,
+} from './+state/libraries.selectors';
+import { LibraryCardComponent } from './components/library-card/library-card.component';
+import { LibraryFormComponent } from './components/library-form/library-form.component';
+import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/library.model';
 
 @Component({
   selector: 'app-libraries',
@@ -64,15 +62,19 @@ export class LibrariesComponent implements OnInit {
 
     if (selectedLib) {
       // Update existing library
-      this.store.dispatch(LibrariesActions.updateLibrary({
-        id: selectedLib.id,
-        library: data as UpdateLibraryDto
-      }));
+      this.store.dispatch(
+        LibrariesActions.updateLibrary({
+          id: selectedLib.id,
+          library: data as UpdateLibraryDto,
+        })
+      );
     } else {
       // Create new library
-      this.store.dispatch(LibrariesActions.createLibrary({
-        library: data as CreateLibraryDto
-      }));
+      this.store.dispatch(
+        LibrariesActions.createLibrary({
+          library: data as CreateLibraryDto,
+        })
+      );
     }
 
     this.showForm.set(false);
@@ -117,10 +119,12 @@ export class LibrariesComponent implements OnInit {
   }
 
   onToggleWatch(library: Library): void {
-    this.store.dispatch(LibrariesActions.updateLibrary({
-      id: library.id,
-      library: { watchEnabled: !library.watchEnabled }
-    }));
+    this.store.dispatch(
+      LibrariesActions.updateLibrary({
+        id: library.id,
+        library: { watchEnabled: !library.watchEnabled },
+      })
+    );
   }
 
   isScanning(libraryId: string): boolean {

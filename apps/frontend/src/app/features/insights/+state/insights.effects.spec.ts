@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { InsightsEffects } from './insights.effects';
-import * as insightsActions from './insights.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { InsightsService } from '../services/insights.service';
+import * as insightsActions from './insights.actions';
+import { InsightsEffects } from './insights.effects';
 
 describe('InsightsEffects', () => {
   let actions$: Observable<Action>;

@@ -1,5 +1,5 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
-import { InsightsState } from './insights.reducer';
+import type { InsightsState } from './insights.reducer';
 
 export const selectInsightsState = createFeatureSelector<InsightsState>('insights');
 

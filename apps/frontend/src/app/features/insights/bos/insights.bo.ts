@@ -44,7 +44,11 @@ export class NodePerformanceBO {
     public readonly successRate: number
   ) {}
 
-  static fromDto(dto: { nodeName: string; jobsCompleted: number; successRate: number }): NodePerformanceBO {
+  static fromDto(dto: {
+    nodeName: string;
+    jobsCompleted: number;
+    successRate: number;
+  }): NodePerformanceBO {
     return new NodePerformanceBO(dto.nodeName, dto.jobsCompleted, dto.successRate);
   }
 
