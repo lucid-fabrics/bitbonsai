@@ -1,5 +1,5 @@
-<testsuites id="" name="" tests="10" failures="10" skipped="0" errors="0" time="5.866484">
-<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T03:22:34.523Z" hostname="chromium" tests="10" failures="10" skipped="0" time="0.015" errors="0">
+<testsuites id="" name="" tests="60" failures="60" skipped="0" errors="0" time="7.911474">
+<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T04:12:49.019Z" hostname="chromium" tests="10" failures="10" skipped="0" time="0.012" errors="0">
 <testcase name="Libraries Page › should display libraries page" classname="tests/libraries.spec.ts" time="0.001">
 <failure message="libraries.spec.ts:31:7 should display libraries page" type="FAILURE">
 <![CDATA[  [chromium] › tests/libraries.spec.ts:31:7 › Libraries Page › should display libraries page ───────
@@ -32,7 +32,7 @@
 ]]>
 </failure>
 </testcase>
-<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.001">
+<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.002">
 <failure message="libraries.spec.ts:46:7 should show add library button" type="FAILURE">
 <![CDATA[  [chromium] › tests/libraries.spec.ts:46:7 › Libraries Page › should show add library button ──────
 
@@ -48,7 +48,7 @@
 ]]>
 </failure>
 </testcase>
-<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.004">
+<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.001">
 <failure message="libraries.spec.ts:51:7 should open library form when add button is clicked" type="FAILURE">
 <![CDATA[  [chromium] › tests/libraries.spec.ts:51:7 › Libraries Page › should open library form when add button is clicked 
 
@@ -80,7 +80,7 @@
 ]]>
 </failure>
 </testcase>
-<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.002">
+<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.001">
 <failure message="libraries.spec.ts:71:7 should create new library with valid data" type="FAILURE">
 <![CDATA[  [chromium] › tests/libraries.spec.ts:71:7 › Libraries Page › should create new library with valid data 
 
@@ -147,6 +147,816 @@
 <testcase name="Libraries Page › should show loading state during data fetch" classname="tests/libraries.spec.ts" time="0.001">
 <failure message="libraries.spec.ts:140:7 should show loading state during data fetch" type="FAILURE">
 <![CDATA[  [chromium] › tests/libraries.spec.ts:140:7 › Libraries Page › should show loading state during data fetch 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+</testsuite>
+<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T04:12:49.019Z" hostname="firefox" tests="10" failures="10" skipped="0" time="0.015" errors="0">
+<testcase name="Libraries Page › should display libraries page" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:31:7 should display libraries page" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:31:7 › Libraries Page › should display libraries page ────────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should display library cards when libraries exist" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:36:7 should display library cards when libraries exist" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:36:7 › Libraries Page › should display library cards when libraries exist 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.003">
+<failure message="libraries.spec.ts:46:7 should show add library button" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:46:7 › Libraries Page › should show add library button ───────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:51:7 should open library form when add button is clicked" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:51:7 › Libraries Page › should open library form when add button is clicked 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should validate required fields in library form" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:61:7 should validate required fields in library form" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:61:7 › Libraries Page › should validate required fields in library form 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:71:7 should create new library with valid data" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:71:7 › Libraries Page › should create new library with valid data 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should filter libraries by search" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:96:7 should filter libraries by search" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:96:7 › Libraries Page › should filter libraries by search ────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should navigate to library details on card click" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:113:7 should navigate to library details on card click" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:113:7 › Libraries Page › should navigate to library details on card click 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should handle API errors gracefully" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:121:7 should handle API errors gracefully" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:121:7 › Libraries Page › should handle API errors gracefully ─
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show loading state during data fetch" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:140:7 should show loading state during data fetch" type="FAILURE">
+<![CDATA[  [firefox] › tests/libraries.spec.ts:140:7 › Libraries Page › should show loading state during data fetch 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/firefox-1490/firefox/Nightly.app/Contents/MacOS/firefox
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+</testsuite>
+<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T04:12:49.019Z" hostname="webkit" tests="10" failures="10" skipped="0" time="0.022" errors="0">
+<testcase name="Libraries Page › should display libraries page" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:31:7 should display libraries page" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:31:7 › Libraries Page › should display libraries page ─────────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should display library cards when libraries exist" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:36:7 should display library cards when libraries exist" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:36:7 › Libraries Page › should display library cards when libraries exist 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:46:7 should show add library button" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:46:7 › Libraries Page › should show add library button ────────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:51:7 should open library form when add button is clicked" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:51:7 › Libraries Page › should open library form when add button is clicked 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should validate required fields in library form" classname="tests/libraries.spec.ts" time="0.003">
+<failure message="libraries.spec.ts:61:7 should validate required fields in library form" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:61:7 › Libraries Page › should validate required fields in library form 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:71:7 should create new library with valid data" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:71:7 › Libraries Page › should create new library with valid data 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should filter libraries by search" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:96:7 should filter libraries by search" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:96:7 › Libraries Page › should filter libraries by search ─────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should navigate to library details on card click" classname="tests/libraries.spec.ts" time="0.006">
+<failure message="libraries.spec.ts:113:7 should navigate to library details on card click" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:113:7 › Libraries Page › should navigate to library details on card click 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should handle API errors gracefully" classname="tests/libraries.spec.ts" time="0.003">
+<failure message="libraries.spec.ts:121:7 should handle API errors gracefully" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:121:7 › Libraries Page › should handle API errors gracefully ──
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show loading state during data fetch" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:140:7 should show loading state during data fetch" type="FAILURE">
+<![CDATA[  [webkit] › tests/libraries.spec.ts:140:7 › Libraries Page › should show loading state during data fetch 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+</testsuite>
+<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T04:12:49.019Z" hostname="Mobile Chrome" tests="10" failures="10" skipped="0" time="0.012" errors="0">
+<testcase name="Libraries Page › should display libraries page" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:31:7 should display libraries page" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:31:7 › Libraries Page › should display libraries page ──
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should display library cards when libraries exist" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:36:7 should display library cards when libraries exist" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:36:7 › Libraries Page › should display library cards when libraries exist 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:46:7 should show add library button" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:46:7 › Libraries Page › should show add library button ─
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:51:7 should open library form when add button is clicked" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:51:7 › Libraries Page › should open library form when add button is clicked 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should validate required fields in library form" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:61:7 should validate required fields in library form" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:61:7 › Libraries Page › should validate required fields in library form 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:71:7 should create new library with valid data" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:71:7 › Libraries Page › should create new library with valid data 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should filter libraries by search" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:96:7 should filter libraries by search" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:96:7 › Libraries Page › should filter libraries by search 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should navigate to library details on card click" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:113:7 should navigate to library details on card click" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:113:7 › Libraries Page › should navigate to library details on card click 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should handle API errors gracefully" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:121:7 should handle API errors gracefully" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:121:7 › Libraries Page › should handle API errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show loading state during data fetch" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:140:7 should show loading state during data fetch" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › tests/libraries.spec.ts:140:7 › Libraries Page › should show loading state during data fetch 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+</testsuite>
+<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T04:12:49.019Z" hostname="Mobile Safari" tests="10" failures="10" skipped="0" time="0.016" errors="0">
+<testcase name="Libraries Page › should display libraries page" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:31:7 should display libraries page" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:31:7 › Libraries Page › should display libraries page ──
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should display library cards when libraries exist" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:36:7 should display library cards when libraries exist" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:36:7 › Libraries Page › should display library cards when libraries exist 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:46:7 should show add library button" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:46:7 › Libraries Page › should show add library button ─
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:51:7 should open library form when add button is clicked" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:51:7 › Libraries Page › should open library form when add button is clicked 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should validate required fields in library form" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:61:7 should validate required fields in library form" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:61:7 › Libraries Page › should validate required fields in library form 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:71:7 should create new library with valid data" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:71:7 › Libraries Page › should create new library with valid data 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should filter libraries by search" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:96:7 should filter libraries by search" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:96:7 › Libraries Page › should filter libraries by search 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should navigate to library details on card click" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:113:7 should navigate to library details on card click" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:113:7 › Libraries Page › should navigate to library details on card click 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should handle API errors gracefully" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:121:7 should handle API errors gracefully" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:121:7 › Libraries Page › should handle API errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show loading state during data fetch" classname="tests/libraries.spec.ts" time="0.003">
+<failure message="libraries.spec.ts:140:7 should show loading state during data fetch" type="FAILURE">
+<![CDATA[  [Mobile Safari] › tests/libraries.spec.ts:140:7 › Libraries Page › should show loading state during data fetch 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/webkit-2203/pw_run.sh
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+</testsuite>
+<testsuite name="tests/libraries.spec.ts" timestamp="2025-10-04T04:12:49.019Z" hostname="iPad" tests="10" failures="10" skipped="0" time="0.011" errors="0">
+<testcase name="Libraries Page › should display libraries page" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:31:7 should display libraries page" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:31:7 › Libraries Page › should display libraries page ───────────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should display library cards when libraries exist" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:36:7 should display library cards when libraries exist" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:36:7 › Libraries Page › should display library cards when libraries exist 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show add library button" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:46:7 should show add library button" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:46:7 › Libraries Page › should show add library button ──────────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should open library form when add button is clicked" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:51:7 should open library form when add button is clicked" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:51:7 › Libraries Page › should open library form when add button is clicked 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should validate required fields in library form" classname="tests/libraries.spec.ts" time="0.002">
+<failure message="libraries.spec.ts:61:7 should validate required fields in library form" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:61:7 › Libraries Page › should validate required fields in library form 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should create new library with valid data" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:71:7 should create new library with valid data" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:71:7 › Libraries Page › should create new library with valid data 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should filter libraries by search" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:96:7 should filter libraries by search" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:96:7 › Libraries Page › should filter libraries by search ───────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should navigate to library details on card click" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:113:7 should navigate to library details on card click" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:113:7 › Libraries Page › should navigate to library details on card click 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should handle API errors gracefully" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:121:7 should handle API errors gracefully" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:121:7 › Libraries Page › should handle API errors gracefully ────
+
+    Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+]]>
+</failure>
+</testcase>
+<testcase name="Libraries Page › should show loading state during data fetch" classname="tests/libraries.spec.ts" time="0.001">
+<failure message="libraries.spec.ts:140:7 should show loading state during data fetch" type="FAILURE">
+<![CDATA[  [iPad] › tests/libraries.spec.ts:140:7 › Libraries Page › should show loading state during data fetch 
 
     Error: browserType.launch: Executable doesn't exist at /Users/wassimmehanna/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell
     ╔═════════════════════════════════════════════════════════════════════════╗
