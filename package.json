@@ -6,6 +6,8 @@
     "format": "biome format . --write",
     "check": "biome check .",
     "check:fix": "biome check . --write",
+    "start:frontend": "nx serve frontend",
+    "start:backend": "nx serve backend",
     "test": "nx run-many --target=test --all --coverage",
     "test:backend": "nx test backend --coverage",
     "test:frontend": "nx test frontend --coverage",
