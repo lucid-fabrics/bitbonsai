@@ -41,7 +41,7 @@ export class TestDatabaseHelper {
         env: { ...process.env, DATABASE_URL: dbUrl },
         stdio: 'pipe',
       });
-    } catch (error) {
+    } catch (_error) {
       // Migrations might fail on in-memory DB, try push instead
       execSync('npx prisma db push --skip-generate', {
         env: { ...process.env, DATABASE_URL: dbUrl },

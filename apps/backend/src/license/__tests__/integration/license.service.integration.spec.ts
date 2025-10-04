@@ -1,6 +1,5 @@
-import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Licens, License, Node } from '@prisma/client';
+import type { License } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LicenseService } from './license.service';
 
@@ -14,20 +13,20 @@ import { LicenseService } from './license.service';
  */
 describe('LicenseService Integration Tests', () => {
   let module: TestingModule;
-  let service: LicenseService;
+  let _service: LicenseService;
   let prisma: PrismaService;
-  let testLicense: License;
+  let _testLicense: License;
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
       providers: [LicenseService, PrismaService],
     }).compile();
 
-    service = module.get<LicenseService>(LicenseService);
+    _service = module.get<LicenseService>(LicenseService);
     prisma = module.get<PrismaService>(PrismaService);
 
     // Create test fixtures
-    testLicense = await prisma.license.create({
+    _testLicense = await prisma.license.create({
       data: {
         key: 'TEST-LICENSE',
         tier: 'FREE',

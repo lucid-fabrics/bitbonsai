@@ -15,7 +15,7 @@ jest.mock('node:os', () => ({
 
 describe('HealthService', () => {
   let service: HealthService;
-  let prisma: PrismaService;
+  let _prisma: PrismaService;
 
   const mockPrismaService = {
     $queryRaw: jest.fn(),
@@ -39,7 +39,7 @@ describe('HealthService', () => {
     }).compile();
 
     service = module.get<HealthService>(HealthService);
-    prisma = module.get<PrismaService>(PrismaService);
+    _prisma = module.get<PrismaService>(PrismaService);
 
     // Reset all mocks
     jest.clearAllMocks();
@@ -95,8 +95,8 @@ describe('HealthService', () => {
 
   describe('checkRedisHealth', () => {
     it('should return undefined when Redis is not configured', async () => {
-      const originalEnv = process.env['REDIS_URL'];
-      delete process.env['REDIS_URL'];
+      const originalEnv = process.env.REDIS_URL;
+      process.env.REDIS_URL = undefined;
 
       const result = await service.checkRedisHealth();
 
@@ -104,13 +104,13 @@ describe('HealthService', () => {
 
       // Restore
       if (originalEnv) {
-        process.env['REDIS_URL'] = originalEnv;
+        process.env.REDIS_URL = originalEnv;
       }
     });
 
     it('should return ok status when Redis is configured', async () => {
-      const originalEnv = process.env['REDIS_URL'];
-      process.env['REDIS_URL'] = 'redis://localhost:6379';
+      const originalEnv = process.env.REDIS_URL;
+      process.env.REDIS_URL = 'redis://localhost:6379';
 
       const result = await service.checkRedisHealth();
 
@@ -119,9 +119,9 @@ describe('HealthService', () => {
 
       // Restore
       if (originalEnv) {
-        process.env['REDIS_URL'] = originalEnv;
+        process.env.REDIS_URL = originalEnv;
       } else {
-        delete process.env['REDIS_URL'];
+        process.env.REDIS_URL = undefined;
       }
     });
   });

@@ -82,7 +82,7 @@ const auditController = (filePath: string): AuditResult => {
         section.includes('status: 204');
       const has400 = /@ApiBadRequestResponse/.test(section) || section.includes('status: 400');
       const has404 = /@ApiNotFoundResponse/.test(section) || section.includes('status: 404');
-      const has500 =
+      const _has500 =
         /@ApiInternalServerErrorResponse/.test(section) || section.includes('status: 500');
 
       if (!has2xx) {
@@ -218,7 +218,7 @@ dtos.forEach((dto) => {
 // Sort by score (worst first)
 results.sort((a, b) => a.score - b.score);
 
-console.log('\n' + '='.repeat(80));
+console.log(`\n${'='.repeat(80)}`);
 console.log('📊 Swagger Documentation Audit Results');
 console.log('='.repeat(80));
 
@@ -257,7 +257,7 @@ results.forEach((result) => {
 const averageScore = filesAudited > 0 ? Math.round(totalScore / filesAudited) : 100;
 const perfectFiles = results.filter((r) => r.score === 100).length;
 
-console.log('\n' + '='.repeat(80));
+console.log(`\n${'='.repeat(80)}`);
 console.log('📈 Summary');
 console.log('='.repeat(80));
 console.log(`Total files audited: ${controllers.length + dtos.length}`);

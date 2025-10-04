@@ -193,7 +193,7 @@ describe('NodesController (E2E)', () => {
   describe('POST /api/v1/nodes/pair', () => {
     it('should pair linked node with valid pairing code', async () => {
       // First register a main node to get pairing code
-      const mainNode = await prisma.node.create({
+      const _mainNode = await prisma.node.create({
         data: {
           name: 'Main Node',
           role: 'MAIN',

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Library, License, Node, Queu } from '@prisma/client';
+import type { Library, License, Node } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from './queue.service';
 

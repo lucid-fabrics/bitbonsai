@@ -175,12 +175,12 @@ export class FfmpegService {
 
     // Audio codec (from policy advanced settings)
     const advancedSettings = policy.advancedSettings as Record<string, unknown>;
-    const audioCodec = (advancedSettings['audioCodec'] as string) || 'copy';
+    const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
     args.push('-c:a', audioCodec);
 
     // Additional ffmpeg flags from policy
-    if (advancedSettings['ffmpegFlags']) {
-      const customFlags = advancedSettings['ffmpegFlags'] as string[];
+    if (advancedSettings.ffmpegFlags) {
+      const customFlags = advancedSettings.ffmpegFlags as string[];
       args.push(...customFlags);
     }
 

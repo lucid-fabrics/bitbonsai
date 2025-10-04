@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Library, License, Node, Policy } from '@prisma/client';
+import type { Library, License, Node } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PoliciesService } from '../../policies.service';
 import { PolicyRepository } from '../../repositories/policy.repository';
@@ -18,7 +18,7 @@ describe('PoliciesService Integration Tests', () => {
   let module: TestingModule;
   let service: PoliciesService;
   let prisma: PrismaService;
-  let repository: PolicyRepository;
+  let _repository: PolicyRepository;
   let testLicense: License;
   let testNode: Node;
   let testLibrary: Library;
@@ -30,7 +30,7 @@ describe('PoliciesService Integration Tests', () => {
 
     service = module.get<PoliciesService>(PoliciesService);
     prisma = module.get<PrismaService>(PrismaService);
-    repository = module.get<PolicyRepository>(PolicyRepository);
+    _repository = module.get<PolicyRepository>(PolicyRepository);
 
     // Create test fixtures
     testLicense = await prisma.license.create({

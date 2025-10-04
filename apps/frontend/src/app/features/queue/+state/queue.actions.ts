@@ -1,4 +1,4 @@
-import { createActionGroup, emptyProps, props } from '@ngrx/store';
+import { createActionGroup, props } from '@ngrx/store';
 import type { QueueFilters, QueueResponse } from '../models/queue.model';
 
 export const QueueActions = createActionGroup({

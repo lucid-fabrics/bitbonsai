@@ -10,7 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { interval, startWith, switchMap } from 'rxjs';
-import type { JobStatus, QueueFilters, QueueJob, QueueResponse } from './models/queue.model';
+import type { JobStatus, QueueFilters, QueueResponse } from './models/queue.model';
 import { QueueClient } from './services/queue.client';
 
 @Component({

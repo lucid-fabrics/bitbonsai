@@ -1,11 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import type { Job } from '@prisma/client';
 import type { LibrariesService } from '../libraries/libraries.service';
 import type { QueueService } from '../queue/queue.service';
-import type { FfmpegProgress, FfmpegService } from './ffmpeg.service';
+import type { FfmpegService } from './ffmpeg.service';
 
 interface WorkerState {
   nodeId: string;
@@ -37,7 +36,6 @@ export class EncodingProcessorService {
   private readonly logger = new Logger(EncodingProcessorService.name);
   private readonly workers = new Map<string, WorkerState>();
   private readonly MAX_RETRIES = 3;
-  private readonly PROGRESS_INTERVAL = 5000; // 5 seconds
 
   constructor(
     private readonly queueService: QueueService,
@@ -132,9 +130,6 @@ export class EncodingProcessorService {
           throw new Error(`Source file not found: ${job.filePath}`);
         }
 
-        // Get file size before encoding
-        const beforeSize = BigInt(fs.statSync(job.filePath).size);
-
         // Perform encoding
         const result = await this.encodeFile(job);
 
@@ -223,26 +218,6 @@ export class EncodingProcessorService {
       }
     } catch (updateError) {
       this.logger.error(`Error updating failed job ${job.id}:`, updateError);
-    }
-  }
-
-  /**
-   * Listen for FFmpeg progress events
-   *
-   * Updates job progress in database every time FFmpeg reports progress.
-   *
-   * @param progress - FFmpeg progress data
-   * @private
-   */
-  @OnEvent('ffmpeg.progress')
-  private async handleProgress(progress: FfmpegProgress): Promise<void> {
-    try {
-      await this.queueService.updateProgress(progress.jobId, {
-        progress: Math.round(progress.progress),
-        etaSeconds: progress.etaSeconds,
-      });
-    } catch (error) {
-      // Don't log every progress update failure, just skip
     }
   }
 
