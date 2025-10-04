@@ -7,7 +7,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import type { License } from './models/license.model';
+import type { ActivateLicense, License } from './models/license.model';
 import { LicenseTier } from './models/license.model';
 import type { EnvironmentInfo, SystemSettings } from './models/settings.model';
 import { LogLevel } from './models/settings.model';
@@ -15,18 +15,6 @@ import { LicenseService } from './services/license.service';
 import { SettingsService } from './services/settings.service';
 
 type SettingsTab = 'license' | 'environment' | 'system' | 'advanced';
-
-interface LicenseFormControls {
-  licenseKey: FormControl<string>;
-  email: FormControl<string>;
-}
-
-interface SystemSettingsFormControls {
-  ffmpegPath: FormControl<string>;
-  logLevel: FormControl<string>;
-  analyticsEnabled: FormControl<boolean>;
-  webhookUrl: FormControl<string>;
-}
 
 @Component({
   selector: 'app-settings',
@@ -53,8 +41,16 @@ export class SettingsComponent implements OnInit {
   apiKeyRevealed = signal(false);
 
   // Forms
-  licenseForm!: FormGroup<LicenseFormControls>;
-  settingsForm!: FormGroup<SystemSettingsFormControls>;
+  licenseForm!: FormGroup<{
+    licenseKey: FormControl<string | null>;
+    email: FormControl<string | null>;
+  }>;
+  settingsForm!: FormGroup<{
+    ffmpegPath: FormControl<string | null>;
+    logLevel: FormControl<string | null>;
+    analyticsEnabled: FormControl<boolean | null>;
+    webhookUrl: FormControl<string | null>;
+  }>;
 
   // Enums for template
   LicenseTier = LicenseTier;
@@ -186,7 +182,13 @@ export class SettingsComponent implements OnInit {
       this.loading.set(true);
       this.clearMessages();
 
-      this.licenseService.activateLicense(this.licenseForm.value).subscribe({
+      const formValue = this.licenseForm.value;
+      const request: ActivateLicense = {
+        licenseKey: formValue.licenseKey ?? '',
+        email: formValue.email ?? '',
+      };
+
+      this.licenseService.activateLicense(request).subscribe({
         next: (license) => {
           this.license.set(license);
           this.loading.set(false);
@@ -206,7 +208,14 @@ export class SettingsComponent implements OnInit {
       this.loading.set(true);
       this.clearMessages();
 
-      const updates = this.settingsForm.value;
+      const formValue = this.settingsForm.value;
+      const updates = {
+        ...(formValue.ffmpegPath && { ffmpegPath: formValue.ffmpegPath }),
+        ...(formValue.logLevel && { logLevel: formValue.logLevel as LogLevel }),
+        ...(formValue.analyticsEnabled !== null && { analyticsEnabled: formValue.analyticsEnabled }),
+        ...(formValue.webhookUrl && { webhookUrl: formValue.webhookUrl }),
+      };
+
       this.settingsService.updateSystemSettings(updates).subscribe({
         next: (settings) => {
           this.systemSettings.set(settings);

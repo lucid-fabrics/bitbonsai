@@ -225,7 +225,7 @@
           <i class="fas fa-clock"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.queuedJobs }}</span>
+          <span class="stat-value">{{ queueData()!.stats.queued }}</span>
           <span class="stat-label">Queued</span>
         </div>
       </div>
@@ -235,7 +235,7 @@
           <i class="fas fa-spinner"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.encodingJobs }}</span>
+          <span class="stat-value">{{ queueData()!.stats.encoding }}</span>
           <span class="stat-label">Encoding</span>
         </div>
       </div>
@@ -245,7 +245,7 @@
           <i class="fas fa-check-circle"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.completedJobs }}</span>
+          <span class="stat-value">{{ queueData()!.stats.completed }}</span>
           <span class="stat-label">Completed</span>
         </div>
       </div>
@@ -255,7 +255,7 @@
           <i class="fas fa-exclamation-circle"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.failedJobs }}</span>
+          <span class="stat-value">{{ queueData()!.stats.failed }}</span>
           <span class="stat-label">Failed</span>
         </div>
       </div>
@@ -265,7 +265,7 @@
           <i class="fas fa-save"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ formatBytes(queueData()!.stats.totalSavings) }}</span>
+          <span class="stat-value">{{ formatBytes(queueData()!.stats.totalSavedBytes) }}</span>
           <span class="stat-label">Total Savings</span>
         </div>
       </div>
