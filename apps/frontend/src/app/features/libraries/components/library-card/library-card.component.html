@@ -59,17 +59,29 @@
   </div>
 
   <div class="card-footer">
-    <button class="btn btn-icon" (click)="onEdit()" title="Edit library">
-      <i class="fas fa-edit"></i>
-      Edit
-    </button>
-    <button class="btn btn-icon" (click)="onScan()" title="Scan library">
-      <i class="fas fa-sync-alt"></i>
-      Scan
-    </button>
-    <button class="btn btn-icon btn-danger" (click)="onDelete()" title="Delete library">
-      <i class="fas fa-trash"></i>
-      Delete
-    </button>
+    <div class="footer-left">
+      <button
+        class="btn btn-icon btn-toggle"
+        [class.active]="library().watchEnabled"
+        (click)="onToggleWatch()"
+        [title]="library().watchEnabled ? 'Disable file watching' : 'Enable file watching'">
+        <i class="fas" [ngClass]="library().watchEnabled ? 'fa-eye' : 'fa-eye-slash'"></i>
+        {{ library().watchEnabled ? 'Watching' : 'Watch' }}
+      </button>
+    </div>
+    <div class="footer-right">
+      <button class="btn btn-icon" (click)="onEdit()" title="Edit library">
+        <i class="fas fa-edit"></i>
+        Edit
+      </button>
+      <button class="btn btn-icon" (click)="onScan()" title="Scan library">
+        <i class="fas fa-sync-alt"></i>
+        Scan
+      </button>
+      <button class="btn btn-icon btn-danger" (click)="onDelete()" title="Delete library">
+        <i class="fas fa-trash"></i>
+        Delete
+      </button>
+    </div>
   </div>
 </div>

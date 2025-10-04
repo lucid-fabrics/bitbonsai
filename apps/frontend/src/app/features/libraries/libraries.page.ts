@@ -116,6 +116,13 @@ export class LibrariesComponent implements OnInit {
     setTimeout(() => this.scanningLibraryId.set(null), 1000);
   }
 
+  onToggleWatch(library: Library): void {
+    this.store.dispatch(LibrariesActions.updateLibrary({
+      id: library.id,
+      library: { watchEnabled: !library.watchEnabled }
+    }));
+  }
+
   isScanning(libraryId: string): boolean {
     return this.scanningLibraryId() === libraryId;
   }

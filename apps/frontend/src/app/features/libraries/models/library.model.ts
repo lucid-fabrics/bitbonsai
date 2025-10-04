@@ -27,6 +27,7 @@ export interface Library {
   path: string;
   mediaType: MediaType;
   enabled: boolean;
+  watchEnabled: boolean;
   lastScanAt: string | null;
   totalFiles: number;
   totalSizeBytes: string;
@@ -50,4 +51,5 @@ export interface UpdateLibraryDto {
   mediaType?: MediaType;
   nodeId?: string;
   enabled?: boolean;
+  watchEnabled?: boolean;
 }

@@ -96,6 +96,12 @@ export class LibraryStatsDto {
   enabled!: boolean;
 
   @ApiProperty({
+    description: 'Whether automatic file watching (inotify) is enabled',
+    example: false,
+  })
+  watchEnabled!: boolean;
+
+  @ApiProperty({
     description: 'Timestamp of the last library scan',
     example: '2025-09-30T21:45:32.123Z',
     format: 'date-time',
