@@ -251,15 +251,13 @@ describe('Policies API (e2e)', () => {
 
   describe('GET /api/v1/policies/:id', () => {
     it('should return policy by id', async () => {
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/policies')
-        .send({
-          name: 'Test Policy',
-          preset: 'BALANCED_HEVC',
-          targetCodec: 'HEVC',
-          targetQuality: 23,
-          libraryId: testLibrary.id,
-        });
+      const createRes = await request(app.getHttpServer()).post('/api/v1/policies').send({
+        name: 'Test Policy',
+        preset: 'BALANCED_HEVC',
+        targetCodec: 'HEVC',
+        targetQuality: 23,
+        libraryId: testLibrary.id,
+      });
 
       const policyId = createRes.body.id;
 
@@ -286,14 +284,12 @@ describe('Policies API (e2e)', () => {
 
   describe('PATCH /api/v1/policies/:id', () => {
     it('should update existing policy', async () => {
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/policies')
-        .send({
-          name: 'Original Name',
-          preset: 'BALANCED_HEVC',
-          targetCodec: 'HEVC',
-          targetQuality: 23,
-        });
+      const createRes = await request(app.getHttpServer()).post('/api/v1/policies').send({
+        name: 'Original Name',
+        preset: 'BALANCED_HEVC',
+        targetCodec: 'HEVC',
+        targetQuality: 23,
+      });
 
       const policyId = createRes.body.id;
 
@@ -320,31 +316,23 @@ describe('Policies API (e2e)', () => {
 
   describe('DELETE /api/v1/policies/:id', () => {
     it('should delete existing policy', async () => {
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/policies')
-        .send({
-          name: 'To Delete',
-          preset: 'BALANCED_HEVC',
-          targetCodec: 'HEVC',
-          targetQuality: 23,
-        });
+      const createRes = await request(app.getHttpServer()).post('/api/v1/policies').send({
+        name: 'To Delete',
+        preset: 'BALANCED_HEVC',
+        targetCodec: 'HEVC',
+        targetQuality: 23,
+      });
 
       const policyId = createRes.body.id;
 
-      await request(app.getHttpServer())
-        .delete(`/api/v1/policies/${policyId}`)
-        .expect(200);
+      await request(app.getHttpServer()).delete(`/api/v1/policies/${policyId}`).expect(200);
 
       // Verify it's deleted
-      return request(app.getHttpServer())
-        .get(`/api/v1/policies/${policyId}`)
-        .expect(404);
+      return request(app.getHttpServer()).get(`/api/v1/policies/${policyId}`).expect(404);
     });
 
     it('should return 404 for non-existent policy', () => {
-      return request(app.getHttpServer())
-        .delete('/api/v1/policies/non-existent-id')
-        .expect(404);
+      return request(app.getHttpServer()).delete('/api/v1/policies/non-existent-id').expect(404);
     });
   });
 

@@ -1,5 +1,5 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { CreateLibraryDto, Library, UpdateLibraryDto } from '../models/library.model';
+import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../models/library.model';
 
 export const LibrariesActions = createActionGroup({
   source: 'Libraries',
@@ -23,5 +23,5 @@ export const LibrariesActions = createActionGroup({
     'Scan Library': props<{ id: string }>(),
     'Scan Library Success': props<{ id: string }>(),
     'Scan Library Failure': props<{ error: string }>(),
-  }
+  },
 });

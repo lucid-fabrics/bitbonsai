@@ -80,7 +80,8 @@ function analyzeService(serviceName: string): ServiceConfig {
 }
 
 function generateIntegrationTests(config: ServiceConfig): string {
-  const { name, className, entityName, hasNodeFK, hasLibraryFK, uniqueConstraints, methods } = config;
+  const { name, className, entityName, hasNodeFK, hasLibraryFK, uniqueConstraints, methods } =
+    config;
 
   return `import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -124,7 +125,9 @@ describe('${className} Integration Tests', () => {
         features: {},
       },
     });
-${hasNodeFK ? `
+${
+  hasNodeFK
+    ? `
     testNode = await prisma.node.create({
       data: {
         name: 'Test Node',
@@ -136,8 +139,12 @@ ${hasNodeFK ? `
         lastHeartbeat: new Date(),
         licenseId: testLicense.id,
       },
-    });` : ''}
-${hasLibraryFK ? `
+    });`
+    : ''
+}
+${
+  hasLibraryFK
+    ? `
     testLibrary = await prisma.library.create({
       data: {
         name: 'Test Library',
@@ -148,7 +155,9 @@ ${hasLibraryFK ? `
         totalSizeBytes: BigInt(0),
         nodeId: testNode.id,
       },
-    });` : ''}
+    });`
+    : ''
+}
   });
 
   afterAll(async () => {
@@ -192,21 +201,29 @@ function generateCreateTests(config: ServiceConfig): string {
       expect(result.name).toBe(createDto.name);
     });
 
-    ${hasNodeFK ? `
+    ${
+      hasNodeFK
+        ? `
     it('should throw NotFoundException for non-existent nodeId', async () => {
       await expect(service.create({
         name: 'Test',
         nodeId: 'non-existent-id',
       })).rejects.toThrow(NotFoundException);
-    });` : ''}
+    });`
+        : ''
+    }
 
-    ${hasLibraryFK ? `
+    ${
+      hasLibraryFK
+        ? `
     it('should throw error for non-existent libraryId', async () => {
       await expect(service.create({
         name: 'Test',
         libraryId: 'non-existent-id',
       })).rejects.toThrow();
-    });` : ''}
+    });`
+        : ''
+    }
 
     it('should persist to database', async () => {
       const created = await service.create({
@@ -377,7 +394,9 @@ try {
   console.log(`📊 Service Analysis:`);
   console.log(`   - Class: ${config.className}`);
   console.log(`   - Entity: ${config.entityName}`);
-  console.log(`   - Foreign Keys: ${config.hasNodeFK ? 'Node' : ''} ${config.hasLibraryFK ? 'Library' : ''}`);
+  console.log(
+    `   - Foreign Keys: ${config.hasNodeFK ? 'Node' : ''} ${config.hasLibraryFK ? 'Library' : ''}`
+  );
   console.log(`   - Methods: ${config.methods.join(', ')}`);
 
   console.log(`\n⚙️  Generating integration tests...`);
@@ -397,9 +416,10 @@ try {
   console.log(`\n✅ Test generation complete!`);
   console.log(`\nNext steps:`);
   console.log(`  1. Review generated tests: ${outputPath}`);
-  console.log(`  2. Run tests: npx nx test backend --testFile=${serviceName}.service.integration.spec.ts`);
+  console.log(
+    `  2. Run tests: npx nx test backend --testFile=${serviceName}.service.integration.spec.ts`
+  );
   console.log(`  3. Adjust test data if needed\n`);
-
 } catch (error) {
   console.error(`\n❌ Error:`, error instanceof Error ? error.message : error);
   process.exit(1);

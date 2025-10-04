@@ -1,5 +1,5 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideMockStore, MockStore } from '@ngrx/store/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { LibrariesComponent } from './libraries.component';
 
 describe('LibrariesComponent', () => {
@@ -14,9 +14,7 @@ describe('LibrariesComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LibrariesComponent],
-      providers: [
-        provideMockStore({ initialState }),
-      ],
+      providers: [provideMockStore({ initialState })],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LibrariesComponent);

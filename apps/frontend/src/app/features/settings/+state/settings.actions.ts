@@ -1,6 +1,10 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { ActivateLicense, License } from '../models/license.model';
-import { EnvironmentInfo, SystemSettings, UpdateSystemSettings } from '../models/settings.model';
+import type { ActivateLicense, License } from '../models/license.model';
+import type {
+  EnvironmentInfo,
+  SystemSettings,
+  UpdateSystemSettings,
+} from '../models/settings.model';
 
 export const SettingsActions = createActionGroup({
   source: 'Settings',
@@ -36,5 +40,5 @@ export const SettingsActions = createActionGroup({
     'Regenerate API Key': emptyProps(),
     'Regenerate API Key Success': props<{ apiKey: string }>(),
     'Regenerate API Key Failure': props<{ error: string }>(),
-  }
+  },
 });

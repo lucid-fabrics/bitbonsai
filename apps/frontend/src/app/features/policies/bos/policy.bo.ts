@@ -1,4 +1,10 @@
-import { AudioHandling, DeviceProfile, PolicyModel, PolicyPreset, TargetCodec } from '../models/policy.model';
+import {
+  type AudioHandling,
+  type DeviceProfile,
+  type PolicyModel,
+  PolicyPreset,
+  type TargetCodec,
+} from '../models/policy.model';
 
 export class PolicyBo {
   id: string;

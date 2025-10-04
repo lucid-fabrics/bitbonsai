@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import { QueueFilters, QueueJob, QueueStats } from '../models/queue.model';
+import type { QueueFilters, QueueJob, QueueStats } from '../models/queue.model';
 import { QueueActions } from './queue.actions';
 
 export interface QueueState {
@@ -15,7 +15,7 @@ export const initialState: QueueState = {
   stats: null,
   filters: {},
   isLoading: false,
-  error: null
+  error: null,
 };
 
 export const queueReducer = createReducer(
@@ -26,61 +26,59 @@ export const queueReducer = createReducer(
     ...state,
     filters: filters || state.filters,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(QueueActions.loadQueueSuccess, (state, { data }) => ({
     ...state,
     jobs: data.jobs,
     stats: data.stats,
-    isLoading: false
+    isLoading: false,
   })),
   on(QueueActions.loadQueueFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Cancel Job
   on(QueueActions.cancelJob, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(QueueActions.cancelJobSuccess, (state, { jobId }) => ({
     ...state,
-    jobs: state.jobs.map(job =>
+    jobs: state.jobs.map((job) =>
       job.id === jobId ? { ...job, status: 'CANCELLED' as const } : job
     ),
-    isLoading: false
+    isLoading: false,
   })),
   on(QueueActions.cancelJobFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Retry Job
   on(QueueActions.retryJob, (state) => ({
     ...state,
     isLoading: true,
-    error: null
+    error: null,
   })),
   on(QueueActions.retryJobSuccess, (state, { jobId }) => ({
     ...state,
-    jobs: state.jobs.map(job =>
-      job.id === jobId ? { ...job, status: 'QUEUED' as const } : job
-    ),
-    isLoading: false
+    jobs: state.jobs.map((job) => (job.id === jobId ? { ...job, status: 'QUEUED' as const } : job)),
+    isLoading: false,
   })),
   on(QueueActions.retryJobFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false
+    isLoading: false,
   })),
 
   // Update Filters
   on(QueueActions.updateFilters, (state, { filters }) => ({
     ...state,
-    filters
+    filters,
   }))
 );

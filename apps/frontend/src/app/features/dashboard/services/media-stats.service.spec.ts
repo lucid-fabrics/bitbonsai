@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { MediaStatsService } from './media-stats.service';
-import { MediaStatsClient } from './media-stats.service';
 import { MediaStatsBo } from '../bos/media-stats.service';
+import { MediaStatsClient, MediaStatsService } from './media-stats.service';
 
 describe('MediaStatsService', () => {
   let service: MediaStatsService;
@@ -18,10 +17,7 @@ describe('MediaStatsService', () => {
     ]);
 
     TestBed.configureTestingModule({
-      providers: [
-        MediaStatsService,
-        { provide: MediaStatsClient, useValue: clientSpy },
-      ],
+      providers: [MediaStatsService, { provide: MediaStatsClient, useValue: clientSpy }],
     });
 
     service = TestBed.inject(MediaStatsService);

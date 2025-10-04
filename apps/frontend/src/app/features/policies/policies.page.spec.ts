@@ -1,5 +1,5 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideMockStore, MockStore } from '@ngrx/store/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { PoliciesComponent } from './policies.component';
 
 describe('PoliciesComponent', () => {
@@ -14,9 +14,7 @@ describe('PoliciesComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [PoliciesComponent],
-      providers: [
-        provideMockStore({ initialState }),
-      ],
+      providers: [provideMockStore({ initialState })],
     }).compileComponents();
 
     fixture = TestBed.createComponent(PoliciesComponent);

@@ -1,5 +1,5 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideMockStore, MockStore } from '@ngrx/store/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { InsightsComponent } from './insights.component';
 
 describe('InsightsComponent', () => {
@@ -14,9 +14,7 @@ describe('InsightsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [InsightsComponent],
-      providers: [
-        provideMockStore({ initialState }),
-      ],
+      providers: [provideMockStore({ initialState })],
     }).compileComponents();
 
     fixture = TestBed.createComponent(InsightsComponent);

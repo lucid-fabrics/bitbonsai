@@ -1,9 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import * as chokidar from 'chokidar';
-import { extname, basename } from 'node:path';
-import { PrismaService } from '../prisma/prisma.service';
+import { basename, extname } from 'node:path';
+import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { FSWatcher } from 'chokidar';
+import * as chokidar from 'chokidar';
+import type { PrismaService } from '../prisma/prisma.service';
 
 interface WatcherInstance {
   watcher: FSWatcher;
@@ -51,7 +51,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly eventEmitter: EventEmitter2,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   /**
@@ -158,7 +158,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    */
   private async stopAllWatchers(): Promise<void> {
     const promises = Array.from(this.watchers.keys()).map((libraryId) =>
-      this.stopWatcher(libraryId),
+      this.stopWatcher(libraryId)
     );
     await Promise.all(promises);
   }

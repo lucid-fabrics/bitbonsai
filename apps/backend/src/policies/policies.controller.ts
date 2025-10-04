@@ -21,12 +21,12 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { CreatePolicyDto } from './dto/create-policy.dto';
+import type { CreatePolicyDto } from './dto/create-policy.dto';
 import { PolicyDto } from './dto/policy.dto';
 import { PolicyStatsDto } from './dto/policy-stats.dto';
 import { PresetInfoDto } from './dto/preset-info.dto';
-import { UpdatePolicyDto } from './dto/update-policy.dto';
-import { PoliciesService } from './policies.service';
+import type { UpdatePolicyDto } from './dto/update-policy.dto';
+import type { PoliciesService } from './policies.service';
 
 @ApiTags('policies')
 @Controller('policies')

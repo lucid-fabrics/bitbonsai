@@ -1,9 +1,9 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AccelerationType, Job, Policy } from '@prisma/client';
-import { QueueService } from '../queue/queue.service';
+import type { QueueService } from '../queue/queue.service';
 import type { EncodingProgressDto } from './dto/encoding-progress.dto';
 
 /**

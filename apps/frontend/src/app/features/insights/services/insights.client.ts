@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import type { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
 
 /**
  * DTOs for API responses

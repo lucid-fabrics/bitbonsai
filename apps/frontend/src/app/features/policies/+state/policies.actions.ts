@@ -1,6 +1,10 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { PolicyBo } from '../bos/policy.bo';
-import { CreatePolicyRequest, PresetInfoModel, UpdatePolicyRequest } from '../models/policy.model';
+import type { PolicyBo } from '../bos/policy.bo';
+import type {
+  CreatePolicyRequest,
+  PresetInfoModel,
+  UpdatePolicyRequest,
+} from '../models/policy.model';
 
 export const PoliciesActions = createActionGroup({
   source: 'Policies',
@@ -24,5 +28,5 @@ export const PoliciesActions = createActionGroup({
     'Delete Policy': props<{ id: string }>(),
     'Delete Policy Success': props<{ id: string }>(),
     'Delete Policy Failure': props<{ error: string }>(),
-  }
+  },
 });

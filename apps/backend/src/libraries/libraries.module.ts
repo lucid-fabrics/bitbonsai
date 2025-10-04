@@ -1,6 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { forwardRef, Module } from '@nestjs/common';
 import { FileWatcherModule } from '../file-watcher/file-watcher.module';
+import { PrismaService } from '../prisma/prisma.service';
 import { LibrariesController } from './libraries.controller';
 import { LibrariesService } from './libraries.service';
 

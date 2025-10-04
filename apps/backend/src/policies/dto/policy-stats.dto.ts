@@ -1,7 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PolicyPreset, TargetCodec } from '@bitbonsai/shared-models';
-import { LibraryInfoDto } from './library-info.dto';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { JobCountDto } from './job-count.dto';
+import { LibraryInfoDto } from './library-info.dto';
 
 export class PolicyStatsDto {
   @ApiProperty({

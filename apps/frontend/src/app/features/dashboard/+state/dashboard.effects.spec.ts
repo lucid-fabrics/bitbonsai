@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { MediaStatsEffects } from './dashboard.effects';
-import * as dashboardActions from './dashboard.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { MediaStatsClient } from '../services/media-stats.client';
+import * as dashboardActions from './dashboard.actions';
+import { MediaStatsEffects } from './dashboard.effects';
 
 describe('MediaStatsEffects', () => {
   let actions$: Observable<Action>;

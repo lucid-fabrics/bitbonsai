@@ -7,14 +7,16 @@ import {
   type OnInit,
   output,
 } from '@angular/core';
-import { FormBuilder, FormControl, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import type {
-  CreateLibraryDto,
-  Library,
-  UpdateLibraryDto,
-} from '../../models/library.model';
-import { MediaType } from '../../models/library.model';
+import {
+  FormBuilder,
+  type FormControl,
+  type FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import type { Node } from '../../../nodes/models/node.model';
+import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../../models/library.model';
+import { MediaType } from '../../models/library.model';
 
 interface LibraryFormControls {
   name: FormControl<string>;
@@ -53,10 +55,22 @@ export class LibraryFormComponent implements OnInit {
   private initializeForm(): void {
     const lib = this.library();
     this.libraryForm = this.fb.group<LibraryFormControls>({
-      name: this.fb.control(lib?.name || '', { validators: [Validators.required, Validators.maxLength(255)], nonNullable: true }),
-      path: this.fb.control(lib?.path || '', { validators: [Validators.required, Validators.pattern(/^\/.*/)], nonNullable: true }),
-      mediaType: this.fb.control(lib?.mediaType || MediaType.MOVIE, { validators: [Validators.required], nonNullable: true }),
-      nodeId: this.fb.control(lib?.node?.id || '', { validators: [Validators.required], nonNullable: true }),
+      name: this.fb.control(lib?.name || '', {
+        validators: [Validators.required, Validators.maxLength(255)],
+        nonNullable: true,
+      }),
+      path: this.fb.control(lib?.path || '', {
+        validators: [Validators.required, Validators.pattern(/^\/.*/)],
+        nonNullable: true,
+      }),
+      mediaType: this.fb.control(lib?.mediaType || MediaType.MOVIE, {
+        validators: [Validators.required],
+        nonNullable: true,
+      }),
+      nodeId: this.fb.control(lib?.node?.id || '', {
+        validators: [Validators.required],
+        nonNullable: true,
+      }),
       enabled: this.fb.control(lib?.enabled ?? true, { nonNullable: true }),
     });
   }
@@ -71,8 +85,7 @@ export class LibraryFormComponent implements OnInit {
         const updates: UpdateLibraryDto = {};
         if (formValue.name !== lib.name) updates.name = formValue.name;
         if (formValue.path !== lib.path) updates.path = formValue.path;
-        if (formValue.mediaType !== lib.mediaType)
-          updates.mediaType = formValue.mediaType;
+        if (formValue.mediaType !== lib.mediaType) updates.mediaType = formValue.mediaType;
         if (formValue.nodeId !== lib.node.id) updates.nodeId = formValue.nodeId;
         if (formValue.enabled !== lib.enabled) updates.enabled = formValue.enabled;
 

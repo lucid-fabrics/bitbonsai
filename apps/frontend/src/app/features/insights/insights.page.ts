@@ -8,10 +8,10 @@ import { lastValueFrom } from 'rxjs';
 import {
   CodecDistributionBO,
   InsightsStatsBO,
-  NodePerformanceBO,
+  type NodePerformanceBO,
   SavingsTrendBO,
 } from './bos/insights.bo';
-import { InsightsService } from './services/insights.service';
+import type { InsightsService } from './services/insights.service';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -49,9 +49,7 @@ export class InsightsComponent implements OnInit {
   loading = signal(true);
 
   // Stats
-  stats = signal<InsightsStatsBO>(
-    new InsightsStatsBO(0, 0, 0, 0)
-  );
+  stats = signal<InsightsStatsBO>(new InsightsStatsBO(0, 0, 0, 0));
 
   // Savings Trend Chart
   savingsTrendData = signal<ChartConfiguration<'line'>['data']>({

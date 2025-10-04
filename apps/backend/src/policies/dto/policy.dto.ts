@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PolicyPreset, TargetCodec } from '@bitbonsai/shared-models';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PolicyDto {
   @ApiProperty({

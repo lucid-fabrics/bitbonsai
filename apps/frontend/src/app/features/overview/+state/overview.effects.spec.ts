@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { OverviewEffects } from './overview.effects';
-import * as overviewActions from './overview.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { OverviewClient } from '../services/overview.client';
+import * as overviewActions from './overview.actions';
+import { OverviewEffects } from './overview.effects';
 
 describe('OverviewEffects', () => {
   let actions$: Observable<Action>;

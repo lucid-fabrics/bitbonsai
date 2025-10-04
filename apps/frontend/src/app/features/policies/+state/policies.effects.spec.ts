@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { Action } from '@ngrx/store';
-import { PoliciesEffects } from './policies.effects';
-import * as policiesActions from './policies.actions';
+import type { Action } from '@ngrx/store';
+import { type Observable, of, throwError } from 'rxjs';
 import { PolicyClient } from '../services/policy.client';
+import * as policiesActions from './policies.actions';
+import { PoliciesEffects } from './policies.effects';
 
 describe('PoliciesEffects', () => {
   let actions$: Observable<Action>;

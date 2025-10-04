@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Metric } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import type { PrismaService } from '../prisma/prisma.service';
 import type { CodecDistributionDto } from './dto/codec-distribution.dto';
 import type { InsightsStatsDto } from './dto/insights-stats.dto';
 import type { NodeComparisonDto } from './dto/node-comparison.dto';

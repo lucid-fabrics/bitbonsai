@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * Base Page Object with common functionality for all pages

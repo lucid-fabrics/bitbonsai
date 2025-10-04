@@ -1,3 +1,9 @@
+import {
+  type AdvancedSettings,
+  type DeviceProfiles,
+  PolicyPreset,
+  TargetCodec,
+} from '@bitbonsai/shared-models';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
@@ -10,12 +16,6 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import {
-  PolicyPreset,
-  TargetCodec,
-  DeviceProfiles,
-  AdvancedSettings,
-} from '@bitbonsai/shared-models';
 
 export class CreatePolicyDto {
   @ApiProperty({

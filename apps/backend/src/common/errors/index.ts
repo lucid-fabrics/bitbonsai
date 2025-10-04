@@ -5,34 +5,24 @@
  * All errors extend BaseError and provide structured error information.
  */
 
-// Base error
-export { BaseError } from './base.error';
-
-// Validation errors (400)
-export {
-  ValidationError,
-  MissingFieldError,
-  InvalidFieldError,
-} from './validation.error';
-
 // Authorization errors (401, 403)
 export {
-  UnauthorizedError,
+  FeatureNotLicensedError,
   ForbiddenError,
   InvalidLicenseError,
-  FeatureNotLicensedError,
+  UnauthorizedError,
 } from './authorization.error';
-
-// Not found errors (404)
+// Base error
+export { BaseError } from './base.error';
+// Business rule errors (422)
 export {
-  NotFoundError,
-  LibraryNotFoundError,
-  NodeNotFoundError,
-  PolicyNotFoundError,
-  JobNotFoundError,
-  LicenseNotFoundError,
-} from './not-found.error';
-
+  BusinessRuleError,
+  EncodingFailedError,
+  FileAccessError,
+  InsufficientCapacityError,
+  NodeOfflineError,
+  StorageQuotaExceededError,
+} from './business.error';
 // Conflict errors (409)
 export {
   ConflictError,
@@ -40,21 +30,25 @@ export {
   LibraryPathConflictError,
   NodeNameConflictError,
 } from './conflict.error';
-
-// Business rule errors (422)
-export {
-  BusinessRuleError,
-  NodeOfflineError,
-  InsufficientCapacityError,
-  EncodingFailedError,
-  FileAccessError,
-  StorageQuotaExceededError,
-} from './business.error';
-
 // External service errors (500, 503)
 export {
-  ExternalServiceError,
   DatabaseError,
+  ExternalServiceError,
   FFmpegError,
   NetworkError,
 } from './external.error';
+// Not found errors (404)
+export {
+  JobNotFoundError,
+  LibraryNotFoundError,
+  LicenseNotFoundError,
+  NodeNotFoundError,
+  NotFoundError,
+  PolicyNotFoundError,
+} from './not-found.error';
+// Validation errors (400)
+export {
+  InvalidFieldError,
+  MissingFieldError,
+  ValidationError,
+} from './validation.error';

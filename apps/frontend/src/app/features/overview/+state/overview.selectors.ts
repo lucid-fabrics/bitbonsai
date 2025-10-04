@@ -1,5 +1,5 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
-import { OverviewState } from './overview.reducer';
+import type { OverviewState } from './overview.reducer';
 
 export const selectOverviewState = createFeatureSelector<OverviewState>('overview');
 
@@ -8,15 +8,9 @@ export const OverviewSelectors = {
   selectIsLoading: createSelector(selectOverviewState, (state) => state.isLoading),
   selectError: createSelector(selectOverviewState, (state) => state.error),
 
-  selectSystemHealth: createSelector(
-    selectOverviewState,
-    (state) => state.data?.system_health
-  ),
+  selectSystemHealth: createSelector(selectOverviewState, (state) => state.data?.system_health),
 
-  selectQueueSummary: createSelector(
-    selectOverviewState,
-    (state) => state.data?.queue_summary
-  ),
+  selectQueueSummary: createSelector(selectOverviewState, (state) => state.data?.queue_summary),
 
   selectRecentActivity: createSelector(
     selectOverviewState,
@@ -28,12 +22,9 @@ export const OverviewSelectors = {
     (state) => state.data?.top_libraries || []
   ),
 
-  selectTotalQueueItems: createSelector(
-    selectOverviewState,
-    (state) => {
-      if (!state.data) return 0;
-      const queue = state.data.queue_summary;
-      return queue.queued + queue.encoding + queue.completed + queue.failed;
-    }
-  ),
+  selectTotalQueueItems: createSelector(selectOverviewState, (state) => {
+    if (!state.data) return 0;
+    const queue = state.data.queue_summary;
+    return queue.queued + queue.encoding + queue.completed + queue.failed;
+  }),
 };

@@ -16,7 +16,9 @@ export class InsightsEffects {
       switchMap(({ days }) =>
         this.insightsService.getSavingsTrend(days).pipe(
           map((data) => InsightsActions.loadSavingsTrendSuccess({ data })),
-          catchError((error) => of(InsightsActions.loadSavingsTrendFailure({ error: error.message })))
+          catchError((error) =>
+            of(InsightsActions.loadSavingsTrendFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -28,7 +30,9 @@ export class InsightsEffects {
       switchMap(() =>
         this.insightsService.getCodecDistribution().pipe(
           map((data) => InsightsActions.loadCodecDistributionSuccess({ data })),
-          catchError((error) => of(InsightsActions.loadCodecDistributionFailure({ error: error.message })))
+          catchError((error) =>
+            of(InsightsActions.loadCodecDistributionFailure({ error: error.message }))
+          )
         )
       )
     )
@@ -40,7 +44,9 @@ export class InsightsEffects {
       switchMap(() =>
         this.insightsService.getNodePerformance().pipe(
           map((data) => InsightsActions.loadNodePerformanceSuccess({ data })),
-          catchError((error) => of(InsightsActions.loadNodePerformanceFailure({ error: error.message })))
+          catchError((error) =>
+            of(InsightsActions.loadNodePerformanceFailure({ error: error.message }))
+          )
         )
       )
     )

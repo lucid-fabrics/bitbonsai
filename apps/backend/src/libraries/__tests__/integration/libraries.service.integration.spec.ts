@@ -18,7 +18,6 @@ describe('LibrariesService Integration Tests', () => {
   let prisma: PrismaService;
   let testLicense: License;
   let testNode: Node;
-  
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
@@ -53,12 +52,11 @@ describe('LibrariesService Integration Tests', () => {
         licenseId: testLicense.id,
       },
     });
-
   });
 
   afterAll(async () => {
     await prisma.library.deleteMany({});
-    
+
     await prisma.node.deleteMany({});
     await prisma.license.deleteMany({});
     await prisma.$disconnect();
@@ -69,13 +67,11 @@ describe('LibrariesService Integration Tests', () => {
     await prisma.library.deleteMany({});
   });
 
-
   describe('create', () => {
     it('should create library with valid data', async () => {
       const createDto = {
         name: 'Test Library',
         nodeId: testNode.id,
-        
       };
 
       const result = await service.create(createDto);
@@ -85,21 +81,19 @@ describe('LibrariesService Integration Tests', () => {
       expect(result.name).toBe(createDto.name);
     });
 
-    
     it('should throw NotFoundException for non-existent nodeId', async () => {
-      await expect(service.create({
-        name: 'Test',
-        nodeId: 'non-existent-id',
-      })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.create({
+          name: 'Test',
+          nodeId: 'non-existent-id',
+        })
+      ).rejects.toThrow(NotFoundException);
     });
-
-    
 
     it('should persist to database', async () => {
       const created = await service.create({
         name: 'Persistent Test',
         nodeId: testNode.id,
-        
       });
 
       const retrieved = await prisma.library.findUnique({
@@ -115,7 +109,6 @@ describe('LibrariesService Integration Tests', () => {
       const result = await service.create({
         name: 'Timestamp Test',
         nodeId: testNode.id,
-        
       });
       const after = new Date();
 
@@ -134,12 +127,10 @@ describe('LibrariesService Integration Tests', () => {
       await service.create({
         name: 'First',
         nodeId: testNode.id,
-        
       });
       await service.create({
         name: 'Second',
         nodeId: testNode.id,
-        
       });
 
       const result = await service.findAll();
@@ -152,7 +143,6 @@ describe('LibrariesService Integration Tests', () => {
       const created = await service.create({
         name: 'Test Record',
         nodeId: testNode.id,
-        
       });
 
       const result = await service.findOne(created.id);
@@ -170,7 +160,6 @@ describe('LibrariesService Integration Tests', () => {
       const created = await service.create({
         name: 'Original',
         nodeId: testNode.id,
-        
       });
 
       const updated = await service.update(created.id, { name: 'Updated' });
@@ -178,18 +167,18 @@ describe('LibrariesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.update('non-existent-id', { name: 'Test' }))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent-id', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should update updatedAt timestamp', async () => {
       const created = await service.create({
         name: 'Test',
         nodeId: testNode.id,
-        
       });
 
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       const updated = await service.update(created.id, { name: 'Updated' });
 
       expect(updated.updatedAt.getTime()).toBeGreaterThan(created.updatedAt.getTime());
@@ -201,7 +190,6 @@ describe('LibrariesService Integration Tests', () => {
       const created = await service.create({
         name: 'To Delete',
         nodeId: testNode.id,
-        
       });
 
       await service.remove(created.id);
@@ -213,8 +201,7 @@ describe('LibrariesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.remove('non-existent-id'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

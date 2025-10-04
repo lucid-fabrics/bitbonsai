@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Store } from '@ngrx/store';
-import { FileInfoBo } from './bos/file-info.bo';
-import { MediaStatsClient } from './services/media-stats.client';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
+import { FileInfoBo } from './bos/file-info.bo';
 import { FilesDialogComponent } from './modals/files-dialog/files-dialog.modal';
+import { MediaStatsClient } from './services/media-stats.client';
 
 interface FolderInfo {
   name: string;
