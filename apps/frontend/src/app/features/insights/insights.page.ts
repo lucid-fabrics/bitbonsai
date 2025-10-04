@@ -6,7 +6,7 @@ import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { lastValueFrom } from 'rxjs';
 import { InsightsStatsBO, type NodePerformanceBO } from './bos/insights.bo';
-import type { InsightsService } from './services/insights.service';
+import { InsightsService } from './services/insights.service';
 
 // Register Chart.js components
 Chart.register(...registerables);

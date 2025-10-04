@@ -215,7 +215,7 @@
           <i class="fas fa-list"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.totalJobs }}</span>
+          <span class="stat-value">{{ queueData()!.stats.queued + queueData()!.stats.encoding + queueData()!.stats.completed + queueData()!.stats.failed }}</span>
           <span class="stat-label">Total Jobs</span>
         </div>
       </div>
@@ -265,7 +265,7 @@
           <i class="fas fa-save"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ formatBytes(queueData()!.stats.totalSavedBytes) }}</span>
+          <span class="stat-value">{{ formatBytes(Number.parseInt(queueData()!.stats.totalSavedBytes)) }}</span>
           <span class="stat-label">Total Savings</span>
         </div>
       </div>
