@@ -164,6 +164,7 @@ model Library {
   path           String // Absolute path to library folder
   mediaType      MediaType
   enabled        Boolean   @default(true)
+  watchEnabled   Boolean   @default(false) // Enable automatic file watching (inotify)
   lastScanAt     DateTime?
   totalFiles     Int       @default(0)
   totalSizeBytes BigInt    @default(0)
@@ -183,6 +184,7 @@ model Library {
   @@index([enabled])
   @@index([mediaType])
   @@index([lastScanAt])
+  @@index([watchEnabled])
   @@map("libraries")
 }
 

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CommonModule } from './common/common.module';
 import { EncodingModule } from './encoding/encoding.module';
+import { FileWatcherModule } from './file-watcher/file-watcher.module';
 import { HealthModule } from './health/health.module';
 import { InsightsModule } from './insights/insights.module';
 import { LibrariesModule } from './libraries/libraries.module';
@@ -16,6 +18,7 @@ import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     PrismaModule,
     CommonModule,
     HealthModule,
@@ -24,6 +27,7 @@ import { SettingsModule } from './settings/settings.module';
     LicenseModule,
     LicensesModule,
     LibrariesModule,
+    FileWatcherModule,
     OverviewModule,
     InsightsModule,
     NodesModule,

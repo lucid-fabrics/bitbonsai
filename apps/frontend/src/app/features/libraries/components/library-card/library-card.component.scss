@@ -180,7 +180,14 @@
   border-top: 1px solid $border-primary;
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  gap: 12px;
 }
 
 .btn {
@@ -218,5 +225,29 @@
     background: rgba(239, 68, 68, 0.15);
     border-color: #ef4444;
     color: #fca5a5;
+  }
+}
+
+.btn-toggle {
+  &.active {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: #22c55e;
+    color: #86efac;
+
+    &:hover {
+      background: rgba(34, 197, 94, 0.25);
+    }
+  }
+
+  &:not(.active) {
+    background: rgba(156, 163, 175, 0.15);
+    border-color: #6b7280;
+    color: #9ca3af;
+
+    &:hover {
+      background: rgba(156, 163, 175, 0.25);
+      border-color: $accent-color;
+      color: $text-white;
+    }
   }
 }

@@ -15,6 +15,7 @@ export class LibraryCardComponent {
   readonly edit = output<Library>();
   readonly scan = output<Library>();
   readonly delete = output<Library>();
+  readonly toggleWatch = output<Library>();
 
   onEdit(): void {
     this.edit.emit(this.library());
@@ -26,6 +27,10 @@ export class LibraryCardComponent {
 
   onDelete(): void {
     this.delete.emit(this.library());
+  }
+
+  onToggleWatch(): void {
+    this.toggleWatch.emit(this.library());
   }
 
   getMediaTypeIcon(mediaType: string): string {

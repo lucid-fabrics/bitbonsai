@@ -15,6 +15,14 @@ export class UpdateLibraryDto extends PartialType(CreateLibraryDto) {
   enabled?: boolean;
 
   @ApiProperty({
+    description: 'Enable or disable automatic file watching (inotify)',
+    example: false,
+    required: false,
+  })
+  @IsOptional()
+  watchEnabled?: boolean;
+
+  @ApiProperty({
     description: 'Total size of all media files in bytes',
     example: 1073741824,
     required: false,
