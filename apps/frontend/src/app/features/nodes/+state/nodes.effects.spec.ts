@@ -38,7 +38,7 @@ describe('NodesEffects', () => {
 
   describe('loadNodes$ effect', () => {
     it('should return loadNodesSuccess action on success', (done) => {
-      const mockNodes = [{ id: '1', name: 'Test Node' }] as any;
+      const mockNodes = [{ id: '1', name: 'Test Node' }] as never;
       client.getNodes.and.returnValue(of(mockNodes));
 
       actions$ = of(NodesActions.loadNodes());

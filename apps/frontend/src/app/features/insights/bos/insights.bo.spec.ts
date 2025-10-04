@@ -22,7 +22,7 @@ describe('SavingsTrendBO', () => {
         name: 'Test',
       };
 
-      const bo = new SavingsTrendBO(mockModel as any);
+      const bo = new SavingsTrendBO(mockModel as never);
 
       expect(bo.id).toBe('1');
       expect(bo.name).toBe('Test');
@@ -34,7 +34,7 @@ describe('SavingsTrendBO', () => {
         name: null,
       };
 
-      expect(() => new SavingsTrendBO(mockModel as any)).not.toThrow();
+      expect(() => new SavingsTrendBO(mockModel as never)).not.toThrow();
     });
   });
 

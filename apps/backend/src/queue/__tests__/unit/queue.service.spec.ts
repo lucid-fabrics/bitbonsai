@@ -147,10 +147,10 @@ describe('QueueService', () => {
     };
 
     it('should create a job successfully', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as any);
-      jest.spyOn(prisma.policy, 'findUnique').mockResolvedValue(mockPolicy as any);
-      jest.spyOn(prisma.job, 'create').mockResolvedValue(mockJob as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.policy, 'findUnique').mockResolvedValue(mockPolicy as never);
+      jest.spyOn(prisma.job, 'create').mockResolvedValue(mockJob as never);
 
       const result = await service.create(createDto);
 
@@ -178,7 +178,7 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if library does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
@@ -186,8 +186,8 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if policy does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
       jest.spyOn(prisma.policy, 'findUnique').mockResolvedValue(null);
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
@@ -200,7 +200,7 @@ describe('QueueService', () => {
   describe('findAll', () => {
     it('should return all jobs without filters', async () => {
       const mockJobs = [mockJobWithRelations];
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as any);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
 
       const result = await service.findAll();
 
@@ -216,7 +216,7 @@ describe('QueueService', () => {
 
     it('should filter jobs by stage', async () => {
       const mockJobs = [mockJobWithRelations];
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as any);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
 
       const result = await service.findAll(JobStage.QUEUED);
 
@@ -232,7 +232,7 @@ describe('QueueService', () => {
 
     it('should filter jobs by node ID', async () => {
       const mockJobs = [mockJobWithRelations];
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as any);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
 
       const result = await service.findAll(undefined, 'node-1');
 
@@ -249,7 +249,7 @@ describe('QueueService', () => {
 
   describe('findOne', () => {
     it('should return a single job with full details', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJobWithRelations as any);
+      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJobWithRelations as never);
 
       const result = await service.findOne('job-1');
 
@@ -282,9 +282,9 @@ describe('QueueService', () => {
         startedAt: new Date(),
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithCapacity as any);
-      jest.spyOn(prisma.job, 'findFirst').mockResolvedValue(mockJobWithRelations as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(updatedJob as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithCapacity as never);
+      jest.spyOn(prisma.job, 'findFirst').mockResolvedValue(mockJobWithRelations as never);
+      jest.spyOn(prisma.job, 'update').mockResolvedValue(updatedJob as never);
 
       const result = await service.getNextJob('node-1');
 
@@ -306,7 +306,7 @@ describe('QueueService', () => {
         _count: { jobs: 5 }, // At max of 5
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeAtCapacity as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeAtCapacity as never);
 
       const result = await service.getNextJob('node-1');
 
@@ -320,7 +320,7 @@ describe('QueueService', () => {
         _count: { jobs: 0 },
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithCapacity as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithCapacity as never);
       jest.spyOn(prisma.job, 'findFirst').mockResolvedValue(null);
 
       const result = await service.getNextJob('node-1');
@@ -346,8 +346,8 @@ describe('QueueService', () => {
 
     it('should update job progress successfully', async () => {
       const updatedJob = { ...mockJob, ...updateDto };
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(updatedJob as any);
+      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
+      jest.spyOn(prisma.job, 'update').mockResolvedValue(updatedJob as never);
 
       const result = await service.updateProgress('job-1', updateDto);
 
@@ -385,8 +385,8 @@ describe('QueueService', () => {
         completedAt: new Date(),
       };
 
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(completedJob as any);
-      jest.spyOn(prisma.metric, 'upsert').mockResolvedValue({} as any);
+      jest.spyOn(prisma.job, 'update').mockResolvedValue(completedJob as never);
+      jest.spyOn(prisma.metric, 'upsert').mockResolvedValue({} as never);
 
       const result = await service.completeJob('job-1', completeDto);
 
@@ -407,7 +407,7 @@ describe('QueueService', () => {
         completedAt: new Date(),
       };
 
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(failedJob as any);
+      jest.spyOn(prisma.job, 'update').mockResolvedValue(failedJob as never);
 
       const result = await service.failJob('job-1', errorMessage);
 
@@ -432,8 +432,8 @@ describe('QueueService', () => {
         completedAt: new Date(),
       };
 
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(cancelledJob as any);
+      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
+      jest.spyOn(prisma.job, 'update').mockResolvedValue(cancelledJob as never);
 
       const result = await service.cancelJob('job-1');
 
@@ -455,7 +455,7 @@ describe('QueueService', () => {
 
     it('should throw BadRequestException if job is already completed', async () => {
       const completedJob = { ...mockJob, stage: JobStage.COMPLETED };
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(completedJob as any);
+      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(completedJob as never);
 
       await expect(service.cancelJob('job-1')).rejects.toThrow(BadRequestException);
       await expect(service.cancelJob('job-1')).rejects.toThrow('Cannot cancel a completed job');
@@ -464,8 +464,8 @@ describe('QueueService', () => {
 
   describe('remove', () => {
     it('should delete a job successfully', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as any);
-      jest.spyOn(prisma.job, 'delete').mockResolvedValue(mockJob as any);
+      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
+      jest.spyOn(prisma.job, 'delete').mockResolvedValue(mockJob as never);
 
       await service.remove('job-1');
 
@@ -492,7 +492,7 @@ describe('QueueService', () => {
 
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: { savedBytes: BigInt(536870912000) },
-      } as any);
+      } as never);
 
       const result = await service.getJobStats();
 
@@ -516,7 +516,7 @@ describe('QueueService', () => {
 
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: { savedBytes: BigInt(100000000000) },
-      } as any);
+      } as never);
 
       const result = await service.getJobStats('node-1');
 

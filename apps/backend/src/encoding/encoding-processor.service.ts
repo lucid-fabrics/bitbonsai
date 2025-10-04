@@ -1,10 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
-import type { Job } from '@prisma/client';
+import type { Job, Policy } from '@prisma/client';
 import type { LibrariesService } from '../libraries/libraries.service';
 import type { QueueService } from '../queue/queue.service';
 import type { FfmpegService } from './ffmpeg.service';
+
+interface JobWithPolicy extends Job {
+  policy?: Policy;
+  retryCount?: number;
+}
 
 interface WorkerState {
   nodeId: string;
@@ -107,7 +112,7 @@ export class EncodingProcessorService {
    * @param nodeId - Node unique identifier
    * @returns Processed job or null if none available
    */
-  async processNextJob(nodeId: string): Promise<Job | null> {
+  async processNextJob(nodeId: string): Promise<JobWithPolicy | null> {
     try {
       // Get next job from queue (respects concurrent limits)
       const job = await this.queueService.getNextJob(nodeId);
@@ -161,7 +166,7 @@ export class EncodingProcessorService {
    * @param job - Completed job
    * @param result - Job result with file sizes
    */
-  async handleJobCompletion(job: Job, result: JobResult): Promise<void> {
+  async handleJobCompletion(job: JobWithPolicy, result: JobResult): Promise<void> {
     this.logger.log(`Job ${job.id} completed successfully`);
 
     try {
@@ -192,21 +197,21 @@ export class EncodingProcessorService {
    * @param job - Failed job
    * @param error - Error that caused failure
    */
-  async handleJobFailure(job: Job, error: unknown): Promise<void> {
+  async handleJobFailure(job: JobWithPolicy, error: unknown): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     this.logger.error(`Job ${job.id} failed: ${errorMessage}`);
 
     try {
       // Check if this is a transient error that should be retried
       const shouldRetry = this.isTransientError(errorMessage);
-      const retryCount = (job as any).retryCount || 0;
+      const retryCount = job.retryCount || 0;
 
       if (shouldRetry && retryCount < this.MAX_RETRIES) {
         this.logger.log(`Retrying job ${job.id} (attempt ${retryCount + 1}/${this.MAX_RETRIES})`);
 
         // Reset job to QUEUED for retry
         await this.queueService.updateProgress(job.id, {
-          stage: 'QUEUED' as any,
+          stage: 'QUEUED',
           progress: 0,
         });
 
@@ -228,7 +233,7 @@ export class EncodingProcessorService {
    * @returns Job result with file sizes
    * @private
    */
-  private async encodeFile(job: Job): Promise<JobResult> {
+  private async encodeFile(job: JobWithPolicy): Promise<JobResult> {
     const beforeSizeBytes = BigInt(fs.statSync(job.filePath).size);
 
     // Create temporary output path
@@ -238,7 +243,7 @@ export class EncodingProcessorService {
 
     try {
       // Get policy settings
-      const policy = (job as any).policy;
+      const policy = job.policy;
       if (!policy) {
         throw new Error('Job policy not loaded');
       }

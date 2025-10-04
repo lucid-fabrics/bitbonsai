@@ -130,13 +130,15 @@ describe('HealthService', () => {
     it('should return ok status for normal disk usage', async () => {
       // Mock execAsync to return df output with 50% usage
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        callback(
-          null,
-          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
-          ''
-        );
-      });
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          callback(
+            null,
+            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
+            ''
+          );
+        }
+      );
 
       const result = await service.checkDiskHealth();
 
@@ -147,13 +149,15 @@ describe('HealthService', () => {
 
     it('should return warning status for high disk usage', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        callback(
-          null,
-          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /',
-          ''
-        );
-      });
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          callback(
+            null,
+            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /',
+            ''
+          );
+        }
+      );
 
       const result = await service.checkDiskHealth();
 
@@ -163,13 +167,15 @@ describe('HealthService', () => {
 
     it('should return critical status for very high disk usage', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        callback(
-          null,
-          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
-          ''
-        );
-      });
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          callback(
+            null,
+            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
+            ''
+          );
+        }
+      );
 
       const result = await service.checkDiskHealth();
 
@@ -179,9 +185,11 @@ describe('HealthService', () => {
 
     it('should handle errors gracefully', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        callback(new Error('Command failed'));
-      });
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          callback(new Error('Command failed'), '', '');
+        }
+      );
 
       const result = await service.checkDiskHealth();
 
@@ -225,9 +233,11 @@ describe('HealthService', () => {
   describe('checkFfmpegHealth', () => {
     it('should return ok status when ffmpeg is available', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
-      });
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
+        }
+      );
 
       const result = await service.checkFfmpegHealth();
 
@@ -238,9 +248,11 @@ describe('HealthService', () => {
 
     it('should return error status when ffmpeg is not found', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        callback(new Error('Command not found'));
-      });
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          callback(new Error('Command not found'), '', '');
+        }
+      );
 
       const result = await service.checkFfmpegHealth();
 
@@ -318,17 +330,19 @@ describe('HealthService', () => {
         .mockResolvedValueOnce(3);
 
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        if (cmd.includes('df')) {
-          callback(
-            null,
-            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
-            ''
-          );
-        } else if (cmd.includes('ffmpeg')) {
-          callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          if (cmd.includes('df')) {
+            callback(
+              null,
+              'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
+              ''
+            );
+          } else if (cmd.includes('ffmpeg')) {
+            callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
+          }
         }
-      });
+      );
     });
 
     it('should return ok status when all checks pass', async () => {
@@ -354,17 +368,19 @@ describe('HealthService', () => {
 
     it('should return degraded status when non-critical service fails', async () => {
       const { exec } = require('node:child_process');
-      exec.mockImplementation((cmd: any, callback: any) => {
-        if (cmd.includes('df')) {
-          callback(
-            null,
-            'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
-            ''
-          );
-        } else if (cmd.includes('ffmpeg')) {
-          callback(new Error('Command not found'));
+      exec.mockImplementation(
+        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+          if (cmd.includes('df')) {
+            callback(
+              null,
+              'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
+              ''
+            );
+          } else if (cmd.includes('ffmpeg')) {
+            callback(new Error('Command not found'), '', '');
+          }
         }
-      });
+      );
 
       const result = await service.getDetailedHealth();
 

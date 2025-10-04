@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { License, Node, Node } from '@prisma/client';
+import type { License, Node } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NodesService } from './nodes.service';
 
@@ -18,7 +18,6 @@ describe('NodesService Integration Tests', () => {
   let prisma: PrismaService;
   let testLicense: License;
   let testNode: Node;
-  
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
@@ -53,12 +52,11 @@ describe('NodesService Integration Tests', () => {
         licenseId: testLicense.id,
       },
     });
-
   });
 
   afterAll(async () => {
     await prisma.node.deleteMany({});
-    
+
     await prisma.node.deleteMany({});
     await prisma.license.deleteMany({});
     await prisma.$disconnect();
@@ -68,8 +66,6 @@ describe('NodesService Integration Tests', () => {
   afterEach(async () => {
     await prisma.node.deleteMany({});
   });
-
-
 
   describe('findAll', () => {
     it('should return empty array when no records exist', async () => {
@@ -81,12 +77,10 @@ describe('NodesService Integration Tests', () => {
       await service.create({
         name: 'First',
         nodeId: testNode.id,
-        
       });
       await service.create({
         name: 'Second',
         nodeId: testNode.id,
-        
       });
 
       const result = await service.findAll();
@@ -99,7 +93,6 @@ describe('NodesService Integration Tests', () => {
       const created = await service.create({
         name: 'Test Record',
         nodeId: testNode.id,
-        
       });
 
       const result = await service.findOne(created.id);
@@ -112,13 +105,11 @@ describe('NodesService Integration Tests', () => {
     });
   });
 
-
   describe('remove', () => {
     it('should delete existing record', async () => {
       const created = await service.create({
         name: 'To Delete',
         nodeId: testNode.id,
-        
       });
 
       await service.remove(created.id);
@@ -130,8 +121,7 @@ describe('NodesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.remove('non-existent-id'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

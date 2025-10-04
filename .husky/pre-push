@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Ensure backend builds succeed
+echo "Building backend..."
+npx nx build backend
+
+# Ensure frontend builds succeed
+echo "Building frontend..."
+npx nx build frontend
+
+# Run all tests (unit + integration + coverage)
+echo "Running all tests with coverage..."
+npm test
+
+# Run Playwright E2E tests
+echo "Running E2E tests..."
+npm run test:e2e

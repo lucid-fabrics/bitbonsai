@@ -99,8 +99,8 @@ describe('NodesService', () => {
     };
 
     it('should register a new node as MAIN role when no nodes exist', async () => {
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as any);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
+      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
 
       const result = await service.registerNode(registerDto);
 
@@ -132,8 +132,8 @@ describe('NodesService', () => {
       };
       const linkedNode = { ...mockNode, role: NodeRole.LINKED };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(licenseWithNodes as any);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(linkedNode as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(licenseWithNodes as never);
+      jest.spyOn(prisma.node, 'create').mockResolvedValue(linkedNode as never);
 
       const result = await service.registerNode(registerDto);
 
@@ -159,7 +159,7 @@ describe('NodesService', () => {
         ...mockLicense,
         status: LicenseStatus.EXPIRED,
       };
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(inactiveLicense as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(inactiveLicense as never);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -173,7 +173,7 @@ describe('NodesService', () => {
         maxNodes: 3,
         _count: { nodes: 3 },
       };
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(fullLicense as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(fullLicense as never);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(ConflictException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -196,8 +196,8 @@ describe('NodesService', () => {
         pairingExpiresAt: null,
       };
 
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(nodeWithToken as any);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(pairedNode as any);
+      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(nodeWithToken as never);
+      jest.spyOn(prisma.node, 'update').mockResolvedValue(pairedNode as never);
 
       const result = await service.pairNode('123456');
 
@@ -235,8 +235,8 @@ describe('NodesService', () => {
         pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
 
       const result = await service.generatePairingTokenForNode('node-1');
 
@@ -271,8 +271,8 @@ describe('NodesService', () => {
         uptimeSeconds: 60,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
 
       const result = await service.heartbeat('node-1');
 
@@ -293,8 +293,8 @@ describe('NodesService', () => {
         status: NodeStatus.ERROR,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
 
       await service.heartbeat('node-1', { status: NodeStatus.ERROR });
 
@@ -320,7 +320,7 @@ describe('NodesService', () => {
 
   describe('getNodeStats', () => {
     it('should return node with comprehensive statistics', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNodeWithStats as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNodeWithStats as never);
 
       const result = await service.getNodeStats('node-1');
 
@@ -378,7 +378,7 @@ describe('NodesService', () => {
         { ...mockNode, id: 'node-2', role: NodeRole.LINKED },
       ];
 
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue(mockNodes as any);
+      jest.spyOn(prisma.node, 'findMany').mockResolvedValue(mockNodes as never);
 
       const result = await service.findAll();
 
@@ -391,7 +391,7 @@ describe('NodesService', () => {
 
   describe('findOne', () => {
     it('should return a specific node by ID', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
 
       const result = await service.findOne('node-1');
 
@@ -413,8 +413,8 @@ describe('NodesService', () => {
 
   describe('remove', () => {
     it('should delete a node successfully', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.node, 'delete').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'delete').mockResolvedValue(mockNode as never);
 
       await service.remove('node-1');
 
@@ -442,8 +442,8 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as any);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
+      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
 
       const result = await service.registerNode(registerDto);
 
@@ -461,8 +461,8 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as any);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
+      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
 
       const result = await service.registerNode(registerDto);
 
@@ -479,8 +479,8 @@ describe('NodesService', () => {
       };
 
       const now = Date.now();
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as any);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
+      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
 
       const result = await service.registerNode(registerDto);
 

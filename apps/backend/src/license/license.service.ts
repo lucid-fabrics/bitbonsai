@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { LicenseStatus, LicenseTier } from '@prisma/client';
+import { LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
 import type { LicenseFeatures } from '../../../../prisma/types';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { CreateLicenseDto } from './dto/create-license.dto';
@@ -122,7 +122,7 @@ export class LicenseService {
         email: data.email,
         maxNodes: config.maxNodes,
         maxConcurrentJobs: config.maxConcurrentJobs,
-        features: features as any,
+        features: features as Prisma.InputJsonValue,
         validUntil: data.validUntil ? new Date(data.validUntil) : null,
       },
     });

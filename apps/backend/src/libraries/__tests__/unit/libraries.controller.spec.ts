@@ -75,7 +75,7 @@ describe('LibrariesController', () => {
         nodeId: 'node-1',
       };
 
-      jest.spyOn(service, 'create').mockResolvedValue(mockLibrary as any);
+      jest.spyOn(service, 'create').mockResolvedValue(mockLibrary as never);
 
       const result = await controller.create(createDto);
 
@@ -87,7 +87,7 @@ describe('LibrariesController', () => {
   describe('findAll', () => {
     it('should return all libraries', async () => {
       const mockLibraries = [mockLibrary];
-      jest.spyOn(service, 'findAll').mockResolvedValue(mockLibraries as any);
+      jest.spyOn(service, 'findAll').mockResolvedValue(mockLibraries as never);
 
       const result = await controller.findAll();
 
@@ -98,7 +98,7 @@ describe('LibrariesController', () => {
 
   describe('findOne', () => {
     it('should return a library with statistics', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue(mockLibraryStats as any);
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockLibraryStats as never);
 
       const result = await controller.findOne('lib-1');
 
@@ -115,7 +115,7 @@ describe('LibrariesController', () => {
       };
       const updatedLibrary = { ...mockLibrary, ...updateDto };
 
-      jest.spyOn(service, 'update').mockResolvedValue(updatedLibrary as any);
+      jest.spyOn(service, 'update').mockResolvedValue(updatedLibrary as never);
 
       const result = await controller.update('lib-1', updateDto);
 
@@ -141,7 +141,7 @@ describe('LibrariesController', () => {
         lastScanAt: new Date(),
       };
 
-      jest.spyOn(service, 'scan').mockResolvedValue(scannedLibrary as any);
+      jest.spyOn(service, 'scan').mockResolvedValue(scannedLibrary as never);
 
       const result = await controller.scan('lib-1');
 

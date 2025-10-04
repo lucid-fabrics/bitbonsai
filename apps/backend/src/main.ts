@@ -17,9 +17,11 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // CRITICAL: Global exception filter for consistent error handling
+  // biome-ignore lint/correctness/useHookAtTopLevel: NestJS method, not a React hook
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // CRITICAL: Global validation pipe to validate all DTOs
+  // biome-ignore lint/correctness/useHookAtTopLevel: NestJS method, not a React hook
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Strip properties that don't have decorators

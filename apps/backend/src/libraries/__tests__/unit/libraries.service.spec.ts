@@ -87,9 +87,9 @@ describe('LibrariesService', () => {
     };
 
     it('should create a library successfully', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
-      jest.spyOn(prisma.library, 'create').mockResolvedValue(mockLibrary as any);
+      jest.spyOn(prisma.library, 'create').mockResolvedValue(mockLibrary as never);
 
       const result = await service.create(createDto);
 
@@ -110,8 +110,8 @@ describe('LibrariesService', () => {
     });
 
     it('should throw ConflictException if library path already exists on node', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as any);
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as any);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow(
@@ -123,7 +123,7 @@ describe('LibrariesService', () => {
   describe('findAll', () => {
     it('should return all libraries', async () => {
       const mockLibraries = [mockLibraryWithStats];
-      jest.spyOn(prisma.library, 'findMany').mockResolvedValue(mockLibraries as any);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue(mockLibraries as never);
 
       const result = await service.findAll();
 
@@ -150,7 +150,7 @@ describe('LibrariesService', () => {
 
   describe('findOne', () => {
     it('should return a library with statistics', async () => {
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibraryWithStats as any);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibraryWithStats as never);
 
       const result = await service.findOne('lib-1');
 
@@ -199,8 +199,8 @@ describe('LibrariesService', () => {
 
     it('should update a library successfully', async () => {
       const updatedLibrary = { ...mockLibrary, ...updateDto };
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as any);
-      jest.spyOn(prisma.library, 'update').mockResolvedValue(updatedLibrary as any);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'update').mockResolvedValue(updatedLibrary as never);
 
       const result = await service.update('lib-1', updateDto);
 
@@ -223,8 +223,8 @@ describe('LibrariesService', () => {
 
   describe('remove', () => {
     it('should delete a library successfully', async () => {
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as any);
-      jest.spyOn(prisma.library, 'delete').mockResolvedValue(mockLibrary as any);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'delete').mockResolvedValue(mockLibrary as never);
 
       await service.remove('lib-1');
 
@@ -249,8 +249,8 @@ describe('LibrariesService', () => {
         ...mockLibrary,
         lastScanAt: new Date(),
       };
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as any);
-      jest.spyOn(prisma.library, 'update').mockResolvedValue(scannedLibrary as any);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'update').mockResolvedValue(scannedLibrary as never);
 
       const result = await service.scan('lib-1');
 

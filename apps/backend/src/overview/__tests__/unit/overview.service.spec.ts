@@ -43,11 +43,11 @@ describe('OverviewService', () => {
     it('should return HEALTHY status when all nodes are online', async () => {
       jest
         .spyOn(prisma.node, 'groupBy')
-        .mockResolvedValue([{ status: NodeStatus.ONLINE, _count: { status: 3 } }] as any);
+        .mockResolvedValue([{ status: NodeStatus.ONLINE, _count: { status: 3 } }] as never);
 
       jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
         _sum: { totalSizeBytes: BigInt('2251799813685248') }, // ~2TB
-      } as any);
+      } as never);
 
       const result = await service.getSystemHealth();
 
@@ -62,11 +62,11 @@ describe('OverviewService', () => {
       jest.spyOn(prisma.node, 'groupBy').mockResolvedValue([
         { status: NodeStatus.ONLINE, _count: { status: 2 } },
         { status: NodeStatus.OFFLINE, _count: { status: 1 } },
-      ] as any);
+      ] as never);
 
       jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
         _sum: { totalSizeBytes: BigInt('1125899906842624') }, // ~1TB
-      } as any);
+      } as never);
 
       const result = await service.getSystemHealth();
 
@@ -79,11 +79,11 @@ describe('OverviewService', () => {
       jest.spyOn(prisma.node, 'groupBy').mockResolvedValue([
         { status: NodeStatus.OFFLINE, _count: { status: 2 } },
         { status: NodeStatus.ERROR, _count: { status: 1 } },
-      ] as any);
+      ] as never);
 
       jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
         _sum: { totalSizeBytes: BigInt(0) },
-      } as any);
+      } as never);
 
       const result = await service.getSystemHealth();
 
@@ -96,11 +96,11 @@ describe('OverviewService', () => {
       jest.spyOn(prisma.node, 'groupBy').mockResolvedValue([
         { status: NodeStatus.ONLINE, _count: { status: 1 } },
         { status: NodeStatus.ERROR, _count: { status: 2 } },
-      ] as any);
+      ] as never);
 
       jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
         _sum: { totalSizeBytes: BigInt('500000000000') },
-      } as any);
+      } as never);
 
       const result = await service.getSystemHealth();
 
@@ -116,14 +116,14 @@ describe('OverviewService', () => {
         { stage: JobStage.ENCODING, _count: { stage: 8 } },
         { stage: JobStage.COMPLETED, _count: { stage: 342 } },
         { stage: JobStage.FAILED, _count: { stage: 5 } },
-      ] as any);
+      ] as never);
 
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: {
           savedBytes: BigInt('45097156608000'), // ~41TB saved
           beforeSizeBytes: BigInt('128102389432320'), // ~116TB original
         },
-      } as any);
+      } as never);
 
       const result = await service.getQueueSummary();
 
@@ -136,14 +136,14 @@ describe('OverviewService', () => {
     });
 
     it('should handle empty queue correctly', async () => {
-      jest.spyOn(prisma.job, 'groupBy').mockResolvedValue([] as any);
+      jest.spyOn(prisma.job, 'groupBy').mockResolvedValue([] as never);
 
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: {
           savedBytes: BigInt(0),
           beforeSizeBytes: BigInt(1),
         },
-      } as any);
+      } as never);
 
       const result = await service.getQueueSummary();
 
@@ -157,14 +157,14 @@ describe('OverviewService', () => {
     it('should handle negative savings correctly', async () => {
       jest
         .spyOn(prisma.job, 'groupBy')
-        .mockResolvedValue([{ stage: JobStage.COMPLETED, _count: { stage: 10 } }] as any);
+        .mockResolvedValue([{ stage: JobStage.COMPLETED, _count: { stage: 10 } }] as never);
 
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: {
           savedBytes: BigInt('-5000000000'), // Negative savings
           beforeSizeBytes: BigInt('100000000000'),
         },
-      } as any);
+      } as never);
 
       const result = await service.getQueueSummary();
 
@@ -189,7 +189,7 @@ describe('OverviewService', () => {
         },
       }));
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as any);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
 
       const result = await service.getRecentActivity();
 
@@ -218,7 +218,7 @@ describe('OverviewService', () => {
         },
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as any);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
 
       const result = await service.getRecentActivity();
 
@@ -241,7 +241,7 @@ describe('OverviewService', () => {
             name: 'Test Library',
           },
         },
-      ] as any);
+      ] as never);
 
       const result = await service.getRecentActivity();
 
@@ -280,7 +280,7 @@ describe('OverviewService', () => {
         },
       ];
 
-      jest.spyOn(prisma.library, 'findMany').mockResolvedValue(mockLibraries as any);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue(mockLibraries as never);
 
       const result = await service.getTopLibraries();
 
@@ -305,7 +305,7 @@ describe('OverviewService', () => {
           _count: { jobs: 15 },
           jobs: [],
         },
-      ] as any);
+      ] as never);
 
       const result = await service.getTopLibraries();
 
@@ -323,7 +323,7 @@ describe('OverviewService', () => {
           _count: { jobs: 5 },
           jobs: [{ savedBytes: null }, { savedBytes: BigInt('1000000000') }],
         },
-      ] as any);
+      ] as never);
 
       const result = await service.getTopLibraries();
 
@@ -336,22 +336,22 @@ describe('OverviewService', () => {
       // Mock system health
       jest
         .spyOn(prisma.node, 'groupBy')
-        .mockResolvedValue([{ status: NodeStatus.ONLINE, _count: { status: 3 } }] as any);
+        .mockResolvedValue([{ status: NodeStatus.ONLINE, _count: { status: 3 } }] as never);
       jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
         _sum: { totalSizeBytes: BigInt('2000000000000') },
-      } as any);
+      } as never);
 
       // Mock queue stats
       jest.spyOn(prisma.job, 'groupBy').mockResolvedValue([
         { stage: JobStage.QUEUED, _count: { stage: 10 } },
         { stage: JobStage.COMPLETED, _count: { stage: 100 } },
-      ] as any);
+      ] as never);
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: {
           savedBytes: BigInt('10000000000'),
           beforeSizeBytes: BigInt('50000000000'),
         },
-      } as any);
+      } as never);
 
       // Mock recent activity and top libraries
       jest.spyOn(prisma.job, 'findMany').mockResolvedValueOnce([
@@ -366,7 +366,7 @@ describe('OverviewService', () => {
           completedAt: new Date(),
           library: { name: 'Movies' },
         },
-      ] as any);
+      ] as never);
 
       jest.spyOn(prisma.library, 'findMany').mockResolvedValueOnce([
         {
@@ -376,7 +376,7 @@ describe('OverviewService', () => {
           _count: { jobs: 50 },
           jobs: [{ savedBytes: BigInt('5000000000') }],
         },
-      ] as any);
+      ] as never);
 
       const result = await service.getOverviewStats();
 

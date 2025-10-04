@@ -85,7 +85,7 @@ export class QueueService {
   async findAll(stage?: JobStage, nodeId?: string): Promise<Job[]> {
     this.logger.log(`Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'})`);
 
-    const where: any = {};
+    const where: { stage?: JobStage; nodeId?: string } = {};
     if (stage) {
       where.stage = stage;
     }
@@ -470,7 +470,7 @@ export class QueueService {
    * @param job - Completed job with node and license info
    * @private
    */
-  private async updateMetrics(job: any): Promise<void> {
+  private async updateMetrics(job: Job & { node: { licenseId: string } }): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
