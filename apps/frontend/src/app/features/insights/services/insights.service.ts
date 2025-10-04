@@ -7,7 +7,7 @@ import {
   NodePerformanceBO,
   SavingsTrendBO,
 } from '../bos/insights.bo';
-import type { InsightsClient } from './insights.client';
+import { InsightsClient } from './insights.client';
 
 /**
  * Service for insights-related business logic

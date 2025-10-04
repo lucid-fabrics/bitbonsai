@@ -2,7 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import type { MediaStatsModel } from '../models/media-stats.model';
+import type { FolderStatsModel } from '../../dashboard/models/folder-stats.model';
+import type { MediaStatsModel } from '../../dashboard/models/media-stats.model';
 import type { OverviewModel } from '../models/overview.model';
 
 @Injectable({
@@ -34,7 +35,7 @@ export class OverviewClient {
 
     // Mock storage saved (estimate based on folders)
     const totalSavedGB = stats.folders.reduce(
-      (sum, folder) => sum + (folder.space_saved_estimate_gb || 0),
+      (sum: number, folder: FolderStatsModel) => sum + (folder.space_saved_estimate_gb || 0),
       0
     );
 
@@ -68,7 +69,7 @@ export class OverviewClient {
 
   private generateMockActivity(stats: MediaStatsModel): OverviewModel['recent_activity'] {
     // Generate mock recent activity from folder stats
-    return stats.folders.slice(0, 10).map((folder, index) => ({
+    return stats.folders.slice(0, 10).map((folder: FolderStatsModel, index: number) => ({
       id: `activity-${index}`,
       file_name: `${folder.name}_sample_file_${index + 1}.mkv`,
       library: folder.name,
@@ -81,9 +82,9 @@ export class OverviewClient {
 
   private generateTopLibraries(stats: MediaStatsModel): OverviewModel['top_libraries'] {
     return stats.folders
-      .sort((a, b) => b.file_count - a.file_count)
+      .sort((a: FolderStatsModel, b: FolderStatsModel) => b.file_count - a.file_count)
       .slice(0, 5)
-      .map((folder) => ({
+      .map((folder: FolderStatsModel) => ({
         name: folder.name,
         job_count: folder.codec_distribution.hevc,
         total_savings_gb: Number((folder.space_saved_estimate_gb || 0).toFixed(2)),

@@ -25,6 +25,9 @@ export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
   private readonly destroyRef = inject(DestroyRef);
 
+  // Expose Number for template
+  protected readonly Number = Number;
+
   // State signals
   protected readonly queueData = signal<QueueResponse | null>(null);
   protected readonly loading = signal(true);
