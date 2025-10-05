@@ -423,10 +423,17 @@ describe('EncodingProcessorService', () => {
   describe('metrics calculation', () => {
     it('should calculate correct savings percentages', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      // statSync is called 3 times: line 136, line 257 (before), line 290 (after)
-      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 1000000000 }); // Line 136 - before
-      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 1000000000 }); // Line 257 - before (again)
-      (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 750000000 }); // Line 290 - after
+      // statSync is called 2 times: line 237 (before), line 277 (after)
+      const statSyncMock = fs.statSync as jest.Mock;
+      statSyncMock.mockClear();
+      let callCount = 0;
+      statSyncMock.mockImplementation((path: string) => {
+        callCount++;
+        if (callCount === 1) {
+          return { size: 1000000000 }; // Line 237 - before (job.filePath)
+        }
+        return { size: 750000000 }; // Line 277 - after (tmpPath)
+      });
       (fs.renameSync as jest.Mock).mockImplementation(() => {
         // Mock implementation - no operation needed
       });

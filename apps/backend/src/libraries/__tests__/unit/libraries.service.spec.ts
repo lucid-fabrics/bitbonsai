@@ -216,6 +216,21 @@ describe('LibrariesService', () => {
       expect(prisma.library.update).toHaveBeenCalledWith({
         where: { id: 'lib-1' },
         data: updateDto,
+        include: {
+          node: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+          _count: {
+            select: {
+              jobs: true,
+              policies: true,
+            },
+          },
+        },
       });
     });
 
@@ -266,7 +281,24 @@ describe('LibrariesService', () => {
       expect(prisma.library.update).toHaveBeenCalledWith({
         where: { id: 'lib-1' },
         data: {
+          totalFiles: expect.any(Number),
+          totalSizeBytes: expect.any(BigInt),
           lastScanAt: expect.any(Date),
+        },
+        include: {
+          node: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+          _count: {
+            select: {
+              jobs: true,
+              policies: true,
+            },
+          },
         },
       });
     });
