@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job, Policy } from '@prisma/client';
-import { LibrariesService } from '../libraries/libraries.service';
-import { QueueService } from '../queue/queue.service';
-import { FfmpegService } from './ffmpeg.service';
+import type { LibrariesService } from '../libraries/libraries.service';
+import type { QueueService } from '../queue/queue.service';
+import type { FfmpegService } from './ffmpeg.service';
 
 interface JobWithPolicy extends Job {
   policy?: Policy;

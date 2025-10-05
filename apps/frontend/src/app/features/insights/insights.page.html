@@ -115,7 +115,7 @@
           <span class="chart-subtitle">Jobs completed by node</span>
         </div>
         <div class="chart-content">
-          @if (nodePerformanceData.labels?.length === 0) {
+          @if (nodePerformanceData.labels.length === 0) {
             <div class="empty-state">
               <fa-icon [icon]="faGauge" size="3x"></fa-icon>
               <p>No node data available</p>

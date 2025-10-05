@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
 import type { LicenseFeatures } from '../../../../prisma/types';
-import { PrismaService } from '../prisma/prisma.service';
+import type { PrismaService } from '../prisma/prisma.service';
 import type { CreateLicenseDto } from './dto/create-license.dto';
 
 /**

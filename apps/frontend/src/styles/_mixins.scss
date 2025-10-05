@@ -129,7 +129,7 @@
   color: $text-white;
 
   &:hover:not(:disabled) {
-    background: darken($danger, 10%);
+    background: color.adjust($danger, $lightness: - 10%);
   }
 }
 

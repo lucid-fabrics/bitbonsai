@@ -131,7 +131,7 @@
 
 // Summary Card
 .summary-card {
-  background: linear-gradient(135deg, $bg-secondary 0%, lighten($bg-secondary, 2%) 100%);
+  background: linear-gradient(135deg, $bg-secondary 0%, color.adjust($bg-secondary, $lightness:  2%) 100%);
   padding: 32px 40px;
   margin-bottom: 32px;
   border-bottom: 1px solid $border-primary;
@@ -196,7 +196,7 @@
   transition: background 0.2s;
 
   &:hover {
-    background: lighten($bg-secondary, 2%);
+    background: color.adjust($bg-secondary, $lightness:  2%);
   }
 }
 
@@ -317,7 +317,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, $accent-primary 0%, lighten($accent-primary, 10%) 100%);
+  background: linear-gradient(90deg, $accent-primary 0%, color.adjust($accent-primary, $lightness:  10%) 100%);
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 
