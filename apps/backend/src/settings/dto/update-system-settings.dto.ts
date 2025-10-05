@@ -1,5 +1,5 @@
-import { LogLevel } from '@bitbonsai/shared-models';
 import { ApiProperty } from '@nestjs/swagger';
+import { LogLevel } from '../../common/enums';
 
 export class UpdateSystemSettingsDto {
   @ApiProperty({
