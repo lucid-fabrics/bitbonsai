@@ -9,21 +9,21 @@
       <div class="time-range-selector">
         <button
           class="range-btn"
-          [class.active]="selectedTimeRange() === 7"
+          [class.active]="selectedTimeRange === 7"
           (click)="selectTimeRange(7)"
         >
           7 Days
         </button>
         <button
           class="range-btn"
-          [class.active]="selectedTimeRange() === 30"
+          [class.active]="selectedTimeRange === 30"
           (click)="selectTimeRange(30)"
         >
           30 Days
         </button>
         <button
           class="range-btn"
-          [class.active]="selectedTimeRange() === 90"
+          [class.active]="selectedTimeRange === 90"
           (click)="selectTimeRange(90)"
         >
           90 Days
@@ -33,7 +33,7 @@
   </div>
 
   <!-- Loading State -->
-  @if (loading()) {
+  @if (loading) {
     <div class="loading-skeleton">
       <div class="skeleton-chart large"></div>
       <div class="skeleton-grid">
@@ -49,7 +49,7 @@
   }
 
   <!-- Main Content -->
-  @if (!loading()) {
+  @if (!loading) {
     <div class="charts-container">
 
     <!-- Savings Trend Chart (Full Width) -->
@@ -59,21 +59,21 @@
           <fa-icon [icon]="faChartLine"></fa-icon>
           Storage Savings Trend
         </h3>
-        <span class="chart-subtitle">Daily savings over the last {{ selectedTimeRange() }} days</span>
+        <span class="chart-subtitle">Daily savings over the last {{ selectedTimeRange }} days</span>
       </div>
       <div class="chart-content">
-        @if (savingsTrendData().labels && savingsTrendData().labels!.length === 0) {
+        @if (savingsTrendData.labels && savingsTrendData.labels!.length === 0) {
           <div class="empty-state">
             <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
             <p>No savings data available yet</p>
             <span>Start processing media files to see your savings trend</span>
           </div>
         }
-        @if (savingsTrendData().labels && savingsTrendData().labels!.length > 0) {
+        @if (savingsTrendData.labels && savingsTrendData.labels!.length > 0) {
           <canvas
             baseChart
-            [data]="savingsTrendData()"
-            [options]="savingsTrendOptions()"
+            [data]="savingsTrendData"
+            [options]="savingsTrendOptions"
             type="line"
           ></canvas>
         }
@@ -90,18 +90,18 @@
           <span class="chart-subtitle">Usage breakdown by codec type</span>
         </div>
         <div class="chart-content">
-          @if (codecDistributionData().labels?.length === 0) {
+          @if (codecDistributionData.labels?.length === 0) {
             <div class="empty-state">
               <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
               <p>No codec data available</p>
               <span>Process files to see codec distribution</span>
             </div>
           }
-          @if (codecDistributionData().labels && codecDistributionData().labels!.length > 0) {
+          @if (codecDistributionData.labels && codecDistributionData.labels!.length > 0) {
             <canvas
               baseChart
-              [data]="codecDistributionData()"
-              [options]="codecDistributionOptions()"
+              [data]="codecDistributionData"
+              [options]="codecDistributionOptions"
               type="doughnut"
             ></canvas>
           }
@@ -115,18 +115,18 @@
           <span class="chart-subtitle">Jobs completed by node</span>
         </div>
         <div class="chart-content">
-          @if (nodePerformanceData().labels?.length === 0) {
+          @if (nodePerformanceData.labels?.length === 0) {
             <div class="empty-state">
               <fa-icon [icon]="faGauge" size="3x"></fa-icon>
               <p>No node data available</p>
               <span>Add worker nodes to see performance metrics</span>
             </div>
           }
-          @if (nodePerformanceData().labels && nodePerformanceData().labels!.length > 0) {
+          @if (nodePerformanceData.labels && nodePerformanceData.labels!.length > 0) {
             <canvas
               baseChart
-              [data]="nodePerformanceData()"
-              [options]="nodePerformanceOptions()"
+              [data]="nodePerformanceData"
+              [options]="nodePerformanceOptions"
               type="bar"
             ></canvas>
           }
@@ -143,7 +143,7 @@
         </div>
         <div class="metric-content">
           <h4>Total Jobs</h4>
-          <p class="metric-value">{{ stats().totalJobsCompleted | number }}</p>
+          <p class="metric-value">{{ stats.totalJobsCompleted | number }}</p>
           <span class="metric-label">Completed</span>
         </div>
       </div>
@@ -154,7 +154,7 @@
         </div>
         <div class="metric-content">
           <h4>Storage Saved</h4>
-          <p class="metric-value">{{ formatStorageSize(stats().totalStorageSavedGB) }}</p>
+          <p class="metric-value">{{ formatStorageSize(stats.totalStorageSavedGB) }}</p>
           <span class="metric-label">Total savings</span>
         </div>
       </div>
@@ -165,7 +165,7 @@
         </div>
         <div class="metric-content">
           <h4>Success Rate</h4>
-          <p class="metric-value">{{ stats().averageSuccessRate | number:'1.1-1' }}%</p>
+          <p class="metric-value">{{ stats.averageSuccessRate | number:'1.1-1' }}%</p>
           <span class="metric-label">Average across nodes</span>
         </div>
       </div>
@@ -176,7 +176,7 @@
         </div>
         <div class="metric-content">
           <h4>Throughput</h4>
-          <p class="metric-value">{{ stats().averageThroughput | number:'1.1-1' }}</p>
+          <p class="metric-value">{{ stats.averageThroughput | number:'1.1-1' }}</p>
           <span class="metric-label">Files per hour</span>
         </div>
       </div>

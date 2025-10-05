@@ -1,12 +1,5 @@
 import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  type OnInit,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { interval, startWith, switchMap } from 'rxjs';
@@ -29,17 +22,17 @@ export class QueueComponent implements OnInit {
   // Expose Number for template
   protected readonly Number = Number;
 
-  // State signals
-  protected readonly queueData = signal<QueueResponse | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly expandedJobId = signal<string | null>(null);
-  protected readonly showCancelDialog = signal(false);
-  protected readonly selectedJobId = signal<string | null>(null);
+  // State
+  protected queueData: QueueResponse | null = null;
+  protected loading = true;
+  protected expandedJobId: string | null = null;
+  protected showCancelDialog = false;
+  protected selectedJobId: string | null = null;
 
   // Filter state
-  protected selectedStatus = signal<JobStatus | 'ALL'>('ALL');
-  protected selectedNode = signal<string>('');
-  protected searchQuery = signal<string>('');
+  protected selectedStatus: JobStatus | 'ALL' = 'ALL';
+  protected selectedNode = '';
+  protected searchQuery = '';
 
   // Available statuses for filter
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
@@ -53,7 +46,7 @@ export class QueueComponent implements OnInit {
 
   // Get unique node names from current data
   protected get availableNodes(): string[] {
-    const jobs = this.queueData()?.jobs || [];
+    const jobs = this.queueData?.jobs || [];
     return [...new Set(jobs.map((job) => job.nodeName))].sort();
   }
 
@@ -70,76 +63,76 @@ export class QueueComponent implements OnInit {
       )
       .subscribe({
         next: (data) => {
-          this.queueData.set(data);
-          this.loading.set(false);
+          this.queueData = data;
+          this.loading = false;
         },
         error: (error) => {
           console.error('Failed to fetch queue data:', error);
-          this.loading.set(false);
+          this.loading = false;
         },
       });
   }
 
   private buildFilters(): QueueFilters {
     const filters: QueueFilters = {};
-    if (this.selectedStatus() !== 'ALL') {
-      filters.status = this.selectedStatus() as JobStatus;
+    if (this.selectedStatus !== 'ALL') {
+      filters.status = this.selectedStatus as JobStatus;
     }
-    if (this.selectedNode()) {
-      filters.nodeId = this.selectedNode();
+    if (this.selectedNode) {
+      filters.nodeId = this.selectedNode;
     }
-    if (this.searchQuery()) {
-      filters.search = this.searchQuery();
+    if (this.searchQuery) {
+      filters.search = this.searchQuery;
     }
     return filters;
   }
 
   protected onStatusFilterChange(status: JobStatus | 'ALL'): void {
-    this.selectedStatus.set(status);
+    this.selectedStatus = status;
     this.refreshQueue();
   }
 
   protected onNodeFilterChange(nodeId: string): void {
-    this.selectedNode.set(nodeId);
+    this.selectedNode = nodeId;
     this.refreshQueue();
   }
 
   protected onSearchChange(query: string): void {
-    this.searchQuery.set(query);
+    this.searchQuery = query;
     this.refreshQueue();
   }
 
   private refreshQueue(): void {
-    this.loading.set(true);
+    this.loading = true;
     this.queueApi.getQueue(this.buildFilters()).subscribe({
       next: (data) => {
-        this.queueData.set(data);
-        this.loading.set(false);
+        this.queueData = data;
+        this.loading = false;
       },
       error: (error) => {
         console.error('Failed to refresh queue:', error);
-        this.loading.set(false);
+        this.loading = false;
       },
     });
   }
 
   protected toggleJobDetails(jobId: string): void {
-    this.expandedJobId.set(this.expandedJobId() === jobId ? null : jobId);
+    this.expandedJobId = this.expandedJobId === jobId ? null : jobId;
   }
 
   protected openCancelDialog(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.selectedJobId.set(jobId);
-    this.showCancelDialog.set(true);
+    this.selectedJobId = jobId;
+    this.showCancelDialog = true;
   }
 
   protected closeCancelDialog(): void {
-    this.showCancelDialog.set(false);
-    this.selectedJobId.set(null);
+    this.showCancelDialog = false;
+    this.selectedJobId = null;
   }
 
   protected confirmCancel(): void {
-    const jobId = this.selectedJobId();
+    const jobId = this.selectedJobId;
     if (!jobId) return;
 
     this.queueApi.cancelJob(jobId).subscribe({

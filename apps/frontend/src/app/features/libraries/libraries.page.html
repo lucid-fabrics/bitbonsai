@@ -87,11 +87,11 @@
           }
 
           <!-- Library Form Modal -->
-          @if (showForm()) {
+          @if (showForm) {
             <div class="modal-backdrop" (click)="onFormCancel()">
               <div class="modal-container" (click)="$event.stopPropagation()">
                 <app-library-form
-                  [library]="selectedLibrary()"
+                  [library]="selectedLibrary"
                   [nodes]="nodes"
                   (formSubmit)="onFormSubmit($event)"
                   (formCancel)="onFormCancel()"

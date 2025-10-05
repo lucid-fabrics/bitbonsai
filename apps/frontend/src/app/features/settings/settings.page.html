@@ -5,16 +5,16 @@
   </div>
 
   <!-- Success/Error Messages -->
-  @if (successMessage()) {
+  @if (successMessage) {
     <div class="message message-success">
       <i class="fa fa-check-circle"></i>
-      {{ successMessage() }}
+      {{ successMessage }}
     </div>
   }
-  @if (error()) {
+  @if (error) {
     <div class="message message-error">
       <i class="fa fa-exclamation-circle"></i>
-      {{ error() }}
+      {{ error }}
     </div>
   }
 
@@ -23,7 +23,7 @@
     <nav class="tab-nav">
       <button
         class="tab-button"
-        [class.active]="activeTab() === 'license'"
+        [class.active]="activeTab === 'license'"
         (click)="setActiveTab('license')"
       >
         <i class="fa fa-key"></i>
@@ -31,7 +31,7 @@
       </button>
       <button
         class="tab-button"
-        [class.active]="activeTab() === 'environment'"
+        [class.active]="activeTab === 'environment'"
         (click)="setActiveTab('environment')"
       >
         <i class="fa fa-server"></i>
@@ -39,7 +39,7 @@
       </button>
       <button
         class="tab-button"
-        [class.active]="activeTab() === 'system'"
+        [class.active]="activeTab === 'system'"
         (click)="setActiveTab('system')"
       >
         <i class="fa fa-cog"></i>
@@ -47,7 +47,7 @@
       </button>
       <button
         class="tab-button"
-        [class.active]="activeTab() === 'advanced'"
+        [class.active]="activeTab === 'advanced'"
         (click)="setActiveTab('advanced')"
       >
         <i class="fa fa-flask"></i>
@@ -58,16 +58,16 @@
     <!-- Tab Content -->
     <div class="tab-content">
       <!-- LICENSE TAB -->
-      @if (activeTab() === 'license') {
+      @if (activeTab === 'license') {
         <div class="tab-panel">
           <h2>License Information</h2>
 
-          @if (license()) {
+          @if (license) {
             <!-- Current License Card -->
             <div class="license-card">
               <div class="license-header">
-                <span [class]="getTierBadgeClass(license()!.tier)">
-                  {{ getTierDisplayName(license()!.tier) }}
+                <span [class]="getTierBadgeClass(license!.tier)">
+                  {{ getTierDisplayName(license!.tier) }}
                 </span>
               </div>
 
@@ -76,37 +76,37 @@
                   <span class="label">License Key:</span>
                   <div class="value-with-action">
                     <span class="key-value">
-                      {{ licenseKeyRevealed() ? license()!.licenseKey : '****-****-****-****' }}
+                      {{ licenseKeyRevealed ? license!.licenseKey : '****-****-****-****' }}
                     </span>
                     <button
                       type="button"
                       class="btn-icon"
                       (click)="toggleLicenseKeyVisibility()"
-                      [title]="licenseKeyRevealed() ? 'Hide' : 'Reveal'"
+                      [title]="licenseKeyRevealed ? 'Hide' : 'Reveal'"
                     >
-                      <i [class]="licenseKeyRevealed() ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+                      <i [class]="licenseKeyRevealed ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
                     </button>
                   </div>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Email:</span>
-                  <span class="value">{{ license()!.email }}</span>
+                  <span class="value">{{ license!.email }}</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Valid Until:</span>
-                  <span class="value">{{ license()!.validUntil }}</span>
+                  <span class="value">{{ license!.validUntil }}</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Nodes:</span>
-                  <span class="value">{{ license()!.usedNodes }} of {{ license()!.maxNodes }} used</span>
+                  <span class="value">{{ license!.usedNodes }} of {{ license!.maxNodes }} used</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Concurrent Jobs:</span>
-                  <span class="value">{{ license()!.maxConcurrentJobs }} max</span>
+                  <span class="value">{{ license!.maxConcurrentJobs }} max</span>
                 </div>
               </div>
 
@@ -114,7 +114,7 @@
               <div class="features-section">
                 <h3>Features</h3>
                 <div class="features-list">
-                  @for (feature of license()!.features; track feature.name) {
+                  @for (feature of license!.features; track feature.name) {
                     <div class="feature-item" [class.disabled]="!feature.enabled">
                       <i [class]="feature.enabled ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
                       <span>{{ feature.name }}</span>
@@ -123,7 +123,7 @@
                 </div>
               </div>
 
-              @if (license()!.tier !== LicenseTier.COMMERCIAL_PRO) {
+              @if (license!.tier !== LicenseTier.COMMERCIAL_PRO) {
                 <button type="button" class="btn-primary btn-upgrade">
                   <i class="fa fa-arrow-up"></i>
                   Upgrade License
@@ -169,7 +169,7 @@
                 <button
                   type="submit"
                   class="btn-primary"
-                  [disabled]="licenseForm.invalid || loading()"
+                  [disabled]="licenseForm.invalid || loading"
                 >
                   <i class="fa fa-key"></i>
                   Activate License
@@ -181,21 +181,21 @@
       }
 
       <!-- ENVIRONMENT TAB -->
-      @if (activeTab() === 'environment') {
+      @if (activeTab === 'environment') {
         <div class="tab-panel">
           <h2>Environment Information</h2>
 
-          @if (environmentInfo()) {
+          @if (environmentInfo) {
             <!-- Environment Type -->
             <div class="info-card">
               <h3>Detected Environment</h3>
-              <div class="env-badge env-{{ environmentInfo()!.environment.toLowerCase() }}">
-                {{ environmentInfo()!.environment }}
+              <div class="env-badge env-{{ environmentInfo!.environment.toLowerCase() }}">
+                {{ environmentInfo!.environment }}
               </div>
               <p class="env-description">
-                @if (environmentInfo()!.isUnraid) {
-                  Running on Unraid OS {{ environmentInfo()!.systemInfo.unraidVersion || '' }}
-                } @else if (environmentInfo()!.isDocker) {
+                @if (environmentInfo!.isUnraid) {
+                  Running on Unraid OS {{ environmentInfo!.systemInfo.unraidVersion || '' }}
+                } @else if (environmentInfo!.isDocker) {
                   Running in Docker container
                 } @else {
                   Running on bare metal
@@ -209,19 +209,19 @@
               <div class="info-grid">
                 <div class="info-item">
                   <span class="label">Platform:</span>
-                  <span class="value">{{ environmentInfo()!.systemInfo.platform }}</span>
+                  <span class="value">{{ environmentInfo!.systemInfo.platform }}</span>
                 </div>
                 <div class="info-item">
                   <span class="label">Architecture:</span>
-                  <span class="value">{{ environmentInfo()!.systemInfo.architecture }}</span>
+                  <span class="value">{{ environmentInfo!.systemInfo.architecture }}</span>
                 </div>
                 <div class="info-item">
                   <span class="label">CPU Cores:</span>
-                  <span class="value">{{ environmentInfo()!.systemInfo.cpuCores }}</span>
+                  <span class="value">{{ environmentInfo!.systemInfo.cpuCores }}</span>
                 </div>
                 <div class="info-item">
                   <span class="label">Memory:</span>
-                  <span class="value">{{ environmentInfo()!.systemInfo.totalMemoryGb }} GB</span>
+                  <span class="value">{{ environmentInfo!.systemInfo.totalMemoryGb }} GB</span>
                 </div>
               </div>
             </div>
@@ -230,20 +230,20 @@
             <div class="info-card">
               <h3>Hardware Acceleration</h3>
               <div class="hw-accel-list">
-                <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.nvidia">
-                  <i [class]="environmentInfo()!.hardwareAcceleration.nvidia ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
+                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.nvidia">
+                  <i [class]="environmentInfo!.hardwareAcceleration.nvidia ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
                   <span>NVIDIA GPU</span>
                 </div>
-                <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.intelQsv">
-                  <i [class]="environmentInfo()!.hardwareAcceleration.intelQsv ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
+                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.intelQsv">
+                  <i [class]="environmentInfo!.hardwareAcceleration.intelQsv ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
                   <span>Intel Quick Sync</span>
                 </div>
-                <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.amd">
-                  <i [class]="environmentInfo()!.hardwareAcceleration.amd ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
+                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.amd">
+                  <i [class]="environmentInfo!.hardwareAcceleration.amd ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
                   <span>AMD GPU</span>
                 </div>
-                <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.appleVideoToolbox">
-                  <i [class]="environmentInfo()!.hardwareAcceleration.appleVideoToolbox ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
+                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.appleVideoToolbox">
+                  <i [class]="environmentInfo!.hardwareAcceleration.appleVideoToolbox ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
                   <span>Apple VideoToolbox</span>
                 </div>
               </div>
@@ -256,11 +256,11 @@
                 <div class="path-item">
                   <span class="label">Media:</span>
                   <div class="path-value">
-                    <code>{{ environmentInfo()!.defaultPaths.mediaPath }}</code>
+                    <code>{{ environmentInfo!.defaultPaths.mediaPath }}</code>
                     <button
                       type="button"
                       class="btn-icon"
-                      (click)="copyToClipboard(environmentInfo()!.defaultPaths.mediaPath, 'Media path')"
+                      (click)="copyToClipboard(environmentInfo!.defaultPaths.mediaPath, 'Media path')"
                     >
                       <i class="fa fa-copy"></i>
                     </button>
@@ -269,11 +269,11 @@
                 <div class="path-item">
                   <span class="label">Downloads:</span>
                   <div class="path-value">
-                    <code>{{ environmentInfo()!.defaultPaths.downloadsPath }}</code>
+                    <code>{{ environmentInfo!.defaultPaths.downloadsPath }}</code>
                     <button
                       type="button"
                       class="btn-icon"
-                      (click)="copyToClipboard(environmentInfo()!.defaultPaths.downloadsPath, 'Downloads path')"
+                      (click)="copyToClipboard(environmentInfo!.defaultPaths.downloadsPath, 'Downloads path')"
                     >
                       <i class="fa fa-copy"></i>
                     </button>
@@ -282,11 +282,11 @@
                 <div class="path-item">
                   <span class="label">Config:</span>
                   <div class="path-value">
-                    <code>{{ environmentInfo()!.defaultPaths.configPath }}</code>
+                    <code>{{ environmentInfo!.defaultPaths.configPath }}</code>
                     <button
                       type="button"
                       class="btn-icon"
-                      (click)="copyToClipboard(environmentInfo()!.defaultPaths.configPath, 'Config path')"
+                      (click)="copyToClipboard(environmentInfo!.defaultPaths.configPath, 'Config path')"
                     >
                       <i class="fa fa-copy"></i>
                     </button>
@@ -296,18 +296,18 @@
             </div>
 
             <!-- Recommendations -->
-            @if (environmentInfo()!.recommendations.length > 0) {
+            @if (environmentInfo!.recommendations.length > 0) {
               <div class="info-card recommendations">
                 <h3>Setup Recommendations</h3>
                 <ul class="recommendation-list">
-                  @for (rec of environmentInfo()!.recommendations; track rec) {
+                  @for (rec of environmentInfo!.recommendations; track rec) {
                     <li>
                       <i class="fa fa-lightbulb"></i>
                       {{ rec }}
                     </li>
                   }
                 </ul>
-                <a [href]="environmentInfo()!.docsLink" target="_blank" class="btn-link">
+                <a [href]="environmentInfo!.docsLink" target="_blank" class="btn-link">
                   <i class="fa fa-book"></i>
                   View Documentation
                 </a>
@@ -318,17 +318,17 @@
       }
 
       <!-- SYSTEM TAB -->
-      @if (activeTab() === 'system') {
+      @if (activeTab === 'system') {
         <div class="tab-panel">
           <h2>System Configuration</h2>
 
-          @if (systemSettings()) {
+          @if (systemSettings) {
             <!-- Version Info -->
             <div class="info-card">
               <h3>Version Information</h3>
               <div class="version-info">
                 <span class="version-label">BitBonsai</span>
-                <span class="version-number">v{{ systemSettings()!.version }}</span>
+                <span class="version-number">v{{ systemSettings!.version }}</span>
               </div>
             </div>
 
@@ -338,14 +338,14 @@
               <div class="info-grid">
                 <div class="info-item">
                   <span class="label">Type:</span>
-                  <span class="value">{{ systemSettings()!.databaseType }}</span>
+                  <span class="value">{{ systemSettings!.databaseType }}</span>
                 </div>
                 <div class="info-item full-width">
                   <span class="label">Path:</span>
-                  <code class="value">{{ systemSettings()!.databasePath }}</code>
+                  <code class="value">{{ systemSettings!.databasePath }}</code>
                 </div>
               </div>
-              <button type="button" class="btn-secondary" (click)="backupDatabase()" [disabled]="loading()">
+              <button type="button" class="btn-secondary" (click)="backupDatabase()" [disabled]="loading">
                 <i class="fa fa-download"></i>
                 Backup Database
               </button>
@@ -358,13 +358,13 @@
                 <div class="storage-bar">
                   <div
                     class="storage-fill"
-                    [style.width.%]="systemSettings()!.storageInfo.usagePercent"
+                    [style.width.%]="systemSettings!.storageInfo.usagePercent"
                   ></div>
                 </div>
                 <div class="storage-stats">
-                  <span>{{ systemSettings()!.storageInfo.usedGb.toFixed(1) }} GB used</span>
-                  <span>{{ systemSettings()!.storageInfo.totalGb.toFixed(1) }} GB total</span>
-                  <span>{{ systemSettings()!.storageInfo.usagePercent.toFixed(1) }}%</span>
+                  <span>{{ systemSettings!.storageInfo.usedGb.toFixed(1) }} GB used</span>
+                  <span>{{ systemSettings!.storageInfo.totalGb.toFixed(1) }} GB total</span>
+                  <span>{{ systemSettings!.storageInfo.usagePercent.toFixed(1) }}%</span>
                 </div>
               </div>
             </div>
@@ -376,7 +376,7 @@
                 <i class="fa fa-exclamation-triangle"></i>
                 These actions cannot be undone. Proceed with caution.
               </p>
-              <button type="button" class="btn-danger" (click)="resetToDefaults()" [disabled]="loading()">
+              <button type="button" class="btn-danger" (click)="resetToDefaults()" [disabled]="loading">
                 <i class="fa fa-undo"></i>
                 Reset to Defaults
               </button>
@@ -386,11 +386,11 @@
       }
 
       <!-- ADVANCED TAB -->
-      @if (activeTab() === 'advanced') {
+      @if (activeTab === 'advanced') {
         <div class="tab-panel">
           <h2>Advanced Settings</h2>
 
-          @if (systemSettings()) {
+          @if (systemSettings) {
             <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">
               <!-- FFmpeg Path -->
               <div class="form-group">
@@ -452,7 +452,7 @@
               <button
                 type="submit"
                 class="btn-primary"
-                [disabled]="settingsForm.invalid || loading()"
+                [disabled]="settingsForm.invalid || loading"
               >
                 <i class="fa fa-save"></i>
                 Save Settings
@@ -466,26 +466,26 @@
               <p class="help-text">Use this key for external integrations and API access</p>
               <div class="api-key-display">
                 <code class="api-key-value">
-                  {{ apiKeyRevealed() ? systemSettings()!.apiKey : '**********************' }}
+                  {{ apiKeyRevealed ? systemSettings!.apiKey : '**********************' }}
                 </code>
                 <button
                   type="button"
                   class="btn-icon"
                   (click)="toggleApiKeyVisibility()"
-                  [title]="apiKeyRevealed() ? 'Hide' : 'Reveal'"
+                  [title]="apiKeyRevealed ? 'Hide' : 'Reveal'"
                 >
-                  <i [class]="apiKeyRevealed() ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+                  <i [class]="apiKeyRevealed ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
                 </button>
                 <button
                   type="button"
                   class="btn-icon"
-                  (click)="copyToClipboard(systemSettings()!.apiKey, 'API key')"
+                  (click)="copyToClipboard(systemSettings!.apiKey, 'API key')"
                   title="Copy"
                 >
                   <i class="fa fa-copy"></i>
                 </button>
               </div>
-              <button type="button" class="btn-secondary" (click)="regenerateApiKey()" [disabled]="loading()">
+              <button type="button" class="btn-secondary" (click)="regenerateApiKey()" [disabled]="loading">
                 <i class="fa fa-refresh"></i>
                 Regenerate API Key
               </button>

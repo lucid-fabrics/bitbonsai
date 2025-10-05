@@ -11,7 +11,7 @@
       <div class="status-filters">
         @for (status of statuses; track status) {
           <button
-            [class.active]="selectedStatus() === status"
+            [class.active]="selectedStatus === status"
             (click)="onStatusFilterChange(status)"
             class="filter-btn"
           >
@@ -25,7 +25,7 @@
       <label for="node-filter">Node:</label>
       <select
         id="node-filter"
-        [value]="selectedNode()"
+        [value]="selectedNode"
         (change)="onNodeFilterChange($any($event.target).value)"
         class="filter-select"
       >
@@ -42,7 +42,7 @@
         id="search-input"
         type="text"
         placeholder="Filter by filename..."
-        [value]="searchQuery()"
+        [value]="searchQuery"
         (input)="onSearchChange($any($event.target).value)"
         class="search-input"
       />
@@ -51,12 +51,12 @@
 
   <!-- Job Table -->
   <div class="table-container">
-    @if (loading()) {
+    @if (loading) {
       <div class="loading-state">
         <i class="fas fa-spinner fa-spin"></i>
         <p>Loading queue...</p>
       </div>
-    } @else if (queueData() && queueData()!.jobs.length > 0) {
+    } @else if (queueData && queueData!.jobs.length > 0) {
       <div class="table-wrapper">
         <table class="queue-table">
           <thead>
@@ -72,9 +72,9 @@
             </tr>
           </thead>
           <tbody>
-            @for (job of queueData()!.jobs; track job.id) {
+            @for (job of queueData!.jobs; track job.id) {
               <tr
-                [class.expanded]="expandedJobId() === job.id"
+                [class.expanded]="expandedJobId === job.id"
                 (click)="toggleJobDetails(job.id)"
                 class="job-row"
               >
@@ -144,12 +144,12 @@
                       </button>
                     }
                     <button class="action-btn details-btn" title="View Details">
-                      <i [class]="expandedJobId() === job.id ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                      <i [class]="expandedJobId === job.id ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                     </button>
                   </div>
                 </td>
               </tr>
-              @if (expandedJobId() === job.id) {
+              @if (expandedJobId === job.id) {
                 <tr class="details-row">
                   <td colspan="8">
                     <div class="job-details">
@@ -247,14 +247,14 @@
   </div>
 
   <!-- Stats Summary -->
-  @if (queueData()) {
+  @if (queueData) {
     <div class="stats-summary">
       <div class="stat-card">
         <div class="stat-icon">
           <i class="fas fa-list"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.queued + queueData()!.stats.encoding + queueData()!.stats.completed + queueData()!.stats.failed }}</span>
+          <span class="stat-value">{{ queueData!.stats.queued + queueData!.stats.encoding + queueData!.stats.completed + queueData!.stats.failed }}</span>
           <span class="stat-label">Total Jobs</span>
         </div>
       </div>
@@ -264,7 +264,7 @@
           <i class="fas fa-clock"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.queued }}</span>
+          <span class="stat-value">{{ queueData!.stats.queued }}</span>
           <span class="stat-label">Queued</span>
         </div>
       </div>
@@ -274,7 +274,7 @@
           <i class="fas fa-spinner"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.encoding }}</span>
+          <span class="stat-value">{{ queueData!.stats.encoding }}</span>
           <span class="stat-label">Encoding</span>
         </div>
       </div>
@@ -284,7 +284,7 @@
           <i class="fas fa-check-circle"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.completed }}</span>
+          <span class="stat-value">{{ queueData!.stats.completed }}</span>
           <span class="stat-label">Completed</span>
         </div>
       </div>
@@ -294,7 +294,7 @@
           <i class="fas fa-exclamation-circle"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ queueData()!.stats.failed }}</span>
+          <span class="stat-value">{{ queueData!.stats.failed }}</span>
           <span class="stat-label">Failed</span>
         </div>
       </div>
@@ -304,7 +304,7 @@
           <i class="fas fa-save"></i>
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ formatBytes(Number.parseInt(queueData()!.stats.totalSavedBytes)) }}</span>
+          <span class="stat-value">{{ formatBytes(Number.parseInt(queueData!.stats.totalSavedBytes)) }}</span>
           <span class="stat-label">Total Savings</span>
         </div>
       </div>
@@ -313,7 +313,7 @@
 </div>
 
 <!-- Cancel Confirmation Dialog -->
-@if (showCancelDialog()) {
+@if (showCancelDialog) {
   <div class="dialog-overlay" (click)="closeCancelDialog()">
     <div class="dialog-content" (click)="$event.stopPropagation()">
       <div class="dialog-header">
