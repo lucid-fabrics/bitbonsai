@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Job, JobStage } from '@prisma/client';
-import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type { CompleteJobDto } from './dto/complete-job.dto';
 import type { CreateJobDto } from './dto/create-job.dto';
 import type { JobStatsDto } from './dto/job-stats.dto';

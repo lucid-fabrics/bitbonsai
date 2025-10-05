@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Node } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import type { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import type { NodeStatsDto } from './dto/node-stats.dto';

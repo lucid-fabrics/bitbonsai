@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
 import { NodeStatus } from '@prisma/client';
-import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type {
   BasicHealthDto,
   DetailedHealthDto,

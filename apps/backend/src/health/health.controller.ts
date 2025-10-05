@@ -6,7 +6,7 @@ import type {
   LivenessDto,
   ReadinessDto,
 } from './dto/health-check.dto';
-import type { HealthService } from './health.service';
+import { HealthService } from './health.service';
 
 @ApiTags('health')
 @Controller('health')
