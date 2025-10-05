@@ -104,7 +104,7 @@ describe('HealthService', () => {
   describe('checkRedisHealth', () => {
     it('should return undefined when Redis is not configured', async () => {
       const originalEnv = process.env.REDIS_URL;
-      delete process.env.REDIS_URL;
+      process.env.REDIS_URL = undefined;
 
       const result = await service.checkRedisHealth();
 

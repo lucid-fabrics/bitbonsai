@@ -14,7 +14,7 @@ describe('LibrariesComponent', () => {
   let component: LibrariesComponent;
   let fixture: ComponentFixture<LibrariesComponent>;
   let store: MockStore;
-  let dialog: jest.Mocked<Dialog>;
+  let _dialog: jest.Mocked<Dialog>;
   let httpMock: HttpTestingController;
 
   const mockLibrary: Library = {
@@ -45,7 +45,7 @@ describe('LibrariesComponent', () => {
     fixture = TestBed.createComponent(LibrariesComponent);
     component = fixture.componentInstance;
     store = TestBed.inject(MockStore);
-    dialog = TestBed.inject(Dialog) as jest.Mocked<Dialog>;
+    _dialog = TestBed.inject(Dialog) as jest.Mocked<Dialog>;
     httpMock = TestBed.inject(HttpTestingController);
 
     jest.clearAllMocks();
