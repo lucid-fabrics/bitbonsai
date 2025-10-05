@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
-import { EnvironmentService } from '../common/environment.service';
-import { SettingsController } from './settings.controller';
+import type { EnvironmentInfoDto } from '../../../common/dto/environment-info.dto';
+import { EnvironmentService } from '../../../common/environment.service';
+import { SettingsController } from '../../settings.controller';
 
 describe('SettingsController', () => {
   let controller: SettingsController;

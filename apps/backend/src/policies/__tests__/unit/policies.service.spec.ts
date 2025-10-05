@@ -1,8 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../prisma/prisma.service';
-import { PolicyPreset, TargetCodec } from './dto/create-policy.dto';
-import { PoliciesService } from './policies.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { PolicyPreset, TargetCodec } from '../../dto/create-policy.dto';
+import { PoliciesService } from '../../policies.service';
+import { PolicyRepository } from '../../repositories/policy.repository';
 
 describe('PoliciesService', () => {
   let service: PoliciesService;
@@ -18,10 +19,23 @@ describe('PoliciesService', () => {
     },
   };
 
+  const mockPolicyRepository = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findByIdWithStats: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PoliciesService,
+        {
+          provide: PolicyRepository,
+          useValue: mockPolicyRepository,
+        },
         {
           provide: PrismaService,
           useValue: mockPrismaService,
@@ -74,7 +88,7 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T12:00:00Z'),
       };
 
-      mockPrismaService.policy.create.mockResolvedValue(mockCreatedPolicy);
+      mockPolicyRepository.create.mockResolvedValue(mockCreatedPolicy);
 
       const result = await service.create(createDto);
 
@@ -94,13 +108,13 @@ describe('PoliciesService', () => {
         updatedAt: '2025-10-01T12:00:00.000Z',
       });
 
-      expect(mockPrismaService.policy.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(mockPolicyRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
           name: 'Standard HEVC',
           preset: PolicyPreset.BALANCED_HEVC,
           targetQuality: 23,
-        }),
-      });
+        })
+      );
     });
 
     it('should create a quality AV1 policy for archival content', async () => {
@@ -136,7 +150,7 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T13:00:00Z'),
       };
 
-      mockPrismaService.policy.create.mockResolvedValue(mockCreatedPolicy);
+      mockPolicyRepository.create.mockResolvedValue(mockCreatedPolicy);
 
       const result = await service.create(createDto);
 
@@ -179,7 +193,7 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T14:00:00Z'),
       };
 
-      mockPrismaService.policy.create.mockResolvedValue(mockCreatedPolicy);
+      mockPolicyRepository.create.mockResolvedValue(mockCreatedPolicy);
 
       const result = await service.create(createDto);
 
@@ -235,20 +249,18 @@ describe('PoliciesService', () => {
         },
       ];
 
-      mockPrismaService.policy.findMany.mockResolvedValue(mockPolicies);
+      mockPolicyRepository.findAll.mockResolvedValue(mockPolicies);
 
       const result = await service.findAll();
 
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('Recent Policy');
       expect(result[1].name).toBe('Older Policy');
-      expect(mockPrismaService.policy.findMany).toHaveBeenCalledWith({
-        orderBy: { createdAt: 'desc' },
-      });
+      expect(mockPolicyRepository.findAll).toHaveBeenCalled();
     });
 
     it('should return empty array when no policies exist', async () => {
-      mockPrismaService.policy.findMany.mockResolvedValue([]);
+      mockPolicyRepository.findAll.mockResolvedValue([]);
 
       const result = await service.findAll();
 
@@ -280,24 +292,18 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T12:00:00Z'),
       };
 
-      mockPrismaService.policy.findUnique.mockResolvedValue(mockPolicy);
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(mockPolicy);
 
       const result = await service.findOne('policy123');
 
       expect(result.id).toBe('policy123');
       expect(result.library).toEqual({ id: 'lib123', name: 'TV Shows' });
       expect(result._count.jobs).toBe(142);
-      expect(mockPrismaService.policy.findUnique).toHaveBeenCalledWith({
-        where: { id: 'policy123' },
-        include: expect.objectContaining({
-          library: expect.anything(),
-          _count: expect.anything(),
-        }),
-      });
+      expect(mockPolicyRepository.findByIdWithStats).toHaveBeenCalledWith('policy123');
     });
 
     it('should throw NotFoundException when policy does not exist', async () => {
-      mockPrismaService.policy.findUnique.mockResolvedValue(null);
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(null);
 
       await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('nonexistent')).rejects.toThrow(
@@ -331,22 +337,22 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T16:00:00Z'),
       };
 
-      mockPrismaService.policy.findUnique.mockResolvedValue(mockExistingPolicy);
-      mockPrismaService.policy.update.mockResolvedValue(mockUpdatedPolicy);
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(mockExistingPolicy);
+      mockPolicyRepository.update.mockResolvedValue(mockUpdatedPolicy);
 
       const result = await service.update('policy123', { targetQuality: 26 });
 
       expect(result.targetQuality).toBe(26);
-      expect(mockPrismaService.policy.update).toHaveBeenCalledWith({
-        where: { id: 'policy123' },
-        data: expect.objectContaining({
+      expect(mockPolicyRepository.update).toHaveBeenCalledWith(
+        'policy123',
+        expect.objectContaining({
           targetQuality: 26,
-        }),
-      });
+        })
+      );
     });
 
     it('should throw NotFoundException when updating non-existent policy', async () => {
-      mockPrismaService.policy.findUnique.mockResolvedValue(null);
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(null);
 
       await expect(service.update('nonexistent', { name: 'New Name' })).rejects.toThrow(
         NotFoundException
@@ -373,18 +379,16 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T12:00:00Z'),
       };
 
-      mockPrismaService.policy.findUnique.mockResolvedValue(mockPolicy);
-      mockPrismaService.policy.delete.mockResolvedValue(mockPolicy);
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(mockPolicy);
+      mockPolicyRepository.delete.mockResolvedValue(mockPolicy);
 
       await service.remove('policy123');
 
-      expect(mockPrismaService.policy.delete).toHaveBeenCalledWith({
-        where: { id: 'policy123' },
-      });
+      expect(mockPolicyRepository.delete).toHaveBeenCalledWith('policy123');
     });
 
     it('should throw NotFoundException when deleting non-existent policy', async () => {
-      mockPrismaService.policy.findUnique.mockResolvedValue(null);
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(null);
 
       await expect(service.remove('nonexistent')).rejects.toThrow(NotFoundException);
     });

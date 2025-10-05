@@ -10,8 +10,8 @@ import {
   PolicyPreset,
   TargetCodec,
 } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { QueueService } from './queue.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { QueueService } from '../../queue.service';
 
 describe('QueueService', () => {
   let service: QueueService;

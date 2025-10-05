@@ -1,7 +1,7 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Library, License, Node, Policy } from '@prisma/client';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../../app.module';
 import { PrismaService } from '../../../prisma/prisma.service';
 
@@ -79,9 +79,9 @@ describe('QueueController (E2E)', () => {
     testPolicy = await prisma.policy.create({
       data: {
         name: 'Queue Test Policy',
+        preset: 'BALANCED_HEVC',
         targetCodec: 'HEVC',
-        crf: 23,
-        preset: 'medium',
+        targetQuality: 23,
         libraryId: testLibrary.id,
       },
     });
@@ -399,7 +399,7 @@ describe('QueueController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/queue/stats')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body.queued).toBe(1);
           expect(res.body.encoding).toBe(1);
           expect(res.body.completed).toBe(1);
@@ -412,7 +412,7 @@ describe('QueueController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/queue/stats')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body.queued).toBe(0);
           expect(res.body.total).toBe(0);
         });

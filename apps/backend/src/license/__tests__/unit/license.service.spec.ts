@@ -1,9 +1,9 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { LicenseStatus, LicenseTier } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import type { CreateLicenseDto } from './dto/create-license.dto';
-import { LicenseService } from './license.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import type { CreateLicenseDto } from '../../dto/create-license.dto';
+import { LicenseService } from '../../license.service';
 
 describe('LicenseService', () => {
   let service: LicenseService;

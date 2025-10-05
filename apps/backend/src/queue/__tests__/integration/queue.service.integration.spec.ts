@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Library, License, Node } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { QueueService } from './queue.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { QueueService } from '../../queue.service';
 
 /**
  * Integration tests for QueueService
@@ -68,7 +68,7 @@ describe('QueueService Integration Tests', () => {
   });
 
   afterAll(async () => {
-    await prisma.queu.deleteMany({});
+    await prisma.queue.deleteMany({});
     await prisma.library.deleteMany({});
     await prisma.node.deleteMany({});
     await prisma.license.deleteMany({});
@@ -77,13 +77,13 @@ describe('QueueService Integration Tests', () => {
   });
 
   afterEach(async () => {
-    await prisma.queu.deleteMany({});
+    await prisma.queue.deleteMany({});
   });
 
   describe('create', () => {
-    it('should create queu with valid data', async () => {
+    it('should create queue with valid data', async () => {
       const createDto = {
-        name: 'Test Queu',
+        name: 'Test Queue',
         nodeId: testNode.id,
         libraryId: testLibrary.id,
       };

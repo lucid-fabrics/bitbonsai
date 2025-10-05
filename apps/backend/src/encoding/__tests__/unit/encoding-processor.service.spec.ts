@@ -2,10 +2,10 @@ import * as fs from 'node:fs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
-import { LibrariesService } from '../libraries/libraries.service';
-import { QueueService } from '../queue/queue.service';
-import { EncodingProcessorService } from './encoding-processor.service';
-import { FfmpegService } from './ffmpeg.service';
+import { LibrariesService } from '../../../libraries/libraries.service';
+import { QueueService } from '../../../queue/queue.service';
+import { EncodingProcessorService } from '../../encoding-processor.service';
+import { FfmpegService } from '../../ffmpeg.service';
 
 // Mock fs module
 jest.mock('node:fs');
@@ -25,21 +25,37 @@ describe('EncodingProcessorService', () => {
     targetCodec: 'HEVC',
     stage: JobStage.ENCODING,
     progress: 0,
+    etaSeconds: null,
     beforeSizeBytes: BigInt(1000000000),
+    afterSizeBytes: null,
+    savedBytes: null,
+    savedPercent: null,
+    startedAt: new Date(),
+    completedAt: null,
+    error: null,
     nodeId: 'node-1',
     libraryId: 'library-1',
     policyId: 'policy-1',
+    createdAt: new Date(),
+    updatedAt: new Date(),
     policy: {
       id: 'policy-1',
-      targetCodec: 'HEVC',
+      name: 'Test Policy',
+      preset: 'BALANCED_HEVC' as any,
+      targetCodec: 'HEVC' as any,
       targetQuality: 23,
-      verifyOutput: true,
-      atomicReplace: true,
+      deviceProfiles: {},
       advancedSettings: {
         hwaccel: 'auto',
         audioCodec: 'copy',
         subtitleHandling: 'copy',
       },
+      atomicReplace: true,
+      verifyOutput: true,
+      skipSeeding: true,
+      libraryId: 'library-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   };
 

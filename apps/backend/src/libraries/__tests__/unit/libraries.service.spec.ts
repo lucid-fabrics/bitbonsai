@@ -1,8 +1,9 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MediaType, NodeRole, NodeStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { LibrariesService } from './libraries.service';
+import { FileWatcherService } from '../../../file-watcher/file-watcher.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { LibrariesService } from '../../libraries.service';
 
 describe('LibrariesService', () => {
   let service: LibrariesService;
@@ -65,6 +66,13 @@ describe('LibrariesService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
+          },
+        },
+        {
+          provide: FileWatcherService,
+          useValue: {
+            watchLibrary: jest.fn(),
+            unwatchLibrary: jest.fn(),
           },
         },
       ],
