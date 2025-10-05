@@ -4,7 +4,6 @@
   "projectType": "application",
   "sourceRoot": "apps/backend/src",
   "tags": ["type:app", "scope:backend"],
-  "implicitDependencies": ["shared-models"],
   "targets": {
     "build": {
       "executor": "@nx/webpack:webpack",
