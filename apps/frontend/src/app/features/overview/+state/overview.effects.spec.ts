@@ -3,22 +3,18 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
 import { OverviewClient } from '../services/overview.client';
-import * as overviewActions from './overview.actions';
+import { OverviewActions } from './overview.actions';
 import { OverviewEffects } from './overview.effects';
 
 describe('OverviewEffects', () => {
   let actions$: Observable<Action>;
   let effects: OverviewEffects;
-  let service: jasmine.SpyObj<OverviewClient>;
+  let service: jest.Mocked<OverviewClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('OverviewClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const serviceSpy = {
+      getOverview: jest.fn(),
+    } as jest.Mocked<OverviewClient>;
 
     TestBed.configureTestingModule({
       providers: [
@@ -29,7 +25,7 @@ describe('OverviewEffects', () => {
     });
 
     effects = TestBed.inject(OverviewEffects);
-    service = TestBed.inject(OverviewClient) as jasmine.SpyObj<OverviewClient>;
+    service = TestBed.inject(OverviewClient) as jest.Mocked<OverviewClient>;
   });
 
   it('should be created', () => {
@@ -38,26 +34,26 @@ describe('OverviewEffects', () => {
 
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', name: 'Test' }] as never;
-      service.getAll.and.returnValue(of(mockData));
+      const mockData = { system_health: {}, queue_summary: {} } as never;
+      service.getOverview.mockReturnValue(of(mockData));
 
-      actions$ = of(overviewActions.load());
+      actions$ = of(OverviewActions.loadOverview());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(overviewActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadOverview$.subscribe((action) => {
+        expect(action.type).toBe(OverviewActions.loadOverviewSuccess.type);
+        expect(service.getOverview).toHaveBeenCalled();
         done();
       });
     });
 
     it('should return loadFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      service.getOverview.mockReturnValue(throwError(() => error));
 
-      actions$ = of(overviewActions.load());
+      actions$ = of(OverviewActions.loadOverview());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(overviewActions.loadFailure.type);
+      effects.loadOverview$.subscribe((action) => {
+        expect(action.type).toBe(OverviewActions.loadOverviewFailure.type);
         done();
       });
     });
