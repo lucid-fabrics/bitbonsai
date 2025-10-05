@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../../styles/variables' as *;
 
 .libraries-container {
@@ -127,7 +128,7 @@
     transition: color 0.2s ease;
 
     &:hover {
-      color: lighten($danger, 10%);
+      color: color.adjust($danger, $lightness:  10%);
     }
   }
 }
