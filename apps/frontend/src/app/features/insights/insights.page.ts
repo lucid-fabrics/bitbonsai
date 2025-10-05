@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, type OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, type OnInit } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-solid-svg-icons';
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
@@ -41,14 +41,14 @@ export class InsightsComponent implements OnInit {
   faGauge = faGauge;
 
   // State
-  selectedTimeRange = signal<TimeRange>(30);
-  loading = signal(true);
+  selectedTimeRange: TimeRange = 30;
+  loading = true;
 
   // Stats
-  stats = signal<InsightsStatsBO>(new InsightsStatsBO(0, 0, 0, 0));
+  stats: InsightsStatsBO = new InsightsStatsBO(0, 0, 0, 0);
 
   // Savings Trend Chart
-  savingsTrendData = signal<ChartConfiguration<'line'>['data']>({
+  savingsTrendData: ChartConfiguration<'line'>['data'] = {
     labels: [],
     datasets: [
       {
@@ -65,9 +65,9 @@ export class InsightsComponent implements OnInit {
         pointBorderWidth: 2,
       },
     ],
-  });
+  };
 
-  savingsTrendOptions = signal<ChartConfiguration<'line'>['options']>({
+  savingsTrendOptions: ChartConfiguration<'line'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -115,10 +115,10 @@ export class InsightsComponent implements OnInit {
         beginAtZero: true,
       },
     },
-  });
+  };
 
   // Codec Distribution Chart
-  codecDistributionData = signal<ChartConfiguration<'doughnut'>['data']>({
+  codecDistributionData: ChartConfiguration<'doughnut'>['data'] = {
     labels: [],
     datasets: [
       {
@@ -135,9 +135,9 @@ export class InsightsComponent implements OnInit {
         hoverOffset: 8,
       },
     ],
-  });
+  };
 
-  codecDistributionOptions = signal<ChartConfiguration<'doughnut'>['options']>({
+  codecDistributionOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -168,10 +168,10 @@ export class InsightsComponent implements OnInit {
         },
       },
     },
-  });
+  };
 
   // Node Performance Chart
-  nodePerformanceData = signal<{ labels: string[]; datasets: NodePerformanceDataset[] }>({
+  nodePerformanceData: { labels: string[]; datasets: NodePerformanceDataset[] } = {
     labels: [],
     datasets: [
       {
@@ -183,9 +183,9 @@ export class InsightsComponent implements OnInit {
         borderRadius: 4,
       },
     ],
-  });
+  };
 
-  nodePerformanceOptions = signal<ChartConfiguration<'bar'>['options']>({
+  nodePerformanceOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -236,7 +236,7 @@ export class InsightsComponent implements OnInit {
         beginAtZero: true,
       },
     },
-  });
+  };
 
   constructor(private readonly insightsService: InsightsService) {}
 
@@ -245,12 +245,12 @@ export class InsightsComponent implements OnInit {
   }
 
   selectTimeRange(days: TimeRange): void {
-    this.selectedTimeRange.set(days);
+    this.selectedTimeRange = days;
     this.loadSavingsTrend();
   }
 
   private loadAllData(): void {
-    this.loading.set(true);
+    this.loading = true;
 
     Promise.all([
       this.loadSavingsTrend(),
@@ -258,28 +258,28 @@ export class InsightsComponent implements OnInit {
       this.loadNodePerformance(),
       this.loadStats(),
     ]).finally(() => {
-      this.loading.set(false);
+      this.loading = false;
     });
   }
 
   private async loadSavingsTrend(): Promise<void> {
     try {
-      const days = this.selectedTimeRange();
+      const days = this.selectedTimeRange;
       const data = await lastValueFrom(this.insightsService.getSavingsTrend(days));
 
       if (data) {
-        const currentData = this.savingsTrendData();
+        const currentData = this.savingsTrendData;
         currentData.labels = data.map((d) => d.formatDate());
         currentData.datasets[0].data = data.map((d) => d.savingsGB);
-        this.savingsTrendData.set({ ...currentData });
+        this.savingsTrendData = { ...currentData };
       }
     } catch (error) {
       console.error('Failed to load savings trend:', error);
       // Set empty data on error
-      const currentData = this.savingsTrendData();
+      const currentData = this.savingsTrendData;
       currentData.labels = [];
       currentData.datasets[0].data = [];
-      this.savingsTrendData.set({ ...currentData });
+      this.savingsTrendData = { ...currentData };
     }
   }
 
@@ -288,18 +288,18 @@ export class InsightsComponent implements OnInit {
       const data = await lastValueFrom(this.insightsService.getCodecDistribution());
 
       if (data) {
-        const currentData = this.codecDistributionData();
+        const currentData = this.codecDistributionData;
         currentData.labels = data.map((d) => d.codec);
         currentData.datasets[0].data = data.map((d) => d.percentage);
-        this.codecDistributionData.set({ ...currentData });
+        this.codecDistributionData = { ...currentData };
       }
     } catch (error) {
       console.error('Failed to load codec distribution:', error);
       // Set empty data on error
-      const currentData = this.codecDistributionData();
+      const currentData = this.codecDistributionData;
       currentData.labels = [];
       currentData.datasets[0].data = [];
-      this.codecDistributionData.set({ ...currentData });
+      this.codecDistributionData = { ...currentData };
     }
   }
 
@@ -308,7 +308,7 @@ export class InsightsComponent implements OnInit {
       const data = await lastValueFrom(this.insightsService.getNodePerformance());
 
       if (data) {
-        const currentData = this.nodePerformanceData();
+        const currentData = this.nodePerformanceData;
         currentData.labels = data.map((d) => d.nodeName);
         currentData.datasets[0].data = data.map((d) => d.jobsCompleted);
 
@@ -318,16 +318,16 @@ export class InsightsComponent implements OnInit {
         // Store raw data for tooltip
         currentData.datasets[0]._rawData = data;
 
-        this.nodePerformanceData.set({ ...currentData });
+        this.nodePerformanceData = { ...currentData };
       }
     } catch (error) {
       console.error('Failed to load node performance:', error);
       // Set empty data on error
-      const currentData = this.nodePerformanceData();
+      const currentData = this.nodePerformanceData;
       currentData.labels = [];
       currentData.datasets[0].data = [];
       currentData.datasets[0].backgroundColor = [];
-      this.nodePerformanceData.set({ ...currentData });
+      this.nodePerformanceData = { ...currentData };
     }
   }
 
@@ -336,7 +336,7 @@ export class InsightsComponent implements OnInit {
       const data = await lastValueFrom(this.insightsService.getStats());
 
       if (data) {
-        this.stats.set(data);
+        this.stats = data;
       }
     } catch (error) {
       console.error('Failed to load stats:', error);

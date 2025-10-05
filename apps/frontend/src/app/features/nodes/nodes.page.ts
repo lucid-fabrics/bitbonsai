@@ -6,7 +6,6 @@ import {
   inject,
   type OnDestroy,
   type OnInit,
-  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { interval, type Subscription } from 'rxjs';
@@ -43,38 +42,38 @@ export class NodesComponent implements OnInit, OnDestroy {
   readonly NodeRole = NodeRole;
   readonly AccelerationType = AccelerationType;
 
-  // State signals
-  nodes = signal<Node[]>([]);
-  isLoading = signal(false);
-  error = signal<string | null>(null);
+  // State
+  nodes: Node[] = [];
+  isLoading = false;
+  error: string | null = null;
 
   // Pairing modal state
-  showPairingModal = signal(false);
-  pairingStep = signal<PairingStep>(PairingStep.INSTRUCTIONS);
-  pairingCommand = signal('');
-  pairingCode = signal('');
-  pairingError = signal<string | null>(null);
-  countdownSeconds = signal(600); // 10 minutes
-  pairedNode = signal<Node | null>(null);
+  showPairingModal = false;
+  pairingStep: PairingStep = PairingStep.INSTRUCTIONS;
+  pairingCommand = '';
+  pairingCode = '';
+  pairingError: string | null = null;
+  countdownSeconds = 600; // 10 minutes
+  pairedNode: Node | null = null;
 
   // Subscriptions
   private pollingSubscription?: Subscription;
   private countdownSubscription?: Subscription;
 
   get totalNodes(): number {
-    return this.nodes().length;
+    return this.nodes.length;
   }
 
   get onlineNodes(): number {
-    return this.nodes().filter((n) => n.status === NodeStatus.ONLINE).length;
+    return this.nodes.filter((n) => n.status === NodeStatus.ONLINE).length;
   }
 
   get offlineNodes(): number {
-    return this.nodes().filter((n) => n.status === NodeStatus.OFFLINE).length;
+    return this.nodes.filter((n) => n.status === NodeStatus.OFFLINE).length;
   }
 
   get hasNodes(): boolean {
-    return this.nodes().length > 0;
+    return this.nodes.length > 0;
   }
 
   ngOnInit(): void {
@@ -91,17 +90,17 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Load all nodes from API
    */
   loadNodes(): void {
-    this.isLoading.set(true);
-    this.error.set(null);
+    this.isLoading = true;
+    this.error = null;
 
     this.nodesApi.getNodes().subscribe({
       next: (nodes) => {
-        this.nodes.set(nodes);
-        this.isLoading.set(false);
+        this.nodes = nodes;
+        this.isLoading = false;
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Failed to load nodes');
-        this.isLoading.set(false);
+        this.error = err.error?.message || 'Failed to load nodes';
+        this.isLoading = false;
       },
     });
   }
@@ -114,7 +113,7 @@ export class NodesComponent implements OnInit, OnDestroy {
       .pipe(switchMap(() => this.nodesApi.getNodes()))
       .subscribe({
         next: (nodes) => {
-          this.nodes.set(nodes);
+          this.nodes = nodes;
         },
         error: (err) => {
           console.error('Polling error:', err);
@@ -133,19 +132,19 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Open pairing modal and initiate registration
    */
   onRegisterNode(): void {
-    this.showPairingModal.set(true);
-    this.pairingStep.set(PairingStep.INSTRUCTIONS);
-    this.pairingCode.set('');
-    this.pairingError.set(null);
-    this.countdownSeconds.set(600);
+    this.showPairingModal = true;
+    this.pairingStep = PairingStep.INSTRUCTIONS;
+    this.pairingCode = '';
+    this.pairingError = null;
+    this.countdownSeconds = 600;
 
     this.nodesApi.register().subscribe({
       next: (response) => {
-        this.pairingCommand.set(response.command);
+        this.pairingCommand = response.command;
         this.startCountdown();
       },
       error: (err) => {
-        this.pairingError.set(err.error?.message || 'Failed to initiate registration');
+        this.pairingError = err.error?.message || 'Failed to initiate registration';
       },
     });
   }
@@ -155,9 +154,9 @@ export class NodesComponent implements OnInit, OnDestroy {
    */
   private startCountdown(): void {
     this.countdownSubscription = interval(1000).subscribe(() => {
-      const current = this.countdownSeconds();
+      const current = this.countdownSeconds;
       if (current > 0) {
-        this.countdownSeconds.set(current - 1);
+        this.countdownSeconds = current - 1;
       } else {
         this.stopCountdown();
       }
@@ -175,7 +174,7 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Format countdown as MM:SS
    */
   getCountdownDisplay(): string {
-    const seconds = this.countdownSeconds();
+    const seconds = this.countdownSeconds;
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
@@ -185,38 +184,38 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Move to code input step
    */
   onNextToCodeInput(): void {
-    this.pairingStep.set(PairingStep.CODE_INPUT);
+    this.pairingStep = PairingStep.CODE_INPUT;
   }
 
   /**
    * Handle code input and submit pairing
    */
   onSubmitPairingCode(): void {
-    const code = this.pairingCode().trim();
+    const code = this.pairingCode.trim();
 
     if (code.length !== 6) {
-      this.pairingError.set('Please enter a valid 6-digit code');
+      this.pairingError = 'Please enter a valid 6-digit code';
       return;
     }
 
-    this.isLoading.set(true);
-    this.pairingError.set(null);
+    this.isLoading = true;
+    this.pairingError = null;
 
     this.nodesApi.pair({ code }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.pairedNode.set(response.node);
-          this.pairingStep.set(PairingStep.SUCCESS);
+          this.pairedNode = response.node;
+          this.pairingStep = PairingStep.SUCCESS;
           this.stopCountdown();
           this.loadNodes();
         } else {
-          this.pairingError.set('Invalid pairing code. Please try again.');
+          this.pairingError = 'Invalid pairing code. Please try again.';
         }
-        this.isLoading.set(false);
+        this.isLoading = false;
       },
       error: (err) => {
-        this.pairingError.set(err.error?.message || 'Failed to pair node');
-        this.isLoading.set(false);
+        this.pairingError = err.error?.message || 'Failed to pair node';
+        this.isLoading = false;
       },
     });
   }
@@ -225,10 +224,10 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Close pairing modal
    */
   onClosePairingModal(): void {
-    this.showPairingModal.set(false);
+    this.showPairingModal = false;
     this.stopCountdown();
-    this.pairingCode.set('');
-    this.pairingError.set(null);
+    this.pairingCode = '';
+    this.pairingError = null;
   }
 
   /**
@@ -242,7 +241,7 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Copy command to clipboard
    */
   onCopyCommand(): void {
-    navigator.clipboard.writeText(this.pairingCommand());
+    navigator.clipboard.writeText(this.pairingCommand);
   }
 
   /**
@@ -401,10 +400,10 @@ export class NodesComponent implements OnInit, OnDestroy {
       if (result === true) {
         this.nodesApi.deleteNode(node.id).subscribe({
           next: () => {
-            this.nodes.update((nodes) => nodes.filter((n) => n.id !== node.id));
+            this.nodes = this.nodes.filter((n) => n.id !== node.id);
           },
           error: (err) => {
-            this.error.set(err.error?.message || 'Failed to delete node');
+            this.error = err.error?.message || 'Failed to delete node';
           },
         });
       }

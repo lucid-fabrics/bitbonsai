@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Store } from '@ngrx/store';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
@@ -30,11 +30,11 @@ export class DashboardComponent implements OnInit {
   readonly error$ = this.store.select(MediaStatsSelectors.selectError);
 
   // Dialog state
-  readonly dialogOpen = signal(false);
-  readonly dialogFolderName = signal('');
-  readonly dialogCodec = signal('');
-  readonly dialogFiles = signal<FileInfoBo[]>([]);
-  readonly dialogLoading = signal(false);
+  dialogOpen = false;
+  dialogFolderName = '';
+  dialogCodec = '';
+  dialogFiles: FileInfoBo[] = [];
+  dialogLoading = false;
 
   ngOnInit(): void {
     this.store.dispatch(MediaStatsActions.loadMediaStats());
@@ -45,28 +45,28 @@ export class DashboardComponent implements OnInit {
   }
 
   viewFilesToEncode(folder: FolderInfo): void {
-    this.dialogFolderName.set(folder.name);
-    this.dialogCodec.set('h264');
-    this.dialogLoading.set(true);
-    this.dialogOpen.set(true);
+    this.dialogFolderName = folder.name;
+    this.dialogCodec = 'h264';
+    this.dialogLoading = true;
+    this.dialogOpen = true;
 
     this.mediaStatsApi.getFolderFiles(folder.name, 'h264').subscribe({
       next: (response) => {
         const files = response.files.map((f) => new FileInfoBo(f));
-        this.dialogFiles.set(files);
-        this.dialogLoading.set(false);
+        this.dialogFiles = files;
+        this.dialogLoading = false;
       },
       error: (error) => {
         console.error('Failed to load files:', error);
-        this.dialogLoading.set(false);
-        this.dialogOpen.set(false);
+        this.dialogLoading = false;
+        this.dialogOpen = false;
       },
     });
   }
 
   closeDialog(): void {
-    this.dialogOpen.set(false);
-    this.dialogFiles.set([]);
+    this.dialogOpen = false;
+    this.dialogFiles = [];
   }
 
   getBadgeExplanation(badgeText: string): string {

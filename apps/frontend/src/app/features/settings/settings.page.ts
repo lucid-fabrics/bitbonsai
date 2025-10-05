@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
 import {
   FormBuilder,
   type FormControl,
@@ -30,15 +30,15 @@ export class SettingsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   // State signals
-  activeTab = signal<SettingsTab>('license');
-  license = signal<License | null>(null);
-  environmentInfo = signal<EnvironmentInfo | null>(null);
-  systemSettings = signal<SystemSettings | null>(null);
-  loading = signal(false);
-  error = signal<string | null>(null);
-  successMessage = signal<string | null>(null);
-  licenseKeyRevealed = signal(false);
-  apiKeyRevealed = signal(false);
+  activeTab: SettingsTab = 'license';
+  license: License | null = null;
+  environmentInfo: EnvironmentInfo | null = null;
+  systemSettings: SystemSettings | null = null;
+  loading = false;
+  error: string | null = null;
+  successMessage: string | null = null;
+  licenseKeyRevealed = false;
+  apiKeyRevealed = false;
 
   // Forms
   licenseForm!: FormGroup<{
@@ -90,15 +90,15 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadLicense(): void {
-    this.loading.set(true);
+    this.loading = true;
     this.licenseService.getCurrentLicense().subscribe({
       next: (license) => {
-        this.license.set(license);
-        this.loading.set(false);
+        this.license = license;
+        this.loading = false;
       },
       error: (_err) => {
-        this.error.set('Failed to load license information');
-        this.loading.set(false);
+        this.error = 'Failed to load license information';
+        this.loading = false;
       },
     });
   }
@@ -106,7 +106,7 @@ export class SettingsComponent implements OnInit {
   private loadEnvironmentInfo(): void {
     this.settingsService.getEnvironmentInfo().subscribe({
       next: (info) => {
-        this.environmentInfo.set(info);
+        this.environmentInfo = info;
       },
       error: (err) => {
         console.error('Failed to load environment info:', err);
@@ -117,7 +117,7 @@ export class SettingsComponent implements OnInit {
   private loadSystemSettings(): void {
     this.settingsService.getSystemSettings().subscribe({
       next: (settings) => {
-        this.systemSettings.set(settings);
+        this.systemSettings = settings;
         this.settingsForm.patchValue({
           ffmpegPath: settings.ffmpegPath,
           logLevel: settings.logLevel,
@@ -132,7 +132,7 @@ export class SettingsComponent implements OnInit {
   }
 
   setActiveTab(tab: SettingsTab): void {
-    this.activeTab.set(tab);
+    this.activeTab = tab;
     this.clearMessages();
   }
 
@@ -163,23 +163,23 @@ export class SettingsComponent implements OnInit {
   }
 
   toggleLicenseKeyVisibility(): void {
-    this.licenseKeyRevealed.set(!this.licenseKeyRevealed());
+    this.licenseKeyRevealed = !this.licenseKeyRevealed;
   }
 
   toggleApiKeyVisibility(): void {
-    this.apiKeyRevealed.set(!this.apiKeyRevealed());
+    this.apiKeyRevealed = !this.apiKeyRevealed;
   }
 
   copyToClipboard(text: string, label: string): void {
     navigator.clipboard.writeText(text).then(() => {
-      this.successMessage.set(`${label} copied to clipboard`);
-      setTimeout(() => this.successMessage.set(null), 3000);
+      this.successMessage = `${label} copied to clipboard`;
+      setTimeout(() => (this.successMessage = null), 3000);
     });
   }
 
   activateLicense(): void {
     if (this.licenseForm.valid) {
-      this.loading.set(true);
+      this.loading = true;
       this.clearMessages();
 
       const formValue = this.licenseForm.value;
@@ -190,14 +190,14 @@ export class SettingsComponent implements OnInit {
 
       this.licenseService.activateLicense(request).subscribe({
         next: (license) => {
-          this.license.set(license);
-          this.loading.set(false);
-          this.successMessage.set('License activated successfully!');
+          this.license = license;
+          this.loading = false;
+          this.successMessage = 'License activated successfully!';
           this.licenseForm.reset();
         },
         error: (_err) => {
-          this.error.set('Failed to activate license. Please check your key and try again.');
-          this.loading.set(false);
+          this.error = 'Failed to activate license. Please check your key and try again.';
+          this.loading = false;
         },
       });
     }
@@ -205,7 +205,7 @@ export class SettingsComponent implements OnInit {
 
   updateSystemSettings(): void {
     if (this.settingsForm.valid) {
-      this.loading.set(true);
+      this.loading = true;
       this.clearMessages();
 
       const formValue = this.settingsForm.value;
@@ -220,30 +220,30 @@ export class SettingsComponent implements OnInit {
 
       this.settingsService.updateSystemSettings(updates).subscribe({
         next: (settings) => {
-          this.systemSettings.set(settings);
-          this.loading.set(false);
-          this.successMessage.set('Settings updated successfully!');
+          this.systemSettings = settings;
+          this.loading = false;
+          this.successMessage = 'Settings updated successfully!';
         },
         error: (_err) => {
-          this.error.set('Failed to update settings');
-          this.loading.set(false);
+          this.error = 'Failed to update settings';
+          this.loading = false;
         },
       });
     }
   }
 
   backupDatabase(): void {
-    this.loading.set(true);
+    this.loading = true;
     this.clearMessages();
 
     this.settingsService.backupDatabase().subscribe({
       next: (result: { backupPath: string }) => {
-        this.loading.set(false);
-        this.successMessage.set(`Database backed up to: ${result.backupPath}`);
+        this.loading = false;
+        this.successMessage = `Database backed up to: ${result.backupPath}`;
       },
       error: (_err: Error) => {
-        this.error.set('Failed to backup database');
-        this.loading.set(false);
+        this.error = 'Failed to backup database';
+        this.loading = false;
       },
     });
   }
@@ -254,18 +254,18 @@ export class SettingsComponent implements OnInit {
         'Are you sure you want to reset all settings to defaults? This action cannot be undone.'
       )
     ) {
-      this.loading.set(true);
+      this.loading = true;
       this.clearMessages();
 
       this.settingsService.resetToDefaults().subscribe({
         next: (result: { message: string }) => {
-          this.loading.set(false);
-          this.successMessage.set(result.message);
+          this.loading = false;
+          this.successMessage = result.message;
           this.loadSystemSettings();
         },
         error: (_err: Error) => {
-          this.error.set('Failed to reset settings');
-          this.loading.set(false);
+          this.error = 'Failed to reset settings';
+          this.loading = false;
         },
       });
     }
@@ -277,29 +277,29 @@ export class SettingsComponent implements OnInit {
         'Are you sure you want to regenerate the API key? The old key will be invalidated immediately.'
       )
     ) {
-      this.loading.set(true);
+      this.loading = true;
       this.clearMessages();
 
       this.settingsService.regenerateApiKey().subscribe({
         next: (result: { apiKey: string }) => {
-          const currentSettings = this.systemSettings();
+          const currentSettings = this.systemSettings;
           if (currentSettings) {
-            this.systemSettings.set({ ...currentSettings, apiKey: result.apiKey });
+            this.systemSettings = { ...currentSettings, apiKey: result.apiKey };
           }
-          this.loading.set(false);
-          this.successMessage.set('API key regenerated successfully!');
+          this.loading = false;
+          this.successMessage = 'API key regenerated successfully!';
         },
         error: (_err: Error) => {
-          this.error.set('Failed to regenerate API key');
-          this.loading.set(false);
+          this.error = 'Failed to regenerate API key';
+          this.loading = false;
         },
       });
     }
   }
 
   private clearMessages(): void {
-    this.error.set(null);
-    this.successMessage.set(null);
+    this.error = null;
+    this.successMessage = null;
   }
 
   get licenseKeyControl() {

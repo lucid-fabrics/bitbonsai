@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
 import { Store } from '@ngrx/store';
 import {
   ConfirmationDialogComponent,
@@ -37,11 +37,11 @@ export class LibrariesComponent implements OnInit {
   readonly error$ = this.store.select(selectLibrariesError);
 
   // Form state
-  showForm = signal(false);
-  selectedLibrary = signal<Library | undefined>(undefined);
+  showForm = false;
+  selectedLibrary: Library | undefined = undefined;
 
   // Scan state
-  scanningLibraryId = signal<string | null>(null);
+  scanningLibraryId: string | null = null;
 
   ngOnInit(): void {
     this.store.dispatch(LibrariesActions.loadLibraries());
@@ -49,17 +49,17 @@ export class LibrariesComponent implements OnInit {
   }
 
   onAddLibrary(): void {
-    this.selectedLibrary.set(undefined);
-    this.showForm.set(true);
+    this.selectedLibrary = undefined;
+    this.showForm = true;
   }
 
   onEditLibrary(library: Library): void {
-    this.selectedLibrary.set(library);
-    this.showForm.set(true);
+    this.selectedLibrary = library;
+    this.showForm = true;
   }
 
   onFormSubmit(data: CreateLibraryDto | UpdateLibraryDto): void {
-    const selectedLib = this.selectedLibrary();
+    const selectedLib = this.selectedLibrary;
 
     if (selectedLib) {
       // Update existing library
@@ -78,13 +78,13 @@ export class LibrariesComponent implements OnInit {
       );
     }
 
-    this.showForm.set(false);
-    this.selectedLibrary.set(undefined);
+    this.showForm = false;
+    this.selectedLibrary = undefined;
   }
 
   onFormCancel(): void {
-    this.showForm.set(false);
-    this.selectedLibrary.set(undefined);
+    this.showForm = false;
+    this.selectedLibrary = undefined;
   }
 
   onDeleteLibrary(library: Library): void {
@@ -121,10 +121,12 @@ export class LibrariesComponent implements OnInit {
   }
 
   onScanLibrary(library: Library): void {
-    this.scanningLibraryId.set(library.id);
+    this.scanningLibraryId = library.id;
     this.store.dispatch(LibrariesActions.scanLibrary({ id: library.id }));
     // Reset scanning state after a delay (scan is async on backend)
-    setTimeout(() => this.scanningLibraryId.set(null), 1000);
+    setTimeout(() => {
+      this.scanningLibraryId = null;
+    }, 1000);
   }
 
   onToggleWatch(library: Library): void {
@@ -137,6 +139,6 @@ export class LibrariesComponent implements OnInit {
   }
 
   isScanning(libraryId: string): boolean {
-    return this.scanningLibraryId() === libraryId;
+    return this.scanningLibraryId === libraryId;
   }
 }
