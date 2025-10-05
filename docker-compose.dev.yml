@@ -9,7 +9,7 @@ services:
     container_name: bitbonsai-backend
     ports:
       - "3002:3000"
-      - "9229:9229"  # Node.js debug port
+      - "9230:9229"  # Node.js debug port
     environment:
       - NODE_ENV=development
       - DATABASE_URL=file:/data/bitbonsai.db

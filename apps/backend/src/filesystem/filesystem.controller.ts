@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { FilesystemService } from './filesystem.service';
+import { FilesystemService } from './filesystem.service';
 
 @ApiTags('filesystem')
 @Controller('filesystem')
