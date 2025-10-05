@@ -1,5 +1,5 @@
-import { DatabaseType, LogLevel } from '@bitbonsai/shared-models';
 import { ApiProperty } from '@nestjs/swagger';
+import { DatabaseType, LogLevel } from '../../common/enums';
 import { StorageInfoDto } from './storage-info.dto';
 
 export class SystemSettingsDto {

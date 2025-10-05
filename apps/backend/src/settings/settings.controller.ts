@@ -1,7 +1,7 @@
-import { DatabaseType, LogLevel } from '@bitbonsai/shared-models';
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
+import { DatabaseType, LogLevel } from '../common/enums';
 import type { EnvironmentService } from '../common/environment.service';
 import { SystemSettingsDto } from './dto/system-settings.dto';
 import type { UpdateSystemSettingsDto } from './dto/update-system-settings.dto';
