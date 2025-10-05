@@ -1,6 +1,6 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { DashboardComponent } from './dashboard.component';
+import { DashboardComponent } from './dashboard.page';
 
 describe('DashboardComponent', () => {
   let component: DashboardComponent;

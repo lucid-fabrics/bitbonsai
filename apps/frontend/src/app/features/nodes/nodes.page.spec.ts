@@ -1,6 +1,6 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { NodesComponent } from './nodes.component';
+import { NodesComponent } from './nodes.page';
 
 describe('NodesComponent', () => {
   let component: NodesComponent;

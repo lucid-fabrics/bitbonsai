@@ -1,6 +1,6 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { QueueComponent } from './queue.component';
+import { QueueComponent } from './queue.page';
 
 describe('QueueComponent', () => {
   let component: QueueComponent;
