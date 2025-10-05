@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { TimeSeriesQueryDto } from './dto/time-series-query.dto';
-import { InsightsController } from './insights.controller';
-import { InsightsService } from './insights.service';
+import type { TimeSeriesQueryDto } from '../../dto/time-series-query.dto';
+import { InsightsController } from '../../insights.controller';
+import { InsightsService } from '../../insights.service';
 
 describe('InsightsController', () => {
   let controller: InsightsController;

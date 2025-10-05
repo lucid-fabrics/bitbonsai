@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { License } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { LicenseService } from './license.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { LicenseService } from '../../license.service';
 
 /**
  * Integration tests for LicenseService
@@ -40,14 +40,16 @@ describe('LicenseService Integration Tests', () => {
   });
 
   afterAll(async () => {
-    await prisma.licens.deleteMany({});
-
     await prisma.license.deleteMany({});
     await prisma.$disconnect();
     await module.close();
   });
 
   afterEach(async () => {
-    await prisma.licens.deleteMany({});
+    await prisma.license.deleteMany({});
+  });
+
+  it('should be defined', () => {
+    expect(_service).toBeDefined();
   });
 });

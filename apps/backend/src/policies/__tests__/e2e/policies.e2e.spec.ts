@@ -2,8 +2,8 @@ import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Library, License, Node } from '@prisma/client';
 import request from 'supertest';
-import { AppModule } from '../app.module';
-import { PrismaService } from '../prisma/prisma.service';
+import { AppModule } from '../../../app.module';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 /**
  * E2E tests for Policies API endpoints

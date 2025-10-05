@@ -87,9 +87,9 @@ describe('PoliciesService Integration Tests', () => {
     it('should create policy with valid data', async () => {
       const createDto = {
         name: 'Test Policy',
+        preset: 'BALANCED_HEVC' as const,
         targetCodec: 'HEVC' as const,
-        crf: 23,
-        preset: 'medium' as const,
+        targetQuality: 23,
         libraryId: testLibrary.id,
       };
 
@@ -106,9 +106,9 @@ describe('PoliciesService Integration Tests', () => {
       await expect(
         service.create({
           name: 'Test',
-          targetCodec: 'HEVC',
-          crf: 23,
-          preset: 'medium',
+          preset: 'BALANCED_HEVC' as const,
+          targetCodec: 'HEVC' as const,
+          targetQuality: 23,
           libraryId: 'non-existent-id',
         })
       ).rejects.toThrow(NotFoundException);
@@ -117,9 +117,9 @@ describe('PoliciesService Integration Tests', () => {
     it('should persist to database', async () => {
       const created = await service.create({
         name: 'Persistent Test',
-        targetCodec: 'HEVC',
-        crf: 20,
-        preset: 'slow',
+        preset: 'QUALITY_HEVC' as const,
+        targetCodec: 'HEVC' as const,
+        targetQuality: 20,
         libraryId: testLibrary.id,
       });
 

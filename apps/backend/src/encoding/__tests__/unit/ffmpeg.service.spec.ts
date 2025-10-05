@@ -3,8 +3,8 @@ import { EventEmitter } from 'node:events';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Job, Policy } from '@prisma/client';
-import { QueueService } from '../queue/queue.service';
-import { FfmpegService } from './ffmpeg.service';
+import { QueueService } from '../../../queue/queue.service';
+import { FfmpegService } from '../../ffmpeg.service';
 
 // Mock Prisma first to avoid import issues
 jest.mock('@prisma/client', () => ({

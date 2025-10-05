@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { License, Node } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { LibrariesService } from './libraries.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { LibrariesService } from '../../libraries.service';
 
 /**
  * Integration tests for LibrariesService
@@ -126,10 +126,14 @@ describe('LibrariesService Integration Tests', () => {
     it('should return all records', async () => {
       await service.create({
         name: 'First',
+        path: '/test/path/first',
+        mediaType: 'MOVIE',
         nodeId: testNode.id,
       });
       await service.create({
         name: 'Second',
+        path: '/test/path/second',
+        mediaType: 'TV',
         nodeId: testNode.id,
       });
 
@@ -142,6 +146,8 @@ describe('LibrariesService Integration Tests', () => {
     it('should retrieve record by id', async () => {
       const created = await service.create({
         name: 'Test Record',
+        path: '/test/path/record',
+        mediaType: 'MOVIE',
         nodeId: testNode.id,
       });
 
@@ -159,6 +165,8 @@ describe('LibrariesService Integration Tests', () => {
     it('should update existing record', async () => {
       const created = await service.create({
         name: 'Original',
+        path: '/test/path/original',
+        mediaType: 'MOVIE',
         nodeId: testNode.id,
       });
 
@@ -175,6 +183,8 @@ describe('LibrariesService Integration Tests', () => {
     it('should update updatedAt timestamp', async () => {
       const created = await service.create({
         name: 'Test',
+        path: '/test/path/timestamp',
+        mediaType: 'MOVIE',
         nodeId: testNode.id,
       });
 
@@ -189,6 +199,8 @@ describe('LibrariesService Integration Tests', () => {
     it('should delete existing record', async () => {
       const created = await service.create({
         name: 'To Delete',
+        path: '/test/path/delete',
+        mediaType: 'MOVIE',
         nodeId: testNode.id,
       });
 

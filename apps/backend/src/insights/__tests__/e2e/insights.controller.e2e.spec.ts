@@ -1,7 +1,7 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Library, License, Node, Policy } from '@prisma/client';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../../app.module';
 import { PrismaService } from '../../../prisma/prisma.service';
 
@@ -80,8 +80,10 @@ describe('InsightsController (E2E)', () => {
       data: {
         name: 'Insights Test Policy',
         targetCodec: 'HEVC',
-        crf: 23,
-        preset: 'medium',
+        targetQuality: 23,
+        preset: 'BALANCED_HEVC',
+        deviceProfiles: {},
+        advancedSettings: {},
         libraryId: testLibrary.id,
       },
     });
@@ -121,9 +123,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video1.mp4',
+            fileLabel: 'video1.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 2000000000, // 2GB
-            finalSize: 1000000000, // 1GB
+            beforeSizeBytes: 2000000000, // 2GB
+            afterSizeBytes: 1000000000, // 1GB
             completedAt: today,
           },
           {
@@ -131,9 +136,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video2.mp4',
+            fileLabel: 'video2.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 4000000000, // 4GB
-            finalSize: 2000000000, // 2GB
+            beforeSizeBytes: 4000000000, // 4GB
+            afterSizeBytes: 2000000000, // 2GB
             completedAt: yesterday,
           },
         ],
@@ -142,7 +150,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/savings-trend?days=7')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBeGreaterThan(0);
           expect(res.body[0]).toHaveProperty('date');
@@ -157,9 +165,12 @@ describe('InsightsController (E2E)', () => {
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/video.mp4',
+          fileLabel: 'video.mp4',
+          sourceCodec: 'H.264',
+          targetCodec: 'HEVC',
           stage: 'COMPLETED',
-          originalSize: 1000000000,
-          finalSize: 500000000,
+          beforeSizeBytes: 1000000000,
+          afterSizeBytes: 500000000,
           completedAt: new Date(),
         },
       });
@@ -167,7 +178,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/savings-trend?days=30')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(Array.isArray(res.body)).toBe(true);
         });
     });
@@ -199,11 +210,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/hevc1.mp4',
+            fileLabel: 'hevc1.mp4',
             stage: 'COMPLETED',
             sourceCodec: 'H264',
             targetCodec: 'HEVC',
-            originalSize: 2000000000,
-            finalSize: 1000000000,
+            beforeSizeBytes: 2000000000,
+            afterSizeBytes: 1000000000,
             completedAt: new Date(),
           },
           {
@@ -211,11 +223,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/hevc2.mp4',
+            fileLabel: 'hevc2.mp4',
             stage: 'COMPLETED',
             sourceCodec: 'H264',
             targetCodec: 'HEVC',
-            originalSize: 3000000000,
-            finalSize: 1500000000,
+            beforeSizeBytes: 3000000000,
+            afterSizeBytes: 1500000000,
             completedAt: new Date(),
           },
           {
@@ -223,11 +236,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/av1.mp4',
+            fileLabel: 'av1.mp4',
             stage: 'COMPLETED',
             sourceCodec: 'H264',
             targetCodec: 'AV1',
-            originalSize: 2000000000,
-            finalSize: 800000000,
+            beforeSizeBytes: 2000000000,
+            afterSizeBytes: 800000000,
             completedAt: new Date(),
           },
         ],
@@ -236,7 +250,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/codec-distribution')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBe(2); // HEVC and AV1
           expect(res.body[0]).toHaveProperty('codec');
@@ -254,10 +268,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video1.mp4',
+            fileLabel: 'video1.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'HEVC',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -265,10 +281,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video2.mp4',
+            fileLabel: 'video2.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'HEVC',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -276,10 +294,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video3.mp4',
+            fileLabel: 'video3.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'HEVC',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -287,10 +307,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video4.mp4',
+            fileLabel: 'video4.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'AV1',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
         ],
@@ -299,7 +321,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/codec-distribution')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           const hevcEntry = res.body.find((entry: { codec: string }) => entry.codec === 'HEVC');
           const av1Entry = res.body.find((entry: { codec: string }) => entry.codec === 'AV1');
 
@@ -327,9 +349,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/success1.mp4',
+            fileLabel: 'success1.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -337,9 +362,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/success2.mp4',
+            fileLabel: 'success2.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 2000000000,
-            finalSize: 1000000000,
+            beforeSizeBytes: 2000000000,
+            afterSizeBytes: 1000000000,
             completedAt: new Date(),
           },
           {
@@ -347,7 +375,11 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/failed.mp4',
+            fileLabel: 'failed.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'FAILED',
+            beforeSizeBytes: 1000000000,
             error: 'Test error',
             completedAt: new Date(),
           },
@@ -357,7 +389,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/node-performance')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBe(1);
           expect(res.body[0]).toHaveProperty('nodeId');
@@ -382,9 +414,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/success1.mp4',
+            fileLabel: 'success1.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -392,9 +427,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/success2.mp4',
+            fileLabel: 'success2.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -402,9 +440,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/success3.mp4',
+            fileLabel: 'success3.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -412,7 +453,11 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/failed.mp4',
+            fileLabel: 'failed.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'FAILED',
+            beforeSizeBytes: 1000000000,
             error: 'Test error',
             completedAt: new Date(),
           },
@@ -422,7 +467,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/node-performance')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body[0].successRate).toBeCloseTo(75, 0); // 3 out of 4
         });
     });
@@ -434,7 +479,7 @@ describe('InsightsController (E2E)', () => {
           role: 'LINKED',
           status: 'ONLINE',
           version: '1.0.0',
-          acceleration: 'GPU',
+          acceleration: 'NVIDIA',
           apiKey: 'second-key',
           lastHeartbeat: new Date(),
           licenseId: testLicense.id,
@@ -448,9 +493,12 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/node1.mp4',
+            fileLabel: 'node1.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
             completedAt: new Date(),
           },
           {
@@ -458,15 +506,18 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: secondNode.id,
             filePath: '/test/node2.mp4',
+            fileLabel: 'node2.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 2000000000,
-            finalSize: 1000000000,
+            beforeSizeBytes: 2000000000,
+            afterSizeBytes: 1000000000,
             completedAt: new Date(),
           },
         ],
       });
 
-      const response = await request(app.getHttpServer())
+      const response: request.Response = await request(app.getHttpServer())
         .get('/api/v1/insights/node-performance')
         .expect(200);
 
@@ -484,7 +535,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/stats')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body.totalSavingsGB).toBe(0);
           expect(res.body.totalJobsCompleted).toBe(0);
           expect(res.body.averageCompressionRatio).toBe(0);
@@ -500,11 +551,13 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video1.mp4',
+            fileLabel: 'video1.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'HEVC',
-            originalSize: 2000000000, // 2GB
-            finalSize: 1000000000, // 1GB saved
-            compressionRatio: 50,
+            beforeSizeBytes: 2000000000, // 2GB
+            afterSizeBytes: 1000000000, // 1GB saved
+            savedPercent: 50,
             completedAt: new Date(),
           },
           {
@@ -512,11 +565,13 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video2.mp4',
+            fileLabel: 'video2.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'HEVC',
-            originalSize: 4000000000, // 4GB
-            finalSize: 2000000000, // 2GB saved
-            compressionRatio: 50,
+            beforeSizeBytes: 4000000000, // 4GB
+            afterSizeBytes: 2000000000, // 2GB saved
+            savedPercent: 50,
             completedAt: new Date(),
           },
           {
@@ -524,11 +579,13 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/video3.mp4',
+            fileLabel: 'video3.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'AV1',
-            originalSize: 2000000000, // 2GB
-            finalSize: 800000000, // 1.2GB saved
-            compressionRatio: 60,
+            beforeSizeBytes: 2000000000, // 2GB
+            afterSizeBytes: 800000000, // 1.2GB saved
+            savedPercent: 60,
             completedAt: new Date(),
           },
         ],
@@ -537,7 +594,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/stats')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body.totalJobsCompleted).toBe(3);
           expect(res.body.totalSavingsGB).toBeCloseTo(4.2, 1); // 1 + 2 + 1.2 GB
           expect(res.body.averageCompressionRatio).toBeCloseTo(53.33, 1); // (50 + 50 + 60) / 3
@@ -553,11 +610,13 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/success.mp4',
+            fileLabel: 'success.mp4',
+            sourceCodec: 'H.264',
             stage: 'COMPLETED',
             targetCodec: 'HEVC',
-            originalSize: 1000000000,
-            finalSize: 500000000,
-            compressionRatio: 50,
+            beforeSizeBytes: 1000000000,
+            afterSizeBytes: 500000000,
+            savedPercent: 50,
             completedAt: new Date(),
           },
           {
@@ -565,7 +624,11 @@ describe('InsightsController (E2E)', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/failed.mp4',
+            fileLabel: 'failed.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'FAILED',
+            beforeSizeBytes: 1000000000,
             error: 'Test error',
             completedAt: new Date(),
           },
@@ -575,7 +638,7 @@ describe('InsightsController (E2E)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/insights/stats')
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body.totalJobsCompleted).toBe(1); // Only completed jobs
           expect(res.body.totalSavingsGB).toBeCloseTo(0.5, 1);
         });

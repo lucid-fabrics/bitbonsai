@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { AccelerationType, NodeStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { InsightsService } from './insights.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { InsightsService } from '../../insights.service';
 
 describe('InsightsService', () => {
   let service: InsightsService;

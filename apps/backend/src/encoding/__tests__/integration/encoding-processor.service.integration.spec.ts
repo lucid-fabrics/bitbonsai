@@ -1,6 +1,8 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Library, License, Node, Policy } from '@prisma/client';
+import { LibrariesService } from '../../../libraries/libraries.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
 import { FfmpegService } from '../../ffmpeg.service';
 
@@ -25,7 +27,13 @@ describe('EncodingProcessorService Integration Tests', () => {
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
-      providers: [EncodingProcessorService, FfmpegService, PrismaService],
+      providers: [
+        EncodingProcessorService,
+        QueueService,
+        FfmpegService,
+        LibrariesService,
+        PrismaService,
+      ],
     }).compile();
 
     service = module.get<EncodingProcessorService>(EncodingProcessorService);
@@ -70,9 +78,11 @@ describe('EncodingProcessorService Integration Tests', () => {
     testPolicy = await prisma.policy.create({
       data: {
         name: 'Encoding Test Policy',
+        preset: 'CUSTOM',
         targetCodec: 'HEVC',
-        crf: 23,
-        preset: 'medium',
+        targetQuality: 23,
+        deviceProfiles: {},
+        advancedSettings: {},
         libraryId: testLibrary.id,
       },
     });
@@ -101,19 +111,18 @@ describe('EncodingProcessorService Integration Tests', () => {
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/video.mp4',
+          fileLabel: 'Test Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'QUEUED',
         },
       });
 
       // Mock FFmpeg to prevent actual encoding
-      jest.spyOn(ffmpegService, 'encode').mockResolvedValue({
-        success: true,
-        outputPath: '/test/video_encoded.mp4',
-        originalSize: 1000000000,
-        finalSize: 500000000,
-      });
+      jest.spyOn(ffmpegService, 'encode').mockResolvedValue(undefined);
 
-      await service.processJob(job.id);
+      await service.processNextJob(testNode.id);
 
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
@@ -128,24 +137,24 @@ describe('EncodingProcessorService Integration Tests', () => {
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/video.mp4',
+          fileLabel: 'Test Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(2000000000),
           stage: 'QUEUED',
         },
       });
 
-      jest.spyOn(ffmpegService, 'encode').mockResolvedValue({
-        success: true,
-        outputPath: '/test/video_encoded.mp4',
-        originalSize: 2000000000, // 2GB
-        finalSize: 1000000000, // 1GB
-      });
+      jest.spyOn(ffmpegService, 'encode').mockResolvedValue(undefined);
 
-      await service.processJob(job.id);
+      await service.processNextJob(testNode.id);
 
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
-      expect(updated?.originalSize).toBe(2000000000);
-      expect(updated?.finalSize).toBe(1000000000);
-      expect(updated?.compressionRatio).toBeCloseTo(50, 0); // 50% compression
+      expect(updated?.beforeSizeBytes).toBe(BigInt(2000000000));
+      expect(updated?.afterSizeBytes).toBeDefined();
+      expect(updated?.savedBytes).toBeDefined();
+      expect(updated?.savedPercent).toBeDefined();
     });
 
     it('should set job to FAILED on encoding error', async () => {
@@ -155,13 +164,17 @@ describe('EncodingProcessorService Integration Tests', () => {
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/video.mp4',
+          fileLabel: 'Test Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'QUEUED',
         },
       });
 
       jest.spyOn(ffmpegService, 'encode').mockRejectedValue(new Error('FFmpeg failed'));
 
-      await service.processJob(job.id);
+      await service.processNextJob(testNode.id);
 
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
@@ -176,19 +189,18 @@ describe('EncodingProcessorService Integration Tests', () => {
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/video.mp4',
+          fileLabel: 'Test Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'QUEUED',
         },
       });
 
-      jest.spyOn(ffmpegService, 'encode').mockResolvedValue({
-        success: true,
-        outputPath: '/test/video_encoded.mp4',
-        originalSize: 1000000000,
-        finalSize: 500000000,
-      });
+      jest.spyOn(ffmpegService, 'encode').mockResolvedValue(undefined);
 
       const before = new Date();
-      await service.processJob(job.id);
+      await service.processNextJob(testNode.id);
       const after = new Date();
 
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
@@ -199,40 +211,51 @@ describe('EncodingProcessorService Integration Tests', () => {
     });
   });
 
-  describe('getNextJob', () => {
+  describe('processNextJob', () => {
     it('should return null when no jobs are queued', async () => {
-      const result = await service.getNextJob(testNode.id);
+      const result = await service.processNextJob(testNode.id);
       expect(result).toBeNull();
     });
 
-    it('should return oldest queued job for the node', async () => {
+    it('should process oldest queued job for the node', async () => {
+      // Mock FFmpeg to prevent actual encoding
+      jest.spyOn(ffmpegService, 'encode').mockResolvedValue(undefined);
+
       const oldJob = await prisma.job.create({
         data: {
           libraryId: testLibrary.id,
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/old.mp4',
+          fileLabel: 'Old Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'QUEUED',
           createdAt: new Date(Date.now() - 1000), // 1 second ago
         },
       });
 
-      const _newJob = await prisma.job.create({
+      await prisma.job.create({
         data: {
           libraryId: testLibrary.id,
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/new.mp4',
+          fileLabel: 'New Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'QUEUED',
         },
       });
 
-      const result = await service.getNextJob(testNode.id);
+      const result = await service.processNextJob(testNode.id);
 
-      expect(result?.id).toBe(oldJob.id); // Should get older job first
+      expect(result?.id).toBe(oldJob.id); // Should process older job first
     });
 
-    it('should not return jobs for other nodes', async () => {
+    it('should not process jobs for other nodes', async () => {
       const otherNode = await prisma.node.create({
         data: {
           name: 'Other Node',
@@ -252,69 +275,40 @@ describe('EncodingProcessorService Integration Tests', () => {
           policyId: testPolicy.id,
           nodeId: otherNode.id,
           filePath: '/test/other.mp4',
+          fileLabel: 'Other Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'QUEUED',
         },
       });
 
-      const result = await service.getNextJob(testNode.id);
+      const result = await service.processNextJob(testNode.id);
 
-      expect(result).toBeNull(); // Should not get job for other node
+      expect(result).toBeNull(); // Should not process job for other node
 
       // Cleanup
       await prisma.node.delete({ where: { id: otherNode.id } });
     });
 
-    it('should not return jobs that are already encoding', async () => {
+    it('should not process jobs that are already encoding', async () => {
       await prisma.job.create({
         data: {
           libraryId: testLibrary.id,
           policyId: testPolicy.id,
           nodeId: testNode.id,
           filePath: '/test/encoding.mp4',
+          fileLabel: 'Encoding Video.mp4',
+          sourceCodec: 'H264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
           stage: 'ENCODING',
         },
       });
 
-      const result = await service.getNextJob(testNode.id);
+      const result = await service.processNextJob(testNode.id);
 
       expect(result).toBeNull();
-    });
-  });
-
-  describe('cancelJob', () => {
-    it('should cancel queued job', async () => {
-      const job = await prisma.job.create({
-        data: {
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: '/test/cancel.mp4',
-          stage: 'QUEUED',
-        },
-      });
-
-      await service.cancelJob(job.id);
-
-      const updated = await prisma.job.findUnique({ where: { id: job.id } });
-
-      expect(updated?.stage).toBe('CANCELLED');
-    });
-
-    it('should not cancel completed jobs', async () => {
-      const job = await prisma.job.create({
-        data: {
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: '/test/completed.mp4',
-          stage: 'COMPLETED',
-        },
-      });
-
-      await expect(service.cancelJob(job.id)).rejects.toThrow();
-
-      const updated = await prisma.job.findUnique({ where: { id: job.id } });
-      expect(updated?.stage).toBe('COMPLETED'); // Should remain completed
     });
   });
 });

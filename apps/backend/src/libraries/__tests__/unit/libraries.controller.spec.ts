@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MediaType } from '@prisma/client';
-import { LibrariesController } from './libraries.controller';
-import { LibrariesService } from './libraries.service';
+import { LibrariesController } from '../../libraries.controller';
+import { LibrariesService } from '../../libraries.service';
 
 describe('LibrariesController', () => {
   let controller: LibrariesController;

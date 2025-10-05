@@ -1,8 +1,8 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AccelerationType, LicenseStatus, NodeRole, NodeStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { NodesService } from './nodes.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { NodesService } from '../../nodes.service';
 
 describe('NodesService', () => {
   let service: NodesService;

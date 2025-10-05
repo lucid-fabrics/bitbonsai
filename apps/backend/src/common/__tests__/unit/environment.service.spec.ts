@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { EnvironmentService } from './environment.service';
+import { EnvironmentService } from '../../environment.service';
 
 // Simple integration tests without mocking filesystem
 describe('EnvironmentService', () => {
@@ -162,7 +162,7 @@ describe('EnvironmentService', () => {
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
-      result.forEach((rec) => {
+      result.forEach((rec: string) => {
         expect(typeof rec).toBe('string');
       });
     });
@@ -172,9 +172,11 @@ describe('EnvironmentService', () => {
       const recommendations = await service.getRecommendations();
 
       if (environment === 'UNRAID') {
-        expect(recommendations.some((rec) => rec.includes('Unraid array storage'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('Unraid array storage'))).toBe(
+          true
+        );
       } else if (environment === 'DOCKER') {
-        expect(recommendations.some((rec) => rec.includes('Docker volumes'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('Docker volumes'))).toBe(true);
       }
     });
 
@@ -183,16 +185,16 @@ describe('EnvironmentService', () => {
       const recommendations = await service.getRecommendations();
 
       if (hardware.nvidia) {
-        expect(recommendations.some((rec) => rec.includes('NVIDIA'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('NVIDIA'))).toBe(true);
       }
       if (hardware.intelQsv) {
-        expect(recommendations.some((rec) => rec.includes('Intel Quick Sync'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('Intel Quick Sync'))).toBe(true);
       }
       if (hardware.amd) {
-        expect(recommendations.some((rec) => rec.includes('AMD'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('AMD'))).toBe(true);
       }
       if (hardware.appleVideoToolbox) {
-        expect(recommendations.some((rec) => rec.includes('Apple Silicon'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('Apple Silicon'))).toBe(true);
       }
     });
   });
