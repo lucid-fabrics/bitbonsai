@@ -33,14 +33,15 @@ export class HttpLoggerMiddleware implements NestMiddleware {
 
     // Override res.end to log response
     const originalEnd = res.end.bind(res);
-    res.end = (...args: Parameters<typeof res.end>) => {
+    const logger = this.logger;
+    res.end = function (this: Response, ...args: any[]): Response {
       const responseTime = Date.now() - startTime;
       const { statusCode } = res;
 
       // Determine log level based on status code
       const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'http';
 
-      this.logger.logWithData(level, 'Request completed', {
+      logger.logWithData(level, 'Request completed', {
         method,
         url: originalUrl,
         statusCode,
@@ -50,7 +51,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         correlationId,
       });
 
-      return originalEnd(...args);
+      return originalEnd(...args) as Response;
     };
 
     next();

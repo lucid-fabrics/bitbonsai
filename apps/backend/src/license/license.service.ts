@@ -122,7 +122,7 @@ export class LicenseService {
         email: data.email,
         maxNodes: config.maxNodes,
         maxConcurrentJobs: config.maxConcurrentJobs,
-        features: features as Prisma.InputJsonValue,
+        features: features as unknown as Prisma.InputJsonValue,
         validUntil: data.validUntil ? new Date(data.validUntil) : null,
       },
     });

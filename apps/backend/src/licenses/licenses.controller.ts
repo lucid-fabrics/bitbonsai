@@ -1,6 +1,6 @@
-import { LicenseTier } from '@bitbonsai/shared-models';
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { LicenseTier } from '@prisma/client';
 import type { ActivateLicenseDto } from './dto/activate-license.dto';
 import { LicenseDto } from './dto/license.dto';
 

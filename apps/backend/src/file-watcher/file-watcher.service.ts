@@ -121,7 +121,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
         this.handleFileAdded(libraryId, filePath);
       });
 
-      watcher.on('error', (error: Error) => {
+      watcher.on('error', (error: unknown) => {
         this.logger.error(`Watcher error for library ${libraryId}:`, error);
       });
 
