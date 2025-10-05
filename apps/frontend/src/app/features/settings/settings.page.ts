@@ -173,7 +173,9 @@ export class SettingsComponent implements OnInit {
   copyToClipboard(text: string, label: string): void {
     navigator.clipboard.writeText(text).then(() => {
       this.successMessage = `${label} copied to clipboard`;
-      setTimeout(() => (this.successMessage = null), 3000);
+      setTimeout(() => {
+        this.successMessage = null;
+      }, 3000);
     });
   }
 
