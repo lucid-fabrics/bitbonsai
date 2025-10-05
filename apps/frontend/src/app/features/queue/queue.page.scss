@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../../styles/variables' as *;
 
 .queue-container {
@@ -615,7 +616,7 @@
       color: $text-white;
 
       &:hover {
-        background: darken($danger, 10%);
+        background: color.adjust($danger, $lightness: - 10%);
       }
     }
   }

@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../../../styles/variables' as *;
 
 .sidebar {
@@ -54,7 +55,7 @@
     border-radius: 3px;
 
     &:hover {
-      background: lighten($border-secondary, 10%);
+      background: color.adjust($border-secondary, $lightness:  10%);
     }
   }
 }
