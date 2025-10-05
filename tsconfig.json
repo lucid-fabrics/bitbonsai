@@ -20,7 +20,8 @@
     "module": "ES2022",
     "lib": ["ES2022", "dom"],
     "paths": {
-      "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"]
+      "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"],
+      "@bitbonsai/shared-ui": ["libs/shared-ui/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

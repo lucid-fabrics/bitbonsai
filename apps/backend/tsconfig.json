@@ -11,9 +11,14 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "../../dist/apps/backend",
-    "baseUrl": "./",
+    "baseUrl": "../../",
     "incremental": true,
     "skipLibCheck": true,
-    "isolatedModules": false
-  }
+    "isolatedModules": false,
+    "allowJs": true,
+    "paths": {
+      "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"]
+    }
+  },
+  "exclude": ["**/*.spec.ts", "**/__tests__/**"]
 }

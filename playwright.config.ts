@@ -14,7 +14,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   // Test directory
-  testDir: './apps/frontend/e2e',
+  testDir: './apps/frontend/e2e/tests',
+
+  // Ignore Angular spec files
+  testIgnore: ['**/*.page.spec.ts', '**/src/**/*.spec.ts', '**/__tests__/**'],
 
   // Maximum time one test can run
   timeout: 30 * 1000,
