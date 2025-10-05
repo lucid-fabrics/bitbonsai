@@ -1,5 +1,5 @@
-import { PolicyPreset, TargetCodec } from '@bitbonsai/shared-models';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PolicyPreset, TargetCodec } from '@prisma/client';
 import { JobCountDto } from './job-count.dto';
 import { LibraryInfoDto } from './library-info.dto';
 

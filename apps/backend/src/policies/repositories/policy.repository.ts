@@ -44,8 +44,8 @@ export class PolicyRepository {
     return this.prisma.policy.create({
       data: {
         name: data.name,
-        preset: data.preset,
-        targetCodec: data.targetCodec,
+        preset: data.preset as any,
+        targetCodec: data.targetCodec as any,
         targetQuality: data.targetQuality,
         deviceProfiles: data.deviceProfiles,
         advancedSettings: data.advancedSettings,
@@ -109,8 +109,8 @@ export class PolicyRepository {
       where: { id },
       data: {
         name: data.name,
-        preset: data.preset,
-        targetCodec: data.targetCodec,
+        preset: data.preset as any,
+        targetCodec: data.targetCodec as any,
         targetQuality: data.targetQuality,
         deviceProfiles: data.deviceProfiles,
         advancedSettings: data.advancedSettings,
