@@ -24,22 +24,24 @@ export class ForbiddenError extends BaseError {
 /**
  * Error thrown when license validation fails
  */
-export class InvalidLicenseError extends ForbiddenError {
+export class InvalidLicenseError extends BaseError {
   constructor(reason?: string) {
     const message = reason ? `Invalid license: ${reason}` : 'Invalid or expired license';
-    super(message);
-    this.errorCode = 'INVALID_LICENSE';
+    super(message, 403, 'INVALID_LICENSE', true);
   }
 }
 
 /**
  * Error thrown when a feature requires a higher license tier
  */
-export class FeatureNotLicensedError extends ForbiddenError {
+export class FeatureNotLicensedError extends BaseError {
   constructor(featureName: string) {
-    super(`Feature '${featureName}' is not available with your current license`, {
-      feature: featureName,
-    });
-    this.errorCode = 'FEATURE_NOT_LICENSED';
+    super(
+      `Feature '${featureName}' is not available with your current license`,
+      403,
+      'FEATURE_NOT_LICENSED',
+      true,
+      { feature: featureName }
+    );
   }
 }

@@ -29,19 +29,32 @@ export class DatabaseError extends BaseError {
 /**
  * Error thrown when FFmpeg operations fail
  */
-export class FFmpegError extends ExternalServiceError {
+export class FFmpegError extends BaseError {
   constructor(reason: string, context?: Record<string, unknown>) {
-    super('FFmpeg', reason, context);
-    this.errorCode = 'FFMPEG_ERROR';
+    super(`External service 'FFmpeg' failed: ${reason}`, 503, 'FFMPEG_ERROR', true, {
+      service: 'FFmpeg',
+      reason,
+      ...context,
+    });
   }
 }
 
 /**
  * Error thrown when network/API communication fails
  */
-export class NetworkError extends ExternalServiceError {
+export class NetworkError extends BaseError {
   constructor(endpoint: string, reason: string, context?: Record<string, unknown>) {
-    super(`Network request to ${endpoint}`, reason, context);
-    this.errorCode = 'NETWORK_ERROR';
+    super(
+      `External service 'Network request to ${endpoint}' failed: ${reason}`,
+      503,
+      'NETWORK_ERROR',
+      true,
+      {
+        service: `Network request to ${endpoint}`,
+        endpoint,
+        reason,
+        ...context,
+      }
+    );
   }
 }
