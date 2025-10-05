@@ -1,5 +1,5 @@
-import { LicenseTier } from '@bitbonsai/shared-models';
 import { ApiProperty } from '@nestjs/swagger';
+import { LicenseTier } from '@prisma/client';
 import { LicenseFeatureDto } from './license-feature.dto';
 
 export class LicenseDto {

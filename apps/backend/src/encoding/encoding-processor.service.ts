@@ -249,13 +249,20 @@ export class EncodingProcessorService {
       }
 
       // Perform encoding
+      // Parse advancedSettings from Prisma Json type
+      const advancedSettings = policy.advancedSettings as Record<string, unknown> | null;
+      const hwaccel =
+        advancedSettings && typeof advancedSettings === 'object' && 'hwaccel' in advancedSettings
+          ? String(advancedSettings.hwaccel)
+          : 'auto';
+
       await this.ffmpegService.encode(job.id, {
         inputPath: job.filePath,
         outputPath: tmpPath,
         targetCodec: policy.targetCodec,
         targetQuality: policy.targetQuality,
-        hwAccel: policy.advancedSettings?.hwaccel || 'auto',
-        advancedSettings: policy.advancedSettings,
+        hwAccel: hwaccel,
+        advancedSettings: advancedSettings ?? undefined,
       });
 
       // Verify output if enabled
