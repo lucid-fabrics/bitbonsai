@@ -1,9 +1,9 @@
 import { basename, extname } from 'node:path';
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import type { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { FSWatcher } from 'chokidar';
 import * as chokidar from 'chokidar';
-import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 interface WatcherInstance {
   watcher: FSWatcher;
