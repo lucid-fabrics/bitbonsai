@@ -3,7 +3,7 @@ import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@ne
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { FSWatcher } from 'chokidar';
 import * as chokidar from 'chokidar';
-import { PrismaService } from '../prisma/prisma.service';
+import type { PrismaService } from '../prisma/prisma.service';
 
 interface WatcherInstance {
   watcher: FSWatcher;

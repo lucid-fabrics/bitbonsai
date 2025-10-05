@@ -1,6 +1,6 @@
 import { Injectable, type NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
-import { LoggerService } from './logger.service';
+import type { LoggerService } from './logger.service';
 
 /**
  * Middleware for logging HTTP requests and responses
