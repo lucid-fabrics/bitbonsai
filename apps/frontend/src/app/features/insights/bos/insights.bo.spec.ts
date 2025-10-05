@@ -2,54 +2,35 @@ import { SavingsTrendBO } from './insights.bo';
 
 describe('SavingsTrendBO', () => {
   describe('constructor and mapping', () => {
-    it('should create instance from model', () => {
-      const mockModel = {
-        id: '1',
-        name: 'Test',
-        createdAt: new Date('2025-01-01'),
-      };
+    it('should create instance with date and savingsGB', () => {
+      const bo = new SavingsTrendBO('2025-01-15', 125.5);
 
-      const bo = new SavingsTrendBO(mockModel);
-
-      expect(bo.id).toBe('1');
-      expect(bo.name).toBe('Test');
-      expect(bo.createdAt).toEqual(new Date('2025-01-01'));
+      expect(bo.date).toBe('2025-01-15');
+      expect(bo.savingsGB).toBe(125.5);
     });
 
-    it('should handle missing optional fields', () => {
-      const mockModel = {
-        id: '1',
-        name: 'Test',
-      };
+    it('should create from DTO using fromDto', () => {
+      const dto = { date: '2025-01-15', savingsGB: 125.5 };
+      const bo = SavingsTrendBO.fromDto(dto);
 
-      const bo = new SavingsTrendBO(mockModel as never);
-
-      expect(bo.id).toBe('1');
-      expect(bo.name).toBe('Test');
-    });
-
-    it('should handle null/undefined values gracefully', () => {
-      const mockModel = {
-        id: '1',
-        name: null,
-      };
-
-      expect(() => new SavingsTrendBO(mockModel as never)).not.toThrow();
+      expect(bo.date).toBe('2025-01-15');
+      expect(bo.savingsGB).toBe(125.5);
     });
   });
 
-  describe('business logic methods', () => {
-    it('should provide formatted data', () => {
-      const mockModel = {
-        id: '1',
-        name: 'Test',
-        createdAt: new Date('2025-01-01'),
-      };
+  describe('formatDate', () => {
+    it('should format date as "MMM D"', () => {
+      const bo = new SavingsTrendBO('2025-01-15', 100);
+      const formatted = bo.formatDate();
 
-      const bo = new SavingsTrendBO(mockModel);
+      expect(formatted).toBe('Jan 15');
+    });
 
-      // TODO: Add tests for formatted properties and business logic methods
-      expect(bo).toBeDefined();
+    it('should handle different months', () => {
+      const bo = new SavingsTrendBO('2025-06-28', 100);
+      const formatted = bo.formatDate();
+
+      expect(formatted).toBe('Jun 28');
     });
   });
 });
