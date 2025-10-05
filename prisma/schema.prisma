@@ -60,6 +60,8 @@ enum AccelerationType {
 enum MediaType {
   MOVIE
   TV_SHOW
+  ANIME
+  ANIME_MOVIE
   MIXED
   OTHER
 }
