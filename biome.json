@@ -64,6 +64,7 @@
         },
         "useFilenamingConvention": "off",
         "useForOf": "warn",
+        "useImportType": "off",
         "useNodejsImportProtocol": "off",
         "useSingleVarDeclarator": "warn",
         "useTemplate": "warn"

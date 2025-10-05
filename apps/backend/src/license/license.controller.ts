@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestj
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { CreateLicenseDto } from './dto/create-license.dto';
 import type { ValidateLicenseDto } from './dto/validate-license.dto';
-import type { LicenseService } from './license.service';
+import { LicenseService } from './license.service';
 
 /**
  * LicenseController
