@@ -3,7 +3,7 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
 import { InsightsService } from '../services/insights.service';
-import * as insightsActions from './insights.actions';
+import { InsightsActions } from './insights.actions';
 import { InsightsEffects } from './insights.effects';
 
 describe('InsightsEffects', () => {
@@ -12,19 +12,18 @@ describe('InsightsEffects', () => {
   let service: jest.Mocked<InsightsService>;
 
   beforeEach(() => {
-    const serviceSpy = {
-      getAll: jest.fn(),
-      getById: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as jest.Mocked<InsightsService>;
+    const serviceMock = {
+      getSavingsTrend: jest.fn(),
+      getCodecDistribution: jest.fn(),
+      getNodePerformance: jest.fn(),
+      getStats: jest.fn(),
+    } as unknown as jest.Mocked<InsightsService>;
 
     TestBed.configureTestingModule({
       providers: [
         InsightsEffects,
         provideMockActions(() => actions$),
-        { provide: InsightsService, useValue: serviceSpy },
+        { provide: InsightsService, useValue: serviceMock },
       ],
     });
 
@@ -38,26 +37,31 @@ describe('InsightsEffects', () => {
 
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', name: 'Test' }] as never;
-      service.getAll.and.returnValue(of(mockData));
+      const mockData = {
+        totalJobsCompleted: 100,
+        totalStorageSavedGB: 50,
+        averageSuccessRate: 95,
+        averageThroughput: 10,
+      } as never;
+      service.getStats.mockReturnValue(of(mockData));
 
-      actions$ = of(insightsActions.load());
+      actions$ = of(InsightsActions.loadStats());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(insightsActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadStats$.subscribe((action) => {
+        expect(action.type).toBe(InsightsActions.loadStatsSuccess.type);
+        expect(service.getStats).toHaveBeenCalled();
         done();
       });
     });
 
     it('should return loadFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      service.getStats.mockReturnValue(throwError(() => error));
 
-      actions$ = of(insightsActions.load());
+      actions$ = of(InsightsActions.loadStats());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(insightsActions.loadFailure.type);
+      effects.loadStats$.subscribe((action) => {
+        expect(action.type).toBe(InsightsActions.loadStatsFailure.type);
         done();
       });
     });

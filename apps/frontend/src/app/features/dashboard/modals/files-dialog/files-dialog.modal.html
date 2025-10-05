@@ -10,18 +10,18 @@
 
       <div class="dialog-info">
         <div class="info-item">
-          <strong>Folder:</strong> {{ folderName }}
+          <strong>Folder:</strong> {{ folderName() }}
         </div>
         <div class="info-item">
-          <strong>Codec:</strong> {{ codec.toUpperCase() }}
+          <strong>Codec:</strong> {{ codec().toUpperCase() }}
         </div>
         <div class="info-item">
-          <strong>Total Files:</strong> {{ files.length }}
+          <strong>Total Files:</strong> {{ files().length }}
         </div>
       </div>
 
       <div class="dialog-content">
-        @if (files.length === 0) {
+        @if (files().length === 0) {
           <div class="empty-state">
             <p>No files found matching the criteria.</p>
           </div>
@@ -34,7 +34,7 @@
               <div class="col-codec">Codec</div>
             </div>
             <div class="table-body">
-              @for (file of files; track file.filePath) {
+              @for (file of files(); track file.filePath) {
                 <div class="table-row">
                   <div class="col-filename" [title]="file.filePath">
                     {{ file.fileName }}

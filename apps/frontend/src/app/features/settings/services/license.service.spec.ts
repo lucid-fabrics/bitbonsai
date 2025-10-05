@@ -1,27 +1,19 @@
+import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { LicenseBo } from '../bos/license.service';
-import { LicenseClient, LicenseService } from './license.service';
+import { LicenseService } from './license.service';
 
 describe('LicenseService', () => {
   let service: LicenseService;
-  let client: jasmine.SpyObj<LicenseClient>;
+  let httpClient: jest.Mocked<HttpClient>;
 
   beforeEach(() => {
-    const clientSpy = jasmine.createSpyObj('LicenseClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
-
     TestBed.configureTestingModule({
-      providers: [LicenseService, { provide: LicenseClient, useValue: clientSpy }],
+      providers: [LicenseService, provideHttpClient()],
     });
 
     service = TestBed.inject(LicenseService);
-    client = TestBed.inject(LicenseClient) as jasmine.SpyObj<LicenseClient>;
+    httpClient = TestBed.inject(HttpClient) as jest.Mocked<HttpClient>;
   });
 
   it('should be created', () => {
@@ -29,22 +21,22 @@ describe('LicenseService', () => {
   });
 
   describe('data retrieval', () => {
-    it('should transform client responses to BOs', (done) => {
-      const mockData = { id: '1', name: 'Test' };
-      client.getAll.and.returnValue(of([mockData]));
+    it('should get current license', (done) => {
+      const mockData = { key: 'test-key', status: 'active', expiresAt: '2025-12-31' } as never;
+      jest.spyOn(httpClient, 'get').mockReturnValue(of(mockData));
 
-      service.getAll().subscribe((result) => {
-        expect(result[0]).toBeInstanceOf(LicenseBo);
-        expect(client.getAll).toHaveBeenCalled();
+      service.getCurrentLicense().subscribe((result) => {
+        expect(result).toBeDefined();
+        expect(httpClient.get).toHaveBeenCalled();
         done();
       });
     });
 
-    it('should handle errors from client', (done) => {
-      const error = new Error('Client error');
-      client.getAll.and.returnValue(throwError(() => error));
+    it('should handle errors from HTTP client', (done) => {
+      const error = new Error('HTTP error');
+      jest.spyOn(httpClient, 'get').mockReturnValue(throwError(() => error));
 
-      service.getAll().subscribe({
+      service.getCurrentLicense().subscribe({
         error: (err) => {
           expect(err).toBe(error);
           done();

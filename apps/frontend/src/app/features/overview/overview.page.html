@@ -38,14 +38,18 @@
           </div>
         </div>
 
-        <div class="health-card health-card--warning">
+        <div class="health-card" [ngClass]="overviewData()!.system_health.queue_status.encoding_count > 0 ? 'health-card--warning' : 'health-card--success'">
           <div class="health-card__icon">
-            <fa-icon [icon]="icons.queueStatus" [animation]="overviewData()!.system_health.queue_status.encoding_count > 0 ? 'spin' : undefined" size="2x"></fa-icon>
+            <fa-icon
+              [icon]="overviewData()!.system_health.queue_status.encoding_count > 0 ? icons.queueStatus : icons.activeNodes"
+              [animation]="overviewData()!.system_health.queue_status.encoding_count > 0 ? 'spin' : undefined"
+              size="2x">
+            </fa-icon>
           </div>
           <div class="health-card__content">
             <h3 class="health-card__title">Queue Status</h3>
             <p class="health-card__value">
-              {{ overviewData()!.system_health.queue_status.encoding_count }} encoding
+              {{ overviewData()!.system_health.queue_status.encoding_count > 0 ? overviewData()!.system_health.queue_status.encoding_count + ' encoding' : 'Idle' }}
             </p>
           </div>
         </div>
@@ -57,7 +61,7 @@
           <div class="health-card__content">
             <h3 class="health-card__title">Storage Saved</h3>
             <p class="health-card__value">
-              {{ overviewData()!.system_health.storage_saved.total_tb }} TB
+              {{ formatStorageSaved(overviewData()!.system_health.storage_saved.total_tb) }}
             </p>
           </div>
         </div>

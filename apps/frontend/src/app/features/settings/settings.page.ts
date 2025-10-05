@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
+import { Component, inject, type OnInit } from '@angular/core';
 import {
   FormBuilder,
   type FormControl,
@@ -22,7 +22,6 @@ type SettingsTab = 'license' | 'environment' | 'system' | 'advanced';
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsComponent implements OnInit {
   private readonly licenseService = inject(LicenseService);

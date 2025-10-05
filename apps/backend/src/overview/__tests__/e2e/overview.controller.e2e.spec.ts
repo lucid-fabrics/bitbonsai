@@ -9,7 +9,8 @@ import { PrismaService } from '../../../prisma/prisma.service';
  * E2E tests for Overview Controller
  *
  * Tests cover:
- * - Dashboard statistics aggregation
+ * - GET /api/v1/overview endpoint
+ * - Dashboard statistics aggregation in snake_case format
  * - Active/completed job counts
  * - Storage savings calculations
  * - Recent activity feeds
@@ -79,9 +80,11 @@ describe('OverviewController (E2E)', () => {
     testPolicy = await prisma.policy.create({
       data: {
         name: 'Overview Test Policy',
+        preset: 'BALANCED_HEVC',
         targetCodec: 'HEVC',
-        crf: 23,
-        preset: 'medium',
+        targetQuality: 23,
+        deviceProfiles: {},
+        advancedSettings: {},
         libraryId: testLibrary.id,
       },
     });
@@ -101,273 +104,69 @@ describe('OverviewController (E2E)', () => {
     await prisma.job.deleteMany({});
   });
 
-  describe('GET /api/v1/overview/stats', () => {
-    it('should return zero stats when no data exists', () => {
+  describe('GET /api/v1/overview', () => {
+    it('should return overview with snake_case field names', () => {
       return request(app.getHttpServer())
-        .get('/api/v1/overview/stats')
+        .get('/api/v1/overview')
         .expect(200)
         .expect((res) => {
-          expect(res.body.activeJobs).toBe(0);
-          expect(res.body.completedJobs).toBe(0);
-          expect(res.body.totalStorageSavedGB).toBe(0);
-          expect(res.body.onlineNodes).toBeDefined();
-          expect(res.body.totalNodes).toBeDefined();
+          // Verify snake_case structure
+          expect(res.body).toHaveProperty('system_health');
+          expect(res.body).toHaveProperty('queue_summary');
+          expect(res.body).toHaveProperty('recent_activity');
+          expect(res.body).toHaveProperty('top_libraries');
+          expect(res.body).toHaveProperty('last_updated');
+
+          // Verify nested snake_case fields
+          expect(res.body.system_health).toHaveProperty('active_nodes');
+          expect(res.body.system_health).toHaveProperty('queue_status');
+          expect(res.body.system_health).toHaveProperty('storage_saved');
+          expect(res.body.system_health).toHaveProperty('success_rate');
         });
     });
 
-    it('should count active jobs correctly', async () => {
-      await prisma.job.createMany({
-        data: [
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
-            nodeId: testNode.id,
-            filePath: '/test/queued.mp4',
-            stage: 'QUEUED',
-          },
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
-            nodeId: testNode.id,
-            filePath: '/test/encoding.mp4',
-            stage: 'ENCODING',
-          },
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
-            nodeId: testNode.id,
-            filePath: '/test/completed.mp4',
-            stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
-            completedAt: new Date(),
-          },
-        ],
-      });
-
+    it('should return empty arrays when no jobs exist', () => {
       return request(app.getHttpServer())
-        .get('/api/v1/overview/stats')
+        .get('/api/v1/overview')
         .expect(200)
         .expect((res) => {
-          expect(res.body.activeJobs).toBe(2); // QUEUED + ENCODING
-          expect(res.body.completedJobs).toBe(1);
-          expect(res.body.totalStorageSavedGB).toBeCloseTo(0.5, 1); // 500MB saved
+          expect(res.body.recent_activity).toEqual([]);
+          expect(res.body.top_libraries).toEqual([]);
+          expect(res.body.queue_summary.queued).toBe(0);
+          expect(res.body.queue_summary.encoding).toBe(0);
+          expect(res.body.queue_summary.completed).toBe(0);
+          expect(res.body.queue_summary.failed).toBe(0);
         });
     });
 
-    it('should count online nodes', async () => {
+    it('should include active node counts', async () => {
       await prisma.node.update({
         where: { id: testNode.id },
         data: { status: 'ONLINE' },
       });
 
       return request(app.getHttpServer())
-        .get('/api/v1/overview/stats')
+        .get('/api/v1/overview')
         .expect(200)
         .expect((res) => {
-          expect(res.body.onlineNodes).toBeGreaterThanOrEqual(1);
-          expect(res.body.totalNodes).toBeGreaterThanOrEqual(1);
+          expect(res.body.system_health.active_nodes.current).toBeGreaterThanOrEqual(1);
+          expect(res.body.system_health.active_nodes.total).toBeGreaterThanOrEqual(1);
         });
     });
 
-    it('should calculate total storage saved', async () => {
+    it('should aggregate queue summary correctly', async () => {
       await prisma.job.createMany({
         data: [
           {
             libraryId: testLibrary.id,
             policyId: testPolicy.id,
             nodeId: testNode.id,
-            filePath: '/test/video1.mp4',
-            stage: 'COMPLETED',
-            originalSize: 2000000000, // 2GB
-            finalSize: 1000000000, // 1GB saved
-            completedAt: new Date(),
-          },
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
-            nodeId: testNode.id,
-            filePath: '/test/video2.mp4',
-            stage: 'COMPLETED',
-            originalSize: 4000000000, // 4GB
-            finalSize: 2000000000, // 2GB saved
-            completedAt: new Date(),
-          },
-        ],
-      });
-
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/stats')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.totalStorageSavedGB).toBeCloseTo(3, 0); // 1GB + 2GB
-        });
-    });
-
-    it('should not count failed jobs in storage savings', async () => {
-      await prisma.job.createMany({
-        data: [
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
-            nodeId: testNode.id,
-            filePath: '/test/completed.mp4',
-            stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
-            completedAt: new Date(),
-          },
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
-            nodeId: testNode.id,
-            filePath: '/test/failed.mp4',
-            stage: 'FAILED',
-            error: 'Test error',
-            completedAt: new Date(),
-          },
-        ],
-      });
-
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/stats')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.completedJobs).toBe(1);
-          expect(res.body.totalStorageSavedGB).toBeCloseTo(0.5, 1);
-        });
-    });
-  });
-
-  describe('GET /api/v1/overview/recent-activity', () => {
-    it('should return empty array when no jobs exist', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/recent-activity')
-        .expect(200)
-        .expect([]);
-    });
-
-    it('should return recent jobs with limit', async () => {
-      await prisma.job.createMany({
-        data: Array.from({ length: 15 }, (_, i) => ({
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: `/test/video${i}.mp4`,
-          stage: 'COMPLETED',
-          originalSize: 1000000000,
-          finalSize: 500000000,
-          completedAt: new Date(Date.now() - i * 1000),
-        })),
-      });
-
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/recent-activity?limit=10')
-        .expect(200)
-        .expect((res) => {
-          expect(Array.isArray(res.body)).toBe(true);
-          expect(res.body.length).toBe(10);
-          expect(res.body[0]).toHaveProperty('id');
-          expect(res.body[0]).toHaveProperty('filePath');
-          expect(res.body[0]).toHaveProperty('stage');
-          expect(res.body[0]).toHaveProperty('library');
-          expect(res.body[0]).toHaveProperty('policy');
-        });
-    });
-
-    it('should order by most recent first', async () => {
-      const oldJob = await prisma.job.create({
-        data: {
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: '/test/old.mp4',
-          stage: 'COMPLETED',
-          originalSize: 1000000000,
-          finalSize: 500000000,
-          completedAt: new Date(Date.now() - 10000),
-        },
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      const newJob = await prisma.job.create({
-        data: {
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: '/test/new.mp4',
-          stage: 'COMPLETED',
-          originalSize: 1000000000,
-          finalSize: 500000000,
-          completedAt: new Date(),
-        },
-      });
-
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/recent-activity')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body[0].id).toBe(newJob.id);
-          expect(res.body[1].id).toBe(oldJob.id);
-        });
-    });
-
-    it('should include library and policy information', async () => {
-      await prisma.job.create({
-        data: {
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: '/test/video.mp4',
-          stage: 'COMPLETED',
-          originalSize: 1000000000,
-          finalSize: 500000000,
-          completedAt: new Date(),
-        },
-      });
-
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/recent-activity')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body[0].library).toBeDefined();
-          expect(res.body[0].policy).toBeDefined();
-          expect(res.body[0].library.name).toBe(testLibrary.name);
-          expect(res.body[0].policy.name).toBe(testPolicy.name);
-        });
-    });
-
-    it('should respect default limit of 20', async () => {
-      await prisma.job.createMany({
-        data: Array.from({ length: 30 }, (_, i) => ({
-          libraryId: testLibrary.id,
-          policyId: testPolicy.id,
-          nodeId: testNode.id,
-          filePath: `/test/video${i}.mp4`,
-          stage: 'COMPLETED',
-          originalSize: 1000000000,
-          finalSize: 500000000,
-          completedAt: new Date(),
-        })),
-      });
-
-      return request(app.getHttpServer())
-        .get('/api/v1/overview/recent-activity')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.length).toBeLessThanOrEqual(20);
-        });
-    });
-
-    it('should include jobs of all stages', async () => {
-      await prisma.job.createMany({
-        data: [
-          {
-            libraryId: testLibrary.id,
-            policyId: testPolicy.id,
             filePath: '/test/queued.mp4',
             stage: 'QUEUED',
+            fileLabel: 'queued.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(2000000000),
           },
           {
             libraryId: testLibrary.id,
@@ -375,6 +174,10 @@ describe('OverviewController (E2E)', () => {
             nodeId: testNode.id,
             filePath: '/test/encoding.mp4',
             stage: 'ENCODING',
+            fileLabel: 'encoding.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(2000000000),
           },
           {
             libraryId: testLibrary.id,
@@ -382,8 +185,13 @@ describe('OverviewController (E2E)', () => {
             nodeId: testNode.id,
             filePath: '/test/completed.mp4',
             stage: 'COMPLETED',
-            originalSize: 1000000000,
-            finalSize: 500000000,
+            fileLabel: 'completed.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(2000000000),
+            afterSizeBytes: BigInt(1000000000),
+            savedBytes: BigInt(1000000000),
+            savedPercent: 50.0,
             completedAt: new Date(),
           },
           {
@@ -392,22 +200,167 @@ describe('OverviewController (E2E)', () => {
             nodeId: testNode.id,
             filePath: '/test/failed.mp4',
             stage: 'FAILED',
+            fileLabel: 'failed.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(2000000000),
             error: 'Test error',
-            completedAt: new Date(),
           },
         ],
       });
 
       return request(app.getHttpServer())
-        .get('/api/v1/overview/recent-activity')
+        .get('/api/v1/overview')
         .expect(200)
         .expect((res) => {
-          expect(res.body.length).toBe(4);
-          const stages = res.body.map((job: { stage: string }) => job.stage);
-          expect(stages).toContain('QUEUED');
-          expect(stages).toContain('ENCODING');
-          expect(stages).toContain('COMPLETED');
-          expect(stages).toContain('FAILED');
+          expect(res.body.queue_summary.queued).toBe(1);
+          expect(res.body.queue_summary.encoding).toBe(1);
+          expect(res.body.queue_summary.completed).toBe(1);
+          expect(res.body.queue_summary.failed).toBe(1);
+          expect(res.body.system_health.queue_status.encoding_count).toBe(1);
+        });
+    });
+
+    it('should include recent activity with snake_case fields', async () => {
+      await prisma.job.create({
+        data: {
+          libraryId: testLibrary.id,
+          policyId: testPolicy.id,
+          nodeId: testNode.id,
+          filePath: '/test/movie.mp4',
+          stage: 'COMPLETED',
+          fileLabel: 'The Matrix (1999).mkv',
+          sourceCodec: 'H.264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(2000000000),
+          afterSizeBytes: BigInt(1000000000),
+          savedBytes: BigInt(1000000000),
+          savedPercent: 50.0,
+          completedAt: new Date(),
+        },
+      });
+
+      return request(app.getHttpServer())
+        .get('/api/v1/overview')
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.recent_activity).toHaveLength(1);
+          expect(res.body.recent_activity[0]).toHaveProperty('id');
+          expect(res.body.recent_activity[0]).toHaveProperty('file_name');
+          expect(res.body.recent_activity[0]).toHaveProperty('library');
+          expect(res.body.recent_activity[0]).toHaveProperty('codec_change');
+          expect(res.body.recent_activity[0]).toHaveProperty('savings_gb');
+          expect(res.body.recent_activity[0]).toHaveProperty('duration_seconds');
+          expect(res.body.recent_activity[0]).toHaveProperty('completed_at');
+
+          expect(res.body.recent_activity[0].file_name).toBe('The Matrix (1999).mkv');
+          expect(res.body.recent_activity[0].library).toBe(testLibrary.name);
+          expect(res.body.recent_activity[0].codec_change).toBe('H.264 → HEVC');
+        });
+    });
+
+    it('should include top libraries with snake_case fields', async () => {
+      await prisma.job.createMany({
+        data: Array.from({ length: 5 }, (_, i) => ({
+          libraryId: testLibrary.id,
+          policyId: testPolicy.id,
+          nodeId: testNode.id,
+          filePath: `/test/video${i}.mp4`,
+          stage: 'COMPLETED',
+          fileLabel: `video${i}.mp4`,
+          sourceCodec: 'H.264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(2000000000),
+          afterSizeBytes: BigInt(1000000000),
+          savedBytes: BigInt(1000000000),
+          savedPercent: 50.0,
+          completedAt: new Date(),
+        })),
+      });
+
+      return request(app.getHttpServer())
+        .get('/api/v1/overview')
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.top_libraries).toHaveLength(1);
+          expect(res.body.top_libraries[0]).toHaveProperty('name');
+          expect(res.body.top_libraries[0]).toHaveProperty('job_count');
+          expect(res.body.top_libraries[0]).toHaveProperty('total_savings_gb');
+
+          expect(res.body.top_libraries[0].name).toBe(testLibrary.name);
+          expect(res.body.top_libraries[0].job_count).toBe(5);
+        });
+    });
+
+    it('should calculate storage saved in TB correctly', async () => {
+      // Create jobs with 1TB total savings
+      await prisma.job.createMany({
+        data: Array.from({ length: 10 }, (_, i) => ({
+          libraryId: testLibrary.id,
+          policyId: testPolicy.id,
+          nodeId: testNode.id,
+          filePath: `/test/video${i}.mp4`,
+          stage: 'COMPLETED',
+          fileLabel: `video${i}.mp4`,
+          sourceCodec: 'H.264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(200000000000), // 200GB each
+          afterSizeBytes: BigInt(100000000000), // 100GB each
+          savedBytes: BigInt(100000000000), // 100GB saved each
+          savedPercent: 50.0,
+          completedAt: new Date(),
+        })),
+      });
+
+      return request(app.getHttpServer())
+        .get('/api/v1/overview')
+        .expect(200)
+        .expect((res) => {
+          // 10 jobs * 100GB = 1000GB = ~0.93TB
+          expect(res.body.system_health.storage_saved.total_tb).toBeGreaterThan(0.9);
+          expect(res.body.system_health.storage_saved.total_tb).toBeLessThan(1.0);
+        });
+    });
+
+    it('should calculate success rate correctly', async () => {
+      await prisma.job.createMany({
+        data: [
+          ...Array.from({ length: 95 }, (_, i) => ({
+            libraryId: testLibrary.id,
+            policyId: testPolicy.id,
+            nodeId: testNode.id,
+            filePath: `/test/completed${i}.mp4`,
+            stage: 'COMPLETED' as const,
+            fileLabel: `completed${i}.mp4`,
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
+            afterSizeBytes: BigInt(500000000),
+            savedBytes: BigInt(500000000),
+            savedPercent: 50.0,
+            completedAt: new Date(),
+          })),
+          ...Array.from({ length: 5 }, (_, i) => ({
+            libraryId: testLibrary.id,
+            policyId: testPolicy.id,
+            nodeId: testNode.id,
+            filePath: `/test/failed${i}.mp4`,
+            stage: 'FAILED' as const,
+            fileLabel: `failed${i}.mp4`,
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
+            error: 'Test error',
+          })),
+        ],
+      });
+
+      return request(app.getHttpServer())
+        .get('/api/v1/overview')
+        .expect(200)
+        .expect((res) => {
+          // 95 completed / 100 total = 95% success rate
+          expect(res.body.system_health.success_rate.percentage).toBeCloseTo(95, 0);
         });
     });
   });

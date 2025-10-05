@@ -9,27 +9,27 @@ import { NodesEffects } from './nodes.effects';
 describe('NodesEffects', () => {
   let actions$: Observable<Action>;
   let effects: NodesEffects;
-  let client: jasmine.SpyObj<NodesClient>;
+  let client: jest.Mocked<NodesClient>;
 
   beforeEach(() => {
-    const clientSpy = jasmine.createSpyObj('NodesClient', [
-      'getNodes',
-      'getNode',
-      'register',
-      'pair',
-      'deleteNode',
-    ]);
+    const clientMock = {
+      getNodes: jest.fn(),
+      getNode: jest.fn(),
+      register: jest.fn(),
+      pair: jest.fn(),
+      deleteNode: jest.fn(),
+    } as unknown as jest.Mocked<NodesClient>;
 
     TestBed.configureTestingModule({
       providers: [
         NodesEffects,
         provideMockActions(() => actions$),
-        { provide: NodesClient, useValue: clientSpy },
+        { provide: NodesClient, useValue: clientMock },
       ],
     });
 
     effects = TestBed.inject(NodesEffects);
-    client = TestBed.inject(NodesClient) as jasmine.SpyObj<NodesClient>;
+    client = TestBed.inject(NodesClient) as jest.Mocked<NodesClient>;
   });
 
   it('should be created', () => {
@@ -39,7 +39,7 @@ describe('NodesEffects', () => {
   describe('loadNodes$ effect', () => {
     it('should return loadNodesSuccess action on success', (done) => {
       const mockNodes = [{ id: '1', name: 'Test Node' }] as never;
-      client.getNodes.and.returnValue(of(mockNodes));
+      client.getNodes.mockReturnValue(of(mockNodes));
 
       actions$ = of(NodesActions.loadNodes());
 
@@ -52,7 +52,7 @@ describe('NodesEffects', () => {
 
     it('should return loadNodesFailure action on error', (done) => {
       const error = new Error('Load failed');
-      client.getNodes.and.returnValue(throwError(() => error));
+      client.getNodes.mockReturnValue(throwError(() => error));
 
       actions$ = of(NodesActions.loadNodes());
 

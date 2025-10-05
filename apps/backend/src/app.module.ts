@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { CommonModule } from './common/common.module';
 import { EncodingModule } from './encoding/encoding.module';
 import { FilesystemModule } from './filesystem/filesystem.module';
@@ -19,6 +20,7 @@ import { SettingsModule } from './settings/settings.module';
 @Module({
   imports: [
     EventEmitterModule.forRoot({ global: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     CommonModule,
     HealthModule,

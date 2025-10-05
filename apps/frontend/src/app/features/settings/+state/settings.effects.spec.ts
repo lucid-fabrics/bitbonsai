@@ -1,63 +1,75 @@
+import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
+import { LicenseService } from '../services/license.service';
 import { SettingsService } from '../services/settings.service';
-import * as settingsActions from './settings.actions';
+import { SettingsActions } from './settings.actions';
 import { SettingsEffects } from './settings.effects';
 
 describe('SettingsEffects', () => {
   let actions$: Observable<Action>;
   let effects: SettingsEffects;
-  let service: jasmine.SpyObj<SettingsService>;
+  let service: jest.Mocked<SettingsService>;
+  let licenseService: jest.Mocked<LicenseService>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('SettingsService', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const serviceMock = {
+      getEnvironmentInfo: jest.fn(),
+      getSystemSettings: jest.fn(),
+      updateSystemSettings: jest.fn(),
+      backupDatabase: jest.fn(),
+      resetToDefaults: jest.fn(),
+      regenerateApiKey: jest.fn(),
+    } as unknown as jest.Mocked<SettingsService>;
+
+    const licenseServiceMock = {
+      getCurrentLicense: jest.fn(),
+      activateLicense: jest.fn(),
+    } as unknown as jest.Mocked<LicenseService>;
 
     TestBed.configureTestingModule({
       providers: [
         SettingsEffects,
         provideMockActions(() => actions$),
-        { provide: SettingsService, useValue: serviceSpy },
+        { provide: SettingsService, useValue: serviceMock },
+        { provide: LicenseService, useValue: licenseServiceMock },
+        provideHttpClient(),
       ],
     });
 
     effects = TestBed.inject(SettingsEffects);
-    service = TestBed.inject(SettingsService) as jasmine.SpyObj<SettingsService>;
+    service = TestBed.inject(SettingsService) as jest.Mocked<SettingsService>;
+    licenseService = TestBed.inject(LicenseService) as jest.Mocked<LicenseService>;
   });
 
   it('should be created', () => {
     expect(effects).toBeTruthy();
   });
 
-  describe('load data effect', () => {
-    it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', name: 'Test' }] as never;
-      service.getAll.and.returnValue(of(mockData));
+  describe('load license effect', () => {
+    it('should return loadLicenseSuccess action on success', (done) => {
+      const mockData = { key: 'test-key', status: 'active', expiresAt: '2025-12-31' } as never;
+      licenseService.getCurrentLicense.mockReturnValue(of(mockData));
 
-      actions$ = of(settingsActions.load());
+      actions$ = of(SettingsActions.loadLicense());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(settingsActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadLicense$.subscribe((action) => {
+        expect(action.type).toBe(SettingsActions.loadLicenseSuccess.type);
+        expect(licenseService.getCurrentLicense).toHaveBeenCalled();
         done();
       });
     });
 
-    it('should return loadFailure action on error', (done) => {
+    it('should return loadLicenseFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      licenseService.getCurrentLicense.mockReturnValue(throwError(() => error));
 
-      actions$ = of(settingsActions.load());
+      actions$ = of(SettingsActions.loadLicense());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(settingsActions.loadFailure.type);
+      effects.loadLicense$.subscribe((action) => {
+        expect(action.type).toBe(SettingsActions.loadLicenseFailure.type);
         done();
       });
     });

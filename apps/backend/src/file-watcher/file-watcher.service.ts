@@ -1,5 +1,5 @@
 import { basename, extname } from 'node:path';
-import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { FSWatcher } from 'chokidar';
 import * as chokidar from 'chokidar';

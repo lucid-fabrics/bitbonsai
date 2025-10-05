@@ -98,6 +98,18 @@ export class OverviewComponent implements OnInit, OnDestroy {
     return `${gb.toFixed(2)} GB`;
   }
 
+  formatStorageSaved(tb: number): string {
+    const bytes = tb * 1024 * 1024 * 1024 * 1024; // Convert TB to bytes
+
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes.toFixed(0)} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+
+    return `${tb.toFixed(2)} TB`;
+  }
+
   formatDuration(seconds: number): string {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;

@@ -1,5 +1,5 @@
 import 'zone.js';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -8,6 +8,7 @@ import { provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import { apiErrorInterceptor } from './app/core/interceptors/api-error.interceptor';
 import { MediaStatsEffects } from './app/features/dashboard/+state/dashboard.effects';
 import { mediaStatsReducer } from './app/features/dashboard/+state/dashboard.reducer';
 import { InsightsEffects } from './app/features/insights/+state/insights.effects';
@@ -28,7 +29,7 @@ import { settingsReducer } from './app/features/settings/+state/settings.reducer
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([apiErrorInterceptor])),
     provideAnimations(),
     provideStore({
       mediaStats: mediaStatsReducer,

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, type OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, type OnInit } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-solid-svg-icons';
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
@@ -238,7 +238,10 @@ export class InsightsComponent implements OnInit {
     },
   };
 
-  constructor(private readonly insightsService: InsightsService) {}
+  constructor(
+    private readonly insightsService: InsightsService,
+    private readonly cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     this.loadAllData();
@@ -251,6 +254,7 @@ export class InsightsComponent implements OnInit {
 
   private loadAllData(): void {
     this.loading = true;
+    this.cdr.markForCheck();
 
     Promise.all([
       this.loadSavingsTrend(),
@@ -259,6 +263,7 @@ export class InsightsComponent implements OnInit {
       this.loadStats(),
     ]).finally(() => {
       this.loading = false;
+      this.cdr.markForCheck();
     });
   }
 
@@ -272,6 +277,7 @@ export class InsightsComponent implements OnInit {
         currentData.labels = data.map((d) => d.formatDate());
         currentData.datasets[0].data = data.map((d) => d.savingsGB);
         this.savingsTrendData = { ...currentData };
+        this.cdr.markForCheck();
       }
     } catch (error) {
       console.error('Failed to load savings trend:', error);
@@ -280,6 +286,7 @@ export class InsightsComponent implements OnInit {
       currentData.labels = [];
       currentData.datasets[0].data = [];
       this.savingsTrendData = { ...currentData };
+      this.cdr.markForCheck();
     }
   }
 
@@ -292,6 +299,7 @@ export class InsightsComponent implements OnInit {
         currentData.labels = data.map((d) => d.codec);
         currentData.datasets[0].data = data.map((d) => d.percentage);
         this.codecDistributionData = { ...currentData };
+        this.cdr.markForCheck();
       }
     } catch (error) {
       console.error('Failed to load codec distribution:', error);
@@ -300,6 +308,7 @@ export class InsightsComponent implements OnInit {
       currentData.labels = [];
       currentData.datasets[0].data = [];
       this.codecDistributionData = { ...currentData };
+      this.cdr.markForCheck();
     }
   }
 
@@ -319,6 +328,7 @@ export class InsightsComponent implements OnInit {
         currentData.datasets[0]._rawData = data;
 
         this.nodePerformanceData = { ...currentData };
+        this.cdr.markForCheck();
       }
     } catch (error) {
       console.error('Failed to load node performance:', error);
@@ -328,6 +338,7 @@ export class InsightsComponent implements OnInit {
       currentData.datasets[0].data = [];
       currentData.datasets[0].backgroundColor = [];
       this.nodePerformanceData = { ...currentData };
+      this.cdr.markForCheck();
     }
   }
 
@@ -337,10 +348,12 @@ export class InsightsComponent implements OnInit {
 
       if (data) {
         this.stats = data;
+        this.cdr.markForCheck();
       }
     } catch (error) {
       console.error('Failed to load stats:', error);
       // Keep default stats on error
+      this.cdr.markForCheck();
     }
   }
 

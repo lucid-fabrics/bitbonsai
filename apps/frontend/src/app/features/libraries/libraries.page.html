@@ -1,106 +1,102 @@
 <div class="libraries-container">
-  @if (libraries$ | async; as libraries) {
-    @if (isLoading$ | async; as isLoading) {
-      @if (nodes$ | async; as nodes) {
-        @if (error$ | async; as error) {
-          <!-- Header Section -->
-          <div class="page-header">
-            <div class="header-content">
-              <div class="header-left">
-                <h1>Libraries</h1>
-                <p class="subtitle">Configure and manage media libraries</p>
-              </div>
-              <div class="header-right">
-                @if (!isLoading) {
-                  <div class="library-count">
-                    <i class="fas fa-folder-open"></i>
-                    <span>{{ libraries.length }} {{ libraries.length === 1 ? 'Library' : 'Libraries' }}</span>
-                  </div>
-                }
-                <button class="btn btn-primary" (click)="onAddLibrary()">
-                  <i class="fas fa-plus"></i>
-                  Add Library
-                </button>
-              </div>
-            </div>
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>Libraries</h1>
+        <p class="subtitle">Configure and manage media libraries</p>
+      </div>
+      <div class="header-right">
+        @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
+          <div class="library-count">
+            <i class="fas fa-folder-open"></i>
+            <span>{{ libraries.length }} {{ libraries.length === 1 ? 'Library' : 'Libraries' }}</span>
           </div>
-
-          <!-- Error Alert -->
-          @if (error) {
-            <div class="error-alert">
-              <i class="fas fa-exclamation-circle"></i>
-              <span>{{ error }}</span>
-            </div>
-          }
-
-          <!-- Loading State -->
-          @if (isLoading) {
-            <div class="loading-state">
-              <i class="fas fa-spinner fa-spin"></i>
-              <p>Loading libraries...</p>
-            </div>
-          }
-
-          <!-- Empty State -->
-          @if (!isLoading && libraries.length === 0) {
-            <div class="empty-state">
-              <div class="empty-icon">
-                <i class="fas fa-folder-open"></i>
-              </div>
-              <h2>No Libraries Yet</h2>
-              <p class="empty-description">
-                Libraries are collections of media files that BitBonsai monitors and optimizes.
-                Think of them as folders containing your videos that need encoding.
-              </p>
-
-              <div class="getting-started">
-                <h3>Getting Started:</h3>
-                <ol>
-                  <li>Click the "Add Your First Library" button below</li>
-                  <li>Choose a name for your library (e.g., "Movies", "TV Shows")</li>
-                  <li>Select the folder path containing your media files</li>
-                  <li>Pick a node to handle the encoding work</li>
-                  <li>Enable file watching to automatically detect new files</li>
-                </ol>
-              </div>
-
-              <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
-                <i class="fas fa-plus"></i>
-                Add Your First Library
-              </button>
-            </div>
-          }
-
-          <!-- Libraries Grid -->
-          @if (!isLoading && libraries.length > 0) {
-            <div class="libraries-grid">
-              @for (library of libraries; track library.id) {
-                <app-library-card
-                  [library]="library"
-                  (edit)="onEditLibrary($event)"
-                  (scan)="onScanLibrary($event)"
-                  (delete)="onDeleteLibrary($event)"
-                  (toggleWatch)="onToggleWatch($event)"
-                />
-              }
-            </div>
-          }
-
-          <!-- Library Form Modal -->
-          @if (showForm) {
-            <div class="modal-backdrop" (click)="onFormCancel()">
-              <div class="modal-container" (click)="$event.stopPropagation()">
-                <app-library-form
-                  [library]="selectedLibrary"
-                  [nodes]="nodes"
-                  (formSubmit)="onFormSubmit($event)"
-                  (formCancel)="onFormCancel()"
-                />
-              </div>
-            </div>
-          }
         }
-      }
+        <button class="btn btn-primary" (click)="onAddLibrary()">
+          <i class="fas fa-plus"></i>
+          Add Library
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (error$ | async; as error) {
+    <div class="error-alert">
+      <i class="fas fa-exclamation-circle"></i>
+      <span>{{ error }}</span>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading$ | async) {
+    <div class="loading-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Loading libraries...</p>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
+    @if (libraries.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="fas fa-folder-open"></i>
+        </div>
+        <h2>No Libraries Yet</h2>
+        <p class="empty-description">
+          Libraries are collections of media files that BitBonsai monitors and optimizes.
+          Think of them as folders containing your videos that need encoding.
+        </p>
+
+        <div class="getting-started">
+          <h3>Getting Started:</h3>
+          <ol>
+            <li>Click the "Add Your First Library" button below</li>
+            <li>Choose a name for your library (e.g., "Movies", "TV Shows")</li>
+            <li>Select the folder path containing your media files</li>
+            <li>Pick a node to handle the encoding work</li>
+            <li>Enable file watching to automatically detect new files</li>
+          </ol>
+        </div>
+
+        <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
+          <i class="fas fa-plus"></i>
+          Add Your First Library
+        </button>
+      </div>
     }
+  }
+
+  <!-- Libraries Grid -->
+  @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
+    @if (libraries.length > 0) {
+      <div class="libraries-grid">
+        @for (library of libraries; track library.id) {
+          <app-library-card
+            [library]="library"
+            (edit)="onEditLibrary($event)"
+            (scan)="onScanLibrary($event)"
+            (delete)="onDeleteLibrary($event)"
+            (toggleWatch)="onToggleWatch($event)"
+          />
+        }
+      </div>
+    }
+  }
+
+  <!-- Library Form Modal -->
+  @if (showForm && (nodes$ | async); as nodes) {
+    <div class="modal-backdrop" (click)="onFormCancel()">
+      <div class="modal-container" (click)="$event.stopPropagation()">
+        <app-library-form
+          [library]="selectedLibrary"
+          [nodes]="nodes"
+          (formSubmit)="onFormSubmit($event)"
+          (formCancel)="onFormCancel()"
+        />
+      </div>
+    </div>
   }
 </div>

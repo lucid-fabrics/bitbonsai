@@ -5,7 +5,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { OverviewStatsDto } from './dto/overview-stats.dto';
+import { OverviewResponseDto } from './dto/overview-response.dto';
 import { OverviewService } from './overview.service';
 
 /**
@@ -25,8 +25,8 @@ export class OverviewController {
    * This endpoint provides all key metrics needed for the BitBonsai dashboard
    * in a single optimized API call. It aggregates:
    *
-   * - **System Health**: Node status, storage capacity and utilization
-   * - **Queue Statistics**: Job counts by stage (queued, encoding, completed, failed)
+   * - **System Health**: Active nodes, queue status, storage saved, success rate
+   * - **Queue Summary**: Job counts by stage (queued, encoding, completed, failed)
    * - **Recent Activity**: Last 10 completed jobs with savings details
    * - **Top Libraries**: Top 5 libraries by job count with performance metrics
    *
@@ -38,8 +38,8 @@ export class OverviewController {
     description:
       'Returns aggregated metrics for the BitBonsai dashboard in a single optimized API call.\n\n' +
       '**Included Metrics**:\n' +
-      '- **System Health**: Node status (active/offline), storage capacity and usage\n' +
-      '- **Queue Statistics**: Job counts by stage, total savings across completed jobs\n' +
+      '- **System Health**: Active nodes, queue status, storage saved, success rate\n' +
+      '- **Queue Summary**: Job counts by stage (queued, encoding, completed, failed)\n' +
       '- **Recent Activity**: Last 10 completed jobs with codec info and savings\n' +
       '- **Top Libraries**: Top 5 libraries by job count with performance data\n\n' +
       '**Performance**:\n' +
@@ -50,12 +50,12 @@ export class OverviewController {
   })
   @ApiOkResponse({
     description: 'Overview statistics retrieved successfully',
-    type: OverviewStatsDto,
+    type: OverviewResponseDto,
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while fetching overview statistics',
   })
-  async getOverview(): Promise<OverviewStatsDto> {
-    return this.overviewService.getOverviewStats();
+  async getOverview(): Promise<OverviewResponseDto> {
+    return this.overviewService.getOverview();
   }
 }
