@@ -1,27 +1,19 @@
+import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { SettingsBo } from '../bos/settings.service';
-import { SettingsClient, SettingsService } from './settings.service';
+import { SettingsService } from './settings.service';
 
 describe('SettingsService', () => {
   let service: SettingsService;
-  let client: jasmine.SpyObj<SettingsClient>;
+  let httpClient: jest.Mocked<HttpClient>;
 
   beforeEach(() => {
-    const clientSpy = jasmine.createSpyObj('SettingsClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
-
     TestBed.configureTestingModule({
-      providers: [SettingsService, { provide: SettingsClient, useValue: clientSpy }],
+      providers: [SettingsService, provideHttpClient()],
     });
 
     service = TestBed.inject(SettingsService);
-    client = TestBed.inject(SettingsClient) as jasmine.SpyObj<SettingsClient>;
+    httpClient = TestBed.inject(HttpClient) as jest.Mocked<HttpClient>;
   });
 
   it('should be created', () => {
@@ -29,22 +21,22 @@ describe('SettingsService', () => {
   });
 
   describe('data retrieval', () => {
-    it('should transform client responses to BOs', (done) => {
-      const mockData = { id: '1', name: 'Test' };
-      client.getAll.and.returnValue(of([mockData]));
+    it('should get environment info', (done) => {
+      const mockData = { version: '1.0.0', nodeEnv: 'test' } as never;
+      jest.spyOn(httpClient, 'get').mockReturnValue(of(mockData));
 
-      service.getAll().subscribe((result) => {
-        expect(result[0]).toBeInstanceOf(SettingsBo);
-        expect(client.getAll).toHaveBeenCalled();
+      service.getEnvironmentInfo().subscribe((result) => {
+        expect(result).toBeDefined();
+        expect(httpClient.get).toHaveBeenCalled();
         done();
       });
     });
 
-    it('should handle errors from client', (done) => {
-      const error = new Error('Client error');
-      client.getAll.and.returnValue(throwError(() => error));
+    it('should handle errors from HTTP client', (done) => {
+      const error = new Error('HTTP error');
+      jest.spyOn(httpClient, 'get').mockReturnValue(throwError(() => error));
 
-      service.getAll().subscribe({
+      service.getEnvironmentInfo().subscribe({
         error: (err) => {
           expect(err).toBe(error);
           done();

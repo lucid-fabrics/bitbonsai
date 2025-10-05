@@ -2,7 +2,17 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { interval, startWith, switchMap } from 'rxjs';
+import {
+  BehaviorSubject,
+  catchError,
+  interval,
+  map,
+  type Observable,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { JobStatus, QueueFilters, QueueResponse } from './models/queue.model';
 import { QueueClient } from './services/queue.client';
@@ -22,9 +32,13 @@ export class QueueComponent implements OnInit {
   // Expose Number for template
   protected readonly Number = Number;
 
+  // Observables for reactive state
+  private readonly refreshTrigger$ = new BehaviorSubject<void>(undefined);
+  protected readonly queueData$: Observable<QueueResponse | null>;
+  protected readonly isLoading$: Observable<boolean>;
+  protected readonly availableNodes$: Observable<string[]>;
+
   // State
-  protected queueData: QueueResponse | null = null;
-  protected loading = true;
   protected expandedJobId: string | null = null;
   protected showCancelDialog = false;
   protected selectedJobId: string | null = null;
@@ -44,10 +58,33 @@ export class QueueComponent implements OnInit {
     'CANCELLED',
   ];
 
-  // Get unique node names from current data
-  protected get availableNodes(): string[] {
-    const jobs = this.queueData?.jobs || [];
-    return [...new Set(jobs.map((job) => job.nodeName))].sort();
+  constructor() {
+    // Create observable stream for queue data
+    this.queueData$ = this.refreshTrigger$.pipe(
+      switchMap(() =>
+        this.queueApi.getQueue(this.buildFilters()).pipe(
+          catchError((error) => {
+            console.error('Failed to fetch queue data:', error);
+            return of(null);
+          })
+        )
+      ),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+
+    // Loading state: true when queueData$ hasn't emitted yet
+    this.isLoading$ = this.queueData$.pipe(
+      map(() => false),
+      startWith(true)
+    );
+
+    // Extract available nodes from queue data
+    this.availableNodes$ = this.queueData$.pipe(
+      map((data) => {
+        const jobs = data?.jobs || [];
+        return [...new Set(jobs.map((job) => job.nodeName))].sort();
+      })
+    );
   }
 
   ngOnInit(): void {
@@ -56,20 +93,9 @@ export class QueueComponent implements OnInit {
 
   private startPolling(): void {
     interval(5000)
-      .pipe(
-        startWith(0),
-        switchMap(() => this.queueApi.getQueue(this.buildFilters())),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (data) => {
-          this.queueData = data;
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Failed to fetch queue data:', error);
-          this.loading = false;
-        },
+      .pipe(startWith(0), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.refreshTrigger$.next();
       });
   }
 
@@ -103,17 +129,7 @@ export class QueueComponent implements OnInit {
   }
 
   private refreshQueue(): void {
-    this.loading = true;
-    this.queueApi.getQueue(this.buildFilters()).subscribe({
-      next: (data) => {
-        this.queueData = data;
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Failed to refresh queue:', error);
-        this.loading = false;
-      },
-    });
+    this.refreshTrigger$.next();
   }
 
   protected toggleJobDetails(jobId: string): void {

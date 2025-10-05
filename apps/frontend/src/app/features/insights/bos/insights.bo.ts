@@ -12,9 +12,9 @@ export class SavingsTrendBO {
   }
 
   formatDate(): string {
-    const date = new Date(this.date);
-    const month = date.toLocaleString('default', { month: 'short' });
-    const day = date.getDate();
+    const date = new Date(this.date + 'T00:00:00Z');
+    const month = date.toLocaleString('default', { month: 'short', timeZone: 'UTC' });
+    const day = date.getUTCDate();
     return `${month} ${day}`;
   }
 }

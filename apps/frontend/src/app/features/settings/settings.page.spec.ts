@@ -12,8 +12,8 @@ import { SettingsComponent } from './settings.page';
 describe('SettingsComponent', () => {
   let component: SettingsComponent;
   let fixture: ComponentFixture<SettingsComponent>;
-  let licenseService: jasmine.SpyObj<LicenseService>;
-  let settingsService: jasmine.SpyObj<SettingsService>;
+  let licenseService: jest.Mocked<LicenseService>;
+  let settingsService: jest.Mocked<SettingsService>;
 
   const mockLicense: License = {
     tier: LicenseTier.PATREON,
@@ -47,34 +47,30 @@ describe('SettingsComponent', () => {
   };
 
   beforeEach(async () => {
-    const licenseServiceSpy = jasmine.createSpyObj('LicenseService', [
-      'getCurrentLicense',
-      'activateLicense',
-    ]);
-    const settingsServiceSpy = jasmine.createSpyObj('SettingsService', [
-      'getEnvironmentInfo',
-      'getSystemSettings',
-      'updateSystemSettings',
-      'backupDatabase',
-      'resetToDefaults',
-      'regenerateApiKey',
-    ]);
+    const licenseServiceMock = {
+      getCurrentLicense: jest.fn().mockReturnValue(of(mockLicense)),
+      activateLicense: jest.fn(),
+    } as unknown as jest.Mocked<LicenseService>;
+
+    const settingsServiceMock = {
+      getEnvironmentInfo: jest.fn().mockReturnValue(of(mockEnvironmentInfo)),
+      getSystemSettings: jest.fn().mockReturnValue(of(mockSystemSettings)),
+      updateSystemSettings: jest.fn(),
+      backupDatabase: jest.fn(),
+      resetToDefaults: jest.fn(),
+      regenerateApiKey: jest.fn(),
+    } as unknown as jest.Mocked<SettingsService>;
 
     await TestBed.configureTestingModule({
       imports: [SettingsComponent, ReactiveFormsModule],
       providers: [
-        { provide: LicenseService, useValue: licenseServiceSpy },
-        { provide: SettingsService, useValue: settingsServiceSpy },
+        { provide: LicenseService, useValue: licenseServiceMock },
+        { provide: SettingsService, useValue: settingsServiceMock },
       ],
     }).compileComponents();
 
-    licenseService = TestBed.inject(LicenseService) as jasmine.SpyObj<LicenseService>;
-    settingsService = TestBed.inject(SettingsService) as jasmine.SpyObj<SettingsService>;
-
-    // Setup default mock returns
-    licenseService.getCurrentLicense.and.returnValue(of(mockLicense));
-    settingsService.getEnvironmentInfo.and.returnValue(of(mockEnvironmentInfo));
-    settingsService.getSystemSettings.and.returnValue(of(mockSystemSettings));
+    licenseService = TestBed.inject(LicenseService) as jest.Mocked<LicenseService>;
+    settingsService = TestBed.inject(SettingsService) as jest.Mocked<SettingsService>;
 
     fixture = TestBed.createComponent(SettingsComponent);
     component = fixture.componentInstance;
@@ -111,6 +107,8 @@ describe('SettingsComponent', () => {
       const ffmpegPathControl = component.settingsForm.get('ffmpegPath');
       const webhookUrlControl = component.settingsForm.get('webhookUrl');
 
+      // Clear the form first to test validators (form is populated by ngOnInit)
+      ffmpegPathControl?.setValue('');
       expect(ffmpegPathControl?.hasError('required')).toBe(true);
       ffmpegPathControl?.setValue('invalid-path');
       expect(ffmpegPathControl?.hasError('pattern')).toBe(true);
@@ -129,9 +127,9 @@ describe('SettingsComponent', () => {
       expect(licenseService.getCurrentLicense).toHaveBeenCalled();
       expect(settingsService.getEnvironmentInfo).toHaveBeenCalled();
       expect(settingsService.getSystemSettings).toHaveBeenCalled();
-      expect(component.license()).toEqual(mockLicense);
-      expect(component.environmentInfo()).toEqual(mockEnvironmentInfo);
-      expect(component.systemSettings()).toEqual(mockSystemSettings);
+      expect(component.license).toEqual(mockLicense);
+      expect(component.environmentInfo).toEqual(mockEnvironmentInfo);
+      expect(component.systemSettings).toEqual(mockSystemSettings);
     });
 
     it('should populate settings form with loaded values', () => {
@@ -146,19 +144,19 @@ describe('SettingsComponent', () => {
     });
 
     it('should handle license loading error', () => {
-      licenseService.getCurrentLicense.and.returnValue(
+      licenseService.getCurrentLicense.mockReturnValue(
         throwError(() => new Error('License load failed'))
       );
 
       fixture.detectChanges();
 
-      expect(component.error()).toBe('Failed to load license information');
-      expect(component.loading()).toBe(false);
+      expect(component.error).toBe('Failed to load license information');
+      expect(component.loading).toBe(false);
     });
 
     it('should handle environment info loading error', () => {
-      const consoleErrorSpy = spyOn(console, 'error');
-      settingsService.getEnvironmentInfo.and.returnValue(
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      settingsService.getEnvironmentInfo.mockReturnValue(
         throwError(() => new Error('Environment load failed'))
       );
 
@@ -166,13 +164,13 @@ describe('SettingsComponent', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to load environment info:',
-        jasmine.any(Error)
+        expect.any(Error)
       );
     });
 
     it('should handle system settings loading error', () => {
-      const consoleErrorSpy = spyOn(console, 'error');
-      settingsService.getSystemSettings.and.returnValue(
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      settingsService.getSystemSettings.mockReturnValue(
         throwError(() => new Error('Settings load failed'))
       );
 
@@ -180,7 +178,7 @@ describe('SettingsComponent', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to load system settings:',
-        jasmine.any(Error)
+        expect.any(Error)
       );
     });
   });
@@ -189,28 +187,28 @@ describe('SettingsComponent', () => {
     it('should set active tab', () => {
       fixture.detectChanges();
 
-      expect(component.activeTab()).toBe('license');
+      expect(component.activeTab).toBe('license');
 
       component.setActiveTab('environment');
-      expect(component.activeTab()).toBe('environment');
+      expect(component.activeTab).toBe('environment');
 
       component.setActiveTab('system');
-      expect(component.activeTab()).toBe('system');
+      expect(component.activeTab).toBe('system');
 
       component.setActiveTab('advanced');
-      expect(component.activeTab()).toBe('advanced');
+      expect(component.activeTab).toBe('advanced');
     });
 
     it('should clear messages when changing tabs', () => {
       fixture.detectChanges();
 
-      component.error.set('Test error');
-      component.successMessage.set('Test success');
+      component.error = 'Test error';
+      component.successMessage = 'Test success';
 
       component.setActiveTab('environment');
 
-      expect(component.error()).toBeNull();
-      expect(component.successMessage()).toBeNull();
+      expect(component.error).toBeNull();
+      expect(component.successMessage).toBeNull();
     });
   });
 
@@ -234,55 +232,66 @@ describe('SettingsComponent', () => {
     it('should toggle license key visibility', () => {
       fixture.detectChanges();
 
-      expect(component.licenseKeyRevealed()).toBe(false);
+      expect(component.licenseKeyRevealed).toBe(false);
 
       component.toggleLicenseKeyVisibility();
-      expect(component.licenseKeyRevealed()).toBe(true);
+      expect(component.licenseKeyRevealed).toBe(true);
 
       component.toggleLicenseKeyVisibility();
-      expect(component.licenseKeyRevealed()).toBe(false);
+      expect(component.licenseKeyRevealed).toBe(false);
     });
 
     it('should toggle API key visibility', () => {
       fixture.detectChanges();
 
-      expect(component.apiKeyRevealed()).toBe(false);
+      expect(component.apiKeyRevealed).toBe(false);
 
       component.toggleApiKeyVisibility();
-      expect(component.apiKeyRevealed()).toBe(true);
+      expect(component.apiKeyRevealed).toBe(true);
 
       component.toggleApiKeyVisibility();
-      expect(component.apiKeyRevealed()).toBe(false);
+      expect(component.apiKeyRevealed).toBe(false);
     });
   });
 
   describe('clipboard operations', () => {
-    it('should copy text to clipboard', async () => {
-      const clipboardSpy = spyOn(navigator.clipboard, 'writeText').and.returnValue(
-        Promise.resolve()
-      );
+    beforeEach(() => {
+      // Mock navigator.clipboard globally for these tests
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+    });
 
+    it('should copy text to clipboard', (done) => {
       fixture.detectChanges();
 
-      await component.copyToClipboard('test-value', 'Test Label');
+      component.copyToClipboard('test-value', 'Test Label');
 
-      expect(clipboardSpy).toHaveBeenCalledWith('test-value');
-      expect(component.successMessage()).toBe('Test Label copied to clipboard');
+      // Wait for the promise to resolve
+      setTimeout(() => {
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test-value');
+        expect(component.successMessage).toBe('Test Label copied to clipboard');
+        done();
+      }, 10);
     });
 
     it('should clear success message after 3 seconds', (done) => {
-      spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
-
       fixture.detectChanges();
 
-      component.copyToClipboard('test-value', 'Test Label').then(() => {
-        expect(component.successMessage()).toBe('Test Label copied to clipboard');
+      component.copyToClipboard('test-value', 'Test Label');
 
+      // Wait for the promise to resolve
+      setTimeout(() => {
+        expect(component.successMessage).toBe('Test Label copied to clipboard');
+
+        // Wait for the timeout to clear the message
         setTimeout(() => {
-          expect(component.successMessage()).toBeNull();
+          expect(component.successMessage).toBeNull();
           done();
         }, 3100);
-      });
+      }, 10);
     });
   });
 
@@ -293,7 +302,7 @@ describe('SettingsComponent', () => {
         email: 'test@example.com',
       };
 
-      licenseService.activateLicense.and.returnValue(of(mockLicense));
+      licenseService.activateLicense.mockReturnValue(of(mockLicense));
 
       fixture.detectChanges();
 
@@ -305,14 +314,14 @@ describe('SettingsComponent', () => {
       component.activateLicense();
 
       expect(licenseService.activateLicense).toHaveBeenCalledWith(activationRequest);
-      expect(component.license()).toEqual(mockLicense);
-      expect(component.successMessage()).toBe('License activated successfully!');
-      expect(component.loading()).toBe(false);
+      expect(component.license).toEqual(mockLicense);
+      expect(component.successMessage).toBe('License activated successfully!');
+      expect(component.loading).toBe(false);
       expect(component.licenseForm.value).toEqual({ licenseKey: null, email: null });
     });
 
     it('should handle license activation failure', () => {
-      licenseService.activateLicense.and.returnValue(
+      licenseService.activateLicense.mockReturnValue(
         throwError(() => new Error('Activation failed'))
       );
 
@@ -325,10 +334,10 @@ describe('SettingsComponent', () => {
 
       component.activateLicense();
 
-      expect(component.error()).toBe(
+      expect(component.error).toBe(
         'Failed to activate license. Please check your key and try again.'
       );
-      expect(component.loading()).toBe(false);
+      expect(component.loading).toBe(false);
     });
 
     it('should not activate license if form is invalid', () => {
@@ -348,7 +357,7 @@ describe('SettingsComponent', () => {
   describe('system settings update', () => {
     it('should update system settings successfully', () => {
       const updatedSettings = { ...mockSystemSettings, logLevel: 'DEBUG' };
-      settingsService.updateSystemSettings.and.returnValue(of(updatedSettings));
+      settingsService.updateSystemSettings.mockReturnValue(of(updatedSettings));
 
       fixture.detectChanges();
 
@@ -356,13 +365,13 @@ describe('SettingsComponent', () => {
       component.updateSystemSettings();
 
       expect(settingsService.updateSystemSettings).toHaveBeenCalled();
-      expect(component.systemSettings()).toEqual(updatedSettings);
-      expect(component.successMessage()).toBe('Settings updated successfully!');
-      expect(component.loading()).toBe(false);
+      expect(component.systemSettings).toEqual(updatedSettings);
+      expect(component.successMessage).toBe('Settings updated successfully!');
+      expect(component.loading).toBe(false);
     });
 
     it('should handle system settings update failure', () => {
-      settingsService.updateSystemSettings.and.returnValue(
+      settingsService.updateSystemSettings.mockReturnValue(
         throwError(() => new Error('Update failed'))
       );
 
@@ -370,8 +379,8 @@ describe('SettingsComponent', () => {
 
       component.updateSystemSettings();
 
-      expect(component.error()).toBe('Failed to update settings');
-      expect(component.loading()).toBe(false);
+      expect(component.error).toBe('Failed to update settings');
+      expect(component.loading).toBe(false);
     });
 
     it('should not update settings if form is invalid', () => {
@@ -386,7 +395,7 @@ describe('SettingsComponent', () => {
 
   describe('database backup', () => {
     it('should backup database successfully', () => {
-      settingsService.backupDatabase.and.returnValue(
+      settingsService.backupDatabase.mockReturnValue(
         of({ backupPath: '/backups/db-2025-10-03.sqlite' })
       );
 
@@ -395,31 +404,29 @@ describe('SettingsComponent', () => {
       component.backupDatabase();
 
       expect(settingsService.backupDatabase).toHaveBeenCalled();
-      expect(component.successMessage()).toBe(
-        'Database backed up to: /backups/db-2025-10-03.sqlite'
-      );
-      expect(component.loading()).toBe(false);
+      expect(component.successMessage).toBe('Database backed up to: /backups/db-2025-10-03.sqlite');
+      expect(component.loading).toBe(false);
     });
 
     it('should handle database backup failure', () => {
-      settingsService.backupDatabase.and.returnValue(throwError(() => new Error('Backup failed')));
+      settingsService.backupDatabase.mockReturnValue(throwError(() => new Error('Backup failed')));
 
       fixture.detectChanges();
 
       component.backupDatabase();
 
-      expect(component.error()).toBe('Failed to backup database');
-      expect(component.loading()).toBe(false);
+      expect(component.error).toBe('Failed to backup database');
+      expect(component.loading).toBe(false);
     });
   });
 
   describe('reset to defaults', () => {
     it('should reset to defaults successfully', () => {
-      settingsService.resetToDefaults.and.returnValue(
+      settingsService.resetToDefaults.mockReturnValue(
         of({ message: 'Settings reset successfully' })
       );
-      settingsService.getSystemSettings.and.returnValue(of(mockSystemSettings));
-      spyOn(window, 'confirm').and.returnValue(true);
+      settingsService.getSystemSettings.mockReturnValue(of(mockSystemSettings));
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
 
       fixture.detectChanges();
 
@@ -427,24 +434,24 @@ describe('SettingsComponent', () => {
 
       expect(settingsService.resetToDefaults).toHaveBeenCalled();
       expect(settingsService.getSystemSettings).toHaveBeenCalledTimes(2); // Initial load + reload after reset
-      expect(component.successMessage()).toBe('Settings reset successfully');
-      expect(component.loading()).toBe(false);
+      expect(component.successMessage).toBe('Settings reset successfully');
+      expect(component.loading).toBe(false);
     });
 
     it('should handle reset to defaults failure', () => {
-      settingsService.resetToDefaults.and.returnValue(throwError(() => new Error('Reset failed')));
-      spyOn(window, 'confirm').and.returnValue(true);
+      settingsService.resetToDefaults.mockReturnValue(throwError(() => new Error('Reset failed')));
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
 
       fixture.detectChanges();
 
       component.resetToDefaults();
 
-      expect(component.error()).toBe('Failed to reset settings');
-      expect(component.loading()).toBe(false);
+      expect(component.error).toBe('Failed to reset settings');
+      expect(component.loading).toBe(false);
     });
 
     it('should not reset if user cancels confirmation', () => {
-      spyOn(window, 'confirm').and.returnValue(false);
+      jest.spyOn(window, 'confirm').mockReturnValue(false);
 
       fixture.detectChanges();
 
@@ -456,35 +463,35 @@ describe('SettingsComponent', () => {
 
   describe('API key regeneration', () => {
     it('should regenerate API key successfully', () => {
-      settingsService.regenerateApiKey.and.returnValue(of({ apiKey: 'new-api-key-67890' }));
-      spyOn(window, 'confirm').and.returnValue(true);
+      settingsService.regenerateApiKey.mockReturnValue(of({ apiKey: 'new-api-key-67890' }));
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
 
       fixture.detectChanges();
 
       component.regenerateApiKey();
 
       expect(settingsService.regenerateApiKey).toHaveBeenCalled();
-      expect(component.systemSettings()?.apiKey).toBe('new-api-key-67890');
-      expect(component.successMessage()).toBe('API key regenerated successfully!');
-      expect(component.loading()).toBe(false);
+      expect(component.systemSettings?.apiKey).toBe('new-api-key-67890');
+      expect(component.successMessage).toBe('API key regenerated successfully!');
+      expect(component.loading).toBe(false);
     });
 
     it('should handle API key regeneration failure', () => {
-      settingsService.regenerateApiKey.and.returnValue(
+      settingsService.regenerateApiKey.mockReturnValue(
         throwError(() => new Error('Regeneration failed'))
       );
-      spyOn(window, 'confirm').and.returnValue(true);
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
 
       fixture.detectChanges();
 
       component.regenerateApiKey();
 
-      expect(component.error()).toBe('Failed to regenerate API key');
-      expect(component.loading()).toBe(false);
+      expect(component.error).toBe('Failed to regenerate API key');
+      expect(component.loading).toBe(false);
     });
 
     it('should not regenerate if user cancels confirmation', () => {
-      spyOn(window, 'confirm').and.returnValue(false);
+      jest.spyOn(window, 'confirm').mockReturnValue(false);
 
       fixture.detectChanges();
 

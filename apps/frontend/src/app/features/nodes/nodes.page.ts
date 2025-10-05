@@ -2,6 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   inject,
   type OnDestroy,
@@ -36,6 +37,7 @@ enum PairingStep {
 export class NodesComponent implements OnInit, OnDestroy {
   private readonly nodesApi = inject(NodesClient);
   private readonly dialog = inject(Dialog);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   // Expose enums to template
   readonly NodeStatus = NodeStatus;
@@ -92,15 +94,18 @@ export class NodesComponent implements OnInit, OnDestroy {
   loadNodes(): void {
     this.isLoading = true;
     this.error = null;
+    this.cdr.markForCheck();
 
     this.nodesApi.getNodes().subscribe({
       next: (nodes) => {
         this.nodes = nodes;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         this.error = err.error?.message || 'Failed to load nodes';
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -114,6 +119,7 @@ export class NodesComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (nodes) => {
           this.nodes = nodes;
+          this.cdr.markForCheck();
         },
         error: (err) => {
           console.error('Polling error:', err);
@@ -137,14 +143,17 @@ export class NodesComponent implements OnInit, OnDestroy {
     this.pairingCode = '';
     this.pairingError = null;
     this.countdownSeconds = 600;
+    this.cdr.markForCheck();
 
     this.nodesApi.register().subscribe({
       next: (response) => {
         this.pairingCommand = response.command;
         this.startCountdown();
+        this.cdr.markForCheck();
       },
       error: (err) => {
         this.pairingError = err.error?.message || 'Failed to initiate registration';
+        this.cdr.markForCheck();
       },
     });
   }
@@ -157,6 +166,7 @@ export class NodesComponent implements OnInit, OnDestroy {
       const current = this.countdownSeconds;
       if (current > 0) {
         this.countdownSeconds = current - 1;
+        this.cdr.markForCheck();
       } else {
         this.stopCountdown();
       }
@@ -185,6 +195,7 @@ export class NodesComponent implements OnInit, OnDestroy {
    */
   onNextToCodeInput(): void {
     this.pairingStep = PairingStep.CODE_INPUT;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -195,11 +206,13 @@ export class NodesComponent implements OnInit, OnDestroy {
 
     if (code.length !== 6) {
       this.pairingError = 'Please enter a valid 6-digit code';
+      this.cdr.markForCheck();
       return;
     }
 
     this.isLoading = true;
     this.pairingError = null;
+    this.cdr.markForCheck();
 
     this.nodesApi.pair({ code }).subscribe({
       next: (response) => {
@@ -212,10 +225,12 @@ export class NodesComponent implements OnInit, OnDestroy {
           this.pairingError = 'Invalid pairing code. Please try again.';
         }
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         this.pairingError = err.error?.message || 'Failed to pair node';
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -228,6 +243,7 @@ export class NodesComponent implements OnInit, OnDestroy {
     this.stopCountdown();
     this.pairingCode = '';
     this.pairingError = null;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -401,9 +417,11 @@ export class NodesComponent implements OnInit, OnDestroy {
         this.nodesApi.deleteNode(node.id).subscribe({
           next: () => {
             this.nodes = this.nodes.filter((n) => n.id !== node.id);
+            this.cdr.markForCheck();
           },
           error: (err) => {
             this.error = err.error?.message || 'Failed to delete node';
+            this.cdr.markForCheck();
           },
         });
       }

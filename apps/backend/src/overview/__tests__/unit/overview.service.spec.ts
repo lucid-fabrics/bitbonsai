@@ -398,4 +398,125 @@ describe('OverviewService', () => {
       await expect(service.getOverviewStats()).rejects.toThrow('Database error');
     });
   });
+
+  describe('getOverview', () => {
+    it('should return overview in snake_case format with correct transformations', async () => {
+      // Mock system health
+      jest.spyOn(prisma.node, 'groupBy').mockResolvedValue([
+        { status: NodeStatus.ONLINE, _count: { status: 3 } },
+        { status: NodeStatus.OFFLINE, _count: { status: 2 } },
+      ] as never);
+      jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
+        _sum: { totalSizeBytes: BigInt('2000000000000') },
+      } as never);
+
+      // Mock queue stats
+      jest.spyOn(prisma.job, 'groupBy').mockResolvedValue([
+        { stage: JobStage.QUEUED, _count: { stage: 25 } },
+        { stage: JobStage.ENCODING, _count: { stage: 8 } },
+        { stage: JobStage.COMPLETED, _count: { stage: 342 } },
+        { stage: JobStage.FAILED, _count: { stage: 5 } },
+      ] as never);
+      jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
+        _sum: {
+          savedBytes: BigInt('2748779069440'), // ~2.5TB
+          beforeSizeBytes: BigInt('100000000000'),
+        },
+      } as never);
+
+      // Mock recent activity
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValueOnce([
+        {
+          id: 'job-1',
+          fileLabel: 'Movie.mkv',
+          sourceCodec: 'H.264',
+          targetCodec: 'HEVC',
+          stage: JobStage.COMPLETED,
+          savedBytes: BigInt('1342177280'), // ~1.25GB
+          savedPercent: 40.0,
+          completedAt: new Date('2025-09-30T21:45:32.123Z'),
+          library: { name: 'Movies' },
+        },
+      ] as never);
+
+      // Mock top libraries
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValueOnce([
+        {
+          id: 'lib-1',
+          name: 'Main Library',
+          path: '/media',
+          _count: { jobs: 127 },
+          jobs: [{ savedBytes: BigInt('5368709120') }, { savedBytes: BigInt('10737418240') }],
+        },
+      ] as never);
+
+      const result = await service.getOverview();
+
+      // Verify snake_case structure
+      expect(result.system_health).toBeDefined();
+      expect(result.queue_summary).toBeDefined();
+      expect(result.recent_activity).toBeDefined();
+      expect(result.top_libraries).toBeDefined();
+      expect(result.last_updated).toBeDefined();
+
+      // Verify system health
+      expect(result.system_health.active_nodes.current).toBe(3);
+      expect(result.system_health.active_nodes.total).toBe(5);
+      expect(result.system_health.queue_status.encoding_count).toBe(8);
+      expect(result.system_health.storage_saved.total_tb).toBeCloseTo(2.5, 1);
+      expect(result.system_health.success_rate.percentage).toBeCloseTo(98.6, 1);
+
+      // Verify queue summary
+      expect(result.queue_summary.queued).toBe(25);
+      expect(result.queue_summary.encoding).toBe(8);
+      expect(result.queue_summary.completed).toBe(342);
+      expect(result.queue_summary.failed).toBe(5);
+
+      // Verify recent activity
+      expect(result.recent_activity).toHaveLength(1);
+      expect(result.recent_activity[0].id).toBe('job-1');
+      expect(result.recent_activity[0].file_name).toBe('Movie.mkv');
+      expect(result.recent_activity[0].library).toBe('Movies');
+      expect(result.recent_activity[0].codec_change).toBe('H.264 → HEVC');
+      expect(result.recent_activity[0].savings_gb).toBeCloseTo(1.25, 2);
+      expect(result.recent_activity[0].completed_at).toBe('2025-09-30T21:45:32.123Z');
+
+      // Verify top libraries
+      expect(result.top_libraries).toHaveLength(1);
+      expect(result.top_libraries[0].name).toBe('Main Library');
+      expect(result.top_libraries[0].job_count).toBe(127);
+      expect(result.top_libraries[0].total_savings_gb).toBeCloseTo(15.0, 1);
+    });
+
+    it('should handle zero stats correctly', async () => {
+      jest.spyOn(prisma.node, 'groupBy').mockResolvedValue([] as never);
+      jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
+        _sum: { totalSizeBytes: BigInt(0) },
+      } as never);
+      jest.spyOn(prisma.job, 'groupBy').mockResolvedValue([] as never);
+      jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
+        _sum: {
+          savedBytes: BigInt(0),
+          beforeSizeBytes: BigInt(1),
+        },
+      } as never);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValueOnce([] as never);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValueOnce([] as never);
+
+      const result = await service.getOverview();
+
+      expect(result.system_health.active_nodes.current).toBe(0);
+      expect(result.system_health.active_nodes.total).toBe(0);
+      expect(result.system_health.success_rate.percentage).toBe(0);
+      expect(result.queue_summary.queued).toBe(0);
+      expect(result.recent_activity).toEqual([]);
+      expect(result.top_libraries).toEqual([]);
+    });
+
+    it('should handle errors from underlying methods', async () => {
+      jest.spyOn(prisma.node, 'groupBy').mockRejectedValue(new Error('Database connection failed'));
+
+      await expect(service.getOverview()).rejects.toThrow('Database connection failed');
+    });
+  });
 });

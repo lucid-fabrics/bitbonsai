@@ -1,4 +1,4 @@
-import { Injectable, type LoggerService as NestLoggerService, Scope } from '@nestjs/common';
+import { Injectable, LoggerService as NestLoggerService, Scope } from '@nestjs/common';
 import type { Logger } from 'winston';
 
 /**

@@ -1,26 +1,48 @@
+import { ChangeDetectorRef } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
+import { of } from 'rxjs';
+import { InsightsStatsBO, SavingsTrendBO } from './bos/insights.bo';
 import { InsightsComponent } from './insights.page';
+import { InsightsService } from './services/insights.service';
 
 describe('InsightsComponent', () => {
   let component: InsightsComponent;
   let fixture: ComponentFixture<InsightsComponent>;
-  let store: MockStore;
+  let insightsService: jest.Mocked<InsightsService>;
+  let cdr: jest.Mocked<ChangeDetectorRef>;
 
-  const initialState = {
-    // TODO: Add initial state based on feature
-  };
+  const mockSavingsTrend = [
+    SavingsTrendBO.fromDto({ date: '2025-01-01', savingsGB: 100 }),
+    SavingsTrendBO.fromDto({ date: '2025-01-02', savingsGB: 200 }),
+  ];
+
+  const mockStats = new InsightsStatsBO(100, 500, 95, 50);
 
   beforeEach(async () => {
+    const insightsServiceMock = {
+      getSavingsTrend: jest.fn().mockReturnValue(of(mockSavingsTrend)),
+      getCodecDistribution: jest.fn().mockReturnValue(of([])),
+      getNodePerformance: jest.fn().mockReturnValue(of([])),
+      getStats: jest.fn().mockReturnValue(of(mockStats)),
+    } as unknown as jest.Mocked<InsightsService>;
+
+    const cdrMock = {
+      markForCheck: jest.fn(),
+      detectChanges: jest.fn(),
+    } as unknown as jest.Mocked<ChangeDetectorRef>;
+
     await TestBed.configureTestingModule({
       imports: [InsightsComponent],
-      providers: [provideMockStore({ initialState })],
+      providers: [
+        { provide: InsightsService, useValue: insightsServiceMock },
+        { provide: ChangeDetectorRef, useValue: cdrMock },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(InsightsComponent);
     component = fixture.componentInstance;
-    store = TestBed.inject(MockStore);
-    fixture.detectChanges();
+    insightsService = TestBed.inject(InsightsService) as jest.Mocked<InsightsService>;
+    cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
   });
 
   it('should create', () => {
@@ -28,10 +50,12 @@ describe('InsightsComponent', () => {
   });
 
   describe('component initialization', () => {
-    it('should dispatch load action on init', () => {
-      const dispatchSpy = spyOn(store, 'dispatch');
+    it('should load all data on init', () => {
       component.ngOnInit();
-      expect(dispatchSpy).toHaveBeenCalled();
+      expect(insightsService.getSavingsTrend).toHaveBeenCalled();
+      expect(insightsService.getCodecDistribution).toHaveBeenCalled();
+      expect(insightsService.getNodePerformance).toHaveBeenCalled();
+      expect(insightsService.getStats).toHaveBeenCalled();
     });
   });
 
@@ -39,16 +63,19 @@ describe('InsightsComponent', () => {
     it('should render component template', () => {
       const compiled = fixture.nativeElement as HTMLElement;
       expect(compiled).toBeDefined();
-      // TODO: Add specific template assertions
     });
   });
 
   describe('user interactions', () => {
-    it('should handle user actions', () => {
-      // TODO: Add user interaction tests (button clicks, form submissions, etc.)
-      expect(component).toBeDefined();
+    it('should update time range when selectTimeRange is called', () => {
+      component.selectTimeRange(7);
+      expect(component.selectedTimeRange).toBe(7);
+      expect(insightsService.getSavingsTrend).toHaveBeenCalledWith(7);
+    });
+
+    it('should format storage size correctly', () => {
+      expect(component.formatStorageSize(500)).toBe('500.00 GB');
+      expect(component.formatStorageSize(1500)).toBe('1.50 TB');
     });
   });
-
-  // TODO: Add tests for computed signals, methods, and business logic
 });

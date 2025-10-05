@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage, NodeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import type { OverviewResponseDto } from './dto/overview-response.dto';
 import type {
   OverviewStatsDto,
   QueueStatsDto,
@@ -20,6 +21,95 @@ export class OverviewService {
   private readonly logger = new Logger(OverviewService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Get complete overview statistics in a single optimized response
+   * with snake_case field names for frontend compatibility
+   *
+   * This method aggregates:
+   * - System health (active nodes, queue status, storage saved, success rate)
+   * - Queue summary (job counts by stage)
+   * - Recent activity (last 10 completed jobs)
+   * - Top libraries (by job count)
+   *
+   * @returns Complete dashboard statistics in snake_case format
+   */
+  async getOverview(): Promise<OverviewResponseDto> {
+    this.logger.log('Fetching overview statistics for frontend');
+
+    // Execute all queries in parallel for optimal performance
+    const [systemHealth, queueStats, recentActivity, topLibraries] = await Promise.all([
+      this.getSystemHealth(),
+      this.getQueueSummary(),
+      this.getRecentActivity(),
+      this.getTopLibraries(),
+    ]);
+
+    // Calculate total nodes
+    const totalNodes = systemHealth.activeNodes + systemHealth.offlineNodes;
+
+    // Calculate storage saved in TB from completed jobs
+    const totalSavedBytes = BigInt(queueStats.totalSavedBytes);
+    const totalSavedTB = Number(totalSavedBytes) / (1024 * 1024 * 1024 * 1024); // Convert bytes to TB
+
+    // Calculate success rate from queue stats
+    const totalJobs = queueStats.completed + queueStats.failed;
+    const successRate = totalJobs > 0 ? (queueStats.completed / totalJobs) * 100 : 0;
+
+    // Transform to snake_case format
+    return {
+      system_health: {
+        active_nodes: {
+          current: systemHealth.activeNodes,
+          total: totalNodes,
+        },
+        queue_status: {
+          encoding_count: queueStats.encoding,
+        },
+        storage_saved: {
+          total_tb: Number(totalSavedTB.toFixed(2)),
+        },
+        success_rate: {
+          percentage: Number(successRate.toFixed(1)),
+        },
+      },
+      queue_summary: {
+        queued: queueStats.queued,
+        encoding: queueStats.encoding,
+        completed: queueStats.completed,
+        failed: queueStats.failed,
+      },
+      recent_activity: recentActivity.map((activity) => {
+        const savedBytes = BigInt(activity.savedBytes);
+        const savedGB = Number(savedBytes) / (1024 * 1024 * 1024); // Convert bytes to GB
+
+        // Calculate duration (for now, use a placeholder since we don't track encoding duration)
+        // In a real implementation, this would come from the job's startedAt and completedAt
+        const durationSeconds = 0; // Placeholder
+
+        return {
+          id: activity.id,
+          file_name: activity.fileLabel,
+          library: activity.libraryName,
+          codec_change: `${activity.sourceCodec} → ${activity.targetCodec}`,
+          savings_gb: Number(savedGB.toFixed(2)),
+          duration_seconds: durationSeconds,
+          completed_at: activity.completedAt.toISOString(),
+        };
+      }),
+      top_libraries: topLibraries.map((library) => {
+        const totalSavedBytes = BigInt(library.totalSavedBytes);
+        const totalSavedGB = Number(totalSavedBytes) / (1024 * 1024 * 1024); // Convert bytes to GB
+
+        return {
+          name: library.name,
+          job_count: library.jobCount,
+          total_savings_gb: Number(totalSavedGB.toFixed(2)),
+        };
+      }),
+      last_updated: new Date().toISOString(),
+    };
+  }
 
   /**
    * Get complete overview statistics in a single optimized response

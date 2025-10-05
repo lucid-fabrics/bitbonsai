@@ -1,27 +1,31 @@
+import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { InsightsBo } from '../bos/insights.service';
-import { InsightsClient, InsightsService } from './insights.service';
+import { InsightsClient } from './insights.client';
+import { InsightsService } from './insights.service';
 
 describe('InsightsService', () => {
   let service: InsightsService;
-  let client: jasmine.SpyObj<InsightsClient>;
+  let client: jest.Mocked<InsightsClient>;
 
   beforeEach(() => {
-    const clientSpy = jasmine.createSpyObj('InsightsClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const clientMock = {
+      getSavingsTrend: jest.fn(),
+      getCodecDistribution: jest.fn(),
+      getNodePerformance: jest.fn(),
+      getStats: jest.fn(),
+    } as unknown as jest.Mocked<InsightsClient>;
 
     TestBed.configureTestingModule({
-      providers: [InsightsService, { provide: InsightsClient, useValue: clientSpy }],
+      providers: [
+        InsightsService,
+        { provide: InsightsClient, useValue: clientMock },
+        provideHttpClient(),
+      ],
     });
 
     service = TestBed.inject(InsightsService);
-    client = TestBed.inject(InsightsClient) as jasmine.SpyObj<InsightsClient>;
+    client = TestBed.inject(InsightsClient) as jest.Mocked<InsightsClient>;
   });
 
   it('should be created', () => {
@@ -30,21 +34,26 @@ describe('InsightsService', () => {
 
   describe('data retrieval', () => {
     it('should transform client responses to BOs', (done) => {
-      const mockData = { id: '1', name: 'Test' };
-      client.getAll.and.returnValue(of([mockData]));
+      const mockData = {
+        totalJobsCompleted: 100,
+        totalStorageSavedGB: 50,
+        averageSuccessRate: 95,
+        averageThroughput: 10,
+      };
+      client.getStats.mockReturnValue(of(mockData));
 
-      service.getAll().subscribe((result) => {
-        expect(result[0]).toBeInstanceOf(InsightsBo);
-        expect(client.getAll).toHaveBeenCalled();
+      service.getStats().subscribe((result) => {
+        expect(result).toBeDefined();
+        expect(client.getStats).toHaveBeenCalled();
         done();
       });
     });
 
     it('should handle errors from client', (done) => {
       const error = new Error('Client error');
-      client.getAll.and.returnValue(throwError(() => error));
+      client.getStats.mockReturnValue(throwError(() => error));
 
-      service.getAll().subscribe({
+      service.getStats().subscribe({
         error: (err) => {
           expect(err).toBe(error);
           done();

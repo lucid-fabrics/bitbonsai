@@ -3,33 +3,31 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
 import { QueueClient } from '../services/queue.client';
-import * as queueActions from './queue.actions';
+import { QueueActions } from './queue.actions';
 import { QueueEffects } from './queue.effects';
 
 describe('QueueEffects', () => {
   let actions$: Observable<Action>;
   let effects: QueueEffects;
-  let service: jasmine.SpyObj<QueueClient>;
+  let service: jest.Mocked<QueueClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('QueueClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const serviceMock = {
+      getQueue: jest.fn(),
+      cancelJob: jest.fn(),
+      retryJob: jest.fn(),
+    } as unknown as jest.Mocked<QueueClient>;
 
     TestBed.configureTestingModule({
       providers: [
         QueueEffects,
         provideMockActions(() => actions$),
-        { provide: QueueClient, useValue: serviceSpy },
+        { provide: QueueClient, useValue: serviceMock },
       ],
     });
 
     effects = TestBed.inject(QueueEffects);
-    service = TestBed.inject(QueueClient) as jasmine.SpyObj<QueueClient>;
+    service = TestBed.inject(QueueClient) as jest.Mocked<QueueClient>;
   });
 
   it('should be created', () => {
@@ -38,26 +36,29 @@ describe('QueueEffects', () => {
 
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
-      const mockData = [{ id: '1', stage: 'QUEUED' }] as never;
-      service.getAll.and.returnValue(of(mockData));
+      const mockData = {
+        jobs: [],
+        stats: { queued: 0, encoding: 0, completed: 0, failed: 0, totalSavedBytes: '0' },
+      } as never;
+      service.getQueue.mockReturnValue(of(mockData));
 
-      actions$ = of(queueActions.load());
+      actions$ = of(QueueActions.loadQueue({ filters: undefined }));
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(queueActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadQueue$.subscribe((action) => {
+        expect(action.type).toBe(QueueActions.loadQueueSuccess.type);
+        expect(service.getQueue).toHaveBeenCalled();
         done();
       });
     });
 
     it('should return loadFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      service.getQueue.mockReturnValue(throwError(() => error));
 
-      actions$ = of(queueActions.load());
+      actions$ = of(QueueActions.loadQueue({ filters: undefined }));
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(queueActions.loadFailure.type);
+      effects.loadQueue$.subscribe((action) => {
+        expect(action.type).toBe(QueueActions.loadQueueFailure.type);
         done();
       });
     });

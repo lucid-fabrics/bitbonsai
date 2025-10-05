@@ -3,11 +3,12 @@ import { RouterOutlet } from '@angular/router';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
+import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent],
+  imports: [RouterOutlet, SidebarComponent, ApiConnectionErrorComponent],
   template: `
     <div class="app-layout">
       <app-sidebar />
@@ -15,6 +16,7 @@ import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
         <router-outlet />
       </main>
     </div>
+    <app-api-connection-error />
   `,
   styles: [
     `
