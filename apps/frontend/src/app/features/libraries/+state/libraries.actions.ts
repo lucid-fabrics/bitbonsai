@@ -21,7 +21,7 @@ export const LibrariesActions = createActionGroup({
     'Delete Library Failure': props<{ error: string }>(),
 
     'Scan Library': props<{ id: string }>(),
-    'Scan Library Success': props<{ id: string }>(),
+    'Scan Library Success': props<{ library: Library }>(),
     'Scan Library Failure': props<{ error: string }>(),
   },
 });

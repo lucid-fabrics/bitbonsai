@@ -91,8 +91,9 @@ export const librariesReducer = createReducer(
     isLoading: true,
     error: null,
   })),
-  on(LibrariesActions.scanLibrarySuccess, (state, { id }) => ({
+  on(LibrariesActions.scanLibrarySuccess, (state, { library }) => ({
     ...state,
+    libraries: state.libraries.map((l) => (l.id === library.id ? library : l)),
     isLoading: false,
   })),
   on(LibrariesActions.scanLibraryFailure, (state, { error }) => ({
