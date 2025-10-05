@@ -12,7 +12,7 @@ import { InsightsStatsDto } from './dto/insights-stats.dto';
 import { NodeComparisonDto } from './dto/node-comparison.dto';
 import { SavingsTrendDto } from './dto/savings-trend.dto';
 import type { TimeSeriesQueryDto } from './dto/time-series-query.dto';
-import type { InsightsService } from './insights.service';
+import { InsightsService } from './insights.service';
 
 @ApiTags('insights')
 @Controller('insights')
