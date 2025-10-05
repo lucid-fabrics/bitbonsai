@@ -3,22 +3,23 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
 import { PolicyClient } from '../services/policy.client';
-import * as policiesActions from './policies.actions';
+import { PoliciesActions } from './policies.actions';
 import { PoliciesEffects } from './policies.effects';
 
 describe('PoliciesEffects', () => {
   let actions$: Observable<Action>;
   let effects: PoliciesEffects;
-  let service: jasmine.SpyObj<PolicyClient>;
+  let service: jest.Mocked<PolicyClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('PolicyClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const serviceSpy = {
+      getPolicies: jest.fn(),
+      getPolicy: jest.fn(),
+      getPresets: jest.fn(),
+      createPolicy: jest.fn(),
+      updatePolicy: jest.fn(),
+      deletePolicy: jest.fn(),
+    } as jest.Mocked<PolicyClient>;
 
     TestBed.configureTestingModule({
       providers: [
@@ -29,7 +30,7 @@ describe('PoliciesEffects', () => {
     });
 
     effects = TestBed.inject(PoliciesEffects);
-    service = TestBed.inject(PolicyClient) as jasmine.SpyObj<PolicyClient>;
+    service = TestBed.inject(PolicyClient) as jest.Mocked<PolicyClient>;
   });
 
   it('should be created', () => {
@@ -39,25 +40,25 @@ describe('PoliciesEffects', () => {
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
       const mockData = [{ id: '1', name: 'Test' }] as never;
-      service.getAll.and.returnValue(of(mockData));
+      service.getPolicies.mockReturnValue(of(mockData));
 
-      actions$ = of(policiesActions.load());
+      actions$ = of(PoliciesActions.loadPolicies());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(policiesActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadPolicies$.subscribe((action) => {
+        expect(action.type).toBe(PoliciesActions.loadPoliciesSuccess.type);
+        expect(service.getPolicies).toHaveBeenCalled();
         done();
       });
     });
 
     it('should return loadFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      service.getPolicies.mockReturnValue(throwError(() => error));
 
-      actions$ = of(policiesActions.load());
+      actions$ = of(PoliciesActions.loadPolicies());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(policiesActions.loadFailure.type);
+      effects.loadPolicies$.subscribe((action) => {
+        expect(action.type).toBe(PoliciesActions.loadPoliciesFailure.type);
         done();
       });
     });
