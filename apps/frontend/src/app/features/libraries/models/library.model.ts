@@ -1,6 +1,8 @@
 export enum MediaType {
   MOVIE = 'MOVIE',
   TV_SHOW = 'TV_SHOW',
+  ANIME = 'ANIME',
+  ANIME_MOVIE = 'ANIME_MOVIE',
   MIXED = 'MIXED',
   OTHER = 'OTHER',
 }
@@ -42,14 +44,12 @@ export interface CreateLibraryDto {
   name: string;
   path: string;
   mediaType: MediaType;
-  nodeId: string;
 }
 
 export interface UpdateLibraryDto {
   name?: string;
   path?: string;
   mediaType?: MediaType;
-  nodeId?: string;
   enabled?: boolean;
   watchEnabled?: boolean;
 }

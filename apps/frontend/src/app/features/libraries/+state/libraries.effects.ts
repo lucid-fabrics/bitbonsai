@@ -63,7 +63,7 @@ export class LibrariesEffects {
       ofType(LibrariesActions.scanLibrary),
       switchMap(({ id }) =>
         this.librariesClient.scanLibrary(id).pipe(
-          map(() => LibrariesActions.scanLibrarySuccess({ id })),
+          map((library) => LibrariesActions.scanLibrarySuccess({ library })),
           catchError((error) => of(LibrariesActions.scanLibraryFailure({ error: error.message })))
         )
       )

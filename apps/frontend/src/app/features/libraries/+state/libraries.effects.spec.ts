@@ -3,22 +3,23 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
 import { LibrariesClient } from '../services/libraries.client';
-import * as librariesActions from './libraries.actions';
+import { LibrariesActions } from './libraries.actions';
 import { LibrariesEffects } from './libraries.effects';
 
 describe('LibrariesEffects', () => {
   let actions$: Observable<Action>;
   let effects: LibrariesEffects;
-  let service: jasmine.SpyObj<LibrariesClient>;
+  let service: jest.Mocked<LibrariesClient>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('LibrariesClient', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const serviceSpy = {
+      getLibraries: jest.fn(),
+      getLibrary: jest.fn(),
+      createLibrary: jest.fn(),
+      updateLibrary: jest.fn(),
+      deleteLibrary: jest.fn(),
+      scanLibrary: jest.fn(),
+    } as jest.Mocked<LibrariesClient>;
 
     TestBed.configureTestingModule({
       providers: [
@@ -29,7 +30,7 @@ describe('LibrariesEffects', () => {
     });
 
     effects = TestBed.inject(LibrariesEffects);
-    service = TestBed.inject(LibrariesClient) as jasmine.SpyObj<LibrariesClient>;
+    service = TestBed.inject(LibrariesClient) as jest.Mocked<LibrariesClient>;
   });
 
   it('should be created', () => {
@@ -39,25 +40,25 @@ describe('LibrariesEffects', () => {
   describe('load data effect', () => {
     it('should return loadSuccess action on success', (done) => {
       const mockData = [{ id: '1', name: 'Test' }] as never;
-      service.getAll.and.returnValue(of(mockData));
+      service.getLibraries.mockReturnValue(of(mockData));
 
-      actions$ = of(librariesActions.load());
+      actions$ = of(LibrariesActions.loadLibraries());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(librariesActions.loadSuccess.type);
-        expect(service.getAll).toHaveBeenCalled();
+      effects.loadLibraries$.subscribe((action) => {
+        expect(action.type).toBe(LibrariesActions.loadLibrariesSuccess.type);
+        expect(service.getLibraries).toHaveBeenCalled();
         done();
       });
     });
 
     it('should return loadFailure action on error', (done) => {
       const error = new Error('Load failed');
-      service.getAll.and.returnValue(throwError(() => error));
+      service.getLibraries.mockReturnValue(throwError(() => error));
 
-      actions$ = of(librariesActions.load());
+      actions$ = of(LibrariesActions.loadLibraries());
 
-      effects.load$.subscribe((action) => {
-        expect(action.type).toBe(librariesActions.loadFailure.type);
+      effects.loadLibraries$.subscribe((action) => {
+        expect(action.type).toBe(LibrariesActions.loadLibrariesFailure.type);
         done();
       });
     });
