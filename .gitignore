@@ -64,7 +64,16 @@ PRISMA_SCHEMA_COMPLETE.md
 /test-media/
 /test-data/
 
+# Test results and reports (generated, not committed)
+/playwright-report/
+/test-results/
+/.last-run.json
+**/junit.xml
+**/results.json
+
 # Prisma / Database
 *.db
 *.db-journal
 .env
+
+.angular
