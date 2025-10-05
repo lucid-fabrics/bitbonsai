@@ -6,7 +6,7 @@ import type { PolicyDto } from './dto/policy.dto';
 import type { PolicyStatsDto } from './dto/policy-stats.dto';
 import type { PresetInfoDto } from './dto/preset-info.dto';
 import type { UpdatePolicyDto } from './dto/update-policy.dto';
-import { PolicyRepository } from './repositories/policy.repository';
+import type { PolicyRepository } from './repositories/policy.repository';
 
 @Injectable()
 export class PoliciesService {
