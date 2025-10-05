@@ -1,4 +1,7 @@
-import 'jest-preset-angular/setup-jest';
+import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
+
+// Initialize Angular testing environment
+setupZoneTestEnv();
 
 // Add custom Jest matchers
 Object.defineProperty(window, 'CSS', { value: null });
