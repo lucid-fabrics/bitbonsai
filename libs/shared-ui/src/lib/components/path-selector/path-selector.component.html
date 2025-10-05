@@ -1,0 +1,41 @@
+<div class="folder-browser-dropdown">
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <i class="fas fa-spinner fa-spin"></i>
+    </div>
+  }
+
+  <div class="directory-tree">
+    @if (error()) {
+      <div class="error-message">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>{{ error() }}</span>
+      </div>
+    } @else {
+      @if (parentPath()) {
+        <div class="tree-item parent" (click)="goToParent()">
+          <i class="fas fa-level-up-alt"></i>
+          <span class="item-name">..</span>
+        </div>
+      }
+      @for (dir of directories(); track dir.path) {
+        <div
+          class="tree-item"
+          [class.inaccessible]="!dir.isAccessible"
+          (click)="selectDirectory(dir)"
+        >
+          <i class="fas fa-folder"></i>
+          <span class="item-name">{{ dir.name }}</span>
+          @if (!dir.isAccessible) {
+            <i class="fas fa-lock lock-icon"></i>
+          }
+        </div>
+      }
+      @if (directories().length === 0 && !parentPath()) {
+        <div class="empty-message">
+          <span>No directories found</span>
+        </div>
+      }
+    }
+  </div>
+</div>
