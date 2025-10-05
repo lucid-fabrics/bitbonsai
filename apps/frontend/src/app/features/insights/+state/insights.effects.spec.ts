@@ -9,16 +9,16 @@ import { InsightsEffects } from './insights.effects';
 describe('InsightsEffects', () => {
   let actions$: Observable<Action>;
   let effects: InsightsEffects;
-  let service: jasmine.SpyObj<InsightsService>;
+  let service: jest.Mocked<InsightsService>;
 
   beforeEach(() => {
-    const serviceSpy = jasmine.createSpyObj('InsightsService', [
-      'getAll',
-      'getById',
-      'create',
-      'update',
-      'delete',
-    ]);
+    const serviceSpy = {
+      getAll: jest.fn(),
+      getById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    } as jest.Mocked<InsightsService>;
 
     TestBed.configureTestingModule({
       providers: [
@@ -29,7 +29,7 @@ describe('InsightsEffects', () => {
     });
 
     effects = TestBed.inject(InsightsEffects);
-    service = TestBed.inject(InsightsService) as jasmine.SpyObj<InsightsService>;
+    service = TestBed.inject(InsightsService) as jest.Mocked<InsightsService>;
   });
 
   it('should be created', () => {
