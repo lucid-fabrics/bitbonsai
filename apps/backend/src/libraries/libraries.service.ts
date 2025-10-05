@@ -40,20 +40,37 @@ export class LibrariesService {
   async create(createLibraryDto: CreateLibraryDto): Promise<Library> {
     this.logger.log(`Creating library: ${createLibraryDto.name}`);
 
+    // Auto-assign to first available node if nodeId not provided
+    let nodeId = createLibraryDto.nodeId;
+    if (!nodeId) {
+      const firstNode = await this.prisma.node.findFirst({
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!firstNode) {
+        throw new NotFoundException(
+          'No nodes available. Please register a node before creating libraries.'
+        );
+      }
+
+      nodeId = firstNode.id;
+      this.logger.log(`Auto-assigned library to node: ${firstNode.name}`);
+    }
+
     // Check if node exists
     const node = await this.prisma.node.findUnique({
-      where: { id: createLibraryDto.nodeId },
+      where: { id: nodeId },
     });
 
     if (!node) {
-      throw new NotFoundException(`Node with ID "${createLibraryDto.nodeId}" not found`);
+      throw new NotFoundException(`Node with ID "${nodeId}" not found`);
     }
 
     // Check for duplicate path on the same node
     const existingLibrary = await this.prisma.library.findUnique({
       where: {
         nodeId_path: {
-          nodeId: createLibraryDto.nodeId,
+          nodeId: nodeId,
           path: createLibraryDto.path,
         },
       },
@@ -71,7 +88,7 @@ export class LibrariesService {
           name: createLibraryDto.name,
           path: createLibraryDto.path,
           mediaType: createLibraryDto.mediaType,
-          nodeId: createLibraryDto.nodeId,
+          nodeId: nodeId,
         },
       });
 
@@ -187,6 +204,21 @@ export class LibrariesService {
       const library = await this.prisma.library.update({
         where: { id },
         data: updateLibraryDto,
+        include: {
+          node: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+          _count: {
+            select: {
+              jobs: true,
+              policies: true,
+            },
+          },
+        },
       });
 
       this.logger.log(`Library updated: ${id}`);
@@ -234,16 +266,13 @@ export class LibrariesService {
   }
 
   /**
-   * Trigger a library scan and update the lastScanAt timestamp
+   * Trigger a library scan to discover video files
    *
-   * This is a placeholder implementation. In production, this would:
-   * 1. Trigger a file system scan of the library path
-   * 2. Update totalFiles and totalSizeBytes
-   * 3. Queue encoding jobs based on policies
-   * 4. Update lastScanAt timestamp
+   * Scans the library path recursively to find all video files,
+   * counts them, calculates total size, and updates the database.
    *
    * @param id - Library unique identifier
-   * @returns Updated library with scan timestamp
+   * @returns Updated library with scan results
    * @throws NotFoundException if library does not exist
    */
   async scan(id: string): Promise<Library> {
@@ -259,16 +288,88 @@ export class LibrariesService {
     }
 
     try {
-      // TODO: Implement actual file scanning logic
-      // For now, just update the scan timestamp
+      const { promises: fs } = await import('node:fs');
+      const { join } = await import('node:path');
+
+      // Supported video file extensions
+      const videoExtensions = [
+        '.mp4',
+        '.mkv',
+        '.avi',
+        '.mov',
+        '.wmv',
+        '.flv',
+        '.webm',
+        '.m4v',
+        '.mpg',
+        '.mpeg',
+        '.m2ts',
+      ];
+
+      let totalFiles = 0;
+      let totalSizeBytes = BigInt(0);
+
+      // Recursive function to scan directory
+      const scanDirectory = async (dirPath: string): Promise<void> => {
+        try {
+          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+          for (const entry of entries) {
+            const fullPath = join(dirPath, entry.name);
+
+            if (entry.isDirectory()) {
+              // Recursively scan subdirectories
+              await scanDirectory(fullPath);
+            } else if (entry.isFile()) {
+              // Check if file has a video extension
+              const ext = entry.name.toLowerCase().slice(entry.name.lastIndexOf('.'));
+              if (videoExtensions.includes(ext)) {
+                try {
+                  const stats = await fs.stat(fullPath);
+                  totalFiles++;
+                  totalSizeBytes += BigInt(stats.size);
+                } catch (statError) {
+                  this.logger.warn(`Failed to stat file: ${fullPath}`, statError);
+                }
+              }
+            }
+          }
+        } catch (readError) {
+          this.logger.warn(`Failed to read directory: ${dirPath}`, readError);
+        }
+      };
+
+      // Start scanning from library path
+      await scanDirectory(existingLibrary.path);
+
+      // Update library with scan results
       const library = await this.prisma.library.update({
         where: { id },
         data: {
+          totalFiles,
+          totalSizeBytes,
           lastScanAt: new Date(),
+        },
+        include: {
+          node: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+          _count: {
+            select: {
+              jobs: true,
+              policies: true,
+            },
+          },
         },
       });
 
-      this.logger.log(`Library scan completed: ${id}`);
+      this.logger.log(
+        `Library scan completed: ${id} - Found ${totalFiles} files, ${totalSizeBytes} bytes`
+      );
       return library;
     } catch (error) {
       this.logger.error(`Failed to scan library: ${id}`, error);
