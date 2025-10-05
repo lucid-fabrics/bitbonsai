@@ -28,6 +28,9 @@ COPY nx.json tsconfig.json ./
 # Stage 2: Backend development image
 FROM base AS backend
 
+# Copy shared libraries
+COPY libs ./libs
+
 # Copy backend source
 COPY apps/backend ./apps/backend
 
@@ -46,6 +49,9 @@ FROM base AS frontend
 
 # Copy Angular configuration
 COPY angular.json ./
+
+# Copy shared libraries
+COPY libs ./libs
 
 # Copy frontend source
 COPY apps/frontend ./apps/frontend
