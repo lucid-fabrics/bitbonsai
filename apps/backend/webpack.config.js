@@ -8,5 +8,9 @@ module.exports = composePlugins(withNx(), (config) => {
     __dirname,
     '../../libs/shared-models/src/index.ts'
   );
+  config.resolve.extensions = config.resolve.extensions || [];
+  if (!config.resolve.extensions.includes('.ts')) {
+    config.resolve.extensions.push('.ts');
+  }
   return config;
 });
