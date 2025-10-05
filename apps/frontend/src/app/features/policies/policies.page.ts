@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -77,12 +77,12 @@ export class PoliciesComponent implements OnInit {
   readonly error$ = this.store.select(PoliciesSelectors.selectError);
 
   // Local Form State
-  readonly showFormModal = signal(false);
-  readonly isEditMode = signal(false);
-  readonly editingPolicyId = signal<string | null>(null);
-  readonly showAdvancedSettings = signal(false);
-  readonly formData = signal<PolicyFormData>(this.getEmptyFormData());
-  readonly formErrors = signal<Record<string, string>>({});
+  showFormModal = false;
+  isEditMode = false;
+  editingPolicyId: string | null = null;
+  showAdvancedSettings = false;
+  formData: PolicyFormData = this.getEmptyFormData();
+  formErrors: Record<string, string> = {};
 
   ngOnInit(): void {
     this.store.dispatch(PoliciesActions.loadPolicies());
@@ -90,26 +90,27 @@ export class PoliciesComponent implements OnInit {
   }
 
   selectPreset(preset: PresetInfoModel): void {
-    const formData = this.formData();
-    formData.preset = preset.preset;
-    formData.targetCodec = preset.codec;
-    formData.targetQuality = preset.crf;
-    formData.name = preset.name;
-    this.formData.set({ ...formData });
-    this.showFormModal.set(true);
-    this.isEditMode.set(false);
+    this.formData = {
+      ...this.formData,
+      preset: preset.preset,
+      targetCodec: preset.codec,
+      targetQuality: preset.crf,
+      name: preset.name,
+    };
+    this.showFormModal = true;
+    this.isEditMode = false;
   }
 
   openCreateForm(): void {
-    this.formData.set(this.getEmptyFormData());
-    this.formErrors.set({});
-    this.showFormModal.set(true);
-    this.isEditMode.set(false);
-    this.showAdvancedSettings.set(false);
+    this.formData = this.getEmptyFormData();
+    this.formErrors = {};
+    this.showFormModal = true;
+    this.isEditMode = false;
+    this.showAdvancedSettings = false;
   }
 
   openEditForm(policy: PolicyBo): void {
-    this.formData.set({
+    this.formData = {
       name: policy.name,
       preset: policy.preset,
       targetCodec: policy.targetCodec,
@@ -118,31 +119,29 @@ export class PoliciesComponent implements OnInit {
       deviceProfiles: new Set(policy.deviceProfiles),
       ffmpegFlags: policy.ffmpegFlags || '',
       audioHandling: policy.audioHandling || AudioHandling.COPY,
-    });
-    this.formErrors.set({});
-    this.editingPolicyId.set(policy.id);
-    this.showFormModal.set(true);
-    this.isEditMode.set(true);
-    this.showAdvancedSettings.set(false);
+    };
+    this.formErrors = {};
+    this.editingPolicyId = policy.id;
+    this.showFormModal = true;
+    this.isEditMode = true;
+    this.showAdvancedSettings = false;
   }
 
   closeForm(): void {
-    this.showFormModal.set(false);
-    this.isEditMode.set(false);
-    this.editingPolicyId.set(null);
-    this.showAdvancedSettings.set(false);
+    this.showFormModal = false;
+    this.isEditMode = false;
+    this.editingPolicyId = null;
+    this.showAdvancedSettings = false;
   }
 
   toggleDeviceProfile(profile: DeviceProfile): void {
-    const formData = this.formData();
-    const profiles = new Set(formData.deviceProfiles);
+    const profiles = new Set(this.formData.deviceProfiles);
     if (profiles.has(profile)) {
       profiles.delete(profile);
     } else {
       profiles.add(profile);
     }
-    formData.deviceProfiles = profiles;
-    this.formData.set({ ...formData });
+    this.formData.deviceProfiles = profiles;
   }
 
   getCRFLabel(crf: number): string {
@@ -152,24 +151,23 @@ export class PoliciesComponent implements OnInit {
   }
 
   validateForm(): boolean {
-    const formData = this.formData();
     const errors: Record<string, string> = {};
 
-    if (!formData.name || formData.name.trim().length === 0) {
+    if (!this.formData.name || this.formData.name.trim().length === 0) {
       errors.name = 'Name is required';
-    } else if (formData.name.length > 50) {
+    } else if (this.formData.name.length > 50) {
       errors.name = 'Name must be 50 characters or less';
     }
 
-    if (formData.targetQuality < 0 || formData.targetQuality > 51) {
+    if (this.formData.targetQuality < 0 || this.formData.targetQuality > 51) {
       errors.targetQuality = 'Quality must be between 0 and 51';
     }
 
-    if (formData.deviceProfiles.size === 0) {
+    if (this.formData.deviceProfiles.size === 0) {
       errors.deviceProfiles = 'At least one device profile must be selected';
     }
 
-    this.formErrors.set(errors);
+    this.formErrors = errors;
     return Object.keys(errors).length === 0;
   }
 
@@ -182,27 +180,26 @@ export class PoliciesComponent implements OnInit {
       return;
     }
 
-    const formData = this.formData();
     const request: CreatePolicyRequest = {
-      name: formData.name.trim(),
-      preset: formData.preset,
-      targetCodec: formData.targetCodec,
-      targetQuality: formData.targetQuality,
-      libraryId: formData.libraryId || undefined,
+      name: this.formData.name.trim(),
+      preset: this.formData.preset,
+      targetCodec: this.formData.targetCodec,
+      targetQuality: this.formData.targetQuality,
+      libraryId: this.formData.libraryId || undefined,
       deviceProfiles: {
-        appleTV: formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
-        chromecast: formData.deviceProfiles.has(DeviceProfile.CHROMECAST),
-        roku: formData.deviceProfiles.has(DeviceProfile.ROKU),
-        web: formData.deviceProfiles.has(DeviceProfile.WEB),
+        appleTV: this.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
+        chromecast: this.formData.deviceProfiles.has(DeviceProfile.CHROMECAST),
+        roku: this.formData.deviceProfiles.has(DeviceProfile.ROKU),
+        web: this.formData.deviceProfiles.has(DeviceProfile.WEB),
       },
       advancedSettings: {
-        ffmpegFlags: formData.ffmpegFlags || undefined,
-        audioHandling: formData.audioHandling,
+        ffmpegFlags: this.formData.ffmpegFlags || undefined,
+        audioHandling: this.formData.audioHandling,
       },
     };
 
-    if (this.isEditMode()) {
-      const policyId = this.editingPolicyId();
+    if (this.isEditMode) {
+      const policyId = this.editingPolicyId;
       if (!policyId) return;
 
       this.store.dispatch(PoliciesActions.updatePolicy({ id: policyId, request }));

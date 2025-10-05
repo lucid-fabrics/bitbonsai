@@ -7,7 +7,7 @@ import { PolicyService } from './policy.service';
 
 describe('PolicyService', () => {
   let service: PolicyService;
-  let policyClient: jasmine.SpyObj<PolicyClient>;
+  let policyClient: jest.Mocked<PolicyClient>;
 
   const mockPolicyModel: PolicyModel = {
     id: '1',
@@ -22,20 +22,20 @@ describe('PolicyService', () => {
   };
 
   beforeEach(() => {
-    const policyClientSpy = jasmine.createSpyObj('PolicyClient', [
-      'getPolicies',
-      'getPolicy',
-      'createPolicy',
-      'updatePolicy',
-      'deletePolicy',
-    ]);
+    const policyClientSpy = {
+      getPolicies: jest.fn(),
+      getPolicy: jest.fn(),
+      createPolicy: jest.fn(),
+      updatePolicy: jest.fn(),
+      deletePolicy: jest.fn(),
+    } as jest.Mocked<PolicyClient>;
 
     TestBed.configureTestingModule({
       providers: [PolicyService, { provide: PolicyClient, useValue: policyClientSpy }],
     });
 
     service = TestBed.inject(PolicyService);
-    policyClient = TestBed.inject(PolicyClient) as jasmine.SpyObj<PolicyClient>;
+    policyClient = TestBed.inject(PolicyClient) as jest.Mocked<PolicyClient>;
   });
 
   it('should be created', () => {
@@ -45,7 +45,7 @@ describe('PolicyService', () => {
   describe('getPolicies', () => {
     it('should return an array of PolicyBo instances', (done) => {
       const mockPolicies = [mockPolicyModel];
-      policyClient.getPolicies.and.returnValue(of(mockPolicies));
+      policyClient.getPolicies.mockReturnValue(of(mockPolicies));
 
       service.getPolicies().subscribe((policies) => {
         expect(policies.length).toBe(1);
@@ -59,7 +59,7 @@ describe('PolicyService', () => {
     });
 
     it('should handle empty array', (done) => {
-      policyClient.getPolicies.and.returnValue(of([]));
+      policyClient.getPolicies.mockReturnValue(of([]));
 
       service.getPolicies().subscribe((policies) => {
         expect(policies.length).toBe(0);
@@ -69,7 +69,7 @@ describe('PolicyService', () => {
 
     it('should handle errors', (done) => {
       const error = new Error('Failed to fetch policies');
-      policyClient.getPolicies.and.returnValue(throwError(() => error));
+      policyClient.getPolicies.mockReturnValue(throwError(() => error));
 
       service.getPolicies().subscribe({
         error: (err) => {
@@ -82,7 +82,7 @@ describe('PolicyService', () => {
 
   describe('getPolicy', () => {
     it('should return a single PolicyBo instance', (done) => {
-      policyClient.getPolicy.and.returnValue(of(mockPolicyModel));
+      policyClient.getPolicy.mockReturnValue(of(mockPolicyModel));
 
       service.getPolicy('1').subscribe((policy) => {
         expect(policy).toBeInstanceOf(PolicyBo);
@@ -96,7 +96,7 @@ describe('PolicyService', () => {
 
     it('should handle 404 errors', (done) => {
       const error = new Error('Policy not found');
-      policyClient.getPolicy.and.returnValue(throwError(() => error));
+      policyClient.getPolicy.mockReturnValue(throwError(() => error));
 
       service.getPolicy('999').subscribe({
         error: (err) => {
@@ -117,7 +117,7 @@ describe('PolicyService', () => {
         libraryId: 'lib1',
       };
 
-      policyClient.createPolicy.and.returnValue(of(mockPolicyModel));
+      policyClient.createPolicy.mockReturnValue(of(mockPolicyModel));
 
       service.createPolicy(createData).subscribe((policy) => {
         expect(policy).toBeInstanceOf(PolicyBo);
@@ -137,7 +137,7 @@ describe('PolicyService', () => {
         libraryId: 'lib1',
       };
       const error = new Error('Validation failed');
-      policyClient.createPolicy.and.returnValue(throwError(() => error));
+      policyClient.createPolicy.mockReturnValue(throwError(() => error));
 
       service.createPolicy(createData).subscribe({
         error: (err) => {
@@ -153,7 +153,7 @@ describe('PolicyService', () => {
       const updateData = { name: 'Updated Policy' };
       const updatedModel = { ...mockPolicyModel, name: 'Updated Policy' };
 
-      policyClient.updatePolicy.and.returnValue(of(updatedModel));
+      policyClient.updatePolicy.mockReturnValue(of(updatedModel));
 
       service.updatePolicy('1', updateData).subscribe((policy) => {
         expect(policy).toBeInstanceOf(PolicyBo);
@@ -167,7 +167,7 @@ describe('PolicyService', () => {
 
   describe('deletePolicy', () => {
     it('should delete a policy', (done) => {
-      policyClient.deletePolicy.and.returnValue(of(void 0));
+      policyClient.deletePolicy.mockReturnValue(of(void 0));
 
       service.deletePolicy('1').subscribe(() => {
         done();
@@ -178,7 +178,7 @@ describe('PolicyService', () => {
 
     it('should handle delete errors', (done) => {
       const error = new Error('Cannot delete policy with active jobs');
-      policyClient.deletePolicy.and.returnValue(throwError(() => error));
+      policyClient.deletePolicy.mockReturnValue(throwError(() => error));
 
       service.deletePolicy('1').subscribe({
         error: (err) => {
