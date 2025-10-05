@@ -22,7 +22,7 @@ describe('PoliciesComponent', () => {
   let component: PoliciesComponent;
   let fixture: ComponentFixture<PoliciesComponent>;
   let store: MockStore;
-  let dialog: jest.Mocked<Dialog>;
+  let _dialog: jest.Mocked<Dialog>;
   let httpMock: HttpTestingController;
 
   const mockPolicy: PolicyBo = {
@@ -75,7 +75,7 @@ describe('PoliciesComponent', () => {
     fixture = TestBed.createComponent(PoliciesComponent);
     component = fixture.componentInstance;
     store = TestBed.inject(MockStore);
-    dialog = TestBed.inject(Dialog) as jest.Mocked<Dialog>;
+    _dialog = TestBed.inject(Dialog) as jest.Mocked<Dialog>;
     httpMock = TestBed.inject(HttpTestingController);
 
     jest.clearAllMocks();

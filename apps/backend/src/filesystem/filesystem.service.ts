@@ -1,4 +1,4 @@
-import { readdir, realpath, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 

@@ -3,7 +3,6 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { of, throwError } from 'rxjs';
 import { configureFontAwesome } from '../../core/config/font-awesome.config';
 import type { OverviewModel } from './models/overview.model';
 import { OverviewComponent } from './overview.page';
@@ -12,8 +11,8 @@ import { OverviewClient } from './services/overview.client';
 describe('OverviewComponent', () => {
   let component: OverviewComponent;
   let fixture: ComponentFixture<OverviewComponent>;
-  let store: MockStore;
-  let overviewClient: jest.Mocked<OverviewClient>;
+  let _store: MockStore;
+  let _overviewClient: jest.Mocked<OverviewClient>;
   let httpMock: HttpTestingController;
 
   const mockOverview: OverviewModel = {
@@ -51,8 +50,8 @@ describe('OverviewComponent', () => {
 
     fixture = TestBed.createComponent(OverviewComponent);
     component = fixture.componentInstance;
-    store = TestBed.inject(MockStore);
-    overviewClient = TestBed.inject(OverviewClient) as jest.Mocked<OverviewClient>;
+    _store = TestBed.inject(MockStore);
+    _overviewClient = TestBed.inject(OverviewClient) as jest.Mocked<OverviewClient>;
     httpMock = TestBed.inject(HttpTestingController);
 
     jest.clearAllMocks();

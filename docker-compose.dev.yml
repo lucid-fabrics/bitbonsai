@@ -8,7 +8,7 @@ services:
       target: backend
     container_name: bitbonsai-backend
     ports:
-      - "3000:3000"
+      - "3002:3000"
       - "9229:9229"  # Node.js debug port
     environment:
       - NODE_ENV=development
@@ -44,7 +44,7 @@ services:
       target: frontend
     container_name: bitbonsai-frontend
     ports:
-      - "4200:4200"
+      - "4201:4200"
     environment:
       - NODE_ENV=development
     volumes:
