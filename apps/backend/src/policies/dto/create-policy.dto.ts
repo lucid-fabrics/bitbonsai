@@ -1,9 +1,25 @@
-import {
-  type AdvancedSettings,
-  type DeviceProfiles,
-  PolicyPreset,
-  TargetCodec,
-} from '@bitbonsai/shared-models';
+import { PolicyPreset, TargetCodec } from '@prisma/client';
+
+// Re-export for test files
+export { PolicyPreset, TargetCodec };
+
+// Type definitions
+export type DeviceProfiles = {
+  appleTv: boolean;
+  roku: boolean;
+  web: boolean;
+  chromecast: boolean;
+  ps5: boolean;
+  xbox: boolean;
+};
+
+export type AdvancedSettings = {
+  ffmpegFlags: string[];
+  hwaccel: string;
+  audioCodec: string;
+  subtitleHandling: string;
+};
+
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,

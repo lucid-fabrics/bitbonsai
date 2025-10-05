@@ -1,12 +1,7 @@
-import {
-  type AdvancedSettings,
-  type DeviceProfiles,
-  PolicyPreset,
-  TargetCodec,
-} from '@bitbonsai/shared-models';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { CreatePolicyDto } from './dto/create-policy.dto';
+import { PolicyPreset, TargetCodec } from '@prisma/client';
+import type { AdvancedSettings, CreatePolicyDto, DeviceProfiles } from './dto/create-policy.dto';
 import type { PolicyDto } from './dto/policy.dto';
 import type { PolicyStatsDto } from './dto/policy-stats.dto';
 import type { PresetInfoDto } from './dto/preset-info.dto';
@@ -178,8 +173,8 @@ export class PoliciesService {
       preset: policy.preset as PolicyPreset,
       targetCodec: policy.targetCodec as TargetCodec,
       targetQuality: policy.targetQuality,
-      deviceProfiles: policy.deviceProfiles,
-      advancedSettings: policy.advancedSettings,
+      deviceProfiles: policy.deviceProfiles as object,
+      advancedSettings: policy.advancedSettings as object,
       atomicReplace: policy.atomicReplace,
       verifyOutput: policy.verifyOutput,
       skipSeeding: policy.skipSeeding,
@@ -214,8 +209,8 @@ export class PoliciesService {
       preset: policy.preset as PolicyPreset,
       targetCodec: policy.targetCodec as TargetCodec,
       targetQuality: policy.targetQuality,
-      deviceProfiles: policy.deviceProfiles,
-      advancedSettings: policy.advancedSettings,
+      deviceProfiles: policy.deviceProfiles as object,
+      advancedSettings: policy.advancedSettings as object,
       atomicReplace: policy.atomicReplace,
       verifyOutput: policy.verifyOutput,
       skipSeeding: policy.skipSeeding,
