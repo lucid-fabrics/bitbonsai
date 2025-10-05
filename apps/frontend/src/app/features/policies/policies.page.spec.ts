@@ -99,10 +99,10 @@ describe('PoliciesComponent', () => {
     });
 
     it('should initialize form state signals', () => {
-      expect(component.showFormModal()).toBe(false);
-      expect(component.isEditMode()).toBe(false);
-      expect(component.editingPolicyId()).toBeNull();
-      expect(component.showAdvancedSettings()).toBe(false);
+      expect(component.showFormModal).toBe(false);
+      expect(component.isEditMode).toBe(false);
+      expect(component.editingPolicyId).toBeNull();
+      expect(component.showAdvancedSettings).toBe(false);
     });
   });
 
@@ -110,13 +110,13 @@ describe('PoliciesComponent', () => {
     it('should populate form with preset data', () => {
       component.selectPreset(mockPreset);
 
-      const formData = component.formData();
+      const formData = component.formData;
       expect(formData.name).toBe('Balanced HEVC');
       expect(formData.preset).toBe(PolicyPreset.BALANCED_HEVC);
       expect(formData.targetCodec).toBe(TargetCodec.HEVC);
       expect(formData.targetQuality).toBe(23);
-      expect(component.showFormModal()).toBe(true);
-      expect(component.isEditMode()).toBe(false);
+      expect(component.showFormModal).toBe(true);
+      expect(component.isEditMode).toBe(false);
     });
   });
 
@@ -124,12 +124,12 @@ describe('PoliciesComponent', () => {
     it('should reset form and open modal', () => {
       component.openCreateForm();
 
-      expect(component.showFormModal()).toBe(true);
-      expect(component.isEditMode()).toBe(false);
-      expect(component.showAdvancedSettings()).toBe(false);
-      expect(component.formErrors()).toEqual({});
+      expect(component.showFormModal).toBe(true);
+      expect(component.isEditMode).toBe(false);
+      expect(component.showAdvancedSettings).toBe(false);
+      expect(component.formErrors).toEqual({});
 
-      const formData = component.formData();
+      const formData = component.formData;
       expect(formData.name).toBe('');
       expect(formData.preset).toBe(PolicyPreset.CUSTOM);
       expect(formData.targetQuality).toBe(23);
@@ -140,7 +140,7 @@ describe('PoliciesComponent', () => {
     it('should populate form with policy data', () => {
       component.openEditForm(mockPolicy);
 
-      const formData = component.formData();
+      const formData = component.formData;
       expect(formData.name).toBe('Test Policy');
       expect(formData.preset).toBe(PolicyPreset.BALANCED_HEVC);
       expect(formData.targetCodec).toBe(TargetCodec.HEVC);
@@ -149,9 +149,9 @@ describe('PoliciesComponent', () => {
       expect(formData.deviceProfiles).toEqual(new Set([DeviceProfile.APPLE_TV, DeviceProfile.WEB]));
       expect(formData.ffmpegFlags).toBe('-preset medium');
       expect(formData.audioHandling).toBe(AudioHandling.COPY);
-      expect(component.showFormModal()).toBe(true);
-      expect(component.isEditMode()).toBe(true);
-      expect(component.editingPolicyId()).toBe('1');
+      expect(component.showFormModal).toBe(true);
+      expect(component.isEditMode).toBe(true);
+      expect(component.editingPolicyId).toBe('1');
     });
 
     it('should handle policy without optional fields', () => {
@@ -164,7 +164,7 @@ describe('PoliciesComponent', () => {
 
       component.openEditForm(minimalPolicy);
 
-      const formData = component.formData();
+      const formData = component.formData;
       expect(formData.libraryId).toBe('');
       expect(formData.ffmpegFlags).toBe('');
       expect(formData.audioHandling).toBe(AudioHandling.COPY);
@@ -173,39 +173,39 @@ describe('PoliciesComponent', () => {
 
   describe('closeForm', () => {
     it('should reset all form state', () => {
-      component.showFormModal.set(true);
-      component.isEditMode.set(true);
-      component.editingPolicyId.set('1');
-      component.showAdvancedSettings.set(true);
+      component.showFormModal = true;
+      component.isEditMode = true;
+      component.editingPolicyId = '1';
+      component.showAdvancedSettings = true;
 
       component.closeForm();
 
-      expect(component.showFormModal()).toBe(false);
-      expect(component.isEditMode()).toBe(false);
-      expect(component.editingPolicyId()).toBeNull();
-      expect(component.showAdvancedSettings()).toBe(false);
+      expect(component.showFormModal).toBe(false);
+      expect(component.isEditMode).toBe(false);
+      expect(component.editingPolicyId).toBeNull();
+      expect(component.showAdvancedSettings).toBe(false);
     });
   });
 
   describe('toggleDeviceProfile', () => {
     it('should add profile if not present', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.deviceProfiles = new Set();
-      component.formData.set(formData);
+      component.formData = formData;
 
       component.toggleDeviceProfile(DeviceProfile.APPLE_TV);
 
-      expect(component.formData().deviceProfiles.has(DeviceProfile.APPLE_TV)).toBe(true);
+      expect(component.formData.deviceProfiles.has(DeviceProfile.APPLE_TV)).toBe(true);
     });
 
     it('should remove profile if present', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.deviceProfiles = new Set([DeviceProfile.APPLE_TV]);
-      component.formData.set(formData);
+      component.formData = formData;
 
       component.toggleDeviceProfile(DeviceProfile.APPLE_TV);
 
-      expect(component.formData().deviceProfiles.has(DeviceProfile.APPLE_TV)).toBe(false);
+      expect(component.formData.deviceProfiles.has(DeviceProfile.APPLE_TV)).toBe(false);
     });
   });
 
@@ -228,74 +228,74 @@ describe('PoliciesComponent', () => {
 
   describe('validateForm', () => {
     it('should validate empty name', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = '';
       formData.deviceProfiles = new Set([DeviceProfile.WEB]);
-      component.formData.set(formData);
+      component.formData = formData;
 
       const isValid = component.validateForm();
 
       expect(isValid).toBe(false);
-      expect(component.formErrors().name).toBe('Name is required');
+      expect(component.formErrors.name).toBe('Name is required');
     });
 
     it('should validate name length', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = 'a'.repeat(51);
       formData.deviceProfiles = new Set([DeviceProfile.WEB]);
-      component.formData.set(formData);
+      component.formData = formData;
 
       const isValid = component.validateForm();
 
       expect(isValid).toBe(false);
-      expect(component.formErrors().name).toBe('Name must be 50 characters or less');
+      expect(component.formErrors.name).toBe('Name must be 50 characters or less');
     });
 
     it('should validate quality range', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = 'Valid Name';
       formData.targetQuality = 52;
       formData.deviceProfiles = new Set([DeviceProfile.WEB]);
-      component.formData.set(formData);
+      component.formData = formData;
 
       const isValid = component.validateForm();
 
       expect(isValid).toBe(false);
-      expect(component.formErrors().targetQuality).toBe('Quality must be between 0 and 51');
+      expect(component.formErrors.targetQuality).toBe('Quality must be between 0 and 51');
     });
 
     it('should validate device profiles', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = 'Valid Name';
       formData.targetQuality = 23;
       formData.deviceProfiles = new Set();
-      component.formData.set(formData);
+      component.formData = formData;
 
       const isValid = component.validateForm();
 
       expect(isValid).toBe(false);
-      expect(component.formErrors().deviceProfiles).toBe(
+      expect(component.formErrors.deviceProfiles).toBe(
         'At least one device profile must be selected'
       );
     });
 
     it('should return true for valid form', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = 'Valid Policy';
       formData.targetQuality = 23;
       formData.deviceProfiles = new Set([DeviceProfile.WEB]);
-      component.formData.set(formData);
+      component.formData = formData;
 
       const isValid = component.validateForm();
 
       expect(isValid).toBe(true);
-      expect(component.formErrors()).toEqual({});
+      expect(component.formErrors).toEqual({});
     });
   });
 
   describe('submitForm', () => {
     beforeEach(() => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = 'New Policy';
       formData.preset = PolicyPreset.BALANCED_HEVC;
       formData.targetCodec = TargetCodec.HEVC;
@@ -304,13 +304,13 @@ describe('PoliciesComponent', () => {
       formData.deviceProfiles = new Set([DeviceProfile.APPLE_TV, DeviceProfile.WEB]);
       formData.ffmpegFlags = '-preset medium';
       formData.audioHandling = AudioHandling.COPY;
-      component.formData.set(formData);
+      component.formData = formData;
     });
 
     it('should not submit invalid form', () => {
-      const formData = component.formData();
+      const formData = component.formData;
       formData.name = '';
-      component.formData.set(formData);
+      component.formData = formData;
       const dispatchSpy = jest.spyOn(store, 'dispatch');
 
       component.submitForm();
@@ -320,7 +320,7 @@ describe('PoliciesComponent', () => {
 
     it('should dispatch createPolicy for new policy', () => {
       const dispatchSpy = jest.spyOn(store, 'dispatch');
-      component.isEditMode.set(false);
+      component.isEditMode = false;
 
       component.submitForm();
 
@@ -345,13 +345,13 @@ describe('PoliciesComponent', () => {
           }),
         })
       );
-      expect(component.showFormModal()).toBe(false);
+      expect(component.showFormModal).toBe(false);
     });
 
     it('should dispatch updatePolicy for existing policy', () => {
       const dispatchSpy = jest.spyOn(store, 'dispatch');
-      component.isEditMode.set(true);
-      component.editingPolicyId.set('policy-1');
+      component.isEditMode = true;
+      component.editingPolicyId = 'policy-1';
 
       component.submitForm();
 
@@ -363,13 +363,13 @@ describe('PoliciesComponent', () => {
           }),
         })
       );
-      expect(component.showFormModal()).toBe(false);
+      expect(component.showFormModal).toBe(false);
     });
 
     it('should not submit update without policy id', () => {
       const dispatchSpy = jest.spyOn(store, 'dispatch');
-      component.isEditMode.set(true);
-      component.editingPolicyId.set(null);
+      component.isEditMode = true;
+      component.editingPolicyId = null;
 
       component.submitForm();
 

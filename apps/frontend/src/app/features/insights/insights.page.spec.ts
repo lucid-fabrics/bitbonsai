@@ -1,6 +1,6 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { InsightsComponent } from './insights.component';
+import { InsightsComponent } from './insights.page';
 
 describe('InsightsComponent', () => {
   let component: InsightsComponent;

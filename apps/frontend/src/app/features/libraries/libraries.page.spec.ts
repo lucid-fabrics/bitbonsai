@@ -69,9 +69,9 @@ describe('LibrariesComponent', () => {
     });
 
     it('should initialize signals', () => {
-      expect(component.showForm()).toBe(false);
-      expect(component.selectedLibrary()).toBeUndefined();
-      expect(component.scanningLibraryId()).toBeNull();
+      expect(component.showForm).toBe(false);
+      expect(component.selectedLibrary).toBeUndefined();
+      expect(component.scanningLibraryId).toBeNull();
     });
   });
 
@@ -79,8 +79,8 @@ describe('LibrariesComponent', () => {
     it('should open form in create mode', () => {
       component.onAddLibrary();
 
-      expect(component.selectedLibrary()).toBeUndefined();
-      expect(component.showForm()).toBe(true);
+      expect(component.selectedLibrary).toBeUndefined();
+      expect(component.showForm).toBe(true);
     });
   });
 
@@ -88,8 +88,8 @@ describe('LibrariesComponent', () => {
     it('should open form in edit mode with library', () => {
       component.onEditLibrary(mockLibrary);
 
-      expect(component.selectedLibrary()).toEqual(mockLibrary);
-      expect(component.showForm()).toBe(true);
+      expect(component.selectedLibrary).toEqual(mockLibrary);
+      expect(component.showForm).toBe(true);
     });
   });
 
@@ -102,14 +102,14 @@ describe('LibrariesComponent', () => {
         policyId: 'policy-1',
       };
 
-      component.selectedLibrary.set(undefined);
+      component.selectedLibrary = undefined;
       component.onFormSubmit(createData);
 
       expect(dispatchSpy).toHaveBeenCalledWith(
         LibrariesActions.createLibrary({ library: createData })
       );
-      expect(component.showForm()).toBe(false);
-      expect(component.selectedLibrary()).toBeUndefined();
+      expect(component.showForm).toBe(false);
+      expect(component.selectedLibrary).toBeUndefined();
     });
 
     it('should update library when library selected', () => {
@@ -118,7 +118,7 @@ describe('LibrariesComponent', () => {
         name: 'Updated Library',
       };
 
-      component.selectedLibrary.set(mockLibrary);
+      component.selectedLibrary = mockLibrary;
       component.onFormSubmit(updateData);
 
       expect(dispatchSpy).toHaveBeenCalledWith(
@@ -127,20 +127,20 @@ describe('LibrariesComponent', () => {
           library: updateData,
         })
       );
-      expect(component.showForm()).toBe(false);
-      expect(component.selectedLibrary()).toBeUndefined();
+      expect(component.showForm).toBe(false);
+      expect(component.selectedLibrary).toBeUndefined();
     });
   });
 
   describe('onFormCancel', () => {
     it('should close form and reset state', () => {
-      component.showForm.set(true);
-      component.selectedLibrary.set(mockLibrary);
+      component.showForm = true;
+      component.selectedLibrary = mockLibrary;
 
       component.onFormCancel();
 
-      expect(component.showForm()).toBe(false);
-      expect(component.selectedLibrary()).toBeUndefined();
+      expect(component.showForm).toBe(false);
+      expect(component.selectedLibrary).toBeUndefined();
     });
   });
 
@@ -200,10 +200,10 @@ describe('LibrariesComponent', () => {
       component.onScanLibrary(mockLibrary);
 
       expect(dispatchSpy).toHaveBeenCalledWith(LibrariesActions.scanLibrary({ id: '1' }));
-      expect(component.scanningLibraryId()).toBe('1');
+      expect(component.scanningLibraryId).toBe('1');
 
       jest.advanceTimersByTime(1000);
-      expect(component.scanningLibraryId()).toBeNull();
+      expect(component.scanningLibraryId).toBeNull();
 
       jest.useRealTimers();
     });
@@ -240,17 +240,17 @@ describe('LibrariesComponent', () => {
 
   describe('isScanning', () => {
     it('should return true for scanning library', () => {
-      component.scanningLibraryId.set('1');
+      component.scanningLibraryId = '1';
       expect(component.isScanning('1')).toBe(true);
     });
 
     it('should return false for non-scanning library', () => {
-      component.scanningLibraryId.set('1');
+      component.scanningLibraryId = '1';
       expect(component.isScanning('2')).toBe(false);
     });
 
     it('should return false when no library scanning', () => {
-      component.scanningLibraryId.set(null);
+      component.scanningLibraryId = null;
       expect(component.isScanning('1')).toBe(false);
     });
   });
