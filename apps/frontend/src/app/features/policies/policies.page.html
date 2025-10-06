@@ -184,11 +184,11 @@
   </div>
 
   <!-- Create/Edit Form Modal -->
-  @if (showFormModal) {
+  @if (showFormModal()) {
     <div class="modal-overlay" (click)="closeForm()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>{{ isEditMode ? 'Edit Policy' : 'Create Policy' }}</h2>
+          <h2>{{ isEditMode() ? 'Edit Policy' : 'Create Policy' }}</h2>
           <button class="btn-icon" (click)="closeForm()">
             <fa-icon [icon]="icons.times"></fa-icon>
           </button>
@@ -202,14 +202,15 @@
               <input
                 id="name"
                 type="text"
-                [(ngModel)]="formData.name"
+                [ngModel]="getFormField('name')"
+                (ngModelChange)="updateFormField('name', $event)"
                 name="name"
                 placeholder="e.g., My Custom HEVC Policy"
                 maxlength="50"
-                [class.error]="formErrors['name']"
+                [class.error]="formErrors()['name']"
               />
-              @if (formErrors['name']) {
-                <span class="error-message">{{ formErrors['name'] }}</span>
+              @if (formErrors()['name']) {
+                <span class="error-message">{{ formErrors()['name'] }}</span>
               }
             </div>
 
@@ -218,9 +219,10 @@
               <label for="preset">Preset Template</label>
               <select
                 id="preset"
-                [(ngModel)]="formData.preset"
+                [ngModel]="getFormField('preset')"
+                (ngModelChange)="updateFormField('preset', $event)"
                 name="preset"
-                [disabled]="isEditMode"
+                [disabled]="isEditMode()"
               >
                 <option [value]="PolicyPreset.BALANCED_HEVC">Balanced HEVC</option>
                 <option [value]="PolicyPreset.FAST_HEVC">Fast HEVC</option>
@@ -235,7 +237,8 @@
               <label for="codec">Target Codec *</label>
               <select
                 id="codec"
-                [(ngModel)]="formData.targetCodec"
+                [ngModel]="getFormField('targetCodec')"
+                (ngModelChange)="updateFormField('targetCodec', $event)"
                 name="codec"
               >
                 <option [value]="TargetCodec.HEVC">HEVC (H.265)</option>
@@ -256,7 +259,7 @@
                   tooltipContent="CRF (Constant Rate Factor) ranges from 0-51. Lower = better quality but larger files. Higher = smaller files but lower quality. Sweet spot is usually 18-23 for near-lossless quality with good compression."
                   tooltipWhen="You need to balance file size vs quality. Use 18-20 for archival, 21-23 for streaming, 24-28 for fast/low-priority encoding."
                   tooltipPlacement="right">
-                  {{ getCRFLabel(formData.targetQuality) }}
+                  {{ getCRFLabel(getFormField('targetQuality')) }}
                 </span>
               </label>
               <div class="field-hint">
@@ -269,7 +272,8 @@
                   type="range"
                   min="0"
                   max="51"
-                  [(ngModel)]="formData.targetQuality"
+                  [ngModel]="getFormField('targetQuality')"
+                  (ngModelChange)="updateFormField('targetQuality', $event)"
                   name="targetQuality"
                   class="quality-slider"
                 />
@@ -281,9 +285,9 @@
                   <span>51 (Worst)</span>
                 </div>
               </div>
-              <div class="crf-value-display">Current: {{ formData.targetQuality }}</div>
-              @if (formErrors['targetQuality']) {
-                <span class="error-message">{{ formErrors['targetQuality'] }}</span>
+              <div class="crf-value-display">Current: {{ getFormField('targetQuality') }}</div>
+              @if (formErrors()['targetQuality']) {
+                <span class="error-message">{{ formErrors()['targetQuality'] }}</span>
               }
             </div>
 
@@ -293,7 +297,8 @@
               <input
                 id="library"
                 type="text"
-                [(ngModel)]="formData.libraryId"
+                [ngModel]="getFormField('libraryId')"
+                (ngModelChange)="updateFormField('libraryId', $event)"
                 name="library"
                 placeholder="Leave empty for all libraries"
               />
@@ -319,7 +324,7 @@
                   <button
                     type="button"
                     class="device-profile-btn"
-                    [class.active]="formData.deviceProfiles.has(profile)"
+                    [class.active]="getFormField('deviceProfiles').has(profile)"
                     (click)="toggleDeviceProfile(profile)"
                     bbTooltip
                     [tooltipTitle]="getDeviceLabel(profile)"
@@ -329,14 +334,14 @@
                   >
                     <fa-icon [icon]="getDeviceIcon(profile)"></fa-icon>
                     <span>{{ getDeviceLabel(profile) }}</span>
-                    @if (formData.deviceProfiles.has(profile)) {
+                    @if (getFormField('deviceProfiles').has(profile)) {
                       <fa-icon [icon]="icons.check" class="check-icon"></fa-icon>
                     }
                   </button>
                 }
               </div>
-              @if (formErrors['deviceProfiles']) {
-                <span class="error-message">{{ formErrors['deviceProfiles'] }}</span>
+              @if (formErrors()['deviceProfiles']) {
+                <span class="error-message">{{ formErrors()['deviceProfiles'] }}</span>
               }
             </div>
 
@@ -345,19 +350,131 @@
               <button
                 type="button"
                 class="advanced-toggle"
-                (click)="showAdvancedSettings = !showAdvancedSettings"
+                (click)="showAdvancedSettings.set(!showAdvancedSettings())"
               >
-                {{ showAdvancedSettings ? '▼' : '▶' }} Advanced Settings
+                {{ showAdvancedSettings() ? '▼' : '▶' }} Advanced Settings
               </button>
 
-              @if (showAdvancedSettings) {
+              @if (showAdvancedSettings()) {
                 <div class="advanced-settings">
+                  <!-- Hardware Acceleration -->
+                  <div class="form-group">
+                    <label>Hardware Acceleration</label>
+                    <p class="help-text" style="margin-bottom: 12px;">
+                      Select which hardware to use for encoding. Unavailable options are disabled.
+                    </p>
+                    <div class="hw-selector-grid">
+                      <!-- CPU Only -->
+                      <button
+                        type="button"
+                        class="hw-selector-card"
+                        [class.selected]="getFormField('hardwareAcceleration') === HardwareAcceleration.CPU"
+                        (click)="updateFormField('hardwareAcceleration', HardwareAcceleration.CPU)"
+                      >
+                        <div class="hw-icon">
+                          <i class="fas fa-microchip"></i>
+                        </div>
+                        <div class="hw-name">CPU Only</div>
+                        <div class="hw-description">Software encoding</div>
+                      </button>
+
+                      <!-- NVIDIA GPU -->
+                      <button
+                        type="button"
+                        class="hw-selector-card"
+                        [class.selected]="getFormField('hardwareAcceleration') === HardwareAcceleration.NVIDIA"
+                        [class.unavailable]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.nvidia"
+                        [disabled]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.nvidia"
+                        (click)="updateFormField('hardwareAcceleration', HardwareAcceleration.NVIDIA)"
+                      >
+                        <div class="hw-icon nvidia">
+                          <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="hw-name">NVIDIA GPU</div>
+                        <div class="hw-description">NVENC (fastest)</div>
+                        @if (environmentInfo() && !environmentInfo()!.hardwareAcceleration.nvidia) {
+                          <div class="hw-badge unavailable-badge">
+                            <i class="fas fa-times"></i>
+                            Not Detected
+                          </div>
+                        }
+                      </button>
+
+                      <!-- Intel QSV -->
+                      <button
+                        type="button"
+                        class="hw-selector-card"
+                        [class.selected]="getFormField('hardwareAcceleration') === HardwareAcceleration.INTEL_QSV"
+                        [class.unavailable]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.intelQsv"
+                        [disabled]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.intelQsv"
+                        (click)="updateFormField('hardwareAcceleration', HardwareAcceleration.INTEL_QSV)"
+                      >
+                        <div class="hw-icon intel">
+                          <i class="fas fa-server"></i>
+                        </div>
+                        <div class="hw-name">Intel Quick Sync</div>
+                        <div class="hw-description">QSV (very fast)</div>
+                        @if (environmentInfo() && !environmentInfo()!.hardwareAcceleration.intelQsv) {
+                          <div class="hw-badge unavailable-badge">
+                            <i class="fas fa-times"></i>
+                            Not Detected
+                          </div>
+                        }
+                      </button>
+
+                      <!-- AMD GPU -->
+                      <button
+                        type="button"
+                        class="hw-selector-card"
+                        [class.selected]="getFormField('hardwareAcceleration') === HardwareAcceleration.AMD"
+                        [class.unavailable]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.amd"
+                        [disabled]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.amd"
+                        (click)="updateFormField('hardwareAcceleration', HardwareAcceleration.AMD)"
+                      >
+                        <div class="hw-icon amd">
+                          <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="hw-name">AMD GPU</div>
+                        <div class="hw-description">AMF (fast)</div>
+                        @if (environmentInfo() && !environmentInfo()!.hardwareAcceleration.amd) {
+                          <div class="hw-badge unavailable-badge">
+                            <i class="fas fa-times"></i>
+                            Not Detected
+                          </div>
+                        }
+                      </button>
+
+                      <!-- Apple M-Series -->
+                      <button
+                        type="button"
+                        class="hw-selector-card"
+                        [class.selected]="getFormField('hardwareAcceleration') === HardwareAcceleration.APPLE_M"
+                        [class.unavailable]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.appleVideoToolbox"
+                        [disabled]="environmentInfo() && !environmentInfo()!.hardwareAcceleration.appleVideoToolbox"
+                        (click)="updateFormField('hardwareAcceleration', HardwareAcceleration.APPLE_M)"
+                      >
+                        <div class="hw-icon apple">
+                          <i class="fab fa-apple"></i>
+                        </div>
+                        <div class="hw-name">Apple M-Series</div>
+                        <div class="hw-description">VideoToolbox (very fast)</div>
+                        @if (environmentInfo() && !environmentInfo()!.hardwareAcceleration.appleVideoToolbox) {
+                          <div class="hw-badge unavailable-badge">
+                            <i class="fas fa-times"></i>
+                            Not Detected
+                          </div>
+                        }
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Audio Handling -->
                   <div class="form-group">
                     <label for="audio">Audio Handling</label>
                     <select
                       id="audio"
-                      [(ngModel)]="formData.audioHandling"
+                      [ngModel]="getFormField('audioHandling')"
+                      (ngModelChange)="updateFormField('audioHandling', $event)"
                       name="audio"
                     >
                       <option [value]="AudioHandling.COPY">Copy Original</option>
@@ -371,7 +488,8 @@
                     <label for="ffmpeg">Custom FFmpeg Flags</label>
                     <textarea
                       id="ffmpeg"
-                      [(ngModel)]="formData.ffmpegFlags"
+                      [ngModel]="getFormField('ffmpegFlags')"
+                      (ngModelChange)="updateFormField('ffmpegFlags', $event)"
                       name="ffmpeg"
                       placeholder="-preset slow -tune film"
                       rows="3"
@@ -391,7 +509,7 @@
               </button>
               <button type="submit" class="btn-primary" [disabled]="!isFormValid()">
                 <fa-icon [icon]="icons.check"></fa-icon>
-                {{ isEditMode ? 'Update Policy' : 'Create Policy' }}
+                {{ isEditMode() ? 'Update Policy' : 'Create Policy' }}
               </button>
             </div>
           </form>
