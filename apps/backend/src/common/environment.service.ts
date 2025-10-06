@@ -305,9 +305,14 @@ export class EnvironmentService {
   /**
    * Detect Apple VideoToolbox (Apple Silicon)
    * @returns True if Apple Silicon is available
+   *
+   * Note: VideoToolbox requires native macOS access and does NOT work in Docker,
+   * even when running on Apple Silicon hardware. Only detects when running
+   * directly on macOS (not containerized).
    */
   private async detectAppleVideoToolbox(): Promise<boolean> {
     try {
+      // Only available when running natively on macOS (not in Docker/containers)
       if (os.platform() !== 'darwin') {
         return false;
       }

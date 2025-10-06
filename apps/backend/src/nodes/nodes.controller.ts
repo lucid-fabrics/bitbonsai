@@ -11,6 +11,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Node } from '@prisma/client';
+import { CurrentNodeDto } from './dto/current-node.dto';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
@@ -171,6 +172,46 @@ export class NodesController {
   })
   async heartbeat(@Param('id') id: string, @Body() heartbeatDto?: HeartbeatDto): Promise<Node> {
     return this.nodesService.heartbeat(id, heartbeatDto);
+  }
+
+  /**
+   * Get current node information
+   */
+  @Get('current')
+  @ApiOperation({
+    summary: 'Get current node information',
+    description:
+      'Returns information about the currently running node instance.\n\n' +
+      '**Node Identification**:\n' +
+      '- If NODE_ID environment variable is set, returns that node\n' +
+      '- Otherwise, returns the MAIN node (first registered node)\n\n' +
+      '**Response Includes**:\n' +
+      '- Node ID, name, role, and status\n' +
+      '- Version and acceleration type\n\n' +
+      '**Use Case**: Frontend determines UI restrictions based on node role\n' +
+      '- MAIN nodes can access all pages\n' +
+      '- LINKED nodes have restricted UI access',
+  })
+  @ApiOkResponse({
+    description: 'Current node information retrieved successfully',
+    type: CurrentNodeDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'No nodes registered or NODE_ID is invalid',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching current node',
+  })
+  async getCurrentNode(): Promise<CurrentNodeDto> {
+    const node = await this.nodesService.getCurrentNode();
+    return {
+      id: node.id,
+      name: node.name,
+      role: node.role,
+      status: node.status,
+      version: node.version,
+      acceleration: node.acceleration,
+    };
   }
 
   /**

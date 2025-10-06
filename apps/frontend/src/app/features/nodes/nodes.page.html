@@ -181,10 +181,11 @@
         <button
           class="btn btn-icon btn-danger"
           (click)="onRemoveNode(node)"
+          [disabled]="node.role === NodeRole.MAIN"
           bbTooltip
-          tooltipTitle="Remove Node"
-          tooltipContent="Unpairs this node from BitBonsai. The node software will continue running but won't receive new jobs. You can re-pair it later if needed."
-          tooltipWhen="This node is being decommissioned or you want to stop it from accepting new encoding jobs."
+          [tooltipTitle]="node.role === NodeRole.MAIN ? 'Cannot Remove MAIN Node' : 'Remove Node'"
+          [tooltipContent]="node.role === NodeRole.MAIN ? 'MAIN nodes manage the entire BitBonsai cluster and cannot be removed. Only LINKED nodes can be unpaired.' : 'Unpairs this node from BitBonsai. The node software will continue running but won\'t receive new jobs. You can re-pair it later if needed.'"
+          [tooltipWhen]="node.role === NodeRole.MAIN ? 'Never - MAIN nodes are permanent' : 'This node is being decommissioned or you want to stop it from accepting new encoding jobs.'"
           tooltipPlacement="top">
           <i class="fas fa-trash"></i>
           Remove

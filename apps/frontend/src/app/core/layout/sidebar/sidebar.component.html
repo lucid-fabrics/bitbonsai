@@ -4,10 +4,22 @@
       <span class="logo-icon">🌳</span>
       <span class="logo-text">BitBonsai</span>
     </div>
+    @if (currentNode()) {
+      <div class="node-role-badge" [class.main-node]="isMainNode()" [class.child-node]="isLinkedNode()">
+        <div class="role-label">
+          {{ isMainNode() ? '⭐ MAIN NODE' : '🔗 CHILD NODE' }}
+        </div>
+        @if (isLinkedNode() && mainNode()) {
+          <div class="main-node-info">
+            Connected to: {{ mainNode()?.name }}
+          </div>
+        }
+      </div>
+    }
   </div>
 
   <nav class="sidebar-nav">
-    @for (item of menuItems; track item.route) {
+    @for (item of menuItems(); track item.route) {
       <a
         [routerLink]="item.route"
         routerLinkActive="active"

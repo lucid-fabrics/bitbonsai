@@ -492,4 +492,63 @@ describe('NodesService', () => {
       expect(expirationTime).toBeLessThanOrEqual(expectedExpiration + 1000);
     });
   });
+
+  describe('getCurrentNode', () => {
+    const linkedNode = {
+      ...mockNode,
+      id: 'node-2',
+      name: 'Linked Encoding Server',
+      role: NodeRole.LINKED,
+    };
+
+    beforeEach(() => {
+      // Clear NODE_ID environment variable before each test
+      process.env.NODE_ID = undefined;
+    });
+
+    it('should return node specified by NODE_ID environment variable', async () => {
+      process.env.NODE_ID = 'node-2';
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(linkedNode as never);
+
+      const result = await service.getCurrentNode();
+
+      expect(result.id).toBe('node-2');
+      expect(result.role).toBe(NodeRole.LINKED);
+      expect(prisma.node.findUnique).toHaveBeenCalledWith({
+        where: { id: 'node-2' },
+      });
+    });
+
+    it('should return MAIN node when NODE_ID is not set', async () => {
+      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(mockNode as never);
+
+      const result = await service.getCurrentNode();
+
+      expect(result.id).toBe('node-1');
+      expect(result.role).toBe(NodeRole.MAIN);
+      expect(prisma.node.findFirst).toHaveBeenCalledWith({
+        where: { role: 'MAIN' },
+        orderBy: { createdAt: 'asc' },
+      });
+    });
+
+    it('should throw NotFoundException if NODE_ID is set but node does not exist', async () => {
+      process.env.NODE_ID = 'invalid-node-id';
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
+      await expect(service.getCurrentNode()).rejects.toThrow(
+        'Node with ID invalid-node-id (from NODE_ID env) not found'
+      );
+    });
+
+    it('should throw NotFoundException if no MAIN node exists when NODE_ID is not set', async () => {
+      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
+      await expect(service.getCurrentNode()).rejects.toThrow(
+        'No MAIN node found. Please register a node first.'
+      );
+    });
+  });
 });

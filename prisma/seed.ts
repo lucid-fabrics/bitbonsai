@@ -32,16 +32,19 @@ async function main() {
   console.log('✅ Database cleaned\n');
 
   // ============================================================================
-  // 1. Create Default Active License
+  // 1. Create Default MAIN Node (Auto-Bootstrap)
   // ============================================================================
-  console.log('📋 Creating default license...');
+  console.log('🖥️  Creating default MAIN node...');
 
-  const defaultLicense = await prisma.license.create({
+  const hostname = process.env.HOSTNAME || 'localhost';
+
+  // Create default license first (required for node creation)
+  const bootstrapLicense = await prisma.license.create({
     data: {
       key: generateLicenseKey('FREE'),
       tier: 'FREE',
       status: 'ACTIVE',
-      email: 'user@example.com',
+      email: 'bootstrap@bitbonsai.local',
       maxNodes: 1,
       maxConcurrentJobs: 2,
       features: {
@@ -52,13 +55,29 @@ async function main() {
         cloudStorage: false,
         webhooks: false,
       },
-      validUntil: null, // Perpetual
+      validUntil: null,
     },
   });
-  console.log(`  ✅ Default FREE license created: ${defaultLicense.key}\n`);
+
+  const defaultNode = await prisma.node.create({
+    data: {
+      name: `BitBonsai MAIN (${hostname})`,
+      role: 'MAIN',
+      status: 'ONLINE',
+      version: '0.1.0',
+      acceleration: 'CPU',
+      apiKey: generateApiKey(),
+      lastHeartbeat: new Date(),
+      licenseId: bootstrapLicense.id,
+    },
+  });
+  console.log(`  ✅ Default MAIN node created: ${defaultNode.name}\n`);
+
+  // License already created for node bootstrap
+  const defaultLicense = bootstrapLicense;
 
   // ============================================================================
-  // 2. Create Default Universal Policy
+  // 3. Create Default Universal Policy
   // ============================================================================
   console.log('📜 Creating default policy...');
 
@@ -115,9 +134,9 @@ async function main() {
   // ============================================================================
   console.log('✅ Seed completed successfully!\n');
   console.log('📋 Summary:');
+  console.log(`   • 1 MAIN node (${defaultNode.name})`);
   console.log(`   • 1 active FREE license`);
   console.log(`   • 1 default universal H.265 policy`);
-  console.log(`   • 0 nodes (register your first node)`);
   console.log(`   • 0 libraries (create your first library)`);
   console.log(`   • 0 jobs (jobs will be created automatically)\n`);
 
@@ -133,9 +152,8 @@ async function main() {
   console.log(`   ${defaultLicense.key}\n`);
 
   console.log('🚀 Ready to use! Next steps:');
-  console.log('   1. Register your first encoding node');
-  console.log('   2. Create a library pointing to your media');
-  console.log('   3. Start encoding!\n');
+  console.log('   1. Create a library pointing to your media');
+  console.log('   2. Start encoding!\n');
 }
 
 main()

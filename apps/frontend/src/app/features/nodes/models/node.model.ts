@@ -10,11 +10,11 @@ export enum NodeStatus {
 }
 
 export enum AccelerationType {
-  NONE = 'NONE',
+  CPU = 'CPU',
+  INTEL_QSV = 'INTEL_QSV',
   NVIDIA = 'NVIDIA',
-  INTEL = 'INTEL',
   AMD = 'AMD',
-  APPLE = 'APPLE',
+  APPLE_M = 'APPLE_M',
 }
 
 export interface Node {

@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
+import { NodeService } from './core/services/node.service';
 import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
 
 @Component({
@@ -40,11 +41,25 @@ import { ApiConnectionErrorComponent } from './shared/components/api-connection-
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'BitBonsai';
+
+  private readonly nodeService = inject(NodeService);
 
   constructor() {
     const library = inject(FaIconLibrary);
     configureFontAwesome(library);
+  }
+
+  ngOnInit(): void {
+    // Fetch current node information on app startup
+    // This is used for route guards and UI restrictions based on node role
+    this.nodeService.getCurrentNode().subscribe({
+      error: (err) => {
+        console.error('Failed to fetch current node information:', err);
+        // If no nodes are registered, the app will still work
+        // The user will need to register a node first
+      },
+    });
   }
 }
