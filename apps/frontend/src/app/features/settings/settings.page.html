@@ -226,27 +226,45 @@
               </div>
             </div>
 
-            <!-- Hardware Acceleration -->
+            <!-- Hardware Acceleration Detection (Read-only) -->
             <div class="info-card">
               <h3>Hardware Acceleration</h3>
-              <div class="hw-accel-list">
-                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.nvidia">
-                  <i [class]="environmentInfo!.hardwareAcceleration.nvidia ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
-                  <span>NVIDIA GPU</span>
+              <p class="env-description">
+                Detected hardware acceleration capabilities on this node. Configure which hardware to use in your <strong>Encoding Policies</strong>.
+              </p>
+              @if (environmentInfo) {
+                <div class="hw-accel-list">
+                  <div class="hw-accel-item" [class.available]="environmentInfo.hardwareAcceleration.nvidia">
+                    <i class="fas" [class.fa-check-circle]="environmentInfo.hardwareAcceleration.nvidia" [class.fa-times-circle]="!environmentInfo.hardwareAcceleration.nvidia"></i>
+                    NVIDIA NVENC
+                  </div>
+                  <div class="hw-accel-item" [class.available]="environmentInfo.hardwareAcceleration.intelQsv">
+                    <i class="fas" [class.fa-check-circle]="environmentInfo.hardwareAcceleration.intelQsv" [class.fa-times-circle]="!environmentInfo.hardwareAcceleration.intelQsv"></i>
+                    Intel QuickSync
+                  </div>
+                  <div class="hw-accel-item" [class.available]="environmentInfo.hardwareAcceleration.amd">
+                    <i class="fas" [class.fa-check-circle]="environmentInfo.hardwareAcceleration.amd" [class.fa-times-circle]="!environmentInfo.hardwareAcceleration.amd"></i>
+                    AMD AMF
+                  </div>
+                  <div class="hw-accel-item" [class.available]="environmentInfo.hardwareAcceleration.appleVideoToolbox">
+                    <i class="fas" [class.fa-check-circle]="environmentInfo.hardwareAcceleration.appleVideoToolbox" [class.fa-times-circle]="!environmentInfo.hardwareAcceleration.appleVideoToolbox"></i>
+                    Apple VideoToolbox
+                  </div>
                 </div>
-                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.intelQsv">
-                  <i [class]="environmentInfo!.hardwareAcceleration.intelQsv ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
-                  <span>Intel Quick Sync</span>
+              }
+              @if (environmentInfo!.isUnraid) {
+                <div class="unraid-gpu-help" style="margin-top: 16px;">
+                  <i class="fas fa-info-circle"></i>
+                  <div class="help-content">
+                    <strong>Unraid GPU Setup:</strong> To enable GPU encoding, pass through your GPU device to the container:
+                    <ul>
+                      <li><strong>NVIDIA:</strong> Add <code>--runtime=nvidia</code> to Extra Parameters</li>
+                      <li><strong>Intel:</strong> Add <code>/dev/dri</code> device mapping</li>
+                      <li><strong>AMD:</strong> Add <code>/dev/dri</code> and <code>/dev/kfd</code> device mappings</li>
+                    </ul>
+                  </div>
                 </div>
-                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.amd">
-                  <i [class]="environmentInfo!.hardwareAcceleration.amd ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
-                  <span>AMD GPU</span>
-                </div>
-                <div class="hw-accel-item" [class.available]="environmentInfo!.hardwareAcceleration.appleVideoToolbox">
-                  <i [class]="environmentInfo!.hardwareAcceleration.appleVideoToolbox ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
-                  <span>Apple VideoToolbox</span>
-                </div>
-              </div>
+              }
             </div>
 
             <!-- Default Paths -->

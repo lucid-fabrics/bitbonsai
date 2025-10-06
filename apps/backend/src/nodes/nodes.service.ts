@@ -254,6 +254,10 @@ export class NodesService {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
     }
 
+    // Calculate uptime dynamically based on createdAt timestamp
+    const now = new Date();
+    const uptimeSeconds = Math.floor((now.getTime() - node.createdAt.getTime()) / 1000);
+
     return {
       id: node.id,
       name: node.name,
@@ -262,7 +266,7 @@ export class NodesService {
       version: node.version,
       acceleration: node.acceleration,
       lastHeartbeat: node.lastHeartbeat,
-      uptimeSeconds: node.uptimeSeconds,
+      uptimeSeconds,
       createdAt: node.createdAt,
       license: node.license,
       libraries: node.libraries,
@@ -276,9 +280,16 @@ export class NodesService {
    * @returns List of all nodes
    */
   async findAll(): Promise<Node[]> {
-    return this.prisma.node.findMany({
+    const nodes = await this.prisma.node.findMany({
       orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
     });
+
+    // Calculate uptime dynamically based on createdAt timestamp
+    const now = new Date();
+    return nodes.map((node) => ({
+      ...node,
+      uptimeSeconds: Math.floor((now.getTime() - node.createdAt.getTime()) / 1000),
+    }));
   }
 
   /**
@@ -298,6 +309,45 @@ export class NodesService {
     }
 
     return node;
+  }
+
+  /**
+   * Get the current node's information
+   *
+   * Determines which node this instance is by checking NODE_ID environment variable.
+   * If NODE_ID is not set, returns the MAIN node (first registered node).
+   * This is used by the frontend to determine UI restrictions based on node role.
+   *
+   * @returns Current node information
+   * @throws NotFoundException if no nodes exist or NODE_ID is invalid
+   */
+  async getCurrentNode(): Promise<Node> {
+    const nodeId = process.env.NODE_ID;
+
+    // If NODE_ID is set, use it
+    if (nodeId) {
+      const node = await this.prisma.node.findUnique({
+        where: { id: nodeId },
+      });
+
+      if (!node) {
+        throw new NotFoundException(`Node with ID ${nodeId} (from NODE_ID env) not found`);
+      }
+
+      return node;
+    }
+
+    // Fallback: Return the MAIN node (first registered node)
+    const mainNode = await this.prisma.node.findFirst({
+      where: { role: 'MAIN' },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (!mainNode) {
+      throw new NotFoundException('No MAIN node found. Please register a node first.');
+    }
+
+    return mainNode;
   }
 
   /**

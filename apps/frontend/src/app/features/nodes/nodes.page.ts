@@ -16,6 +16,7 @@ import {
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import { NodeStatsModalComponent } from './modals/node-stats/node-stats.modal';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import { NodesClient } from './services/nodes.client';
@@ -49,6 +50,9 @@ export class NodesComponent implements OnInit, OnDestroy {
   isLoading = false;
   error: string | null = null;
 
+  // Track initial uptime from server to calculate current uptime
+  private nodeStartTimes = new Map<string, number>(); // nodeId -> timestamp when we first saw it
+
   // Pairing modal state
   showPairingModal = false;
   pairingStep: PairingStep = PairingStep.INSTRUCTIONS;
@@ -61,6 +65,7 @@ export class NodesComponent implements OnInit, OnDestroy {
   // Subscriptions
   private pollingSubscription?: Subscription;
   private countdownSubscription?: Subscription;
+  private uptimeSubscription?: Subscription;
 
   get totalNodes(): number {
     return this.nodes.length;
@@ -81,11 +86,13 @@ export class NodesComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadNodes();
     this.startPolling();
+    this.startUptimeCounter();
   }
 
   ngOnDestroy(): void {
     this.stopPolling();
     this.stopCountdown();
+    this.stopUptimeCounter();
   }
 
   /**
@@ -98,7 +105,7 @@ export class NodesComponent implements OnInit, OnDestroy {
 
     this.nodesApi.getNodes().subscribe({
       next: (nodes) => {
-        this.nodes = nodes;
+        this.updateNodesWithUptimeTracking(nodes);
         this.isLoading = false;
         this.cdr.markForCheck();
       },
@@ -111,6 +118,32 @@ export class NodesComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Update nodes from API while preserving client-side uptime tracking
+   */
+  private updateNodesWithUptimeTracking(nodes: Node[]): void {
+    const now = Date.now();
+
+    // Process incoming nodes and calculate their current uptime
+    const updatedNodes = nodes.map((node) => {
+      if (!this.nodeStartTimes.has(node.id)) {
+        // First time seeing this node - record when we saw it and its server uptime
+        this.nodeStartTimes.set(node.id, now - node.uptimeSeconds * 1000);
+      }
+
+      // Calculate current uptime based on start time (don't use server's uptimeSeconds)
+      const startTime = this.nodeStartTimes.get(node.id)!;
+      const currentUptimeSeconds = Math.floor((now - startTime) / 1000);
+
+      return {
+        ...node,
+        uptimeSeconds: currentUptimeSeconds,
+      };
+    });
+
+    this.nodes = updatedNodes;
+  }
+
+  /**
    * Start polling for node status updates every 10 seconds
    */
   private startPolling(): void {
@@ -118,7 +151,7 @@ export class NodesComponent implements OnInit, OnDestroy {
       .pipe(switchMap(() => this.nodesApi.getNodes()))
       .subscribe({
         next: (nodes) => {
-          this.nodes = nodes;
+          this.updateNodesWithUptimeTracking(nodes);
           this.cdr.markForCheck();
         },
         error: (err) => {
@@ -188,6 +221,32 @@ export class NodesComponent implements OnInit, OnDestroy {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Start uptime counter - calculates current uptime every second based on start time
+   */
+  private startUptimeCounter(): void {
+    this.uptimeSubscription = interval(1000).subscribe(() => {
+      const now = Date.now();
+      // Calculate current uptime for each node based on when we first saw it
+      this.nodes = this.nodes.map((node) => {
+        const startTime = this.nodeStartTimes.get(node.id);
+        if (startTime) {
+          const currentUptimeSeconds = Math.floor((now - startTime) / 1000);
+          return { ...node, uptimeSeconds: currentUptimeSeconds };
+        }
+        return node;
+      });
+      this.cdr.markForCheck();
+    });
+  }
+
+  /**
+   * Stop uptime counter
+   */
+  private stopUptimeCounter(): void {
+    this.uptimeSubscription?.unsubscribe();
   }
 
   /**
@@ -361,13 +420,13 @@ export class NodesComponent implements OnInit, OnDestroy {
     switch (acceleration) {
       case AccelerationType.NVIDIA:
         return 'NVIDIA GPU';
-      case AccelerationType.INTEL:
+      case AccelerationType.INTEL_QSV:
         return 'Intel QSV';
       case AccelerationType.AMD:
         return 'AMD GPU';
-      case AccelerationType.APPLE:
+      case AccelerationType.APPLE_M:
         return 'Apple M-Series';
-      case AccelerationType.NONE:
+      case AccelerationType.CPU:
         return 'CPU Only';
       default:
         return 'Unknown';
@@ -378,14 +437,32 @@ export class NodesComponent implements OnInit, OnDestroy {
    * View node statistics
    */
   onViewStats(node: Node): void {
-    // TODO: Navigate to node stats page or open stats modal
-    console.log('View stats for node:', node.id);
+    this.nodesApi.getNodeStats(node.id).subscribe({
+      next: (stats) => {
+        this.dialog.open(NodeStatsModalComponent, {
+          data: { stats },
+          disableClose: false,
+        });
+      },
+      error: (err) => {
+        this.error = err.error?.message || 'Failed to load node stats';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   /**
    * Initiate node deletion
    */
   onRemoveNode(node: Node): void {
+    // Prevent deleting MAIN node
+    if (node.role === NodeRole.MAIN) {
+      this.error =
+        'Cannot delete MAIN node. MAIN nodes manage the entire BitBonsai cluster and cannot be removed.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     const dialogData: ConfirmationDialogData = {
       title: 'Remove Node?',
       itemName: node.name,

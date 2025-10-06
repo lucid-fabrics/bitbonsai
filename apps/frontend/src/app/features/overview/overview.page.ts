@@ -22,6 +22,10 @@ import {
 import { interval, Subject } from 'rxjs';
 import { startWith, switchMap, takeUntil } from 'rxjs/operators';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import type { Node } from '../nodes/models/node.model';
+import { NodesClient } from '../nodes/services/nodes.client';
+import type { EnvironmentInfo } from '../settings/models/settings.model';
+import { SettingsService } from '../settings/services/settings.service';
 import type { OverviewModel } from './models/overview.model';
 import { OverviewClient } from './services/overview.client';
 
@@ -35,10 +39,14 @@ import { OverviewClient } from './services/overview.client';
 })
 export class OverviewComponent implements OnInit, OnDestroy {
   private readonly overviewApi = inject(OverviewClient);
+  private readonly settingsService = inject(SettingsService);
+  private readonly nodesClient = inject(NodesClient);
   private readonly destroy$ = new Subject<void>();
 
   // Signals for reactive state
   readonly overviewData = signal<OverviewModel | null>(null);
+  readonly environmentInfo = signal<EnvironmentInfo | null>(null);
+  readonly nodes = signal<Node[]>([]);
   readonly isLoading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
 
@@ -50,6 +58,8 @@ export class OverviewComponent implements OnInit, OnDestroy {
     const queue = data.queue_summary;
     return queue.queued + queue.encoding + queue.completed + queue.failed;
   });
+  readonly mainNode = computed(() => this.nodes().find((n) => n.role === 'MAIN') || null);
+  readonly childNodes = computed(() => this.nodes().filter((n) => n.role === 'LINKED'));
 
   // Font Awesome icons
   readonly icons = {
@@ -64,12 +74,36 @@ export class OverviewComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
+    this.loadEnvironmentInfo();
+    this.loadNodes();
     this.startPolling();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private loadEnvironmentInfo(): void {
+    this.settingsService.getEnvironmentInfo().subscribe({
+      next: (info) => {
+        this.environmentInfo.set(info);
+      },
+      error: (err) => {
+        console.error('Failed to load environment info:', err);
+      },
+    });
+  }
+
+  private loadNodes(): void {
+    this.nodesClient.getNodes().subscribe({
+      next: (nodes) => {
+        this.nodes.set(nodes);
+      },
+      error: (err) => {
+        console.error('Failed to load nodes:', err);
+      },
+    });
   }
 
   private startPolling(): void {

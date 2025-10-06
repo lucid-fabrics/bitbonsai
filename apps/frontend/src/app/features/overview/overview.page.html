@@ -79,6 +79,109 @@
         </div>
       </section>
 
+      <!-- Hardware Acceleration Section -->
+      @if (environmentInfo()) {
+        <section class="hardware-section">
+          <h2 class="section-title">Hardware Acceleration</h2>
+
+          <!-- Main Node Hardware -->
+          @if (mainNode()) {
+            <div class="hardware-card main-node-hardware">
+              <div class="hardware-card__header">
+                <h3>Main Node</h3>
+                <span class="node-badge node-badge--main">{{ mainNode()!.name }}</span>
+              </div>
+              <div class="hardware-list">
+                <div class="hardware-item hardware-item--cpu available">
+                  <i class="fas fa-microchip"></i>
+                  <span>CPU (Software)</span>
+                </div>
+                <div class="hardware-item hardware-item--nvidia" [class.available]="environmentInfo()!.hardwareAcceleration.nvidia">
+                  <i class="fas fa-bolt"></i>
+                  <span>NVIDIA NVENC</span>
+                  @if (environmentInfo()!.hardwareAcceleration.nvidia) {
+                    <i class="fas fa-check-circle status-icon"></i>
+                  } @else {
+                    <i class="fas fa-times-circle status-icon"></i>
+                  }
+                </div>
+                <div class="hardware-item hardware-item--intel" [class.available]="environmentInfo()!.hardwareAcceleration.intelQsv">
+                  <i class="fas fa-server"></i>
+                  <span>Intel QuickSync</span>
+                  @if (environmentInfo()!.hardwareAcceleration.intelQsv) {
+                    <i class="fas fa-check-circle status-icon"></i>
+                  } @else {
+                    <i class="fas fa-times-circle status-icon"></i>
+                  }
+                </div>
+                <div class="hardware-item hardware-item--amd" [class.available]="environmentInfo()!.hardwareAcceleration.amd">
+                  <i class="fas fa-fire"></i>
+                  <span>AMD AMF</span>
+                  @if (environmentInfo()!.hardwareAcceleration.amd) {
+                    <i class="fas fa-check-circle status-icon"></i>
+                  } @else {
+                    <i class="fas fa-times-circle status-icon"></i>
+                  }
+                </div>
+                <div class="hardware-item hardware-item--apple" [class.available]="environmentInfo()!.hardwareAcceleration.appleVideoToolbox">
+                  <i class="fab fa-apple"></i>
+                  <span>Apple VideoToolbox</span>
+                  @if (environmentInfo()!.hardwareAcceleration.appleVideoToolbox) {
+                    <i class="fas fa-check-circle status-icon"></i>
+                  } @else {
+                    <i class="fas fa-times-circle status-icon"></i>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Child Nodes Hardware (if any) -->
+          @if (childNodes().length > 0) {
+            <div class="child-nodes-hardware">
+              <h3 class="subsection-title">Linked Nodes</h3>
+              <div class="child-nodes-grid">
+                @for (node of childNodes(); track node.id) {
+                  <div class="hardware-card child-node-hardware">
+                    <div class="hardware-card__header">
+                      <span class="node-badge node-badge--linked">{{ node.name }}</span>
+                    </div>
+                    <div class="hardware-compact-list">
+                      @if (node.acceleration === 'NVIDIA') {
+                        <div class="hardware-compact-item hardware-compact-item--nvidia">
+                          <i class="fas fa-bolt"></i>
+                          <span>NVIDIA</span>
+                        </div>
+                      } @else if (node.acceleration === 'INTEL_QSV') {
+                        <div class="hardware-compact-item hardware-compact-item--intel">
+                          <i class="fas fa-server"></i>
+                          <span>Intel QSV</span>
+                        </div>
+                      } @else if (node.acceleration === 'AMD') {
+                        <div class="hardware-compact-item hardware-compact-item--amd">
+                          <i class="fas fa-fire"></i>
+                          <span>AMD</span>
+                        </div>
+                      } @else if (node.acceleration === 'APPLE_M') {
+                        <div class="hardware-compact-item hardware-compact-item--apple">
+                          <i class="fab fa-apple"></i>
+                          <span>Apple</span>
+                        </div>
+                      } @else {
+                        <div class="hardware-compact-item hardware-compact-item--cpu">
+                          <i class="fas fa-microchip"></i>
+                          <span>CPU</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </section>
+      }
+
       <!-- Queue Summary (Second Row) -->
       <section class="queue-summary">
         <h2 class="section-title">Queue Summary</h2>

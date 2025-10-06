@@ -17,6 +17,9 @@
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid $border-primary;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .logo {
@@ -35,6 +38,47 @@
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.5px;
+}
+
+.node-role-badge {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: $bg-tertiary;
+
+  &.main-node {
+    background: color.adjust($accent-primary, $lightness: -30%, $saturation: -20%);
+    border-color: color.adjust($accent-primary, $lightness: -10%);
+
+    .role-label {
+      color: $accent-primary;
+      font-weight: 600;
+    }
+  }
+
+  &.child-node {
+    background: color.adjust($text-secondary, $lightness: -35%, $saturation: -20%);
+    border-color: color.adjust($text-secondary, $lightness: -20%);
+
+    .role-label {
+      color: $text-secondary;
+      font-weight: 600;
+    }
+  }
+}
+
+.role-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.main-node-info {
+  margin-top: 4px;
+  font-size: 10px;
+  color: $text-tertiary;
+  line-height: 1.3;
 }
 
 .sidebar-nav {
