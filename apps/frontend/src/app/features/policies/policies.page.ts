@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, type OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -18,6 +18,8 @@ import {
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import type { EnvironmentInfo } from '../settings/models/settings.model';
+import { SettingsService } from '../settings/services/settings.service';
 import { PoliciesActions } from './+state/policies.actions';
 import { PoliciesSelectors } from './+state/policies.selectors';
 import type { PolicyBo } from './bos/policy.bo';
@@ -25,6 +27,7 @@ import {
   AudioHandling,
   type CreatePolicyRequest,
   DeviceProfile,
+  HardwareAcceleration,
   PolicyPreset,
   type PresetInfoModel,
   TargetCodec,
@@ -39,6 +42,7 @@ interface PolicyFormData {
   deviceProfiles: Set<DeviceProfile>;
   ffmpegFlags: string;
   audioHandling: AudioHandling;
+  hardwareAcceleration: HardwareAcceleration;
 }
 
 @Component({
@@ -52,6 +56,7 @@ interface PolicyFormData {
 export class PoliciesComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly dialog = inject(Dialog);
+  private readonly settingsService = inject(SettingsService);
 
   // Icons
   readonly icons = {
@@ -69,6 +74,7 @@ export class PoliciesComponent implements OnInit {
   readonly TargetCodec = TargetCodec;
   readonly DeviceProfile = DeviceProfile;
   readonly AudioHandling = AudioHandling;
+  readonly HardwareAcceleration = HardwareAcceleration;
 
   // NgRx State
   readonly policies$ = this.store.select(PoliciesSelectors.selectPolicies);
@@ -76,41 +82,54 @@ export class PoliciesComponent implements OnInit {
   readonly isLoading$ = this.store.select(PoliciesSelectors.selectIsLoading);
   readonly error$ = this.store.select(PoliciesSelectors.selectError);
 
-  // Local Form State
-  showFormModal = false;
-  isEditMode = false;
-  editingPolicyId: string | null = null;
-  showAdvancedSettings = false;
-  formData: PolicyFormData = this.getEmptyFormData();
-  formErrors: Record<string, string> = {};
+  // Local Form State (signals for OnPush change detection)
+  showFormModal = signal(false);
+  isEditMode = signal(false);
+  editingPolicyId = signal<string | null>(null);
+  showAdvancedSettings = signal(false);
+  formData = signal<PolicyFormData>(this.getEmptyFormData());
+  formErrors = signal<Record<string, string>>({});
+  environmentInfo = signal<EnvironmentInfo | null>(null);
 
   ngOnInit(): void {
     this.store.dispatch(PoliciesActions.loadPolicies());
     this.store.dispatch(PoliciesActions.loadPresets());
+    this.loadEnvironmentInfo();
+  }
+
+  private loadEnvironmentInfo(): void {
+    this.settingsService.getEnvironmentInfo().subscribe({
+      next: (info) => {
+        this.environmentInfo.set(info);
+      },
+      error: (err) => {
+        console.error('Failed to load environment info:', err);
+      },
+    });
   }
 
   selectPreset(preset: PresetInfoModel): void {
-    this.formData = {
-      ...this.formData,
+    this.formData.set({
+      ...this.formData(),
       preset: preset.preset,
       targetCodec: preset.codec,
       targetQuality: preset.crf,
       name: preset.name,
-    };
-    this.showFormModal = true;
-    this.isEditMode = false;
+    });
+    this.showFormModal.set(true);
+    this.isEditMode.set(false);
   }
 
   openCreateForm(): void {
-    this.formData = this.getEmptyFormData();
-    this.formErrors = {};
-    this.showFormModal = true;
-    this.isEditMode = false;
-    this.showAdvancedSettings = false;
+    this.formData.set(this.getEmptyFormData());
+    this.formErrors.set({});
+    this.showFormModal.set(true);
+    this.isEditMode.set(false);
+    this.showAdvancedSettings.set(false);
   }
 
   openEditForm(policy: PolicyBo): void {
-    this.formData = {
+    this.formData.set({
       name: policy.name,
       preset: policy.preset,
       targetCodec: policy.targetCodec,
@@ -119,29 +138,34 @@ export class PoliciesComponent implements OnInit {
       deviceProfiles: new Set(policy.deviceProfiles),
       ffmpegFlags: policy.ffmpegFlags || '',
       audioHandling: policy.audioHandling || AudioHandling.COPY,
-    };
-    this.formErrors = {};
-    this.editingPolicyId = policy.id;
-    this.showFormModal = true;
-    this.isEditMode = true;
-    this.showAdvancedSettings = false;
+      hardwareAcceleration: policy.hardwareAcceleration || HardwareAcceleration.CPU,
+    });
+    this.formErrors.set({});
+    this.editingPolicyId.set(policy.id);
+    this.showFormModal.set(true);
+    this.isEditMode.set(true);
+    this.showAdvancedSettings.set(false);
   }
 
   closeForm(): void {
-    this.showFormModal = false;
-    this.isEditMode = false;
-    this.editingPolicyId = null;
-    this.showAdvancedSettings = false;
+    this.showFormModal.set(false);
+    this.isEditMode.set(false);
+    this.editingPolicyId.set(null);
+    this.showAdvancedSettings.set(false);
   }
 
   toggleDeviceProfile(profile: DeviceProfile): void {
-    const profiles = new Set(this.formData.deviceProfiles);
+    const currentData = this.formData();
+    const profiles = new Set(currentData.deviceProfiles);
     if (profiles.has(profile)) {
       profiles.delete(profile);
     } else {
       profiles.add(profile);
     }
-    this.formData.deviceProfiles = profiles;
+    this.formData.set({
+      ...currentData,
+      deviceProfiles: profiles,
+    });
   }
 
   getCRFLabel(crf: number): string {
@@ -153,29 +177,45 @@ export class PoliciesComponent implements OnInit {
     return 'Low Quality (Not Recommended)';
   }
 
-  validateForm(): boolean {
+  /**
+   * Validate form and return errors object (pure - no side effects)
+   */
+  private getFormErrors(): Record<string, string> {
     const errors: Record<string, string> = {};
+    const data = this.formData();
 
-    if (!this.formData.name || this.formData.name.trim().length === 0) {
+    if (!data.name || data.name.trim().length === 0) {
       errors.name = 'Name is required';
-    } else if (this.formData.name.length > 50) {
+    } else if (data.name.length > 50) {
       errors.name = 'Name must be 50 characters or less';
     }
 
-    if (this.formData.targetQuality < 0 || this.formData.targetQuality > 51) {
+    if (data.targetQuality < 0 || data.targetQuality > 51) {
       errors.targetQuality = 'Quality must be between 0 and 51';
     }
 
-    if (this.formData.deviceProfiles.size === 0) {
+    if (data.deviceProfiles.size === 0) {
       errors.deviceProfiles = 'At least one device profile must be selected';
     }
 
-    this.formErrors = errors;
+    return errors;
+  }
+
+  /**
+   * Validate form and update formErrors signal
+   */
+  validateForm(): boolean {
+    const errors = this.getFormErrors();
+    this.formErrors.set(errors);
     return Object.keys(errors).length === 0;
   }
 
+  /**
+   * Check if form is valid without side effects (safe to call from template)
+   */
   isFormValid(): boolean {
-    return this.validateForm();
+    const errors = this.getFormErrors();
+    return Object.keys(errors).length === 0;
   }
 
   submitForm(): void {
@@ -183,26 +223,28 @@ export class PoliciesComponent implements OnInit {
       return;
     }
 
+    const data = this.formData();
     const request: CreatePolicyRequest = {
-      name: this.formData.name.trim(),
-      preset: this.formData.preset,
-      targetCodec: this.formData.targetCodec,
-      targetQuality: this.formData.targetQuality,
-      libraryId: this.formData.libraryId || undefined,
+      name: data.name.trim(),
+      preset: data.preset,
+      targetCodec: data.targetCodec,
+      targetQuality: data.targetQuality,
+      libraryId: data.libraryId || undefined,
       deviceProfiles: {
-        appleTV: this.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
-        chromecast: this.formData.deviceProfiles.has(DeviceProfile.CHROMECAST),
-        roku: this.formData.deviceProfiles.has(DeviceProfile.ROKU),
-        web: this.formData.deviceProfiles.has(DeviceProfile.WEB),
+        appleTV: data.deviceProfiles.has(DeviceProfile.APPLE_TV),
+        chromecast: data.deviceProfiles.has(DeviceProfile.CHROMECAST),
+        roku: data.deviceProfiles.has(DeviceProfile.ROKU),
+        web: data.deviceProfiles.has(DeviceProfile.WEB),
       },
       advancedSettings: {
-        ffmpegFlags: this.formData.ffmpegFlags || undefined,
-        audioHandling: this.formData.audioHandling,
+        ffmpegFlags: data.ffmpegFlags || undefined,
+        audioHandling: data.audioHandling,
+        hardwareAcceleration: data.hardwareAcceleration,
       },
     };
 
-    if (this.isEditMode) {
-      const policyId = this.editingPolicyId;
+    if (this.isEditMode()) {
+      const policyId = this.editingPolicyId();
       if (!policyId) return;
 
       this.store.dispatch(PoliciesActions.updatePolicy({ id: policyId, request }));
@@ -296,6 +338,60 @@ export class PoliciesComponent implements OnInit {
       deviceProfiles: new Set(),
       ffmpegFlags: '',
       audioHandling: AudioHandling.COPY,
+      hardwareAcceleration: HardwareAcceleration.CPU,
     };
+  }
+
+  getHardwareAccelerationLabel(hw: HardwareAcceleration): string {
+    switch (hw) {
+      case HardwareAcceleration.NVIDIA:
+        return 'NVIDIA NVENC';
+      case HardwareAcceleration.INTEL_QSV:
+        return 'Intel QuickSync';
+      case HardwareAcceleration.AMD:
+        return 'AMD AMF';
+      case HardwareAcceleration.APPLE_M:
+        return 'Apple VideoToolbox';
+      case HardwareAcceleration.CPU:
+        return 'CPU Only';
+      default:
+        return 'CPU Only';
+    }
+  }
+
+  getAvailableHardware(): HardwareAcceleration[] {
+    const envInfo = this.environmentInfo();
+    if (!envInfo) {
+      return [HardwareAcceleration.CPU];
+    }
+
+    const available: HardwareAcceleration[] = [HardwareAcceleration.CPU];
+
+    if (envInfo.hardwareAcceleration.nvidia) {
+      available.push(HardwareAcceleration.NVIDIA);
+    }
+    if (envInfo.hardwareAcceleration.intelQsv) {
+      available.push(HardwareAcceleration.INTEL_QSV);
+    }
+    if (envInfo.hardwareAcceleration.amd) {
+      available.push(HardwareAcceleration.AMD);
+    }
+    if (envInfo.hardwareAcceleration.appleVideoToolbox) {
+      available.push(HardwareAcceleration.APPLE_M);
+    }
+
+    return available;
+  }
+
+  // Helper methods for ngModel to work with signal-based formData
+  updateFormField<K extends keyof PolicyFormData>(field: K, value: PolicyFormData[K]): void {
+    this.formData.update((data) => ({
+      ...data,
+      [field]: value,
+    }));
+  }
+
+  getFormField<K extends keyof PolicyFormData>(field: K): PolicyFormData[K] {
+    return this.formData()[field];
   }
 }
