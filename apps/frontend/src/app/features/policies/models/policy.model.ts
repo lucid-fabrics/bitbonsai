@@ -8,6 +8,7 @@ export interface PolicyModel {
   device_profiles: DeviceProfiles;
   ffmpeg_flags?: string;
   audio_handling?: AudioHandling;
+  hardware_acceleration?: HardwareAcceleration;
   completed_jobs: number;
   created_at: string;
   updated_at: string;
@@ -59,9 +60,18 @@ export interface DeviceProfiles {
   web: boolean;
 }
 
+export enum HardwareAcceleration {
+  CPU = 'CPU',
+  NVIDIA = 'NVIDIA',
+  INTEL_QSV = 'INTEL_QSV',
+  AMD = 'AMD',
+  APPLE_M = 'APPLE_M',
+}
+
 export interface AdvancedSettings {
   ffmpegFlags?: string;
   audioHandling: AudioHandling;
+  hardwareAcceleration?: HardwareAcceleration;
 }
 
 export interface CreatePolicyRequest {

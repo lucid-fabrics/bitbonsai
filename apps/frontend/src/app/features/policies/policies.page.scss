@@ -638,3 +638,132 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+// Hardware Acceleration Selector
+.hw-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.hw-selector-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  background: $bg-primary;
+  border: 2px solid $border-primary;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+
+  &:hover:not(:disabled) {
+    background: $bg-secondary;
+    border-color: $accent-primary;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(249, 190, 3, 0.1);
+  }
+
+  &.selected {
+    background: rgba(249, 190, 3, 0.08);
+    border-color: $accent-primary;
+    box-shadow: 0 4px 12px rgba(249, 190, 3, 0.15);
+
+    .hw-icon {
+      color: $accent-primary;
+      transform: scale(1.1);
+    }
+
+    .hw-name {
+      color: $accent-primary;
+    }
+  }
+
+  &.unavailable {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: $bg-primary;
+
+    &:hover {
+      background: $bg-primary;
+      border-color: $border-primary;
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.hw-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: $bg-secondary;
+  color: $text-secondary;
+  font-size: 24px;
+  transition: all 0.2s ease;
+
+  &.nvidia {
+    background: rgba(118, 185, 0, 0.1);
+    color: #76b900;
+  }
+
+  &.intel {
+    background: rgba(0, 113, 197, 0.1);
+    color: #0071c5;
+  }
+
+  &.amd {
+    background: rgba(237, 28, 36, 0.1);
+    color: #ed1c24;
+  }
+
+  &.apple {
+    background: rgba(249, 190, 3, 0.1);
+    color: $accent-primary;
+  }
+}
+
+.hw-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+  transition: color 0.2s ease;
+}
+
+.hw-description {
+  font-size: 12px;
+  color: $text-secondary;
+  margin: 0;
+}
+
+.hw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 4px;
+
+  &.unavailable-badge {
+    background: $bg-tertiary;
+    color: $text-tertiary;
+    border: 1px solid $border-primary;
+
+    i {
+      font-size: 11px;
+    }
+  }
+}
