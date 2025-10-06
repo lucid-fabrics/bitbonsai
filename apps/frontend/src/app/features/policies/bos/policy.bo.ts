@@ -2,6 +2,7 @@ import {
   type AudioHandling,
   type DeviceProfile,
   type DeviceProfiles,
+  type HardwareAcceleration,
   type PolicyModel,
   PolicyPreset,
   type TargetCodec,
@@ -17,23 +18,30 @@ export class PolicyBo {
   deviceProfiles: DeviceProfile[];
   ffmpegFlags?: string;
   audioHandling?: AudioHandling;
+  hardwareAcceleration?: HardwareAcceleration;
   completedJobs: number;
   createdAt: Date;
   updatedAt: Date;
 
   constructor(model: PolicyModel) {
+    // API returns camelCase but PolicyModel expects snake_case, handle both
+    const apiModel = model as any;
+
     this.id = model.id;
     this.name = model.name;
     this.preset = model.preset;
-    this.targetCodec = model.target_codec;
-    this.targetQuality = model.crf;
-    this.libraryId = model.library_id;
-    this.deviceProfiles = this.convertDeviceProfilesToArray(model.device_profiles);
-    this.ffmpegFlags = model.ffmpeg_flags;
-    this.audioHandling = model.audio_handling;
-    this.completedJobs = model.completed_jobs;
-    this.createdAt = new Date(model.created_at);
-    this.updatedAt = new Date(model.updated_at);
+    this.targetCodec = apiModel.targetCodec || model.target_codec;
+    this.targetQuality = apiModel.targetQuality || model.crf;
+    this.libraryId = apiModel.libraryId || model.library_id;
+    this.deviceProfiles = this.convertDeviceProfilesToArray(
+      apiModel.deviceProfiles || model.device_profiles
+    );
+    this.ffmpegFlags = apiModel.ffmpegFlags || model.ffmpeg_flags;
+    this.audioHandling = apiModel.audioHandling || model.audio_handling;
+    this.hardwareAcceleration = apiModel.hardwareAcceleration || model.hardware_acceleration;
+    this.completedJobs = apiModel.completedJobs || model.completed_jobs;
+    this.createdAt = new Date(apiModel.createdAt || model.created_at);
+    this.updatedAt = new Date(apiModel.updatedAt || model.updated_at);
   }
 
   private convertDeviceProfilesToArray(profiles: DeviceProfiles | undefined): DeviceProfile[] {
