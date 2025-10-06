@@ -8,15 +8,19 @@ export interface QueueJob {
   policyName: string;
   status: JobStatus;
   progress: number; // 0-100
+  etaSeconds?: number | null; // Estimated time remaining in seconds
   originalSize: number;
   currentSize: number;
   savedSize: number;
   savedPercentage: number;
+  nodeId: string;
   nodeName: string;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
   error?: string;
+  sourceCodec?: string;
+  targetCodec?: string;
 }
 
 export interface QueueStats {

@@ -26,13 +26,13 @@
         <label for="node-filter">Node:</label>
         <select
           id="node-filter"
-          [value]="selectedNode"
+          [value]="selectedNodeId"
           (change)="onNodeFilterChange($any($event.target).value)"
           class="filter-select"
         >
           <option value="">All Nodes</option>
-          @for (node of availableNodes; track node) {
-            <option [value]="node">{{ node }}</option>
+          @for (node of availableNodes | keyvalue; track node.key) {
+            <option [value]="node.key">{{ node.value }}</option>
           }
         </select>
       </div>
@@ -102,11 +102,32 @@
                 <td class="col-policy">{{ job.policyName }}</td>
                 <td class="col-progress">
                   @if (job.status === 'ENCODING') {
-                    <div class="progress-container">
-                      <div class="progress-bar">
-                        <div class="progress-fill" [style.width.%]="job.progress"></div>
+                    <div class="progress-details">
+                      <div class="progress-bar-enhanced">
+                        <div class="progress-fill-enhanced" [style.width.%]="job.progress">
+                          <div class="progress-shimmer"></div>
+                        </div>
+                        <span class="progress-percentage">{{ job.progress }}%</span>
                       </div>
-                      <span class="progress-text">{{ job.progress }}%</span>
+                      <div class="progress-meta">
+                        <span class="meta-item">
+                          <i class="fas fa-clock"></i>
+                          {{ formatETA(job.etaSeconds) }}
+                        </span>
+                        <span class="meta-item">
+                          <i class="fas fa-tachometer-alt"></i>
+                          {{ calculateEncodingSpeed(job) }}
+                        </span>
+                        <span class="meta-item elapsed">
+                          <i class="fas fa-hourglass-half"></i>
+                          {{ getElapsedTime(job.startedAt) }} elapsed
+                        </span>
+                      </div>
+                    </div>
+                  } @else if (job.status === 'QUEUED') {
+                    <div class="queue-position">
+                      <i class="fas fa-hourglass-start"></i>
+                      <span>Waiting in queue...</span>
                     </div>
                   } @else {
                     <span class="progress-placeholder">-</span>
@@ -115,7 +136,10 @@
                 <td class="col-saved">
                   @if (job.status === 'COMPLETED') {
                     <span class="savings-text">
-                      {{ formatBytes(job.savedSize) }} ({{ job.savedPercentage.toFixed(1) }}%)
+                      {{ formatBytes(job.savedSize) }}
+                      @if (job.savedPercentage != null) {
+                        ({{ job.savedPercentage.toFixed(1) }}%)
+                      }
                     </span>
                   } @else {
                     <span class="savings-placeholder">-</span>
@@ -157,53 +181,102 @@
               @if (expandedJobId === job.id) {
                 <tr class="details-row">
                   <td colspan="8">
-                    <div class="job-details">
-                      <div class="detail-section">
-                        <h4>File Information</h4>
-                        <div class="detail-grid">
-                          <div class="detail-item">
-                            <span class="detail-label">Full Path:</span>
-                            <span class="detail-value">{{ job.filePath }}</span>
+                    <div class="job-details-enhanced">
+                      <!-- Codec Conversion -->
+                      @if (job.sourceCodec && job.targetCodec) {
+                        <div class="detail-section codec-section">
+                          <h4><i class="fas fa-exchange-alt"></i> Codec Conversion</h4>
+                          <div class="codec-flow">
+                            <div class="codec-badge" [class]="getCodecBadgeClass(job.sourceCodec)">
+                              {{ job.sourceCodec }}
+                            </div>
+                            <i class="fas fa-arrow-right codec-arrow"></i>
+                            <div class="codec-badge" [class]="getCodecBadgeClass(job.targetCodec)">
+                              {{ job.targetCodec }}
+                            </div>
                           </div>
-                          <div class="detail-item">
-                            <span class="detail-label">Original Size:</span>
-                            <span class="detail-value">{{ formatBytes(job.originalSize) }}</span>
+                        </div>
+                      }
+
+                      <!-- File Information -->
+                      <div class="detail-section">
+                        <h4><i class="fas fa-file-video"></i> File Information</h4>
+                        <div class="detail-grid-enhanced">
+                          <div class="detail-card">
+                            <div class="detail-icon"><i class="fas fa-folder-open"></i></div>
+                            <div class="detail-content">
+                              <span class="detail-label">Full Path</span>
+                              <span class="detail-value">{{ job.filePath }}</span>
+                            </div>
+                          </div>
+                          <div class="detail-card">
+                            <div class="detail-icon"><i class="fas fa-file"></i></div>
+                            <div class="detail-content">
+                              <span class="detail-label">Original Size</span>
+                              <span class="detail-value">{{ formatBytes(job.originalSize) }}</span>
+                            </div>
                           </div>
                           @if (job.currentSize > 0) {
-                            <div class="detail-item">
-                              <span class="detail-label">Current Size:</span>
-                              <span class="detail-value">{{ formatBytes(job.currentSize) }}</span>
+                            <div class="detail-card">
+                              <div class="detail-icon"><i class="fas fa-compress"></i></div>
+                              <div class="detail-content">
+                                <span class="detail-label">Current Size</span>
+                                <span class="detail-value">{{ formatBytes(job.currentSize) }}</span>
+                              </div>
                             </div>
                           }
                         </div>
                       </div>
+
+                      <!-- Timeline -->
                       <div class="detail-section">
-                        <h4>Timeline</h4>
-                        <div class="detail-grid">
-                          <div class="detail-item">
-                            <span class="detail-label">Created:</span>
-                            <span class="detail-value">{{ formatDate(job.createdAt) }}</span>
+                        <h4><i class="fas fa-history"></i> Timeline</h4>
+                        <div class="timeline-enhanced">
+                          <div class="timeline-item">
+                            <div class="timeline-marker created">
+                              <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="timeline-content">
+                              <span class="timeline-label">Created</span>
+                              <span class="timeline-value">{{ formatDate(job.createdAt) }}</span>
+                            </div>
                           </div>
                           @if (job.startedAt) {
-                            <div class="detail-item">
-                              <span class="detail-label">Started:</span>
-                              <span class="detail-value">{{ formatDate(job.startedAt) }}</span>
+                            <div class="timeline-item">
+                              <div class="timeline-marker started">
+                                <i class="fas fa-play-circle"></i>
+                              </div>
+                              <div class="timeline-content">
+                                <span class="timeline-label">Started</span>
+                                <span class="timeline-value">{{ formatDate(job.startedAt) }}</span>
+                              </div>
                             </div>
                           }
                           @if (job.completedAt) {
-                            <div class="detail-item">
-                              <span class="detail-label">Completed:</span>
-                              <span class="detail-value">{{ formatDate(job.completedAt) }}</span>
+                            <div class="timeline-item">
+                              <div class="timeline-marker completed">
+                                <i class="fas fa-check-circle"></i>
+                              </div>
+                              <div class="timeline-content">
+                                <span class="timeline-label">Completed</span>
+                                <span class="timeline-value">{{ formatDate(job.completedAt) }}</span>
+                              </div>
                             </div>
                           }
                         </div>
                       </div>
+
+                      <!-- Error Details -->
                       @if (job.error) {
-                        <div class="detail-section error-section">
-                          <h4>Error Details</h4>
-                          <div class="error-message">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            {{ job.error }}
+                        <div class="detail-section error-section-enhanced">
+                          <h4><i class="fas fa-exclamation-triangle"></i> Error Details</h4>
+                          <div class="error-message-enhanced">
+                            <div class="error-icon">
+                              <i class="fas fa-bug"></i>
+                            </div>
+                            <div class="error-text">
+                              {{ job.error }}
+                            </div>
                           </div>
                         </div>
                       }

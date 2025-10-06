@@ -1,0 +1,143 @@
+import type { JobStatus } from '../models/queue.model';
+
+/**
+ * API response model for queue jobs
+ */
+interface QueueJobApiModel {
+  id: string;
+  fileLabel?: string;
+  fileName?: string;
+  filePath: string;
+  library?: { name: string };
+  libraryName?: string;
+  policy?: { name: string };
+  policyName?: string;
+  stage?: JobStatus;
+  status?: JobStatus;
+  progress: number;
+  etaSeconds?: number | null;
+  beforeSizeBytes?: string;
+  afterSizeBytes?: string;
+  savedBytes?: string;
+  savedPercent?: number;
+  originalSize?: number;
+  currentSize?: number;
+  savedSize?: number;
+  savedPercentage?: number;
+  node?: { name: string };
+  nodeName?: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+  sourceCodec?: string;
+  targetCodec?: string;
+}
+
+/**
+ * Business Object for queue jobs
+ * Transforms API response into frontend-friendly model
+ */
+export class QueueJobBo {
+  id: string;
+  fileName: string;
+  filePath: string;
+  libraryName: string;
+  policyName: string;
+  status: JobStatus;
+  progress: number;
+  etaSeconds?: number | null;
+  originalSize: number;
+  currentSize: number;
+  savedSize: number;
+  savedPercentage: number;
+  nodeId: string;
+  nodeName: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+  sourceCodec?: string;
+  targetCodec?: string;
+
+  constructor(model: QueueJobApiModel) {
+    this.id = model.id;
+    this.fileName = this.extractFileName(model);
+    this.filePath = model.filePath;
+    this.libraryName = this.extractLibraryName(model);
+    this.policyName = this.extractPolicyName(model);
+    this.status = this.extractStatus(model);
+    this.progress = model.progress;
+    this.etaSeconds = model.etaSeconds;
+    this.originalSize = this.parseSize(model.beforeSizeBytes || model.originalSize);
+    this.currentSize = this.parseSize(model.afterSizeBytes || model.currentSize);
+    this.savedSize = this.parseSize(model.savedBytes || model.savedSize);
+    this.savedPercentage = model.savedPercent ?? model.savedPercentage ?? 0;
+    this.nodeId = this.extractNodeId(model);
+    this.nodeName = this.extractNodeName(model);
+    this.createdAt = model.createdAt;
+    this.startedAt = model.startedAt;
+    this.completedAt = model.completedAt;
+    this.error = model.error;
+    this.sourceCodec = model.sourceCodec;
+    this.targetCodec = model.targetCodec;
+  }
+
+  private extractFileName(model: QueueJobApiModel): string {
+    return model.fileLabel || model.fileName || '';
+  }
+
+  private extractLibraryName(model: QueueJobApiModel): string {
+    return model.library?.name || model.libraryName || '';
+  }
+
+  private extractPolicyName(model: QueueJobApiModel): string {
+    return model.policy?.name || model.policyName || '';
+  }
+
+  private extractStatus(model: QueueJobApiModel): JobStatus {
+    return model.stage || model.status || 'QUEUED';
+  }
+
+  private extractNodeId(model: QueueJobApiModel): string {
+    return (model as any).nodeId || '';
+  }
+
+  private extractNodeName(model: QueueJobApiModel): string {
+    return model.node?.name || model.nodeName || '';
+  }
+
+  private parseSize(value: string | number | undefined): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number.parseInt(value, 10) || 0;
+    return 0;
+  }
+
+  get isEncoding(): boolean {
+    return this.status === 'ENCODING';
+  }
+
+  get isQueued(): boolean {
+    return this.status === 'QUEUED';
+  }
+
+  get isCompleted(): boolean {
+    return this.status === 'COMPLETED';
+  }
+
+  get isFailed(): boolean {
+    return this.status === 'FAILED';
+  }
+
+  get hasSavings(): boolean {
+    return this.savedSize > 0;
+  }
+
+  get hasError(): boolean {
+    return !!this.error;
+  }
+
+  get hasCodecInfo(): boolean {
+    return !!this.sourceCodec && !!this.targetCodec;
+  }
+}

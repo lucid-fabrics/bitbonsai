@@ -18,22 +18,18 @@ services:
       - LOG_LEVEL=debug
     volumes:
       - ./apps/backend:/app/apps/backend:cached
+      - ./scripts:/app/scripts:cached
+      - ./prisma:/app/prisma:cached
       - ./package.json:/app/package.json:ro
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./nx.json:/app/nx.json:ro
       - ./apps/backend/project.json:/app/apps/backend/project.json:ro
       - ./apps/backend/webpack.config.js:/app/apps/backend/webpack.config.js:ro
-      - ./test-media:/media:ro
+      - ./test-media:/media
       - bitbonsai-data:/data
       - /app/node_modules
-    command: sh -c "npx nx build backend --watch & sleep 5 && npx nodemon dist/apps/backend/main.js"
+    command: npx nx serve backend --host 0.0.0.0
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     networks:
       - bitbonsai-network
 
@@ -58,9 +54,6 @@ services:
       - /app/node_modules
     command: npx nx serve frontend --host 0.0.0.0
     restart: unless-stopped
-    depends_on:
-      bitbonsai-backend:
-        condition: service_healthy
     networks:
       - bitbonsai-network
 

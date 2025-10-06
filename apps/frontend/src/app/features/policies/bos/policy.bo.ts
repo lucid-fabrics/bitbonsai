@@ -1,6 +1,7 @@
 import {
   type AudioHandling,
   type DeviceProfile,
+  type DeviceProfiles,
   type PolicyModel,
   PolicyPreset,
   type TargetCodec,
@@ -27,12 +28,24 @@ export class PolicyBo {
     this.targetCodec = model.target_codec;
     this.targetQuality = model.crf;
     this.libraryId = model.library_id;
-    this.deviceProfiles = model.device_profiles || [];
+    this.deviceProfiles = this.convertDeviceProfilesToArray(model.device_profiles);
     this.ffmpegFlags = model.ffmpeg_flags;
     this.audioHandling = model.audio_handling;
     this.completedJobs = model.completed_jobs;
     this.createdAt = new Date(model.created_at);
     this.updatedAt = new Date(model.updated_at);
+  }
+
+  private convertDeviceProfilesToArray(profiles: DeviceProfiles | undefined): DeviceProfile[] {
+    if (!profiles) return [];
+
+    const result: DeviceProfile[] = [];
+    if (profiles.appleTV) result.push('APPLE_TV' as DeviceProfile);
+    if (profiles.roku) result.push('ROKU' as DeviceProfile);
+    if (profiles.web) result.push('WEB' as DeviceProfile);
+    if (profiles.chromecast) result.push('CHROMECAST' as DeviceProfile);
+
+    return result;
   }
 
   get isCustomPreset(): boolean {

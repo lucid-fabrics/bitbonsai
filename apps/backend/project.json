@@ -29,7 +29,7 @@
       "defaultConfiguration": "development",
       "options": {
         "buildTarget": "backend:build",
-        "watch": false,
+        "watch": true,
         "runBuildTargetDependencies": false
       },
       "configurations": {

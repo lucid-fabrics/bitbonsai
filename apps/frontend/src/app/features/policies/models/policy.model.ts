@@ -5,7 +5,7 @@ export interface PolicyModel {
   target_codec: TargetCodec;
   crf: number;
   library_id?: string;
-  device_profiles: DeviceProfile[];
+  device_profiles: DeviceProfiles;
   ffmpeg_flags?: string;
   audio_handling?: AudioHandling;
   completed_jobs: number;
