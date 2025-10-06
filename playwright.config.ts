@@ -50,7 +50,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL for all tests
-    baseURL: process.env.BASE_URL || 'http://localhost:4200',
+    baseURL: process.env.BASE_URL || 'http://localhost:4201',
 
     // Collect trace on failure
     trace: 'on-first-retry',
@@ -111,7 +111,7 @@ export default defineConfig({
     ? undefined
     : {
         command: 'npm run start:frontend',
-        url: 'http://localhost:4200',
+        url: 'http://localhost:4201',
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
       },

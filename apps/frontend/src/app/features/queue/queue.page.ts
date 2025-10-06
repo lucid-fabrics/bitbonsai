@@ -36,7 +36,7 @@ export class QueueComponent implements OnInit {
   private readonly refreshTrigger$ = new BehaviorSubject<void>(undefined);
   protected readonly queueData$: Observable<QueueResponse | null>;
   protected readonly isLoading$: Observable<boolean>;
-  protected readonly availableNodes$: Observable<string[]>;
+  protected readonly availableNodes$: Observable<Map<string, string>>;
 
   // State
   protected expandedJobId: string | null = null;
@@ -45,7 +45,7 @@ export class QueueComponent implements OnInit {
 
   // Filter state
   protected selectedStatus: JobStatus | 'ALL' = 'ALL';
-  protected selectedNode = '';
+  protected selectedNodeId = '';
   protected searchQuery = '';
 
   // Available statuses for filter
@@ -78,11 +78,17 @@ export class QueueComponent implements OnInit {
       startWith(true)
     );
 
-    // Extract available nodes from queue data
+    // Extract available nodes from queue data (Map of nodeId -> nodeName)
     this.availableNodes$ = this.queueData$.pipe(
       map((data) => {
         const jobs = data?.jobs || [];
-        return [...new Set(jobs.map((job) => job.nodeName))].sort();
+        const nodeMap = new Map<string, string>();
+        for (const job of jobs) {
+          if (job.nodeId && job.nodeName) {
+            nodeMap.set(job.nodeId, job.nodeName);
+          }
+        }
+        return nodeMap;
       })
     );
   }
@@ -104,8 +110,8 @@ export class QueueComponent implements OnInit {
     if (this.selectedStatus !== 'ALL') {
       filters.status = this.selectedStatus as JobStatus;
     }
-    if (this.selectedNode) {
-      filters.nodeId = this.selectedNode;
+    if (this.selectedNodeId) {
+      filters.nodeId = this.selectedNodeId;
     }
     if (this.searchQuery) {
       filters.search = this.searchQuery;
@@ -119,7 +125,7 @@ export class QueueComponent implements OnInit {
   }
 
   protected onNodeFilterChange(nodeId: string): void {
-    this.selectedNode = nodeId;
+    this.selectedNodeId = nodeId;
     this.refreshQueue();
   }
 
@@ -176,7 +182,7 @@ export class QueueComponent implements OnInit {
   }
 
   protected getStatusClass(status: JobStatus): string {
-    return `status-${status.toLowerCase()}`;
+    return status ? `status-${status.toLowerCase()}` : 'status-unknown';
   }
 
   protected getStatusIcon(status: JobStatus): string {
@@ -224,5 +230,70 @@ export class QueueComponent implements OnInit {
   protected formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleString();
+  }
+
+  protected formatETA(etaSeconds: number | null | undefined): string {
+    if (!etaSeconds || etaSeconds <= 0) return 'Calculating...';
+
+    const hours = Math.floor(etaSeconds / 3600);
+    const minutes = Math.floor((etaSeconds % 3600) / 60);
+    const seconds = Math.floor(etaSeconds % 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m remaining`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s remaining`;
+    }
+    return `${seconds}s remaining`;
+  }
+
+  protected calculateEncodingSpeed(job: {
+    startedAt?: string;
+    currentSize: number;
+    originalSize: number;
+  }): string {
+    if (!job.startedAt || job.currentSize <= 0) return '-';
+
+    const startTime = new Date(job.startedAt).getTime();
+    const now = Date.now();
+    const elapsedSeconds = (now - startTime) / 1000;
+
+    if (elapsedSeconds <= 0) return '-';
+
+    const bytesProcessed = job.originalSize - job.currentSize;
+    const bytesPerSecond = bytesProcessed / elapsedSeconds;
+
+    return `${this.formatBytes(bytesPerSecond)}/s`;
+  }
+
+  protected getElapsedTime(startedAt?: string): string {
+    if (!startedAt) return '-';
+
+    const start = new Date(startedAt).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - start) / 1000);
+
+    const hours = Math.floor(elapsedSeconds / 3600);
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+    const seconds = elapsedSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  }
+
+  protected getCodecBadgeClass(codec: string | undefined): string {
+    if (!codec) return 'codec-unknown';
+    const codecLower = codec.toLowerCase();
+    if (codecLower.includes('hevc') || codecLower.includes('h.265')) return 'codec-hevc';
+    if (codecLower.includes('av1')) return 'codec-av1';
+    if (codecLower.includes('h.264') || codecLower.includes('avc')) return 'codec-h264';
+    if (codecLower.includes('vp9')) return 'codec-vp9';
+    return 'codec-other';
   }
 }

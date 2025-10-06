@@ -32,16 +32,16 @@ async function main() {
   console.log('✅ Database cleaned\n');
 
   // ============================================================================
-  // 1. Create Licenses
+  // 1. Create Default Active License
   // ============================================================================
-  console.log('📋 Creating licenses...');
+  console.log('📋 Creating default license...');
 
-  const freeLicense = await prisma.license.create({
+  const defaultLicense = await prisma.license.create({
     data: {
       key: generateLicenseKey('FREE'),
       tier: 'FREE',
       status: 'ACTIVE',
-      email: 'free.user@example.com',
+      email: 'user@example.com',
       maxNodes: 1,
       maxConcurrentJobs: 2,
       features: {
@@ -55,167 +55,19 @@ async function main() {
       validUntil: null, // Perpetual
     },
   });
-  console.log(`  ✅ FREE license: ${freeLicense.key}`);
-
-  const patreonLicense = await prisma.license.create({
-    data: {
-      key: generateLicenseKey('PATREON'),
-      tier: 'PATREON',
-      status: 'ACTIVE',
-      email: 'patreon.supporter@example.com',
-      maxNodes: 2,
-      maxConcurrentJobs: 5,
-      features: {
-        multiNode: true,
-        advancedPresets: true,
-        api: true,
-        priorityQueue: false,
-        cloudStorage: false,
-        webhooks: false,
-      },
-      validUntil: new Date('2026-12-31'), // Annual subscription
-    },
-  });
-  console.log(`  ✅ PATREON license: ${patreonLicense.key}`);
-
-  const commercialLicense = await prisma.license.create({
-    data: {
-      key: generateLicenseKey('COMMERCIAL_PRO'),
-      tier: 'COMMERCIAL_PRO',
-      status: 'ACTIVE',
-      email: 'business@example.com',
-      maxNodes: 20,
-      maxConcurrentJobs: 50,
-      features: {
-        multiNode: true,
-        advancedPresets: true,
-        api: true,
-        priorityQueue: true,
-        cloudStorage: true,
-        webhooks: true,
-      },
-      validUntil: new Date('2026-12-31'),
-      stripeCustomerId: 'cus_test123',
-      stripeSubscriptionId: 'sub_test456',
-    },
-  });
-  console.log(`  ✅ COMMERCIAL_PRO license: ${commercialLicense.key}\n`);
+  console.log(`  ✅ Default FREE license created: ${defaultLicense.key}\n`);
 
   // ============================================================================
-  // 2. Create Nodes
+  // 2. Create Default Universal Policy
   // ============================================================================
-  console.log('🖥️  Creating nodes...');
+  console.log('📜 Creating default policy...');
 
-  const mainNode = await prisma.node.create({
+  const defaultPolicy = await prisma.policy.create({
     data: {
-      name: 'Main Server',
-      role: 'MAIN',
-      status: 'ONLINE',
-      version: '1.0.0',
-      acceleration: 'NVIDIA',
-      apiKey: generateApiKey(),
-      lastHeartbeat: new Date(),
-      uptimeSeconds: 86400, // 1 day
-      licenseId: commercialLicense.id,
-    },
-  });
-  console.log(`  ✅ Main node created (NVIDIA GPU)`);
-
-  const workerNode1 = await prisma.node.create({
-    data: {
-      name: 'Worker Node 1',
-      role: 'LINKED',
-      status: 'ONLINE',
-      version: '1.0.0',
-      acceleration: 'INTEL_QSV',
-      apiKey: generateApiKey(),
-      lastHeartbeat: new Date(),
-      uptimeSeconds: 172800, // 2 days
-      licenseId: commercialLicense.id,
-    },
-  });
-  console.log(`  ✅ Worker node 1 created (Intel QSV)`);
-
-  const workerNode2 = await prisma.node.create({
-    data: {
-      name: 'Worker Node 2',
-      role: 'LINKED',
-      status: 'ONLINE',
-      version: '1.0.0',
-      acceleration: 'AMD',
-      apiKey: generateApiKey(),
-      lastHeartbeat: new Date(),
-      uptimeSeconds: 259200, // 3 days
-      licenseId: commercialLicense.id,
-    },
-  });
-  console.log(`  ✅ Worker node 2 created (AMD GPU)\n`);
-
-  // ============================================================================
-  // 3. Create Libraries
-  // ============================================================================
-  console.log('📚 Creating libraries...');
-
-  const moviesLibrary = await prisma.library.create({
-    data: {
-      name: 'Movies',
-      path: '/media/Movies',
-      mediaType: 'MOVIE',
-      enabled: true,
-      lastScanAt: new Date(),
-      totalFiles: 677,
-      totalSizeBytes: BigInt('3457890123456'), // ~3.1TB
-      nodeId: mainNode.id,
-    },
-  });
-  console.log(`  ✅ Movies library (677 files, 3.1TB)`);
-
-  const tvLibrary = await prisma.library.create({
-    data: {
-      name: 'TV Shows',
-      path: '/media/TV',
-      mediaType: 'TV_SHOW',
-      enabled: true,
-      lastScanAt: new Date(),
-      totalFiles: 3791,
-      totalSizeBytes: BigInt('5234567890123'), // ~4.8TB
-      nodeId: mainNode.id,
-    },
-  });
-  console.log(`  ✅ TV Shows library (3,791 episodes, 4.8TB)`);
-
-  const animeLibrary = await prisma.library.create({
-    data: {
-      name: 'Anime',
-      path: '/media/Anime',
-      mediaType: 'TV_SHOW',
-      enabled: true,
-      lastScanAt: new Date(),
-      totalFiles: 1247,
-      totalSizeBytes: BigInt('1876543210987'), // ~1.7TB
-      nodeId: mainNode.id,
-    },
-  });
-  console.log(`  ✅ Anime library (1,247 episodes, 1.7TB)\n`);
-
-  // ============================================================================
-  // 4. Create Policies
-  // ============================================================================
-  console.log('📜 Creating policies...');
-
-  // ============================================================================
-  // DEFAULT POLICY - Sweet Spot for H.265 (No configuration needed)
-  // ============================================================================
-  // This is the optimal default policy that works great for 99% of content
-  // CRF 20: Sweet spot between quality and size (visually transparent)
-  // Preset: medium - Best balance of speed and compression
-  // Works on ALL hardware acceleration types
-  const _defaultPolicy = await prisma.policy.create({
-    data: {
-      name: 'Default - Universal H.265 (Recommended)',
+      name: 'Universal H.265 (Recommended)',
       preset: 'BALANCED_HEVC',
       targetCodec: 'HEVC',
-      targetQuality: 20, // CRF 20 = "sweet spot" - visually lossless for most content
+      targetQuality: 20, // CRF 20 = visually lossless sweet spot
       deviceProfiles: {
         appleTv: true,
         roku: true,
@@ -229,376 +81,61 @@ async function main() {
         samsungTV: true,
       },
       advancedSettings: {
-        // Encoding settings
-        preset: 'medium', // Best balance of speed/compression
-        tune: 'film', // Optimized for film content (works well for TV too)
-
-        // Quality settings
-        minCRF: 18, // Don't go below this even for complex scenes
-        maxCRF: 22, // Don't go above this even for simple scenes
-
-        // Frame settings
-        keyframeInterval: 240, // 10 seconds at 24fps (good for seeking)
-        bframes: 4, // B-frames for better compression
-        refs: 3, // Reference frames
-
-        // Motion estimation
-        meMethod: 'umh', // Good quality motion search
-        subme: 7, // Subpixel motion estimation quality
-
-        // Hardware acceleration
-        hwaccel: 'auto', // Auto-detect (NVENC, QSV, VCE, VideoToolbox)
-
-        // Audio handling
-        audioCodec: 'copy', // Keep original audio (AAC/DTS/TrueHD/etc)
-        audioFallback: 'aac', // Convert to AAC if codec incompatible
-        audioBitrate: '256k', // Fallback AAC bitrate
-
-        // Subtitle handling
-        subtitleHandling: 'copy', // Keep all subtitle tracks
-
-        // Container format
-        containerFormat: 'mkv', // MKV supports everything
-
-        // Advanced options
-        fastdecode: false, // Don't sacrifice compression for decode speed
-        zerolatency: false, // Not needed for stored content
-
-        // Filters
-        deinterlace: 'auto', // Auto-detect and deinterlace if needed
-        denoise: 'none', // Don't denoise by default (preserves grain)
-
-        // Two-pass encoding (disabled for speed, single-pass CRF is excellent)
+        preset: 'medium',
+        tune: 'film',
+        minCRF: 18,
+        maxCRF: 22,
+        keyframeInterval: 240,
+        bframes: 4,
+        refs: 3,
+        meMethod: 'umh',
+        subme: 7,
+        hwaccel: 'auto',
+        audioCodec: 'copy',
+        audioFallback: 'aac',
+        audioBitrate: '256k',
+        subtitleHandling: 'copy',
+        containerFormat: 'mkv',
+        fastdecode: false,
+        zerolatency: false,
+        deinterlace: 'auto',
+        denoise: 'none',
         twoPass: false,
       },
-      atomicReplace: true, // Safe replacement (rename, not overwrite)
-      verifyOutput: true, // Always verify playback after encoding
-      skipSeeding: true, // Don't encode files being seeded
-      libraryId: null, // Global policy - not tied to specific library
-    },
-  });
-  console.log(`  ✅ DEFAULT Universal H.265 policy (CRF 20, medium, universal compatibility)`);
-
-  const balancedPolicy = await prisma.policy.create({
-    data: {
-      name: 'Balanced HEVC Encoding',
-      preset: 'BALANCED_HEVC',
-      targetCodec: 'HEVC',
-      targetQuality: 23, // CRF 23 = high quality
-      deviceProfiles: {
-        appleTv: true,
-        roku: true,
-        web: true,
-        chromecast: true,
-        ps5: true,
-        xbox: true,
-      },
-      advancedSettings: {
-        ffmpegFlags: ['-preset', 'medium', '-tune', 'film'],
-        hwaccel: 'auto',
-        audioCodec: 'copy',
-        subtitleHandling: 'copy',
-      },
       atomicReplace: true,
       verifyOutput: true,
       skipSeeding: true,
-      libraryId: moviesLibrary.id,
+      libraryId: null, // Global policy
     },
   });
-  console.log(`  ✅ Balanced HEVC policy (CRF 23, medium preset)`);
-
-  const fastPolicy = await prisma.policy.create({
-    data: {
-      name: 'Fast HEVC for TV',
-      preset: 'FAST_HEVC',
-      targetCodec: 'HEVC',
-      targetQuality: 25, // Slightly lower quality for speed
-      deviceProfiles: {
-        appleTv: true,
-        roku: true,
-        web: true,
-        chromecast: true,
-        ps5: false,
-        xbox: false,
-      },
-      advancedSettings: {
-        ffmpegFlags: ['-preset', 'fast'],
-        hwaccel: 'auto',
-        audioCodec: 'copy',
-        subtitleHandling: 'copy',
-      },
-      atomicReplace: true,
-      verifyOutput: true,
-      skipSeeding: true,
-      libraryId: tvLibrary.id,
-    },
-  });
-  console.log(`  ✅ Fast HEVC policy (CRF 25, fast preset)`);
-
-  const qualityPolicy = await prisma.policy.create({
-    data: {
-      name: 'Quality AV1 for Anime',
-      preset: 'QUALITY_AV1',
-      targetCodec: 'AV1',
-      targetQuality: 28, // AV1 can use higher CRF for same quality
-      deviceProfiles: {
-        appleTv: false, // Limited AV1 support
-        roku: false,
-        web: true,
-        chromecast: false,
-        ps5: false,
-        xbox: false,
-      },
-      advancedSettings: {
-        ffmpegFlags: ['-preset', 'slow', '-cpu-used', '4'],
-        hwaccel: 'none', // AV1 usually CPU
-        audioCodec: 'copy',
-        subtitleHandling: 'copy',
-      },
-      atomicReplace: true,
-      verifyOutput: true,
-      skipSeeding: true,
-      libraryId: animeLibrary.id,
-    },
-  });
-  console.log(`  ✅ Quality AV1 policy (CRF 28, slow preset)\n`);
-
-  // ============================================================================
-  // 5. Create Jobs
-  // ============================================================================
-  console.log('🎬 Creating sample jobs...');
-
-  // Completed jobs
-  const _completedJob1 = await prisma.job.create({
-    data: {
-      filePath: '/media/Movies/The Matrix (1999)/The Matrix (1999).mkv',
-      fileLabel: 'The Matrix (1999).mkv',
-      sourceCodec: 'H.264',
-      targetCodec: 'HEVC',
-      stage: 'COMPLETED',
-      progress: 100,
-      beforeSizeBytes: BigInt('8589934592'), // 8GB
-      afterSizeBytes: BigInt('4294967296'), // 4GB
-      savedBytes: BigInt('4294967296'), // 4GB saved
-      savedPercent: 50.0,
-      startedAt: new Date('2025-09-30T10:00:00Z'),
-      completedAt: new Date('2025-09-30T12:30:00Z'),
-      nodeId: mainNode.id,
-      libraryId: moviesLibrary.id,
-      policyId: balancedPolicy.id,
-    },
-  });
-
-  const _completedJob2 = await prisma.job.create({
-    data: {
-      filePath: '/media/TV/Breaking Bad/Season 1/Breaking Bad - S01E01.mkv',
-      fileLabel: 'Breaking Bad - S01E01.mkv',
-      sourceCodec: 'H.264',
-      targetCodec: 'HEVC',
-      stage: 'COMPLETED',
-      progress: 100,
-      beforeSizeBytes: BigInt('1610612736'), // 1.5GB
-      afterSizeBytes: BigInt('805306368'), // 768MB
-      savedBytes: BigInt('805306368'), // 768MB saved
-      savedPercent: 50.0,
-      startedAt: new Date('2025-09-30T13:00:00Z'),
-      completedAt: new Date('2025-09-30T13:45:00Z'),
-      nodeId: workerNode1.id,
-      libraryId: tvLibrary.id,
-      policyId: fastPolicy.id,
-    },
-  });
-
-  console.log(`  ✅ 2 completed jobs`);
-
-  // Active encoding jobs
-  const _encodingJob = await prisma.job.create({
-    data: {
-      filePath: '/media/Movies/Inception (2010)/Inception (2010).mkv',
-      fileLabel: 'Inception (2010).mkv',
-      sourceCodec: 'H.264',
-      targetCodec: 'HEVC',
-      stage: 'ENCODING',
-      progress: 67.5,
-      etaSeconds: 1800, // 30 minutes remaining
-      beforeSizeBytes: BigInt('10737418240'), // 10GB
-      startedAt: new Date(),
-      nodeId: workerNode2.id,
-      libraryId: moviesLibrary.id,
-      policyId: balancedPolicy.id,
-    },
-  });
-
-  console.log(`  ✅ 1 encoding job (67.5% complete)`);
-
-  // Queued jobs
-  const _queuedJob1 = await prisma.job.create({
-    data: {
-      filePath: '/media/Anime/Attack on Titan/Season 1/Attack on Titan - S01E01.mkv',
-      fileLabel: 'Attack on Titan - S01E01.mkv',
-      sourceCodec: 'H.264',
-      targetCodec: 'AV1',
-      stage: 'QUEUED',
-      progress: 0,
-      beforeSizeBytes: BigInt('1073741824'), // 1GB
-      nodeId: mainNode.id,
-      libraryId: animeLibrary.id,
-      policyId: qualityPolicy.id,
-    },
-  });
-
-  const _queuedJob2 = await prisma.job.create({
-    data: {
-      filePath: '/media/TV/The Office/Season 1/The Office - S01E01.mkv',
-      fileLabel: 'The Office - S01E01.mkv',
-      sourceCodec: 'H.264',
-      targetCodec: 'HEVC',
-      stage: 'QUEUED',
-      progress: 0,
-      beforeSizeBytes: BigInt('644245094'), // 614MB
-      nodeId: workerNode1.id,
-      libraryId: tvLibrary.id,
-      policyId: fastPolicy.id,
-    },
-  });
-
-  console.log(`  ✅ 2 queued jobs`);
-
-  // Failed job
-  const _failedJob = await prisma.job.create({
-    data: {
-      filePath: '/media/Movies/Corrupted File (2020)/Corrupted File.mkv',
-      fileLabel: 'Corrupted File (2020).mkv',
-      sourceCodec: 'H.264',
-      targetCodec: 'HEVC',
-      stage: 'FAILED',
-      progress: 23.4,
-      beforeSizeBytes: BigInt('5368709120'), // 5GB
-      startedAt: new Date('2025-09-30T14:00:00Z'),
-      completedAt: new Date('2025-09-30T14:15:00Z'),
-      error: 'FFmpeg error: Invalid frame data at 00:15:32',
-      nodeId: workerNode2.id,
-      libraryId: moviesLibrary.id,
-      policyId: balancedPolicy.id,
-    },
-  });
-
-  console.log(`  ✅ 1 failed job\n`);
-
-  // ============================================================================
-  // 6. Create Metrics
-  // ============================================================================
-  console.log('📊 Creating metrics...');
-
-  // System-wide metrics for the last 7 days
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    date.setHours(0, 0, 0, 0);
-
-    await prisma.metric.create({
-      data: {
-        date,
-        nodeId: null, // System-wide
-        licenseId: commercialLicense.id,
-        jobsCompleted: Math.floor(Math.random() * 50) + 20,
-        jobsFailed: Math.floor(Math.random() * 5),
-        totalSavedBytes: BigInt(Math.floor(Math.random() * 100000000000) + 50000000000),
-        avgThroughputFilesPerHour: Math.random() * 10 + 5,
-        codecDistribution: {
-          'H.264': Math.floor(Math.random() * 40) + 40, // 40-80%
-          HEVC: Math.floor(Math.random() * 30) + 15, // 15-45%
-          AV1: Math.floor(Math.random() * 10), // 0-10%
-        },
-      },
-    });
-  }
-
-  console.log(`  ✅ 7 days of system-wide metrics`);
-
-  // Per-node metrics for today
-  await prisma.metric.create({
-    data: {
-      date: today,
-      nodeId: mainNode.id,
-      licenseId: commercialLicense.id,
-      jobsCompleted: 15,
-      jobsFailed: 1,
-      totalSavedBytes: BigInt('32212254720'), // ~30GB
-      avgThroughputFilesPerHour: 8.5,
-      codecDistribution: {
-        'H.264': 60,
-        HEVC: 35,
-        AV1: 5,
-      },
-    },
-  });
-
-  await prisma.metric.create({
-    data: {
-      date: today,
-      nodeId: workerNode1.id,
-      licenseId: commercialLicense.id,
-      jobsCompleted: 22,
-      jobsFailed: 0,
-      totalSavedBytes: BigInt('48318382080'), // ~45GB
-      avgThroughputFilesPerHour: 12.3,
-      codecDistribution: {
-        'H.264': 55,
-        HEVC: 40,
-        AV1: 5,
-      },
-    },
-  });
-
-  await prisma.metric.create({
-    data: {
-      date: today,
-      nodeId: workerNode2.id,
-      licenseId: commercialLicense.id,
-      jobsCompleted: 18,
-      jobsFailed: 2,
-      totalSavedBytes: BigInt('38654705664'), // ~36GB
-      avgThroughputFilesPerHour: 9.8,
-      codecDistribution: {
-        'H.264': 65,
-        HEVC: 30,
-        AV1: 5,
-      },
-    },
-  });
-
-  console.log(`  ✅ Node-specific metrics for today\n`);
+  console.log(`  ✅ Default policy created: ${defaultPolicy.name}\n`);
 
   // ============================================================================
   // Summary
   // ============================================================================
   console.log('✅ Seed completed successfully!\n');
   console.log('📋 Summary:');
-  console.log(`   • 3 licenses (FREE, PATREON, COMMERCIAL_PRO)`);
-  console.log(`   • 3 nodes (1 main + 2 workers)`);
-  console.log(`   • 3 libraries (Movies, TV, Anime)`);
-  console.log(`   • 4 policies (1 DEFAULT + Balanced HEVC, Fast HEVC, Quality AV1)`);
-  console.log(`   • 6 jobs (2 completed, 1 encoding, 2 queued, 1 failed)`);
-  console.log(`   • 10 metrics (7 system-wide + 3 node-specific)\n`);
+  console.log(`   • 1 active FREE license`);
+  console.log(`   • 1 default universal H.265 policy`);
+  console.log(`   • 0 nodes (register your first node)`);
+  console.log(`   • 0 libraries (create your first library)`);
+  console.log(`   • 0 jobs (jobs will be created automatically)\n`);
 
   console.log('⭐ DEFAULT POLICY:');
-  console.log(`   Name:     "Default - Universal H.265 (Recommended)"`);
-  console.log(`   CRF:      20 (visually lossless sweet spot)`);
-  console.log(`   Preset:   medium (best balance)`);
-  console.log(`   Hardware: Auto-detect (NVENC/QSV/VCE/VideoToolbox)`);
-  console.log(`   Audio:    Copy original (AAC fallback)`);
-  console.log(`   Features: Universal device compatibility`);
-  console.log(`   Use:      Works great for 99% of content - no config needed!\n`);
+  console.log(`   Name:     "${defaultPolicy.name}"`);
+  console.log(`   Codec:    H.265 (HEVC)`);
+  console.log(`   Quality:  CRF 20 (visually lossless)`);
+  console.log(`   Preset:   medium (balanced)`);
+  console.log(`   Hardware: Auto-detect`);
+  console.log(`   Devices:  Universal compatibility\n`);
 
-  console.log('🔐 Test License Keys:');
-  console.log(`   FREE:            ${freeLicense.key}`);
-  console.log(`   PATREON:         ${patreonLicense.key}`);
-  console.log(`   COMMERCIAL_PRO:  ${commercialLicense.key}\n`);
+  console.log('🔐 License Key:');
+  console.log(`   ${defaultLicense.key}\n`);
 
-  console.log('🚀 Ready to start development!');
-  console.log('   Run: npm run prisma:studio');
+  console.log('🚀 Ready to use! Next steps:');
+  console.log('   1. Register your first encoding node');
+  console.log('   2. Create a library pointing to your media');
+  console.log('   3. Start encoding!\n');
 }
 
 main()

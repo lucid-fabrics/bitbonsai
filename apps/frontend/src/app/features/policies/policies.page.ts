@@ -145,9 +145,12 @@ export class PoliciesComponent implements OnInit {
   }
 
   getCRFLabel(crf: number): string {
-    if (crf <= 20) return 'Excellent';
-    if (crf <= 25) return 'Good';
-    return 'Fast';
+    if (crf <= 18) return 'Visually Lossless (Huge Files)';
+    if (crf <= 22) return 'Excellent Quality (Large Files)';
+    if (crf <= 26) return 'High Quality (Recommended)';
+    if (crf <= 30) return 'Good Quality (Smaller Files)';
+    if (crf <= 34) return 'Medium Quality (Web Streaming)';
+    return 'Low Quality (Not Recommended)';
   }
 
   validateForm(): boolean {
@@ -258,7 +261,7 @@ export class PoliciesComponent implements OnInit {
       case DeviceProfile.ROKU:
         return 'Ensures compatibility with Roku streaming devices. Uses codec settings that work across the Roku device family.';
       case DeviceProfile.WEB:
-        return 'Optimizes for web browser playback. Ensures compatibility with modern browsers like Chrome, Firefox, Safari, and Edge.';
+        return 'Optimizes for web browser playback and media servers. Ensures compatibility with Jellyfin, Plex, Emby, and modern browsers (Chrome, Firefox, Safari, Edge).';
       case DeviceProfile.CHROMECAST:
         return 'Optimizes for Google Chromecast devices. Ensures smooth streaming and playback on all Chromecast generations.';
       default:
