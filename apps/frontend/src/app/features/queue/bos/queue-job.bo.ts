@@ -100,7 +100,7 @@ export class QueueJobBo {
   }
 
   private extractNodeId(model: QueueJobApiModel): string {
-    return (model as any).nodeId || '';
+    return (model as QueueJobApiModel & { nodeId?: string }).nodeId || '';
   }
 
   private extractNodeName(model: QueueJobApiModel): string {

@@ -25,7 +25,7 @@ export class PolicyBo {
 
   constructor(model: PolicyModel) {
     // API returns camelCase but PolicyModel expects snake_case, handle both
-    const apiModel = model as any;
+    const apiModel = model as PolicyModel & Record<string, unknown>;
 
     this.id = model.id;
     this.name = model.name;

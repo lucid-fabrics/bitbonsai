@@ -11,7 +11,7 @@ import { SettingsEffects } from './settings.effects';
 describe('SettingsEffects', () => {
   let actions$: Observable<Action>;
   let effects: SettingsEffects;
-  let service: jest.Mocked<SettingsService>;
+  let _service: jest.Mocked<SettingsService>;
   let licenseService: jest.Mocked<LicenseService>;
 
   beforeEach(() => {
@@ -40,7 +40,7 @@ describe('SettingsEffects', () => {
     });
 
     effects = TestBed.inject(SettingsEffects);
-    service = TestBed.inject(SettingsService) as jest.Mocked<SettingsService>;
+    _service = TestBed.inject(SettingsService) as jest.Mocked<SettingsService>;
     licenseService = TestBed.inject(LicenseService) as jest.Mocked<LicenseService>;
   });
 

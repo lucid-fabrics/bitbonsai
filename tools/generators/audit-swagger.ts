@@ -22,6 +22,96 @@ interface AuditResult {
 
 const results: AuditResult[] = [];
 
+// Helper: Extract method section from content
+const extractMethodSection = (content: string, matchText: string): string => {
+  const methodIndex = content.indexOf(matchText);
+  const sectionStart = Math.max(0, methodIndex - 1500);
+  const sectionEnd = Math.min(content.length, methodIndex + 1500);
+  return content.substring(sectionStart, sectionEnd);
+};
+
+// Helper: Check for @ApiOperation decorator
+const checkApiOperation = (section: string, methodName: string, result: AuditResult): void => {
+  if (!section.includes('@ApiOperation')) {
+    result.missingApiOperation.push(methodName);
+    result.score -= 10;
+  }
+};
+
+// Helper: Check for @ApiResponse decorators
+const checkApiResponses = (
+  section: string,
+  methodName: string,
+  httpMethod: string,
+  route: string,
+  result: AuditResult
+): void => {
+  const hasApiResponse =
+    /@Api(Response|OkResponse|CreatedResponse|NoContentResponse|BadRequestResponse|NotFoundResponse|InternalServerErrorResponse)\s*\(/.test(
+      section
+    );
+
+  if (!hasApiResponse) {
+    result.missingApiResponse.push(`${methodName} (missing all @ApiResponse decorators)`);
+    result.score -= 15;
+    return;
+  }
+
+  checkSuccessResponse(section, methodName, result);
+  checkBadRequestResponse(section, methodName, httpMethod, result);
+  checkNotFoundResponse(section, methodName, httpMethod, route, result);
+};
+
+// Helper: Check for 2xx success response
+const checkSuccessResponse = (section: string, methodName: string, result: AuditResult): void => {
+  const has2xx =
+    /@Api(Ok|Created|NoContent)Response/.test(section) ||
+    section.includes('status: 200') ||
+    section.includes('status: 201') ||
+    section.includes('status: 204');
+
+  if (!has2xx) {
+    result.missingApiResponse.push(`${methodName} (@ApiOkResponse or @ApiCreatedResponse)`);
+    result.score -= 10;
+  }
+};
+
+// Helper: Check for 400 bad request response
+const checkBadRequestResponse = (
+  section: string,
+  methodName: string,
+  httpMethod: string,
+  result: AuditResult
+): void => {
+  const has400 = /@ApiBadRequestResponse/.test(section) || section.includes('status: 400');
+
+  if (!has400 && (httpMethod === 'Post' || httpMethod === 'Patch' || httpMethod === 'Put')) {
+    result.missingApiResponse.push(`${methodName} (@ApiBadRequestResponse)`);
+    result.score -= 5;
+  }
+};
+
+// Helper: Check for 404 not found response
+const checkNotFoundResponse = (
+  section: string,
+  methodName: string,
+  httpMethod: string,
+  route: string,
+  result: AuditResult
+): void => {
+  const has404 = /@ApiNotFoundResponse/.test(section) || section.includes('status: 404');
+  const hasPathParam = route.includes(':');
+
+  if (
+    !has404 &&
+    hasPathParam &&
+    (httpMethod === 'Get' || httpMethod === 'Patch' || httpMethod === 'Delete')
+  ) {
+    result.missingApiResponse.push(`${methodName} (@ApiNotFoundResponse)`);
+    result.score -= 3;
+  }
+};
+
 // Check if a controller has proper Swagger documentation
 const auditController = (filePath: string): AuditResult => {
   const content = fs.readFileSync(filePath, 'utf-8');
@@ -53,60 +143,13 @@ const auditController = (filePath: string): AuditResult => {
     if (!methodDef) return;
 
     // Extract the section around this method
-    // Look back further to catch decorators before @Get/@Post etc
-    const methodIndex = content.indexOf(match[0]);
-    const sectionStart = Math.max(0, methodIndex - 1500);
-    const sectionEnd = Math.min(content.length, methodIndex + 1500);
-    const section = content.substring(sectionStart, sectionEnd);
+    const section = extractMethodSection(content, match[0]);
 
     // Check for @ApiOperation
-    if (!section.includes('@ApiOperation')) {
-      result.missingApiOperation.push(methodName);
-      result.score -= 10;
-    }
+    checkApiOperation(section, methodName, result);
 
-    // Check for @ApiResponse (or specific decorators like @ApiOkResponse, @ApiCreatedResponse)
-    const hasApiResponse =
-      /@Api(Response|OkResponse|CreatedResponse|NoContentResponse|BadRequestResponse|NotFoundResponse|InternalServerErrorResponse)\s*\(/.test(
-        section
-      );
-    if (!hasApiResponse) {
-      result.missingApiResponse.push(`${methodName} (missing all @ApiResponse decorators)`);
-      result.score -= 15;
-    } else {
-      // Check for specific response decorators or status codes
-      const has2xx =
-        /@Api(Ok|Created|NoContent)Response/.test(section) ||
-        section.includes('status: 200') ||
-        section.includes('status: 201') ||
-        section.includes('status: 204');
-      const has400 = /@ApiBadRequestResponse/.test(section) || section.includes('status: 400');
-      const has404 = /@ApiNotFoundResponse/.test(section) || section.includes('status: 404');
-      const _has500 =
-        /@ApiInternalServerErrorResponse/.test(section) || section.includes('status: 500');
-
-      if (!has2xx) {
-        result.missingApiResponse.push(`${methodName} (@ApiOkResponse or @ApiCreatedResponse)`);
-        result.score -= 10;
-      }
-      // 400 is critical for POST/PATCH/PUT (input validation)
-      if (!has400 && (httpMethod === 'Post' || httpMethod === 'Patch' || httpMethod === 'Put')) {
-        result.missingApiResponse.push(`${methodName} (@ApiBadRequestResponse)`);
-        result.score -= 5;
-      }
-      // 404 is critical only for GET/PATCH/DELETE with path parameters
-      const hasPathParam = route.includes(':');
-      if (
-        !has404 &&
-        hasPathParam &&
-        (httpMethod === 'Get' || httpMethod === 'Patch' || httpMethod === 'Delete')
-      ) {
-        result.missingApiResponse.push(`${methodName} (@ApiNotFoundResponse)`);
-        result.score -= 3;
-      }
-      // 500 is optional - systems should handle errors gracefully
-      // Removing this requirement as it's overly strict
-    }
+    // Check for @ApiResponse decorators
+    checkApiResponses(section, methodName, httpMethod, route, result);
   });
 
   result.score = Math.max(0, result.score);

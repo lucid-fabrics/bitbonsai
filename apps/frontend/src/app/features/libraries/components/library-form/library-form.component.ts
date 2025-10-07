@@ -112,31 +112,43 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
-    if (this.libraryForm.valid) {
-      const formValue = this.libraryForm.getRawValue();
-      const lib = this.library();
-
-      if (this.isEditMode && lib) {
-        // For updates, only send changed fields
-        const updates: UpdateLibraryDto = {};
-        if (formValue.name !== lib.name) updates.name = formValue.name;
-        if (formValue.path !== lib.path) updates.path = formValue.path;
-        if (formValue.mediaType !== lib.mediaType) updates.mediaType = formValue.mediaType;
-        if (formValue.enabled !== lib.enabled) updates.enabled = formValue.enabled;
-        if (formValue.watchEnabled !== lib.watchEnabled)
-          updates.watchEnabled = formValue.watchEnabled;
-
-        this.formSubmit.emit(updates);
-      } else {
-        // For creation, send all required fields
-        const createDto: CreateLibraryDto = {
-          name: formValue.name,
-          path: formValue.path,
-          mediaType: formValue.mediaType,
-        };
-        this.formSubmit.emit(createDto);
-      }
+    if (!this.libraryForm.valid) {
+      return;
     }
+
+    const formValue = this.libraryForm.getRawValue();
+    const lib = this.library();
+
+    if (this.isEditMode && lib) {
+      const updates = this.buildUpdateDto(formValue, lib);
+      this.formSubmit.emit(updates);
+    } else {
+      const createDto = this.buildCreateDto(formValue);
+      this.formSubmit.emit(createDto);
+    }
+  }
+
+  private buildUpdateDto(
+    formValue: ReturnType<typeof this.libraryForm.getRawValue>,
+    lib: LibraryModel
+  ): UpdateLibraryDto {
+    const updates: UpdateLibraryDto = {};
+    if (formValue.name !== lib.name) updates.name = formValue.name;
+    if (formValue.path !== lib.path) updates.path = formValue.path;
+    if (formValue.mediaType !== lib.mediaType) updates.mediaType = formValue.mediaType;
+    if (formValue.enabled !== lib.enabled) updates.enabled = formValue.enabled;
+    if (formValue.watchEnabled !== lib.watchEnabled) updates.watchEnabled = formValue.watchEnabled;
+    return updates;
+  }
+
+  private buildCreateDto(
+    formValue: ReturnType<typeof this.libraryForm.getRawValue>
+  ): CreateLibraryDto {
+    return {
+      name: formValue.name,
+      path: formValue.path,
+      mediaType: formValue.mediaType,
+    };
   }
 
   onCancel(): void {

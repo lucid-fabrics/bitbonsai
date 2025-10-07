@@ -174,7 +174,8 @@ describe('FileWatcherService', () => {
       // This test verifies that the service's videoExtensions Set includes all expected formats
       // Access private property for testing (this is a white-box test)
       const service = new FileWatcherService(prisma, eventEmitter);
-      const videoExtensions = (service as any).videoExtensions;
+      const videoExtensions = (service as unknown as { videoExtensions: Set<string> })
+        .videoExtensions;
 
       supportedExtensions.forEach((ext) => {
         expect(videoExtensions.has(ext)).toBe(true);

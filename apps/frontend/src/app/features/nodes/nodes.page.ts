@@ -131,7 +131,10 @@ export class NodesComponent implements OnInit, OnDestroy {
       }
 
       // Calculate current uptime based on start time (don't use server's uptimeSeconds)
-      const startTime = this.nodeStartTimes.get(node.id)!;
+      const startTime = this.nodeStartTimes.get(node.id);
+      if (!startTime) {
+        throw new Error(`Node start time not found for node ${node.id}`);
+      }
       const currentUptimeSeconds = Math.floor((now - startTime) / 1000);
 
       return {

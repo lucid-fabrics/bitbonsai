@@ -242,67 +242,25 @@ export class EncodingProcessorService {
     const tmpPath = path.join(outputDir, `.${outputName}.tmp`);
 
     try {
-      // Get policy settings
       const policy = job.policy;
       if (!policy) {
         throw new Error('Job policy not loaded');
       }
 
       // Perform encoding
-      // Parse advancedSettings from Prisma Json type
-      const advancedSettings = policy.advancedSettings as Record<string, unknown> | null;
-      const hwaccel =
-        advancedSettings && typeof advancedSettings === 'object' && 'hwaccel' in advancedSettings
-          ? String(advancedSettings.hwaccel)
-          : 'auto';
-
-      await this.ffmpegService.encode(job.id, {
-        inputPath: job.filePath,
-        outputPath: tmpPath,
-        targetCodec: policy.targetCodec,
-        targetQuality: policy.targetQuality,
-        hwAccel: hwaccel,
-        advancedSettings: advancedSettings ?? undefined,
-      });
+      await this.performEncoding(job, tmpPath, policy);
 
       // Verify output if enabled
       if (policy.verifyOutput) {
-        const isValid = await this.ffmpegService.verifyFile(tmpPath);
-        if (!isValid) {
-          throw new Error('Output verification failed - file is not playable');
-        }
+        await this.verifyEncodedFile(tmpPath);
       }
 
-      // Get encoded file size
+      // Calculate file size changes
       const afterSizeBytes = BigInt(fs.statSync(tmpPath).size);
+      const { savedBytes, savedPercent } = this.calculateSavings(beforeSizeBytes, afterSizeBytes);
 
-      // Calculate savings
-      const savedBytes = beforeSizeBytes - afterSizeBytes;
-      const savedPercent = Number((savedBytes * BigInt(10000)) / beforeSizeBytes) / 100;
-
-      // Atomic replacement if enabled
-      if (policy.atomicReplace) {
-        // Backup original
-        const backupPath = `${job.filePath}.backup`;
-        fs.renameSync(job.filePath, backupPath);
-
-        try {
-          // Replace with encoded file
-          fs.renameSync(tmpPath, job.filePath);
-
-          // Remove backup
-          fs.unlinkSync(backupPath);
-        } catch (replaceError) {
-          // Restore backup on failure
-          if (fs.existsSync(backupPath)) {
-            fs.renameSync(backupPath, job.filePath);
-          }
-          throw replaceError;
-        }
-      } else {
-        // Just replace directly
-        fs.renameSync(tmpPath, job.filePath);
-      }
+      // Replace original file with encoded version
+      this.replaceFile(job.filePath, tmpPath, policy.atomicReplace);
 
       return {
         beforeSizeBytes,
@@ -316,6 +274,91 @@ export class EncodingProcessorService {
         fs.unlinkSync(tmpPath);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Perform FFmpeg encoding on a file
+   * @private
+   */
+  private async performEncoding(
+    job: JobWithPolicy,
+    tmpPath: string,
+    policy: JobWithPolicy['policy']
+  ): Promise<void> {
+    if (!policy) {
+      throw new Error('Policy is required for encoding');
+    }
+
+    const advancedSettings = policy.advancedSettings as Record<string, unknown> | null;
+    const hwaccel =
+      advancedSettings && typeof advancedSettings === 'object' && 'hwaccel' in advancedSettings
+        ? String(advancedSettings.hwaccel)
+        : 'auto';
+
+    await this.ffmpegService.encode(job.id, {
+      inputPath: job.filePath,
+      outputPath: tmpPath,
+      targetCodec: policy.targetCodec,
+      targetQuality: policy.targetQuality,
+      hwAccel: hwaccel,
+      advancedSettings: advancedSettings ?? undefined,
+    });
+  }
+
+  /**
+   * Verify encoded file is playable
+   * @private
+   */
+  private async verifyEncodedFile(tmpPath: string): Promise<void> {
+    const isValid = await this.ffmpegService.verifyFile(tmpPath);
+    if (!isValid) {
+      throw new Error('Output verification failed - file is not playable');
+    }
+  }
+
+  /**
+   * Calculate space savings from encoding
+   * @private
+   */
+  private calculateSavings(
+    beforeSizeBytes: bigint,
+    afterSizeBytes: bigint
+  ): { savedBytes: bigint; savedPercent: number } {
+    const savedBytes = beforeSizeBytes - afterSizeBytes;
+    const savedPercent = Number((savedBytes * BigInt(10000)) / beforeSizeBytes) / 100;
+    return { savedBytes, savedPercent };
+  }
+
+  /**
+   * Replace original file with encoded version, optionally using atomic replacement
+   * @private
+   */
+  private replaceFile(originalPath: string, tmpPath: string, atomicReplace: boolean): void {
+    if (atomicReplace) {
+      this.atomicReplaceFile(originalPath, tmpPath);
+    } else {
+      fs.renameSync(tmpPath, originalPath);
+    }
+  }
+
+  /**
+   * Atomically replace file with backup on failure
+   * @private
+   */
+  private atomicReplaceFile(originalPath: string, tmpPath: string): void {
+    const backupPath = `${originalPath}.backup`;
+    fs.renameSync(originalPath, backupPath);
+
+    try {
+      fs.renameSync(tmpPath, originalPath);
+      fs.unlinkSync(backupPath);
+    } catch (replaceError) {
+      // Restore backup on failure
+      if (fs.existsSync(backupPath)) {
+        fs.renameSync(backupPath, originalPath);
+      }
+      throw replaceError;
     }
   }
 

@@ -306,8 +306,7 @@ export class LibrariesService {
         '.m2ts',
       ];
 
-      let totalFiles = 0;
-      let totalSizeBytes = BigInt(0);
+      const stats = { totalFiles: 0, totalSizeBytes: BigInt(0) };
 
       // Recursive function to scan directory
       const scanDirectory = async (dirPath: string): Promise<void> => {
@@ -318,20 +317,9 @@ export class LibrariesService {
             const fullPath = join(dirPath, entry.name);
 
             if (entry.isDirectory()) {
-              // Recursively scan subdirectories
               await scanDirectory(fullPath);
             } else if (entry.isFile()) {
-              // Check if file has a video extension
-              const ext = entry.name.toLowerCase().slice(entry.name.lastIndexOf('.'));
-              if (videoExtensions.includes(ext)) {
-                try {
-                  const stats = await fs.stat(fullPath);
-                  totalFiles++;
-                  totalSizeBytes += BigInt(stats.size);
-                } catch (statError) {
-                  this.logger.warn(`Failed to stat file: ${fullPath}`, statError);
-                }
-              }
+              await this.processVideoFile(entry.name, fullPath, videoExtensions, stats, fs);
             }
           }
         } catch (readError) {
@@ -341,6 +329,8 @@ export class LibrariesService {
 
       // Start scanning from library path
       await scanDirectory(existingLibrary.path);
+
+      const { totalFiles, totalSizeBytes } = stats;
 
       // Update library with scan results
       const library = await this.prisma.library.update({
@@ -374,6 +364,31 @@ export class LibrariesService {
     } catch (error) {
       this.logger.error(`Failed to scan library: ${id}`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Process a video file and update stats
+   * @private
+   */
+  private async processVideoFile(
+    fileName: string,
+    fullPath: string,
+    videoExtensions: string[],
+    stats: { totalFiles: number; totalSizeBytes: bigint },
+    fs: typeof import('node:fs').promises
+  ): Promise<void> {
+    const ext = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
+    if (!videoExtensions.includes(ext)) {
+      return;
+    }
+
+    try {
+      const fileStats = await fs.stat(fullPath);
+      stats.totalFiles++;
+      stats.totalSizeBytes += BigInt(fileStats.size);
+    } catch (statError) {
+      this.logger.warn(`Failed to stat file: ${fullPath}`, statError);
     }
   }
 }

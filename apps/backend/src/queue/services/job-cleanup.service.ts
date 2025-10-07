@@ -93,9 +93,7 @@ export class JobCleanupService implements OnModuleInit {
 
       // Log details for each reset job
       for (const job of stuckJobs) {
-        const minutesStuck = Math.floor(
-          (new Date().getTime() - job.updatedAt.getTime()) / 1000 / 60
-        );
+        const minutesStuck = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60);
         this.logger.debug(
           `Reset job ${job.id} (${job.fileLabel}) - stuck for ${minutesStuck} minutes on node ${job.nodeId}`
         );
@@ -156,9 +154,7 @@ export class JobCleanupService implements OnModuleInit {
 
       // Process each job individually to log details
       for (const job of timedOutJobs) {
-        const hoursEncoding = Math.floor(
-          (new Date().getTime() - job.updatedAt.getTime()) / 1000 / 60 / 60
-        );
+        const hoursEncoding = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60 / 60);
 
         try {
           await this.prisma.job.update({

@@ -12,7 +12,7 @@ export class SavingsTrendBO {
   }
 
   formatDate(): string {
-    const date = new Date(this.date + 'T00:00:00Z');
+    const date = new Date(`${this.date}T00:00:00Z`);
     const month = date.toLocaleString('default', { month: 'short', timeZone: 'UTC' });
     const day = date.getUTCDate();
     return `${month} ${day}`;

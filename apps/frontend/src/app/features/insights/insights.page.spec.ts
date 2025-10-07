@@ -9,7 +9,7 @@ describe('InsightsComponent', () => {
   let component: InsightsComponent;
   let fixture: ComponentFixture<InsightsComponent>;
   let insightsService: jest.Mocked<InsightsService>;
-  let cdr: jest.Mocked<ChangeDetectorRef>;
+  let _cdr: jest.Mocked<ChangeDetectorRef>;
 
   const mockSavingsTrend = [
     SavingsTrendBO.fromDto({ date: '2025-01-01', savingsGB: 100 }),
@@ -42,7 +42,7 @@ describe('InsightsComponent', () => {
     fixture = TestBed.createComponent(InsightsComponent);
     component = fixture.componentInstance;
     insightsService = TestBed.inject(InsightsService) as jest.Mocked<InsightsService>;
-    cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
+    _cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
   });
 
   it('should create', () => {

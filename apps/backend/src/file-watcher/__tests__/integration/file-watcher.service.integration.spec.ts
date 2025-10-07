@@ -115,7 +115,7 @@ describe('FileWatcherService (Integration)', () => {
       jest.spyOn(prisma.library, 'update').mockResolvedValue(mockLibrary);
 
       const emitSpy = jest.spyOn(eventEmitter, 'emit');
-      const emitCallsBefore = emitSpy.mock.calls.length;
+      const _emitCallsBefore = emitSpy.mock.calls.length;
 
       // Start watcher
       await service.startWatcher(libraryId, testDir);

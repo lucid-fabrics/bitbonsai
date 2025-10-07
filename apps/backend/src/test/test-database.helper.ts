@@ -9,9 +9,10 @@ import * as path from 'path';
  * Provides utilities for setting up and tearing down test databases.
  * Uses in-memory SQLite for fast, isolated tests.
  */
-export class TestDatabaseHelper {
-  private static prismaClient: PrismaClient;
-  private static testDbPath: string;
+// biome-ignore lint/complexity/noStaticOnlyClass: This is a utility namespace that maintains state
+export namespace TestDatabaseHelper {
+  let prismaClient: PrismaClient;
+  let testDbPath: string;
 
   /**
    * Setup a fresh test database
@@ -19,13 +20,13 @@ export class TestDatabaseHelper {
    * - Runs migrations
    * - Returns a connected Prisma client
    */
-  static async setupTestDatabase(): Promise<PrismaClient> {
+  export async function setupTestDatabase(): Promise<PrismaClient> {
     // Use in-memory SQLite for speed
     const dbUrl = 'file::memory:?cache=shared';
 
     process.env.DATABASE_URL = dbUrl;
 
-    TestDatabaseHelper.prismaClient = new PrismaClient({
+    prismaClient = new PrismaClient({
       datasources: {
         db: {
           url: dbUrl,
@@ -33,7 +34,7 @@ export class TestDatabaseHelper {
       },
     });
 
-    await TestDatabaseHelper.prismaClient.$connect();
+    await prismaClient.$connect();
 
     // Run migrations
     try {
@@ -49,29 +50,29 @@ export class TestDatabaseHelper {
       });
     }
 
-    return TestDatabaseHelper.prismaClient;
+    return prismaClient;
   }
 
   /**
    * Setup a file-based test database (for tests that need persistence)
    */
-  static async setupFileTestDatabase(dbName: string = 'test.db'): Promise<PrismaClient> {
+  export async function setupFileTestDatabase(dbName: string = 'test.db'): Promise<PrismaClient> {
     const testDbDir = path.join(process.cwd(), 'test-data');
     if (!fs.existsSync(testDbDir)) {
       fs.mkdirSync(testDbDir, { recursive: true });
     }
 
-    TestDatabaseHelper.testDbPath = path.join(testDbDir, dbName);
+    testDbPath = path.join(testDbDir, dbName);
 
     // Remove existing test DB
-    if (fs.existsSync(TestDatabaseHelper.testDbPath)) {
-      fs.unlinkSync(TestDatabaseHelper.testDbPath);
+    if (fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
     }
 
-    const dbUrl = `file:${TestDatabaseHelper.testDbPath}`;
+    const dbUrl = `file:${testDbPath}`;
     process.env.DATABASE_URL = dbUrl;
 
-    TestDatabaseHelper.prismaClient = new PrismaClient({
+    prismaClient = new PrismaClient({
       datasources: {
         db: {
           url: dbUrl,
@@ -79,7 +80,7 @@ export class TestDatabaseHelper {
       },
     });
 
-    await TestDatabaseHelper.prismaClient.$connect();
+    await prismaClient.$connect();
 
     // Run migrations
     execSync('npx prisma db push --skip-generate', {
@@ -87,13 +88,13 @@ export class TestDatabaseHelper {
       stdio: 'pipe',
     });
 
-    return TestDatabaseHelper.prismaClient;
+    return prismaClient;
   }
 
   /**
    * Clean all data from test database
    */
-  static async cleanDatabase(prisma: PrismaClient): Promise<void> {
+  export async function cleanDatabase(prisma: PrismaClient): Promise<void> {
     // Delete in order to respect foreign key constraints
     await prisma.metric.deleteMany({});
     await prisma.job.deleteMany({});
@@ -106,20 +107,20 @@ export class TestDatabaseHelper {
   /**
    * Teardown test database
    */
-  static async teardownTestDatabase(): Promise<void> {
-    if (TestDatabaseHelper.prismaClient) {
-      await TestDatabaseHelper.prismaClient.$disconnect();
+  export async function teardownTestDatabase(): Promise<void> {
+    if (prismaClient) {
+      await prismaClient.$disconnect();
     }
 
-    if (TestDatabaseHelper.testDbPath && fs.existsSync(TestDatabaseHelper.testDbPath)) {
-      fs.unlinkSync(TestDatabaseHelper.testDbPath);
+    if (testDbPath && fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
     }
   }
 
   /**
    * Create test data fixtures
    */
-  static async createTestFixtures(prisma: PrismaClient) {
+  export async function createTestFixtures(prisma: PrismaClient) {
     const license = await prisma.license.create({
       data: {
         key: 'TEST-LICENSE-KEY',
