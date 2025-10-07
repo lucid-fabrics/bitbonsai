@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { JobStage, type Policy } from '@prisma/client';
+import { JobStage, type Policy, PolicyPreset, TargetCodec } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface PolicyWithStats extends Policy {
@@ -44,8 +44,8 @@ export class PolicyRepository {
     return this.prisma.policy.create({
       data: {
         name: data.name,
-        preset: data.preset as any,
-        targetCodec: data.targetCodec as any,
+        preset: data.preset as PolicyPreset,
+        targetCodec: data.targetCodec as TargetCodec,
         targetQuality: data.targetQuality,
         deviceProfiles: data.deviceProfiles,
         advancedSettings: data.advancedSettings,
@@ -109,8 +109,8 @@ export class PolicyRepository {
       where: { id },
       data: {
         name: data.name,
-        preset: data.preset as any,
-        targetCodec: data.targetCodec as any,
+        preset: data.preset as PolicyPreset,
+        targetCodec: data.targetCodec as TargetCodec,
         targetQuality: data.targetQuality,
         deviceProfiles: data.deviceProfiles,
         advancedSettings: data.advancedSettings,

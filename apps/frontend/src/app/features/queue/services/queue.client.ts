@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { combineLatest, map, type Observable } from 'rxjs';
-import { QueueJobBo } from '../bos/queue-job.bo';
+import { type QueueJobApiModel, QueueJobBo } from '../bos/queue-job.bo';
 import type { QueueFilters, QueueResponse, QueueStats } from '../models/queue.model';
 
 @Injectable({
@@ -18,7 +18,7 @@ export class QueueClient {
     if (filters?.search) params.search = filters.search;
 
     return combineLatest([
-      this.http.get<any[]>(this.apiUrl, { params }),
+      this.http.get<QueueJobApiModel[]>(this.apiUrl, { params }),
       this.http.get<QueueStats>(`${this.apiUrl}/stats`),
     ]).pipe(
       map(([jobs, stats]) => ({

@@ -22,7 +22,10 @@ export class MediaStatsService {
       this.logger.log('No cached stats, triggering initial scan');
       await this.triggerScan();
     }
-    return this.statsCache!;
+    if (!this.statsCache) {
+      throw new Error('Failed to generate stats cache');
+    }
+    return this.statsCache;
   }
 
   async triggerScan(): Promise<void> {
@@ -81,28 +84,62 @@ export class MediaStatsService {
     const totalFiles = files.length;
 
     if (totalFiles === 0) {
-      return {
-        name: folderPath.split('/').pop() || folderPath,
-        path: folderPath,
-        file_count: 0,
-        total_size_gb: 0,
-        codec_distribution: {
-          hevc: 0,
-          h264: 0,
-          av1: 0,
-          other: 0,
-        },
-        percent_h265: 0,
-        sampled: 0,
-        avg_bitrate_mbps: 0,
-        space_saved_estimate_gb: 0,
-      };
+      return this.createEmptyFolderStats(folderPath);
     }
 
     // Sample files (analyze all if <= 50, otherwise sample 50)
     const sampleSize = Math.min(50, totalFiles);
     const sampleFiles = this.getRandomSample(files, sampleSize);
 
+    const scanResults = this.analyzeSampleFiles(sampleFiles);
+    const extrapolatedStats = this.extrapolateStats(scanResults, totalFiles, sampleSize);
+
+    const percentH265 = Math.round((extrapolatedStats.hevcTotal / totalFiles) * 100);
+    const spaceSavedGb = this.calculateSpaceSavings(scanResults, sampleSize, totalFiles);
+
+    return {
+      name: folderPath.split('/').pop() || folderPath,
+      path: folderPath,
+      file_count: totalFiles,
+      total_size_gb: Math.round(extrapolatedStats.totalSizeGb * 100) / 100,
+      codec_distribution: {
+        hevc: extrapolatedStats.hevcTotal,
+        h264: extrapolatedStats.h264Total,
+        av1: extrapolatedStats.av1Total,
+        other: extrapolatedStats.otherTotal,
+      },
+      percent_h265: percentH265,
+      sampled: sampleSize,
+      avg_bitrate_mbps: Math.round((extrapolatedStats.avgBitrate / 1_000_000) * 100) / 100,
+      space_saved_estimate_gb: Math.round(spaceSavedGb * 100) / 100,
+    };
+  }
+
+  private createEmptyFolderStats(folderPath: string): FolderStatsDto {
+    return {
+      name: folderPath.split('/').pop() || folderPath,
+      path: folderPath,
+      file_count: 0,
+      total_size_gb: 0,
+      codec_distribution: {
+        hevc: 0,
+        h264: 0,
+        av1: 0,
+        other: 0,
+      },
+      percent_h265: 0,
+      sampled: 0,
+      avg_bitrate_mbps: 0,
+      space_saved_estimate_gb: 0,
+    };
+  }
+
+  private analyzeSampleFiles(sampleFiles: string[]): {
+    codecCounts: { hevc: number; h264: number; av1: number; other: number };
+    totalSize: number;
+    totalBitrate: number;
+    bitrateCount: number;
+  } {
     const codecCounts = { hevc: 0, h264: 0, av1: 0, other: 0 };
     let totalSize = 0;
     let totalBitrate = 0;
@@ -117,49 +154,68 @@ export class MediaStatsService {
         bitrateCount++;
       }
 
-      if (info.codec === 'hevc' || info.codec === 'h265') {
-        codecCounts.hevc++;
-      } else if (info.codec === 'h264') {
-        codecCounts.h264++;
-      } else if (info.codec === 'av1') {
-        codecCounts.av1++;
-      } else {
-        codecCounts.other++;
-      }
+      this.categorizeCodec(info.codec, codecCounts);
     }
 
-    // Extrapolate to total files
+    return { codecCounts, totalSize, totalBitrate, bitrateCount };
+  }
+
+  private categorizeCodec(
+    codec: string,
+    codecCounts: { hevc: number; h264: number; av1: number; other: number }
+  ): void {
+    if (codec === 'hevc' || codec === 'h265') {
+      codecCounts.hevc++;
+    } else if (codec === 'h264') {
+      codecCounts.h264++;
+    } else if (codec === 'av1') {
+      codecCounts.av1++;
+    } else {
+      codecCounts.other++;
+    }
+  }
+
+  private extrapolateStats(
+    scanResults: {
+      codecCounts: { hevc: number; h264: number; av1: number; other: number };
+      totalSize: number;
+      totalBitrate: number;
+      bitrateCount: number;
+    },
+    totalFiles: number,
+    sampleSize: number
+  ): {
+    hevcTotal: number;
+    h264Total: number;
+    av1Total: number;
+    otherTotal: number;
+    totalSizeGb: number;
+    avgBitrate: number;
+  } {
     const ratio = totalFiles / sampleSize;
-    const hevcTotal = Math.round(codecCounts.hevc * ratio);
-    const h264Total = Math.round(codecCounts.h264 * ratio);
-    const av1Total = Math.round(codecCounts.av1 * ratio);
-    const otherTotal = Math.round(codecCounts.other * ratio);
-    const totalSizeGb = (totalSize * ratio) / 1024 ** 3;
-    const avgBitrate = bitrateCount > 0 ? totalBitrate / bitrateCount : 0;
+    const hevcTotal = Math.round(scanResults.codecCounts.hevc * ratio);
+    const h264Total = Math.round(scanResults.codecCounts.h264 * ratio);
+    const av1Total = Math.round(scanResults.codecCounts.av1 * ratio);
+    const otherTotal = Math.round(scanResults.codecCounts.other * ratio);
+    const totalSizeGb = (scanResults.totalSize * ratio) / 1024 ** 3;
+    const avgBitrate =
+      scanResults.bitrateCount > 0 ? scanResults.totalBitrate / scanResults.bitrateCount : 0;
 
-    // Calculate percentage of H.265 files
-    const percentH265 = totalFiles > 0 ? Math.round((hevcTotal / totalFiles) * 100) : 0;
+    return { hevcTotal, h264Total, av1Total, otherTotal, totalSizeGb, avgBitrate };
+  }
 
-    // Estimate space saved (H.265 typically 40-50% smaller than H.264)
-    const h264SizeEstimate = (codecCounts.h264 / sampleSize) * totalSize * ratio;
-    const spaceSavedGb = (h264SizeEstimate * 0.45) / 1024 ** 3;
-
-    return {
-      name: folderPath.split('/').pop() || folderPath,
-      path: folderPath,
-      file_count: totalFiles,
-      total_size_gb: Math.round(totalSizeGb * 100) / 100,
-      codec_distribution: {
-        hevc: hevcTotal,
-        h264: h264Total,
-        av1: av1Total,
-        other: otherTotal,
-      },
-      percent_h265: percentH265,
-      sampled: sampleSize,
-      avg_bitrate_mbps: Math.round((avgBitrate / 1_000_000) * 100) / 100,
-      space_saved_estimate_gb: Math.round(spaceSavedGb * 100) / 100,
-    };
+  private calculateSpaceSavings(
+    scanResults: {
+      codecCounts: { hevc: number; h264: number; av1: number; other: number };
+      totalSize: number;
+    },
+    sampleSize: number,
+    totalFiles: number
+  ): number {
+    const ratio = totalFiles / sampleSize;
+    const h264SizeEstimate =
+      (scanResults.codecCounts.h264 / sampleSize) * scanResults.totalSize * ratio;
+    return (h264SizeEstimate * 0.45) / 1024 ** 3;
   }
 
   private findVideoFiles(dirPath: string): string[] {

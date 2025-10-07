@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { JobStage } from '@prisma/client';
+import { type Job, JobStage } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { JobCleanupService } from '../../job-cleanup.service';
 
@@ -69,10 +69,10 @@ describe('JobCleanupService', () => {
     prisma = module.get<PrismaService>(PrismaService);
 
     // Suppress logger output during tests
-    jest.spyOn(service['logger'], 'log').mockImplementation();
-    jest.spyOn(service['logger'], 'warn').mockImplementation();
-    jest.spyOn(service['logger'], 'debug').mockImplementation();
-    jest.spyOn(service['logger'], 'error').mockImplementation();
+    jest.spyOn(service.logger, 'log').mockImplementation();
+    jest.spyOn(service.logger, 'warn').mockImplementation();
+    jest.spyOn(service.logger, 'debug').mockImplementation();
+    jest.spyOn(service.logger, 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -138,7 +138,7 @@ describe('JobCleanupService', () => {
     });
 
     it('should not reset recent ENCODING jobs', async () => {
-      const recentJobs = [
+      const _recentJobs = [
         createMockJob('job-1', JobStage.ENCODING, fiveMinutesAgo, {
           startedAt: fiveMinutesAgo,
           progress: 30,
@@ -161,7 +161,7 @@ describe('JobCleanupService', () => {
 
       expect(result).toBe(0);
       expect(prisma.job.updateMany).not.toHaveBeenCalled();
-      expect(service['logger'].log).toHaveBeenCalledWith('No stuck jobs found during cleanup');
+      expect(service.logger.log).toHaveBeenCalledWith('No stuck jobs found during cleanup');
     });
 
     it('should handle errors gracefully', async () => {
@@ -169,7 +169,7 @@ describe('JobCleanupService', () => {
       jest.spyOn(prisma.job, 'findMany').mockRejectedValue(error);
 
       await expect(service.cleanupStuckJobs()).rejects.toThrow('Database error');
-      expect(service['logger'].error).toHaveBeenCalledWith('Failed to cleanup stuck jobs', error);
+      expect(service.logger.error).toHaveBeenCalledWith('Failed to cleanup stuck jobs', error);
     });
 
     it('should only affect ENCODING jobs, not other stages', async () => {
@@ -235,7 +235,7 @@ describe('JobCleanupService', () => {
 
       expect(result).toBe(0);
       expect(prisma.job.update).not.toHaveBeenCalled();
-      expect(service['logger'].debug).toHaveBeenCalledWith('No timed-out jobs found');
+      expect(service.logger.debug).toHaveBeenCalledWith('No timed-out jobs found');
     });
 
     it('should handle multiple timed-out jobs', async () => {
@@ -251,7 +251,7 @@ describe('JobCleanupService', () => {
         stage: JobStage.FAILED,
         completedAt: now,
         error: 'Encoding timeout',
-      } as any);
+      } as Job);
 
       const result = await service.detectTimedOutJobs();
 
@@ -280,7 +280,7 @@ describe('JobCleanupService', () => {
 
       expect(result).toBe(1); // Only one succeeded
       expect(prisma.job.update).toHaveBeenCalledTimes(2);
-      expect(service['logger'].error).toHaveBeenCalledWith(
+      expect(service.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to mark job'),
         expect.any(Error)
       );
@@ -291,10 +291,7 @@ describe('JobCleanupService', () => {
       jest.spyOn(prisma.job, 'findMany').mockRejectedValue(error);
 
       await expect(service.detectTimedOutJobs()).rejects.toThrow('Database error');
-      expect(service['logger'].error).toHaveBeenCalledWith(
-        'Failed to detect timed-out jobs',
-        error
-      );
+      expect(service.logger.error).toHaveBeenCalledWith('Failed to detect timed-out jobs', error);
     });
   });
 
@@ -305,7 +302,7 @@ describe('JobCleanupService', () => {
       await service.handleTimedOutJobsCron();
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect(service['logger'].debug).toHaveBeenCalledWith('Running scheduled timeout check');
+      expect(service.logger.debug).toHaveBeenCalledWith('Running scheduled timeout check');
     });
 
     it('should handle errors from detectTimedOutJobs', async () => {
@@ -318,8 +315,8 @@ describe('JobCleanupService', () => {
 
   describe('Configuration', () => {
     it('should use default configuration values', () => {
-      expect(service['STUCK_THRESHOLD_MINUTES']).toBe(5);
-      expect(service['TIMEOUT_HOURS']).toBe(2);
+      expect(service.STUCK_THRESHOLD_MINUTES).toBe(5);
+      expect(service.TIMEOUT_HOURS).toBe(2);
     });
 
     it('should respect environment variable overrides', async () => {
@@ -347,19 +344,19 @@ describe('JobCleanupService', () => {
 
       const customService = module.get<JobCleanupService>(JobCleanupService);
 
-      expect(customService['STUCK_THRESHOLD_MINUTES']).toBe(10);
-      expect(customService['TIMEOUT_HOURS']).toBe(4);
+      expect(customService.STUCK_THRESHOLD_MINUTES).toBe(10);
+      expect(customService.TIMEOUT_HOURS).toBe(4);
 
       // Restore original values
       if (originalStuck) {
         process.env.JOB_STUCK_THRESHOLD_MINUTES = originalStuck;
       } else {
-        delete process.env.JOB_STUCK_THRESHOLD_MINUTES;
+        process.env.JOB_STUCK_THRESHOLD_MINUTES = undefined;
       }
       if (originalTimeout) {
         process.env.JOB_ENCODING_TIMEOUT_HOURS = originalTimeout;
       } else {
-        delete process.env.JOB_ENCODING_TIMEOUT_HOURS;
+        process.env.JOB_ENCODING_TIMEOUT_HOURS = undefined;
       }
     });
   });
@@ -394,7 +391,7 @@ describe('JobCleanupService', () => {
 
       await service.cleanupStuckJobs();
 
-      expect(service['logger'].debug).toHaveBeenCalledWith(
+      expect(service.logger.debug).toHaveBeenCalledWith(
         expect.stringContaining('stuck for 10 minutes')
       );
     });

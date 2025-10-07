@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
-import type { MediaStatsModel } from '../models/media-stats.model';
 import { MediaStatsService } from '../services/media-stats.service';
 import { MediaStatsActions } from './dashboard.actions';
 import { MediaStatsEffects } from './dashboard.effects';

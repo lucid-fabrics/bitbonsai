@@ -10,7 +10,7 @@ describe('NodesComponent', () => {
   let component: NodesComponent;
   let fixture: ComponentFixture<NodesComponent>;
   let nodesClient: jest.Mocked<NodesClient>;
-  let cdr: jest.Mocked<ChangeDetectorRef>;
+  let _cdr: jest.Mocked<ChangeDetectorRef>;
 
   const mockNodes = [
     {
@@ -55,7 +55,7 @@ describe('NodesComponent', () => {
     fixture = TestBed.createComponent(NodesComponent);
     component = fixture.componentInstance;
     nodesClient = TestBed.inject(NodesClient) as jest.Mocked<NodesClient>;
-    cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
+    _cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
   });
 
   it('should create', () => {

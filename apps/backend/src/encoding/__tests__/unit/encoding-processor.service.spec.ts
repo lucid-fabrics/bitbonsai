@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { JobStage } from '@prisma/client';
+import { JobStage, PolicyPreset, TargetCodec } from '@prisma/client';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
@@ -41,8 +41,8 @@ describe('EncodingProcessorService', () => {
     policy: {
       id: 'policy-1',
       name: 'Test Policy',
-      preset: 'BALANCED_HEVC' as any,
-      targetCodec: 'HEVC' as any,
+      preset: PolicyPreset.BALANCED_HEVC,
+      targetCodec: TargetCodec.HEVC,
       targetQuality: 23,
       deviceProfiles: {},
       advancedSettings: {

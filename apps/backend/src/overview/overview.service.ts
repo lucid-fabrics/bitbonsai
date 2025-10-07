@@ -282,17 +282,19 @@ export class OverviewService {
       take: 10,
     });
 
-    return recentJobs.map((job) => ({
-      id: job.id,
-      fileLabel: job.fileLabel,
-      libraryName: job.library.name,
-      sourceCodec: job.sourceCodec,
-      targetCodec: job.targetCodec,
-      stage: job.stage,
-      savedBytes: (job.savedBytes || BigInt(0)).toString(),
-      savedPercent: job.savedPercent || 0,
-      completedAt: job.completedAt!,
-    }));
+    return recentJobs
+      .filter((job) => job.completedAt !== null)
+      .map((job) => ({
+        id: job.id,
+        fileLabel: job.fileLabel,
+        libraryName: job.library.name,
+        sourceCodec: job.sourceCodec,
+        targetCodec: job.targetCodec,
+        stage: job.stage,
+        savedBytes: (job.savedBytes || BigInt(0)).toString(),
+        savedPercent: job.savedPercent || 0,
+        completedAt: job.completedAt as Date,
+      }));
   }
 
   /**

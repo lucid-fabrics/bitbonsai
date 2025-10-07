@@ -21,7 +21,7 @@ describe('DashboardComponent', () => {
   let store: MockStore;
   let mediaStatsClient: jest.Mocked<MediaStatsClient>;
 
-  const mockMediaStats = {
+  const _mockMediaStats = {
     total_size_gb: 100,
     total_files: 50,
     average_bitrate_mbps: 5.5,
