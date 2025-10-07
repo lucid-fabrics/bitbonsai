@@ -101,7 +101,7 @@
     "@nx/js": "21.6.3",
     "@nx/webpack": "21.6.3",
     "@nx/workspace": "21.6.3",
-    "@playwright/test": "^1.55.1",
+    "@playwright/test": "^1.56.0",
     "@schematics/angular": "^20.3.4",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.13.5",
