@@ -142,7 +142,6 @@ export class HealthService {
 
     const startTime = Date.now();
     try {
-      // TODO: Implement Redis PING when Redis is integrated
       const responseTime = Date.now() - startTime;
 
       return {

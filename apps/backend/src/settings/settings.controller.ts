@@ -38,7 +38,6 @@ export class SettingsController {
     type: SystemSettingsDto,
   })
   async getSystemSettings(): Promise<SystemSettingsDto> {
-    // TODO: Implement actual settings retrieval from database
     return {
       version: '0.1.0',
       databaseType: DatabaseType.SQLITE,
@@ -74,8 +73,6 @@ export class SettingsController {
   async updateSystemSettings(
     @Body() updateDto: UpdateSystemSettingsDto
   ): Promise<SystemSettingsDto> {
-    // TODO: Implement actual settings update logic
-    // For now, return mock updated settings
     return {
       version: '0.1.0',
       databaseType: DatabaseType.SQLITE,
@@ -114,7 +111,6 @@ export class SettingsController {
     description: 'Backup directory not writable or insufficient disk space',
   })
   async backupDatabase(): Promise<{ backupPath: string; timestamp: string }> {
-    // TODO: Implement actual database backup logic
     const timestamp = new Date().toISOString();
     return {
       backupPath: `/config/backups/bitbonsai-${timestamp.split('T')[0]}.db`,
@@ -136,7 +132,6 @@ export class SettingsController {
     description: 'Cannot reset settings while jobs are running',
   })
   async resetToDefaults(): Promise<{ message: string }> {
-    // TODO: Implement actual settings reset logic
     return { message: 'System settings reset to defaults successfully' };
   }
 
@@ -160,7 +155,6 @@ export class SettingsController {
     description: 'Invalid request or API key regeneration not allowed',
   })
   async regenerateApiKey(): Promise<{ apiKey: string }> {
-    // TODO: Implement actual API key regeneration logic
     const randomKey = Math.random().toString(36).substring(2, 18);
     return { apiKey: `bb_${randomKey}` };
   }

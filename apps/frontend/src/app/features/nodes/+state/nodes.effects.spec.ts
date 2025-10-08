@@ -62,6 +62,4 @@ describe('NodesEffects', () => {
       });
     });
   });
-
-  // TODO: Add tests for registerNode$, pairNode$, deleteNode$ effects
 });

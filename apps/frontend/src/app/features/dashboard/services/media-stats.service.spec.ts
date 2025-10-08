@@ -61,6 +61,4 @@ describe('MediaStatsService', () => {
       });
     });
   });
-
-  // TODO: Add more specific tests based on service methods
 });

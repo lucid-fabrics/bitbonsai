@@ -42,8 +42,12 @@
 
           <div class="stat-card">
             <div class="stat-icon role-icon">
-              <i class="fas fa-crown" *ngIf="stats.role === NodeRole.MAIN"></i>
-              <i class="fas fa-link" *ngIf="stats.role === NodeRole.LINKED"></i>
+              @if (stats.role === NodeRole.MAIN) {
+                <i class="fas fa-crown"></i>
+              }
+              @if (stats.role === NodeRole.LINKED) {
+                <i class="fas fa-link"></i>
+              }
             </div>
             <div class="stat-content">
               <div class="stat-label">Role</div>

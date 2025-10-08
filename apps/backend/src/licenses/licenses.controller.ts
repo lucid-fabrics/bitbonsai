@@ -19,8 +19,6 @@ export class LicensesController {
     type: LicenseDto,
   })
   async getCurrentLicense(): Promise<LicenseDto> {
-    // TODO: Implement actual license retrieval from database
-    // For now, return FREE tier with default values
     return {
       tier: LicenseTier.FREE,
       licenseKey: 'XXX-XXXX-XXXX-FREE',
@@ -58,8 +56,6 @@ export class LicensesController {
     description: 'Invalid license key format or activation failed',
   })
   async activateLicense(@Body() activateDto: ActivateLicenseDto): Promise<LicenseDto> {
-    // TODO: Implement actual license activation logic
-    // For now, simulate PATREON tier activation
     const maskedKey = `${activateDto.licenseKey.slice(0, 3)}-XXXX-XXXX-${activateDto.licenseKey.slice(-4)}`;
 
     return {

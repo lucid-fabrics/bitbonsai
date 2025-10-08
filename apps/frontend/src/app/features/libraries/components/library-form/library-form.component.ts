@@ -130,7 +130,7 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
 
   private buildUpdateDto(
     formValue: ReturnType<typeof this.libraryForm.getRawValue>,
-    lib: LibraryModel
+    lib: Library
   ): UpdateLibraryDto {
     const updates: UpdateLibraryDto = {};
     if (formValue.name !== lib.name) updates.name = formValue.name;

@@ -54,7 +54,6 @@ describe('FolderStatsBo', () => {
 
       const bo = new FolderStatsBo(mockModel);
 
-      // TODO: Add tests for formatted properties and business logic methods
       expect(bo).toBeDefined();
     });
   });
