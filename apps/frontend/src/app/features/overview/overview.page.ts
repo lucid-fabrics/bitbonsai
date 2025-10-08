@@ -24,7 +24,7 @@ import { startWith, switchMap, takeUntil } from 'rxjs/operators';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { Node } from '../nodes/models/node.model';
 import { NodesClient } from '../nodes/services/nodes.client';
-import type { EnvironmentInfo } from '../settings/models/settings.model';
+import type { EnvironmentInfo } from '../settings/models/environment-info.model';
 import { SettingsService } from '../settings/services/settings.service';
 import type { OverviewModel } from './models/overview.model';
 import { OverviewClient } from './services/overview.client';

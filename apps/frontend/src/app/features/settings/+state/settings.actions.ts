@@ -1,10 +1,8 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
+import type { EnvironmentInfo } from '../models/environment-info.model';
 import type { ActivateLicense, License } from '../models/license.model';
-import type {
-  EnvironmentInfo,
-  SystemSettings,
-  UpdateSystemSettings,
-} from '../models/settings.model';
+import type { SystemSettings } from '../models/system-settings.model';
+import type { UpdateSystemSettings } from '../models/update-system-settings.model';
 
 export const SettingsActions = createActionGroup({
   source: 'Settings',

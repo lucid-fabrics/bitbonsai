@@ -1,5 +1,6 @@
 import { createActionGroup, props } from '@ngrx/store';
-import type { QueueFilters, QueueResponse } from '../models/queue.model';
+import type { QueueFilters } from '../models/queue-filters.model';
+import type { QueueResponse } from '../models/queue-response.model';
 
 export const QueueActions = createActionGroup({
   source: 'Queue',

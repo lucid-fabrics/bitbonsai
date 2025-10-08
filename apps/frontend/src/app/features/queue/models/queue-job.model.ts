@@ -1,4 +1,4 @@
-export type JobStatus = 'QUEUED' | 'ENCODING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+import type { JobStatus } from './job-status.type';
 
 export interface QueueJob {
   id: string;
@@ -21,23 +21,4 @@ export interface QueueJob {
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
-}
-
-export interface QueueStats {
-  queued: number;
-  encoding: number;
-  completed: number;
-  failed: number;
-  totalSavedBytes: string;
-}
-
-export interface QueueResponse {
-  jobs: QueueJob[];
-  stats: QueueStats;
-}
-
-export interface QueueFilters {
-  status?: JobStatus;
-  nodeId?: string;
-  search?: string;
 }

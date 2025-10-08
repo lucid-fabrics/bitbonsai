@@ -1,11 +1,9 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type {
-  BasicHealthDto,
-  DetailedHealthDto,
-  LivenessDto,
-  ReadinessDto,
-} from './dto/health-check.dto';
+import type { BasicHealthDto } from './dto/basic-health.dto';
+import type { DetailedHealthDto } from './dto/detailed-health.dto';
+import type { LivenessDto } from './dto/liveness.dto';
+import type { ReadinessDto } from './dto/readiness.dto';
 import { HealthService } from './health.service';
 
 @ApiTags('health')

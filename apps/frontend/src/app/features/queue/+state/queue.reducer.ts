@@ -1,5 +1,7 @@
 import { createReducer, on } from '@ngrx/store';
-import type { QueueFilters, QueueJob, QueueStats } from '../models/queue.model';
+import type { QueueFilters } from '../models/queue-filters.model';
+import type { QueueJob } from '../models/queue-job.model';
+import type { QueueStats } from '../models/queue-stats.model';
 import { QueueActions } from './queue.actions';
 
 export interface QueueState {
