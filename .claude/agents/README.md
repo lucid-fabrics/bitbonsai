@@ -1,147 +1,271 @@
-# BitBonsai Subagents
+# BitBonsai Agents
 
-This directory contains specialized Claude Code subagents for the BitBonsai project.
+This directory contains Claude Code agents for the BitBonsai project - a mix of shared agents (symlinked from `~/git/code-conventions/`) and project-specific agents.
 
-## Available Subagents
+## Agent Organization
 
-### 🚀 fullstack-feature.md
-**Purpose**: Implement complete features across backend (NestJS) and frontend (Angular)
+### Project-Specific Agents (BitBonsai)
+- **playwright-test-planner.md** - E2E test scenario generation
+- **playwright-test-generator.md** - Convert scenarios to Playwright tests
+- **playwright-test-healer.md** - Auto-fix broken E2E tests
 
-**Use for**:
-- New feature development spanning API and UI
-- Ensuring API contracts match frontend models
-- Domain-scoped architecture implementation
-- Full-stack feature delivery
-
-**Example**:
-```bash
-/task Use the fullstack-feature agent to implement job scheduling with backend API and frontend UI
-```
-
-### 👀 pr-reviewer.md
-**Purpose**: Comprehensive code review for guideline compliance, quality, and security
-
-**Use for**:
-- Pull request reviews before merging
-- Guideline compliance verification
-- Security vulnerability detection
-- Architecture pattern checking
-
-**Example**:
-```bash
-/task Use the pr-reviewer agent to review PR #42 for guideline compliance and security
-```
-
-### 🧪 test-engineer.md
-**Purpose**: Write comprehensive tests across all testing layers
-
-**Use for**:
-- Adding unit tests for new features
-- Writing integration tests for services
-- Creating E2E tests for workflows
-- Improving test coverage
-
-**Example**:
-```bash
-/task Use the test-engineer agent to write unit, integration, and E2E tests for NodesService
-```
-
-### 🐛 debugger.md
-**Purpose**: Systematically diagnose bugs and implement verified fixes
-
-**Use for**:
-- Debugging specific errors or bugs
-- Root cause analysis
-- Implementing fixes with regression tests
-- Investigating unexpected behavior
-
-**Example**:
-```bash
-/task Use the debugger agent to fix the 500 error occurring during node registration
-```
+### Shared Agents (symlinked from ~/git/code-conventions/.claude/agents/)
+- **debugger.md** - Bug diagnosis and fixing
+- **fullstack-feature.md** - NestJS + Angular 20 features
+- **pr-reviewer.md** - Code review and compliance
+- **test-engineer.md** - Comprehensive testing
+- **performance-optimizer.md** - Performance optimization
+- **security-auditor.md** - Security scanning
+- **documentation-writer.md** - Documentation generation
 
 ## Quick Reference
 
-| Task Type | Subagent | Command Example |
-|-----------|----------|-----------------|
-| New Feature | fullstack-feature | `/task Use the fullstack-feature agent to add...` |
-| Code Review | pr-reviewer | `/task Use the pr-reviewer agent to review...` |
-| Write Tests | test-engineer | `/task Use the test-engineer agent to test...` |
-| Fix Bugs | debugger | `/task Use the debugger agent to fix...` |
+| Task Type | Agent | Example |
+|-----------|-------|---------|
+| Implement Feature | fullstack-feature | `/task Use fullstack-feature to add job scheduling` |
+| Write Tests | test-engineer | `/task Use test-engineer to test NodesService` |
+| Fix Bug | debugger | `/task Use debugger to fix 500 error` |
+| Review PR | pr-reviewer | `/task Use pr-reviewer to review PR #42` |
+| Generate E2E Tests | playwright-test-planner | `/task Use playwright-test-planner for library management` |
+| Convert to Code | playwright-test-generator | `/task Use playwright-test-generator with test plan` |
+| Fix Broken Tests | playwright-test-healer | `/task Use playwright-test-healer for failing tests` |
+| Optimize Performance | performance-optimizer | `/task Use performance-optimizer for slow queries` |
+| Security Audit | security-auditor | `/task Use security-auditor to scan for vulnerabilities` |
+| Write Docs | documentation-writer | `/task Use documentation-writer for API docs` |
 
-## How Subagents Work
+## Available Agents
 
-1. **Separate Context**: Each subagent has its own context window
-2. **Specialized Instructions**: Tailored system prompts for specific tasks
-3. **Tool Access**: Same tools as main agent (Read, Write, Edit, Bash, etc.)
-4. **Guideline Adherence**: All subagents follow BitBonsai coding guidelines
+### Core Workflow Agents
 
-## Usage Patterns
+#### fullstack-feature.md
+**Purpose**: Implement complete features across backend (NestJS) and frontend (Angular 20)
 
-### Automatic Invocation
+**Responsibilities**:
+- Backend API development with Swagger docs
+- Frontend implementation with NgRx state management
+- Ensuring API DTOs match frontend models
+- PRD maintenance (mandatory before/after feature work)
 
-Claude Code can automatically delegate to the appropriate subagent:
-
-```
-"Review this PR" → Uses pr-reviewer automatically
-"Add tests for X" → Uses test-engineer automatically
-"Fix bug Y" → Uses debugger automatically
-```
-
-### Explicit Invocation
-
-Use `/task` command to explicitly specify a subagent:
-
+**Example**:
 ```bash
-/task Use the <agent-name> agent to <task-description>
+/task Use fullstack-feature to implement library filtering with backend API and frontend UI
+```
+
+#### test-engineer.md
+**Purpose**: Write comprehensive tests across all layers
+
+**Responsibilities**:
+- Unit tests (Jest/Jasmine)
+- Integration tests (Prisma + database)
+- Backend E2E tests (Supertest)
+- Knows when to delegate to Playwright agents
+
+**Example**:
+```bash
+/task Use test-engineer to add unit and integration tests for LibrariesService
+```
+
+#### debugger.md
+**Purpose**: Systematically diagnose and fix bugs
+
+**Responsibilities**:
+- Error analysis and root cause identification
+- Bug fixes with regression tests
+- Linter error resolution workflow
+- Git bisect for regression identification
+
+**Example**:
+```bash
+/task Use debugger to fix the undefined error in node pairing
+```
+
+#### pr-reviewer.md
+**Purpose**: Comprehensive code review
+
+**Responsibilities**:
+- Guideline compliance verification
+- Security vulnerability detection
+- Architecture pattern checking
+- PRD compliance check (mandatory for features)
+
+**Example**:
+```bash
+/task Use pr-reviewer to review the library management PR
+```
+
+### Specialized Agents
+
+#### performance-optimizer.md
+**Purpose**: Profile and optimize performance bottlenecks
+
+**Responsibilities**:
+- Frontend: bundle size, change detection, lazy loading
+- Backend: slow queries, N+1 problems, caching
+- Database: indexes, query optimization
+- Before/after benchmarking
+
+**Example**:
+```bash
+/task Use performance-optimizer to improve library scanning performance
+```
+
+#### security-auditor.md
+**Purpose**: Security vulnerability scanning
+
+**Responsibilities**:
+- OWASP Top 10 compliance
+- Dependency vulnerabilities (npm audit)
+- Authentication/authorization checks
+- Secret detection in code
+
+**Example**:
+```bash
+/task Use security-auditor to scan for security vulnerabilities
+```
+
+#### documentation-writer.md
+**Purpose**: Generate comprehensive documentation
+
+**Responsibilities**:
+- API documentation with examples
+- Architecture diagrams (Mermaid)
+- JSDoc/TSDoc comments
+- README and setup guides
+
+**Example**:
+```bash
+/task Use documentation-writer to document the queue management API
+```
+
+### Playwright E2E Agents (BitBonsai-Specific)
+
+#### playwright-test-planner.md
+**Purpose**: Generate E2E test scenarios from requirements
+
+**Workflow**:
+1. Read PRD and analyze feature
+2. Generate test scenarios (happy path + edge cases)
+3. Output structured test plan
+
+**Example**:
+```bash
+/task Use playwright-test-planner to create test plan for library management
+```
+
+#### playwright-test-generator.md
+**Purpose**: Convert test plans to Playwright code
+
+**Workflow**:
+1. Read test plan from planner
+2. Generate Playwright test files
+3. Use page object pattern
+4. Add data-testid attributes to components
+
+**Example**:
+```bash
+/task Use playwright-test-generator to convert the library test plan to code
+```
+
+#### playwright-test-healer.md
+**Purpose**: Auto-fix broken E2E tests
+
+**Workflow**:
+1. Analyze test failure logs
+2. Identify root cause (selector change, timing, etc.)
+3. Update test code or page objects
+4. Verify fix with re-run
+
+**Example**:
+```bash
+/task Use playwright-test-healer to fix failing node pairing tests
 ```
 
 ## Development Workflow
 
-**Typical Feature Development:**
+### Feature Development
 ```bash
-# 1. Implement feature
-/task Use the fullstack-feature agent to implement job filtering
+# 1. Plan feature and update PRD
+/task Use fullstack-feature to implement job filtering
 
-# 2. Add tests
-/task Use the test-engineer agent to add comprehensive tests
+# 2. Add comprehensive tests
+/task Use test-engineer to add unit/integration tests
 
-# 3. Review
-/task Use the pr-reviewer agent to review the implementation
+# 3. Add E2E tests
+/task Use playwright-test-planner to create E2E test plan
+/task Use playwright-test-generator to convert plan to code
 
-# 4. Debug if needed
-/task Use the debugger agent to fix any issues found
+# 4. Review before merge
+/task Use pr-reviewer to review the implementation
+
+# 5. Debug if needed
+/task Use debugger to fix any issues found
 ```
 
-## Customization
+### Bug Fixing
+```bash
+# 1. Diagnose and fix
+/task Use debugger to fix the 500 error in node registration
 
-You can edit subagent configurations by modifying the `.md` files in this directory:
-- Add project-specific instructions
-- Adjust workflows
-- Add domain knowledge
-- Customize tool restrictions
+# 2. Verify tests pass
+npm test
 
-All subagent configs are version-controlled with your repo.
+# 3. Optional: Security check if bug-related
+/task Use security-auditor to check for related vulnerabilities
+```
+
+### Performance Optimization
+```bash
+# 1. Profile and optimize
+/task Use performance-optimizer to improve library scan performance
+
+# 2. Verify with tests
+npm test
+
+# 3. Measure improvements
+# Compare before/after metrics
+```
 
 ## Guidelines
 
-All subagents follow the coding guidelines in `~/git/code-conventions/`:
-- `angular-guidelines.md` - Frontend standards
-- `nestjs-guidelines.md` - Backend standards
-- `api-design-guidelines.md` - API design patterns
-- `testing-guidelines.md` - Testing strategies
-- `git-conventions.md` - Commit message format
-- `subagent-guidelines.md` - Detailed subagent usage guide
+All agents follow conventions in `~/git/code-conventions/`:
+- `angular-guidelines.md` - Frontend (Angular 20, NgRx)
+- `nestjs-guidelines.md` - Backend (NestJS, Prisma)
+- `api-design-guidelines.md` - REST API patterns
+- `testing-guidelines.md` - Test strategies
+- `git-conventions.md` - Commit messages
 
-## Learn More
+## Project Context (Auto-Detected)
 
-For detailed subagent documentation, see:
-- **Complete Guide**: `~/git/code-conventions/subagent-guidelines.md`
-- **Claude Code Docs**: https://docs.claude.com/en/docs/claude-code/subagents
+Agents automatically detect BitBonsai context:
+- **Stack**: Angular 20 + NgRx (frontend), NestJS + Prisma (backend)
+- **Architecture**: Nx monorepo, domain-scoped features
+- **Testing**: Playwright E2E + Jest/Jasmine unit tests
+- **PRD**: `apps/frontend/e2e/specs/requirements/bitbonsai-application.md`
+
+**Quality Gates**:
+- Linter: `npm run check` (0 errors)
+- Tests: `npm test` (all passing, 95%+ coverage)
+- Build: `npm run build` (no compilation errors)
+
+## Shared Agent Library
+
+Shared agents are symlinked from `~/git/code-conventions/.claude/agents/`. This allows:
+- ✅ Consistent agent behavior across projects
+- ✅ Single source of truth for updates
+- ✅ Project-specific customization via local agents
+
+To update shared agents:
+```bash
+cd ~/git/code-conventions/.claude/agents
+# Edit agent files
+git commit -m "Update agent X"
+```
+
+Changes automatically available to all projects using symlinks.
 
 ## Notes
 
-- Subagents work best when given specific, detailed task descriptions
-- Let subagents complete their full workflow (don't interrupt midway)
-- Review subagent output and run tests/build after changes
-- Commit changes with proper commit messages after verification
+- Agents auto-detect project context and adapt behavior
+- PRD maintenance is mandatory for feature work (fullstack-feature, pr-reviewer)
+- test-engineer delegates to Playwright agents for E2E test generation
+- All agents enforce quality gates (linter, tests, build)

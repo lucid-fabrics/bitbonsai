@@ -1,1 +1,1 @@
-/Users/wassimmehanna/git/code-conventions/.claude/agents/debugger.md
+/Users/wassimmehanna/git/code-conventions/.claude/agents/core/debugger.md

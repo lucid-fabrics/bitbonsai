@@ -1,1 +1,1 @@
-/Users/wassimmehanna/git/code-conventions/.claude/agents/fullstack-feature.md
+/Users/wassimmehanna/git/code-conventions/.claude/agents/fullstack/nestjs-angular.md
