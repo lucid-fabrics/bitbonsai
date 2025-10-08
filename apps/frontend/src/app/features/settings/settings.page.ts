@@ -10,12 +10,11 @@ import {
 import type { EnvironmentInfo } from './models/environment-info.model';
 import type { ActivateLicense, License } from './models/license.model';
 import { LicenseTier } from './models/license.model';
-import { LogLevel } from './models/log-level.type';
+import { LogLevel } from './models/log-level.enum';
+import { SettingsTab } from './models/settings-tab.enum';
 import type { SystemSettings } from './models/system-settings.model';
 import { LicenseService } from './services/license.service';
 import { SettingsService } from './services/settings.service';
-
-type SettingsTab = 'license' | 'environment' | 'system' | 'advanced';
 
 @Component({
   selector: 'app-settings',
@@ -29,8 +28,11 @@ export class SettingsComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
   private readonly fb = inject(FormBuilder);
 
+  // Expose enum for template
+  protected readonly SettingsTab = SettingsTab;
+
   // State signals
-  activeTab: SettingsTab = 'license';
+  activeTab: SettingsTab = SettingsTab.LICENSE;
   license: License | null = null;
   environmentInfo: EnvironmentInfo | null = null;
   systemSettings: SystemSettings | null = null;

@@ -14,7 +14,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
-import type { JobStatus } from './models/job-status.type';
+import { JobStatus } from './models/job-status.enum';
 import type { QueueFilters } from './models/queue-filters.model';
 import type { QueueResponse } from './models/queue-response.model';
 import { QueueClient } from './services/queue.client';
@@ -53,11 +53,11 @@ export class QueueComponent implements OnInit {
   // Available statuses for filter
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
     'ALL',
-    'QUEUED',
-    'ENCODING',
-    'COMPLETED',
-    'FAILED',
-    'CANCELLED',
+    JobStatus.QUEUED,
+    JobStatus.ENCODING,
+    JobStatus.COMPLETED,
+    JobStatus.FAILED,
+    JobStatus.CANCELLED,
   ];
 
   constructor() {
@@ -189,15 +189,15 @@ export class QueueComponent implements OnInit {
 
   protected getStatusIcon(status: JobStatus): string {
     switch (status) {
-      case 'QUEUED':
+      case JobStatus.QUEUED:
         return 'fa-clock';
-      case 'ENCODING':
+      case JobStatus.ENCODING:
         return 'fa-spinner fa-spin';
-      case 'COMPLETED':
+      case JobStatus.COMPLETED:
         return 'fa-check-circle';
-      case 'FAILED':
+      case JobStatus.FAILED:
         return 'fa-exclamation-circle';
-      case 'CANCELLED':
+      case JobStatus.CANCELLED:
         return 'fa-ban';
       default:
         return 'fa-question-circle';
@@ -206,15 +206,15 @@ export class QueueComponent implements OnInit {
 
   protected getStatusExplanation(status: JobStatus): string {
     switch (status) {
-      case 'QUEUED':
+      case JobStatus.QUEUED:
         return 'This job is waiting in the queue for an available encoding node. It will start automatically when a node becomes free.';
-      case 'ENCODING':
+      case JobStatus.ENCODING:
         return 'This job is currently being encoded by a node. Progress is shown as a percentage. Encoding time depends on file size, quality settings, and node hardware.';
-      case 'COMPLETED':
+      case JobStatus.COMPLETED:
         return 'This job has finished encoding successfully. The file has been optimized and space savings are shown. The original file has been replaced or backed up according to your settings.';
-      case 'FAILED':
+      case JobStatus.FAILED:
         return 'This job encountered an error during encoding. Common causes include corrupted source files, insufficient disk space, or node crashes. You can retry the job or check the error details.';
-      case 'CANCELLED':
+      case JobStatus.CANCELLED:
         return "This job was manually cancelled and won't be encoded. The original file remains unchanged.";
       default:
         return 'Unknown job status.';

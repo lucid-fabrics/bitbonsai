@@ -1,4 +1,4 @@
-import type { JobStatus } from '../models/job-status.type';
+import { JobStatus } from '../models/job-status.enum';
 import type { QueueJobApiModel } from '../models/queue-job-api.model';
 
 /**
@@ -63,7 +63,7 @@ export class QueueJobBo {
   }
 
   private extractStatus(model: QueueJobApiModel): JobStatus {
-    return model.stage || model.status || 'QUEUED';
+    return model.stage || model.status || JobStatus.QUEUED;
   }
 
   private extractNodeId(model: QueueJobApiModel): string {
@@ -81,19 +81,19 @@ export class QueueJobBo {
   }
 
   get isEncoding(): boolean {
-    return this.status === 'ENCODING';
+    return this.status === JobStatus.ENCODING;
   }
 
   get isQueued(): boolean {
-    return this.status === 'QUEUED';
+    return this.status === JobStatus.QUEUED;
   }
 
   get isCompleted(): boolean {
-    return this.status === 'COMPLETED';
+    return this.status === JobStatus.COMPLETED;
   }
 
   get isFailed(): boolean {
-    return this.status === 'FAILED';
+    return this.status === JobStatus.FAILED;
   }
 
   get hasSavings(): boolean {
