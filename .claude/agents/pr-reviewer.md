@@ -1,1 +1,1 @@
-/Users/wassimmehanna/git/code-conventions/.claude/agents/pr-reviewer.md
+/Users/wassimmehanna/git/code-conventions/.claude/agents/core/pr-reviewer.md
