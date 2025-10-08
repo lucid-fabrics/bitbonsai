@@ -14,7 +14,9 @@ import {
   switchMap,
 } from 'rxjs';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
-import type { JobStatus, QueueFilters, QueueResponse } from './models/queue.model';
+import type { JobStatus } from './models/job-status.type';
+import type { QueueFilters } from './models/queue-filters.model';
+import type { QueueResponse } from './models/queue-response.model';
 import { QueueClient } from './services/queue.client';
 
 @Component({

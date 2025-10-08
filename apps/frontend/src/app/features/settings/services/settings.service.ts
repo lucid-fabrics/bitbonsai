@@ -2,11 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import type {
-  EnvironmentInfo,
-  SystemSettings,
-  UpdateSystemSettings,
-} from '../models/settings.model';
+import type { EnvironmentInfo } from '../models/environment-info.model';
+import type { SystemSettings } from '../models/system-settings.model';
+import type { UpdateSystemSettings } from '../models/update-system-settings.model';
 
 @Injectable({
   providedIn: 'root',

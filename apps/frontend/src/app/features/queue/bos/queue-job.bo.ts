@@ -1,4 +1,4 @@
-import type { JobStatus } from '../models/queue.model';
+import type { JobStatus } from '../models/job-status.type';
 import type { QueueJobApiModel } from '../models/queue-job-api.model';
 
 /**

@@ -4,18 +4,16 @@ import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
 import { NodeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import type {
-  BasicHealthDto,
-  DetailedHealthDto,
-  DiskHealthDto,
-  HealthChecksDto,
-  LivenessDto,
-  MemoryHealthDto,
-  NodeHealthDto,
-  QueueHealthDto,
-  ReadinessDto,
-  ServiceHealthDto,
-} from './dto/health-check.dto';
+import type { BasicHealthDto } from './dto/basic-health.dto';
+import type { DetailedHealthDto } from './dto/detailed-health.dto';
+import type { DiskHealthDto } from './dto/disk-health.dto';
+import type { HealthChecksDto } from './dto/health-checks.dto';
+import type { LivenessDto } from './dto/liveness.dto';
+import type { MemoryHealthDto } from './dto/memory-health.dto';
+import type { NodeHealthDto } from './dto/node-health.dto';
+import type { QueueHealthDto } from './dto/queue-health.dto';
+import type { ReadinessDto } from './dto/readiness.dto';
+import type { ServiceHealthDto } from './dto/service-health.dto';
 
 const execAsync = promisify(exec);
 

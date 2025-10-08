@@ -7,10 +7,11 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import type { EnvironmentInfo } from './models/environment-info.model';
 import type { ActivateLicense, License } from './models/license.model';
 import { LicenseTier } from './models/license.model';
-import type { EnvironmentInfo, SystemSettings } from './models/settings.model';
-import { LogLevel } from './models/settings.model';
+import { LogLevel } from './models/log-level.type';
+import type { SystemSettings } from './models/system-settings.model';
 import { LicenseService } from './services/license.service';
 import { SettingsService } from './services/settings.service';
 
