@@ -1,0 +1,31 @@
+name: Bug Fix Workflow
+description: Diagnose, fix, test, and verify bugs
+
+steps:
+  - name: Diagnose Bug
+    agent: debugger
+    task: "Analyze and diagnose {{bug_description}}"
+    outputs: [root_cause]
+
+  - name: Write Regression Test
+    agent: test-engineer
+    task: "Write test that reproduces the bug"
+    inputs: [root_cause]
+    outputs: [regression_test]
+
+  - name: Implement Fix
+    agent: debugger
+    task: "Fix the bug based on root cause"
+    inputs: [root_cause, regression_test]
+    outputs: [bug_fix]
+
+  - name: Verify Fix
+    agent: test-engineer
+    task: "Verify all tests pass including regression test"
+    inputs: [bug_fix, regression_test]
+    outputs: [verification]
+
+success_criteria:
+  - regression_test_passes: true
+  - all_other_tests_pass: true
+  - no_new_linter_errors: true

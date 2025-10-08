@@ -1,0 +1,57 @@
+name: Complete Feature Implementation
+description: End-to-end feature delivery with tests, docs, and review
+
+steps:
+  - name: Update PRD
+    agent: documentation-writer
+    task: "Update PRD with {{feature_name}} requirements"
+    outputs: [prd_updated]
+
+  - name: Implement Feature
+    agent: fullstack-feature
+    task: "Implement {{feature_name}}"
+    inputs: [prd_updated]
+    outputs: [code_changes]
+
+  - name: Write Unit Tests
+    agent: test-engineer
+    task: "Write unit + integration tests for {{feature_name}}"
+    inputs: [code_changes]
+    outputs: [unit_tests]
+
+  - name: Plan E2E Tests
+    agent: playwright-test-planner
+    task: "Create E2E test scenarios for {{feature_name}}"
+    inputs: [code_changes, prd_updated]
+    outputs: [test_plan]
+
+  - name: Generate E2E Tests
+    agent: playwright-test-generator
+    task: "Generate Playwright tests from plan"
+    inputs: [test_plan]
+    outputs: [e2e_tests]
+
+  - name: Document Feature
+    agent: documentation-writer
+    task: "Document {{feature_name}} API and usage"
+    inputs: [code_changes]
+    outputs: [docs]
+
+  - name: Review Everything
+    agent: pr-reviewer
+    task: "Review code, tests, and docs"
+    inputs: [code_changes, unit_tests, e2e_tests, docs]
+    outputs: [review_report]
+
+  - name: Fix Issues
+    agent: debugger
+    task: "Fix any issues from review"
+    inputs: [review_report]
+    outputs: [fixes]
+
+success_criteria:
+  - all_tests_pass: true
+  - linter_errors: 0
+  - coverage: ">=95%"
+  - prd_updated: true
+  - docs_complete: true
