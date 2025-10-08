@@ -79,32 +79,4 @@ export class QueueJobBo {
     if (typeof value === 'string') return Number.parseInt(value, 10) || 0;
     return 0;
   }
-
-  get isEncoding(): boolean {
-    return this.status === JobStatus.ENCODING;
-  }
-
-  get isQueued(): boolean {
-    return this.status === JobStatus.QUEUED;
-  }
-
-  get isCompleted(): boolean {
-    return this.status === JobStatus.COMPLETED;
-  }
-
-  get isFailed(): boolean {
-    return this.status === JobStatus.FAILED;
-  }
-
-  get hasSavings(): boolean {
-    return this.savedSize > 0;
-  }
-
-  get hasError(): boolean {
-    return !!this.error;
-  }
-
-  get hasCodecInfo(): boolean {
-    return !!this.sourceCodec && !!this.targetCodec;
-  }
 }
