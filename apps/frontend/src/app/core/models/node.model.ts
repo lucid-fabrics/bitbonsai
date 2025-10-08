@@ -1,17 +1,30 @@
 /**
  * Node Role Types
  */
-export type NodeRole = 'MAIN' | 'LINKED';
+export enum NodeRole {
+  MAIN = 'MAIN',
+  LINKED = 'LINKED',
+}
 
 /**
  * Node Status Types
  */
-export type NodeStatus = 'ONLINE' | 'OFFLINE' | 'ERROR';
+export enum NodeStatus {
+  ONLINE = 'ONLINE',
+  OFFLINE = 'OFFLINE',
+  ERROR = 'ERROR',
+}
 
 /**
  * Hardware Acceleration Types
  */
-export type AccelerationType = 'CPU' | 'INTEL_QSV' | 'NVIDIA' | 'AMD' | 'APPLE_M';
+export enum AccelerationType {
+  CPU = 'CPU',
+  INTEL_QSV = 'INTEL_QSV',
+  NVIDIA = 'NVIDIA',
+  AMD = 'AMD',
+  APPLE_M = 'APPLE_M',
+}
 
 /**
  * Current Node Information

@@ -1,4 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
+import { JobStatus } from '../models/job-status.enum';
 import type { QueueFilters } from '../models/queue-filters.model';
 import type { QueueJob } from '../models/queue-job.model';
 import type { QueueStats } from '../models/queue-stats.model';
@@ -51,7 +52,7 @@ export const queueReducer = createReducer(
   on(QueueActions.cancelJobSuccess, (state, { jobId }) => ({
     ...state,
     jobs: state.jobs.map((job) =>
-      job.id === jobId ? { ...job, status: 'CANCELLED' as const } : job
+      job.id === jobId ? { ...job, status: JobStatus.CANCELLED } : job
     ),
     isLoading: false,
   })),
@@ -69,7 +70,7 @@ export const queueReducer = createReducer(
   })),
   on(QueueActions.retryJobSuccess, (state, { jobId }) => ({
     ...state,
-    jobs: state.jobs.map((job) => (job.id === jobId ? { ...job, status: 'QUEUED' as const } : job)),
+    jobs: state.jobs.map((job) => (job.id === jobId ? { ...job, status: JobStatus.QUEUED } : job)),
     isLoading: false,
   })),
   on(QueueActions.retryJobFailure, (state, { error }) => ({

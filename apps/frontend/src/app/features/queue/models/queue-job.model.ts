@@ -1,4 +1,4 @@
-import type { JobStatus } from './job-status.type';
+import { JobStatus } from './job-status.enum';
 
 export interface QueueJob {
   id: string;

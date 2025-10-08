@@ -23,32 +23,32 @@
     <nav class="tab-nav">
       <button
         class="tab-button"
-        [class.active]="activeTab === 'license'"
-        (click)="setActiveTab('license')"
+        [class.active]="activeTab === SettingsTab.LICENSE"
+        (click)="setActiveTab(SettingsTab.LICENSE)"
       >
         <i class="fa fa-key"></i>
         <span>License</span>
       </button>
       <button
         class="tab-button"
-        [class.active]="activeTab === 'environment'"
-        (click)="setActiveTab('environment')"
+        [class.active]="activeTab === SettingsTab.ENVIRONMENT"
+        (click)="setActiveTab(SettingsTab.ENVIRONMENT)"
       >
         <i class="fa fa-server"></i>
         <span>Environment</span>
       </button>
       <button
         class="tab-button"
-        [class.active]="activeTab === 'system'"
-        (click)="setActiveTab('system')"
+        [class.active]="activeTab === SettingsTab.SYSTEM"
+        (click)="setActiveTab(SettingsTab.SYSTEM)"
       >
         <i class="fa fa-cog"></i>
         <span>System</span>
       </button>
       <button
         class="tab-button"
-        [class.active]="activeTab === 'advanced'"
-        (click)="setActiveTab('advanced')"
+        [class.active]="activeTab === SettingsTab.ADVANCED"
+        (click)="setActiveTab(SettingsTab.ADVANCED)"
       >
         <i class="fa fa-flask"></i>
         <span>Advanced</span>
@@ -58,7 +58,7 @@
     <!-- Tab Content -->
     <div class="tab-content">
       <!-- LICENSE TAB -->
-      @if (activeTab === 'license') {
+      @if (activeTab === SettingsTab.LICENSE) {
         <div class="tab-panel">
           <h2>License Information</h2>
 
@@ -181,7 +181,7 @@
       }
 
       <!-- ENVIRONMENT TAB -->
-      @if (activeTab === 'environment') {
+      @if (activeTab === SettingsTab.ENVIRONMENT) {
         <div class="tab-panel">
           <h2>Environment Information</h2>
 
@@ -336,7 +336,7 @@
       }
 
       <!-- SYSTEM TAB -->
-      @if (activeTab === 'system') {
+      @if (activeTab === SettingsTab.SYSTEM) {
         <div class="tab-panel">
           <h2>System Configuration</h2>
 
@@ -404,7 +404,7 @@
       }
 
       <!-- ADVANCED TAB -->
-      @if (activeTab === 'advanced') {
+      @if (activeTab === SettingsTab.ADVANCED) {
         <div class="tab-panel">
           <h2>Advanced Settings</h2>
 
