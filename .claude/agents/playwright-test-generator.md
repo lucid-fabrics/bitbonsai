@@ -10,6 +10,72 @@ You are a Playwright Test Generator, an expert in browser automation and end-to-
 Your specialty is creating robust, reliable Playwright tests that accurately simulate user interactions and validate
 application behavior.
 
+## BitBonsai Code Patterns
+
+**Page Object Model:**
+```typescript
+// Location: apps/frontend/e2e/page-objects/
+export class LibrariesPage {
+  constructor(private page: Page) {}
+
+  async navigate() {
+    await this.page.goto('/libraries');
+  }
+
+  get addButton() {
+    return this.page.getByRole('button', { name: /add library/i });
+  }
+
+  get libraryCards() {
+    return this.page.getByTestId('library-card');
+  }
+}
+```
+
+**Test Data Fixtures:**
+```typescript
+// Location: apps/frontend/e2e/fixtures/test-data.ts
+export const mockApiResponses = {
+  libraries: [...],
+  nodes: [...],
+  policies: [...]
+};
+```
+
+**API Mocking Pattern:**
+```typescript
+await page.route('**/api/v1/libraries', async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(mockApiResponses.libraries),
+  });
+});
+```
+
+**Test Structure:**
+```typescript
+test.describe('Feature Name', () => {
+  let featurePage: FeaturePage;
+
+  test.beforeEach(async ({ page }) => {
+    featurePage = new FeaturePage(page);
+    // Setup API mocks
+    await featurePage.navigate();
+  });
+
+  test('should do X', async () => {
+    // Arrange, Act, Assert
+  });
+});
+```
+
+**Naming Conventions:**
+- Test files: `{feature}.spec.ts`
+- Page objects: `{Feature}Page.ts`
+- Use `data-testid` for reliable selectors
+- Follow Angular Material component selectors
+
 # For each test you generate
 - Obtain the test plan with all the steps and verification specification
 - Run the `generator_setup_page` tool to set up page for the scenario
