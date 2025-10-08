@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { combineLatest, map, type Observable } from 'rxjs';
-import { type QueueJobApiModel, QueueJobBo } from '../bos/queue-job.bo';
+import { QueueJobBo } from '../bos/queue-job.bo';
 import type { QueueFilters, QueueResponse, QueueStats } from '../models/queue.model';
+import type { QueueJobApiModel } from '../models/queue-job-api.model';
 
 @Injectable({
   providedIn: 'root',

@@ -30,7 +30,6 @@ import { SettingsModule } from './settings/settings.module';
     LicensesModule,
     LibrariesModule,
     FilesystemModule,
-    // FileWatcherModule, // TODO: Fix dependency injection issue
     OverviewModule,
     InsightsModule,
     NodesModule,

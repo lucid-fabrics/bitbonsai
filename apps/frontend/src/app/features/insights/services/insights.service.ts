@@ -1,13 +1,10 @@
 import { Injectable } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import {
-  CodecDistributionBO,
-  InsightsStatsBO,
-  NodePerformanceBO,
-  SavingsTrendBO,
-} from '../bos/insights.bo';
-// biome-ignore lint/style/useImportType: Angular DI requires regular import for injection token
+import { CodecDistributionBO } from '../bos/codec-distribution.bo';
+import { InsightsStatsBO } from '../bos/insights-stats.bo';
+import { NodePerformanceBO } from '../bos/node-performance.bo';
+import { SavingsTrendBO } from '../bos/savings-trend.bo';
 import { InsightsClient } from './insights.client';
 
 /**

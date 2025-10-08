@@ -5,8 +5,8 @@ import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-so
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { lastValueFrom } from 'rxjs';
-import { InsightsStatsBO, type NodePerformanceBO } from './bos/insights.bo';
-// biome-ignore lint/style/useImportType: Angular DI requires regular import for injection token
+import { InsightsStatsBO } from './bos/insights-stats.bo';
+import type { NodePerformanceBO } from './bos/node-performance.bo';
 import { InsightsService } from './services/insights.service';
 
 // Register Chart.js components

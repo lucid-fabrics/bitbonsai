@@ -1,4 +1,4 @@
-import { SavingsTrendBO } from './insights.bo';
+import { SavingsTrendBO } from './savings-trend.bo';
 
 describe('SavingsTrendBO', () => {
   describe('constructor and mapping', () => {

@@ -1,7 +1,8 @@
 import { ChangeDetectorRef } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { InsightsStatsBO, SavingsTrendBO } from './bos/insights.bo';
+import { InsightsStatsBO } from './bos/insights-stats.bo';
+import { SavingsTrendBO } from './bos/savings-trend.bo';
 import { InsightsComponent } from './insights.page';
 import { InsightsService } from './services/insights.service';
 

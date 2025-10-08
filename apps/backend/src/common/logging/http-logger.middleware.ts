@@ -1,4 +1,3 @@
-import type { ServerResponse } from 'node:http';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { LoggerService } from './logger.service';
@@ -33,9 +32,20 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     });
 
     // Override res.end to log response
-    const originalEnd = res.end.bind(res);
+    type EndCallback = (
+      chunk?: unknown,
+      encoding?: BufferEncoding | (() => void),
+      cb?: () => void
+    ) => Response;
+    const originalEnd = res.end.bind(res) as EndCallback;
     const logger = this.logger;
-    res.end = function (this: Response, ...args: Parameters<ServerResponse['end']>): Response {
+
+    res.end = function (
+      this: Response,
+      chunk?: unknown,
+      encoding?: BufferEncoding | (() => void),
+      cb?: () => void
+    ): Response {
       const responseTime = Date.now() - startTime;
       const { statusCode } = res;
 
@@ -52,7 +62,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         correlationId,
       });
 
-      return originalEnd(...args) as Response;
+      return originalEnd(chunk, encoding, cb);
     };
 
     next();

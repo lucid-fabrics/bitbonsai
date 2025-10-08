@@ -58,6 +58,4 @@ describe('OverviewEffects', () => {
       });
     });
   });
-
-  // TODO: Add tests for other effects (create, update, delete)
 });

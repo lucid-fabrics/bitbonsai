@@ -1,38 +1,5 @@
 import type { JobStatus } from '../models/queue.model';
-
-/**
- * API response model for queue jobs
- */
-interface QueueJobApiModel {
-  id: string;
-  fileLabel?: string;
-  fileName?: string;
-  filePath: string;
-  library?: { name: string };
-  libraryName?: string;
-  policy?: { name: string };
-  policyName?: string;
-  stage?: JobStatus;
-  status?: JobStatus;
-  progress: number;
-  etaSeconds?: number | null;
-  beforeSizeBytes?: string;
-  afterSizeBytes?: string;
-  savedBytes?: string;
-  savedPercent?: number;
-  originalSize?: number;
-  currentSize?: number;
-  savedSize?: number;
-  savedPercentage?: number;
-  node?: { name: string };
-  nodeName?: string;
-  createdAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  error?: string;
-  sourceCodec?: string;
-  targetCodec?: string;
-}
+import type { QueueJobApiModel } from '../models/queue-job-api.model';
 
 /**
  * Business Object for queue jobs

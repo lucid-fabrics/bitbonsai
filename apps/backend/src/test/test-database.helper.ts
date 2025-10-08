@@ -9,7 +9,6 @@ import * as path from 'path';
  * Provides utilities for setting up and tearing down test databases.
  * Uses in-memory SQLite for fast, isolated tests.
  */
-// biome-ignore lint/complexity/noStaticOnlyClass: This is a utility namespace that maintains state
 export namespace TestDatabaseHelper {
   let prismaClient: PrismaClient;
   let testDbPath: string;

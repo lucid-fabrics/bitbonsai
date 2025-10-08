@@ -66,6 +66,4 @@ describe('MediaStatsEffects', () => {
       });
     });
   });
-
-  // TODO: Add tests for other effects (create, update, delete)
 });

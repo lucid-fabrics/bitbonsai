@@ -1,10 +1,8 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import type {
-  CodecDistributionBO,
-  InsightsStatsBO,
-  NodePerformanceBO,
-  SavingsTrendBO,
-} from '../bos/insights.bo';
+import type { CodecDistributionBO } from '../bos/codec-distribution.bo';
+import type { InsightsStatsBO } from '../bos/insights-stats.bo';
+import type { NodePerformanceBO } from '../bos/node-performance.bo';
+import type { SavingsTrendBO } from '../bos/savings-trend.bo';
 
 export const InsightsActions = createActionGroup({
   source: 'Insights',

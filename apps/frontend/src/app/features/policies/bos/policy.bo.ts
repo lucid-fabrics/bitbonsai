@@ -30,18 +30,21 @@ export class PolicyBo {
     this.id = model.id;
     this.name = model.name;
     this.preset = model.preset;
-    this.targetCodec = apiModel.targetCodec || model.target_codec;
-    this.targetQuality = apiModel.targetQuality || model.crf;
-    this.libraryId = apiModel.libraryId || model.library_id;
+    this.targetCodec = (apiModel.targetCodec as TargetCodec) || model.target_codec;
+    this.targetQuality = (apiModel.targetQuality as number) || model.crf;
+    this.libraryId = (apiModel.libraryId as string | undefined) || model.library_id;
     this.deviceProfiles = this.convertDeviceProfilesToArray(
-      apiModel.deviceProfiles || model.device_profiles
+      (apiModel.deviceProfiles as DeviceProfiles | undefined) || model.device_profiles
     );
-    this.ffmpegFlags = apiModel.ffmpegFlags || model.ffmpeg_flags;
-    this.audioHandling = apiModel.audioHandling || model.audio_handling;
-    this.hardwareAcceleration = apiModel.hardwareAcceleration || model.hardware_acceleration;
-    this.completedJobs = apiModel.completedJobs || model.completed_jobs;
-    this.createdAt = new Date(apiModel.createdAt || model.created_at);
-    this.updatedAt = new Date(apiModel.updatedAt || model.updated_at);
+    this.ffmpegFlags = (apiModel.ffmpegFlags as string | undefined) || model.ffmpeg_flags;
+    this.audioHandling =
+      (apiModel.audioHandling as AudioHandling | undefined) || model.audio_handling;
+    this.hardwareAcceleration =
+      (apiModel.hardwareAcceleration as HardwareAcceleration | undefined) ||
+      model.hardware_acceleration;
+    this.completedJobs = (apiModel.completedJobs as number) ?? model.completed_jobs ?? 0;
+    this.createdAt = new Date((apiModel.createdAt as string) || model.created_at || Date.now());
+    this.updatedAt = new Date((apiModel.updatedAt as string) || model.updated_at || Date.now());
   }
 
   private convertDeviceProfilesToArray(profiles: DeviceProfiles | undefined): DeviceProfile[] {
