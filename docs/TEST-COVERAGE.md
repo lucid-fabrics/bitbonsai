@@ -323,7 +323,7 @@ BitBonsai follows **Extreme Programming (XP)** with strict **Test-Driven Develop
 
 ---
 
-## 🤖 Playwright Test Agents Integration
+## Playwright Test Agents Integration
 
 **Current Setup:** ✅ Initialized with Claude loop mode
 
