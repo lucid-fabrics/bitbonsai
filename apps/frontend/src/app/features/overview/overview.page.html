@@ -5,7 +5,7 @@
   </div>
 
   <!-- Loading State -->
-  @if (isLoading()) {
+  @if (isLoading$ | async) {
     <div class="loading-state">
       <fa-icon [icon]="icons.queueStatus" [animation]="'spin'" size="2x"></fa-icon>
       <p>Loading dashboard...</p>
@@ -13,334 +13,341 @@
   }
 
   <!-- Error State -->
-  @if (error() && !isLoading()) {
+  @if ((error$ | async) && !(isLoading$ | async)) {
     <div class="error-state">
       <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
-      <p>{{ error() }}</p>
+      <p>{{ error$ | async }}</p>
     </div>
   }
 
   <!-- Main Dashboard Content -->
-  @if (hasData() && !isLoading()) {
-    <div class="dashboard-grid">
-      <!-- System Health Cards (Top Row) -->
-      <section class="system-health">
-        <div class="health-card health-card--success">
-          <div class="health-card__icon">
-            <fa-icon [icon]="icons.activeNodes" size="2x"></fa-icon>
-          </div>
-          <div class="health-card__content">
-            <h3 class="health-card__title">Active Nodes</h3>
-            <p class="health-card__value">
-              {{ overviewData()!.system_health.active_nodes.current }} /
-              {{ overviewData()!.system_health.active_nodes.total }}
-            </p>
-          </div>
-        </div>
-
-        <div class="health-card" [ngClass]="overviewData()!.system_health.queue_status.encoding_count > 0 ? 'health-card--warning' : 'health-card--success'">
-          <div class="health-card__icon">
-            <fa-icon
-              [icon]="overviewData()!.system_health.queue_status.encoding_count > 0 ? icons.queueStatus : icons.activeNodes"
-              [animation]="overviewData()!.system_health.queue_status.encoding_count > 0 ? 'spin' : undefined"
-              size="2x">
-            </fa-icon>
-          </div>
-          <div class="health-card__content">
-            <h3 class="health-card__title">Queue Status</h3>
-            <p class="health-card__value">
-              {{ overviewData()!.system_health.queue_status.encoding_count > 0 ? overviewData()!.system_health.queue_status.encoding_count + ' encoding' : 'Idle' }}
-            </p>
-          </div>
-        </div>
-
-        <div class="health-card health-card--info">
-          <div class="health-card__icon">
-            <fa-icon [icon]="icons.storageSaved" size="2x"></fa-icon>
-          </div>
-          <div class="health-card__content">
-            <h3 class="health-card__title">Storage Saved</h3>
-            <p class="health-card__value">
-              {{ formatStorageSaved(overviewData()!.system_health.storage_saved.total_tb) }}
-            </p>
-          </div>
-        </div>
-
-        <div class="health-card health-card--primary">
-          <div class="health-card__icon">
-            <fa-icon [icon]="icons.successRate" size="2x"></fa-icon>
-          </div>
-          <div class="health-card__content">
-            <h3 class="health-card__title">Success Rate</h3>
-            <p class="health-card__value">
-              {{ overviewData()!.system_health.success_rate.percentage }}%
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Hardware Acceleration Section -->
-      @if (environmentInfo()) {
-        <section class="hardware-section">
-          <h2 class="section-title">Hardware Acceleration</h2>
-
-          <!-- Main Node Hardware -->
-          @if (mainNode()) {
-            <div class="hardware-card main-node-hardware">
-              <div class="hardware-card__header">
-                <h3>Main Node</h3>
-                <span class="node-badge node-badge--main">{{ mainNode()!.name }}</span>
-              </div>
-              <div class="hardware-list">
-                <div class="hardware-item hardware-item--cpu available">
-                  <i class="fas fa-microchip"></i>
-                  <span>CPU (Software)</span>
-                </div>
-                <div class="hardware-item hardware-item--nvidia" [class.available]="environmentInfo()!.hardwareAcceleration.nvidia">
-                  <i class="fas fa-bolt"></i>
-                  <span>NVIDIA NVENC</span>
-                  @if (environmentInfo()!.hardwareAcceleration.nvidia) {
-                    <i class="fas fa-check-circle status-icon"></i>
-                  } @else {
-                    <i class="fas fa-times-circle status-icon"></i>
-                  }
-                </div>
-                <div class="hardware-item hardware-item--intel" [class.available]="environmentInfo()!.hardwareAcceleration.intelQsv">
-                  <i class="fas fa-server"></i>
-                  <span>Intel QuickSync</span>
-                  @if (environmentInfo()!.hardwareAcceleration.intelQsv) {
-                    <i class="fas fa-check-circle status-icon"></i>
-                  } @else {
-                    <i class="fas fa-times-circle status-icon"></i>
-                  }
-                </div>
-                <div class="hardware-item hardware-item--amd" [class.available]="environmentInfo()!.hardwareAcceleration.amd">
-                  <i class="fas fa-fire"></i>
-                  <span>AMD AMF</span>
-                  @if (environmentInfo()!.hardwareAcceleration.amd) {
-                    <i class="fas fa-check-circle status-icon"></i>
-                  } @else {
-                    <i class="fas fa-times-circle status-icon"></i>
-                  }
-                </div>
-                <div class="hardware-item hardware-item--apple" [class.available]="environmentInfo()!.hardwareAcceleration.appleVideoToolbox">
-                  <i class="fab fa-apple"></i>
-                  <span>Apple VideoToolbox</span>
-                  @if (environmentInfo()!.hardwareAcceleration.appleVideoToolbox) {
-                    <i class="fas fa-check-circle status-icon"></i>
-                  } @else {
-                    <i class="fas fa-times-circle status-icon"></i>
-                  }
-                </div>
-              </div>
+  @if ((hasData$ | async) && !(isLoading$ | async)) {
+    @if (overviewData$ | async; as overviewData) {
+      <div class="dashboard-grid">
+        <!-- System Health Cards (Top Row) -->
+        <section class="system-health">
+          <div class="health-card health-card--success">
+            <div class="health-card__icon">
+              <fa-icon [icon]="icons.activeNodes" size="2x"></fa-icon>
             </div>
-          }
+            <div class="health-card__content">
+              <h3 class="health-card__title">Active Nodes</h3>
+              <p class="health-card__value">
+                {{ overviewData.system_health.active_nodes.current }} /
+                {{ overviewData.system_health.active_nodes.total }}
+              </p>
+            </div>
+          </div>
 
-          <!-- Child Nodes Hardware (if any) -->
-          @if (childNodes().length > 0) {
-            <div class="child-nodes-hardware">
-              <h3 class="subsection-title">Linked Nodes</h3>
-              <div class="child-nodes-grid">
-                @for (node of childNodes(); track node.id) {
-                  <div class="hardware-card child-node-hardware">
-                    <div class="hardware-card__header">
-                      <span class="node-badge node-badge--linked">{{ node.name }}</span>
-                    </div>
-                    <div class="hardware-compact-list">
-                      @if (node.acceleration === 'NVIDIA') {
-                        <div class="hardware-compact-item hardware-compact-item--nvidia">
-                          <i class="fas fa-bolt"></i>
-                          <span>NVIDIA</span>
+          <div class="health-card" [ngClass]="overviewData.system_health.queue_status.encoding_count > 0 ? 'health-card--warning' : 'health-card--success'">
+            <div class="health-card__icon">
+              <fa-icon
+                [icon]="overviewData.system_health.queue_status.encoding_count > 0 ? icons.queueStatus : icons.activeNodes"
+                [animation]="overviewData.system_health.queue_status.encoding_count > 0 ? 'spin' : undefined"
+                size="2x">
+              </fa-icon>
+            </div>
+            <div class="health-card__content">
+              <h3 class="health-card__title">Queue Status</h3>
+              <p class="health-card__value">
+                {{ overviewData.system_health.queue_status.encoding_count > 0 ? overviewData.system_health.queue_status.encoding_count + ' encoding' : 'Idle' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="health-card health-card--info">
+            <div class="health-card__icon">
+              <fa-icon [icon]="icons.storageSaved" size="2x"></fa-icon>
+            </div>
+            <div class="health-card__content">
+              <h3 class="health-card__title">Storage Saved</h3>
+              <p class="health-card__value">
+                {{ formatStorageSaved(overviewData.system_health.storage_saved.total_tb) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="health-card health-card--primary">
+            <div class="health-card__icon">
+              <fa-icon [icon]="icons.successRate" size="2x"></fa-icon>
+            </div>
+            <div class="health-card__content">
+              <h3 class="health-card__title">Success Rate</h3>
+              <p class="health-card__value">
+                {{ overviewData.system_health.success_rate.percentage }}%
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Hardware Acceleration Section -->
+        @if (environmentInfo$ | async; as environmentInfo) {
+          <section class="hardware-section">
+            <h2 class="section-title">Hardware Acceleration</h2>
+
+            <!-- Main Node Hardware -->
+            @if (mainNode$ | async; as mainNode) {
+              <div class="hardware-card main-node-hardware">
+                <div class="hardware-card__header">
+                  <h3>Main Node</h3>
+                  <span class="node-badge node-badge--main">{{ mainNode.name }}</span>
+                </div>
+                <div class="hardware-list">
+                  <div class="hardware-item hardware-item--cpu available">
+                    <i class="fas fa-microchip"></i>
+                    <span>CPU (Software)</span>
+                  </div>
+                  <div class="hardware-item hardware-item--nvidia" [class.available]="environmentInfo.hardwareAcceleration.nvidia">
+                    <i class="fas fa-bolt"></i>
+                    <span>NVIDIA NVENC</span>
+                    @if (environmentInfo.hardwareAcceleration.nvidia) {
+                      <i class="fas fa-check-circle status-icon"></i>
+                    } @else {
+                      <i class="fas fa-times-circle status-icon"></i>
+                    }
+                  </div>
+                  <div class="hardware-item hardware-item--intel" [class.available]="environmentInfo.hardwareAcceleration.intelQsv">
+                    <i class="fas fa-server"></i>
+                    <span>Intel QuickSync</span>
+                    @if (environmentInfo.hardwareAcceleration.intelQsv) {
+                      <i class="fas fa-check-circle status-icon"></i>
+                    } @else {
+                      <i class="fas fa-times-circle status-icon"></i>
+                    }
+                  </div>
+                  <div class="hardware-item hardware-item--amd" [class.available]="environmentInfo.hardwareAcceleration.amd">
+                    <i class="fas fa-fire"></i>
+                    <span>AMD AMF</span>
+                    @if (environmentInfo.hardwareAcceleration.amd) {
+                      <i class="fas fa-check-circle status-icon"></i>
+                    } @else {
+                      <i class="fas fa-times-circle status-icon"></i>
+                    }
+                  </div>
+                  <div class="hardware-item hardware-item--apple" [class.available]="environmentInfo.hardwareAcceleration.appleVideoToolbox">
+                    <i class="fab fa-apple"></i>
+                    <span>Apple VideoToolbox</span>
+                    @if (environmentInfo.hardwareAcceleration.appleVideoToolbox) {
+                      <i class="fas fa-check-circle status-icon"></i>
+                    } @else {
+                      <i class="fas fa-times-circle status-icon"></i>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Child Nodes Hardware (if any) -->
+            @if (childNodes$ | async; as childNodes) {
+              @if (childNodes.length > 0) {
+                <div class="child-nodes-hardware">
+                  <h3 class="subsection-title">Linked Nodes</h3>
+                  <div class="child-nodes-grid">
+                    @for (node of childNodes; track node.id) {
+                      <div class="hardware-card child-node-hardware">
+                        <div class="hardware-card__header">
+                          <span class="node-badge node-badge--linked">{{ node.name }}</span>
                         </div>
-                      } @else if (node.acceleration === 'INTEL_QSV') {
-                        <div class="hardware-compact-item hardware-compact-item--intel">
-                          <i class="fas fa-server"></i>
-                          <span>Intel QSV</span>
+                        <div class="hardware-compact-list">
+                          @if (node.acceleration === 'NVIDIA') {
+                            <div class="hardware-compact-item hardware-compact-item--nvidia">
+                              <i class="fas fa-bolt"></i>
+                              <span>NVIDIA</span>
+                            </div>
+                          } @else if (node.acceleration === 'INTEL_QSV') {
+                            <div class="hardware-compact-item hardware-compact-item--intel">
+                              <i class="fas fa-server"></i>
+                              <span>Intel QSV</span>
+                            </div>
+                          } @else if (node.acceleration === 'AMD') {
+                            <div class="hardware-compact-item hardware-compact-item--amd">
+                              <i class="fas fa-fire"></i>
+                              <span>AMD</span>
+                            </div>
+                          } @else if (node.acceleration === 'APPLE_M') {
+                            <div class="hardware-compact-item hardware-compact-item--apple">
+                              <i class="fab fa-apple"></i>
+                              <span>Apple</span>
+                            </div>
+                          } @else {
+                            <div class="hardware-compact-item hardware-compact-item--cpu">
+                              <i class="fas fa-microchip"></i>
+                              <span>CPU</span>
+                            </div>
+                          }
                         </div>
-                      } @else if (node.acceleration === 'AMD') {
-                        <div class="hardware-compact-item hardware-compact-item--amd">
-                          <i class="fas fa-fire"></i>
-                          <span>AMD</span>
-                        </div>
-                      } @else if (node.acceleration === 'APPLE_M') {
-                        <div class="hardware-compact-item hardware-compact-item--apple">
-                          <i class="fab fa-apple"></i>
-                          <span>Apple</span>
-                        </div>
-                      } @else {
-                        <div class="hardware-compact-item hardware-compact-item--cpu">
-                          <i class="fas fa-microchip"></i>
-                          <span>CPU</span>
-                        </div>
-                      }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </section>
+        }
+
+        <!-- Queue Summary (Second Row) -->
+        <section class="queue-summary">
+          <h2 class="section-title">Queue Summary</h2>
+          <div class="queue-flow">
+            <div class="queue-stage"
+              bbTooltip
+              tooltipTitle="Queued Jobs"
+              tooltipContent="Jobs waiting in the queue for an available encoding node. These jobs will start automatically when a node becomes free."
+              tooltipWhen="You want to understand how many jobs are waiting to be processed and their position in the encoding pipeline."
+              tooltipPlacement="top">
+              <div class="queue-stage__header">
+                <fa-icon [icon]="icons.queued" size="lg"></fa-icon>
+                <span class="queue-stage__label">Queued</span>
+              </div>
+              @if (totalQueueItems$ | async; as totalQueueItems) {
+                <p class="queue-stage__count">{{ overviewData.queue_summary.queued }}</p>
+                <p class="queue-stage__detail">{{ overviewData.queue_summary.queued }} of {{ totalQueueItems }} jobs</p>
+                <div class="queue-stage__progress">
+                  <div class="progress-bar progress-bar--queued"
+                    [style.width.%]="getProgressPercentage(overviewData.queue_summary.queued, totalQueueItems)"
+                    [title]="overviewData.queue_summary.queued + ' of ' + totalQueueItems + ' jobs (' + getProgressPercentage(overviewData.queue_summary.queued, totalQueueItems) + '%)'">
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="queue-stage"
+              bbTooltip
+              tooltipTitle="Encoding Jobs"
+              tooltipContent="Jobs currently being processed by encoding nodes. These are actively converting media files using hardware acceleration when available."
+              tooltipWhen="You want to see which jobs are actively being processed right now and their progress through the encoding pipeline."
+              tooltipPlacement="top">
+              <div class="queue-stage__header">
+                <fa-icon [icon]="icons.encoding" size="lg"></fa-icon>
+                <span class="queue-stage__label">Encoding</span>
+              </div>
+              @if (totalQueueItems$ | async; as totalQueueItems) {
+                <p class="queue-stage__count">{{ overviewData.queue_summary.encoding }}</p>
+                <p class="queue-stage__detail">{{ overviewData.queue_summary.encoding }} of {{ totalQueueItems }} jobs</p>
+                <div class="queue-stage__progress">
+                  <div class="progress-bar progress-bar--encoding"
+                    [style.width.%]="getProgressPercentage(overviewData.queue_summary.encoding, totalQueueItems)"
+                    [title]="overviewData.queue_summary.encoding + ' of ' + totalQueueItems + ' jobs (' + getProgressPercentage(overviewData.queue_summary.encoding, totalQueueItems) + '%)'">
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="queue-stage"
+              bbTooltip
+              tooltipTitle="Completed Jobs"
+              tooltipContent="Jobs that have successfully completed encoding. The encoded files have been written to their final destination."
+              tooltipWhen="You want to track how many jobs have finished processing successfully and understand your overall completion rate."
+              tooltipPlacement="top">
+              <div class="queue-stage__header">
+                <fa-icon [icon]="icons.completed" size="lg"></fa-icon>
+                <span class="queue-stage__label">Completed</span>
+              </div>
+              @if (totalQueueItems$ | async; as totalQueueItems) {
+                <p class="queue-stage__count">{{ overviewData.queue_summary.completed }}</p>
+                <p class="queue-stage__detail">{{ overviewData.queue_summary.completed }} of {{ totalQueueItems }} jobs</p>
+                <div class="queue-stage__progress">
+                  <div class="progress-bar progress-bar--completed"
+                    [style.width.%]="getProgressPercentage(overviewData.queue_summary.completed, totalQueueItems)"
+                    [title]="overviewData.queue_summary.completed + ' of ' + totalQueueItems + ' jobs (' + getProgressPercentage(overviewData.queue_summary.completed, totalQueueItems) + '%)'">
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="queue-stage"
+              bbTooltip
+              tooltipTitle="Failed Jobs"
+              tooltipContent="Jobs that encountered errors during encoding. These may need manual review or configuration changes to complete successfully."
+              tooltipWhen="You want to identify and troubleshoot jobs that failed during encoding, and understand what percentage of your jobs are failing."
+              tooltipPlacement="top">
+              <div class="queue-stage__header">
+                <fa-icon [icon]="icons.failed" size="lg"></fa-icon>
+                <span class="queue-stage__label">Failed</span>
+              </div>
+              @if (totalQueueItems$ | async; as totalQueueItems) {
+                <p class="queue-stage__count">{{ overviewData.queue_summary.failed }}</p>
+                <p class="queue-stage__detail">{{ overviewData.queue_summary.failed }} of {{ totalQueueItems }} jobs</p>
+                <div class="queue-stage__progress">
+                  <div class="progress-bar progress-bar--failed"
+                    [style.width.%]="getProgressPercentage(overviewData.queue_summary.failed, totalQueueItems)"
+                    [title]="overviewData.queue_summary.failed + ' of ' + totalQueueItems + ' jobs (' + getProgressPercentage(overviewData.queue_summary.failed, totalQueueItems) + '%)'">
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Activity (Third Row - Left) -->
+        <section class="recent-activity">
+          <h2 class="section-title">Recent Activity</h2>
+          <div class="activity-list">
+            @if (overviewData.recent_activity.length === 0) {
+              <div class="empty-state">
+                <fa-icon [icon]="icons.queueStatus" size="2x"></fa-icon>
+                <p>No recent activity</p>
+              </div>
+            } @else {
+              @for (activity of overviewData.recent_activity; track activity.id) {
+                <div class="activity-item">
+                  <div class="activity-item__header">
+                    <fa-icon [icon]="icons.completed" class="activity-icon"></fa-icon>
+                    <div class="activity-item__info">
+                      <h3 class="activity-item__title">{{ activity.file_name }}</h3>
+                      <p class="activity-item__library">{{ activity.library }}</p>
                     </div>
                   </div>
-                }
-              </div>
-            </div>
-          }
-        </section>
-      }
-
-      <!-- Queue Summary (Second Row) -->
-      <section class="queue-summary">
-        <h2 class="section-title">Queue Summary</h2>
-        <div class="queue-flow">
-          <div class="queue-stage"
-            bbTooltip
-            tooltipTitle="Queued Jobs"
-            tooltipContent="Jobs waiting in the queue for an available encoding node. These jobs will start automatically when a node becomes free."
-            tooltipWhen="You want to understand how many jobs are waiting to be processed and their position in the encoding pipeline."
-            tooltipPlacement="top">
-            <div class="queue-stage__header">
-              <fa-icon [icon]="icons.queued" size="lg"></fa-icon>
-              <span class="queue-stage__label">Queued</span>
-            </div>
-            <p class="queue-stage__count">{{ overviewData()!.queue_summary.queued }}</p>
-            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.queued }} of {{ totalQueueItems() }} jobs</p>
-            <div class="queue-stage__progress">
-              <div
-                class="queue-stage__bar queue-stage__bar--queued"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.queued, totalQueueItems())"
-                [title]="overviewData()!.queue_summary.queued + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.queued, totalQueueItems()) + '%)'">
-              </div>
-            </div>
-          </div>
-
-          <div class="queue-arrow">→</div>
-
-          <div class="queue-stage"
-            bbTooltip
-            tooltipTitle="Encoding Jobs"
-            tooltipContent="Jobs currently being processed by your encoding nodes. These jobs are actively transcoding media files and show real-time progress."
-            tooltipWhen="You want to monitor active encoding work and see how many nodes are currently busy processing files."
-            tooltipPlacement="top">
-            <div class="queue-stage__header">
-              <fa-icon [icon]="icons.encoding" size="lg"></fa-icon>
-              <span class="queue-stage__label">Encoding</span>
-            </div>
-            <p class="queue-stage__count">{{ overviewData()!.queue_summary.encoding }}</p>
-            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.encoding }} of {{ totalQueueItems() }} jobs</p>
-            <div class="queue-stage__progress">
-              <div
-                class="queue-stage__bar queue-stage__bar--encoding"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.encoding, totalQueueItems())"
-                [title]="overviewData()!.queue_summary.encoding + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.encoding, totalQueueItems()) + '%)'">
-              </div>
-            </div>
-          </div>
-
-          <div class="queue-arrow">→</div>
-
-          <div class="queue-stage"
-            bbTooltip
-            tooltipTitle="Completed Jobs"
-            tooltipContent="Jobs that have successfully finished encoding. These files have been optimized and space savings are displayed. Original files are replaced or backed up based on your settings."
-            tooltipWhen="You want to see your encoding success rate and total completed work. Visit the Queue page for detailed savings information."
-            tooltipPlacement="top">
-            <div class="queue-stage__header">
-              <fa-icon [icon]="icons.completed" size="lg"></fa-icon>
-              <span class="queue-stage__label">Completed</span>
-            </div>
-            <p class="queue-stage__count">{{ overviewData()!.queue_summary.completed }}</p>
-            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.completed }} of {{ totalQueueItems() }} jobs</p>
-            <div class="queue-stage__progress">
-              <div
-                class="queue-stage__bar queue-stage__bar--completed"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.completed, totalQueueItems())"
-                [title]="overviewData()!.queue_summary.completed + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.completed, totalQueueItems()) + '%)'">
-              </div>
-            </div>
-          </div>
-
-          <div class="queue-arrow">→</div>
-
-          <div class="queue-stage"
-            bbTooltip
-            tooltipTitle="Failed Jobs"
-            tooltipContent="Jobs that encountered errors during encoding. Common causes include corrupted source files, insufficient disk space, or node crashes. These jobs can be retried from the Queue page."
-            tooltipWhen="You need to troubleshoot encoding problems or identify files that need attention. Click to view error details and retry options."
-            tooltipPlacement="top">
-            <div class="queue-stage__header">
-              <fa-icon [icon]="icons.failed" size="lg"></fa-icon>
-              <span class="queue-stage__label">Failed</span>
-            </div>
-            <p class="queue-stage__count">{{ overviewData()!.queue_summary.failed }}</p>
-            <p class="queue-stage__detail">{{ overviewData()!.queue_summary.failed }} of {{ totalQueueItems() }} jobs</p>
-            <div class="queue-stage__progress">
-              <div
-                class="queue-stage__bar queue-stage__bar--failed"
-                [style.width.%]="getProgressPercentage(overviewData()!.queue_summary.failed, totalQueueItems())"
-                [title]="overviewData()!.queue_summary.failed + ' of ' + totalQueueItems() + ' jobs (' + getProgressPercentage(overviewData()!.queue_summary.failed, totalQueueItems()) + '%)'">
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Recent Activity (Left Column) -->
-      <section class="recent-activity">
-        <h2 class="section-title">Recent Activity</h2>
-        <div class="activity-table">
-          <table>
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>Library</th>
-                <th>Codec Change</th>
-                <th>Savings</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (activity of overviewData()!.recent_activity; track activity.id) {
-                <tr>
-                  <td class="file-name">{{ activity.file_name }}</td>
-                  <td>{{ activity.library }}</td>
-                  <td class="codec-change">{{ activity.codec_change }}</td>
-                  <td class="savings">{{ formatBytes(activity.savings_gb) }}</td>
-                  <td class="time">{{ formatTime(activity.completed_at) }}</td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="5" class="no-data">No recent activity</td>
-                </tr>
+                  <div class="activity-item__details">
+                    <div class="activity-detail">
+                      <span class="activity-detail__label">Codec:</span>
+                      <span class="activity-detail__value">{{ activity.codec_change }}</span>
+                    </div>
+                    <div class="activity-detail">
+                      <span class="activity-detail__label">Saved:</span>
+                      <span class="activity-detail__value">{{ formatBytes(activity.savings_gb) }}</span>
+                    </div>
+                    <div class="activity-detail">
+                      <span class="activity-detail__label">Duration:</span>
+                      <span class="activity-detail__value">{{ formatDuration(activity.duration_seconds) }}</span>
+                    </div>
+                    <div class="activity-detail">
+                      <span class="activity-detail__label">Completed:</span>
+                      <span class="activity-detail__value">{{ formatTime(activity.completed_at) }}</span>
+                    </div>
+                  </div>
+                </div>
               }
-            </tbody>
-          </table>
-        </div>
-      </section>
+            }
+          </div>
+        </section>
 
-      <!-- Top Libraries (Right Column) -->
-      <section class="top-libraries">
-        <h2 class="section-title">Top Libraries</h2>
-        <div class="library-cards">
-          @for (library of overviewData()!.top_libraries; track library.name) {
-            <div class="library-card">
-              <h3 class="library-card__name">{{ library.name }}</h3>
-              <div class="library-card__stats">
-                <div class="library-card__stat">
-                  <span class="library-card__label">Jobs</span>
-                  <span class="library-card__value">{{ library.job_count }}</span>
-                </div>
-                <div class="library-card__stat">
-                  <span class="library-card__label">Savings</span>
-                  <span class="library-card__value">{{ formatBytes(library.total_savings_gb) }}</span>
-                </div>
+        <!-- Top Libraries (Third Row - Right) -->
+        <section class="top-libraries">
+          <h2 class="section-title">Top Libraries</h2>
+          <div class="libraries-list">
+            @if (overviewData.top_libraries.length === 0) {
+              <div class="empty-state">
+                <fa-icon [icon]="icons.queueStatus" size="2x"></fa-icon>
+                <p>No library data available</p>
               </div>
-            </div>
-          } @empty {
-            <div class="no-data">No library data available</div>
-          }
-        </div>
-      </section>
-    </div>
-
-    <!-- Last Updated Footer -->
-    <div class="dashboard-footer">
-      <p class="last-updated">
-        Last updated: {{ formatTime(overviewData()!.last_updated) }}
-      </p>
-    </div>
+            } @else {
+              @for (library of overviewData.top_libraries; track library.name) {
+                <div class="library-item">
+                  <div class="library-item__info">
+                    <h3 class="library-item__name">{{ library.name }}</h3>
+                    <p class="library-item__count">{{ library.job_count }} jobs</p>
+                  </div>
+                  <div class="library-item__savings">
+                    <span class="library-item__value">{{ formatBytes(library.total_savings_gb) }}</span>
+                    <span class="library-item__label">saved</span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      </div>
+    }
   }
 </div>

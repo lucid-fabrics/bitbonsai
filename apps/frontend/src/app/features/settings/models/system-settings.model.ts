@@ -1,5 +1,5 @@
 import { DatabaseType } from './database-type.type';
-import { LogLevel } from './log-level.type';
+import { LogLevel } from './log-level.enum';
 import { StorageInfo } from './storage-info.model';
 
 export interface SystemSettings {

@@ -17,7 +17,8 @@
     "isolatedModules": false,
     "allowJs": true,
     "paths": {
-      "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"]
+      "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"],
+      "@bitbonsai/prisma-types": ["prisma/types.ts"]
     }
   },
   "exclude": ["**/*.spec.ts", "**/__tests__/**"]

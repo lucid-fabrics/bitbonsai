@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
@@ -10,16 +11,18 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Node } from '@prisma/client';
+import { Public } from '../auth/guards/public.decorator';
 import { CurrentNodeDto } from './dto/current-node.dto';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
+import { NodeResponseDto } from './dto/node-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
 import type { PairNodeDto } from './dto/pair-node.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
 import { NodesService } from './nodes.service';
 
 @ApiTags('nodes')
+@ApiBearerAuth('JWT-auth')
 @Controller('nodes')
 export class NodesController {
   constructor(private readonly nodesService: NodesService) {}
@@ -27,6 +30,7 @@ export class NodesController {
   /**
    * Register a new node
    */
+  @Public()
   @Post('register')
   @ApiOperation({
     summary: 'Register a new node',
@@ -85,7 +89,7 @@ export class NodesController {
   })
   @ApiOkResponse({
     description: 'Node paired successfully',
-    type: NodeStatsDto,
+    type: NodeResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Invalid or expired pairing token',
@@ -93,8 +97,11 @@ export class NodesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred during pairing',
   })
-  async pair(@Body() pairNodeDto: PairNodeDto): Promise<Node> {
-    return this.nodesService.pairNode(pairNodeDto.pairingToken);
+  async pair(@Body() pairNodeDto: PairNodeDto): Promise<NodeResponseDto> {
+    const node = await this.nodesService.pairNode(pairNodeDto.pairingToken);
+    // Exclude sensitive fields
+    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
+    return safeNode;
   }
 
   /**
@@ -159,7 +166,7 @@ export class NodesController {
   })
   @ApiOkResponse({
     description: 'Heartbeat recorded successfully',
-    type: NodeStatsDto,
+    type: NodeResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid heartbeat data provided',
@@ -170,8 +177,14 @@ export class NodesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while recording heartbeat',
   })
-  async heartbeat(@Param('id') id: string, @Body() heartbeatDto?: HeartbeatDto): Promise<Node> {
-    return this.nodesService.heartbeat(id, heartbeatDto);
+  async heartbeat(
+    @Param('id') id: string,
+    @Body() heartbeatDto?: HeartbeatDto
+  ): Promise<NodeResponseDto> {
+    const node = await this.nodesService.heartbeat(id, heartbeatDto);
+    // Exclude sensitive fields
+    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
+    return safeNode;
   }
 
   /**
@@ -232,13 +245,18 @@ export class NodesController {
   })
   @ApiOkResponse({
     description: 'List of all nodes retrieved successfully',
-    type: [NodeStatsDto],
+    type: [NodeResponseDto],
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while fetching nodes',
   })
-  async findAll(): Promise<Node[]> {
-    return this.nodesService.findAll();
+  async findAll(): Promise<NodeResponseDto[]> {
+    const nodes = await this.nodesService.findAll();
+    // Exclude sensitive fields from all nodes
+    return nodes.map((node) => {
+      const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
+      return safeNode;
+    });
   }
 
   /**
@@ -251,8 +269,7 @@ export class NodesController {
       'Retrieves detailed information about a specific node.\n\n' +
       '**Response Includes**:\n' +
       '- Complete node information\n' +
-      '- API key (if not cleared after pairing)\n' +
-      '- Pairing token (if still active)\n\n' +
+      '- Excludes sensitive fields (apiKey, pairingToken) for security\n\n' +
       '**Use Case**: Node detail page, configuration review',
   })
   @ApiParam({
@@ -262,7 +279,7 @@ export class NodesController {
   })
   @ApiOkResponse({
     description: 'Node retrieved successfully',
-    type: NodeStatsDto,
+    type: NodeResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Node not found',
@@ -270,8 +287,11 @@ export class NodesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while fetching node',
   })
-  async findOne(@Param('id') id: string): Promise<Node> {
-    return this.nodesService.findOne(id);
+  async findOne(@Param('id') id: string): Promise<NodeResponseDto> {
+    const node = await this.nodesService.findOne(id);
+    // Exclude sensitive fields
+    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
+    return safeNode;
   }
 
   /**

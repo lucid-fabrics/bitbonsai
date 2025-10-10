@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { MediaStatsClient } from './media-stats.client';
+import { MediaStatsClient } from '../../../core/clients/media-stats.client';
 import { MediaStatsService } from './media-stats.service';
 
 describe('MediaStatsService', () => {

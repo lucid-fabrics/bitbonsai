@@ -2,9 +2,9 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectorRef } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { NodesClient } from '../../core/clients/nodes.client';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import { NodesComponent } from './nodes.page';
-import { NodesClient } from './services/nodes.client';
 
 describe('NodesComponent', () => {
   let component: NodesComponent;
@@ -107,7 +107,7 @@ describe('NodesComponent', () => {
 
     it('should get acceleration label', () => {
       expect(component.getAccelerationLabel(AccelerationType.NVIDIA)).toBe('NVIDIA GPU');
-      expect(component.getAccelerationLabel(AccelerationType.NONE)).toBe('CPU Only');
+      expect(component.getAccelerationLabel(AccelerationType.CPU)).toBe('CPU Only');
     });
   });
 });

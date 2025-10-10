@@ -69,7 +69,7 @@ describe('InsightsService Integration Tests', () => {
         name: 'Test Policy',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       },
     });
@@ -212,6 +212,10 @@ describe('InsightsService Integration Tests', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/job1.mp4',
+            fileLabel: 'job1.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
             stage: 'COMPLETED',
           },
           {
@@ -219,6 +223,10 @@ describe('InsightsService Integration Tests', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/job2.mp4',
+            fileLabel: 'job2.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
             stage: 'COMPLETED',
           },
           {
@@ -226,6 +234,10 @@ describe('InsightsService Integration Tests', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/job3.mp4',
+            fileLabel: 'job3.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
             stage: 'FAILED',
           },
         ],
@@ -262,9 +274,12 @@ describe('InsightsService Integration Tests', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/job1.mp4',
+            fileLabel: 'job1.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 2000000000, // 2GB
-            finalSize: 1000000000, // 1GB (saved 1GB)
+            beforeSizeBytes: BigInt(2000000000), // 2GB
+            afterSizeBytes: BigInt(1000000000), // 1GB (saved 1GB)
             completedAt: now,
           },
           {
@@ -272,9 +287,12 @@ describe('InsightsService Integration Tests', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/job2.mp4',
+            fileLabel: 'job2.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
             stage: 'COMPLETED',
-            originalSize: 3000000000, // 3GB
-            finalSize: 1500000000, // 1.5GB (saved 1.5GB)
+            beforeSizeBytes: BigInt(3000000000), // 3GB
+            afterSizeBytes: BigInt(1500000000), // 1.5GB (saved 1.5GB)
             completedAt: now,
           },
           {
@@ -282,6 +300,10 @@ describe('InsightsService Integration Tests', () => {
             policyId: testPolicy.id,
             nodeId: testNode.id,
             filePath: '/test/job3.mp4',
+            fileLabel: 'job3.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
             stage: 'FAILED',
           },
         ],

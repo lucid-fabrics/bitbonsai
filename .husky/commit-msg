@@ -1,0 +1,62 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# CRITICAL: Enforce NO AI attribution in commit messages
+# Policy: ~/git/code-conventions/git-commit-instructions.md
+
+COMMIT_MSG_FILE=$1
+
+# Check for AI attribution patterns
+if grep -qE "(Generated with.*Claude Code|Co-Authored-By.*Claude|Co-Authored-By.*noreply@anthropic|Co-Authored-By.*noreply@openai|🤖|🧠)" "$COMMIT_MSG_FILE"; then
+  echo ""
+  echo "❌ ERROR: Commit message contains PROHIBITED AI attribution!"
+  echo ""
+  echo "Found violation:"
+  grep -E "(Generated with.*Claude Code|Co-Authored-By.*Claude|Co-Authored-By.*noreply@anthropic|🤖|🧠)" "$COMMIT_MSG_FILE" | sed 's/^/  > /'
+  echo ""
+  echo "📋 Policy: ~/git/code-conventions/git-commit-instructions.md (lines 16-46)"
+  echo ""
+  echo "🚫 Remove these from your commit message:"
+  echo "   - 🤖 Generated with [Claude Code](...)"
+  echo "   - Co-Authored-By: Claude <noreply@anthropic.com>"
+  echo "   - Any AI assistant references"
+  echo ""
+  echo "✅ Commits must appear 100% human-authored"
+  echo ""
+  echo "💡 To fix: Edit commit message and remove AI attribution"
+  echo "   git commit --amend  # Edit last commit message"
+  echo ""
+  exit 1
+fi
+
+# Check for AI names in author field (git config check)
+AUTHOR_NAME=$(git config user.name)
+AUTHOR_EMAIL=$(git config user.email)
+
+if echo "$AUTHOR_NAME" | grep -qiE "(claude|chatgpt|copilot|gemini|gpt|ai|bot)"; then
+  echo ""
+  echo "❌ ERROR: Git author name contains AI reference!"
+  echo ""
+  echo "Current author: $AUTHOR_NAME <$AUTHOR_EMAIL>"
+  echo ""
+  echo "✅ Fix with:"
+  echo "   git config user.name 'Your Real Name'"
+  echo "   git config user.email 'your.email@company.com'"
+  echo ""
+  exit 1
+fi
+
+if echo "$AUTHOR_EMAIL" | grep -qiE "(anthropic|openai|ai@|bot@|noreply@anthropic|noreply@openai)"; then
+  echo ""
+  echo "❌ ERROR: Git author email contains AI reference!"
+  echo ""
+  echo "Current author: $AUTHOR_NAME <$AUTHOR_EMAIL>"
+  echo ""
+  echo "✅ Fix with:"
+  echo "   git config user.email 'your.email@company.com'"
+  echo ""
+  exit 1
+fi
+
+# All checks passed
+exit 0

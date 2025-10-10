@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommonModule } from './common/common.module';
 import { EncodingModule } from './encoding/encoding.module';
 import { FilesystemModule } from './filesystem/filesystem.module';
@@ -19,10 +24,23 @@ import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
+    // SECURITY: Global rate limiting - 100 requests per minute per IP
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000, // 1 minute window
+        limit: 100, // 100 requests per minute
+      },
+    ]),
     EventEmitterModule.forRoot({ global: true }),
     ScheduleModule.forRoot(),
     PrismaModule,
     CommonModule,
+    AuthModule,
     HealthModule,
     MediaStatsModule,
     PoliciesModule,
@@ -38,6 +56,17 @@ import { SettingsModule } from './settings/settings.module';
     EncodingModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    // SECURITY: Global JWT authentication guard (applied to all routes except @Public())
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    // SECURITY: Global rate limiting guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

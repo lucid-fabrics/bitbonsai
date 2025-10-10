@@ -1,7 +1,10 @@
 import { inject } from '@angular/core';
 import type { CanActivateFn } from '@angular/router';
 import { Router } from '@angular/router';
-import { NodeService } from '../services/node.service';
+import { Store } from '@ngrx/store';
+import { map } from 'rxjs/operators';
+import { NodeRole } from '../../features/nodes/models/node.model';
+import { selectCurrentNode } from '../+state/current-node.selectors';
 
 /**
  * Main Node Route Guard
@@ -19,20 +22,23 @@ import { NodeService } from '../services/node.service';
  * ```
  */
 export const mainNodeGuard: CanActivateFn = () => {
-  const nodeService = inject(NodeService);
+  const store = inject(Store);
   const router = inject(Router);
 
-  // If node is MAIN, allow access
-  if (nodeService.isMainNode()) {
-    return true;
-  }
+  return store.select(selectCurrentNode).pipe(
+    map((node) => {
+      // If node info not loaded yet, allow access (will be checked after node info loads)
+      if (!node) {
+        return true;
+      }
 
-  // If node is LINKED, redirect to queue page (child nodes can only view queue)
-  if (nodeService.isLinkedNode()) {
-    return router.createUrlTree(['/queue']);
-  }
+      // If node is MAIN, allow access
+      if (node.role === NodeRole.MAIN) {
+        return true;
+      }
 
-  // If node info not loaded yet, allow access (will be checked after node info loads)
-  // This prevents blocking during app initialization
-  return true;
+      // If node is LINKED, redirect to queue page (child nodes can only view queue)
+      return router.createUrlTree(['/queue']);
+    })
+  );
 };

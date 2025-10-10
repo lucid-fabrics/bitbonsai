@@ -1,4 +1,6 @@
+import { normalize, resolve } from 'node:path';
 import {
+  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
@@ -30,15 +32,74 @@ export class LibrariesService {
   ) {}
 
   /**
+   * SECURITY: Whitelist of allowed base directories for libraries
+   * Prevents access to sensitive system directories
+   */
+  private readonly ALLOWED_BASE_PATHS = [
+    '/mnt/user', // Unraid media paths
+    '/mnt/cache', // Unraid cache
+    '/media', // Standard media mount
+    '/downloads', // Downloads folder
+    '/data', // Data folder
+    '/home', // User home directories (Linux)
+    '/Users', // User home directories (macOS)
+  ];
+
+  /**
+   * SECURITY: Validate and sanitize library path
+   * Prevents path traversal attacks by:
+   * - Normalizing path (removes .. and redundant slashes)
+   * - Checking against allowed base paths
+   * - Ensuring no escape from allowed directories
+   *
+   * @param path - User-provided path
+   * @returns Sanitized absolute path
+   * @throws BadRequestException if path is invalid or not allowed
+   */
+  private validateLibraryPath(path: string): string {
+    // Normalize path (removes .., //, etc.)
+    const normalizedPath = normalize(path);
+
+    // Ensure it's an absolute path
+    if (!normalizedPath.startsWith('/')) {
+      throw new BadRequestException('Library path must be an absolute path');
+    }
+
+    // Check if path contains path traversal sequences (after normalization)
+    if (normalizedPath.includes('..')) {
+      throw new BadRequestException('Path traversal sequences (..) are not allowed');
+    }
+
+    // Verify path starts with an allowed base directory
+    const isAllowed = this.ALLOWED_BASE_PATHS.some((basePath) =>
+      normalizedPath.startsWith(basePath)
+    );
+
+    if (!isAllowed) {
+      throw new BadRequestException(
+        `Library path must start with one of the allowed base directories: ${this.ALLOWED_BASE_PATHS.join(', ')}`
+      );
+    }
+
+    return normalizedPath;
+  }
+
+  /**
    * Create a new library
+   *
+   * SECURITY: Validates path against whitelist and prevents path traversal
    *
    * @param createLibraryDto - Library creation data
    * @returns The created library
    * @throws ConflictException if a library with the same path already exists on the node
    * @throws NotFoundException if the specified node does not exist
+   * @throws BadRequestException if path validation fails
    */
   async create(createLibraryDto: CreateLibraryDto): Promise<Library> {
     this.logger.log(`Creating library: ${createLibraryDto.name}`);
+
+    // SECURITY: Validate and sanitize path
+    const sanitizedPath = this.validateLibraryPath(createLibraryDto.path);
 
     // Auto-assign to first available node if nodeId not provided
     let nodeId = createLibraryDto.nodeId;
@@ -66,19 +127,19 @@ export class LibrariesService {
       throw new NotFoundException(`Node with ID "${nodeId}" not found`);
     }
 
-    // Check for duplicate path on the same node
+    // Check for duplicate path on the same node (use sanitized path)
     const existingLibrary = await this.prisma.library.findUnique({
       where: {
         nodeId_path: {
           nodeId: nodeId,
-          path: createLibraryDto.path,
+          path: sanitizedPath,
         },
       },
     });
 
     if (existingLibrary) {
       throw new ConflictException(
-        `Library with path "${createLibraryDto.path}" already exists on node "${node.name}"`
+        `Library with path "${sanitizedPath}" already exists on node "${node.name}"`
       );
     }
 
@@ -86,7 +147,7 @@ export class LibrariesService {
       const library = await this.prisma.library.create({
         data: {
           name: createLibraryDto.name,
-          path: createLibraryDto.path,
+          path: sanitizedPath, // SECURITY: Use sanitized path
           mediaType: createLibraryDto.mediaType,
           nodeId: nodeId,
         },

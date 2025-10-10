@@ -13,11 +13,11 @@ import {
   startWith,
   switchMap,
 } from 'rxjs';
+import { QueueClient } from '../../core/clients/queue.client';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { JobStatus } from './models/job-status.enum';
 import type { QueueFilters } from './models/queue-filters.model';
 import type { QueueResponse } from './models/queue-response.model';
-import { QueueClient } from './services/queue.client';
 
 @Component({
   selector: 'app-queue',

@@ -210,19 +210,33 @@ describe('PoliciesComponent', () => {
   });
 
   describe('getCRFLabel', () => {
-    it('should return Excellent for crf <= 20', () => {
-      expect(component.getCRFLabel(18)).toBe('Excellent');
-      expect(component.getCRFLabel(20)).toBe('Excellent');
+    it('should return Visually Lossless for crf <= 18', () => {
+      expect(component.getCRFLabel(18)).toBe('Visually Lossless (Huge Files)');
     });
 
-    it('should return Good for crf 21-25', () => {
-      expect(component.getCRFLabel(23)).toBe('Good');
-      expect(component.getCRFLabel(25)).toBe('Good');
+    it('should return Excellent Quality for crf 19-22', () => {
+      expect(component.getCRFLabel(20)).toBe('Excellent Quality (Large Files)');
+      expect(component.getCRFLabel(22)).toBe('Excellent Quality (Large Files)');
     });
 
-    it('should return Fast for crf > 25', () => {
-      expect(component.getCRFLabel(28)).toBe('Fast');
-      expect(component.getCRFLabel(35)).toBe('Fast');
+    it('should return High Quality for crf 23-26', () => {
+      expect(component.getCRFLabel(23)).toBe('High Quality (Recommended)');
+      expect(component.getCRFLabel(26)).toBe('High Quality (Recommended)');
+    });
+
+    it('should return Good Quality for crf 27-30', () => {
+      expect(component.getCRFLabel(28)).toBe('Good Quality (Smaller Files)');
+      expect(component.getCRFLabel(30)).toBe('Good Quality (Smaller Files)');
+    });
+
+    it('should return Medium Quality for crf 31-34', () => {
+      expect(component.getCRFLabel(32)).toBe('Medium Quality (Web Streaming)');
+      expect(component.getCRFLabel(34)).toBe('Medium Quality (Web Streaming)');
+    });
+
+    it('should return Low Quality for crf > 34', () => {
+      expect(component.getCRFLabel(35)).toBe('Low Quality (Not Recommended)');
+      expect(component.getCRFLabel(40)).toBe('Low Quality (Not Recommended)');
     });
   });
 

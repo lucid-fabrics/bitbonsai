@@ -6,7 +6,7 @@ import type {
   PolicyModel,
   PresetInfoModel,
   UpdatePolicyRequest,
-} from '../models/policy.model';
+} from '../../features/policies/models/policy.model';
 
 @Injectable({ providedIn: 'root' })
 export class PolicyClient {

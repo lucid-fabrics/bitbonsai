@@ -1,8 +1,10 @@
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
+import { provideMockStore } from '@ngrx/store/testing';
 import { type Observable, of, throwError } from 'rxjs';
-import { OverviewClient } from '../services/overview.client';
+import { OverviewClient } from '../../../core/clients/overview.client';
 import { OverviewActions } from './overview.actions';
 import { OverviewEffects } from './overview.effects';
 
@@ -17,9 +19,11 @@ describe('OverviewEffects', () => {
     } as jest.Mocked<OverviewClient>;
 
     TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
       providers: [
         OverviewEffects,
         provideMockActions(() => actions$),
+        provideMockStore(),
         { provide: OverviewClient, useValue: serviceSpy },
       ],
     });

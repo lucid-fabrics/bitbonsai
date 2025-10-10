@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { Node } from '../models/node.model';
+import type { Node } from '../../features/nodes/models/node.model';
 
 export interface RegisterResponse {
   message: string;

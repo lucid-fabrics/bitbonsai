@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { PolicyClient } from '../../../core/clients/policy.client';
 import { PolicyBo } from '../bos/policy.bo';
 import type { PolicyModel } from '../models/policy.model';
-import { PolicyClient } from './policy.client';
 import { PolicyService } from './policy.service';
 
 describe('PolicyService', () => {

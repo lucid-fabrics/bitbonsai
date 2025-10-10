@@ -71,6 +71,8 @@ describe('LibrariesService Integration Tests', () => {
     it('should create library with valid data', async () => {
       const createDto = {
         name: 'Test Library',
+        path: '/test/path',
+        mediaType: 'MOVIE' as const,
         nodeId: testNode.id,
       };
 
@@ -85,6 +87,8 @@ describe('LibrariesService Integration Tests', () => {
       await expect(
         service.create({
           name: 'Test',
+          path: '/test/path',
+          mediaType: 'MOVIE' as const,
           nodeId: 'non-existent-id',
         })
       ).rejects.toThrow(NotFoundException);
@@ -93,6 +97,8 @@ describe('LibrariesService Integration Tests', () => {
     it('should persist to database', async () => {
       const created = await service.create({
         name: 'Persistent Test',
+        path: '/test/persistent',
+        mediaType: 'MOVIE' as const,
         nodeId: testNode.id,
       });
 
@@ -133,7 +139,7 @@ describe('LibrariesService Integration Tests', () => {
       await service.create({
         name: 'Second',
         path: '/test/path/second',
-        mediaType: 'TV',
+        mediaType: 'TV_SHOW',
         nodeId: testNode.id,
       });
 

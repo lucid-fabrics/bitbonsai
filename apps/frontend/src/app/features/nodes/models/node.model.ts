@@ -29,3 +29,18 @@ export interface Node {
   createdAt: string;
   activeJobCount?: number;
 }
+
+/**
+ * Current Node Information
+ *
+ * Represents the currently running node instance.
+ * Used to determine UI restrictions based on node role.
+ */
+export interface CurrentNode {
+  id: string;
+  name: string;
+  role: NodeRole;
+  status: NodeStatus;
+  version: string;
+  acceleration: AccelerationType;
+}

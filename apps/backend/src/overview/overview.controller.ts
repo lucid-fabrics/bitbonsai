@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiOperation,
@@ -15,6 +16,7 @@ import { OverviewService } from './overview.service';
  * Returns all key statistics in a single optimized API call.
  */
 @ApiTags('overview')
+@ApiBearerAuth('JWT-auth')
 @Controller('overview')
 export class OverviewController {
   constructor(private readonly overviewService: OverviewService) {}

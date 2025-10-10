@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
-import { LibrariesClient } from '../services/libraries.client';
+import { LibrariesClient } from '../../../core/clients/libraries.client';
 import { LibrariesActions } from './libraries.actions';
 import { LibrariesEffects } from './libraries.effects';
 

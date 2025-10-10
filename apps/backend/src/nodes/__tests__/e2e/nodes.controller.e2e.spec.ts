@@ -85,7 +85,7 @@ describe('NodesController (E2E)', () => {
             role: 'LINKED',
             status: 'OFFLINE',
             version: '1.0.0',
-            acceleration: 'GPU',
+            acceleration: 'NVIDIA',
             apiKey: 'key2',
             lastHeartbeat: new Date(),
             licenseId: testLicense.id,
@@ -211,7 +211,7 @@ describe('NodesController (E2E)', () => {
       const pairDto = {
         name: 'Linked Node',
         version: '1.0.0',
-        acceleration: 'GPU',
+        acceleration: 'NVIDIA',
         pairingCode: '123456',
       };
 

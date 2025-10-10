@@ -2,18 +2,14 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthService } from '../../health.service';
 
-// Mock execAsync function - must be defined before the mock
-let mockExecAsync: jest.Mock;
+// Create mock exec async function
+const mockExecAsync = jest.fn();
 
 // Mock node:util module
-jest.mock('node:util', () => {
-  const originalModule = jest.requireActual('node:util');
-  mockExecAsync = jest.fn();
-  return {
-    ...originalModule,
-    promisify: jest.fn(() => mockExecAsync),
-  };
-});
+jest.mock('node:util', () => ({
+  ...jest.requireActual('node:util'),
+  promisify: () => mockExecAsync,
+}));
 
 // Mock os module
 jest.mock('node:os', () => ({

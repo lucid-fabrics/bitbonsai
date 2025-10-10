@@ -97,7 +97,7 @@ describe('LibrariesController (E2E)', () => {
           {
             name: 'Library 2',
             path: '/test/lib2',
-            mediaType: 'TV',
+            mediaType: 'TV_SHOW',
             nodeId: testNode.id,
           },
         ],

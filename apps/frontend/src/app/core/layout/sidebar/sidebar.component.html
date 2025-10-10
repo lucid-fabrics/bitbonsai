@@ -4,27 +4,27 @@
       <span class="logo-icon">🌳</span>
       <span class="logo-text">BitBonsai</span>
     </div>
-    @if (currentNode()) {
-      <div class="node-role-badge" [class.main-node]="isMainNode()" [class.child-node]="isLinkedNode()">
+    @if (currentNode$ | async; as currentNode) {
+      <div
+        class="node-role-badge"
+        [class.main-node]="isMainNode$ | async"
+        [class.child-node]="isLinkedNode$ | async"
+      >
         <div class="role-label">
-          {{ isMainNode() ? '⭐ MAIN NODE' : '🔗 CHILD NODE' }}
+          {{ (isMainNode$ | async) ? '⭐ MAIN NODE' : '🔗 CHILD NODE' }}
         </div>
-        @if (isLinkedNode() && mainNode()) {
-          <div class="main-node-info">
-            Connected to: {{ mainNode()?.name }}
-          </div>
+        @if (isLinkedNode$ | async) {
+          @if (mainNode$ | async; as mainNode) {
+            <div class="main-node-info">Connected to: {{ mainNode.name }}</div>
+          }
         }
       </div>
     }
   </div>
 
   <nav class="sidebar-nav">
-    @for (item of menuItems(); track item.route) {
-      <a
-        [routerLink]="item.route"
-        routerLinkActive="active"
-        class="nav-item"
-      >
+    @for (item of menuItems$ | async; track item.route) {
+      <a [routerLink]="item.route" routerLinkActive="active" class="nav-item">
         <fa-icon [icon]="item.icon" class="nav-icon"></fa-icon>
         <span class="nav-label">{{ item.label }}</span>
       </a>

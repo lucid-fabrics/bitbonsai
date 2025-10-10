@@ -3,10 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
+import { OverviewClient } from '../../core/clients/overview.client';
 import { configureFontAwesome } from '../../core/config/font-awesome.config';
 import type { OverviewModel } from './models/overview.model';
 import { OverviewComponent } from './overview.page';
-import { OverviewClient } from './services/overview.client';
 
 describe('OverviewComponent', () => {
   let component: OverviewComponent;
@@ -67,27 +67,90 @@ describe('OverviewComponent', () => {
       expect(component).toBeTruthy();
     });
 
-    it('should initialize signals', () => {
-      expect(component.overviewData()).toBeNull();
-      expect(component.isLoading()).toBe(true);
-      expect(component.error()).toBeNull();
+    it('should initialize observables', (done) => {
+      // Set initial state to match expectations
+      _store.setState({
+        overview: {
+          data: null,
+          loading: true,
+          error: null,
+        },
+      });
+
+      // Test observables
+      component.overviewData$.subscribe((data) => {
+        expect(data).toBeNull();
+      });
+
+      component.isLoading$.subscribe((loading) => {
+        expect(loading).toBe(true);
+      });
+
+      component.error$.subscribe((error) => {
+        expect(error).toBeNull();
+        done();
+      });
     });
   });
 
-  describe('Computed Signals', () => {
-    it('should calculate hasData', () => {
-      expect(component.hasData()).toBe(false);
-      component.overviewData.set(mockOverview);
-      expect(component.hasData()).toBe(true);
+  describe('Computed Observables', () => {
+    it('should calculate hasData', (done) => {
+      // First test with no data
+      _store.setState({
+        overview: {
+          data: null,
+          loading: false,
+          error: null,
+        },
+      });
+
+      component.hasData$.subscribe((hasData) => {
+        expect(hasData).toBe(false);
+      });
+
+      // Then test with data
+      _store.setState({
+        overview: {
+          data: mockOverview,
+          loading: false,
+          error: null,
+        },
+      });
+
+      component.hasData$.subscribe((hasData) => {
+        expect(hasData).toBe(true);
+        done();
+      });
     });
 
-    it('should calculate totalQueueItems', () => {
-      component.overviewData.set(mockOverview);
-      expect(component.totalQueueItems()).toBe(115); // 10+2+100+3
+    it('should calculate totalQueueItems', (done) => {
+      _store.setState({
+        overview: {
+          data: mockOverview,
+          loading: false,
+          error: null,
+        },
+      });
+
+      component.totalQueueItems$.subscribe((total) => {
+        expect(total).toBe(115); // 10+2+100+3
+        done();
+      });
     });
 
-    it('should return 0 for totalQueueItems when no data', () => {
-      expect(component.totalQueueItems()).toBe(0);
+    it('should return 0 for totalQueueItems when no data', (done) => {
+      _store.setState({
+        overview: {
+          data: null,
+          loading: false,
+          error: null,
+        },
+      });
+
+      component.totalQueueItems$.subscribe((total) => {
+        expect(total).toBe(0);
+        done();
+      });
     });
   });
 

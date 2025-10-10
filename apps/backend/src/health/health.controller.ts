@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from '../auth/guards/public.decorator';
 import type { BasicHealthDto } from './dto/basic-health.dto';
 import type { DetailedHealthDto } from './dto/detailed-health.dto';
 import type { LivenessDto } from './dto/liveness.dto';
@@ -8,6 +9,7 @@ import { HealthService } from './health.service';
 
 @ApiTags('health')
 @Controller('health')
+@Public()
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 

@@ -1,7 +1,7 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { QueueClient } from '../../core/clients/queue.client';
 import { QueueComponent } from './queue.page';
-import { QueueClient } from './services/queue.client';
 
 describe('QueueComponent', () => {
   let component: QueueComponent;

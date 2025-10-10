@@ -13,9 +13,13 @@ describe('FileWatcherService', () => {
     id: 'test-lib-1',
     name: 'Test Library',
     path: '/media/test',
+    mediaType: 'MOVIE',
     nodeId: 'test-node-1',
     enabled: true,
     watchEnabled: true,
+    lastScanAt: null,
+    totalFiles: 0,
+    totalSizeBytes: BigInt(0),
     createdAt: new Date(),
     updatedAt: new Date(),
   };

@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MediaType } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 /**
  * DTO for creating a new library
@@ -19,11 +27,20 @@ export class CreateLibraryDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Absolute path to the library folder on the node filesystem',
+    description:
+      'Absolute path to the library folder on the node filesystem (no path traversal allowed)',
     example: '/mnt/user/media/Movies',
   })
   @IsNotEmpty()
   @IsString()
+  // SECURITY: Prevent path traversal attacks
+  // - Must be an absolute path (starts with /)
+  // - Cannot contain .. (parent directory references)
+  // - Cannot contain consecutive slashes
+  // - Only allows alphanumeric, dash, underscore, dot, and forward slash
+  @Matches(/^\/[a-zA-Z0-9/_\-.]+$/, {
+    message: 'Path must be an absolute path without path traversal sequences (..)',
+  })
   path!: string;
 
   @ApiProperty({

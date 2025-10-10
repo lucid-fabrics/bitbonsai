@@ -503,7 +503,7 @@ describe('NodesService', () => {
 
     beforeEach(() => {
       // Clear NODE_ID environment variable before each test
-      process.env.NODE_ID = undefined;
+      delete process.env.NODE_ID;
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {

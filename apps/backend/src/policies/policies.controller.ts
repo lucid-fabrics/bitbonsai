@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiNoContentResponse,
@@ -28,6 +29,7 @@ import type { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PoliciesService } from './policies.service';
 
 @ApiTags('policies')
+@ApiBearerAuth('JWT-auth')
 @Controller('policies')
 export class PoliciesController {
   constructor(private readonly policiesService: PoliciesService) {}

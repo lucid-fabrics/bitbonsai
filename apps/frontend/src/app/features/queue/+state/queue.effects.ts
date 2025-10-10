@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { QueueClient } from '../services/queue.client';
+import { QueueClient } from '../../../core/clients/queue.client';
 import { QueueActions } from './queue.actions';
 
 @Injectable()

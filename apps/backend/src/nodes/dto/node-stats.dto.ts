@@ -45,13 +45,6 @@ export class NodeStatsDto {
   acceleration!: AccelerationType;
 
   @ApiProperty({
-    description: 'API key for node authentication (only shown once during registration)',
-    example: 'bb_a1b2c3d4e5f6...',
-    required: false,
-  })
-  apiKey?: string;
-
-  @ApiProperty({
     description: 'Timestamp of last heartbeat received from the node',
     example: '2025-10-01T12:34:56.789Z',
   })

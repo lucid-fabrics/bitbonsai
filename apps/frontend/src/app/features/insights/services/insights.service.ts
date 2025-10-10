@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { InsightsClient } from '../../../core/clients/insights.client';
 import { CodecDistributionBO } from '../bos/codec-distribution.bo';
 import { InsightsStatsBO } from '../bos/insights-stats.bo';
 import { NodePerformanceBO } from '../bos/node-performance.bo';
 import { SavingsTrendBO } from '../bos/savings-trend.bo';
-import { InsightsClient } from './insights.client';
 
 /**
  * Service for insights-related business logic

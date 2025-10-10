@@ -42,6 +42,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# SECURITY: Create non-privileged user to run the application
+# Running as root is a security risk - use dedicated user instead
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
 # Install production dependencies only
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
@@ -52,8 +57,12 @@ COPY --from=backend-builder /app/dist/apps/backend ./dist/apps/backend
 # Copy built frontend from builder
 COPY --from=frontend-builder /app/dist/apps/frontend ./dist/apps/frontend
 
-# Create media and downloads directories
-RUN mkdir -p /media /downloads
+# Create media and downloads directories with correct permissions
+RUN mkdir -p /media /downloads /app/data && \
+    chown -R nodejs:nodejs /app /media /downloads
+
+# SECURITY: Switch to non-privileged user
+USER nodejs
 
 # Expose ports
 EXPOSE 3000 4200
