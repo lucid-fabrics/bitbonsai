@@ -1,4 +1,4 @@
-import { LogLevel } from './log-level.type';
+import { LogLevel } from './log-level.enum';
 
 export interface UpdateSystemSettings {
   ffmpegPath?: string;

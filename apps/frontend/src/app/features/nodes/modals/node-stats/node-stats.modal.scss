@@ -1,4 +1,5 @@
-@import '../../../../../styles/variables';
+@use '../../../../../styles/variables' as *;
+@use 'sass:color';
 
 // Animations
 @keyframes fadeIn {
@@ -50,7 +51,7 @@
 
 // Modal Container
 .modal-container {
-  background: linear-gradient(135deg, $bg-secondary 0%, darken($bg-secondary, 2%) 100%);
+  background: linear-gradient(135deg, $bg-secondary 0%, color.adjust($bg-secondary, $lightness: -2%) 100%);
   border: 1px solid $border-secondary;
   border-radius: $border-radius-lg;
   max-width: 1000px;
@@ -80,7 +81,7 @@
   .header-icon {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, $accent-primary 0%, darken($accent-primary, 10%) 100%);
+    background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -10%) 100%);
     border-radius: $border-radius-md;
     display: flex;
     align-items: center;
@@ -145,7 +146,7 @@
     border-radius: 4px;
 
     &:hover {
-      background: lighten($border-secondary, 10%);
+      background: color.adjust($border-secondary, $lightness: 10%);
     }
   }
 }
@@ -340,7 +341,7 @@
 }
 
 .activity-card {
-  background: linear-gradient(135deg, darken($bg-tertiary, 2%) 0%, $bg-tertiary 100%);
+  background: linear-gradient(135deg, color.adjust($bg-tertiary, $lightness: -2%) 0%, $bg-tertiary 100%);
   border: 1px solid $border-primary;
   border-radius: $border-radius-md;
   padding: $spacing-xl;
@@ -359,7 +360,7 @@
   .activity-icon {
     width: 64px;
     height: 64px;
-    background: linear-gradient(135deg, $accent-primary 0%, darken($accent-primary, 10%) 100%);
+    background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -10%) 100%);
     border-radius: $border-radius-md;
     display: flex;
     align-items: center;
@@ -429,7 +430,7 @@
     border-bottom: 1px solid $border-primary;
 
     .tier-badge {
-      background: linear-gradient(135deg, $accent-primary 0%, darken($accent-primary, 10%) 100%);
+      background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -10%) 100%);
       color: $text-dark;
       padding: 0.5rem 1.5rem;
       border-radius: $border-radius-sm;
@@ -636,7 +637,7 @@
     letter-spacing: 0.5px;
 
     &.btn-primary {
-      background: linear-gradient(135deg, $accent-primary 0%, darken($accent-primary, 5%) 100%);
+      background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -5%) 100%);
       color: $text-dark;
       box-shadow: 0 2px 8px rgba($accent-primary, 0.3);
 

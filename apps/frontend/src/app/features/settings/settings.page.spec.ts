@@ -4,7 +4,7 @@ import { of, throwError } from 'rxjs';
 import type { EnvironmentInfo } from './models/environment-info.model';
 import type { ActivateLicense, License } from './models/license.model';
 import { LicenseTier } from './models/license.model';
-import { LogLevel } from './models/log-level.type';
+import { LogLevel } from './models/log-level.enum';
 import type { SystemSettings } from './models/system-settings.model';
 import { LicenseService } from './services/license.service';
 import { SettingsService } from './services/settings.service';

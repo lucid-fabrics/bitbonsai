@@ -47,6 +47,7 @@ export interface FfmpegProgress {
  * - Event-driven progress updates
  * - Atomic file replacement
  * - Error handling and recovery
+ * - SECURITY: FFmpeg flag whitelisting to prevent command injection
  *
  * Progress Tracking:
  * - Parses ffmpeg stderr output using regex
@@ -70,10 +71,96 @@ export class FfmpegService {
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
   private readonly progressRegex = /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
 
+  /**
+   * SECURITY: Whitelist of allowed FFmpeg flags
+   * Prevents command injection by only allowing safe, predefined flags
+   */
+  private readonly ALLOWED_FFMPEG_FLAGS = new Set([
+    // Video encoding options
+    '-preset',
+    '-crf',
+    '-maxrate',
+    '-bufsize',
+    '-pix_fmt',
+    '-profile:v',
+    '-level',
+    '-g',
+    '-keyint_min',
+    '-sc_threshold',
+
+    // Audio encoding options
+    '-c:a',
+    '-b:a',
+    '-ar',
+    '-ac',
+
+    // Filtering options (safe filters only)
+    '-vf',
+    '-af',
+
+    // Format options
+    '-f',
+    '-movflags',
+
+    // Subtitle options
+    '-c:s',
+
+    // Metadata options
+    '-metadata',
+    '-map_metadata',
+
+    // Threading options
+    '-threads',
+
+    // Quality/compression options
+    '-qmin',
+    '-qmax',
+    '-qdiff',
+  ]);
+
   constructor(
     private readonly queueService: QueueService,
     private readonly eventEmitter: EventEmitter2
   ) {}
+
+  /**
+   * SECURITY: Validate and filter FFmpeg flags
+   * Only allows whitelisted flags to prevent command injection
+   *
+   * @param flags - Array of FFmpeg flags from policy advanced settings
+   * @returns Filtered array of safe flags
+   * @throws Error if any disallowed flags are found
+   */
+  private validateFfmpegFlags(flags: string[]): string[] {
+    const validatedFlags: string[] = [];
+
+    for (let i = 0; i < flags.length; i++) {
+      const flag = flags[i];
+
+      // Check if flag is in whitelist
+      if (!this.ALLOWED_FFMPEG_FLAGS.has(flag)) {
+        this.logger.warn(`Blocked disallowed FFmpeg flag: ${flag}`);
+        throw new Error(`FFmpeg flag '${flag}' is not allowed for security reasons`);
+      }
+
+      validatedFlags.push(flag);
+
+      // If flag takes a value, include the next argument
+      // (e.g., "-preset fast" -> ["-preset", "fast"])
+      if (i + 1 < flags.length && !flags[i + 1].startsWith('-')) {
+        const value = flags[i + 1];
+        // SECURITY: Sanitize value to prevent command injection
+        // Only allow alphanumeric, dash, underscore, colon, dot, and comma
+        if (!/^[a-zA-Z0-9\-_:.,=]+$/.test(value)) {
+          throw new Error(`FFmpeg flag value '${value}' contains invalid characters`);
+        }
+        validatedFlags.push(value);
+        i++; // Skip next iteration since we already processed the value
+      }
+    }
+
+    return validatedFlags;
+  }
 
   /**
    * Detect available hardware acceleration
@@ -178,10 +265,18 @@ export class FfmpegService {
     const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
     args.push('-c:a', audioCodec);
 
-    // Additional ffmpeg flags from policy
+    // SECURITY: Validate and add additional ffmpeg flags from policy
     if (advancedSettings.ffmpegFlags) {
       const customFlags = advancedSettings.ffmpegFlags as string[];
-      args.push(...customFlags);
+      try {
+        const validatedFlags = this.validateFfmpegFlags(customFlags);
+        args.push(...validatedFlags);
+      } catch (error) {
+        this.logger.error(
+          `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        throw error;
+      }
     }
 
     // Progress reporting

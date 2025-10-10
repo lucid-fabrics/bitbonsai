@@ -8,6 +8,8 @@ import { provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import { CurrentNodeEffects } from './app/core/+state/current-node.effects';
+import { currentNodeReducer } from './app/core/+state/current-node.reducer';
 import { apiErrorInterceptor } from './app/core/interceptors/api-error.interceptor';
 import { MediaStatsEffects } from './app/features/dashboard/+state/dashboard.effects';
 import { mediaStatsReducer } from './app/features/dashboard/+state/dashboard.reducer';
@@ -32,6 +34,9 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptors([apiErrorInterceptor])),
     provideAnimations(),
     provideStore({
+      // Core state
+      currentNode: currentNodeReducer,
+      // Feature states
       mediaStats: mediaStatsReducer,
       policies: policiesReducer,
       libraries: librariesReducer,
@@ -42,6 +47,9 @@ bootstrapApplication(AppComponent, {
       settings: settingsReducer,
     }),
     provideEffects([
+      // Core effects
+      CurrentNodeEffects,
+      // Feature effects
       MediaStatsEffects,
       PoliciesEffects,
       LibrariesEffects,

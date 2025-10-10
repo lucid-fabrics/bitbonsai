@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
@@ -27,6 +28,7 @@ import { UpdateLibraryDto } from './dto/update-library.dto';
 import { LibrariesService } from './libraries.service';
 
 @ApiTags('libraries')
+@ApiBearerAuth('JWT-auth')
 @Controller('libraries')
 export class LibrariesController {
   constructor(private readonly librariesService: LibrariesService) {}

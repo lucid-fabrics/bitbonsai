@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { MediaStatsClient } from '../../../core/clients/media-stats.client';
 import { MediaStatsBo } from '../bos/media-stats.bo';
-import { MediaStatsClient } from './media-stats.client';
 
 @Injectable({
   providedIn: 'root',

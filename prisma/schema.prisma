@@ -24,6 +24,11 @@ datasource db {
 // ENUMS
 // ============================================================================
 
+enum UserRole {
+  ADMIN
+  USER
+}
+
 enum LicenseTier {
   FREE
   PATREON
@@ -89,6 +94,32 @@ enum JobStage {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// ============================================================================
+// USER MODEL (Authentication & Authorization)
+// ============================================================================
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String // bcrypt hashed password
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+
+  // Refresh token for JWT token rotation
+  refreshToken String?
+  refreshTokenExpiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([username])
+  @@index([email])
+  @@index([isActive])
+  @@map("users")
 }
 
 // ============================================================================

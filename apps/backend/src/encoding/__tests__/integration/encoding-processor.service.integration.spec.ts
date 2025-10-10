@@ -1,5 +1,7 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Library, License, Node, Policy } from '@prisma/client';
+import { FileWatcherService } from '../../../file-watcher/file-watcher.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -32,7 +34,16 @@ describe('EncodingProcessorService Integration Tests', () => {
         QueueService,
         FfmpegService,
         LibrariesService,
+        FileWatcherService,
         PrismaService,
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: jest.fn(),
+            on: jest.fn(),
+            removeListener: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

@@ -2,11 +2,9 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   inject,
   type OnDestroy,
   type OnInit,
-  signal,
 } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -19,15 +17,20 @@ import {
   faSpinner,
   faTimes,
 } from '@fortawesome/pro-solid-svg-icons';
-import { interval, Subject } from 'rxjs';
-import { startWith, switchMap, takeUntil } from 'rxjs/operators';
+import { Store } from '@ngrx/store';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
-import type { Node } from '../nodes/models/node.model';
-import { NodesClient } from '../nodes/services/nodes.client';
-import type { EnvironmentInfo } from '../settings/models/environment-info.model';
-import { SettingsService } from '../settings/services/settings.service';
-import type { OverviewModel } from './models/overview.model';
-import { OverviewClient } from './services/overview.client';
+import { OverviewActions } from './+state/overview.actions';
+import {
+  selectChildNodes,
+  selectEnvironmentInfo,
+  selectError,
+  selectHasData,
+  selectIsLoading,
+  selectMainNode,
+  selectNodes,
+  selectOverviewData,
+  selectTotalQueueItems,
+} from './+state/overview.selectors';
 
 @Component({
   selector: 'app-overview',
@@ -38,28 +41,20 @@ import { OverviewClient } from './services/overview.client';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OverviewComponent implements OnInit, OnDestroy {
-  private readonly overviewApi = inject(OverviewClient);
-  private readonly settingsService = inject(SettingsService);
-  private readonly nodesClient = inject(NodesClient);
-  private readonly destroy$ = new Subject<void>();
+  private readonly store = inject(Store);
 
-  // Signals for reactive state
-  readonly overviewData = signal<OverviewModel | null>(null);
-  readonly environmentInfo = signal<EnvironmentInfo | null>(null);
-  readonly nodes = signal<Node[]>([]);
-  readonly isLoading = signal<boolean>(true);
-  readonly error = signal<string | null>(null);
+  // Observables from NgRx store
+  readonly overviewData$ = this.store.select(selectOverviewData);
+  readonly environmentInfo$ = this.store.select(selectEnvironmentInfo);
+  readonly nodes$ = this.store.select(selectNodes);
+  readonly isLoading$ = this.store.select(selectIsLoading);
+  readonly error$ = this.store.select(selectError);
 
-  // Computed signals
-  readonly hasData = computed(() => this.overviewData() !== null);
-  readonly totalQueueItems = computed(() => {
-    const data = this.overviewData();
-    if (!data) return 0;
-    const queue = data.queue_summary;
-    return queue.queued + queue.encoding + queue.completed + queue.failed;
-  });
-  readonly mainNode = computed(() => this.nodes().find((n) => n.role === 'MAIN') || null);
-  readonly childNodes = computed(() => this.nodes().filter((n) => n.role === 'LINKED'));
+  // Computed observables (replacing computed signals)
+  readonly hasData$ = this.store.select(selectHasData);
+  readonly totalQueueItems$ = this.store.select(selectTotalQueueItems);
+  readonly mainNode$ = this.store.select(selectMainNode);
+  readonly childNodes$ = this.store.select(selectChildNodes);
 
   // Font Awesome icons
   readonly icons = {
@@ -74,58 +69,13 @@ export class OverviewComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
-    this.loadEnvironmentInfo();
-    this.loadNodes();
-    this.startPolling();
+    // Initialize overview - loads all data and starts polling
+    this.store.dispatch(OverviewActions.initOverview());
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  private loadEnvironmentInfo(): void {
-    this.settingsService.getEnvironmentInfo().subscribe({
-      next: (info) => {
-        this.environmentInfo.set(info);
-      },
-      error: (err) => {
-        console.error('Failed to load environment info:', err);
-      },
-    });
-  }
-
-  private loadNodes(): void {
-    this.nodesClient.getNodes().subscribe({
-      next: (nodes) => {
-        this.nodes.set(nodes);
-      },
-      error: (err) => {
-        console.error('Failed to load nodes:', err);
-      },
-    });
-  }
-
-  private startPolling(): void {
-    // Poll every 5 seconds
-    interval(5000)
-      .pipe(
-        startWith(0), // Start immediately
-        switchMap(() => this.overviewApi.getOverview()),
-        takeUntil(this.destroy$)
-      )
-      .subscribe({
-        next: (data) => {
-          this.overviewData.set(data);
-          this.isLoading.set(false);
-          this.error.set(null);
-        },
-        error: (err) => {
-          this.error.set('Failed to load overview data');
-          this.isLoading.set(false);
-          console.error('Overview polling error:', err);
-        },
-      });
+    // Stop polling when component is destroyed
+    this.store.dispatch(OverviewActions.stopPolling());
   }
 
   formatBytes(gb: number): string {

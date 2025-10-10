@@ -69,10 +69,11 @@ describe('JobCleanupService', () => {
     prisma = module.get<PrismaService>(PrismaService);
 
     // Suppress logger output during tests
-    jest.spyOn(service.logger, 'log').mockImplementation();
-    jest.spyOn(service.logger, 'warn').mockImplementation();
-    jest.spyOn(service.logger, 'debug').mockImplementation();
-    jest.spyOn(service.logger, 'error').mockImplementation();
+    // Access private logger via bracket notation
+    jest.spyOn(service['logger'], 'log').mockImplementation();
+    jest.spyOn(service['logger'], 'warn').mockImplementation();
+    jest.spyOn(service['logger'], 'debug').mockImplementation();
+    jest.spyOn(service['logger'], 'error').mockImplementation();
   });
 
   afterEach(() => {

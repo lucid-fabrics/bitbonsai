@@ -423,16 +423,18 @@ describe('EncodingProcessorService', () => {
   describe('metrics calculation', () => {
     it('should calculate correct savings percentages', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      // statSync is called 2 times: line 237 (before), line 277 (after)
-      const statSyncMock = fs.statSync as jest.Mock;
-      statSyncMock.mockClear();
-      let callCount = 0;
-      statSyncMock.mockImplementation((path: string) => {
-        callCount++;
-        if (callCount === 1) {
-          return { size: 1000000000 }; // Line 237 - before (job.filePath)
+      // Use mockImplementation to return correct size based on file path
+      (fs.statSync as jest.Mock).mockImplementation((filePath: string) => {
+        // Original file path (before size) - called first
+        if (filePath === '/media/test-video.mkv') {
+          return { size: 1000000000 };
         }
-        return { size: 750000000 }; // Line 277 - after (tmpPath)
+        // Temporary file path (after size) - called second to get encoded file size
+        if (filePath === '/media/.test-video.mkv.tmp') {
+          return { size: 750000000 };
+        }
+        // Fallback
+        return { size: 0 };
       });
       (fs.renameSync as jest.Mock).mockImplementation(() => {
         // Mock implementation - no operation needed

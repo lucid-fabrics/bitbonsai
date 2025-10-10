@@ -136,7 +136,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Default Test',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -152,7 +152,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Custom Args Test',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
         customFfmpegArgs: customArgs,
       });
@@ -172,7 +172,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'First Policy',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -196,7 +196,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Policy with Jobs',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -232,7 +232,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Test Policy',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -254,7 +254,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Original Name',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -279,7 +279,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Test',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -296,7 +296,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'To Delete',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 
@@ -318,7 +318,7 @@ describe('PoliciesService Integration Tests', () => {
         name: 'Policy with Jobs',
         targetCodec: 'HEVC',
         crf: 23,
-        preset: 'medium',
+        preset: 'BALANCED_HEVC',
         libraryId: testLibrary.id,
       });
 

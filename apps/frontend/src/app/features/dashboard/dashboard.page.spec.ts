@@ -10,10 +10,10 @@ import {
 } from '@fortawesome/pro-solid-svg-icons';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
+import { MediaStatsClient } from '../../core/clients/media-stats.client';
 import { MediaStatsActions } from './+state/dashboard.actions';
 import { MediaStatsSelectors } from './+state/dashboard.selectors';
 import { DashboardComponent } from './dashboard.page';
-import { MediaStatsClient } from './services/media-stats.client';
 
 describe('DashboardComponent', () => {
   let component: DashboardComponent;

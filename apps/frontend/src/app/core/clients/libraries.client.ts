@@ -1,7 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../models/library.model';
+import type {
+  CreateLibraryDto,
+  Library,
+  UpdateLibraryDto,
+} from '../../features/libraries/models/library.model';
 
 @Injectable({
   providedIn: 'root',

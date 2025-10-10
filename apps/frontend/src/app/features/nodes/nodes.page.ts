@@ -11,6 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { interval, type Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+import { NodesClient } from '../../core/clients/nodes.client';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -19,7 +20,6 @@ import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.direc
 import { NodeStatsModalComponent } from './modals/node-stats/node-stats.modal';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
-import { NodesClient } from './services/nodes.client';
 
 enum PairingStep {
   INSTRUCTIONS = 1,

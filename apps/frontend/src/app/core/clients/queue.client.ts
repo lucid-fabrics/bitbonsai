@@ -1,11 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { combineLatest, map, type Observable } from 'rxjs';
-import { QueueJobBo } from '../bos/queue-job.bo';
-import type { QueueFilters } from '../models/queue-filters.model';
-import type { QueueJobApiModel } from '../models/queue-job-api.model';
-import type { QueueResponse } from '../models/queue-response.model';
-import type { QueueStats } from '../models/queue-stats.model';
+import { QueueJobBo } from '../../features/queue/bos/queue-job.bo';
+import type { QueueFilters } from '../../features/queue/models/queue-filters.model';
+import type { QueueJobApiModel } from '../../features/queue/models/queue-job-api.model';
+import type { QueueResponse } from '../../features/queue/models/queue-response.model';
+import type { QueueStats } from '../../features/queue/models/queue-stats.model';
 
 @Injectable({
   providedIn: 'root',

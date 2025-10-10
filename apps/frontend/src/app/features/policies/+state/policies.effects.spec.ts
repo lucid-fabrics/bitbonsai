@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import type { Action } from '@ngrx/store';
 import { type Observable, of, throwError } from 'rxjs';
-import { PolicyClient } from '../services/policy.client';
+import { PolicyClient } from '../../../core/clients/policy.client';
 import { PoliciesActions } from './policies.actions';
 import { PoliciesEffects } from './policies.effects';
 

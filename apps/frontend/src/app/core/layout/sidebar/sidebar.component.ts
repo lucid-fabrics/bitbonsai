@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -12,7 +12,15 @@ import {
   faServer,
   faSliders,
 } from '@fortawesome/pro-solid-svg-icons';
-import { NodeService } from '../../services/node.service';
+import { Store } from '@ngrx/store';
+import { map } from 'rxjs/operators';
+import { CurrentNodeActions } from '../../+state/current-node.actions';
+import {
+  selectCurrentNode,
+  selectIsLinkedNode,
+  selectIsMainNode,
+  selectMainNode,
+} from '../../+state/current-node.selectors';
 
 interface MenuItem {
   label: string;
@@ -30,7 +38,7 @@ interface MenuItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent implements OnInit {
-  private readonly nodeService = inject(NodeService);
+  private readonly store = inject(Store);
 
   private readonly allMenuItems: MenuItem[] = [
     { label: 'Overview', icon: faChartLine, route: '/overview', mainNodeOnly: true },
@@ -43,54 +51,43 @@ export class SidebarComponent implements OnInit {
   ];
 
   /**
-   * Reactive menu items that filter based on node role
+   * Reactive menu items that filter based on node role (using NgRx selector)
    *
    * - MAIN nodes: See all menu items
    * - LINKED nodes: Only see Queue and Settings
    */
-  readonly menuItems = computed(() => {
-    const isMainNode = this.nodeService.isMainNode();
-
-    if (isMainNode) {
-      return this.allMenuItems;
-    }
-
-    // LINKED nodes only see non-restricted items
-    return this.allMenuItems.filter((item) => !item.mainNodeOnly);
-  });
-
-  /**
-   * Expose current node signal for template
-   */
-  readonly currentNode = this.nodeService.getNodeSignal();
+  readonly menuItems$ = this.store.select(selectIsMainNode).pipe(
+    map((isMainNode) => {
+      if (isMainNode) {
+        return this.allMenuItems;
+      }
+      // LINKED nodes only see non-restricted items
+      return this.allMenuItems.filter((item) => !item.mainNodeOnly);
+    })
+  );
 
   /**
-   * Expose main node signal for template
+   * Current node observable
    */
-  readonly mainNode = this.nodeService.getMainNodeSignal();
+  readonly currentNode$ = this.store.select(selectCurrentNode);
 
   /**
-   * Check if current node is MAIN
+   * Main node observable
    */
-  isMainNode(): boolean {
-    return this.nodeService.isMainNode();
-  }
+  readonly mainNode$ = this.store.select(selectMainNode);
 
   /**
-   * Check if current node is LINKED (child)
+   * Is main node observable
    */
-  isLinkedNode(): boolean {
-    return this.nodeService.isLinkedNode();
-  }
+  readonly isMainNode$ = this.store.select(selectIsMainNode);
+
+  /**
+   * Is linked node observable
+   */
+  readonly isLinkedNode$ = this.store.select(selectIsLinkedNode);
 
   ngOnInit(): void {
-    // Fetch MAIN node info if this is a LINKED node
-    if (this.isLinkedNode()) {
-      this.nodeService.getMainNode().subscribe({
-        error: (err) => {
-          console.error('Failed to fetch MAIN node information:', err);
-        },
-      });
-    }
+    // Load current node on initialization
+    this.store.dispatch(CurrentNodeActions.loadCurrentNode());
   }
 }

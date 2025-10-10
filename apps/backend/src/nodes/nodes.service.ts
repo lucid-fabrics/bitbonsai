@@ -312,6 +312,18 @@ export class NodesService {
   }
 
   /**
+   * Find a node by API key (for authentication)
+   *
+   * @param apiKey API key to search for
+   * @returns Node details or null if not found
+   */
+  async findByApiKey(apiKey: string): Promise<Node | null> {
+    return this.prisma.node.findUnique({
+      where: { apiKey },
+    });
+  }
+
+  /**
    * Get the current node's information
    *
    * Determines which node this instance is by checking NODE_ID environment variable.
@@ -385,14 +397,31 @@ export class NodesService {
   }
 
   /**
-   * Generate a 6-digit pairing token
+   * Generate a secure 6-digit pairing token
+   *
+   * SECURITY FIX: Uses crypto.randomBytes instead of Math.random()
+   * - Cryptographically secure random number generation
+   * - Prevents predictable token generation
+   * - Uses rejection sampling to ensure uniform distribution
    *
    * Format: 000000-999999 (6 digits)
    *
    * @returns 6-digit pairing code
    */
   private generatePairingToken(): string {
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
-    return token;
+    // SECURITY: Use crypto.randomBytes for cryptographically secure random numbers
+    // Generate random number in range [100000, 999999] using rejection sampling
+    let token: number;
+    do {
+      // Generate 4 random bytes (32 bits)
+      const buffer = randomBytes(4);
+      // Convert to unsigned 32-bit integer
+      token = buffer.readUInt32BE(0);
+      // Use modulo to get number in range [0, 999999], then add 100000 to get [100000, 999999]
+      // Rejection sampling ensures uniform distribution
+    } while (token > 4294967295 - (4294967295 % 900000)); // Reject values that would cause bias
+
+    token = (token % 900000) + 100000;
+    return token.toString();
   }
 }

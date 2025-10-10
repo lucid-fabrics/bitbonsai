@@ -1,6 +1,10 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
+import type {
+  PairRequest,
+  PairResponse,
+  RegisterResponse,
+} from '../../../core/clients/nodes.client';
 import type { Node } from '../models/node.model';
-import type { PairRequest, PairResponse, RegisterResponse } from '../services/nodes.client';
 
 export const NodesActions = createActionGroup({
   source: 'Nodes',

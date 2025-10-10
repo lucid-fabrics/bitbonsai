@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { PolicyClient } from '../../../core/clients/policy.client';
 import { PolicyBo } from '../bos/policy.bo';
 import type {
   CreatePolicyRequest,
   PresetInfoModel,
   UpdatePolicyRequest,
 } from '../models/policy.model';
-import { PolicyClient } from './policy.client';
 
 @Injectable({
   providedIn: 'root',

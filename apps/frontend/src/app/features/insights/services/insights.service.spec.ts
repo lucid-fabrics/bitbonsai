@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { InsightsClient } from './insights.client';
+import { InsightsClient } from '../../../core/clients/insights.client';
 import { InsightsService } from './insights.service';
 
 describe('InsightsService', () => {

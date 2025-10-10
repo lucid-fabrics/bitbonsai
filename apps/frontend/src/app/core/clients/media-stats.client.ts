@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { FolderFilesModel } from '../models/file-info.model';
-import type { MediaStatsModel } from '../models/media-stats.model';
+import type { FolderFilesModel } from '../../features/dashboard/models/file-info.model';
+import type { MediaStatsModel } from '../../features/dashboard/models/media-stats.model';
 
 @Injectable({ providedIn: 'root' })
 export class MediaStatsClient {

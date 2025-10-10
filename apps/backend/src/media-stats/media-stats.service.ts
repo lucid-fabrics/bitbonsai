@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { readdirSync, statSync } from 'fs';
 import { basename, join } from 'path';
 import type { FileInfoDto, FolderFilesDto } from './dto/file-info.dto';
@@ -246,12 +246,32 @@ export class MediaStatsService {
 
   private getVideoInfo(filePath: string): VideoInfo {
     try {
-      const result = execSync(
-        `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,bit_rate -of json "${filePath}"`,
+      // Use spawnSync with argument array to prevent command injection
+      const result = spawnSync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-select_streams',
+          'v:0',
+          '-show_entries',
+          'stream=codec_name,bit_rate',
+          '-of',
+          'json',
+          filePath, // Safe - no shell interpretation
+        ],
         { timeout: 5000, encoding: 'utf8' }
       );
 
-      const data = JSON.parse(result);
+      if (result.error) {
+        throw new Error(`ffprobe failed: ${result.error.message}`);
+      }
+
+      if (result.status !== 0) {
+        throw new Error(`ffprobe exited with code ${result.status}: ${result.stderr}`);
+      }
+
+      const data = JSON.parse(result.stdout);
       const codec = data.streams?.[0]?.codec_name?.toLowerCase() || 'unknown';
       const bitrate = parseInt(data.streams?.[0]?.bit_rate || '0', 10);
       const size = statSync(filePath).size;
