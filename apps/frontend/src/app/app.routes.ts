@@ -1,12 +1,22 @@
 import type { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 import { mainNodeGuard } from './core/guards/main-node.guard';
+import { setupGuard } from './core/guards/setup.guard';
 
 /**
  * Application Routes
  *
  * Route Access Control:
- * - MAIN nodes: Can access all pages
+ * - Setup: Public (no guards) - first-time setup flow
+ * - Login: Public (setupGuard only) - requires setup to be complete
+ * - All other routes: Require setup completion + authentication (setupGuard + authGuard)
+ * - MAIN nodes: Can access all authenticated pages
  * - LINKED nodes (child nodes): Restricted to queue and settings pages only
+ *
+ * Guard Order:
+ * 1. setupGuard - ensures setup is complete before allowing access
+ * 2. authGuard - ensures user is authenticated
+ * 3. mainNodeGuard - ensures MAIN node for restricted routes
  *
  * Protected Routes (MAIN node only):
  * - overview, libraries, policies, nodes, insights
@@ -18,47 +28,61 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'setup',
+    loadComponent: () => import('./features/setup/setup.page').then((m) => m.SetupComponent),
+    canActivate: [setupGuard],
+    // Setup guard will redirect away if setup is already complete
+  },
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginComponent),
+    canActivate: [setupGuard],
+    // Login requires setup to be complete but no authentication
+  },
+  {
     path: 'overview',
     loadComponent: () =>
       import('./features/overview/overview.page').then((m) => m.OverviewComponent),
-    canActivate: [mainNodeGuard],
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'queue',
     loadComponent: () => import('./features/queue/queue.page').then((m) => m.QueueComponent),
-    // Queue is accessible to both MAIN and LINKED nodes
+    canActivate: [setupGuard, authGuard],
+    // Queue is accessible to both MAIN and LINKED nodes (but requires setup + auth)
   },
   {
     path: 'libraries',
     loadComponent: () =>
       import('./features/libraries/libraries.page').then((m) => m.LibrariesComponent),
-    canActivate: [mainNodeGuard],
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'policies',
     loadComponent: () =>
       import('./features/policies/policies.page').then((m) => m.PoliciesComponent),
-    canActivate: [mainNodeGuard],
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'nodes',
     loadComponent: () => import('./features/nodes/nodes.page').then((m) => m.NodesComponent),
-    canActivate: [mainNodeGuard],
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'insights',
     loadComponent: () =>
       import('./features/insights/insights.page').then((m) => m.InsightsComponent),
-    canActivate: [mainNodeGuard],
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'settings',
     loadComponent: () =>
       import('./features/settings/settings.page').then((m) => m.SettingsComponent),
-    // Settings is accessible to both MAIN and LINKED nodes
+    canActivate: [setupGuard, authGuard],
+    // Settings is accessible to both MAIN and LINKED nodes (but requires setup + auth)
   },
   {
     path: '**',
-    redirectTo: 'queue', // Redirect to queue (accessible by all nodes)
+    redirectTo: 'queue', // Redirect to queue (accessible by all authenticated nodes)
   },
 ];
