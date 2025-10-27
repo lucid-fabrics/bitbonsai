@@ -75,7 +75,8 @@ async function bootstrap() {
 
       // Get allowed origins from environment (comma-separated)
       const allowedOrigins = [
-        'http://localhost:4200', // Development frontend
+        'http://localhost:4200', // Development frontend (default)
+        'http://localhost:4201', // Development frontend (HMR)
         process.env.FRONTEND_URL,
         ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
       ].filter(Boolean) as string[];
