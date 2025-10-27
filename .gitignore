@@ -79,3 +79,8 @@ PRISMA_SCHEMA_COMPLETE.md
 .env
 
 .angular
+
+# Claude Code CLI (local only)
+.claude/
+.specify/
+CLAUDE.md
