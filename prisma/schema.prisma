@@ -97,20 +97,34 @@ enum JobStage {
 }
 
 // ============================================================================
+// SETTINGS MODEL (System Configuration)
+// ============================================================================
+
+model Settings {
+  id                           String   @id @default(cuid())
+  isSetupComplete              Boolean  @default(false)
+  allowLocalNetworkWithoutAuth Boolean  @default(false)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ============================================================================
 // USER MODEL (Authentication & Authorization)
 // ============================================================================
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  email        String   @unique
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
   passwordHash String // bcrypt hashed password
-  role         UserRole @default(USER)
-  isActive     Boolean  @default(true)
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 
   // Refresh token for JWT token rotation
-  refreshToken String?
+  refreshToken          String?
   refreshTokenExpiresAt DateTime?
 
   createdAt DateTime @default(now())
@@ -157,17 +171,17 @@ model License {
 // ============================================================================
 
 model Node {
-  id                String           @id @default(cuid())
-  name              String
-  role              NodeRole
-  status            NodeStatus
-  version           String
-  acceleration      AccelerationType
-  pairingToken      String?          @unique // Used during pairing process, null after paired
-  pairingExpiresAt  DateTime? // Pairing token expiration (10 minutes)
-  apiKey            String           @unique // For node authentication
-  lastHeartbeat     DateTime
-  uptimeSeconds     Int              @default(0)
+  id               String           @id @default(cuid())
+  name             String
+  role             NodeRole
+  status           NodeStatus
+  version          String
+  acceleration     AccelerationType
+  pairingToken     String?          @unique // Used during pairing process, null after paired
+  pairingExpiresAt DateTime? // Pairing token expiration (10 minutes)
+  apiKey           String           @unique // For node authentication
+  lastHeartbeat    DateTime
+  uptimeSeconds    Int              @default(0)
 
   // Relations
   licenseId String

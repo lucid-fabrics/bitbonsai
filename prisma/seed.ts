@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
 const prisma = new PrismaClient();
@@ -29,10 +30,33 @@ async function main() {
   await prisma.library.deleteMany();
   await prisma.node.deleteMany();
   await prisma.license.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.settings.deleteMany();
   console.log('✅ Database cleaned\n');
 
   // ============================================================================
-  // 1. Create Default MAIN Node (Auto-Bootstrap)
+  // 1. Create Default Admin User
+  // ============================================================================
+  console.log('👤 Creating default admin user...');
+
+  const defaultPassword = 'admin';
+  const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+  const defaultUser = await prisma.user.create({
+    data: {
+      username: 'admin',
+      email: 'admin@bitbonsai.local',
+      passwordHash,
+      role: 'ADMIN',
+      isActive: true,
+    },
+  });
+  console.log(`  ✅ Default admin user created: ${defaultUser.username}`);
+  console.log(`     Email: ${defaultUser.email}`);
+  console.log(`     Password: ${defaultPassword}\n`);
+
+  // ============================================================================
+  // 2. Create Default MAIN Node (Auto-Bootstrap)
   // ============================================================================
   console.log('🖥️  Creating default MAIN node...');
 
@@ -130,15 +154,41 @@ async function main() {
   console.log(`  ✅ Default policy created: ${defaultPolicy.name}\n`);
 
   // ============================================================================
+  // 4. Create Default Settings
+  // ============================================================================
+  console.log('⚙️  Creating default settings...');
+
+  const defaultSettings = await prisma.settings.create({
+    data: {
+      isSetupComplete: true, // Seed creates users, so setup is complete
+      allowLocalNetworkWithoutAuth: false,
+    },
+  });
+  console.log(`  ✅ Default settings created`);
+  console.log(
+    `     Setup Status: ${defaultSettings.isSetupComplete ? 'COMPLETE ✓' : 'INCOMPLETE'}`
+  );
+  console.log(
+    `     Local Network Bypass: ${defaultSettings.allowLocalNetworkWithoutAuth ? 'ENABLED ⚠️' : 'DISABLED ✓'}\n`
+  );
+
+  // ============================================================================
   // Summary
   // ============================================================================
   console.log('✅ Seed completed successfully!\n');
   console.log('📋 Summary:');
+  console.log(`   • 1 admin user (username: ${defaultUser.username})`);
   console.log(`   • 1 MAIN node (${defaultNode.name})`);
   console.log(`   • 1 active FREE license`);
   console.log(`   • 1 default universal H.265 policy`);
+  console.log(`   • 1 security settings (local network bypass: disabled)`);
   console.log(`   • 0 libraries (create your first library)`);
   console.log(`   • 0 jobs (jobs will be created automatically)\n`);
+
+  console.log('🔐 DEFAULT CREDENTIALS:');
+  console.log(`   Username: ${defaultUser.username}`);
+  console.log(`   Password: ${defaultPassword}`);
+  console.log(`   Email:    ${defaultUser.email}\n`);
 
   console.log('⭐ DEFAULT POLICY:');
   console.log(`   Name:     "${defaultPolicy.name}"`);
