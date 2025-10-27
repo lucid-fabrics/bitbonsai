@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -10,9 +11,11 @@ import {
   faGear,
   faListCheck,
   faServer,
+  faSignOutAlt,
   faSliders,
 } from '@fortawesome/pro-solid-svg-icons';
 import { Store } from '@ngrx/store';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { CurrentNodeActions } from '../../+state/current-node.actions';
 import {
@@ -21,6 +24,7 @@ import {
   selectIsMainNode,
   selectMainNode,
 } from '../../+state/current-node.selectors';
+import { AuthService } from '../../auth/auth.service';
 
 interface MenuItem {
   label: string;
@@ -39,6 +43,23 @@ interface MenuItem {
 })
 export class SidebarComponent implements OnInit {
   private readonly store = inject(Store);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+
+  readonly logoutIcon = faSignOutAlt;
+
+  /**
+   * Check if authentication is required (local network bypass disabled)
+   * Only show logout button if authentication is required
+   */
+  readonly isAuthenticationRequired$: Observable<boolean> = this.http
+    .get<{ allowLocalNetworkWithoutAuth: boolean }>('/api/v1/settings/security')
+    .pipe(
+      map((settings) => !settings.allowLocalNetworkWithoutAuth)
+      // Default to true (require auth) on error for security
+      // catchError(() => of(true)) // We can add this if needed
+    );
 
   private readonly allMenuItems: MenuItem[] = [
     { label: 'Overview', icon: faChartLine, route: '/overview', mainNodeOnly: true },
@@ -89,5 +110,15 @@ export class SidebarComponent implements OnInit {
   ngOnInit(): void {
     // Load current node on initialization
     this.store.dispatch(CurrentNodeActions.loadCurrentNode());
+  }
+
+  /**
+   * Handle logout action
+   *
+   * Clears authentication tokens and navigates to login page
+   */
+  onLogout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

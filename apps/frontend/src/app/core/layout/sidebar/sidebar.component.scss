@@ -144,6 +144,47 @@
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid $border-primary;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid $border-primary;
+  border-radius: 6px;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: $transition-fast;
+  width: 100%;
+
+  &:hover {
+    background: $bg-tertiary;
+    color: $text-white;
+    border-color: $border-secondary;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.logout-icon {
+  font-size: 16px;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
 .version {
@@ -160,6 +201,7 @@
 
   .logo-text,
   .nav-label,
+  .logout-label,
   .version {
     display: none;
   }
@@ -175,5 +217,18 @@
 
   .nav-icon {
     font-size: 24px;
+  }
+
+  .logout-btn {
+    justify-content: center;
+    padding: 12px 10px;
+  }
+
+  .logout-icon {
+    font-size: 20px;
+  }
+
+  .sidebar-footer {
+    padding: 15px 10px;
   }
 }
