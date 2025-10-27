@@ -21,6 +21,7 @@ import { PoliciesModule } from './policies/policies.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { SettingsModule } from './settings/settings.module';
+import { SetupModule } from './setup/setup.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { SettingsModule } from './settings/settings.module';
     NodesModule,
     QueueModule,
     SettingsModule,
+    SetupModule,
     EncodingModule,
   ],
   controllers: [],
