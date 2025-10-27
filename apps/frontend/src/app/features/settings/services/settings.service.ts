@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { EnvironmentInfo } from '../models/environment-info.model';
+import type { SecuritySettings } from '../models/security-settings.model';
 import type { SystemSettings } from '../models/system-settings.model';
 import type { UpdateSystemSettings } from '../models/update-system-settings.model';
 
@@ -38,5 +39,13 @@ export class SettingsService {
 
   regenerateApiKey(): Observable<{ apiKey: string }> {
     return this.http.post<{ apiKey: string }>(`${this.apiUrl}/system/api-key/regenerate`, {});
+  }
+
+  getSecuritySettings(): Observable<SecuritySettings> {
+    return this.http.get<SecuritySettings>(`${this.apiUrl}/security`);
+  }
+
+  updateSecuritySettings(settings: SecuritySettings): Observable<SecuritySettings> {
+    return this.http.patch<SecuritySettings>(`${this.apiUrl}/security`, settings);
   }
 }

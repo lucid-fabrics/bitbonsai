@@ -828,6 +828,211 @@
   }
 }
 
+// Security Settings
+.security-settings {
+  background: rgba(249, 190, 3, 0.03);
+  border-color: rgba(249, 190, 3, 0.2);
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    i {
+      color: $accent-primary;
+      font-size: 20px;
+    }
+  }
+}
+
+.security-toggle-container {
+  margin-top: 24px;
+}
+
+.toggle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.toggle-info {
+  flex: 1;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-white;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid $danger;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: $danger;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.toggle-description {
+  color: $text-secondary;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+
+  strong {
+    color: $accent-primary;
+    font-weight: 600;
+  }
+}
+
+.toggle-switch {
+  flex-shrink: 0;
+}
+
+// Custom Toggle Switch
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 32px;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: $bg-primary;
+  border: 2px solid $border-primary;
+  transition: 0.3s;
+  border-radius: 32px;
+
+  &:before {
+    position: absolute;
+    content: '';
+    height: 24px;
+    width: 24px;
+    left: 3px;
+    bottom: 2px;
+    background-color: $text-secondary;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+}
+
+input:checked + .slider {
+  background-color: rgba(249, 190, 3, 0.2);
+  border-color: $accent-primary;
+}
+
+input:checked + .slider:before {
+  background-color: $accent-primary;
+  transform: translateX(28px);
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 0 2px rgba(249, 190, 3, 0.2);
+}
+
+.security-warning {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  margin-top: 20px;
+  background: rgba(255, 107, 107, 0.05);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 8px;
+  font-size: 14px;
+  animation: fadeIn 0.3s ease-in-out;
+
+  i {
+    color: $danger;
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .warning-content {
+    flex: 1;
+    color: $text-primary;
+
+    strong {
+      color: $danger;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+
+      li {
+        margin: 6px 0;
+        color: $text-secondary;
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Field hint (reusable for informational text under form fields)
+.field-hint {
+  padding: 12px;
+  background: rgba(0, 113, 197, 0.05);
+  border: 1px solid rgba(0, 113, 197, 0.2);
+  border-radius: 6px;
+  font-size: 13px;
+  color: $text-secondary;
+  line-height: 1.5;
+  margin-top: 8px;
+
+  i {
+    color: #0071c5;
+    margin-right: 6px;
+  }
+
+  strong {
+    color: $text-primary;
+    font-weight: 600;
+  }
+}
+
 .unraid-gpu-help {
   display: flex;
   gap: 16px;

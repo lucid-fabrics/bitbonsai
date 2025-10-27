@@ -409,6 +409,62 @@
           <h2>Advanced Settings</h2>
 
           @if (systemSettings) {
+            <!-- Security Settings Section -->
+            <div class="info-card security-settings">
+              <h3>
+                <i class="fa fa-shield-alt"></i>
+                Security Settings
+              </h3>
+
+              <div class="security-toggle-container">
+                <div class="toggle-header">
+                  <div class="toggle-info">
+                    <label for="localNetworkBypass" class="toggle-label">
+                      Allow Local Network Access Without Login
+                      @if (localNetworkBypassEnabled) {
+                        <span class="warning-badge">
+                          <i class="fa fa-exclamation-triangle"></i>
+                          Active
+                        </span>
+                      }
+                    </label>
+                    <p class="toggle-description">
+                      When enabled, users on your local network (192.168.x.x, 10.x.x.x) can access BitBonsai without logging in.
+                      <strong>Only enable this if you trust your local network.</strong>
+                    </p>
+                  </div>
+                  <div class="toggle-switch">
+                    <label class="switch">
+                      <input
+                        type="checkbox"
+                        id="localNetworkBypass"
+                        [(ngModel)]="localNetworkBypassEnabled"
+                        (ngModelChange)="onLocalNetworkBypassToggle()"
+                        [ngModelOptions]="{standalone: true}"
+                      />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                @if (localNetworkBypassEnabled) {
+                  <div class="security-warning">
+                    <i class="fa fa-info-circle"></i>
+                    <div class="warning-content">
+                      <strong>Security Notice:</strong>
+                      <ul>
+                        <li>Anyone on your local network can access this BitBonsai instance</li>
+                        <li>This setting should only be used on trusted private networks</li>
+                        <li>Do not enable this on public or shared networks</li>
+                      </ul>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="section-divider"></div>
+
             <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">
               <!-- FFmpeg Path -->
               <div class="form-group">
