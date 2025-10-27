@@ -84,7 +84,8 @@ export class InsightsComponent implements OnInit {
         displayColors: false,
         callbacks: {
           label: (context) => {
-            return `Saved: ${context.parsed.y.toFixed(2)} GB`;
+            const yValue = context.parsed.y;
+            return yValue !== null ? `Saved: ${yValue.toFixed(2)} GB` : 'Saved: 0.00 GB';
           },
         },
       },
@@ -358,6 +359,11 @@ export class InsightsComponent implements OnInit {
   }
 
   formatStorageSize(gb: number): string {
+    // Handle undefined, null, or NaN values
+    if (gb === null || gb === undefined || isNaN(gb)) {
+      return '0.00 GB';
+    }
+
     if (gb >= 1000) {
       return `${(gb / 1000).toFixed(2)} TB`;
     }
