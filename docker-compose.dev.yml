@@ -14,19 +14,18 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=file:/data/bitbonsai.db
       - PORT=3000
-      - MEDIA_PATHS=/media/TV,/media/Movies,/media/Anime
+      - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr
       - LOG_LEVEL=debug
     volumes:
+      # Source code with HMR
       - ./apps/backend:/app/apps/backend:cached
-      - ./scripts:/app/scripts:cached
+      - ./libs:/app/libs:cached
       - ./prisma:/app/prisma:cached
-      - ./package.json:/app/package.json:ro
-      - ./tsconfig.json:/app/tsconfig.json:ro
-      - ./nx.json:/app/nx.json:ro
-      - ./apps/backend/project.json:/app/apps/backend/project.json:ro
-      - ./apps/backend/webpack.config.js:/app/apps/backend/webpack.config.js:ro
-      - ./test-media:/media
+      # Real media directory from your *arr stack
+      - /Volumes/Downloads/completed:/media:cached
+      # Database persistence
       - bitbonsai-data:/data
+      # Preserve node_modules (don't mount from host)
       - /app/node_modules
     command: npx nx serve backend --host 0.0.0.0
     restart: unless-stopped
@@ -40,17 +39,16 @@ services:
       target: frontend
     container_name: bitbonsai-frontend
     ports:
-      - "4201:4200"
+      - "4201:4200"  # Local development - no port conflicts
     environment:
       - NODE_ENV=development
     volumes:
+      # Source code with HMR
       - ./apps/frontend:/app/apps/frontend:cached
-      - ./package.json:/app/package.json:ro
-      - ./tsconfig.json:/app/tsconfig.json:ro
-      - ./nx.json:/app/nx.json:ro
+      - ./libs:/app/libs:cached
+      - ./proxy.docker.conf.json:/app/proxy.conf.json:ro
       - ./angular.json:/app/angular.json:ro
-      - ./apps/frontend/project.json:/app/apps/frontend/project.json:ro
-      - ./proxy.conf.json:/app/proxy.conf.json:ro
+      # Preserve node_modules (don't mount from host)
       - /app/node_modules
     command: npx nx serve frontend --host 0.0.0.0
     restart: unless-stopped
