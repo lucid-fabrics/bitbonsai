@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Store } from '@ngrx/store';
 import { MediaStatsClient } from '../../core/clients/media-stats.client';
@@ -24,6 +25,7 @@ interface FolderInfo {
 export class DashboardComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly mediaStatsApi = inject(MediaStatsClient);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly stats$ = this.store.select(MediaStatsSelectors.selectMediaStats);
   readonly isLoading$ = this.store.select(MediaStatsSelectors.selectIsLoading);
@@ -50,18 +52,21 @@ export class DashboardComponent implements OnInit {
     this.dialogLoading = true;
     this.dialogOpen = true;
 
-    this.mediaStatsApi.getFolderFiles(folder.name, 'h264').subscribe({
-      next: (response) => {
-        const files = response.files.map((f) => new FileInfoBo(f));
-        this.dialogFiles = files;
-        this.dialogLoading = false;
-      },
-      error: (error) => {
-        console.error('Failed to load files:', error);
-        this.dialogLoading = false;
-        this.dialogOpen = false;
-      },
-    });
+    this.mediaStatsApi
+      .getFolderFiles(folder.name, 'h264')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const files = response.files.map((f) => new FileInfoBo(f));
+          this.dialogFiles = files;
+          this.dialogLoading = false;
+        },
+        error: (error) => {
+          console.error('Failed to load files:', error);
+          this.dialogLoading = false;
+          this.dialogOpen = false;
+        },
+      });
   }
 
   closeDialog(): void {

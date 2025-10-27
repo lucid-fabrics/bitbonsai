@@ -159,28 +159,34 @@ export class QueueComponent implements OnInit {
     const jobId = this.selectedJobId;
     if (!jobId) return;
 
-    this.queueApi.cancelJob(jobId).subscribe({
-      next: () => {
-        this.closeCancelDialog();
-        this.refreshQueue();
-      },
-      error: (error) => {
-        console.error('Failed to cancel job:', error);
-        this.closeCancelDialog();
-      },
-    });
+    this.queueApi
+      .cancelJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.closeCancelDialog();
+          this.refreshQueue();
+        },
+        error: (error) => {
+          console.error('Failed to cancel job:', error);
+          this.closeCancelDialog();
+        },
+      });
   }
 
   protected retryJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi.retryJob(jobId).subscribe({
-      next: () => {
-        this.refreshQueue();
-      },
-      error: (error) => {
-        console.error('Failed to retry job:', error);
-      },
-    });
+    this.queueApi
+      .retryJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refreshQueue();
+        },
+        error: (error) => {
+          console.error('Failed to retry job:', error);
+        },
+      });
   }
 
   protected getStatusClass(status: JobStatus): string {
