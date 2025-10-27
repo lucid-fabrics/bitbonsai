@@ -65,7 +65,7 @@
             </div>
             <div class="stat-content">
               <div class="stat-label">Hardware Acceleration</div>
-              <div class="stat-value">{{ getAccelerationLabel(stats.acceleration) }}</div>
+              <div class="stat-value">{{ NodeBo.getAccelerationLabel(stats.acceleration) }}</div>
             </div>
           </div>
 
@@ -85,7 +85,7 @@
             </div>
             <div class="stat-content">
               <div class="stat-label">Uptime</div>
-              <div class="stat-value">{{ formatUptime(stats.uptimeSeconds) }}</div>
+              <div class="stat-value">{{ NodeBo.formatUptime(stats.uptimeSeconds) }}</div>
             </div>
           </div>
 
@@ -95,7 +95,7 @@
             </div>
             <div class="stat-content">
               <div class="stat-label">Last Heartbeat</div>
-              <div class="stat-value">{{ formatLastHeartbeat(stats.lastHeartbeat) }}</div>
+              <div class="stat-value">{{ NodeBo.formatLastHeartbeat(stats.lastHeartbeat) }}</div>
             </div>
           </div>
         </div>
@@ -214,7 +214,7 @@
                   <div class="metric-divider"></div>
                   <div class="metric">
                     <i class="fas fa-database"></i>
-                    <span class="metric-value">{{ formatBytes(library.totalSizeBytes) }}</span>
+                    <span class="metric-value">{{ BytesBo.formatBytes(library.totalSizeBytes) }}</span>
                   </div>
                 </div>
               </div>

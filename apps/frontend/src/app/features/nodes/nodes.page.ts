@@ -4,12 +4,13 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   inject,
-  type OnDestroy,
   type OnInit,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { interval, type Subscription } from 'rxjs';
+import { interval, Subject, takeUntil } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../core/clients/nodes.client';
 import {
@@ -17,6 +18,8 @@ import {
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import { NodeBo } from './bos/node.bo';
+import { TimerBo } from './bos/timer.bo';
 import { NodeStatsModalComponent } from './modals/node-stats/node-stats.modal';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
@@ -35,15 +38,18 @@ enum PairingStep {
   styleUrls: ['./nodes.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NodesComponent implements OnInit, OnDestroy {
+export class NodesComponent implements OnInit {
   private readonly nodesApi = inject(NodesClient);
   private readonly dialog = inject(Dialog);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
-  // Expose enums to template
+  // Expose enums and BOs to template
   readonly NodeStatus = NodeStatus;
   readonly NodeRole = NodeRole;
   readonly AccelerationType = AccelerationType;
+  readonly NodeBo = NodeBo;
+  readonly TimerBo = TimerBo;
 
   // State
   nodes: Node[] = [];
@@ -62,10 +68,8 @@ export class NodesComponent implements OnInit, OnDestroy {
   countdownSeconds = 600; // 10 minutes
   pairedNode: Node | null = null;
 
-  // Subscriptions
-  private pollingSubscription?: Subscription;
-  private countdownSubscription?: Subscription;
-  private uptimeSubscription?: Subscription;
+  // Subjects for manual control of countdown
+  private stopCountdown$ = new Subject<void>();
 
   get totalNodes(): number {
     return this.nodes.length;
@@ -89,12 +93,6 @@ export class NodesComponent implements OnInit, OnDestroy {
     this.startUptimeCounter();
   }
 
-  ngOnDestroy(): void {
-    this.stopPolling();
-    this.stopCountdown();
-    this.stopUptimeCounter();
-  }
-
   /**
    * Load all nodes from API
    */
@@ -103,18 +101,21 @@ export class NodesComponent implements OnInit, OnDestroy {
     this.error = null;
     this.cdr.markForCheck();
 
-    this.nodesApi.getNodes().subscribe({
-      next: (nodes) => {
-        this.updateNodesWithUptimeTracking(nodes);
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.error = err.error?.message || 'Failed to load nodes';
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-    });
+    this.nodesApi
+      .getNodes()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (nodes) => {
+          this.updateNodesWithUptimeTracking(nodes);
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.error = err.error?.message || 'Failed to load nodes';
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   /**
@@ -150,8 +151,11 @@ export class NodesComponent implements OnInit, OnDestroy {
    * Start polling for node status updates every 10 seconds
    */
   private startPolling(): void {
-    this.pollingSubscription = interval(10000)
-      .pipe(switchMap(() => this.nodesApi.getNodes()))
+    interval(10000)
+      .pipe(
+        switchMap(() => this.nodesApi.getNodes()),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe({
         next: (nodes) => {
           this.updateNodesWithUptimeTracking(nodes);
@@ -161,13 +165,6 @@ export class NodesComponent implements OnInit, OnDestroy {
           console.error('Polling error:', err);
         },
       });
-  }
-
-  /**
-   * Stop polling
-   */
-  private stopPolling(): void {
-    this.pollingSubscription?.unsubscribe();
   }
 
   /**
@@ -181,75 +178,76 @@ export class NodesComponent implements OnInit, OnDestroy {
     this.countdownSeconds = 600;
     this.cdr.markForCheck();
 
-    this.nodesApi.register().subscribe({
-      next: (response) => {
-        this.pairingCommand = response.command;
-        this.startCountdown();
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.pairingError = err.error?.message || 'Failed to initiate registration';
-        this.cdr.markForCheck();
-      },
-    });
+    this.nodesApi
+      .register()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.pairingCommand = response.command;
+          this.startCountdown();
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.pairingError = err.error?.message || 'Failed to initiate registration';
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   /**
    * Start countdown timer for code expiration
    */
   private startCountdown(): void {
-    this.countdownSubscription = interval(1000).subscribe(() => {
-      const current = this.countdownSeconds;
-      if (current > 0) {
-        this.countdownSeconds = current - 1;
-        this.cdr.markForCheck();
-      } else {
-        this.stopCountdown();
-      }
-    });
+    // Reset the stop signal for a new countdown
+    this.stopCountdown$ = new Subject<void>();
+
+    interval(1000)
+      .pipe(takeUntil(this.stopCountdown$), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const current = this.countdownSeconds;
+        if (current > 0) {
+          this.countdownSeconds = current - 1;
+          this.cdr.markForCheck();
+        } else {
+          this.stopCountdown();
+        }
+      });
   }
 
   /**
    * Stop countdown timer
    */
   private stopCountdown(): void {
-    this.countdownSubscription?.unsubscribe();
+    this.stopCountdown$.next();
+    this.stopCountdown$.complete();
   }
 
   /**
    * Format countdown as MM:SS
    */
   getCountdownDisplay(): string {
-    const seconds = this.countdownSeconds;
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    return TimerBo.formatCountdown(this.countdownSeconds);
   }
 
   /**
    * Start uptime counter - calculates current uptime every second based on start time
    */
   private startUptimeCounter(): void {
-    this.uptimeSubscription = interval(1000).subscribe(() => {
-      const now = Date.now();
-      // Calculate current uptime for each node based on when we first saw it
-      this.nodes = this.nodes.map((node) => {
-        const startTime = this.nodeStartTimes.get(node.id);
-        if (startTime) {
-          const currentUptimeSeconds = Math.floor((now - startTime) / 1000);
-          return { ...node, uptimeSeconds: currentUptimeSeconds };
-        }
-        return node;
+    interval(1000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const now = Date.now();
+        // Calculate current uptime for each node based on when we first saw it
+        this.nodes = this.nodes.map((node) => {
+          const startTime = this.nodeStartTimes.get(node.id);
+          if (startTime) {
+            const currentUptimeSeconds = Math.floor((now - startTime) / 1000);
+            return { ...node, uptimeSeconds: currentUptimeSeconds };
+          }
+          return node;
+        });
+        this.cdr.markForCheck();
       });
-      this.cdr.markForCheck();
-    });
-  }
-
-  /**
-   * Stop uptime counter
-   */
-  private stopUptimeCounter(): void {
-    this.uptimeSubscription?.unsubscribe();
   }
 
   /**
@@ -276,25 +274,28 @@ export class NodesComponent implements OnInit, OnDestroy {
     this.pairingError = null;
     this.cdr.markForCheck();
 
-    this.nodesApi.pair({ code }).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.pairedNode = response.node;
-          this.pairingStep = PairingStep.SUCCESS;
-          this.stopCountdown();
-          this.loadNodes();
-        } else {
-          this.pairingError = 'Invalid pairing code. Please try again.';
-        }
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.pairingError = err.error?.message || 'Failed to pair node';
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-    });
+    this.nodesApi
+      .pair({ code })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.pairedNode = response.node;
+            this.pairingStep = PairingStep.SUCCESS;
+            this.stopCountdown();
+            this.loadNodes();
+          } else {
+            this.pairingError = 'Invalid pairing code. Please try again.';
+          }
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.pairingError = err.error?.message || 'Failed to pair node';
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   /**
@@ -323,135 +324,24 @@ export class NodesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Format uptime in human-readable format
-   */
-  formatUptime(uptimeSeconds: number): string {
-    if (uptimeSeconds < 60) {
-      return `${uptimeSeconds}s`;
-    }
-
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-
-    if (days > 0) {
-      return `${days}d ${hours}h`;
-    }
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-
-    return `${minutes}m`;
-  }
-
-  /**
-   * Format last heartbeat as relative time
-   */
-  formatLastHeartbeat(lastHeartbeat: string): string {
-    const now = new Date();
-    const heartbeatDate = new Date(lastHeartbeat);
-    const diffMs = now.getTime() - heartbeatDate.getTime();
-    const diffSeconds = Math.floor(diffMs / 1000);
-
-    if (diffSeconds < 60) {
-      return `${diffSeconds}s ago`;
-    }
-
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) {
-      return `${diffMinutes}m ago`;
-    }
-
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    }
-
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  }
-
-  /**
-   * Check if node is offline (no heartbeat in 2+ minutes)
-   */
-  isNodeOffline(lastHeartbeat: string): boolean {
-    const now = new Date();
-    const heartbeatDate = new Date(lastHeartbeat);
-    const diffMs = now.getTime() - heartbeatDate.getTime();
-    const diffMinutes = diffMs / (1000 * 60);
-    return diffMinutes > 2;
-  }
-
-  /**
-   * Get status class for node
-   */
-  getStatusClass(node: Node): string {
-    if (this.isNodeOffline(node.lastHeartbeat)) {
-      return 'offline';
-    }
-    return node.status.toLowerCase();
-  }
-
-  /**
-   * Get status display text
-   */
-  getStatusText(node: Node): string {
-    if (this.isNodeOffline(node.lastHeartbeat)) {
-      return 'Offline';
-    }
-    return node.status === NodeStatus.ONLINE ? 'Online' : 'Error';
-  }
-
-  /**
-   * Get status explanation for tooltip
-   */
-  getStatusExplanation(node: Node): string {
-    if (this.isNodeOffline(node.lastHeartbeat)) {
-      return 'This node has not sent a heartbeat in over 2 minutes. It may be powered off, disconnected, or experiencing network issues.';
-    }
-    if (node.status === NodeStatus.ONLINE) {
-      return 'This node is online and ready to accept encoding jobs. It is actively communicating with BitBonsai.';
-    }
-    return 'This node has encountered an error and may not be able to accept jobs. Check the node logs for details.';
-  }
-
-  /**
-   * Get acceleration display name
-   */
-  getAccelerationLabel(acceleration: AccelerationType): string {
-    switch (acceleration) {
-      case AccelerationType.NVIDIA:
-        return 'NVIDIA GPU';
-      case AccelerationType.INTEL_QSV:
-        return 'Intel QSV';
-      case AccelerationType.AMD:
-        return 'AMD GPU';
-      case AccelerationType.APPLE_M:
-        return 'Apple M-Series';
-      case AccelerationType.CPU:
-        return 'CPU Only';
-      default:
-        return 'Unknown';
-    }
-  }
-
-  /**
    * View node statistics
    */
   onViewStats(node: Node): void {
-    this.nodesApi.getNodeStats(node.id).subscribe({
-      next: (stats) => {
-        this.dialog.open(NodeStatsModalComponent, {
-          data: { stats },
-          disableClose: false,
-        });
-      },
-      error: (err) => {
-        this.error = err.error?.message || 'Failed to load node stats';
-        this.cdr.markForCheck();
-      },
-    });
+    this.nodesApi
+      .getNodeStats(node.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (stats) => {
+          this.dialog.open(NodeStatsModalComponent, {
+            data: { stats },
+            disableClose: false,
+          });
+        },
+        error: (err) => {
+          this.error = err.error?.message || 'Failed to load node stats';
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   /**
@@ -459,9 +349,8 @@ export class NodesComponent implements OnInit, OnDestroy {
    */
   onRemoveNode(node: Node): void {
     // Prevent deleting MAIN node
-    if (node.role === NodeRole.MAIN) {
-      this.error =
-        'Cannot delete MAIN node. MAIN nodes manage the entire BitBonsai cluster and cannot be removed.';
+    if (!NodeBo.canDeleteNode(node)) {
+      this.error = NodeBo.getDeletionErrorMessage();
       this.cdr.markForCheck();
       return;
     }
@@ -492,18 +381,21 @@ export class NodesComponent implements OnInit, OnDestroy {
       disableClose: false,
     });
 
-    dialogRef.closed.subscribe((result) => {
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result === true) {
-        this.nodesApi.deleteNode(node.id).subscribe({
-          next: () => {
-            this.nodes = this.nodes.filter((n) => n.id !== node.id);
-            this.cdr.markForCheck();
-          },
-          error: (err) => {
-            this.error = err.error?.message || 'Failed to delete node';
-            this.cdr.markForCheck();
-          },
-        });
+        this.nodesApi
+          .deleteNode(node.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.nodes = this.nodes.filter((n) => n.id !== node.id);
+              this.cdr.markForCheck();
+            },
+            error: (err) => {
+              this.error = err.error?.message || 'Failed to delete node';
+              this.cdr.markForCheck();
+            },
+          });
       }
     });
   }
