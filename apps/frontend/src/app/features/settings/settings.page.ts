@@ -5,6 +5,7 @@ import {
   FormBuilder,
   type FormControl,
   type FormGroup,
+  FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
@@ -20,7 +21,7 @@ import { SettingsService } from './services/settings.service';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
 })
@@ -43,6 +44,7 @@ export class SettingsComponent implements OnInit {
   successMessage: string | null = null;
   licenseKeyRevealed = false;
   apiKeyRevealed = false;
+  localNetworkBypassEnabled = false;
 
   // Forms
   licenseForm!: FormGroup<{
@@ -91,6 +93,7 @@ export class SettingsComponent implements OnInit {
     this.loadLicense();
     this.loadEnvironmentInfo();
     this.loadSystemSettings();
+    this.loadSecuritySettings();
   }
 
   private loadLicense(): void {
@@ -140,6 +143,43 @@ export class SettingsComponent implements OnInit {
         },
         error: (err) => {
           console.error('Failed to load system settings:', err);
+        },
+      });
+  }
+
+  private loadSecuritySettings(): void {
+    this.settingsService
+      .getSecuritySettings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.localNetworkBypassEnabled = settings.allowLocalNetworkWithoutAuth;
+        },
+        error: (err) => {
+          console.error('Failed to load security settings:', err);
+        },
+      });
+  }
+
+  onLocalNetworkBypassToggle(): void {
+    this.loading = true;
+    this.clearMessages();
+
+    this.settingsService
+      .updateSecuritySettings({
+        allowLocalNetworkWithoutAuth: this.localNetworkBypassEnabled,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.loading = false;
+          this.successMessage = `Local network auth bypass ${this.localNetworkBypassEnabled ? 'enabled' : 'disabled'} successfully`;
+        },
+        error: (_err) => {
+          this.loading = false;
+          this.error = 'Failed to update security settings';
+          // Revert toggle on error
+          this.localNetworkBypassEnabled = !this.localNetworkBypassEnabled;
         },
       });
   }
