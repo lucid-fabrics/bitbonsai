@@ -1,6 +1,7 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -52,6 +53,7 @@ interface PolicyFormData {
 export class PoliciesComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly dialog = inject(Dialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Icons
   readonly icons = {
@@ -239,7 +241,7 @@ export class PoliciesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.subscribe((result) => {
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result === true) {
         this.store.dispatch(PoliciesActions.deletePolicy({ id: policy.id }));
       }

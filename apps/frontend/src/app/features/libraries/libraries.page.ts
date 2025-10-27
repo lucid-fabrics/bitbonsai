@@ -1,6 +1,7 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, type OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import {
   ConfirmationDialogComponent,
@@ -29,6 +30,7 @@ import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/libra
 export class LibrariesComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly dialog = inject(Dialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   // NgRx State
   readonly libraries$ = this.store.select(selectAllLibraries);
@@ -113,7 +115,7 @@ export class LibrariesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.subscribe((result) => {
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result === true) {
         this.store.dispatch(LibrariesActions.deleteLibrary({ id: library.id }));
       }
