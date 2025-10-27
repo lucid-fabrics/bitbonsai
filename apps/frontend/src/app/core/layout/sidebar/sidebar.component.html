@@ -32,6 +32,12 @@
   </nav>
 
   <div class="sidebar-footer">
+    @if (isAuthenticationRequired$ | async) {
+      <button class="logout-btn" (click)="onLogout()" type="button" title="Logout">
+        <fa-icon [icon]="logoutIcon" class="logout-icon"></fa-icon>
+        <span class="logout-label">Logout</span>
+      </button>
+    }
     <div class="version">v0.1.0</div>
   </div>
 </aside>
