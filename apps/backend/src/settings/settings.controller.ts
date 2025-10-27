@@ -1,15 +1,21 @@
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
 import { EnvironmentService } from '../common/environment.service';
+import { SecuritySettingsDto } from './dto/security-settings.dto';
 import { SystemSettingsDto } from './dto/system-settings.dto';
 import type { UpdateSystemSettingsDto } from './dto/update-system-settings.dto';
+import { SettingsService } from './settings.service';
 
 @ApiTags('settings')
 @Controller('settings')
 export class SettingsController {
-  constructor(private readonly environmentService: EnvironmentService) {}
+  constructor(
+    private readonly environmentService: EnvironmentService,
+    private readonly settingsService: SettingsService
+  ) {}
 
   @Get('environment')
   @ApiOperation({
@@ -157,5 +163,42 @@ export class SettingsController {
   async regenerateApiKey(): Promise<{ apiKey: string }> {
     const randomKey = Math.random().toString(36).substring(2, 18);
     return { apiKey: `bb_${randomKey}` };
+  }
+
+  @Get('security')
+  @Public()
+  @ApiOperation({
+    summary: 'Get security settings',
+    description:
+      'Retrieve current security settings including local network authentication bypass configuration. This endpoint is public to allow the frontend to check if authentication is required.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Security settings retrieved successfully',
+    type: SecuritySettingsDto,
+  })
+  async getSecuritySettings(): Promise<SecuritySettingsDto> {
+    return this.settingsService.getSecuritySettings();
+  }
+
+  @Patch('security')
+  @ApiOperation({
+    summary: 'Update security settings',
+    description:
+      'Update security settings such as local network authentication bypass. Use with caution as this affects authentication behavior.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Security settings updated successfully',
+    type: SecuritySettingsDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid security settings provided',
+  })
+  async updateSecuritySettings(
+    @Body() updateDto: SecuritySettingsDto
+  ): Promise<SecuritySettingsDto> {
+    return this.settingsService.updateSecuritySettings(updateDto);
   }
 }
