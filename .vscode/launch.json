@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "🐛 Debug Backend on Unraid",
+      "address": "192.168.1.100",
+      "port": 9239,
+      "localRoot": "${workspaceFolder}/apps/backend",
+      "remoteRoot": "/app/apps/backend",
+      "restart": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "🐛 Debug Backend (Local Docker)",
+      "address": "localhost",
+      "port": 9230,
+      "localRoot": "${workspaceFolder}/apps/backend",
+      "remoteRoot": "/app/apps/backend",
+      "restart": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    }
+  ]
+}
