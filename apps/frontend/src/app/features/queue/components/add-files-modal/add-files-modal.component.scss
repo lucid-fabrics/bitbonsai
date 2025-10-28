@@ -1,0 +1,715 @@
+@use 'sass:color';
+@use '../../../../../styles/variables' as *;
+
+// Modal Overlay
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Modal Content
+.modal-content {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: 12px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: $shadow-md;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Modal Header
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid $border-primary;
+
+  .header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: $text-white;
+      margin: 0;
+    }
+
+    .step-indicator {
+      font-size: 13px;
+      color: $text-secondary;
+      margin: 0;
+    }
+  }
+
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: $text-secondary;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $bg-tertiary;
+      color: $text-primary;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Step Progress Bar
+.step-progress {
+  display: flex;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid $border-primary;
+  background: $bg-tertiary;
+
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    position: relative;
+
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      right: -50%;
+      height: 2px;
+      background: $border-secondary;
+      z-index: 0;
+    }
+
+    &.completed:not(:last-child)::after {
+      background: $accent-primary;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: $bg-secondary;
+      border: 2px solid $border-secondary;
+      color: $text-secondary;
+      font-weight: 600;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+      transition: $transition-fast;
+    }
+
+    &.active .step-circle {
+      background: $accent-primary;
+      border-color: $accent-primary;
+      color: $text-dark;
+    }
+
+    &.completed .step-circle {
+      background: $success;
+      border-color: $success;
+      color: $text-white;
+    }
+
+    .step-label {
+      font-size: 12px;
+      color: $text-secondary;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    &.active .step-label {
+      color: $text-primary;
+    }
+  }
+}
+
+// Modal Body
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.step-content {
+  animation: fadeIn 0.3s ease;
+}
+
+.step-header {
+  margin-bottom: 24px;
+
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: $text-white;
+    margin: 0 0 8px 0;
+  }
+
+  p {
+    font-size: 14px;
+    color: $text-secondary;
+    margin: 0;
+  }
+}
+
+// Library Grid (Step 1)
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.library-card {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: $bg-tertiary;
+  border: 2px solid $border-secondary;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: $border-primary;
+    background: rgba($bg-tertiary, 0.8);
+  }
+
+  &.selected {
+    border-color: $accent-primary;
+    background: rgba($accent-primary, 0.1);
+  }
+
+  .library-checkbox {
+    font-size: 24px;
+    color: $text-secondary;
+    transition: $transition-fast;
+  }
+
+  &.selected .library-checkbox {
+    color: $accent-primary;
+  }
+
+  .library-info {
+    flex: 1;
+
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: $text-white;
+      margin: 0 0 12px 0;
+    }
+
+    .library-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .stat {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: $text-secondary;
+
+        i {
+          width: 16px;
+          color: $accent-primary;
+          opacity: 0.7;
+        }
+      }
+    }
+  }
+}
+
+// Policy Section (Step 1)
+.policy-section {
+  padding: 20px;
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  border-radius: 8px;
+  animation: slideDown 0.3s ease;
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: $text-white;
+    margin: 0 0 12px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .policy-selector {
+    margin-bottom: 16px;
+
+    .policy-select {
+      width: 100%;
+      padding: 12px 16px;
+      background: $bg-secondary;
+      border: 1px solid $border-secondary;
+      border-radius: 6px;
+      color: $text-primary;
+      font-size: 14px;
+      cursor: pointer;
+      transition: $transition-fast;
+
+      &:hover {
+        border-color: $accent-primary;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $accent-primary;
+        background: $bg-primary;
+      }
+    }
+  }
+
+  .policy-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: rgba($accent-primary, 0.1);
+    border: 1px solid rgba($accent-primary, 0.3);
+    border-radius: 6px;
+
+    i {
+      color: $accent-primary;
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    p {
+      font-size: 13px;
+      color: $text-primary;
+      margin: 0;
+      line-height: 1.5;
+
+      strong {
+        color: $accent-primary;
+      }
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Creation Progress (Step 2)
+.creation-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+
+  .progress-spinner {
+    font-size: 64px;
+    color: $accent-primary;
+    margin-bottom: 24px;
+  }
+
+  p {
+    font-size: 16px;
+    color: $text-primary;
+    margin: 0 0 8px 0;
+    text-align: center;
+  }
+
+  .progress-hint {
+    font-size: 13px;
+    color: $text-secondary;
+  }
+}
+
+// Creation Success (Step 2)
+.creation-success {
+  animation: fadeIn 0.5s ease;
+
+  .success-icon {
+    text-align: center;
+    margin-bottom: 24px;
+
+    i {
+      font-size: 64px;
+      color: $success;
+    }
+  }
+
+  .summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+
+    .summary-card {
+      background: $bg-tertiary;
+      border: 1px solid $border-secondary;
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      &.success {
+        border-color: rgba($success, 0.3);
+        background: rgba($success, 0.05);
+
+        .summary-icon {
+          background: rgba($success, 0.2);
+          color: $success;
+        }
+      }
+
+      &.warning {
+        border-color: rgba($accent-primary, 0.3);
+        background: rgba($accent-primary, 0.05);
+
+        .summary-icon {
+          background: rgba($accent-primary, 0.2);
+          color: $accent-primary;
+        }
+      }
+
+      .summary-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 20px;
+      }
+
+      .summary-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .summary-value {
+          font-size: 28px;
+          font-weight: 700;
+          color: $text-white;
+        }
+
+        .summary-label {
+          font-size: 12px;
+          color: $text-secondary;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+      }
+    }
+  }
+
+  .skipped-files {
+    background: $bg-tertiary;
+    border: 1px solid $border-secondary;
+    border-radius: 8px;
+    padding: 20px;
+
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: $text-white;
+      margin: 0 0 16px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .skipped-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+
+      .skipped-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        background: $bg-secondary;
+        border-radius: 6px;
+        gap: 12px;
+
+        .skipped-path {
+          font-size: 13px;
+          color: $text-primary;
+          word-break: break-all;
+          flex: 1;
+        }
+
+        .skipped-reason {
+          font-size: 12px;
+          color: $text-secondary;
+          padding: 4px 8px;
+          background: rgba($accent-primary, 0.1);
+          border-radius: 4px;
+          white-space: nowrap;
+        }
+      }
+
+      .skipped-more {
+        font-size: 12px;
+        color: $text-secondary;
+        text-align: center;
+        padding: 8px;
+      }
+    }
+  }
+}
+
+// Modal Footer
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 24px;
+  border-top: 1px solid $border-primary;
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: $transition-fast;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &.btn-secondary {
+      background: $bg-tertiary;
+      color: $text-primary;
+      border: 1px solid $border-secondary;
+
+      &:hover:not(:disabled) {
+        background: $bg-tertiary;
+        border-color: $border-primary;
+      }
+    }
+
+    &.btn-primary {
+      background: $accent-primary;
+      color: $text-dark;
+
+      &:hover:not(:disabled) {
+        background: $accent-primary-hover;
+      }
+    }
+
+    &.btn-success {
+      background: $success;
+      color: $text-dark;
+
+      &:hover:not(:disabled) {
+        background: color.adjust($success, $lightness: -10%);
+      }
+    }
+  }
+}
+
+// Loading State
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  color: $text-secondary;
+
+  i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: $accent-primary;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+// Error State
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  color: $text-secondary;
+
+  i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: $danger;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 12px 0;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0 0 20px 0;
+    text-align: center;
+    color: $text-primary;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: $transition-fast;
+
+    &.btn-primary {
+      background: $accent-primary;
+      color: $text-dark;
+
+      &:hover {
+        background: $accent-primary-hover;
+      }
+    }
+  }
+}
+
+// Empty State
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  color: $text-secondary;
+
+  i {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 8px 0;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .step-progress {
+    padding: 16px;
+
+    .step-item {
+      .step-label {
+        font-size: 10px;
+      }
+    }
+  }
+
+  .library-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
