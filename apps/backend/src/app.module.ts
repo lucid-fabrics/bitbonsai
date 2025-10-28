@@ -7,6 +7,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommonModule } from './common/common.module';
+import { DatabaseInitService } from './database/database-init.service';
 import { EncodingModule } from './encoding/encoding.module';
 import { FilesystemModule } from './filesystem/filesystem.module';
 import { HealthModule } from './health/health.module';
@@ -59,6 +60,8 @@ import { SetupModule } from './setup/setup.module';
   ],
   controllers: [],
   providers: [
+    // Database initialization on startup
+    DatabaseInitService,
     // SECURITY: Global JWT authentication guard (applied to all routes except @Public())
     {
       provide: APP_GUARD,

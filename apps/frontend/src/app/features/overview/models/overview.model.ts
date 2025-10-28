@@ -20,6 +20,9 @@ export interface SystemHealthModel {
   success_rate: {
     percentage: number;
   };
+  cpu_utilization: {
+    percentage: number;
+  };
 }
 
 export interface QueueSummaryModel {
@@ -33,14 +36,23 @@ export interface RecentActivityModel {
   id: string;
   file_name: string;
   library: string;
-  codec_change: string;
-  savings_gb: number;
-  duration_seconds: number;
+  source_codec: string;
+  target_codec: string;
+  stage: string; // 'COMPLETED' | 'ENCODING'
+  before_size_bytes: number;
+  after_size_bytes: number | null;
+  saved_bytes: number | null;
+  saved_percent: number | null;
+  progress: number | null; // 0-100, only for ENCODING jobs
   completed_at: string;
 }
 
 export interface TopLibraryModel {
   name: string;
+  media_type: string;
   job_count: number;
-  total_savings_gb: number;
+  completed_jobs: number;
+  encoding_jobs: number;
+  total_savings_bytes: number;
+  total_before_bytes: number;
 }

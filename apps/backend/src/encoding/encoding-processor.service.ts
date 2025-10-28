@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { Job, Policy } from '@prisma/client';
 import { LibrariesService } from '../libraries/libraries.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
 
@@ -37,16 +38,173 @@ interface JobResult {
  * - Progress tracking and metrics updates
  */
 @Injectable()
-export class EncodingProcessorService {
+export class EncodingProcessorService implements OnModuleInit {
   private readonly logger = new Logger(EncodingProcessorService.name);
   private readonly workers = new Map<string, WorkerState>();
   private readonly MAX_RETRIES = 3;
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService
   ) {}
+
+  /**
+   * Auto-start workers for all online nodes on module initialization
+   * This ensures encoding workers are running whenever the backend starts
+   *
+   * Also performs auto-heal to recover from crashes/reboots
+   */
+  async onModuleInit() {
+    this.logger.log('🔧 Initializing encoding processor...');
+
+    try {
+      // STEP 1: Auto-heal orphaned jobs from previous crash/reboot
+      await this.autoHealOrphanedJobs();
+
+      // STEP 2: Get all online nodes
+      const onlineNodes = await this.prisma.node.findMany({
+        where: { status: 'ONLINE' },
+        select: { id: true, name: true },
+      });
+
+      if (onlineNodes.length === 0) {
+        this.logger.warn('No online nodes found - no workers started');
+        return;
+      }
+
+      // STEP 3: Start a worker for each online node
+      for (const node of onlineNodes) {
+        try {
+          await this.startWorker(node.id);
+          this.logger.log(`✓ Auto-started worker for node: ${node.name}`);
+        } catch (error) {
+          this.logger.error(`Failed to start worker for node ${node.name}:`, error);
+        }
+      }
+
+      this.logger.log(`✅ Auto-started ${onlineNodes.length} worker(s)`);
+
+      // STEP 4: Start background watchdog to detect stuck jobs
+      this.startStuckJobWatchdog();
+    } catch (error) {
+      this.logger.error('Failed to initialize encoding processor:', error);
+    }
+  }
+
+  /**
+   * Auto-heal orphaned jobs that were left in ENCODING state
+   * from backend crashes, reboots, or container restarts
+   *
+   * Strategy:
+   * - Find all jobs in ENCODING state
+   * - Check if they haven't been updated in the last 5 minutes
+   * - Reset them to QUEUED so they can be retried
+   */
+  private async autoHealOrphanedJobs(): Promise<void> {
+    this.logger.log('🏥 Auto-heal: Checking for orphaned encoding jobs...');
+
+    try {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+      // Find orphaned jobs (ENCODING but no progress in 5+ minutes)
+      const orphanedJobs = await this.prisma.job.findMany({
+        where: {
+          stage: 'ENCODING',
+          updatedAt: {
+            lt: fiveMinutesAgo,
+          },
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          progress: true,
+          updatedAt: true,
+        },
+      });
+
+      if (orphanedJobs.length === 0) {
+        this.logger.log('✅ No orphaned jobs found - system is healthy');
+        return;
+      }
+
+      this.logger.warn(`🔧 Found ${orphanedJobs.length} orphaned job(s) - resetting to QUEUED`);
+
+      // Reset each orphaned job back to QUEUED
+      for (const job of orphanedJobs) {
+        try {
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: 'QUEUED',
+              progress: 0,
+              etaSeconds: null,
+              error: 'Auto-recovered from backend restart',
+            },
+          });
+
+          this.logger.log(
+            `  ✓ Reset orphaned job: ${job.fileLabel} (was ${job.progress}% complete)`
+          );
+        } catch (error) {
+          this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
+        }
+      }
+
+      this.logger.log(`✅ Auto-heal complete - recovered ${orphanedJobs.length} job(s)`);
+    } catch (error) {
+      this.logger.error('Auto-heal failed:', error);
+    }
+  }
+
+  /**
+   * Start background watchdog to detect stuck jobs during runtime
+   * Runs every 2 minutes to check for jobs that haven't progressed
+   */
+  private startStuckJobWatchdog(): void {
+    this.logger.log('👀 Starting stuck job watchdog (checks every 2 minutes)');
+
+    setInterval(
+      async () => {
+        try {
+          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+          const stuckJobs = await this.prisma.job.findMany({
+            where: {
+              stage: 'ENCODING',
+              updatedAt: {
+                lt: tenMinutesAgo,
+              },
+            },
+            select: {
+              id: true,
+              fileLabel: true,
+              progress: true,
+            },
+          });
+
+          if (stuckJobs.length > 0) {
+            this.logger.warn(`⚠️  Watchdog detected ${stuckJobs.length} stuck job(s)`);
+
+            for (const job of stuckJobs) {
+              this.logger.warn(
+                `  - ${job.fileLabel} stuck at ${job.progress}% - marking as FAILED`
+              );
+
+              await this.queueService.failJob(
+                job.id,
+                'Job stuck - no progress in 10+ minutes (likely ffmpeg crash)'
+              );
+            }
+          }
+        } catch (error) {
+          this.logger.error('Watchdog check failed:', error);
+        }
+      },
+      2 * 60 * 1000
+    ); // Every 2 minutes
+  }
 
   /**
    * Start worker for a node

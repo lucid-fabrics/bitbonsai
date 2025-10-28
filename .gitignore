@@ -47,6 +47,13 @@ Thumbs.db
 !.claude/agent-metrics.json
 !.claude/workflows/
 
+# Development environment markers
+.env.unraid
+.env.docker
+
+# Generated proxy configuration (use dev-setup.sh to generate)
+proxy.conf.json
+
 # AI-generated documentation (never commit these)
 *REFACTORING*.md
 *COMPLETE*.md

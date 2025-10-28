@@ -1,8 +1,164 @@
 <div class="queue-container">
   <div class="page-header">
-    <h1>Queue</h1>
-    <p class="subtitle">Manage job queue and encoding tasks</p>
+    <div>
+      <h1>Queue</h1>
+      <p class="subtitle">
+        Manage job queue and encoding tasks
+        <button (click)="openAddFilesModal()" class="btn btn-primary btn-add-files">
+          <i class="fas fa-plus"></i>
+          Add Files to Queue
+        </button>
+      </p>
+    </div>
+    <div class="header-actions">
+      @if ((queueData$ | async)?.stats?.cancelled && (queueData$ | async)!.stats!.cancelled > 0) {
+        <button (click)="openRetryAllDialog()" class="btn btn-success">
+          <i class="fas fa-redo"></i>
+          Retry All Cancelled ({{ (queueData$ | async)!.stats!.cancelled }})
+        </button>
+      }
+      @if ((queueData$ | async)?.stats?.queued && (queueData$ | async)!.stats!.queued > 0) {
+        <button (click)="openCancelAllDialog()" class="btn btn-danger">
+          <i class="fas fa-times-circle"></i>
+          Cancel All Queued ({{ (queueData$ | async)!.stats!.queued }})
+        </button>
+      }
+    </div>
   </div>
+
+  <!-- Progress Dashboard -->
+  @if (queueData$ | async; as queueData) {
+    <div class="progress-dashboard">
+      <div class="pipeline-container">
+        <!-- Detected Stage -->
+        @if (queueData.stats.detected > 0) {
+          <div class="pipeline-stage detected">
+            <div class="stage-icon">
+              <i class="fas fa-search"></i>
+            </div>
+            <div class="stage-content">
+              <div class="stage-title">Detected</div>
+              <div class="stage-count">{{ queueData.stats.detected }} files</div>
+              <div class="stage-meta">
+                <i class="fas fa-clock"></i>
+                Awaiting health check
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow -->
+          <div class="pipeline-arrow">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        }
+
+        <!-- Health Check Stage -->
+        @if (queueData.stats.healthCheck > 0) {
+          <div class="pipeline-stage health-check">
+            <div class="stage-icon">
+              <i class="fas fa-heartbeat fa-pulse"></i>
+            </div>
+            <div class="stage-content">
+              <div class="stage-title">Health Check</div>
+              <div class="stage-count">{{ queueData.stats.healthCheck }} files</div>
+              <div class="stage-meta">
+                <i class="fas fa-stethoscope"></i>
+                Validating files
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow -->
+          <div class="pipeline-arrow">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        }
+
+        <!-- Queued Stage -->
+        <div class="pipeline-stage queued">
+          <div class="stage-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="stage-content">
+            <div class="stage-title">Queued</div>
+            <div class="stage-count">{{ queueData.stats.queued }} files</div>
+            @if (queueData.stats.queued > 0) {
+              <div class="stage-meta">
+                <i class="fas fa-hourglass-start"></i>
+                Ready to encode
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="pipeline-arrow">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+
+        <!-- Encoding Stage -->
+        <div class="pipeline-stage encoding">
+          <div class="stage-icon">
+            @if (queueData.stats.encoding > 0) {
+              <i class="fas fa-spinner fa-spin"></i>
+            }
+            @if (queueData.stats.encoding === 0) {
+              <i class="fas fa-pause-circle"></i>
+            }
+          </div>
+          <div class="stage-content">
+            <div class="stage-title">Encoding</div>
+            <div class="stage-count">{{ queueData.stats.encoding }} files</div>
+            @if (queueData.stats.encoding > 0) {
+              <div class="stage-progress">
+                <div class="encoding-indicator">
+                  <div class="progress-bar-mini">
+                    <div class="progress-fill-mini"></div>
+                  </div>
+                  <span class="encoding-text">Active</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="pipeline-arrow">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+
+        <!-- Completed Stage -->
+        <div class="pipeline-stage completed">
+          <div class="stage-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stage-content">
+            <div class="stage-title">Completed</div>
+            <div class="stage-count">{{ queueData.stats.completed }} files</div>
+            @if (Number.parseInt(queueData.stats.totalSavedBytes) > 0) {
+              <div class="stage-meta success">
+                <i class="fas fa-save"></i>
+                {{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes)) }} saved
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Failed Jobs Alert (if any) -->
+        @if (queueData.stats.failed > 0) {
+          <div class="pipeline-alert">
+            <div class="alert-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="alert-content">
+              <div class="alert-title">Needs Attention</div>
+              <div class="alert-count">{{ queueData.stats.failed }} Failed Jobs</div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
 
   <!-- Filter Bar -->
   @if (availableNodes$ | async; as availableNodes) {
@@ -69,9 +225,10 @@
                 <th class="col-status">Status</th>
                 <th class="col-filename">File Name</th>
                 <th class="col-library">Library</th>
+                <th class="col-codec">Codec</th>
                 <th class="col-policy">Policy</th>
                 <th class="col-progress">Progress</th>
-                <th class="col-saved">Saved</th>
+                <th class="col-size">Size & Compression</th>
                 <th class="col-node">Node</th>
                 <th class="col-actions">Actions</th>
               </tr>
@@ -99,7 +256,32 @@
                   <span class="filename-text">{{ job.fileName }}</span>
                 </td>
                 <td class="col-library">{{ job.libraryName }}</td>
-                <td class="col-policy">{{ job.policyName }}</td>
+                <td class="col-codec">
+                  @if (job.sourceCodec && job.targetCodec) {
+                    <div class="codec-conversion">
+                      <span class="codec-badge-small" [class]="getCodecBadgeClass(job.sourceCodec)">
+                        {{ job.sourceCodec }}
+                      </span>
+                      <i class="fas fa-arrow-right codec-arrow-small"></i>
+                      <span class="codec-badge-small" [class]="getCodecBadgeClass(job.targetCodec)">
+                        {{ job.targetCodec }}
+                      </span>
+                    </div>
+                  } @else {
+                    <span class="codec-placeholder">-</span>
+                  }
+                </td>
+                <td class="col-policy">
+                  <span class="policy-badge-queue"
+                    bbTooltip
+                    tooltipTitle="Encoding Policy"
+                    [tooltipContent]="'This job uses the ' + job.policyName + ' policy'"
+                    tooltipWhen="You want to understand which encoding settings are being used for this job."
+                    tooltipPlacement="top">
+                    <i class="fas fa-cog"></i>
+                    {{ job.policyName }}
+                  </span>
+                </td>
                 <td class="col-progress">
                   @if (job.status === 'ENCODING') {
                     <div class="progress-details">
@@ -133,41 +315,68 @@
                     <span class="progress-placeholder">-</span>
                   }
                 </td>
-                <td class="col-saved">
-                  @if (job.status === 'COMPLETED') {
-                    <span class="savings-text">
-                      {{ formatBytes(job.savedSize) }}
-                      @if (job.savedPercentage != null) {
-                        ({{ job.savedPercentage.toFixed(1) }}%)
+                <td class="col-size">
+                  @if (job.status === 'COMPLETED' && job.currentSize > 0) {
+                    <!-- Completed: Show actual results -->
+                    <div class="size-info">
+                      <div class="size-comparison">
+                        <span class="size-before">{{ formatBytes(job.originalSize) }}</span>
+                        <i class="fas fa-arrow-right size-arrow"></i>
+                        <span class="size-after">{{ formatBytes(job.currentSize) }}</span>
+                      </div>
+                      @if (job.savedPercentage != null && job.savedPercentage > 0) {
+                        <span class="compression-badge positive">
+                          <i class="fas fa-arrow-down"></i>
+                          {{ job.savedPercentage.toFixed(1) }}%
+                        </span>
+                      } @else if (job.savedPercentage != null && job.savedPercentage < 0) {
+                        <span class="compression-badge negative">
+                          <i class="fas fa-arrow-up"></i>
+                          {{ Math.abs(job.savedPercentage).toFixed(1) }}%
+                        </span>
                       }
-                    </span>
+                    </div>
+                  } @else if (job.status === 'QUEUED' || job.status === 'ENCODING') {
+                    <!-- Queued/Encoding: Show estimate -->
+                    <div class="size-info">
+                      <div class="size-comparison">
+                        <span class="size-before">{{ formatBytes(job.originalSize) }}</span>
+                        <i class="fas fa-arrow-right size-arrow"></i>
+                        <span class="size-estimated">~{{ formatBytes(getEstimatedSize(job)) }}</span>
+                      </div>
+                      <span class="compression-badge estimated">
+                        <i class="fas fa-arrow-down"></i>
+                        ~{{ getEstimatedCompression(job) }}%
+                      </span>
+                    </div>
                   } @else {
-                    <span class="savings-placeholder">-</span>
+                    <!-- Failed/Cancelled: Show original size only -->
+                    <span class="size-original">{{ formatBytes(job.originalSize) }}</span>
                   }
                 </td>
                 <td class="col-node">{{ job.nodeName }}</td>
                 <td class="col-actions">
                   <div class="action-buttons">
-                    @if (job.status === 'QUEUED') {
+                    @if (job.status === 'QUEUED' || job.status === 'ENCODING') {
                       <button
                         (click)="openCancelDialog(job.id, $event)"
                         class="action-btn cancel-btn"
                         bbTooltip
-                        tooltipTitle="Cancel Job"
-                        tooltipContent="Removes this job from the encoding queue. The file will remain in its original format and won't be encoded."
+                        [tooltipTitle]="job.status === 'ENCODING' ? 'Stop Encoding' : 'Cancel Job'"
+                        [tooltipContent]="job.status === 'ENCODING' ? 'Stops the encoding process and cancels this job. The encoding will be terminated and the file will remain in its original format.' : 'Removes this job from the encoding queue. The file will remain in its original format and won\'t be encoded.'"
                         tooltipWhen="You no longer want to encode this file, or you need to free up queue space for higher priority jobs."
                         tooltipPlacement="top">
                         <i class="fas fa-times"></i>
                       </button>
                     }
-                    @if (job.status === 'FAILED') {
+                    @if (job.status === 'FAILED' || job.status === 'CANCELLED') {
                       <button
                         (click)="retryJob(job.id, $event)"
                         class="action-btn retry-btn"
                         bbTooltip
-                        tooltipTitle="Retry Failed Job"
-                        tooltipContent="Attempts to re-encode this file. Useful if the failure was due to temporary issues like network problems or node availability."
-                        tooltipWhen="The job failed but you believe the issue has been resolved, or you want to give it another chance."
+                        [tooltipTitle]="job.status === 'FAILED' ? 'Retry Failed Job' : 'Retry Cancelled Job'"
+                        [tooltipContent]="job.status === 'FAILED' ? 'Attempts to re-encode this file. Useful if the failure was due to temporary issues like network problems or node availability.' : 'Re-queues this cancelled job for encoding.'"
+                        tooltipWhen="You want to give this job another attempt."
                         tooltipPlacement="top">
                         <i class="fas fa-redo"></i>
                       </button>
@@ -180,7 +389,7 @@
               </tr>
               @if (expandedJobId === job.id) {
                 <tr class="details-row">
-                  <td colspan="8">
+                  <td colspan="9">
                     <div class="job-details-enhanced">
                       <!-- Codec Conversion -->
                       @if (job.sourceCodec && job.targetCodec) {
@@ -394,24 +603,152 @@
 <!-- Cancel Confirmation Dialog -->
 @if (showCancelDialog) {
   <div class="dialog-overlay" (click)="closeCancelDialog()">
-    <div class="dialog-content" (click)="$event.stopPropagation()">
+    <div class="dialog-content cancel-dialog" (click)="$event.stopPropagation()">
       <div class="dialog-header">
-        <h3>Cancel Job</h3>
+        <h3><i class="fas fa-times-circle"></i> Cancel Encoding Job</h3>
         <button (click)="closeCancelDialog()" class="dialog-close">
           <i class="fas fa-times"></i>
         </button>
       </div>
       <div class="dialog-body">
-        <p>Are you sure you want to cancel this job? This action cannot be undone.</p>
+        <p class="dialog-message">This job will be stopped and removed from the queue. Choose what happens next:</p>
       </div>
-      <div class="dialog-footer">
-        <button (click)="closeCancelDialog()" class="btn btn-secondary">
-          No, Keep Job
+      <div class="dialog-footer cancel-actions">
+        <button (click)="closeCancelDialog()" class="btn btn-ghost">
+          <i class="fas fa-arrow-left"></i>
+          <span>Keep Job</span>
         </button>
-        <button (click)="confirmCancel()" class="btn btn-danger">
-          Yes, Cancel Job
+        <button (click)="confirmCancelAndRetry()" class="btn btn-cancel-retry">
+          <i class="fas fa-redo"></i>
+          <div class="btn-content">
+            <span class="btn-title">Cancel & Allow Retry</span>
+            <span class="btn-subtitle">Can be re-queued later</span>
+          </div>
+        </button>
+        <button (click)="confirmCancelAndBlacklist()" class="btn btn-cancel-blacklist">
+          <i class="fas fa-ban"></i>
+          <div class="btn-content">
+            <span class="btn-title">Cancel & Blacklist</span>
+            <span class="btn-subtitle">Never auto-encode again</span>
+          </div>
         </button>
       </div>
     </div>
   </div>
 }
+
+<!-- Retry All Cancelled Confirmation Dialog -->
+@if (showRetryAllDialog) {
+  <div class="dialog-overlay" (click)="closeRetryAllDialog()">
+    <div class="dialog-content retry-all-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-redo"></i> Retry All Cancelled Jobs</h3>
+        <button (click)="closeRetryAllDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          @let cancelledJobs = getCancelledJobs(data);
+          @let totalSize = calculateTotalSize(cancelledJobs);
+          @let estimatedTime = calculateEstimatedTime(totalSize);
+
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-file-video"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ cancelledJobs.length }}</div>
+                <div class="summary-label">Files to Retry</div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ formatBytes(totalSize) }}</div>
+                <div class="summary-label">Total File Size</div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="summary-content">
+                @if (estimatedTime.hours > 0) {
+                  <div class="summary-value">~{{ estimatedTime.hours }}h {{ estimatedTime.minutes }}m</div>
+                } @else {
+                  <div class="summary-value">~{{ estimatedTime.minutes }}m</div>
+                }
+                <div class="summary-label">Estimated Time</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-content">
+              <strong>What happens next?</strong>
+              <p>All {{ cancelledJobs.length }} cancelled job(s) will be moved back to the queue and processed by available encoding nodes. The estimated time is based on an average encoding speed of {{ formatBytes(getAvgEncodingSpeed()) }}/s and assumes continuous processing.</p>
+            </div>
+          </div>
+
+          <div class="policy-note">
+            <i class="fas fa-cog"></i>
+            <span>Jobs will use their original encoding policy settings</span>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeRetryAllDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button (click)="confirmRetryAll()" class="btn btn-success">
+          <i class="fas fa-redo"></i>
+          Retry All Cancelled Jobs
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Cancel All Confirmation Dialog -->
+@if (showCancelAllDialog) {
+  <div class="dialog-overlay" (click)="closeCancelAllDialog()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3>Cancel All Queued Jobs</h3>
+        <button (click)="closeCancelAllDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <p>Are you sure you want to cancel ALL queued jobs?</p>
+        <p class="warning-text">
+          <i class="fas fa-exclamation-triangle"></i>
+          This will cancel {{ (queueData$ | async)?.stats?.queued || 0 }} job(s). All cancelled jobs can be retried later.
+        </p>
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeCancelAllDialog()" class="btn btn-secondary">
+          No, Keep Jobs
+        </button>
+        <button (click)="confirmCancelAll()" class="btn btn-danger">
+          Yes, Cancel All
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Add Files to Queue Modal -->
+<app-add-files-modal
+  [isOpen]="showAddFilesModal"
+  (close)="closeAddFilesModal()"
+  (jobsCreated)="handleJobsCreated($event)">
+</app-add-files-modal>

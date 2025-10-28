@@ -21,8 +21,8 @@ services:
       - ./apps/backend:/app/apps/backend:cached
       - ./libs:/app/libs:cached
       - ./prisma:/app/prisma:cached
-      # Real media directory from your *arr stack
-      - /Volumes/Downloads/completed:/media:cached
+      # Local test media directory (for Mac development)
+      - ./test-media:/media:cached
       # Database persistence
       - bitbonsai-data:/data
       # Preserve node_modules (don't mount from host)

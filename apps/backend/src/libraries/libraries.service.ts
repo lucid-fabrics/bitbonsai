@@ -9,11 +9,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Library } from '@prisma/client';
+import { JobStage } from '@prisma/client';
 import { FileWatcherService } from '../file-watcher/file-watcher.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { QueueService } from '../queue/queue.service';
 import type { CreateLibraryDto } from './dto/create-library.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
+import type { BulkJobCreationResultDto, ScanPreviewDto } from './dto/scan-preview.dto';
 import type { UpdateLibraryDto } from './dto/update-library.dto';
+import { MediaAnalysisService } from './services/media-analysis.service';
 
 /**
  * LibrariesService
@@ -28,7 +32,10 @@ export class LibrariesService {
   constructor(
     private prisma: PrismaService,
     @Inject(forwardRef(() => FileWatcherService))
-    private fileWatcher: FileWatcherService
+    private fileWatcher: FileWatcherService,
+    private mediaAnalysis: MediaAnalysisService,
+    @Inject(forwardRef(() => QueueService))
+    private queueService: QueueService
   ) {}
 
   /**
@@ -177,6 +184,21 @@ export class LibrariesService {
             status: true,
           },
         },
+        defaultPolicy: {
+          select: {
+            id: true,
+            name: true,
+            targetCodec: true,
+            preset: true,
+          },
+        },
+        policies: {
+          select: {
+            id: true,
+            name: true,
+            preset: true,
+          },
+        },
         _count: {
           select: {
             jobs: true,
@@ -205,6 +227,14 @@ export class LibrariesService {
             id: true,
             name: true,
             status: true,
+          },
+        },
+        defaultPolicy: {
+          select: {
+            id: true,
+            name: true,
+            targetCodec: true,
+            preset: true,
           },
         },
         policies: {
@@ -439,7 +469,15 @@ export class LibrariesService {
     stats: { totalFiles: number; totalSizeBytes: bigint },
     fs: typeof import('node:fs').promises
   ): Promise<void> {
-    const ext = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
+    const lowerFileName = fileName.toLowerCase();
+
+    // Skip temporary files (common patterns)
+    const tempPatterns = ['.tmp', '.temp', '.part', '.download', '.crdownload', '.!ut'];
+    if (tempPatterns.some((pattern) => lowerFileName.includes(pattern))) {
+      return;
+    }
+
+    const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
     if (!videoExtensions.includes(ext)) {
       return;
     }
@@ -451,5 +489,580 @@ export class LibrariesService {
     } catch (statError) {
       this.logger.warn(`Failed to stat file: ${fullPath}`, statError);
     }
+  }
+
+  /**
+   * Scan library and preview what files need encoding (WITHOUT creating jobs)
+   *
+   * This provides an intuitive preview showing:
+   * - Files that need encoding (e.g., H.264 → HEVC)
+   * - Files already optimized (no action needed)
+   * - Potential space savings
+   *
+   * @param id - Library unique identifier
+   * @returns Preview of what will be encoded
+   * @throws NotFoundException if library does not exist or has no policy
+   */
+  async scanPreview(id: string): Promise<ScanPreviewDto> {
+    this.logger.log(`Generating scan preview for library: ${id}`);
+
+    const library = await this.prisma.library.findUnique({
+      where: { id },
+      include: {
+        policies: true, // Get all policies associated with library
+      },
+    });
+
+    if (!library) {
+      throw new NotFoundException(`Library with ID "${id}" not found`);
+    }
+
+    if (!library.policies || library.policies.length === 0) {
+      throw new BadRequestException(
+        'Library has no encoding policy. Please assign a policy first.'
+      );
+    }
+
+    // Use library's default policy, or first policy if no default is set
+    const policy =
+      library.policies.find((p) => p.id === library.defaultPolicyId) || library.policies[0];
+    const { promises: fs } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    const videoExtensions = [
+      '.mp4',
+      '.mkv',
+      '.avi',
+      '.mov',
+      '.wmv',
+      '.flv',
+      '.webm',
+      '.m4v',
+      '.mpg',
+      '.mpeg',
+      '.m2ts',
+    ];
+
+    // Collect all video file paths
+    const videoFiles: string[] = [];
+
+    const scanDirectory = async (dirPath: string): Promise<void> => {
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = join(dirPath, entry.name);
+
+          if (entry.isDirectory()) {
+            await scanDirectory(fullPath);
+          } else if (entry.isFile()) {
+            const lowerFileName = entry.name.toLowerCase();
+
+            // Skip temporary files (common patterns)
+            const tempPatterns = ['.tmp', '.temp', '.part', '.download', '.crdownload', '.!ut'];
+            if (tempPatterns.some((pattern) => lowerFileName.includes(pattern))) {
+              continue;
+            }
+
+            const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
+            if (videoExtensions.includes(ext)) {
+              videoFiles.push(fullPath);
+            }
+          }
+        }
+      } catch (readError) {
+        this.logger.warn(`Failed to read directory: ${dirPath}`, readError);
+      }
+    };
+
+    await scanDirectory(library.path);
+
+    this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
+
+    // Analyze files using FFprobe
+    const analysis = await this.mediaAnalysis.analyzeFiles(videoFiles, policy.targetCodec);
+
+    // Get ALL jobs for this library to annotate files with status
+    const allJobs = await this.prisma.job.findMany({
+      where: {
+        libraryId: library.id,
+      },
+      select: {
+        id: true,
+        filePath: true,
+        stage: true,
+        progress: true,
+        isBlacklisted: true,
+      },
+    });
+
+    // Create a map of filePath -> job info
+    const jobMap = new Map(
+      allJobs.map((job) => [
+        job.filePath,
+        {
+          id: job.id,
+          stage: job.stage,
+          progress: job.progress,
+          isBlacklisted: job.isBlacklisted,
+        },
+      ])
+    );
+
+    // Helper function to annotate file with job status
+    const annotateFile = (file: any) => {
+      const job = jobMap.get(file.filePath);
+      const fileName = file.filePath.split('/').pop() || file.filePath;
+
+      if (!job) {
+        // No job exists - can add to queue
+        return {
+          ...file,
+          fileName,
+          canAddToQueue: true,
+          blockedReason: undefined,
+          jobId: undefined,
+          jobStage: undefined,
+          jobProgress: undefined,
+        };
+      }
+
+      // Job exists - check if can be added
+      const activeStages = [
+        'DETECTED',
+        'HEALTH_CHECK',
+        'QUEUED',
+        'ENCODING',
+        'VERIFYING',
+        'COMPLETED',
+      ];
+      const canAdd = !activeStages.includes(job.stage);
+
+      const stageLabels: Record<string, string> = {
+        DETECTED: 'Detected, awaiting health check',
+        HEALTH_CHECK: 'Health checking',
+        QUEUED: 'Queued for encoding',
+        ENCODING: 'Currently encoding',
+        VERIFYING: 'Verifying encoded file',
+        COMPLETED: 'Already encoded',
+        FAILED: 'Previous job failed - can retry',
+        CANCELLED: 'Previously cancelled - can retry',
+      };
+
+      return {
+        ...file,
+        fileName,
+        jobId: job.id,
+        jobStage: job.stage,
+        jobProgress: job.progress,
+        canAddToQueue: canAdd,
+        blockedReason: !canAdd ? stageLabels[job.stage] : undefined,
+      };
+    };
+
+    // Annotate all files with job status
+    const annotatedNeedsEncoding = analysis.needsEncoding.map(annotateFile);
+    const annotatedAlreadyOptimized = analysis.alreadyOptimized.map(annotateFile);
+
+    // Filter out blacklisted files only (show all others with status)
+    const blacklistedPaths = new Set(allJobs.filter((j) => j.isBlacklisted).map((j) => j.filePath));
+
+    const filteredNeedsEncoding = annotatedNeedsEncoding.filter(
+      (file) => !blacklistedPaths.has(file.filePath)
+    );
+    const filteredAlreadyOptimized = annotatedAlreadyOptimized.filter(
+      (file) => !blacklistedPaths.has(file.filePath)
+    );
+
+    // Limit results to first 100 for performance (frontend can paginate if needed)
+    const preview: ScanPreviewDto = {
+      libraryId: library.id,
+      libraryName: library.name,
+      policyId: policy.id,
+      policyName: policy.name,
+      targetCodec: policy.targetCodec,
+      availablePolicies: library.policies.map((p) => ({
+        id: p.id,
+        name: p.name,
+        preset: p.preset,
+      })),
+      totalFiles: analysis.totalFiles - blacklistedPaths.size,
+      totalSizeBytes: analysis.totalSizeBytes.toString(),
+      needsEncodingCount: filteredNeedsEncoding.filter((f) => f.canAddToQueue).length,
+      alreadyOptimizedCount: filteredAlreadyOptimized.length,
+      needsEncoding: filteredNeedsEncoding.slice(0, 100),
+      alreadyOptimized: filteredAlreadyOptimized.slice(0, 100),
+      errors: analysis.errors,
+      scannedAt: new Date(),
+    };
+
+    this.logger.log(
+      `Scan preview complete: ${preview.needsEncodingCount} need encoding, ${preview.alreadyOptimizedCount} already optimized`
+    );
+
+    return preview;
+  }
+
+  /**
+   * Create encoding jobs from scan preview results
+   *
+   * Takes the scan preview and creates actual jobs for files that need encoding.
+   * This is the "manual trigger" that gives users control.
+   *
+   * @param libraryId - Library unique identifier
+   * @param policyId - Policy to use for encoding
+   * @param filePaths - Optional: specific files to encode (if empty, encodes all that need it)
+   * @returns Number of jobs created
+   */
+  async createJobsFromScan(
+    libraryId: string,
+    policyId?: string,
+    filePaths?: string[]
+  ): Promise<{ jobsCreated: number; jobs: any[] }> {
+    this.logger.log(
+      `Creating jobs for library: ${libraryId} with policy: ${policyId || 'default'}`
+    );
+
+    const library = await this.prisma.library.findUnique({
+      where: { id: libraryId },
+      include: { node: true, defaultPolicy: true },
+    });
+
+    if (!library) {
+      throw new NotFoundException(`Library with ID "${libraryId}" not found`);
+    }
+
+    // Use provided policyId or fall back to library's default policy
+    const effectivePolicyId = policyId || library.defaultPolicyId;
+
+    if (!effectivePolicyId) {
+      throw new BadRequestException(
+        `No policy specified and library "${library.name}" has no default policy configured. ` +
+          `Please either specify a policy ID or set a default policy for this library.`
+      );
+    }
+
+    const policy = await this.prisma.policy.findUnique({
+      where: { id: effectivePolicyId },
+    });
+
+    if (!policy) {
+      throw new NotFoundException(`Policy with ID "${effectivePolicyId}" not found`);
+    }
+
+    // If no specific files provided, get all files that need encoding
+    let filesToEncode: string[];
+
+    if (!filePaths || filePaths.length === 0) {
+      // Re-scan to get fresh list
+      const preview = await this.scanPreview(libraryId);
+      filesToEncode = preview.needsEncoding.map((f) => f.filePath);
+    } else {
+      filesToEncode = filePaths;
+    }
+
+    if (filesToEncode.length === 0) {
+      this.logger.log('No files need encoding');
+      return { jobsCreated: 0, jobs: [] };
+    }
+
+    // Get blacklisted file paths for this library to skip them
+    const blacklistedJobs = await this.prisma.job.findMany({
+      where: {
+        libraryId: library.id,
+        isBlacklisted: true,
+      },
+      select: {
+        filePath: true,
+      },
+    });
+
+    const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
+
+    // Probe each file to get accurate codec info before creating job
+    const jobs: any[] = [];
+
+    for (const filePath of filesToEncode) {
+      try {
+        // Skip blacklisted files
+        if (blacklistedPaths.has(filePath)) {
+          this.logger.log(`Skipping blacklisted file: ${filePath}`);
+          continue;
+        }
+
+        const videoInfo = await this.mediaAnalysis.probeVideoFile(filePath);
+
+        if (!videoInfo) {
+          this.logger.warn(`Skipping ${filePath} - failed to probe`);
+          continue;
+        }
+
+        // Extract file label (filename without path)
+        const fileLabel = filePath.split('/').pop() || filePath;
+
+        // Create job using queue service
+        const job = await this.queueService.create({
+          filePath,
+          fileLabel,
+          sourceCodec: videoInfo.codec,
+          targetCodec: policy.targetCodec,
+          beforeSizeBytes: videoInfo.sizeBytes.toString(),
+          nodeId: library.nodeId,
+          libraryId: library.id,
+          policyId: policy.id,
+        });
+
+        jobs.push(job);
+      } catch (error) {
+        this.logger.error(`Failed to create job for ${filePath}`, error);
+      }
+    }
+
+    this.logger.log(`Created ${jobs.length} encoding jobs`);
+
+    return { jobsCreated: jobs.length, jobs };
+  }
+
+  /**
+   * Get all "ready to queue" files across all libraries
+   *
+   * Aggregates scan preview data from all libraries to show files that are ready
+   * to be added to the queue but haven't been queued yet.
+   *
+   * @returns Aggregated scan preview data from all libraries
+   */
+  async getAllReadyFiles(): Promise<ScanPreviewDto[]> {
+    this.logger.log('Fetching ready files from all libraries');
+
+    // Get all enabled libraries with at least one policy
+    const libraries = await this.prisma.library.findMany({
+      where: {
+        enabled: true,
+      },
+      include: {
+        policies: true, // Get all policies to check if library has any
+      },
+    });
+
+    // Filter libraries that have policies
+    const librariesWithPolicies = libraries.filter((lib) => lib.policies.length > 0);
+
+    if (librariesWithPolicies.length === 0) {
+      this.logger.log('No libraries with policies found');
+      return [];
+    }
+
+    // Get scan preview for each library (in parallel for performance)
+    const previews = await Promise.allSettled(
+      librariesWithPolicies.map((library) => this.scanPreview(library.id))
+    );
+
+    // Extract successful previews and log failures
+    const successfulPreviews: ScanPreviewDto[] = [];
+    previews.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        successfulPreviews.push(result.value);
+      } else {
+        const libraryName = librariesWithPolicies[index].name;
+        this.logger.warn(
+          `Failed to get scan preview for library "${libraryName}": ${result.reason}`
+        );
+      }
+    });
+
+    this.logger.log(
+      `Fetched ${successfulPreviews.length} library previews with ${successfulPreviews.reduce((sum, p) => sum + p.needsEncodingCount, 0)} total ready files`
+    );
+
+    return successfulPreviews;
+  }
+
+  /**
+   * Create jobs for all files in a library that need encoding
+   *
+   * This is the simplified "Add All Files" endpoint that:
+   * 1. Scans the library directory for video files (fast - just file listing)
+   * 2. For each file:
+   *    - Skips if already in queue or completed
+   *    - Quick codec check using FFprobe
+   *    - Creates job if needs encoding
+   *    - Skips corrupted files (logs them)
+   * 3. Returns summary of jobs created and files skipped
+   *
+   * @param libraryId - Library unique identifier
+   * @param policyId - Policy to use for encoding
+   * @returns Summary of job creation results
+   */
+  async createAllJobs(libraryId: string, policyId: string): Promise<BulkJobCreationResultDto> {
+    this.logger.log(
+      `Creating jobs for all files in library: ${libraryId} with policy: ${policyId}`
+    );
+
+    const library = await this.prisma.library.findUnique({
+      where: { id: libraryId },
+      include: { node: true },
+    });
+
+    if (!library) {
+      throw new NotFoundException(`Library with ID "${libraryId}" not found`);
+    }
+
+    const policy = await this.prisma.policy.findUnique({
+      where: { id: policyId },
+    });
+
+    if (!policy) {
+      throw new NotFoundException(`Policy with ID "${policyId}" not found`);
+    }
+
+    const { promises: fs } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    const videoExtensions = [
+      '.mp4',
+      '.mkv',
+      '.avi',
+      '.mov',
+      '.wmv',
+      '.flv',
+      '.webm',
+      '.m4v',
+      '.mpg',
+      '.mpeg',
+      '.m2ts',
+    ];
+
+    // Collect all video file paths
+    const videoFiles: string[] = [];
+
+    const scanDirectory = async (dirPath: string): Promise<void> => {
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = join(dirPath, entry.name);
+
+          if (entry.isDirectory()) {
+            await scanDirectory(fullPath);
+          } else if (entry.isFile()) {
+            const lowerFileName = entry.name.toLowerCase();
+
+            // Skip temporary files
+            const tempPatterns = ['.tmp', '.temp', '.part', '.download', '.crdownload', '.!ut'];
+            if (tempPatterns.some((pattern) => lowerFileName.includes(pattern))) {
+              continue;
+            }
+
+            const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
+            if (videoExtensions.includes(ext)) {
+              videoFiles.push(fullPath);
+            }
+          }
+        }
+      } catch (readError) {
+        this.logger.warn(`Failed to read directory: ${dirPath}`, readError);
+      }
+    };
+
+    await scanDirectory(library.path);
+
+    this.logger.log(`Found ${videoFiles.length} video files, creating jobs...`);
+
+    // Get existing jobs and blacklisted files
+    const existingJobs = await this.prisma.job.findMany({
+      where: {
+        libraryId: library.id,
+        OR: [
+          {
+            stage: {
+              in: [
+                JobStage.DETECTED,
+                JobStage.HEALTH_CHECK,
+                JobStage.QUEUED,
+                JobStage.ENCODING,
+                JobStage.VERIFYING,
+                JobStage.COMPLETED,
+              ],
+            },
+          },
+          { isBlacklisted: true },
+        ],
+      },
+      select: {
+        filePath: true,
+        isBlacklisted: true,
+      },
+    });
+
+    const existingPaths = new Set(existingJobs.map((job) => job.filePath));
+    const blacklistedPaths = new Set(
+      existingJobs.filter((job) => job.isBlacklisted).map((job) => job.filePath)
+    );
+
+    const result: BulkJobCreationResultDto = {
+      jobsCreated: 0,
+      filesSkipped: 0,
+      skippedFiles: [],
+    };
+
+    // Process each file
+    for (const filePath of videoFiles) {
+      try {
+        // Skip if already in queue or blacklisted
+        if (existingPaths.has(filePath)) {
+          const reason = blacklistedPaths.has(filePath) ? 'Blacklisted' : 'Already in queue';
+          result.filesSkipped++;
+          result.skippedFiles.push({ path: filePath, reason });
+          continue;
+        }
+
+        // Probe file to get codec info
+        const videoInfo = await this.mediaAnalysis.probeVideoFile(filePath);
+
+        if (!videoInfo) {
+          result.filesSkipped++;
+          result.skippedFiles.push({ path: filePath, reason: 'Failed to probe file' });
+          continue;
+        }
+
+        // Check if file needs encoding (codec doesn't match target)
+        const needsEncoding = videoInfo.codec !== policy.targetCodec;
+
+        if (!needsEncoding) {
+          result.filesSkipped++;
+          result.skippedFiles.push({ path: filePath, reason: 'Already optimized' });
+          continue;
+        }
+
+        // Create job
+        const fileLabel = filePath.split('/').pop() || filePath;
+
+        await this.queueService.create({
+          filePath,
+          fileLabel,
+          sourceCodec: videoInfo.codec,
+          targetCodec: policy.targetCodec,
+          beforeSizeBytes: videoInfo.sizeBytes.toString(),
+          nodeId: library.nodeId,
+          libraryId: library.id,
+          policyId: policy.id,
+        });
+
+        result.jobsCreated++;
+      } catch (error) {
+        this.logger.error(`Failed to process file ${filePath}`, error);
+        result.filesSkipped++;
+        result.skippedFiles.push({
+          path: filePath,
+          reason: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    this.logger.log(
+      `Bulk job creation complete: ${result.jobsCreated} jobs created, ${result.filesSkipped} files skipped`
+    );
+
+    return result;
   }
 }

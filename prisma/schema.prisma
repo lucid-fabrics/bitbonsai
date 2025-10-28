@@ -88,12 +88,21 @@ enum TargetCodec {
 
 enum JobStage {
   DETECTED
+  HEALTH_CHECK
   QUEUED
   ENCODING
   VERIFYING
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum FileHealthStatus {
+  UNKNOWN
+  HEALTHY
+  WARNING
+  AT_RISK
+  CORRUPTED
 }
 
 // ============================================================================
@@ -182,6 +191,8 @@ model Node {
   apiKey           String           @unique // For node authentication
   lastHeartbeat    DateTime
   uptimeSeconds    Int              @default(0)
+  maxWorkers       Int              @default(1) // Number of concurrent encoding jobs
+  cpuLimit         Int              @default(80) // Maximum CPU usage percentage (1-100)
 
   // Relations
   licenseId String
@@ -220,7 +231,11 @@ model Library {
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
-  policies Policy[]
+  // Default encoding policy for this library
+  defaultPolicyId String?
+  defaultPolicy   Policy? @relation("LibraryDefaultPolicy", fields: [defaultPolicyId], references: [id], onDelete: SetNull)
+
+  policies Policy[] @relation("LibraryPolicies")
   jobs     Job[]
 
   createdAt DateTime @default(now())
@@ -232,6 +247,7 @@ model Library {
   @@index([mediaType])
   @@index([lastScanAt])
   @@index([watchEnabled])
+  @@index([defaultPolicyId])
   @@map("libraries")
 }
 
@@ -253,7 +269,10 @@ model Policy {
 
   // Relations
   libraryId String?
-  library   Library? @relation(fields: [libraryId], references: [id], onDelete: SetNull)
+  library   Library? @relation("LibraryPolicies", fields: [libraryId], references: [id], onDelete: SetNull)
+
+  // Reverse relation for default policy
+  defaultForLibraries Library[] @relation("LibraryDefaultPolicy")
 
   jobs Job[]
 
@@ -286,6 +305,14 @@ model Job {
   startedAt       DateTime?
   completedAt     DateTime?
   error           String? // Error message if failed
+  isBlacklisted   Boolean           @default(false) // User marked this file to never encode automatically
+
+  // Health Check Fields
+  healthStatus       FileHealthStatus @default(UNKNOWN) // File health status
+  healthScore        Int              @default(0) // Health score 0-100
+  healthMessage      String? // Detailed health message or warning
+  healthCheckedAt    DateTime? // When health check was performed
+  healthCheckRetries Int              @default(0) // Number of health check retry attempts
 
   // Relations
   nodeId String
@@ -307,6 +334,11 @@ model Job {
   @@index([createdAt])
   @@index([completedAt])
   @@index([stage, nodeId]) // Composite for queue queries
+  @@index([isBlacklisted]) // For filtering blacklisted files
+  @@index([filePath, libraryId]) // For checking if file is blacklisted during scan
+  @@index([healthStatus]) // For filtering by health status
+  @@index([healthScore]) // For prioritization (healthy files first)
+  @@index([stage, healthScore]) // Composite for smart queue ordering
   @@map("jobs")
 }
 

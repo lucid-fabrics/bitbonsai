@@ -71,6 +71,20 @@ export class NodeResponseDto {
   })
   updatedAt!: Date;
 
+  @ApiProperty({
+    description: 'Maximum number of concurrent encoding jobs',
+    example: 2,
+    default: 1,
+  })
+  maxWorkers!: number;
+
+  @ApiProperty({
+    description: 'Maximum CPU usage percentage (1-100)',
+    example: 80,
+    default: 80,
+  })
+  cpuLimit!: number;
+
   // NOTE: apiKey and pairingToken are intentionally excluded for security
   // These fields are only returned during initial registration (NodeRegistrationResponseDto)
 }

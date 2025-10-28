@@ -47,6 +47,14 @@ export class SystemHealthDto {
     maximum: 100,
   })
   storagePercent!: number;
+
+  @ApiProperty({
+    description: 'CPU utilization percentage',
+    example: 25.5,
+    minimum: 0,
+    maximum: 100,
+  })
+  cpuPercent!: number;
 }
 
 /**
@@ -96,7 +104,7 @@ export class QueueStatsDto {
 }
 
 /**
- * Recent activity item representing a completed job
+ * Recent activity item representing a completed or encoding job
  */
 export class RecentActivityDto {
   @ApiProperty({
@@ -138,20 +146,44 @@ export class RecentActivityDto {
   stage!: JobStage;
 
   @ApiProperty({
-    description: 'Bytes saved by encoding (can be negative if larger)',
-    example: '1342177280',
+    description: 'Original file size before encoding in bytes',
+    example: '3221225472',
     type: 'string',
   })
-  savedBytes!: string;
+  beforeSizeBytes!: string;
 
   @ApiProperty({
-    description: 'Percentage saved',
-    example: 42.5,
+    description: 'File size after encoding in bytes (null for encoding jobs)',
+    example: '1610612736',
+    type: 'string',
+    nullable: true,
   })
-  savedPercent!: number;
+  afterSizeBytes!: string | null;
 
   @ApiProperty({
-    description: 'Timestamp when the job was completed',
+    description: 'Bytes saved by encoding (can be negative if larger, null for encoding jobs)',
+    example: '1342177280',
+    type: 'string',
+    nullable: true,
+  })
+  savedBytes!: string | null;
+
+  @ApiProperty({
+    description: 'Percentage saved (null for encoding jobs)',
+    example: 42.5,
+    nullable: true,
+  })
+  savedPercent!: number | null;
+
+  @ApiProperty({
+    description: 'Encoding progress percentage (0-100, only for encoding jobs)',
+    example: 67.5,
+    nullable: true,
+  })
+  progress!: number | null;
+
+  @ApiProperty({
+    description: 'Timestamp when the job was completed or last updated',
     example: '2025-09-30T21:45:32.123Z',
     format: 'date-time',
   })
@@ -175,6 +207,12 @@ export class TopLibraryDto {
   name!: string;
 
   @ApiProperty({
+    description: 'Library media type',
+    example: 'MOVIE',
+  })
+  mediaType!: string;
+
+  @ApiProperty({
     description: 'Library filesystem path',
     example: '/mnt/user/media/Movies',
   })
@@ -195,11 +233,25 @@ export class TopLibraryDto {
   completedJobs!: number;
 
   @ApiProperty({
+    description: 'Number of jobs currently encoding',
+    example: 5,
+    minimum: 0,
+  })
+  encodingJobs!: number;
+
+  @ApiProperty({
     description: 'Total bytes saved across completed jobs',
     example: '15099494400000',
     type: 'string',
   })
   totalSavedBytes!: string;
+
+  @ApiProperty({
+    description: 'Total original size before encoding in bytes',
+    example: '45099494400000',
+    type: 'string',
+  })
+  totalBeforeBytes!: string;
 }
 
 /**

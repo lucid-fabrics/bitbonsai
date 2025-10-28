@@ -36,6 +36,14 @@ export class SystemHealthModel {
   success_rate!: {
     percentage: number;
   };
+
+  @ApiProperty({
+    description: 'CPU utilization percentage',
+    example: { percentage: 25.5 },
+  })
+  cpu_utilization!: {
+    percentage: number;
+  };
 }
 
 /**
@@ -72,7 +80,7 @@ export class QueueSummaryModel {
 }
 
 /**
- * Recent activity item representing a completed job
+ * Recent activity item representing a completed or encoding job
  */
 export class RecentActivityModel {
   @ApiProperty({
@@ -94,25 +102,60 @@ export class RecentActivityModel {
   library!: string;
 
   @ApiProperty({
-    description: 'Codec change description',
-    example: 'H.264 → H.265',
+    description: 'Source codec before encoding',
+    example: 'H.264',
   })
-  codec_change!: string;
+  source_codec!: string;
 
   @ApiProperty({
-    description: 'Space saved in gigabytes',
-    example: 1.25,
+    description: 'Target codec after encoding',
+    example: 'HEVC',
   })
-  savings_gb!: number;
+  target_codec!: string;
 
   @ApiProperty({
-    description: 'Duration in seconds',
-    example: 120,
+    description: 'Current job stage',
+    example: 'COMPLETED',
+    enum: ['COMPLETED', 'ENCODING'],
   })
-  duration_seconds!: number;
+  stage!: string;
 
   @ApiProperty({
-    description: 'Timestamp when the job was completed',
+    description: 'Original file size before encoding in bytes',
+    example: 3221225472,
+  })
+  before_size_bytes!: number;
+
+  @ApiProperty({
+    description: 'File size after encoding in bytes (null for encoding jobs)',
+    example: 1610612736,
+    nullable: true,
+  })
+  after_size_bytes!: number | null;
+
+  @ApiProperty({
+    description: 'Bytes saved by encoding (null for encoding jobs)',
+    example: 1610612736,
+    nullable: true,
+  })
+  saved_bytes!: number | null;
+
+  @ApiProperty({
+    description: 'Percentage saved (null for encoding jobs)',
+    example: 50.0,
+    nullable: true,
+  })
+  saved_percent!: number | null;
+
+  @ApiProperty({
+    description: 'Encoding progress percentage (0-100, only for encoding jobs)',
+    example: 67.5,
+    nullable: true,
+  })
+  progress!: number | null;
+
+  @ApiProperty({
+    description: 'Timestamp when the job was completed or last updated',
     example: '2025-09-30T21:45:32.123Z',
     format: 'date-time',
   })
@@ -130,6 +173,13 @@ export class TopLibraryModel {
   name!: string;
 
   @ApiProperty({
+    description: 'Library media type',
+    example: 'MOVIE',
+    enum: ['MOVIE', 'TV_SHOW', 'ANIME', 'ANIME_MOVIE', 'MIXED', 'OTHER'],
+  })
+  media_type!: string;
+
+  @ApiProperty({
     description: 'Total number of jobs for this library',
     example: 127,
     minimum: 0,
@@ -137,10 +187,30 @@ export class TopLibraryModel {
   job_count!: number;
 
   @ApiProperty({
-    description: 'Total space saved across all jobs in gigabytes',
-    example: 15.5,
+    description: 'Number of completed jobs',
+    example: 98,
+    minimum: 0,
   })
-  total_savings_gb!: number;
+  completed_jobs!: number;
+
+  @ApiProperty({
+    description: 'Number of jobs currently encoding',
+    example: 5,
+    minimum: 0,
+  })
+  encoding_jobs!: number;
+
+  @ApiProperty({
+    description: 'Total space saved across all jobs in bytes',
+    example: 16642998272,
+  })
+  total_savings_bytes!: number;
+
+  @ApiProperty({
+    description: 'Total original size before encoding in bytes',
+    example: 42949672960,
+  })
+  total_before_bytes!: number;
 }
 
 /**
