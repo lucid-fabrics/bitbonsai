@@ -34,7 +34,6 @@ export const setupGuard: CanActivateFn = (route) => {
       if (isSetupRoute) {
         // On setup route: redirect away if setup is already complete
         if (status.isSetupComplete) {
-          console.log('Setup already complete, redirecting to /login');
           return router.createUrlTree(['/login']);
         }
         // Setup not complete, allow access to setup page
@@ -42,7 +41,6 @@ export const setupGuard: CanActivateFn = (route) => {
       } else {
         // On other routes: redirect to setup if not complete
         if (!status.isSetupComplete) {
-          console.log('Setup not complete, redirecting to /setup');
           return router.createUrlTree(['/setup']);
         }
         // Setup complete, allow navigation

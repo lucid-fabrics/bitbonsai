@@ -350,24 +350,19 @@ export class OverviewService {
    * Get top 5 libraries by job count
    *
    * Includes job counts, encoding status, and total savings per library
+   * Uses optimized Prisma aggregations to avoid loading all job records
    *
    * @returns Top libraries sorted by total job count
    */
   async getTopLibraries(): Promise<TopLibraryDto[]> {
     this.logger.debug('Fetching top libraries');
 
+    // Get top 5 libraries with total job counts only (no job data)
     const libraries = await this.prisma.library.findMany({
       include: {
         _count: {
           select: {
             jobs: true,
-          },
-        },
-        jobs: {
-          select: {
-            stage: true,
-            savedBytes: true,
-            beforeSizeBytes: true,
           },
         },
       },
@@ -379,17 +374,55 @@ export class OverviewService {
       take: 5,
     });
 
+    // If no libraries, return empty array
+    if (libraries.length === 0) {
+      return [];
+    }
+
+    const libraryIds = libraries.map((l) => l.id);
+
+    // Aggregate completed job counts per library
+    const completedCounts = await this.prisma.job.groupBy({
+      by: ['libraryId'],
+      where: {
+        stage: JobStage.COMPLETED,
+        libraryId: { in: libraryIds },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Aggregate encoding job counts per library
+    const encodingCounts = await this.prisma.job.groupBy({
+      by: ['libraryId'],
+      where: {
+        stage: JobStage.ENCODING,
+        libraryId: { in: libraryIds },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Aggregate savings per library
+    const librarySavings = await this.prisma.job.groupBy({
+      by: ['libraryId'],
+      where: {
+        stage: JobStage.COMPLETED,
+        libraryId: { in: libraryIds },
+      },
+      _sum: {
+        savedBytes: true,
+        beforeSizeBytes: true,
+      },
+    });
+
+    // Combine the data
     return libraries.map((library) => {
-      const completedJobs = library.jobs.filter((j) => j.stage === JobStage.COMPLETED).length;
-      const encodingJobs = library.jobs.filter((j) => j.stage === JobStage.ENCODING).length;
-
-      const totalSavedBytes = library.jobs
-        .filter((j) => j.stage === JobStage.COMPLETED)
-        .reduce((sum, job) => sum + (job.savedBytes || BigInt(0)), BigInt(0));
-
-      const totalBeforeBytes = library.jobs
-        .filter((j) => j.stage === JobStage.COMPLETED)
-        .reduce((sum, job) => sum + job.beforeSizeBytes, BigInt(0));
+      const completed = completedCounts.find((c) => c.libraryId === library.id)?._count.id || 0;
+      const encoding = encodingCounts.find((e) => e.libraryId === library.id)?._count.id || 0;
+      const savings = librarySavings.find((s) => s.libraryId === library.id);
 
       return {
         id: library.id,
@@ -397,10 +430,10 @@ export class OverviewService {
         mediaType: library.mediaType,
         path: library.path,
         jobCount: library._count.jobs,
-        completedJobs,
-        encodingJobs,
-        totalSavedBytes: totalSavedBytes.toString(),
-        totalBeforeBytes: totalBeforeBytes.toString(),
+        completedJobs: completed,
+        encodingJobs: encoding,
+        totalSavedBytes: (savings?._sum?.savedBytes || BigInt(0)).toString(),
+        totalBeforeBytes: (savings?._sum?.beforeSizeBytes || BigInt(0)).toString(),
       };
     });
   }

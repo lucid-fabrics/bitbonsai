@@ -96,8 +96,6 @@ Status: ${this.status}
 Error Details:
 ${this.error}`;
 
-    navigator.clipboard.writeText(errorText).then(() => {
-      console.log('Error details copied to clipboard');
-    });
+    navigator.clipboard.writeText(errorText);
   }
 }

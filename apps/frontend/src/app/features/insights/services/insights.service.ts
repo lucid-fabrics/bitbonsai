@@ -29,7 +29,6 @@ export class InsightsService {
       map((dtos) => {
         // Defensive check: ensure dtos is an array
         if (!Array.isArray(dtos)) {
-          console.warn('Expected array from getSavingsTrend, got:', dtos);
           return [];
         }
         return dtos.map(SavingsTrendBO.fromDto);
@@ -45,7 +44,6 @@ export class InsightsService {
       map((dtos) => {
         // Defensive check: ensure dtos is an array
         if (!Array.isArray(dtos)) {
-          console.warn('Expected array from getCodecDistribution, got:', dtos);
           return [];
         }
         return dtos.map(CodecDistributionBO.fromDto);
@@ -61,7 +59,6 @@ export class InsightsService {
       map((dtos) => {
         // Defensive check: ensure dtos is an array
         if (!Array.isArray(dtos)) {
-          console.warn('Expected array from getNodePerformance, got:', dtos);
           return [];
         }
         return dtos.map(NodePerformanceBO.fromDto);

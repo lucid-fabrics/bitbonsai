@@ -1,3 +1,4 @@
+import { opendir } from 'node:fs/promises';
 import { normalize, resolve } from 'node:path';
 import {
   BadRequestException,
@@ -53,6 +54,41 @@ export class LibrariesService {
   ];
 
   /**
+   * Batch size for processing files from directory scan
+   * Prevents memory overload with large libraries (100K+ files)
+   */
+  private readonly SCAN_BATCH_SIZE = 100;
+
+  /**
+   * Supported video file extensions
+   */
+  private readonly VIDEO_EXTENSIONS = [
+    '.mp4',
+    '.mkv',
+    '.avi',
+    '.mov',
+    '.wmv',
+    '.flv',
+    '.webm',
+    '.m4v',
+    '.mpg',
+    '.mpeg',
+    '.m2ts',
+  ];
+
+  /**
+   * Temporary file patterns to skip during scanning
+   */
+  private readonly TEMP_FILE_PATTERNS = [
+    '.tmp',
+    '.temp',
+    '.part',
+    '.download',
+    '.crdownload',
+    '.!ut',
+  ];
+
+  /**
    * SECURITY: Validate and sanitize library path
    * Prevents path traversal attacks by:
    * - Normalizing path (removes .. and redundant slashes)
@@ -89,6 +125,51 @@ export class LibrariesService {
     }
 
     return normalizedPath;
+  }
+
+  /**
+   * Check if a file is a video file based on extension
+   * @private
+   */
+  private isVideoFile(fileName: string): boolean {
+    const lowerFileName = fileName.toLowerCase();
+
+    // Skip temporary files
+    if (this.TEMP_FILE_PATTERNS.some((pattern) => lowerFileName.includes(pattern))) {
+      return false;
+    }
+
+    const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
+    return this.VIDEO_EXTENSIONS.includes(ext);
+  }
+
+  /**
+   * Streaming directory scanner using async generator
+   * Prevents OOM by yielding one file at a time instead of loading all into memory
+   *
+   * @param dirPath - Directory path to scan
+   * @returns AsyncGenerator yielding video file paths one at a time
+   * @private
+   */
+  private async *scanDirectoryStream(dirPath: string): AsyncGenerator<string> {
+    try {
+      const dir = await opendir(dirPath);
+
+      for await (const entry of dir) {
+        const { join } = await import('node:path');
+        const fullPath = join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          // Recursively scan subdirectories (generator composition)
+          yield* this.scanDirectoryStream(fullPath);
+        } else if (entry.isFile() && this.isVideoFile(entry.name)) {
+          yield fullPath;
+        }
+      }
+    } catch (error) {
+      // Handle permission errors and other read errors gracefully
+      this.logger.warn(`Failed to read directory: ${dirPath}`, error);
+    }
   }
 
   /**
@@ -380,46 +461,26 @@ export class LibrariesService {
 
     try {
       const { promises: fs } = await import('node:fs');
-      const { join } = await import('node:path');
-
-      // Supported video file extensions
-      const videoExtensions = [
-        '.mp4',
-        '.mkv',
-        '.avi',
-        '.mov',
-        '.wmv',
-        '.flv',
-        '.webm',
-        '.m4v',
-        '.mpg',
-        '.mpeg',
-        '.m2ts',
-      ];
 
       const stats = { totalFiles: 0, totalSizeBytes: BigInt(0) };
 
-      // Recursive function to scan directory
-      const scanDirectory = async (dirPath: string): Promise<void> => {
-        try {
-          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      // Process files in batches to prevent memory overload
+      const batch: string[] = [];
 
-          for (const entry of entries) {
-            const fullPath = join(dirPath, entry.name);
+      for await (const filePath of this.scanDirectoryStream(existingLibrary.path)) {
+        batch.push(filePath);
 
-            if (entry.isDirectory()) {
-              await scanDirectory(fullPath);
-            } else if (entry.isFile()) {
-              await this.processVideoFile(entry.name, fullPath, videoExtensions, stats, fs);
-            }
-          }
-        } catch (readError) {
-          this.logger.warn(`Failed to read directory: ${dirPath}`, readError);
+        // Process batch when it reaches the threshold
+        if (batch.length >= this.SCAN_BATCH_SIZE) {
+          await this.processBatch(batch, stats, fs);
+          batch.length = 0; // Clear batch
         }
-      };
+      }
 
-      // Start scanning from library path
-      await scanDirectory(existingLibrary.path);
+      // Process remaining files in the last batch
+      if (batch.length > 0) {
+        await this.processBatch(batch, stats, fs);
+      }
 
       const { totalFiles, totalSizeBytes } = stats;
 
@@ -492,6 +553,29 @@ export class LibrariesService {
   }
 
   /**
+   * Process a batch of file paths and update stats
+   * @private
+   */
+  private async processBatch(
+    batch: string[],
+    stats: { totalFiles: number; totalSizeBytes: bigint },
+    fs: typeof import('node:fs').promises
+  ): Promise<void> {
+    // Process files in parallel within the batch for better performance
+    await Promise.all(
+      batch.map(async (filePath) => {
+        try {
+          const fileStats = await fs.stat(filePath);
+          stats.totalFiles++;
+          stats.totalSizeBytes += BigInt(fileStats.size);
+        } catch (statError) {
+          this.logger.warn(`Failed to stat file: ${filePath}`, statError);
+        }
+      })
+    );
+  }
+
+  /**
    * Scan library and preview what files need encoding (WITHOUT creating jobs)
    *
    * This provides an intuitive preview showing:
@@ -526,56 +610,13 @@ export class LibrariesService {
     // Use library's default policy, or first policy if no default is set
     const policy =
       library.policies.find((p) => p.id === library.defaultPolicyId) || library.policies[0];
-    const { promises: fs } = await import('node:fs');
-    const { join } = await import('node:path');
 
-    const videoExtensions = [
-      '.mp4',
-      '.mkv',
-      '.avi',
-      '.mov',
-      '.wmv',
-      '.flv',
-      '.webm',
-      '.m4v',
-      '.mpg',
-      '.mpeg',
-      '.m2ts',
-    ];
-
-    // Collect all video file paths
+    // Collect all video file paths using streaming scan
     const videoFiles: string[] = [];
 
-    const scanDirectory = async (dirPath: string): Promise<void> => {
-      try {
-        const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-          const fullPath = join(dirPath, entry.name);
-
-          if (entry.isDirectory()) {
-            await scanDirectory(fullPath);
-          } else if (entry.isFile()) {
-            const lowerFileName = entry.name.toLowerCase();
-
-            // Skip temporary files (common patterns)
-            const tempPatterns = ['.tmp', '.temp', '.part', '.download', '.crdownload', '.!ut'];
-            if (tempPatterns.some((pattern) => lowerFileName.includes(pattern))) {
-              continue;
-            }
-
-            const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
-            if (videoExtensions.includes(ext)) {
-              videoFiles.push(fullPath);
-            }
-          }
-        }
-      } catch (readError) {
-        this.logger.warn(`Failed to read directory: ${dirPath}`, readError);
-      }
-    };
-
-    await scanDirectory(library.path);
+    for await (const filePath of this.scanDirectoryStream(library.path)) {
+      videoFiles.push(filePath);
+    }
 
     this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
 
@@ -915,56 +956,12 @@ export class LibrariesService {
       throw new NotFoundException(`Policy with ID "${policyId}" not found`);
     }
 
-    const { promises: fs } = await import('node:fs');
-    const { join } = await import('node:path');
-
-    const videoExtensions = [
-      '.mp4',
-      '.mkv',
-      '.avi',
-      '.mov',
-      '.wmv',
-      '.flv',
-      '.webm',
-      '.m4v',
-      '.mpg',
-      '.mpeg',
-      '.m2ts',
-    ];
-
-    // Collect all video file paths
+    // Collect all video file paths using streaming scan
     const videoFiles: string[] = [];
 
-    const scanDirectory = async (dirPath: string): Promise<void> => {
-      try {
-        const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-          const fullPath = join(dirPath, entry.name);
-
-          if (entry.isDirectory()) {
-            await scanDirectory(fullPath);
-          } else if (entry.isFile()) {
-            const lowerFileName = entry.name.toLowerCase();
-
-            // Skip temporary files
-            const tempPatterns = ['.tmp', '.temp', '.part', '.download', '.crdownload', '.!ut'];
-            if (tempPatterns.some((pattern) => lowerFileName.includes(pattern))) {
-              continue;
-            }
-
-            const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
-            if (videoExtensions.includes(ext)) {
-              videoFiles.push(fullPath);
-            }
-          }
-        }
-      } catch (readError) {
-        this.logger.warn(`Failed to read directory: ${dirPath}`, readError);
-      }
-    };
-
-    await scanDirectory(library.path);
+    for await (const filePath of this.scanDirectoryStream(library.path)) {
+      videoFiles.push(filePath);
+    }
 
     this.logger.log(`Found ${videoFiles.length} video files, creating jobs...`);
 

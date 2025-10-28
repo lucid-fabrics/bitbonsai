@@ -121,8 +121,8 @@ export class SettingsComponent implements OnInit {
         next: (info) => {
           this.environmentInfo = info;
         },
-        error: (err) => {
-          console.error('Failed to load environment info:', err);
+        error: () => {
+          // Failed to load environment info
         },
       });
   }
@@ -141,8 +141,8 @@ export class SettingsComponent implements OnInit {
             webhookUrl: settings.webhookUrl || '',
           });
         },
-        error: (err) => {
-          console.error('Failed to load system settings:', err);
+        error: () => {
+          // Failed to load system settings
         },
       });
   }
@@ -155,8 +155,8 @@ export class SettingsComponent implements OnInit {
         next: (settings) => {
           this.localNetworkBypassEnabled = settings.allowLocalNetworkWithoutAuth;
         },
-        error: (err) => {
-          console.error('Failed to load security settings:', err);
+        error: () => {
+          // Failed to load security settings
         },
       });
   }
