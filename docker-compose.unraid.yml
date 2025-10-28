@@ -17,6 +17,8 @@ services:
       - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr
       - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
+      - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
+      - ADMIN_PASSWORD=12rIYlY8VxiooyMkHtu-1XdDgCOY-s7C
     volumes:
       # Source code with HMR (synced from Mac)
       - ./apps/backend:/app/apps/backend:cached
