@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { CreateLibraryDto } from './create-library.dto';
 
 /**
@@ -29,4 +29,14 @@ export class UpdateLibraryDto extends PartialType(CreateLibraryDto) {
   })
   @IsOptional()
   totalSizeBytes?: bigint;
+
+  @ApiProperty({
+    description: 'Default encoding policy ID for this library (auto-selected during scans)',
+    example: 'clq8x9z8x0001qh8x9z8x0001',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  defaultPolicyId?: string | null;
 }

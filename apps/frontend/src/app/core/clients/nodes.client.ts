@@ -28,6 +28,12 @@ export interface NodeStats {
   failedJobs: number;
 }
 
+export interface UpdateNodeRequest {
+  name?: string;
+  maxWorkers?: number;
+  cpuLimit?: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -68,6 +74,13 @@ export class NodesClient {
    */
   getNodeStats(id: string): Observable<NodeStats> {
     return this.http.get<NodeStats>(`${this.apiUrl}/${id}/stats`);
+  }
+
+  /**
+   * Update node configuration
+   */
+  updateNode(id: string, data: UpdateNodeRequest): Observable<Node> {
+    return this.http.patch<Node>(`${this.apiUrl}/${id}`, data);
   }
 
   /**

@@ -74,7 +74,7 @@ export class OverviewEffects {
       switchMap(() =>
         interval(5000).pipe(
           startWith(0), // Start immediately
-          map(() => OverviewActions.loadOverview()),
+          mergeMap(() => [OverviewActions.loadOverview(), OverviewActions.loadNodes()]),
           takeUntil(this.actions$.pipe(ofType(OverviewActions.stopPolling)))
         )
       )

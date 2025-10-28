@@ -2,27 +2,31 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   BehaviorSubject,
   catchError,
+  exhaustMap,
   interval,
   map,
   type Observable,
   of,
   shareReplay,
   startWith,
-  switchMap,
 } from 'rxjs';
 import { QueueClient } from '../../core/clients/queue.client';
+import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { JobStatus } from './models/job-status.enum';
 import type { QueueFilters } from './models/queue-filters.model';
+import type { QueueJob } from './models/queue-job.model';
 import type { QueueResponse } from './models/queue-response.model';
 
 @Component({
   selector: 'app-queue',
   standalone: true,
-  imports: [CommonModule, FormsModule, RichTooltipDirective],
+  imports: [CommonModule, FormsModule, RichTooltipDirective, AddFilesModalComponent],
   templateUrl: './queue.page.html',
   styleUrls: ['./queue.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,12 +34,17 @@ import type { QueueResponse } from './models/queue-response.model';
 export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   // Expose Number for template
   protected readonly Number = Number;
 
   // Observables for reactive state
-  private readonly refreshTrigger$ = new BehaviorSubject<void>(undefined);
+  private readonly refreshTrigger$ = new BehaviorSubject<{ showLoading: boolean }>({
+    showLoading: true,
+  });
+  private readonly loadingSubject$ = new BehaviorSubject<boolean>(true);
   protected readonly queueData$: Observable<QueueResponse | null>;
   protected readonly isLoading$: Observable<boolean>;
   protected readonly availableNodes$: Observable<Map<string, string>>;
@@ -43,7 +52,16 @@ export class QueueComponent implements OnInit {
   // State
   protected expandedJobId: string | null = null;
   protected showCancelDialog = false;
+  protected showCancelAllDialog = false;
+  protected showRetryAllDialog = false;
   protected selectedJobId: string | null = null;
+  protected showAddFilesModal = false;
+
+  // Expose Math for template
+  protected readonly Math = Math;
+
+  // Expose FileHealthStatus enum for template
+  protected readonly FileHealthStatus = FileHealthStatus;
 
   // Filter state
   protected selectedStatus: JobStatus | 'ALL' = 'ALL';
@@ -53,8 +71,11 @@ export class QueueComponent implements OnInit {
   // Available statuses for filter
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
     'ALL',
+    JobStatus.DETECTED,
+    JobStatus.HEALTH_CHECK,
     JobStatus.QUEUED,
     JobStatus.ENCODING,
+    JobStatus.VERIFYING,
     JobStatus.COMPLETED,
     JobStatus.FAILED,
     JobStatus.CANCELLED,
@@ -63,22 +84,32 @@ export class QueueComponent implements OnInit {
   constructor() {
     // Create observable stream for queue data
     this.queueData$ = this.refreshTrigger$.pipe(
-      switchMap(() =>
-        this.queueApi.getQueue(this.buildFilters()).pipe(
+      exhaustMap(({ showLoading }) => {
+        // Only show loading for user-initiated actions, not polling
+        if (showLoading) {
+          this.loadingSubject$.next(true);
+        }
+
+        // Fetch jobs from queue API
+        return this.queueApi.getQueue(this.buildFilters()).pipe(
+          map((data) => {
+            // Always clear loading when data arrives
+            this.loadingSubject$.next(false);
+            return data;
+          }),
           catchError((error) => {
             console.error('Failed to fetch queue data:', error);
+            // Always clear loading on error
+            this.loadingSubject$.next(false);
             return of(null);
           })
-        )
-      ),
+        );
+      }),
       shareReplay({ bufferSize: 1, refCount: true })
     );
 
-    // Loading state: true when queueData$ hasn't emitted yet
-    this.isLoading$ = this.queueData$.pipe(
-      map(() => false),
-      startWith(true)
-    );
+    // Use the loading subject as the loading observable
+    this.isLoading$ = this.loadingSubject$.asObservable();
 
     // Extract available nodes from queue data (Map of nodeId -> nodeName)
     this.availableNodes$ = this.queueData$.pipe(
@@ -96,6 +127,23 @@ export class QueueComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Restore filter state from query params
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      if (params['status']) {
+        const status = params['status'];
+        // Validate the status is a valid filter option
+        if (this.statuses.includes(status as any)) {
+          this.selectedStatus = status as JobStatus | 'ALL';
+        }
+      }
+      if (params['nodeId']) {
+        this.selectedNodeId = params['nodeId'];
+      }
+      if (params['search']) {
+        this.searchQuery = params['search'];
+      }
+    });
+
     this.startPolling();
   }
 
@@ -103,7 +151,8 @@ export class QueueComponent implements OnInit {
     interval(5000)
       .pipe(startWith(0), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        this.refreshTrigger$.next();
+        // Silent refresh for polling - don't show loading spinner
+        this.refreshTrigger$.next({ showLoading: false });
       });
   }
 
@@ -123,21 +172,45 @@ export class QueueComponent implements OnInit {
 
   protected onStatusFilterChange(status: JobStatus | 'ALL'): void {
     this.selectedStatus = status;
-    this.refreshQueue();
+    this.updateQueryParams();
+    this.refreshQueue(true); // Show loading for user action
   }
 
   protected onNodeFilterChange(nodeId: string): void {
     this.selectedNodeId = nodeId;
-    this.refreshQueue();
+    this.updateQueryParams();
+    this.refreshQueue(true); // Show loading for user action
   }
 
   protected onSearchChange(query: string): void {
     this.searchQuery = query;
-    this.refreshQueue();
+    this.updateQueryParams();
+    this.refreshQueue(true); // Show loading for user action
   }
 
-  private refreshQueue(): void {
-    this.refreshTrigger$.next();
+  private updateQueryParams(): void {
+    const queryParams: any = {};
+
+    if (this.selectedStatus !== 'ALL') {
+      queryParams.status = this.selectedStatus;
+    }
+    if (this.selectedNodeId) {
+      queryParams.nodeId = this.selectedNodeId;
+    }
+    if (this.searchQuery) {
+      queryParams.search = this.searchQuery;
+    }
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true, // Don't add to browser history
+    });
+  }
+
+  private refreshQueue(showLoading = false): void {
+    this.refreshTrigger$.next({ showLoading });
   }
 
   protected toggleJobDetails(jobId: string): void {
@@ -155,12 +228,31 @@ export class QueueComponent implements OnInit {
     this.selectedJobId = null;
   }
 
-  protected confirmCancel(): void {
+  protected confirmCancelAndRetry(): void {
     const jobId = this.selectedJobId;
     if (!jobId) return;
 
     this.queueApi
-      .cancelJob(jobId)
+      .cancelJob(jobId, false) // blacklist = false
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.closeCancelDialog();
+          this.refreshQueue();
+        },
+        error: (error) => {
+          console.error('Failed to cancel job:', error);
+          this.closeCancelDialog();
+        },
+      });
+  }
+
+  protected confirmCancelAndBlacklist(): void {
+    const jobId = this.selectedJobId;
+    if (!jobId) return;
+
+    this.queueApi
+      .cancelJob(jobId, true) // blacklist = true
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -187,6 +279,72 @@ export class QueueComponent implements OnInit {
           console.error('Failed to retry job:', error);
         },
       });
+  }
+
+  protected openCancelAllDialog(): void {
+    this.showCancelAllDialog = true;
+  }
+
+  protected closeCancelAllDialog(): void {
+    this.showCancelAllDialog = false;
+  }
+
+  protected confirmCancelAll(): void {
+    this.queueApi
+      .cancelAllQueued()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          console.log(`Cancelled ${result.cancelledCount} jobs`);
+          this.closeCancelAllDialog();
+          this.refreshQueue();
+        },
+        error: (error) => {
+          console.error('Failed to cancel all jobs:', error);
+          this.closeCancelAllDialog();
+        },
+      });
+  }
+
+  protected openRetryAllDialog(): void {
+    this.showRetryAllDialog = true;
+  }
+
+  protected closeRetryAllDialog(): void {
+    this.showRetryAllDialog = false;
+  }
+
+  protected confirmRetryAll(): void {
+    this.queueApi
+      .retryAllCancelled()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          console.log(
+            `Retried ${result.retriedCount} jobs (${this.formatBytes(Number(result.totalSizeBytes))} total)`
+          );
+          this.closeRetryAllDialog();
+          this.refreshQueue();
+        },
+        error: (error) => {
+          console.error('Failed to retry all cancelled jobs:', error);
+          this.closeRetryAllDialog();
+        },
+      });
+  }
+
+  protected openAddFilesModal(): void {
+    this.showAddFilesModal = true;
+  }
+
+  protected closeAddFilesModal(): void {
+    this.showAddFilesModal = false;
+  }
+
+  protected handleJobsCreated(result: { jobsCreated: number }): void {
+    console.log(`Created ${result.jobsCreated} job(s)`);
+    this.closeAddFilesModal();
+    this.refreshQueue(true); // Refresh with loading indicator
   }
 
   protected getStatusClass(status: JobStatus): string {
@@ -224,6 +382,34 @@ export class QueueComponent implements OnInit {
         return "This job was manually cancelled and won't be encoded. The original file remains unchanged.";
       default:
         return 'Unknown job status.';
+    }
+  }
+
+  protected getHealthStatusIcon(status: FileHealthStatus): string {
+    switch (status) {
+      case FileHealthStatus.HEALTHY:
+        return 'fas fa-check-circle';
+      case FileHealthStatus.WARNING:
+        return 'fas fa-exclamation-triangle';
+      case FileHealthStatus.CORRUPTED:
+        return 'fas fa-times-circle';
+      case FileHealthStatus.UNKNOWN:
+      default:
+        return 'fas fa-question-circle';
+    }
+  }
+
+  protected getHealthStatusTitle(status: FileHealthStatus): string {
+    switch (status) {
+      case FileHealthStatus.HEALTHY:
+        return 'File is Healthy';
+      case FileHealthStatus.WARNING:
+        return 'File has Warnings';
+      case FileHealthStatus.CORRUPTED:
+        return 'File is Corrupted';
+      case FileHealthStatus.UNKNOWN:
+      default:
+        return 'Health Status Unknown';
     }
   }
 
@@ -303,5 +489,94 @@ export class QueueComponent implements OnInit {
     if (codecLower.includes('h.264') || codecLower.includes('avc')) return 'codec-h264';
     if (codecLower.includes('vp9')) return 'codec-vp9';
     return 'codec-other';
+  }
+
+  protected getCancelledJobs(data: QueueResponse): QueueResponse['jobs'] {
+    return data.jobs.filter((job) => job.status === 'CANCELLED');
+  }
+
+  protected calculateTotalSize(jobs: QueueResponse['jobs']): number {
+    return jobs.reduce((sum, job) => sum + Number(job.originalSize), 0);
+  }
+
+  protected calculateEstimatedTime(totalSizeBytes: number): { hours: number; minutes: number } {
+    const avgEncodingSpeed = 50 * 1024 * 1024; // 50 MB/s
+    const estimatedSeconds = totalSizeBytes / avgEncodingSpeed;
+    const hours = Math.floor(estimatedSeconds / 3600);
+    const minutes = Math.floor((estimatedSeconds % 3600) / 60);
+    return { hours, minutes };
+  }
+
+  protected getAvgEncodingSpeed(): number {
+    return 50 * 1024 * 1024; // 50 MB/s
+  }
+
+  /**
+   * Estimate final size based on codec conversion
+   * Returns estimated size in bytes
+   */
+  protected getEstimatedSize(job: {
+    originalSize: number;
+    sourceCodec?: string;
+    targetCodec?: string;
+  }): number {
+    const compressionRatio = this.getCompressionRatio(job.sourceCodec, job.targetCodec);
+    return Math.round(job.originalSize * (1 - compressionRatio));
+  }
+
+  /**
+   * Get estimated compression percentage
+   * Returns percentage as number (e.g., 50 for 50%)
+   */
+  protected getEstimatedCompression(job: { sourceCodec?: string; targetCodec?: string }): number {
+    return Math.round(this.getCompressionRatio(job.sourceCodec, job.targetCodec) * 100);
+  }
+
+  /**
+   * Calculate compression ratio based on codec conversion
+   * Returns ratio (e.g., 0.5 for 50% compression)
+   */
+  private getCompressionRatio(sourceCodec?: string, targetCodec?: string): number {
+    if (!sourceCodec || !targetCodec) {
+      return 0.4; // Default 40% compression
+    }
+
+    const source = sourceCodec.toLowerCase();
+    const target = targetCodec.toLowerCase();
+
+    // H.264 to HEVC: 40-50% savings (typical)
+    if (source.includes('h.264') || source.includes('avc')) {
+      if (target.includes('hevc') || target.includes('h.265')) {
+        return 0.45;
+      }
+      if (target.includes('av1')) {
+        return 0.5;
+      }
+    }
+
+    // HEVC to AV1: 20-30% additional savings
+    if (source.includes('hevc') || source.includes('h.265')) {
+      if (target.includes('av1')) {
+        return 0.25;
+      }
+    }
+
+    // VP9 conversions
+    if (source.includes('vp9')) {
+      if (target.includes('av1')) {
+        return 0.2;
+      }
+      if (target.includes('hevc')) {
+        return 0.15;
+      }
+    }
+
+    // Same codec or unknown: minimal compression
+    if (source === target) {
+      return 0.05;
+    }
+
+    // Default conservative estimate
+    return 0.4;
   }
 }

@@ -24,6 +24,12 @@ import {
 import type { Library } from '@prisma/client';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { LibraryStatsDto } from './dto/library-stats.dto';
+import {
+  BulkJobCreationResultDto,
+  CreateAllJobsDto,
+  CreateJobsFromScanDto,
+  ScanPreviewDto,
+} from './dto/scan-preview.dto';
 import { UpdateLibraryDto } from './dto/update-library.dto';
 import { LibrariesService } from './libraries.service';
 
@@ -65,6 +71,32 @@ export class LibrariesController {
   })
   async create(@Body() createLibraryDto: CreateLibraryDto): Promise<Library> {
     return this.librariesService.create(createLibraryDto);
+  }
+
+  /**
+   * Get all "ready to queue" files across all libraries
+   */
+  @Get('ready')
+  @ApiOperation({
+    summary: 'Get all ready files',
+    description:
+      '**Aggregate Ready Files** - Shows all files ready to be queued across all libraries.\n\n' +
+      'Returns scan preview data from all enabled libraries:\n' +
+      '- Aggregates files from all libraries with policies\n' +
+      "- Shows files that need encoding but haven't been queued yet\n" +
+      '- Excludes blacklisted files\n' +
+      '- Useful for the "Ready" filter in the queue page\n\n' +
+      '**Response**: Array of scan previews, one per library',
+  })
+  @ApiOkResponse({
+    description: 'Ready files retrieved successfully',
+    type: [ScanPreviewDto],
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching ready files',
+  })
+  async getAllReadyFiles(): Promise<ScanPreviewDto[]> {
+    return this.librariesService.getAllReadyFiles();
   }
 
   /**
@@ -236,5 +268,143 @@ export class LibrariesController {
   })
   async scan(@Param('id') id: string): Promise<Library> {
     return this.librariesService.scan(id);
+  }
+
+  /**
+   * Preview what files need encoding (without creating jobs)
+   */
+  @Get(':id/scan/preview')
+  @ApiOperation({
+    summary: 'Preview scan results',
+    description:
+      '**Intuitive Scan Preview** - Shows what will be encoded WITHOUT creating jobs.\n\n' +
+      'This endpoint provides a clear breakdown:\n' +
+      '- **Files Needing Encoding**: Shows codec (e.g., H.264 → HEVC)\n' +
+      '- **Already Optimized Files**: No action needed\n' +
+      '- **File Details**: Size, duration, resolution\n' +
+      '- **Errors**: Files that failed analysis\n\n' +
+      '**User Flow**:\n' +
+      '1. User clicks "Scan Library"\n' +
+      '2. System analyzes files with FFprobe\n' +
+      '3. Shows preview: "51 files need encoding, 45 already optimized"\n' +
+      '4. User clicks "Create Jobs" to proceed\n\n' +
+      '**Why This Design?**\n' +
+      '- Users see exactly what will happen\n' +
+      '- No surprise jobs appearing\n' +
+      '- Manual confirmation step for control',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Library unique identifier (CUID)',
+    example: 'clq8x9z8x0002qh8x9z8x0002',
+  })
+  @ApiOkResponse({
+    description: 'Scan preview generated successfully',
+    type: ScanPreviewDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Library has no encoding policy assigned',
+  })
+  @ApiNotFoundResponse({
+    description: 'Library not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred during scan',
+  })
+  async scanPreview(@Param('id') id: string): Promise<ScanPreviewDto> {
+    return this.librariesService.scanPreview(id);
+  }
+
+  /**
+   * Create encoding jobs from scan results
+   */
+  @Post(':id/scan/create-jobs')
+  @ApiOperation({
+    summary: 'Create jobs from scan preview',
+    description:
+      '**Manual Trigger** - Creates encoding jobs after user reviews scan preview.\n\n' +
+      'Takes the scan preview results and creates actual jobs:\n' +
+      '- Validates policy and library\n' +
+      '- Creates job for each file that needs encoding\n' +
+      '- Jobs appear in queue immediately\n' +
+      '- Nodes can start processing\n\n' +
+      '**Flexible Options**:\n' +
+      '- Leave `filePaths` empty to encode ALL files from preview\n' +
+      '- Provide specific `filePaths` array to cherry-pick files\n\n' +
+      '**Response**: Returns number of jobs created + job details',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Library unique identifier (CUID)',
+    example: 'clq8x9z8x0002qh8x9z8x0002',
+  })
+  @ApiCreatedResponse({
+    description: 'Jobs created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        jobsCreated: { type: 'number', example: 51 },
+        jobs: { type: 'array', items: { type: 'object' } },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid request or library has no policy',
+  })
+  @ApiNotFoundResponse({
+    description: 'Library or policy not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while creating jobs',
+  })
+  async createJobsFromScan(
+    @Param('id') id: string,
+    @Body() dto: CreateJobsFromScanDto
+  ): Promise<{ jobsCreated: number; jobs: any[] }> {
+    return this.librariesService.createJobsFromScan(id, dto.policyId, dto.filePaths);
+  }
+
+  /**
+   * Create jobs for all files in library (simplified workflow)
+   */
+  @Post(':id/create-all-jobs')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Create jobs for all files in library',
+    description:
+      '**Simplified Bulk Job Creation** - Creates jobs for all files that need encoding in a library.\n\n' +
+      'This endpoint:\n' +
+      '1. Scans the library directory for video files (fast)\n' +
+      '2. For each file:\n' +
+      '   - Skips if already in queue or completed\n' +
+      '   - Quick codec check using FFprobe\n' +
+      '   - Creates job if needs encoding\n' +
+      '   - Skips corrupted/failed files\n' +
+      '3. Returns summary of jobs created and files skipped\n\n' +
+      '**Use Case**: Simplified "Add All Files" workflow that beats Tdarr/Unmanic',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Library unique identifier (CUID)',
+    example: 'clq8x9z8x0002qh8x9z8x0002',
+  })
+  @ApiCreatedResponse({
+    description: 'Jobs created successfully',
+    type: BulkJobCreationResultDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid request or library not found',
+  })
+  @ApiNotFoundResponse({
+    description: 'Library or policy not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while creating jobs',
+  })
+  async createAllJobs(
+    @Param('id') id: string,
+    @Body() dto: CreateAllJobsDto
+  ): Promise<BulkJobCreationResultDto> {
+    return this.librariesService.createAllJobs(id, dto.policyId);
   }
 }

@@ -2,15 +2,19 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
-import type { Node } from '@prisma/client';
+import { Interval } from '@nestjs/schedule';
+import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import type { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import type { NodeStatsDto } from './dto/node-stats.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
+import type { UpdateNodeDto } from './dto/update-node.dto';
 
 /**
  * NodesService
@@ -19,8 +23,50 @@ import type { RegisterNodeDto } from './dto/register-node.dto';
  * Implements multi-node architecture with license validation and pairing mechanism.
  */
 @Injectable()
-export class NodesService {
+export class NodesService implements OnModuleInit {
+  private readonly logger = new Logger(NodesService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Initialize MAIN node on module startup
+   */
+  async onModuleInit() {
+    this.logger.log('🔧 Initializing nodes service...');
+    this.logger.log('💓 MAIN node auto-heartbeat started (every 30s)');
+
+    // Send initial heartbeat immediately
+    this.sendMainNodeHeartbeat();
+  }
+
+  /**
+   * Auto-heartbeat for the MAIN node
+   * Uses @Interval decorator for resilience to hot reloads
+   * Sends heartbeat every 30 seconds to keep status updated
+   */
+  @Interval(30000)
+  private async sendMainNodeHeartbeat(): Promise<void> {
+    try {
+      const mainNode = await this.prisma.node.findFirst({
+        where: { role: NodeRole.MAIN },
+      });
+
+      if (!mainNode) {
+        this.logger.warn('⚠️  MAIN node not found - skipping heartbeat');
+        return;
+      }
+
+      await this.heartbeat(mainNode.id);
+      this.logger.debug(`💓 Heartbeat sent for ${mainNode.name}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`❌ Failed to send MAIN node heartbeat: ${errorMessage}`);
+      if (errorStack) {
+        this.logger.error(errorStack);
+      }
+    }
+  }
 
   /**
    * Register a new node with license validation
@@ -360,6 +406,33 @@ export class NodesService {
     }
 
     return mainNode;
+  }
+
+  /**
+   * Update node configuration
+   *
+   * @param id Node identifier
+   * @param data Update data
+   * @returns Updated node
+   * @throws NotFoundException if node doesn't exist
+   */
+  async update(id: string, data: UpdateNodeDto): Promise<Node> {
+    const node = await this.prisma.node.findUnique({
+      where: { id },
+    });
+
+    if (!node) {
+      throw new NotFoundException(`Node with ID ${id} not found`);
+    }
+
+    return this.prisma.node.update({
+      where: { id },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.maxWorkers !== undefined && { maxWorkers: data.maxWorkers }),
+        ...(data.cpuLimit !== undefined && { cpuLimit: data.cpuLimit }),
+      },
+    });
   }
 
   /**

@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -19,6 +29,7 @@ import { NodeResponseDto } from './dto/node-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
 import type { PairNodeDto } from './dto/pair-node.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
+import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
 
 @ApiTags('nodes')
@@ -326,6 +337,48 @@ export class NodesController {
   })
   async getStats(@Param('id') id: string): Promise<NodeStatsDto> {
     return this.nodesService.getNodeStats(id);
+  }
+
+  /**
+   * Update a node's configuration
+   */
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Update node configuration',
+    description:
+      'Updates node configuration including worker count and CPU limits.\n\n' +
+      '**Configurable Settings**:\n' +
+      '- **maxWorkers** (1-10): Number of concurrent encoding jobs\n' +
+      '- **cpuLimit** (10-100): Maximum CPU usage percentage\n' +
+      '- **name**: Display name for the node\n\n' +
+      '**Use Case**: Adjusting node capacity, optimizing resource usage',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Node unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Node updated successfully',
+    type: NodeResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid update data',
+  })
+  @ApiNotFoundResponse({
+    description: 'Node not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while updating node',
+  })
+  async update(
+    @Param('id') id: string,
+    @Body() updateNodeDto: UpdateNodeDto
+  ): Promise<NodeResponseDto> {
+    const node = await this.nodesService.update(id, updateNodeDto);
+    // Exclude sensitive fields
+    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
+    return safeNode;
   }
 
   /**

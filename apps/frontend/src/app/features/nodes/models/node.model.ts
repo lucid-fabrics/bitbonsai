@@ -28,6 +28,8 @@ export interface Node {
   uptimeSeconds: number;
   createdAt: string;
   activeJobCount?: number;
+  maxWorkers: number;
+  cpuLimit: number;
 }
 
 /**

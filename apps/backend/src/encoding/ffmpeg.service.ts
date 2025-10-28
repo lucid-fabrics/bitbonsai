@@ -283,8 +283,9 @@ export class FfmpegService {
     args.push('-progress', 'pipe:2', '-stats_period', '1');
 
     // Output to temp file (will be renamed atomically)
-    const tempOutput = `${job.filePath}.tmp`;
-    args.push('-y', tempOutput); // -y to overwrite temp file
+    // Use .tmp.mp4 extension so FFmpeg can detect the format
+    const tempOutput = `${job.filePath}.tmp.mp4`;
+    args.push('-f', 'mp4', '-y', tempOutput); // -f mp4 to specify format explicitly
 
     this.logger.debug(`ffmpeg command: ffmpeg ${args.join(' ')}`);
     return args;
@@ -381,7 +382,7 @@ export class FfmpegService {
     if (progress - activeEncoding.lastProgress >= 5) {
       this.queueService
         .updateProgress(job.id, {
-          progress,
+          progress: Math.round(progress * 100) / 100, // Round to 2 decimal places
           etaSeconds: eta,
         })
         .catch((error) => {
@@ -416,13 +417,14 @@ export class FfmpegService {
     }
 
     // Complete job
+    const savedPercentRounded = Math.round(savedPercent * 100) / 100;
     await this.queueService.completeJob(job.id, {
       afterSizeBytes: BigInt(afterSizeBytes).toString(),
       savedBytes: BigInt(savedBytes).toString(),
-      savedPercent,
+      savedPercent: savedPercentRounded,
     });
 
-    this.logger.log(`Encoding completed for job ${job.id}: saved ${savedPercent.toFixed(2)}%`);
+    this.logger.log(`Encoding completed for job ${job.id}: saved ${savedPercentRounded}%`);
   }
 
   /**
@@ -483,7 +485,7 @@ export class FfmpegService {
 
     // Build ffmpeg command
     const args = this.buildFfmpegCommand(job, policy, hwaccel);
-    const tempOutput = `${job.filePath}.tmp`;
+    const tempOutput = `${job.filePath}.tmp.mp4`;
 
     // Spawn ffmpeg process
     const ffmpegProcess = spawn('ffmpeg', args, {
@@ -709,21 +711,19 @@ export class FfmpegService {
       ]);
 
       let output = '';
-      let hasError = false;
 
       ffprobe.stdout?.on('data', (data) => {
         output += data.toString();
       });
 
-      ffprobe.stderr?.on('data', () => {
-        hasError = true;
-      });
+      // Ignore stderr - ffprobe writes warnings there even for valid files
+      // We only care about the exit code
 
       ffprobe.on('close', (code) => {
-        if (code !== 0 || hasError || !output.trim()) {
+        if (code !== 0 || !output.trim()) {
           resolve(false);
         } else {
-          // File is valid if we got a duration
+          // File is valid if exit code is 0 and we got a duration
           resolve(true);
         }
       });

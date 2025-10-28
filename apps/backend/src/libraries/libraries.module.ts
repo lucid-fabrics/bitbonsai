@@ -1,19 +1,21 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { FileWatcherModule } from '../file-watcher/file-watcher.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { QueueModule } from '../queue/queue.module';
 import { LibrariesController } from './libraries.controller';
 import { LibrariesService } from './libraries.service';
+import { MediaAnalysisService } from './services/media-analysis.service';
 
 /**
  * LibrariesModule
  *
  * Provides complete CRUD API for managing media libraries.
- * Includes Prisma database integration and file watching capabilities.
+ * Includes Prisma database integration, file watching, and media analysis capabilities.
  */
 @Module({
-  imports: [forwardRef(() => FileWatcherModule)],
+  imports: [forwardRef(() => FileWatcherModule), forwardRef(() => QueueModule)],
   controllers: [LibrariesController],
-  providers: [LibrariesService, PrismaService],
+  providers: [LibrariesService, MediaAnalysisService, PrismaService],
   exports: [LibrariesService],
 })
 export class LibrariesModule {}

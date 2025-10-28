@@ -52,6 +52,32 @@ export class QueueService {
       throw new NotFoundException(`Policy with ID "${createJobDto.policyId}" not found`);
     }
 
+    // Check if job already exists for this file path
+    const existingJob = await this.prisma.job.findFirst({
+      where: {
+        filePath: createJobDto.filePath,
+        stage: {
+          in: [
+            JobStage.DETECTED,
+            JobStage.HEALTH_CHECK,
+            JobStage.QUEUED,
+            JobStage.ENCODING,
+            JobStage.VERIFYING,
+            JobStage.COMPLETED,
+          ],
+        },
+      },
+    });
+
+    if (existingJob) {
+      this.logger.log(
+        `Job already exists for file: ${createJobDto.filePath} (stage: ${existingJob.stage}, id: ${existingJob.id})`
+      );
+      throw new BadRequestException(
+        `Job already exists for this file (stage: ${existingJob.stage}). Cannot create duplicate.`
+      );
+    }
+
     try {
       const job = await this.prisma.job.create({
         data: {
@@ -60,7 +86,7 @@ export class QueueService {
           sourceCodec: createJobDto.sourceCodec,
           targetCodec: createJobDto.targetCodec,
           beforeSizeBytes: BigInt(createJobDto.beforeSizeBytes),
-          stage: JobStage.QUEUED,
+          stage: JobStage.DETECTED, // Start with DETECTED, health check worker will validate
           nodeId: createJobDto.nodeId,
           libraryId: createJobDto.libraryId,
           policyId: createJobDto.policyId,
@@ -80,17 +106,25 @@ export class QueueService {
    *
    * @param stage - Optional filter by job stage
    * @param nodeId - Optional filter by node ID
+   * @param search - Optional search term for file path or file label
    * @returns Array of jobs matching the filters
    */
-  async findAll(stage?: JobStage, nodeId?: string): Promise<Job[]> {
-    this.logger.log(`Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'})`);
+  async findAll(stage?: JobStage, nodeId?: string, search?: string): Promise<Job[]> {
+    this.logger.log(
+      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, search: ${search || 'none'})`
+    );
 
-    const where: { stage?: JobStage; nodeId?: string } = {};
+    // Build where clause
+    const where: Record<string, unknown> = {};
     if (stage) {
       where.stage = stage;
     }
     if (nodeId) {
       where.nodeId = nodeId;
+    }
+    if (search) {
+      // SQLite LIKE operator is case-insensitive by default for ASCII characters
+      where.OR = [{ filePath: { contains: search } }, { fileLabel: { contains: search } }];
     }
 
     return this.prisma.job.findMany({
@@ -218,15 +252,16 @@ export class QueueService {
       return null;
     }
 
-    // Get next queued job for this node
+    // Get next queued job for this node (prioritize healthy files)
     const job = await this.prisma.job.findFirst({
       where: {
         nodeId,
         stage: JobStage.QUEUED,
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
+      orderBy: [
+        { healthScore: 'desc' }, // Healthy files first (90-100 score)
+        { createdAt: 'asc' }, // Then FIFO within same health tier
+      ],
       include: {
         policy: true,
         library: true,
@@ -359,12 +394,13 @@ export class QueueService {
    * Cancel a job
    *
    * @param id - Job unique identifier
+   * @param blacklist - If true, marks the job as blacklisted (never auto-encode again)
    * @returns Cancelled job
    * @throws NotFoundException if job does not exist
    * @throws BadRequestException if job is already completed
    */
-  async cancelJob(id: string): Promise<Job> {
-    this.logger.log(`Cancelling job: ${id}`);
+  async cancelJob(id: string, blacklist = false): Promise<Job> {
+    this.logger.log(`Cancelling job: ${id} (blacklist: ${blacklist})`);
 
     const existingJob = await this.prisma.job.findUnique({
       where: { id },
@@ -383,11 +419,178 @@ export class QueueService {
       data: {
         stage: JobStage.CANCELLED,
         completedAt: new Date(),
+        isBlacklisted: blacklist,
       },
     });
 
-    this.logger.log(`Job cancelled: ${id}`);
+    this.logger.log(`Job cancelled: ${id} (blacklisted: ${blacklist})`);
     return job;
+  }
+
+  /**
+   * Unblacklist a job to allow retry
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job with isBlacklisted set to false
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in CANCELLED stage or not blacklisted
+   */
+  async unblacklistJob(id: string): Promise<Job> {
+    this.logger.log(`Unblacklisting job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (existingJob.stage !== JobStage.CANCELLED) {
+      throw new BadRequestException('Only cancelled jobs can be unblacklisted');
+    }
+
+    if (!existingJob.isBlacklisted) {
+      throw new BadRequestException('Job is not blacklisted');
+    }
+
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        isBlacklisted: false,
+      },
+    });
+
+    this.logger.log(`Job unblacklisted: ${id}`);
+    return job;
+  }
+
+  /**
+   * Cancel all queued jobs
+   *
+   * @returns Object with count of cancelled jobs
+   */
+  async cancelAllQueued(): Promise<{ cancelledCount: number }> {
+    this.logger.log('Cancelling all queued jobs');
+
+    try {
+      const result = await this.prisma.job.updateMany({
+        where: {
+          stage: JobStage.QUEUED,
+        },
+        data: {
+          stage: JobStage.CANCELLED,
+          completedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`Cancelled ${result.count} queued job(s)`);
+      return { cancelledCount: result.count };
+    } catch (error) {
+      this.logger.error('Failed to cancel all queued jobs', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retry a failed or cancelled job
+   *
+   * This method resets the job back to QUEUED stage, clearing any error state
+   * and allowing it to be picked up by nodes again.
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job in QUEUED stage
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in FAILED or CANCELLED stage
+   */
+  async retryJob(id: string): Promise<Job> {
+    this.logger.log(`Retrying job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (existingJob.stage !== JobStage.FAILED && existingJob.stage !== JobStage.CANCELLED) {
+      throw new BadRequestException('Only failed or cancelled jobs can be retried');
+    }
+
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        error: null,
+        completedAt: null,
+        startedAt: null,
+      },
+    });
+
+    this.logger.log(`Job retried: ${id}`);
+    return job;
+  }
+
+  /**
+   * Retry all cancelled jobs
+   *
+   * This method resets all CANCELLED jobs back to QUEUED stage,
+   * allowing them to be processed again.
+   *
+   * @returns Object with count of retried jobs and aggregate data
+   */
+  async retryAllCancelled(): Promise<{
+    retriedCount: number;
+    totalSizeBytes: string;
+    jobs: Array<{ id: string; fileLabel: string; beforeSizeBytes: bigint }>;
+  }> {
+    this.logger.log('Retrying all cancelled jobs');
+
+    try {
+      // First get all cancelled jobs for aggregate data
+      const cancelledJobs = await this.prisma.job.findMany({
+        where: {
+          stage: JobStage.CANCELLED,
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          beforeSizeBytes: true,
+        },
+      });
+
+      // Calculate total size
+      const totalSize = cancelledJobs.reduce(
+        (sum, job) => sum + BigInt(job.beforeSizeBytes),
+        BigInt(0)
+      );
+
+      // Update all cancelled jobs back to queued
+      const result = await this.prisma.job.updateMany({
+        where: {
+          stage: JobStage.CANCELLED,
+        },
+        data: {
+          stage: JobStage.QUEUED,
+          progress: 0,
+          error: null,
+          completedAt: null,
+          startedAt: null,
+        },
+      });
+
+      this.logger.log(`Retried ${result.count} cancelled job(s)`);
+      return {
+        retriedCount: result.count,
+        totalSizeBytes: totalSize.toString(),
+        jobs: cancelledJobs,
+      };
+    } catch (error) {
+      this.logger.error('Failed to retry all cancelled jobs', error);
+      throw error;
+    }
   }
 
   /**
@@ -431,7 +634,32 @@ export class QueueService {
 
     const where = nodeId ? { nodeId } : {};
 
-    const [completed, failed, encoding, queued, totalSaved] = await Promise.all([
+    const [
+      detected,
+      healthCheck,
+      queued,
+      encoding,
+      verifying,
+      completed,
+      failed,
+      cancelled,
+      totalSaved,
+    ] = await Promise.all([
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.DETECTED },
+      }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.HEALTH_CHECK },
+      }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.QUEUED },
+      }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.ENCODING },
+      }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.VERIFYING },
+      }),
       this.prisma.job.count({
         where: { ...where, stage: JobStage.COMPLETED },
       }),
@@ -439,10 +667,7 @@ export class QueueService {
         where: { ...where, stage: JobStage.FAILED },
       }),
       this.prisma.job.count({
-        where: { ...where, stage: JobStage.ENCODING },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.QUEUED },
+        where: { ...where, stage: JobStage.CANCELLED },
       }),
       this.prisma.job.aggregate({
         where: { ...where, stage: JobStage.COMPLETED },
@@ -451,10 +676,14 @@ export class QueueService {
     ]);
 
     return {
+      detected,
+      healthCheck,
+      queued,
+      encoding,
+      verifying,
       completed,
       failed,
-      encoding,
-      queued,
+      cancelled,
       totalSavedBytes: (totalSaved._sum.savedBytes || BigInt(0)).toString(),
       nodeId,
     };

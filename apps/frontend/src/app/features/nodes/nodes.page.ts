@@ -20,6 +20,7 @@ import {
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { NodeBo } from './bos/node.bo';
 import { TimerBo } from './bos/timer.bo';
+import { NodeConfigModalComponent } from './modals/node-config/node-config.modal';
 import { NodeStatsModalComponent } from './modals/node-stats/node-stats.modal';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
@@ -321,6 +322,41 @@ export class NodesComponent implements OnInit {
    */
   onCopyCommand(): void {
     navigator.clipboard.writeText(this.pairingCommand);
+  }
+
+  /**
+   * Edit node configuration
+   */
+  onEditNode(node: Node): void {
+    const dialogRef = this.dialog.open(NodeConfigModalComponent, {
+      data: { node },
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result) {
+        this.isLoading = true;
+        this.error = null;
+        this.cdr.markForCheck();
+
+        this.nodesApi
+          .updateNode(node.id, result)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (updatedNode) => {
+              // Update the node in the list
+              this.nodes = this.nodes.map((n) => (n.id === updatedNode.id ? updatedNode : n));
+              this.isLoading = false;
+              this.cdr.markForCheck();
+            },
+            error: (err) => {
+              this.error = err.error?.message || 'Failed to update node configuration';
+              this.isLoading = false;
+              this.cdr.markForCheck();
+            },
+          });
+      }
+    });
   }
 
   /**

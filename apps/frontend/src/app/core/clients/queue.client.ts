@@ -31,11 +31,31 @@ export class QueueClient {
     );
   }
 
-  cancelJob(jobId: string): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${jobId}/cancel`, {});
+  cancelJob(jobId: string, blacklist = false): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/cancel`, { blacklist });
+  }
+
+  cancelAllQueued(): Observable<{ cancelledCount: number }> {
+    return this.http.post<{ cancelledCount: number }>(`${this.apiUrl}/cancel-all`, {});
   }
 
   retryJob(jobId: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${jobId}/retry`, {});
+  }
+
+  retryAllCancelled(): Observable<{
+    retriedCount: number;
+    totalSizeBytes: string;
+    jobs: Array<{ id: string; fileLabel: string; beforeSizeBytes: string }>;
+  }> {
+    return this.http.post<{
+      retriedCount: number;
+      totalSizeBytes: string;
+      jobs: Array<{ id: string; fileLabel: string; beforeSizeBytes: string }>;
+    }>(`${this.apiUrl}/retry-all-cancelled`, {});
+  }
+
+  unblacklistJob(jobId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/unblacklist`, {});
   }
 }

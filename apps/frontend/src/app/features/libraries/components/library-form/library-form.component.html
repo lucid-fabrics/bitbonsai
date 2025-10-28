@@ -86,6 +86,30 @@
       <div class="field-hint">Type of media content in this library</div>
     </div>
 
+    <!-- Default Policy Field -->
+    <div class="form-group">
+      <label for="defaultPolicyId">
+        <i class="fas fa-cog"></i>
+        Default Encoding Policy
+      </label>
+      @if (policies$ | async; as policies) {
+        <select
+          id="defaultPolicyId"
+          formControlName="defaultPolicyId">
+          <option [value]="null">No Default Policy</option>
+          @for (policy of policies; track policy.id) {
+            <option [value]="policy.id">
+              {{ policy.name }} ({{ policy.targetCodec }})
+            </option>
+          }
+        </select>
+      }
+      <div class="field-hint">
+        <i class="fas fa-info-circle"></i>
+        The default policy will be automatically selected when creating encoding jobs for this library. You can always override it when creating jobs manually.
+      </div>
+    </div>
+
     <!-- Enabled Toggle -->
     <div class="form-group toggle-group">
       <label for="enabled">

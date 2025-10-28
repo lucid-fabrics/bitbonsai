@@ -162,11 +162,40 @@
               <div class="info-value">{{ node.activeJobCount || 0 }}</div>
             </div>
           </div>
+
+          <!-- Max Workers -->
+          <div class="info-item">
+            <i class="fas fa-users"></i>
+            <div class="info-content">
+              <div class="info-label">Max Workers</div>
+              <div class="info-value">{{ node.maxWorkers }}</div>
+            </div>
+          </div>
+
+          <!-- CPU Limit -->
+          <div class="info-item">
+            <i class="fas fa-tachometer-alt"></i>
+            <div class="info-content">
+              <div class="info-label">CPU Limit</div>
+              <div class="info-value">{{ node.cpuLimit }}%</div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Card Footer -->
       <div class="card-footer">
+        <button
+          class="btn btn-icon"
+          (click)="onEditNode(node)"
+          bbTooltip
+          tooltipTitle="Configure Node"
+          tooltipContent="Adjust worker count, CPU limits, and other node settings to optimize encoding performance."
+          tooltipWhen="You want to tune the node's resource usage or change how many jobs it can handle simultaneously."
+          tooltipPlacement="top">
+          <i class="fas fa-cog"></i>
+          Configure
+        </button>
         <button
           class="btn btn-icon"
           (click)="onViewStats(node)"

@@ -1,9 +1,11 @@
+import { FileHealthStatus } from '../../libraries/models/library.model';
 import { JobStatus } from './job-status.enum';
 
 export interface QueueJob {
   id: string;
   fileName: string;
   filePath: string;
+  libraryId?: string; // Optional: only for ready files
   libraryName: string;
   policyName: string;
   status: JobStatus;
@@ -21,4 +23,7 @@ export interface QueueJob {
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
+  healthStatus?: FileHealthStatus;
+  healthScore?: number; // 0-100
+  healthMessage?: string;
 }

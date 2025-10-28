@@ -18,8 +18,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { PathSelectorComponent } from '@bitbonsai/shared-ui';
+import { Store } from '@ngrx/store';
 import { environment } from '../../../../../environments/environment';
 import type { Node } from '../../../nodes/models/node.model';
+import { PoliciesActions } from '../../../policies/+state/policies.actions';
+import { PoliciesSelectors } from '../../../policies/+state/policies.selectors';
 import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../../models/library.model';
 import { MediaType } from '../../models/library.model';
 
@@ -29,6 +32,7 @@ interface LibraryFormControls {
   mediaType: FormControl<MediaType>;
   enabled: FormControl<boolean>;
   watchEnabled: FormControl<boolean>;
+  defaultPolicyId: FormControl<string | null>;
 }
 
 @Component({
@@ -41,6 +45,7 @@ interface LibraryFormControls {
 })
 export class LibraryFormComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly store = inject(Store);
 
   readonly library = input<Library>();
   readonly nodes = input<Node[]>([]);
@@ -55,6 +60,9 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
   showFolderBrowser = false;
   apiUrl = environment.apiUrl;
 
+  // Policies state
+  readonly policies$ = this.store.select(PoliciesSelectors.selectPolicies);
+
   private clickListener?: (event: MouseEvent) => void;
 
   ngOnInit(): void {
@@ -62,6 +70,9 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
     this.isEditMode = !!lib;
     this.initializeForm();
     this.setupClickOutsideListener();
+
+    // Load policies for the dropdown
+    this.store.dispatch(PoliciesActions.loadPolicies());
   }
 
   ngOnDestroy(): void {
@@ -108,6 +119,7 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
       }),
       enabled: this.fb.control(lib?.enabled ?? true, { nonNullable: true }),
       watchEnabled: this.fb.control(lib?.watchEnabled ?? false, { nonNullable: true }),
+      defaultPolicyId: this.fb.control(lib?.defaultPolicyId ?? null, { nonNullable: true }),
     });
   }
 
@@ -138,6 +150,8 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
     if (formValue.mediaType !== lib.mediaType) updates.mediaType = formValue.mediaType;
     if (formValue.enabled !== lib.enabled) updates.enabled = formValue.enabled;
     if (formValue.watchEnabled !== lib.watchEnabled) updates.watchEnabled = formValue.watchEnabled;
+    if (formValue.defaultPolicyId !== lib.defaultPolicyId)
+      updates.defaultPolicyId = formValue.defaultPolicyId;
     return updates;
   }
 
@@ -173,6 +187,10 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
 
   get watchEnabledControl() {
     return this.libraryForm.get('watchEnabled');
+  }
+
+  get defaultPolicyIdControl() {
+    return this.libraryForm.get('defaultPolicyId');
   }
 
   onPathFocus(): void {

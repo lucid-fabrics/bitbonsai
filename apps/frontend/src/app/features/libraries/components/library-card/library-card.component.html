@@ -9,6 +9,27 @@
         <i class="fas" [ngClass]="getMediaTypeIcon(library().mediaType)"></i>
         {{ getMediaTypeLabel(library().mediaType) }}
       </span>
+      @if (library().defaultPolicy) {
+        <span class="policy-badge default-policy"
+          bbTooltip
+          tooltipTitle="Default Encoding Policy"
+          [tooltipContent]="'Files in this library will be encoded using the \'' + library().defaultPolicy!.name + '\' policy by default. You can override this when creating jobs.'"
+          tooltipWhen="You want to understand which encoding settings will be used for files in this library."
+          tooltipPlacement="top">
+          <i class="fas fa-cog"></i>
+          {{ library().defaultPolicy!.name }}
+        </span>
+      } @else {
+        <span class="policy-badge no-policy"
+          bbTooltip
+          tooltipTitle="No Default Policy Set"
+          tooltipContent="This library has no default encoding policy configured. You'll need to manually select a policy each time you create encoding jobs."
+          tooltipWhen="You want to set a default policy for easier workflow."
+          tooltipPlacement="top">
+          <i class="fas fa-exclamation-triangle"></i>
+          No Default Policy
+        </span>
+      }
     </div>
     <div class="header-right">
       <span class="status-badge" [class.online]="library().node.status === 'ONLINE'">

@@ -5,6 +5,36 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class JobStatsDto {
   @ApiProperty({
+    description: 'Number of detected jobs awaiting health check',
+    example: 15,
+  })
+  detected!: number;
+
+  @ApiProperty({
+    description: 'Number of jobs currently being health checked',
+    example: 5,
+  })
+  healthCheck!: number;
+
+  @ApiProperty({
+    description: 'Number of queued jobs waiting to be processed',
+    example: 42,
+  })
+  queued!: number;
+
+  @ApiProperty({
+    description: 'Number of currently encoding jobs',
+    example: 3,
+  })
+  encoding!: number;
+
+  @ApiProperty({
+    description: 'Number of jobs being verified after encoding',
+    example: 2,
+  })
+  verifying!: number;
+
+  @ApiProperty({
     description: 'Number of completed jobs',
     example: 150,
   })
@@ -17,16 +47,10 @@ export class JobStatsDto {
   failed!: number;
 
   @ApiProperty({
-    description: 'Number of currently encoding jobs',
-    example: 3,
+    description: 'Number of cancelled jobs',
+    example: 12,
   })
-  encoding!: number;
-
-  @ApiProperty({
-    description: 'Number of queued jobs waiting to be processed',
-    example: 42,
-  })
-  queued!: number;
+  cancelled!: number;
 
   @ApiProperty({
     description: 'Total bytes saved across all completed jobs',

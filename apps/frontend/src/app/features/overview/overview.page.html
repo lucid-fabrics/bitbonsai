@@ -78,6 +78,18 @@
               </p>
             </div>
           </div>
+
+          <div class="health-card" [ngClass]="overviewData.system_health.cpu_utilization.percentage > 80 ? 'health-card--error' : overviewData.system_health.cpu_utilization.percentage > 60 ? 'health-card--warning' : 'health-card--success'">
+            <div class="health-card__icon">
+              <fa-icon [icon]="icons.cpuUtilization" size="2x"></fa-icon>
+            </div>
+            <div class="health-card__content">
+              <h3 class="health-card__title">CPU Utilization</h3>
+              <p class="health-card__value">
+                {{ overviewData.system_health.cpu_utilization.percentage }}%
+              </p>
+            </div>
+          </div>
         </section>
 
         <!-- Hardware Acceleration Section -->
@@ -289,32 +301,75 @@
                 <p>No recent activity</p>
               </div>
             } @else {
-              @for (activity of overviewData.recent_activity; track activity.id) {
-                <div class="activity-item">
+              @for (activity of overviewData.recent_activity; track trackByActivityId($index, activity)) {
+                <div class="activity-item" [class.activity-item--encoding]="activity.stage === 'ENCODING'">
+                  <!-- Header with Status Badge -->
                   <div class="activity-item__header">
-                    <fa-icon [icon]="icons.completed" class="activity-icon"></fa-icon>
+                    @if (activity.stage === 'ENCODING') {
+                      <div class="status-badge status-badge--encoding">
+                        <fa-icon [icon]="icons.encoding" [animation]="'spin'" class="status-icon"></fa-icon>
+                        <span>ENCODING</span>
+                      </div>
+                    } @else {
+                      <div class="status-badge status-badge--completed">
+                        <fa-icon [icon]="icons.completed" class="status-icon"></fa-icon>
+                        <span>COMPLETED</span>
+                      </div>
+                    }
                     <div class="activity-item__info">
                       <h3 class="activity-item__title">{{ activity.file_name }}</h3>
                       <p class="activity-item__library">{{ activity.library }}</p>
                     </div>
                   </div>
-                  <div class="activity-item__details">
-                    <div class="activity-detail">
-                      <span class="activity-detail__label">Codec:</span>
-                      <span class="activity-detail__value">{{ activity.codec_change }}</span>
-                    </div>
-                    <div class="activity-detail">
-                      <span class="activity-detail__label">Saved:</span>
-                      <span class="activity-detail__value">{{ formatBytes(activity.savings_gb) }}</span>
-                    </div>
-                    <div class="activity-detail">
-                      <span class="activity-detail__label">Duration:</span>
-                      <span class="activity-detail__value">{{ formatDuration(activity.duration_seconds) }}</span>
-                    </div>
-                    <div class="activity-detail">
-                      <span class="activity-detail__label">Completed:</span>
-                      <span class="activity-detail__value">{{ formatTime(activity.completed_at) }}</span>
-                    </div>
+
+                  <!-- Codec Conversion -->
+                  <div class="activity-item__codec">
+                    <span class="codec-badge codec-badge--source">{{ activity.source_codec }}</span>
+                    <fa-icon [icon]="icons.encoding" class="codec-arrow"></fa-icon>
+                    <span class="codec-badge codec-badge--target">{{ activity.target_codec }}</span>
+                  </div>
+
+                  <!-- Size & Compression Info -->
+                  <div class="activity-item__size">
+                    @if (activity.stage === 'COMPLETED' && activity.after_size_bytes !== null) {
+                      <!-- Completed: Show actual results -->
+                      <div class="size-comparison">
+                        <span class="size-before">{{ formatSizeBytes(activity.before_size_bytes) }}</span>
+                        <i class="fas fa-arrow-right size-arrow"></i>
+                        <span class="size-after">{{ formatSizeBytes(activity.after_size_bytes) }}</span>
+                      </div>
+                      @if (activity.saved_percent !== null && activity.saved_percent > 0) {
+                        <span class="compression-badge compression-badge--positive">
+                          <i class="fas fa-arrow-down"></i>
+                          {{ activity.saved_percent.toFixed(1) }}%
+                        </span>
+                      } @else if (activity.saved_percent !== null && activity.saved_percent < 0) {
+                        <span class="compression-badge compression-badge--negative">
+                          <i class="fas fa-arrow-up"></i>
+                          {{ Math.abs(activity.saved_percent).toFixed(1) }}%
+                        </span>
+                      }
+                    } @else if (activity.stage === 'ENCODING') {
+                      <!-- Encoding: Show progress -->
+                      <div class="encoding-progress">
+                        <div class="progress-info">
+                          <span class="progress-label">Progress:</span>
+                          <span class="progress-value">{{ activity.progress?.toFixed(1) }}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                          <div class="progress-bar-fill" [style.width.%]="activity.progress || 0"></div>
+                        </div>
+                        <div class="size-info">
+                          <span class="size-original">{{ formatSizeBytes(activity.before_size_bytes) }}</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Timestamp -->
+                  <div class="activity-item__time">
+                    <fa-icon [icon]="icons.queued" class="time-icon"></fa-icon>
+                    <span>{{ formatTime(activity.completed_at) }}</span>
                   </div>
                 </div>
               }
@@ -332,16 +387,73 @@
                 <p>No library data available</p>
               </div>
             } @else {
-              @for (library of overviewData.top_libraries; track library.name) {
-                <div class="library-item">
-                  <div class="library-item__info">
-                    <h3 class="library-item__name">{{ library.name }}</h3>
-                    <p class="library-item__count">{{ library.job_count }} jobs</p>
+              @for (library of overviewData.top_libraries; track trackByLibraryName($index, library)) {
+                <div class="library-card">
+                  <!-- Header with Icon and Type -->
+                  <div class="library-card__header">
+                    <div class="library-icon">
+                      <fa-icon [icon]="getMediaTypeIcon(library.media_type)" size="lg"></fa-icon>
+                    </div>
+                    <div class="library-card__title">
+                      <h3 class="library-name">{{ library.name }}</h3>
+                      <span class="media-type-badge">{{ getMediaTypeLabel(library.media_type) }}</span>
+                    </div>
                   </div>
-                  <div class="library-item__savings">
-                    <span class="library-item__value">{{ formatBytes(library.total_savings_gb) }}</span>
-                    <span class="library-item__label">saved</span>
+
+                  <!-- Statistics Grid -->
+                  <div class="library-card__stats">
+                    <!-- Jobs Count -->
+                    <div class="stat-item">
+                      <span class="stat-value">{{ library.job_count }}</span>
+                      <span class="stat-label">Total Jobs</span>
+                    </div>
+
+                    <!-- Completed Jobs -->
+                    <div class="stat-item stat-item--success">
+                      <span class="stat-value">{{ library.completed_jobs }}</span>
+                      <span class="stat-label">Completed</span>
+                    </div>
+
+                    <!-- Encoding Jobs (if any) -->
+                    @if (library.encoding_jobs > 0) {
+                      <div class="stat-item stat-item--encoding">
+                        <span class="stat-value">
+                          <fa-icon [icon]="icons.encoding" [animation]="'spin'" size="sm"></fa-icon>
+                          {{ library.encoding_jobs }}
+                        </span>
+                        <span class="stat-label">Encoding</span>
+                      </div>
+                    }
                   </div>
+
+                  <!-- Progress Bar -->
+                  <div class="library-card__progress">
+                    <div class="progress-header">
+                      <span class="progress-label">Completion</span>
+                      <span class="progress-percent">{{ getCompletionPercent(library).toFixed(1) }}%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar-fill" [style.width.%]="getCompletionPercent(library)"></div>
+                    </div>
+                  </div>
+
+                  <!-- Savings Info -->
+                  @if (library.total_savings_bytes > 0) {
+                    <div class="library-card__savings">
+                      <div class="savings-amount">
+                        <i class="fas fa-arrow-down"></i>
+                        <span class="savings-value">{{ formatSizeBytes(library.total_savings_bytes) }}</span>
+                        <span class="savings-label">saved</span>
+                      </div>
+                      <div class="compression-badge">
+                        {{ getCompressionPercent(library).toFixed(1) }}% compression
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="library-card__placeholder">
+                      <span class="placeholder-text">No completed jobs yet</span>
+                    </div>
+                  }
                 </div>
               }
             }

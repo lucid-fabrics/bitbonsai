@@ -22,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { type Job, JobStage } from '@prisma/client';
+import { CancelJobDto } from './dto/cancel-job.dto';
 import { CompleteJobDto } from './dto/complete-job.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
@@ -102,6 +103,12 @@ export class QueueController {
     description: 'Filter jobs by node ID',
     example: 'clq8x9z8x0000qh8x9z8x0000',
   })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search jobs by file path or file label',
+    example: 'movie.mkv',
+  })
   @ApiOkResponse({
     description: 'List of jobs retrieved successfully',
     type: [CreateJobDto],
@@ -111,9 +118,10 @@ export class QueueController {
   })
   async findAll(
     @Query('stage') stage?: JobStage,
-    @Query('nodeId') nodeId?: string
+    @Query('nodeId') nodeId?: string,
+    @Query('search') search?: string
   ): Promise<Job[]> {
-    return this.queueService.findAll(stage, nodeId);
+    return this.queueService.findAll(stage, nodeId, search);
   }
 
   /**
@@ -356,9 +364,13 @@ export class QueueController {
       '**Actions Performed**:\n' +
       '1. Validates job can be cancelled (not already completed)\n' +
       '2. Updates job stage to CANCELLED\n' +
-      '3. Sets completedAt timestamp\n\n' +
+      '3. Sets completedAt timestamp\n' +
+      '4. Optionally blacklists the file (prevents automatic re-encoding)\n\n' +
+      '**Cancel Options**:\n' +
+      '- **Cancel & Retry** (blacklist=false): Job can be retried later\n' +
+      '- **Cancel & Blacklist** (blacklist=true): File will never be auto-encoded again\n\n' +
       '**Note**: Cancelling a job that is actively encoding may require node cleanup.\n\n' +
-      '**Use Case**: User cancels a job from the UI',
+      '**Use Case**: User cancels a job from the UI with option to blacklist',
   })
   @ApiParam({
     name: 'id',
@@ -377,8 +389,160 @@ export class QueueController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while cancelling job',
   })
-  async cancel(@Param('id') id: string): Promise<Job> {
-    return this.queueService.cancelJob(id);
+  async cancel(@Param('id') id: string, @Body() cancelJobDto: CancelJobDto): Promise<Job> {
+    return this.queueService.cancelJob(id, cancelJobDto.blacklist ?? false);
+  }
+
+  /**
+   * Unblacklist a job to allow retry
+   */
+  @Post(':id/unblacklist')
+  @ApiOperation({
+    summary: 'Unblacklist a job to allow retry',
+    description:
+      'Removes the blacklist flag from a cancelled job, allowing it to be retried.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job exists and is in CANCELLED stage\n' +
+      '2. Validates job is currently blacklisted\n' +
+      '3. Sets isBlacklisted to false\n\n' +
+      '**Use Case**: User decides to retry a previously blacklisted file',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job unblacklisted successfully - can now be retried',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in CANCELLED stage or is not blacklisted',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while unblacklisting job',
+  })
+  async unblacklist(@Param('id') id: string): Promise<Job> {
+    return this.queueService.unblacklistJob(id);
+  }
+
+  /**
+   * Retry a failed or cancelled job
+   */
+  @Post(':id/retry')
+  @ApiOperation({
+    summary: 'Retry a failed or cancelled job',
+    description:
+      'Resets a failed or cancelled job back to QUEUED stage.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in FAILED or CANCELLED stage\n' +
+      '2. Updates job stage to QUEUED\n' +
+      '3. Resets progress to 0%\n' +
+      '4. Clears error message and timestamps\n\n' +
+      '**Use Case**: User wants to retry a job that failed or was cancelled',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job retried successfully and moved back to queue',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in FAILED or CANCELLED stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while retrying job',
+  })
+  async retry(@Param('id') id: string): Promise<Job> {
+    return this.queueService.retryJob(id);
+  }
+
+  /**
+   * Cancel all queued jobs
+   */
+  @Post('cancel-all')
+  @ApiOperation({
+    summary: 'Cancel all queued jobs',
+    description:
+      'Cancels ALL jobs that are currently in QUEUED stage.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Finds all jobs with stage = QUEUED\n' +
+      '2. Updates them to stage = CANCELLED\n' +
+      '3. Sets completedAt timestamp for each\n\n' +
+      '**Safety**: Only affects QUEUED jobs. Does not cancel ENCODING jobs.\n\n' +
+      '**Use Case**: User wants to stop all pending encoding work',
+  })
+  @ApiOkResponse({
+    description: 'All queued jobs cancelled successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        cancelledCount: { type: 'number', example: 39 },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while cancelling jobs',
+  })
+  async cancelAll(): Promise<{ cancelledCount: number }> {
+    return this.queueService.cancelAllQueued();
+  }
+
+  /**
+   * Retry all cancelled jobs
+   */
+  @Post('retry-all-cancelled')
+  @ApiOperation({
+    summary: 'Retry all cancelled jobs',
+    description:
+      'Resets ALL cancelled jobs back to QUEUED stage.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Finds all jobs with stage = CANCELLED\n' +
+      '2. Updates them to stage = QUEUED\n' +
+      '3. Resets progress to 0% and clears timestamps\n\n' +
+      '**Returns**:\n' +
+      '- Count of retried jobs\n' +
+      '- Total file size of all retried jobs\n' +
+      '- List of job IDs and file labels\n\n' +
+      '**Use Case**: User wants to retry all previously cancelled jobs',
+  })
+  @ApiOkResponse({
+    description: 'All cancelled jobs retried successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        retriedCount: { type: 'number', example: 39 },
+        totalSizeBytes: { type: 'string', example: '524288000000' },
+        jobs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              fileLabel: { type: 'string' },
+              beforeSizeBytes: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while retrying jobs',
+  })
+  async retryAllCancelled(): Promise<{
+    retriedCount: number;
+    totalSizeBytes: string;
+    jobs: Array<{ id: string; fileLabel: string; beforeSizeBytes: bigint }>;
+  }> {
+    return this.queueService.retryAllCancelled();
   }
 
   /**

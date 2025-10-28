@@ -25,27 +25,48 @@ export class InsightsService {
    * Get savings trend data mapped to business objects
    */
   getSavingsTrend(days: number): Observable<SavingsTrendBO[]> {
-    return this.insightsClient
-      .getSavingsTrend(days)
-      .pipe(map((dtos) => dtos.map(SavingsTrendBO.fromDto)));
+    return this.insightsClient.getSavingsTrend(days).pipe(
+      map((dtos) => {
+        // Defensive check: ensure dtos is an array
+        if (!Array.isArray(dtos)) {
+          console.warn('Expected array from getSavingsTrend, got:', dtos);
+          return [];
+        }
+        return dtos.map(SavingsTrendBO.fromDto);
+      })
+    );
   }
 
   /**
    * Get codec distribution data mapped to business objects
    */
   getCodecDistribution(): Observable<CodecDistributionBO[]> {
-    return this.insightsClient
-      .getCodecDistribution()
-      .pipe(map((dtos) => dtos.map(CodecDistributionBO.fromDto)));
+    return this.insightsClient.getCodecDistribution().pipe(
+      map((dtos) => {
+        // Defensive check: ensure dtos is an array
+        if (!Array.isArray(dtos)) {
+          console.warn('Expected array from getCodecDistribution, got:', dtos);
+          return [];
+        }
+        return dtos.map(CodecDistributionBO.fromDto);
+      })
+    );
   }
 
   /**
    * Get node performance data mapped to business objects
    */
   getNodePerformance(): Observable<NodePerformanceBO[]> {
-    return this.insightsClient
-      .getNodePerformance()
-      .pipe(map((dtos) => dtos.map(NodePerformanceBO.fromDto)));
+    return this.insightsClient.getNodePerformance().pipe(
+      map((dtos) => {
+        // Defensive check: ensure dtos is an array
+        if (!Array.isArray(dtos)) {
+          console.warn('Expected array from getNodePerformance, got:', dtos);
+          return [];
+        }
+        return dtos.map(NodePerformanceBO.fromDto);
+      })
+    );
   }
 
   /**

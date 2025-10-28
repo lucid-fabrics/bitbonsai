@@ -1,3 +1,4 @@
+import * as os from 'node:os';
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage, NodeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,6 +22,29 @@ export class OverviewService {
   private readonly logger = new Logger(OverviewService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Calculate current CPU utilization percentage
+   * @private
+   * @returns CPU usage percentage (0-100)
+   */
+  private calculateCpuUsage(): number {
+    const cpus = os.cpus();
+    let totalIdle = 0;
+    let totalTick = 0;
+
+    // Sum up all CPU times across all cores
+    for (const cpu of cpus) {
+      for (const type in cpu.times) {
+        totalTick += cpu.times[type as keyof typeof cpu.times];
+      }
+      totalIdle += cpu.times.idle;
+    }
+
+    // Calculate usage percentage
+    const cpuUsage = totalTick === 0 ? 0 : 100 - (100 * totalIdle) / totalTick;
+    return Number(cpuUsage.toFixed(1));
+  }
 
   /**
    * Get complete overview statistics in a single optimized response
@@ -72,6 +96,9 @@ export class OverviewService {
         success_rate: {
           percentage: Number(successRate.toFixed(1)),
         },
+        cpu_utilization: {
+          percentage: systemHealth.cpuPercent,
+        },
       },
       queue_summary: {
         queued: queueStats.queued,
@@ -80,31 +107,34 @@ export class OverviewService {
         failed: queueStats.failed,
       },
       recent_activity: recentActivity.map((activity) => {
-        const savedBytes = BigInt(activity.savedBytes);
-        const savedGB = Number(savedBytes) / (1024 * 1024 * 1024); // Convert bytes to GB
-
-        // Calculate duration (for now, use a placeholder since we don't track encoding duration)
-        // In a real implementation, this would come from the job's startedAt and completedAt
-        const durationSeconds = 0; // Placeholder
+        const beforeSizeBytes = BigInt(activity.beforeSizeBytes);
+        const afterSizeBytes = activity.afterSizeBytes ? BigInt(activity.afterSizeBytes) : null;
+        const savedBytes = activity.savedBytes ? BigInt(activity.savedBytes) : null;
 
         return {
           id: activity.id,
           file_name: activity.fileLabel,
           library: activity.libraryName,
-          codec_change: `${activity.sourceCodec} → ${activity.targetCodec}`,
-          savings_gb: Number(savedGB.toFixed(2)),
-          duration_seconds: durationSeconds,
+          source_codec: activity.sourceCodec,
+          target_codec: activity.targetCodec,
+          stage: activity.stage,
+          before_size_bytes: Number(beforeSizeBytes),
+          after_size_bytes: afterSizeBytes ? Number(afterSizeBytes) : null,
+          saved_bytes: savedBytes ? Number(savedBytes) : null,
+          saved_percent: activity.savedPercent,
+          progress: activity.progress,
           completed_at: activity.completedAt.toISOString(),
         };
       }),
       top_libraries: topLibraries.map((library) => {
-        const totalSavedBytes = BigInt(library.totalSavedBytes);
-        const totalSavedGB = Number(totalSavedBytes) / (1024 * 1024 * 1024); // Convert bytes to GB
-
         return {
           name: library.name,
+          media_type: library.mediaType,
           job_count: library.jobCount,
-          total_savings_gb: Number(totalSavedGB.toFixed(2)),
+          completed_jobs: library.completedJobs,
+          encoding_jobs: library.encodingJobs,
+          total_savings_bytes: Number(library.totalSavedBytes),
+          total_before_bytes: Number(library.totalBeforeBytes),
         };
       }),
       last_updated: new Date().toISOString(),
@@ -190,6 +220,9 @@ export class OverviewService {
     const usedStorage = storageStats._sum.totalSizeBytes || BigInt(0);
     const storagePercent = Number((usedStorage * BigInt(100)) / ESTIMATED_TOTAL_STORAGE);
 
+    // Calculate current CPU utilization
+    const cpuPercent = this.calculateCpuUsage();
+
     return {
       status,
       activeNodes,
@@ -197,6 +230,7 @@ export class OverviewService {
       totalStorage: ESTIMATED_TOTAL_STORAGE.toString(),
       usedStorage: usedStorage.toString(),
       storagePercent: Number(storagePercent.toFixed(2)),
+      cpuPercent,
     };
   }
 
@@ -255,19 +289,28 @@ export class OverviewService {
   }
 
   /**
-   * Get recent activity (last 10 completed jobs)
+   * Get recent activity (last 10 completed or encoding jobs)
    *
-   * @returns Array of recent job completions with details
+   * Shows both completed jobs and currently encoding jobs for better UX
+   *
+   * @returns Array of recent job activities with details
    */
   async getRecentActivity(): Promise<RecentActivityDto[]> {
     this.logger.debug('Fetching recent activity');
 
     const recentJobs = await this.prisma.job.findMany({
       where: {
-        stage: JobStage.COMPLETED,
-        completedAt: {
-          not: null,
-        },
+        OR: [
+          {
+            stage: JobStage.COMPLETED,
+            completedAt: {
+              not: null,
+            },
+          },
+          {
+            stage: JobStage.ENCODING,
+          },
+        ],
       },
       include: {
         library: {
@@ -276,31 +319,37 @@ export class OverviewService {
           },
         },
       },
-      orderBy: {
-        completedAt: 'desc',
-      },
+      orderBy: [
+        {
+          stage: 'asc', // ENCODING jobs first (they come before COMPLETED alphabetically)
+        },
+        {
+          updatedAt: 'desc', // Then by most recent
+        },
+      ],
       take: 10,
     });
 
-    return recentJobs
-      .filter((job) => job.completedAt !== null)
-      .map((job) => ({
-        id: job.id,
-        fileLabel: job.fileLabel,
-        libraryName: job.library.name,
-        sourceCodec: job.sourceCodec,
-        targetCodec: job.targetCodec,
-        stage: job.stage,
-        savedBytes: (job.savedBytes || BigInt(0)).toString(),
-        savedPercent: job.savedPercent || 0,
-        completedAt: job.completedAt as Date,
-      }));
+    return recentJobs.map((job) => ({
+      id: job.id,
+      fileLabel: job.fileLabel,
+      libraryName: job.library.name,
+      sourceCodec: job.sourceCodec,
+      targetCodec: job.targetCodec,
+      stage: job.stage,
+      beforeSizeBytes: job.beforeSizeBytes.toString(),
+      afterSizeBytes: job.afterSizeBytes ? job.afterSizeBytes.toString() : null,
+      savedBytes: job.savedBytes ? job.savedBytes.toString() : null,
+      savedPercent: job.savedPercent,
+      progress: job.stage === JobStage.ENCODING ? job.progress : null,
+      completedAt: job.completedAt || job.updatedAt, // Use updatedAt for encoding jobs
+    }));
   }
 
   /**
    * Get top 5 libraries by job count
    *
-   * Includes job counts and total savings per library
+   * Includes job counts, encoding status, and total savings per library
    *
    * @returns Top libraries sorted by total job count
    */
@@ -315,11 +364,10 @@ export class OverviewService {
           },
         },
         jobs: {
-          where: {
-            stage: JobStage.COMPLETED,
-          },
           select: {
+            stage: true,
             savedBytes: true,
+            beforeSizeBytes: true,
           },
         },
       },
@@ -332,19 +380,27 @@ export class OverviewService {
     });
 
     return libraries.map((library) => {
-      const completedJobs = library.jobs.length;
-      const totalSavedBytes = library.jobs.reduce(
-        (sum, job) => sum + (job.savedBytes || BigInt(0)),
-        BigInt(0)
-      );
+      const completedJobs = library.jobs.filter((j) => j.stage === JobStage.COMPLETED).length;
+      const encodingJobs = library.jobs.filter((j) => j.stage === JobStage.ENCODING).length;
+
+      const totalSavedBytes = library.jobs
+        .filter((j) => j.stage === JobStage.COMPLETED)
+        .reduce((sum, job) => sum + (job.savedBytes || BigInt(0)), BigInt(0));
+
+      const totalBeforeBytes = library.jobs
+        .filter((j) => j.stage === JobStage.COMPLETED)
+        .reduce((sum, job) => sum + job.beforeSizeBytes, BigInt(0));
 
       return {
         id: library.id,
         name: library.name,
+        mediaType: library.mediaType,
         path: library.path,
         jobCount: library._count.jobs,
         completedJobs,
+        encodingJobs,
         totalSavedBytes: totalSavedBytes.toString(),
+        totalBeforeBytes: totalBeforeBytes.toString(),
       };
     });
   }
