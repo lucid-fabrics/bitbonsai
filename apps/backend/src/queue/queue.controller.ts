@@ -429,6 +429,76 @@ export class QueueController {
   }
 
   /**
+   * Pause an encoding job
+   */
+  @Post(':id/pause')
+  @ApiOperation({
+    summary: 'Pause an encoding job',
+    description:
+      'Pauses an actively encoding job using SIGSTOP signal.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in ENCODING stage\n' +
+      '2. Updates job stage to PAUSED\n' +
+      '3. Sends SIGSTOP signal to FFmpeg process\n\n' +
+      '**Use Case**: User wants to temporarily stop encoding to free up resources',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job paused successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in ENCODING stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while pausing job',
+  })
+  async pause(@Param('id') id: string): Promise<Job> {
+    return this.queueService.pauseJob(id);
+  }
+
+  /**
+   * Resume a paused job
+   */
+  @Post(':id/resume')
+  @ApiOperation({
+    summary: 'Resume a paused job',
+    description:
+      'Resumes a paused encoding job using SIGCONT signal.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in PAUSED stage\n' +
+      '2. Updates job stage to ENCODING\n' +
+      '3. Sends SIGCONT signal to FFmpeg process\n\n' +
+      '**Use Case**: User wants to continue encoding a previously paused job',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job resumed successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in PAUSED stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while resuming job',
+  })
+  async resume(@Param('id') id: string): Promise<Job> {
+    return this.queueService.resumeJob(id);
+  }
+
+  /**
    * Retry a failed or cancelled job
    */
   @Post(':id/retry')
