@@ -32,7 +32,7 @@
       <div class="pipeline-container">
         <!-- Detected Stage -->
         @if (queueData.stats.detected > 0) {
-          <div class="pipeline-stage detected">
+          <div class="pipeline-stage detected clickable" (click)="onStatusFilterChange(JobStatus.DETECTED)">
             <div class="stage-icon">
               <i class="fas fa-search"></i>
             </div>
@@ -54,7 +54,7 @@
 
         <!-- Health Check Stage -->
         @if (queueData.stats.healthCheck > 0) {
-          <div class="pipeline-stage health-check">
+          <div class="pipeline-stage health-check clickable" (click)="onStatusFilterChange(JobStatus.HEALTH_CHECK)">
             <div class="stage-icon">
               <i class="fas fa-heartbeat fa-pulse"></i>
             </div>
@@ -75,7 +75,7 @@
         }
 
         <!-- Queued Stage -->
-        <div class="pipeline-stage queued">
+        <div class="pipeline-stage queued clickable" (click)="onStatusFilterChange(JobStatus.QUEUED)">
           <div class="stage-icon">
             <i class="fas fa-clock"></i>
           </div>
@@ -97,7 +97,7 @@
         </div>
 
         <!-- Encoding Stage -->
-        <div class="pipeline-stage encoding">
+        <div class="pipeline-stage encoding clickable" (click)="onStatusFilterChange(JobStatus.ENCODING)">
           <div class="stage-icon">
             @if (queueData.stats.encoding > 0) {
               <i class="fas fa-spinner fa-spin"></i>
@@ -128,7 +128,7 @@
         </div>
 
         <!-- Completed Stage -->
-        <div class="pipeline-stage completed">
+        <div class="pipeline-stage completed clickable" (click)="onStatusFilterChange(JobStatus.COMPLETED)">
           <div class="stage-icon">
             <i class="fas fa-check-circle"></i>
           </div>
@@ -146,7 +146,7 @@
 
         <!-- Failed Jobs Alert (if any) -->
         @if (queueData.stats.failed > 0) {
-          <div class="pipeline-alert">
+          <div class="pipeline-alert clickable" (click)="onStatusFilterChange(JobStatus.FAILED)">
             <div class="alert-icon">
               <i class="fas fa-exclamation-triangle"></i>
             </div>
@@ -560,38 +560,107 @@
         </table>
       </div>
       } @else {
-        <div class="empty-state">
-          <div class="empty-icon">
-            <i class="fas fa-inbox"></i>
-          </div>
-          <h2>No Jobs Yet</h2>
-          <p class="empty-description">
-            The queue shows all your encoding jobs - past, present, and future. Jobs are created
-            automatically when BitBonsai finds media files that need optimization.
-          </p>
-
-          <div class="getting-started">
-            <h3>Getting Started:</h3>
-            <ol>
-              <li>First, set up a Library to tell BitBonsai where your media files are</li>
-              <li>Create a Policy to define how files should be encoded</li>
-              <li>Register a Node to do the actual encoding work</li>
-              <li>Scan your library or add files - jobs will appear here automatically!</li>
-              <li>Watch as your nodes process jobs and optimize your media</li>
-            </ol>
-            <p class="help-tip">
-              <i class="fas fa-lightbulb"></i>
-              <strong>Tip:</strong> Jobs start automatically once you have libraries, policies, and nodes configured!
+        <!-- Filter-aware empty states -->
+        @if (selectedStatus !== 'ALL' || selectedNodeId || searchQuery) {
+          <!-- Filtered but no results -->
+          <div class="empty-state filtered">
+            <div class="empty-icon">
+              <i class="fas fa-filter"></i>
+            </div>
+            <h2>No Jobs Match Your Filter</h2>
+            <p class="empty-description">
+              @if (selectedStatus === JobStatus.COMPLETED) {
+                No jobs have completed yet. Jobs will appear here once they finish encoding successfully.
+              } @else if (selectedStatus === JobStatus.ENCODING) {
+                No jobs are currently encoding. Jobs will appear here when encoding starts.
+              } @else if (selectedStatus === JobStatus.QUEUED) {
+                No jobs are waiting in the queue. Add files or scan libraries to create new jobs.
+              } @else if (selectedStatus === JobStatus.FAILED) {
+                No jobs have failed. This is good! Failed jobs will appear here if encoding errors occur.
+              } @else if (selectedStatus === JobStatus.CANCELLED) {
+                No jobs have been cancelled. Cancelled jobs will appear here if you manually stop any jobs.
+              } @else if (selectedStatus === JobStatus.DETECTED) {
+                No jobs are in detected state. Jobs appear here briefly when first discovered before health checks.
+              } @else if (selectedStatus === JobStatus.HEALTH_CHECK) {
+                No jobs are being health checked. Jobs appear here briefly while file integrity is verified.
+              } @else if (selectedStatus === JobStatus.VERIFYING) {
+                No jobs are being verified. Jobs appear here briefly after encoding to validate the output.
+              } @else if (searchQuery) {
+                No jobs match your search query "{{ searchQuery }}". Try a different search term.
+              } @else if (selectedNodeId) {
+                No jobs are assigned to the selected node. Try selecting a different node or "All Nodes".
+              } @else {
+                No jobs match your current filters. Try adjusting your filters or clearing them.
+              }
             </p>
+            <div class="filter-summary">
+              @if (selectedStatus !== 'ALL') {
+                <span class="filter-chip">
+                  <i class="fas fa-tag"></i>
+                  Status: {{ selectedStatus }}
+                </span>
+              }
+              @if (selectedNodeId) {
+                <span class="filter-chip">
+                  <i class="fas fa-server"></i>
+                  Node: {{ (availableNodes$ | async)?.get(selectedNodeId) || 'Unknown' }}
+                </span>
+              }
+              @if (searchQuery) {
+                <span class="filter-chip">
+                  <i class="fas fa-search"></i>
+                  Search: "{{ searchQuery }}"
+                </span>
+              }
+            </div>
+            <div class="empty-actions">
+              <button (click)="selectedStatus = 'ALL'; selectedNodeId = ''; searchQuery = ''; updateQueryParams(); refreshQueue(true)" class="btn btn-secondary">
+                <i class="fas fa-times-circle"></i>
+                Clear All Filters
+              </button>
+              @if (selectedStatus !== 'ALL') {
+                <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-ghost">
+                  <i class="fas fa-list"></i>
+                  View All Jobs
+                </button>
+              }
+            </div>
           </div>
+        } @else {
+          <!-- No filters, truly empty queue -->
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-inbox"></i>
+            </div>
+            <h2>No Jobs Yet</h2>
+            <p class="empty-description">
+              The queue shows all your encoding jobs - past, present, and future. Jobs are created
+              automatically when BitBonsai finds media files that need optimization.
+            </p>
 
-          <div class="empty-actions">
-            <a href="/libraries" class="btn btn-primary btn-large">
-              <i class="fas fa-folder"></i>
-              Set Up Your First Library
-            </a>
+            <div class="getting-started">
+              <h3>Getting Started:</h3>
+              <ol>
+                <li>First, set up a Library to tell BitBonsai where your media files are</li>
+                <li>Create a Policy to define how files should be encoded</li>
+                <li>Register a Node to do the actual encoding work</li>
+                <li>Scan your library or add files - jobs will appear here automatically!</li>
+                <li>Watch as your nodes process jobs and optimize your media</li>
+              </ol>
+              <p class="help-tip">
+                <i class="fas fa-lightbulb"></i>
+                <strong>Tip:</strong> Jobs start automatically once you have libraries, policies, and nodes configured!
+              </p>
+            </div>
+
+            <div class="empty-actions">
+              <a href="/libraries" class="btn btn-primary btn-large">
+                <i class="fas fa-folder"></i>
+                Set Up Your First Library
+              </a>
+            </div>
           </div>
-        </div>
+        }
       }
     }
   </div>

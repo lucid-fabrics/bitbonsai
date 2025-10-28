@@ -97,6 +97,10 @@
     transition: all 0.3s ease;
   }
 
+  &.clickable {
+    cursor: pointer;
+  }
+
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
@@ -360,6 +364,10 @@
     right: 0;
     height: 3px;
     background: $danger;
+  }
+
+  &.clickable {
+    cursor: pointer;
   }
 
   &:hover {
@@ -1051,10 +1059,20 @@
   padding: 80px 24px;
   color: $text-secondary;
 
-  i {
-    font-size: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+  .empty-icon {
+    i {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+      color: $text-secondary;
+    }
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: $text-white;
+    margin: 0 0 8px 0;
   }
 
   h3 {
@@ -1067,6 +1085,116 @@
   p {
     font-size: 14px;
     margin: 0;
+  }
+
+  .empty-description {
+    font-size: 16px;
+    color: $text-secondary;
+    margin-bottom: 24px;
+    max-width: 500px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  // Filtered empty state variant
+  &.filtered {
+    padding: 60px 24px;
+
+    .empty-icon i {
+      font-size: 48px;
+      color: $accent-primary;
+      opacity: 0.6;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .empty-description {
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+  }
+
+  .filter-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba($accent-primary, 0.1);
+    border: 1px solid rgba($accent-primary, 0.3);
+    border-radius: 16px;
+    font-size: 13px;
+    color: $accent-primary;
+    font-weight: 500;
+
+    i {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+  }
+
+  .empty-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .getting-started {
+    max-width: 600px;
+    margin: 32px 0;
+    padding: 24px;
+    background: rgba($bg-tertiary, 0.5);
+    border: 1px solid $border-secondary;
+    border-radius: 8px;
+    text-align: left;
+
+    h3 {
+      font-size: 16px;
+      color: $text-white;
+      margin-bottom: 16px;
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 20px;
+      color: $text-secondary;
+      line-height: 1.8;
+
+      li {
+        margin-bottom: 8px;
+      }
+    }
+
+    .help-tip {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba($accent-primary, 0.1);
+      border-left: 3px solid $accent-primary;
+      border-radius: 4px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+
+      i {
+        color: $accent-primary;
+        margin-top: 2px;
+        font-size: 14px;
+      }
+
+      strong {
+        color: $accent-primary;
+      }
+    }
   }
 }
 
