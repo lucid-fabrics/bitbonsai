@@ -280,8 +280,7 @@ export class InsightsComponent implements OnInit {
         this.savingsTrendData = { ...currentData };
         this.cdr.markForCheck();
       }
-    } catch (error) {
-      console.error('Failed to load savings trend:', error);
+    } catch {
       // Set empty data on error
       const currentData = this.savingsTrendData;
       currentData.labels = [];
@@ -302,8 +301,7 @@ export class InsightsComponent implements OnInit {
         this.codecDistributionData = { ...currentData };
         this.cdr.markForCheck();
       }
-    } catch (error) {
-      console.error('Failed to load codec distribution:', error);
+    } catch {
       // Set empty data on error
       const currentData = this.codecDistributionData;
       currentData.labels = [];
@@ -331,8 +329,7 @@ export class InsightsComponent implements OnInit {
         this.nodePerformanceData = { ...currentData };
         this.cdr.markForCheck();
       }
-    } catch (error) {
-      console.error('Failed to load node performance:', error);
+    } catch {
       // Set empty data on error
       const currentData = this.nodePerformanceData;
       currentData.labels = [];
@@ -351,8 +348,7 @@ export class InsightsComponent implements OnInit {
         this.stats = data;
         this.cdr.markForCheck();
       }
-    } catch (error) {
-      console.error('Failed to load stats:', error);
+    } catch {
       // Keep default stats on error
       this.cdr.markForCheck();
     }

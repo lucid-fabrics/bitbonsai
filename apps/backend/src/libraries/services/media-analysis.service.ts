@@ -1,8 +1,8 @@
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export enum FileHealthStatus {
   HEALTHY = 'HEALTHY',
@@ -56,8 +56,17 @@ export class MediaAnalysisService {
     try {
       // Quick validation: attempt to read container format and streams
       // This will fail fast if the file is severely corrupted
-      const { stdout, stderr } = await execAsync(
-        `ffprobe -v error -show_entries format=format_name,duration:stream=codec_type,codec_name -of json "${filePath}"`,
+      const { stdout, stderr } = await execFileAsync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-show_entries',
+          'format=format_name,duration:stream=codec_type,codec_name',
+          '-of',
+          'json',
+          filePath,
+        ],
         { timeout: 5000 } // 5 second timeout for quick check
       );
 
@@ -140,8 +149,21 @@ export class MediaAnalysisService {
       }
 
       // Use ffprobe to get video stream info
-      const { stdout } = await execAsync(
-        `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration,size -of json "${filePath}"`,
+      const { stdout } = await execFileAsync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-select_streams',
+          'v:0',
+          '-show_entries',
+          'stream=codec_name,width,height',
+          '-show_entries',
+          'format=duration,size',
+          '-of',
+          'json',
+          filePath,
+        ],
         { timeout: 10000 } // 10 second timeout per file
       );
 

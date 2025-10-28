@@ -61,8 +61,7 @@ export class DashboardComponent implements OnInit {
           this.dialogFiles = files;
           this.dialogLoading = false;
         },
-        error: (error) => {
-          console.error('Failed to load files:', error);
+        error: () => {
           this.dialogLoading = false;
           this.dialogOpen = false;
         },

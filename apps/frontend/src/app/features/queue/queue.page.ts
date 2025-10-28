@@ -114,8 +114,7 @@ export class QueueComponent implements OnInit {
             this.loadingSubject$.next(false);
             return data;
           }),
-          catchError((error) => {
-            console.error('Failed to fetch queue data:', error);
+          catchError(() => {
             // Always clear loading on error
             this.loadingSubject$.next(false);
             return of(null);
@@ -257,8 +256,7 @@ export class QueueComponent implements OnInit {
           this.closeCancelDialog();
           this.refreshQueue();
         },
-        error: (error) => {
-          console.error('Failed to cancel job:', error);
+        error: () => {
           this.closeCancelDialog();
         },
       });
@@ -276,8 +274,7 @@ export class QueueComponent implements OnInit {
           this.closeCancelDialog();
           this.refreshQueue();
         },
-        error: (error) => {
-          console.error('Failed to cancel job:', error);
+        error: () => {
           this.closeCancelDialog();
         },
       });
@@ -292,8 +289,8 @@ export class QueueComponent implements OnInit {
         next: () => {
           this.refreshQueue();
         },
-        error: (error) => {
-          console.error('Failed to retry job:', error);
+        error: () => {
+          // Retry failed
         },
       });
   }
@@ -311,13 +308,11 @@ export class QueueComponent implements OnInit {
       .cancelAllQueued()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          console.log(`Cancelled ${result.cancelledCount} jobs`);
+        next: () => {
           this.closeCancelAllDialog();
           this.refreshQueue();
         },
-        error: (error) => {
-          console.error('Failed to cancel all jobs:', error);
+        error: () => {
           this.closeCancelAllDialog();
         },
       });
@@ -336,15 +331,11 @@ export class QueueComponent implements OnInit {
       .retryAllCancelled()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          console.log(
-            `Retried ${result.retriedCount} jobs (${this.formatBytes(Number(result.totalSizeBytes))} total)`
-          );
+        next: () => {
           this.closeRetryAllDialog();
           this.refreshQueue();
         },
-        error: (error) => {
-          console.error('Failed to retry all cancelled jobs:', error);
+        error: () => {
           this.closeRetryAllDialog();
         },
       });
@@ -358,8 +349,7 @@ export class QueueComponent implements OnInit {
     this.showAddFilesModal = false;
   }
 
-  protected handleJobsCreated(result: { jobsCreated: number }): void {
-    console.log(`Created ${result.jobsCreated} job(s)`);
+  protected handleJobsCreated(): void {
     this.closeAddFilesModal();
     this.refreshQueue(true); // Refresh with loading indicator
   }

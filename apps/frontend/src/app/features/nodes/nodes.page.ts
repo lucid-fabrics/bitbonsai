@@ -162,8 +162,8 @@ export class NodesComponent implements OnInit {
           this.updateNodesWithUptimeTracking(nodes);
           this.cdr.markForCheck();
         },
-        error: (err) => {
-          console.error('Polling error:', err);
+        error: () => {
+          // Polling error
         },
       });
   }
