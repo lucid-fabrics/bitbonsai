@@ -192,10 +192,20 @@ export class EncodingProcessorService implements OnModuleInit {
                 `  - ${job.fileLabel} stuck at ${job.progress}% - marking as FAILED`
               );
 
-              await this.queueService.failJob(
-                job.id,
-                'Job stuck - no progress in 10+ minutes (likely ffmpeg crash)'
-              );
+              // Get last stderr from ffmpeg for better error reporting
+              const lastStderr = this.ffmpegService.getLastStderr(job.id);
+              let errorMessage = 'Job stuck - no progress in 10+ minutes';
+
+              if (lastStderr) {
+                // Extract last few lines of stderr for context
+                const stderrLines = lastStderr.trim().split('\n').slice(-5);
+                const stderrContext = stderrLines.join('\n');
+                errorMessage += `\n\nLast ffmpeg output:\n${stderrContext}`;
+              } else {
+                errorMessage += ' (likely ffmpeg crash - no error output captured)';
+              }
+
+              await this.queueService.failJob(job.id, errorMessage);
             }
           }
         } catch (error) {

@@ -23,6 +23,7 @@ interface ActiveEncoding {
   process: ChildProcess;
   startTime: Date;
   lastProgress: number;
+  lastStderr: string; // Last 2000 chars of stderr for error reporting
 }
 
 /**
@@ -498,6 +499,7 @@ export class FfmpegService {
       process: ffmpegProcess,
       startTime: new Date(),
       lastProgress: 0,
+      lastStderr: '',
     };
     this.activeEncodings.set(job.id, activeEncoding);
 
@@ -508,10 +510,20 @@ export class FfmpegService {
 
     return new Promise((resolve, reject) => {
       let stderrBuffer = '';
+      let fullStderr = '';
 
       // Parse stderr for progress
       ffmpegProcess.stderr?.on('data', (data: Buffer) => {
-        stderrBuffer += data.toString();
+        const chunk = data.toString();
+        stderrBuffer += chunk;
+        fullStderr += chunk;
+
+        // Keep last 2000 chars of stderr for error reporting
+        if (fullStderr.length > 2000) {
+          fullStderr = fullStderr.slice(-2000);
+        }
+        activeEncoding.lastStderr = fullStderr;
+
         const lines = stderrBuffer.split('\n');
         stderrBuffer = lines.pop() || ''; // Keep incomplete line in buffer
 
@@ -594,6 +606,20 @@ export class FfmpegService {
       this.logger.error(`Failed to cancel job ${jobId}: ${errorMessage}`);
       return false;
     }
+  }
+
+  /**
+   * Get last stderr output for a job
+   *
+   * Returns the last 2000 characters of ffmpeg stderr output for error reporting.
+   * Useful for diagnosing stuck or failed jobs.
+   *
+   * @param jobId - Job unique identifier
+   * @returns Last stderr output, or null if job not found
+   */
+  getLastStderr(jobId: string): string | null {
+    const activeEncoding = this.activeEncodings.get(jobId);
+    return activeEncoding?.lastStderr || null;
   }
 
   /**
