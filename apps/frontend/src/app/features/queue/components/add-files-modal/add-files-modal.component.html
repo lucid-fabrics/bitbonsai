@@ -1,0 +1,259 @@
+<!-- Modal Overlay -->
+@if (isOpen) {
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="header-content">
+        <h2>Add Files to Queue</h2>
+        <p class="step-indicator">Step {{ currentStep }} of {{ steps.length }}</p>
+      </div>
+      <button class="close-btn" (click)="closeModal()" [disabled]="isCreatingJobs">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Step Progress Bar -->
+    <div class="step-progress">
+      @for (step of steps; track step.id) {
+      <div
+        class="step-item"
+        [class.active]="step.id === currentStep"
+        [class.completed]="step.id < currentStep"
+      >
+        <div class="step-circle">
+          @if (step.id < currentStep) {
+          <i class="fas fa-check"></i>
+          }
+          @if (step.id >= currentStep) {
+          <span>{{ step.id }}</span>
+          }
+        </div>
+        <div class="step-label">{{ step.title }}</div>
+      </div>
+      }
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <!-- Step 1: Library & Policy Selection -->
+      @if (currentStep === 1) {
+      <div class="step-content">
+        <div class="step-header">
+          <h3>{{ steps[0].title }}</h3>
+          <p>{{ steps[0].description }}</p>
+        </div>
+
+        @if (libraries$ | async; as libraries) {
+          <!-- Loading State -->
+          @if (isLoading$ | async) {
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading libraries...</p>
+          </div>
+          }
+
+          <!-- Error State -->
+          @if ((error$ | async) && !(isLoading$ | async)) {
+          <div class="error-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>{{ error$ | async }}</p>
+            <button class="btn btn-primary" (click)="retryLoadLibraries()">
+              <i class="fas fa-redo"></i>
+              Retry
+            </button>
+          </div>
+          }
+
+          <!-- Data State -->
+          @if (!(isLoading$ | async) && !(error$ | async)) {
+            <!-- Empty State -->
+            @if (libraries.length === 0) {
+            <div class="empty-state">
+              <i class="fas fa-folder-open"></i>
+              <h3>No Libraries Available</h3>
+              <p>No enabled libraries with policies found. Please configure a library first.</p>
+            </div>
+            }
+
+            <!-- Library Selection -->
+            @if (libraries.length > 0) {
+            <div class="library-grid">
+              @for (library of libraries; track library.id) {
+              <div
+                class="library-card"
+                [class.selected]="isLibrarySelected(library.id)"
+                (click)="selectLibrary(library)"
+              >
+                <div class="library-checkbox">
+                  <i
+                    class="fas"
+                    [ngClass]="isLibrarySelected(library.id) ? 'fa-check-circle' : 'fa-circle'"
+                  ></i>
+                </div>
+                <div class="library-info">
+                  <h4>{{ library.name }}</h4>
+                  <div class="library-stats">
+                    <span class="stat">
+                      <i class="fas fa-file-video"></i>
+                      {{ library.totalFiles }} files
+                    </span>
+                    <span class="stat">
+                      <i class="fas fa-hdd"></i>
+                      {{ BytesBo.formatBytes(+library.totalSizeBytes) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+
+            <!-- Policy Selection (shown when library is selected) -->
+            @if (selectedLibraryId && getSelectedLibrary(libraries); as selectedLib) {
+            <div class="policy-section">
+              <h4>Select Encoding Policy</h4>
+              <div class="policy-selector">
+                <select
+                  class="policy-select"
+                  [value]="selectedPolicyId || ''"
+                  (change)="onPolicyChange($any($event.target).value)"
+                >
+                  @for (policy of selectedLib.policies; track policy.id) {
+                  <option [value]="policy.id">
+                    {{ policy.name }} ({{ policy.preset }})
+                  </option>
+                  }
+                </select>
+              </div>
+              <div class="policy-info">
+                <i class="fas fa-info-circle"></i>
+                <p>
+                  All files in <strong>{{ selectedLib.name }}</strong> will be queued for encoding
+                  with the selected policy.
+                </p>
+              </div>
+            </div>
+            }
+            }
+          }
+        }
+      </div>
+      }
+
+      <!-- Step 2: Job Creation Progress & Results -->
+      @if (currentStep === 2) {
+      <div class="step-content">
+        <div class="step-header">
+          <h3>{{ steps[1].title }}</h3>
+          <p>{{ steps[1].description }}</p>
+        </div>
+
+        <!-- Creating Jobs (Loading) -->
+        @if (isCreatingJobs) {
+        <div class="creation-progress">
+          <div class="progress-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+          </div>
+          <p>Scanning library and creating jobs...</p>
+          <p class="progress-hint">This may take a few moments depending on library size</p>
+        </div>
+        }
+
+        <!-- Creation Complete (Success) -->
+        @if (!isCreatingJobs && (creationResult$ | async); as result) {
+        <div class="creation-success">
+          <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+
+          <div class="summary-stats">
+            <div class="summary-card success">
+              <div class="summary-icon">
+                <i class="fas fa-plus-circle"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ result.jobsCreated }}</div>
+                <div class="summary-label">Jobs Created</div>
+              </div>
+            </div>
+
+            <div class="summary-card warning">
+              <div class="summary-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ result.filesSkipped }}</div>
+                <div class="summary-label">Files Skipped</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Skipped Files Details -->
+          @if (result.skippedFiles.length > 0) {
+          <div class="skipped-files">
+            <h4>Skipped Files ({{ result.skippedFiles.length }})</h4>
+            <div class="skipped-list">
+              @for (skipped of result.skippedFiles.slice(0, 10); track skipped.path) {
+              <div class="skipped-item">
+                <div class="skipped-path">{{ skipped.path.split('/').pop() }}</div>
+                <div class="skipped-reason">{{ skipped.reason }}</div>
+              </div>
+              }
+              @if (result.skippedFiles.length > 10) {
+              <div class="skipped-more">
+                ... and {{ result.skippedFiles.length - 10 }} more
+              </div>
+              }
+            </div>
+          </div>
+          }
+        </div>
+        }
+
+        <!-- Creation Error -->
+        @if (!isCreatingJobs && (creationError$ | async); as error) {
+        <div class="error-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>Failed to Create Jobs</h3>
+          <p>{{ error }}</p>
+          <button class="btn btn-primary" (click)="currentStep = 1">
+            <i class="fas fa-arrow-left"></i>
+            Back to Selection
+          </button>
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <!-- Step 1: Selection -->
+      @if (currentStep === 1) {
+      <button class="btn btn-secondary" (click)="closeModal()">
+        Cancel
+      </button>
+      <button
+        class="btn btn-success"
+        (click)="createJobs()"
+        [disabled]="!canProceed()"
+      >
+        <i class="fas fa-plus-circle"></i>
+        Add All Files to Queue
+      </button>
+      }
+
+      <!-- Step 2: Results -->
+      @if (currentStep === 2 && !isCreatingJobs) {
+      <button class="btn btn-secondary" (click)="closeModal()">
+        Close
+      </button>
+      <button class="btn btn-primary" (click)="viewQueue()">
+        <i class="fas fa-list"></i>
+        View Queue
+      </button>
+      }
+    </div>
+  </div>
+</div>
+}

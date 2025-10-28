@@ -1,0 +1,121 @@
+<div class="modal-backdrop" (click)="onCancel()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Configure Node</h2>
+      <button class="close-btn" (click)="onCancel()" type="button">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSave()">
+      <div class="modal-body">
+        <!-- Node Name -->
+        <div class="form-group">
+          <label for="name">Node Name</label>
+          <input
+            id="name"
+            type="text"
+            class="form-control"
+            formControlName="name"
+            placeholder="Enter node name"
+          />
+          @if (nameControl?.touched && nameControl?.hasError('required')) {
+            <div class="error-message">Node name is required</div>
+          }
+          @if (nameControl?.touched && nameControl?.hasError('minlength')) {
+            <div class="error-message">Node name must be at least 1 character</div>
+          }
+          @if (nameControl?.touched && nameControl?.hasError('maxlength')) {
+            <div class="error-message">Node name cannot exceed 255 characters</div>
+          }
+        </div>
+
+        <!-- Max Workers -->
+        <div class="form-group">
+          <label for="maxWorkers">
+            Concurrent Workers
+            <span class="label-hint">(1-10)</span>
+          </label>
+          <input
+            id="maxWorkers"
+            type="number"
+            class="form-control"
+            formControlName="maxWorkers"
+            min="1"
+            max="10"
+          />
+          <div class="form-help">
+            <i class="fas fa-info-circle"></i>
+            Number of concurrent encoding jobs this node can handle
+          </div>
+          @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('required')) {
+            <div class="error-message">Max workers is required</div>
+          }
+          @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('min')) {
+            <div class="error-message">Max workers must be at least 1</div>
+          }
+          @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('max')) {
+            <div class="error-message">Max workers cannot exceed 10</div>
+          }
+        </div>
+
+        <!-- CPU Limit -->
+        <div class="form-group">
+          <label for="cpuLimit">
+            CPU Limit
+            <span class="label-hint">(10-100%)</span>
+          </label>
+          <div class="range-input-group">
+            <input
+              id="cpuLimit"
+              type="range"
+              class="form-range"
+              formControlName="cpuLimit"
+              min="10"
+              max="100"
+              step="5"
+            />
+            <input
+              type="number"
+              class="form-control range-value"
+              formControlName="cpuLimit"
+              min="10"
+              max="100"
+            />
+            <span class="range-suffix">%</span>
+          </div>
+          <div class="form-help">
+            <i class="fas fa-info-circle"></i>
+            Maximum CPU usage to reserve resources for host system
+          </div>
+          @if (showCpuWarning) {
+            <div class="warning-message">
+              <i class="fas fa-exclamation-triangle"></i>
+              High CPU usage may impact host system performance
+            </div>
+          }
+          @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('required')) {
+            <div class="error-message">CPU limit is required</div>
+          }
+          @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('min')) {
+            <div class="error-message">CPU limit must be at least 10%</div>
+          }
+          @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('max')) {
+            <div class="error-message">CPU limit cannot exceed 100%</div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="onCancel()">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
+          <i class="fas fa-save"></i>
+          Save Configuration
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
