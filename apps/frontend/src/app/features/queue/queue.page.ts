@@ -77,6 +77,9 @@ export class QueueComponent implements OnInit {
   // Expose FileHealthStatus enum for template
   protected readonly FileHealthStatus = FileHealthStatus;
 
+  // Expose JobStatus enum for template
+  protected readonly JobStatus = JobStatus;
+
   // Filter state
   protected selectedStatus: JobStatus | 'ALL' = 'ALL';
   protected selectedNodeId = '';
@@ -202,7 +205,7 @@ export class QueueComponent implements OnInit {
     this.refreshQueue(true); // Show loading for user action
   }
 
-  private updateQueryParams(): void {
+  protected updateQueryParams(): void {
     const queryParams: any = {};
 
     if (this.selectedStatus !== 'ALL') {
@@ -223,7 +226,7 @@ export class QueueComponent implements OnInit {
     });
   }
 
-  private refreshQueue(showLoading = false): void {
+  protected refreshQueue(showLoading = false): void {
     this.refreshTrigger$.next({ showLoading });
   }
 
