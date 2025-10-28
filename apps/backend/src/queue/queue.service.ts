@@ -252,26 +252,38 @@ export class QueueService {
       return null;
     }
 
-    // Get next queued job for this node (prioritize healthy files)
-    const job = await this.prisma.job.findFirst({
-      where: {
-        nodeId,
-        stage: JobStage.QUEUED,
-      },
-      orderBy: [
-        { healthScore: 'desc' }, // Healthy files first (90-100 score)
-        { createdAt: 'asc' }, // Then FIFO within same health tier
-      ],
-      include: {
-        policy: true,
-        library: true,
-      },
-    });
+    // ATOMIC JOB CLAIMING:
+    // Use a transaction to atomically find and claim a job
+    // This prevents race conditions where multiple workers grab the same job
+    const claimedJob = await this.prisma.$transaction(async (tx) => {
+      // Find next queued job (prioritize healthy files)
+      // Exclude jobs with future nextRetryAt (exponential backoff)
+      const job = await tx.job.findFirst({
+        where: {
+          nodeId,
+          stage: JobStage.QUEUED,
+          OR: [
+            { nextRetryAt: null }, // Jobs that have never failed
+            { nextRetryAt: { lte: new Date() } }, // Jobs whose retry delay has passed
+          ],
+        },
+        orderBy: [
+          { healthScore: 'desc' }, // Healthy files first (90-100 score)
+          { createdAt: 'asc' }, // Then FIFO within same health tier
+        ],
+      });
 
-    if (job) {
-      // Update job to ENCODING stage
-      const updatedJob = await this.prisma.job.update({
-        where: { id: job.id },
+      if (!job) {
+        return null;
+      }
+
+      // Atomically update to ENCODING to "claim" the job
+      // If another worker already claimed it, this will fail
+      return await tx.job.update({
+        where: {
+          id: job.id,
+          stage: JobStage.QUEUED, // Ensure it's still QUEUED (prevents double-claiming)
+        },
         data: {
           stage: JobStage.ENCODING,
           startedAt: new Date(),
@@ -281,9 +293,11 @@ export class QueueService {
           library: true,
         },
       });
+    });
 
-      this.logger.log(`Assigned job ${job.id} to node ${nodeId}`);
-      return updatedJob;
+    if (claimedJob) {
+      this.logger.log(`Assigned job ${claimedJob.id} to node ${nodeId}`);
+      return claimedJob;
     }
 
     this.logger.log(`No queued jobs available for node ${nodeId}`);
