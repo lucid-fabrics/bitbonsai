@@ -507,6 +507,74 @@ export class QueueService {
   }
 
   /**
+   * Pause an encoding job
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job in PAUSED stage
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in ENCODING stage
+   */
+  async pauseJob(id: string): Promise<Job> {
+    this.logger.log(`Pausing job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (existingJob.stage !== JobStage.ENCODING) {
+      throw new BadRequestException('Only encoding jobs can be paused');
+    }
+
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.PAUSED,
+      },
+    });
+
+    this.logger.log(`Job paused: ${id}`);
+    return job;
+  }
+
+  /**
+   * Resume a paused job
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job in ENCODING stage
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in PAUSED stage
+   */
+  async resumeJob(id: string): Promise<Job> {
+    this.logger.log(`Resuming job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (existingJob.stage !== JobStage.PAUSED) {
+      throw new BadRequestException('Only paused jobs can be resumed');
+    }
+
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.ENCODING,
+      },
+    });
+
+    this.logger.log(`Job resumed: ${id}`);
+    return job;
+  }
+
+  /**
    * Retry a failed or cancelled job
    *
    * This method resets the job back to QUEUED stage, clearing any error state
