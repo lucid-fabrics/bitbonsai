@@ -537,6 +537,7 @@ export class FfmpegService {
 
       // Handle process completion
       ffmpegProcess.on('close', async (code) => {
+        const encoding = this.activeEncodings.get(job.id);
         this.activeEncodings.delete(job.id);
 
         if (code === 0) {
@@ -549,7 +550,9 @@ export class FfmpegService {
             reject(error);
           }
         } else {
-          const errorMessage = `ffmpeg exited with code ${code}`;
+          // Get detailed error message with stderr context
+          const stderr = encoding?.lastStderr || '';
+          const errorMessage = this.interpretFfmpegExitCode(code as number, stderr);
           await this.handleEncodingFailure(job, tempOutput, errorMessage);
           reject(new Error(errorMessage));
         }
@@ -557,8 +560,18 @@ export class FfmpegService {
 
       // Handle process errors
       ffmpegProcess.on('error', async (error) => {
+        const encoding = this.activeEncodings.get(job.id);
         this.activeEncodings.delete(job.id);
-        const errorMessage = `ffmpeg process error: ${error.message}`;
+
+        let errorMessage = `FFmpeg Process Error: ${error.message}\n\n`;
+
+        // Add stderr context if available
+        if (encoding?.lastStderr) {
+          errorMessage += 'Last output from ffmpeg:\n';
+          const stderrLines = encoding.lastStderr.trim().split('\n');
+          errorMessage += stderrLines.slice(-15).join('\n');
+        }
+
         await this.handleEncodingFailure(job, tempOutput, errorMessage);
         reject(error);
       });
@@ -620,6 +633,73 @@ export class FfmpegService {
   getLastStderr(jobId: string): string | null {
     const activeEncoding = this.activeEncodings.get(jobId);
     return activeEncoding?.lastStderr || null;
+  }
+
+  /**
+   * Interpret ffmpeg exit code and return detailed error message
+   *
+   * Common ffmpeg exit codes:
+   * - 0: Success
+   * - 1: Generic error
+   * - 255/-1: Aborted/interrupted
+   * - Other codes: Various specific errors
+   *
+   * @param code - FFmpeg exit code
+   * @param stderr - Last stderr output for context
+   * @returns Detailed error message with explanation
+   */
+  private interpretFfmpegExitCode(code: number, stderr: string): string {
+    let explanation = '';
+
+    switch (code) {
+      case 1:
+        explanation = 'Generic encoding error';
+        break;
+      case 255:
+      case -1:
+        explanation = 'Process was aborted or interrupted';
+        break;
+      case 134:
+        explanation = 'Segmentation fault (ffmpeg crashed)';
+        break;
+      case 139:
+        explanation = 'Segmentation fault (signal 11)';
+        break;
+      default:
+        explanation = code > 128 ? `Process killed by signal ${code - 128}` : 'Unknown error';
+    }
+
+    // Build detailed error message
+    let errorMessage = `FFmpeg Error (Exit Code ${code}): ${explanation}\n\n`;
+
+    // Add relevant stderr context
+    if (stderr) {
+      const stderrLines = stderr.trim().split('\n');
+
+      // Look for common error patterns
+      const errorLines = stderrLines.filter(
+        (line) =>
+          line.toLowerCase().includes('error') ||
+          line.toLowerCase().includes('invalid') ||
+          line.toLowerCase().includes('failed') ||
+          line.toLowerCase().includes('could not') ||
+          line.toLowerCase().includes('unable to')
+      );
+
+      if (errorLines.length > 0) {
+        errorMessage += 'Relevant errors from ffmpeg:\n';
+        errorMessage += errorLines.slice(-10).join('\n');
+        errorMessage += '\n\n';
+      }
+
+      // Add last few lines for context
+      errorMessage += 'Last output from ffmpeg:\n';
+      errorMessage += stderrLines.slice(-15).join('\n');
+    } else {
+      errorMessage += 'No output captured from ffmpeg.';
+    }
+
+    return errorMessage;
   }
 
   /**
@@ -722,9 +802,9 @@ export class FfmpegService {
    * Uses ffprobe to check file integrity.
    *
    * @param filePath - Path to file to verify
-   * @returns True if file is valid, false otherwise
+   * @returns Object with isValid flag and optional error details
    */
-  async verifyFile(filePath: string): Promise<boolean> {
+  async verifyFile(filePath: string): Promise<{ isValid: boolean; error?: string }> {
     return new Promise((resolve) => {
       const ffprobe = spawn('ffprobe', [
         '-v',
@@ -737,25 +817,40 @@ export class FfmpegService {
       ]);
 
       let output = '';
+      let stderrOutput = '';
 
       ffprobe.stdout?.on('data', (data) => {
         output += data.toString();
       });
 
-      // Ignore stderr - ffprobe writes warnings there even for valid files
-      // We only care about the exit code
+      // Capture stderr for error details
+      ffprobe.stderr?.on('data', (data) => {
+        stderrOutput += data.toString();
+      });
 
       ffprobe.on('close', (code) => {
         if (code !== 0 || !output.trim()) {
-          resolve(false);
+          // Build detailed error message
+          let errorMessage = `File verification failed (exit code ${code})`;
+
+          if (stderrOutput.trim()) {
+            errorMessage += `\n\nffprobe error output:\n${stderrOutput.trim()}`;
+          } else {
+            errorMessage += '\n\nNo duration metadata found - file may be corrupted or incomplete';
+          }
+
+          resolve({ isValid: false, error: errorMessage });
         } else {
           // File is valid if exit code is 0 and we got a duration
-          resolve(true);
+          resolve({ isValid: true });
         }
       });
 
-      ffprobe.on('error', () => {
-        resolve(false);
+      ffprobe.on('error', (err) => {
+        resolve({
+          isValid: false,
+          error: `Failed to run ffprobe: ${err.message}`,
+        });
       });
     });
   }

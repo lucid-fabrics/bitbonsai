@@ -300,7 +300,22 @@ export class EncodingProcessorService implements OnModuleInit {
       try {
         // Verify source file exists
         if (!fs.existsSync(job.filePath)) {
-          throw new Error(`Source file not found: ${job.filePath}`);
+          const dirExists = fs.existsSync(path.dirname(job.filePath));
+          let errorMessage = `Source file not found: ${job.filePath}`;
+
+          if (!dirExists) {
+            errorMessage += `\n\nThe parent directory does not exist. This could indicate:`;
+            errorMessage += `\n- The library path was unmounted or removed`;
+            errorMessage += `\n- Network share disconnected`;
+            errorMessage += `\n- Directory permissions changed`;
+          } else {
+            errorMessage += `\n\nThe file may have been:`;
+            errorMessage += `\n- Moved or renamed by another process`;
+            errorMessage += `\n- Deleted before encoding could start`;
+            errorMessage += `\n- Located on a network share that disconnected`;
+          }
+
+          throw new Error(errorMessage);
         }
 
         // Perform encoding
@@ -479,9 +494,9 @@ export class EncodingProcessorService implements OnModuleInit {
    * @private
    */
   private async verifyEncodedFile(tmpPath: string): Promise<void> {
-    const isValid = await this.ffmpegService.verifyFile(tmpPath);
-    if (!isValid) {
-      throw new Error('Output verification failed - file is not playable');
+    const result = await this.ffmpegService.verifyFile(tmpPath);
+    if (!result.isValid) {
+      throw new Error(result.error || 'Output verification failed - file is not playable');
     }
   }
 
