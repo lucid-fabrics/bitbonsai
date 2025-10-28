@@ -18,6 +18,7 @@ export interface QueueJob {
   nodeId: string;
   nodeName: string;
   createdAt: string;
+  updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
   error?: string;
@@ -26,4 +27,6 @@ export interface QueueJob {
   healthStatus?: FileHealthStatus;
   healthScore?: number; // 0-100
   healthMessage?: string;
+  retryCount?: number; // Number of retry attempts (max 3)
+  nextRetryAt?: string; // When to retry next (for exponential backoff)
 }

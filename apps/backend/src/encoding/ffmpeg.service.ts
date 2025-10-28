@@ -68,6 +68,11 @@ export class FfmpegService {
   private readonly logger = new Logger(FfmpegService.name);
   private readonly activeEncodings = new Map<string, ActiveEncoding>();
 
+  // Cache stderr output for recently completed/failed jobs
+  // This persists even after the job is removed from activeEncodings
+  private readonly stderrCache = new Map<string, { stderr: string; timestamp: Date }>();
+  private readonly STDERR_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
   // Regex for parsing ffmpeg progress output
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
   private readonly progressRegex = /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
@@ -280,8 +285,9 @@ export class FfmpegService {
       }
     }
 
-    // Progress reporting
-    args.push('-progress', 'pipe:2', '-stats_period', '1');
+    // Progress reporting (use stats format which outputs one-line progress)
+    // -stats forces output even in non-interactive mode (pipes)
+    args.push('-stats', '-stats_period', '1');
 
     // Output to temp file (will be renamed atomically)
     // Use .tmp.mp4 extension so FFmpeg can detect the format
@@ -379,8 +385,9 @@ export class FfmpegService {
 
     this.eventEmitter.emit('encoding.progress', progressDto);
 
-    // Update job progress (throttle to every 5%)
-    if (progress - activeEncoding.lastProgress >= 5) {
+    // Update job progress (throttle to every 0.1% due to placeholder duration estimate)
+    if (progress - activeEncoding.lastProgress >= 0.1) {
+      this.logger.debug(`[${job.id}] Updating database: ${progress.toFixed(2)}% (ETA: ${eta}s)`);
       this.queueService
         .updateProgress(job.id, {
           progress: Math.round(progress * 100) / 100, // Round to 2 decimal places
@@ -475,6 +482,7 @@ export class FfmpegService {
    */
   async encodeFile(job: Job, policy: Policy): Promise<void> {
     this.logger.log(`Starting encoding for job ${job.id}: ${job.fileLabel}`);
+    this.logger.debug(`[${job.id}] encodeFile() called - setting up FFmpeg`);
 
     // Validate file exists
     if (!existsSync(job.filePath)) {
@@ -492,6 +500,10 @@ export class FfmpegService {
     const ffmpegProcess = spawn('ffmpeg', args, {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+
+    this.logger.debug(
+      `[${job.id}] FFmpeg process spawned (PID: ${ffmpegProcess.pid}), attaching stderr listener...`
+    );
 
     // Track active encoding
     const activeEncoding: ActiveEncoding = {
@@ -515,6 +527,7 @@ export class FfmpegService {
       // Parse stderr for progress
       ffmpegProcess.stderr?.on('data', (data: Buffer) => {
         const chunk = data.toString();
+        this.logger.debug(`[${job.id}] Received ${chunk.length} bytes from FFmpeg stderr`);
         stderrBuffer += chunk;
         fullStderr += chunk;
 
@@ -524,12 +537,20 @@ export class FfmpegService {
         }
         activeEncoding.lastStderr = fullStderr;
 
-        const lines = stderrBuffer.split('\n');
-        stderrBuffer = lines.pop() || ''; // Keep incomplete line in buffer
+        // Split on both newline and carriage return (FFmpeg stats uses \r)
+        const lines = stderrBuffer.split(/[\r\n]+/).filter((line) => line.trim());
+        stderrBuffer = ''; // Clear buffer after processing
 
         for (const line of lines) {
+          // Log all lines for debugging
+          if (line.includes('frame=')) {
+            this.logger.debug(`[${job.id}] FFmpeg stats line: ${line.substring(0, 150)}`);
+          }
           const progressData = this.parseProgress(line);
           if (progressData) {
+            this.logger.debug(
+              `[${job.id}] Progress parsed: frame=${progressData.frame}, fps=${progressData.fps}, time=${progressData.currentTime}`
+            );
             this.handleProgressUpdate(progressData, job, activeEncoding, estimatedDurationSeconds);
           }
         }
@@ -538,6 +559,12 @@ export class FfmpegService {
       // Handle process completion
       ffmpegProcess.on('close', async (code) => {
         const encoding = this.activeEncodings.get(job.id);
+
+        // Cache stderr before removing from active encodings
+        if (encoding?.lastStderr) {
+          this.cacheStderr(job.id, encoding.lastStderr);
+        }
+
         this.activeEncodings.delete(job.id);
 
         if (code === 0) {
@@ -561,6 +588,12 @@ export class FfmpegService {
       // Handle process errors
       ffmpegProcess.on('error', async (error) => {
         const encoding = this.activeEncodings.get(job.id);
+
+        // Cache stderr before removing from active encodings
+        if (encoding?.lastStderr) {
+          this.cacheStderr(job.id, encoding.lastStderr);
+        }
+
         this.activeEncodings.delete(job.id);
 
         let errorMessage = `FFmpeg Process Error: ${error.message}\n\n`;
@@ -576,6 +609,50 @@ export class FfmpegService {
         reject(error);
       });
     });
+  }
+
+  /**
+   * Kill FFmpeg process for a job without marking it as cancelled
+   *
+   * Used by watchdog to terminate stuck processes before failing the job.
+   *
+   * @param jobId - Job unique identifier
+   * @returns True if process was found and killed, false if no active process
+   */
+  async killProcess(jobId: string): Promise<boolean> {
+    const activeEncoding = this.activeEncodings.get(jobId);
+    if (!activeEncoding) {
+      return false;
+    }
+
+    try {
+      // Kill ffmpeg process
+      activeEncoding.process.kill('SIGTERM');
+
+      // Wait for graceful shutdown (2 seconds)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Force kill if still running
+      if (!activeEncoding.process.killed) {
+        activeEncoding.process.kill('SIGKILL');
+      }
+
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to kill FFmpeg process for job ${jobId}: ${errorMessage}`);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a job has an active FFmpeg process
+   *
+   * @param jobId - Job unique identifier
+   * @returns True if process is active, false otherwise
+   */
+  hasActiveProcess(jobId: string): boolean {
+    return this.activeEncodings.has(jobId);
   }
 
   /**
@@ -611,6 +688,11 @@ export class FfmpegService {
       // Mark job as cancelled
       await this.queueService.cancelJob(jobId);
 
+      // Cache stderr before removing from active encodings
+      if (activeEncoding.lastStderr) {
+        this.cacheStderr(jobId, activeEncoding.lastStderr);
+      }
+
       this.activeEncodings.delete(jobId);
       this.logger.log(`Encoding cancelled for job ${jobId}`);
       return true;
@@ -631,8 +713,45 @@ export class FfmpegService {
    * @returns Last stderr output, or null if job not found
    */
   getLastStderr(jobId: string): string | null {
+    // First check active encodings
     const activeEncoding = this.activeEncodings.get(jobId);
-    return activeEncoding?.lastStderr || null;
+    if (activeEncoding?.lastStderr) {
+      return activeEncoding.lastStderr;
+    }
+
+    // If not active, check the stderr cache for recently completed/failed jobs
+    const cachedStderr = this.stderrCache.get(jobId);
+    if (cachedStderr) {
+      // Clean up old entries while we're here
+      this.cleanupStderrCache();
+      return cachedStderr.stderr;
+    }
+
+    return null;
+  }
+
+  /**
+   * Clean up old stderr cache entries to prevent memory leaks
+   */
+  private cleanupStderrCache(): void {
+    const now = Date.now();
+    for (const [jobId, entry] of this.stderrCache.entries()) {
+      if (now - entry.timestamp.getTime() > this.STDERR_CACHE_TTL_MS) {
+        this.stderrCache.delete(jobId);
+      }
+    }
+  }
+
+  /**
+   * Save stderr to cache before removing from active encodings
+   */
+  private cacheStderr(jobId: string, stderr: string): void {
+    if (stderr) {
+      this.stderrCache.set(jobId, {
+        stderr,
+        timestamp: new Date(),
+      });
+    }
   }
 
   /**

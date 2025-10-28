@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { Job, Policy } from '@prisma/client';
@@ -9,14 +10,22 @@ import { FfmpegService } from './ffmpeg.service';
 
 interface JobWithPolicy extends Job {
   policy?: Policy;
-  retryCount?: number;
 }
 
 interface WorkerState {
+  workerId: string; // Unique worker identifier: "nodeId-worker-1"
   nodeId: string;
   isRunning: boolean;
   currentJobId: string | null;
-  intervalId: NodeJS.Timeout | null;
+  startedAt: Date;
+  shutdownPromise?: Promise<void>; // Promise that resolves when worker loop exits
+  shutdownResolve?: () => void; // Function to resolve the shutdown promise
+}
+
+interface NodeWorkerPool {
+  nodeId: string;
+  maxWorkers: number;
+  activeWorkers: Set<string>; // Set of workerIds currently running
 }
 
 interface JobResult {
@@ -31,7 +40,8 @@ interface JobResult {
  *
  * Handles encoding job processing with queue management and worker orchestration.
  * Implements:
- * - Worker pattern for processing jobs per node
+ * - Worker pool pattern (multiple workers per node)
+ * - Configurable concurrent workers (default: 4, max: 12)
  * - Queue management with concurrent job limits
  * - Automatic retry logic (max 3 retries)
  * - Atomic file replacement with verification
@@ -40,8 +50,20 @@ interface JobResult {
 @Injectable()
 export class EncodingProcessorService implements OnModuleInit {
   private readonly logger = new Logger(EncodingProcessorService.name);
-  private readonly workers = new Map<string, WorkerState>();
+
+  // Worker pool management
+  private readonly workerPools = new Map<string, NodeWorkerPool>();
+  private readonly workers = new Map<string, WorkerState>(); // workerId -> WorkerState
+
+  // Configuration
   private readonly MAX_RETRIES = 3;
+  private readonly DEFAULT_WORKERS_PER_NODE = 4; // Like Unmanic's default
+  private readonly MAX_WORKERS_PER_NODE = 12; // Unmanic's max
+
+  // Resource preflight thresholds
+  private readonly MIN_FREE_DISK_SPACE_GB = 5; // Minimum 5GB free space
+  private readonly MIN_FREE_MEMORY_PERCENT = 10; // Minimum 10% free RAM
+  private readonly DISK_SPACE_BUFFER_PERCENT = 20; // 20% buffer for encoding overhead
 
   constructor(
     private readonly prisma: PrismaService,
@@ -51,7 +73,7 @@ export class EncodingProcessorService implements OnModuleInit {
   ) {}
 
   /**
-   * Auto-start workers for all online nodes on module initialization
+   * Auto-start worker pools for all online nodes on module initialization
    * This ensures encoding workers are running whenever the backend starts
    *
    * Also performs auto-heal to recover from crashes/reboots
@@ -74,17 +96,21 @@ export class EncodingProcessorService implements OnModuleInit {
         return;
       }
 
-      // STEP 3: Start a worker for each online node
+      // STEP 3: Start worker pool for each online node
+      let totalWorkersStarted = 0;
       for (const node of onlineNodes) {
         try {
-          await this.startWorker(node.id);
-          this.logger.log(`✓ Auto-started worker for node: ${node.name}`);
+          const workersStarted = await this.startWorkerPool(node.id, this.DEFAULT_WORKERS_PER_NODE);
+          totalWorkersStarted += workersStarted;
+          this.logger.log(`✓ Started ${workersStarted} worker(s) for node: ${node.name}`);
         } catch (error) {
-          this.logger.error(`Failed to start worker for node ${node.name}:`, error);
+          this.logger.error(`Failed to start workers for node ${node.name}:`, error);
         }
       }
 
-      this.logger.log(`✅ Auto-started ${onlineNodes.length} worker(s)`);
+      this.logger.log(
+        `✅ Auto-started ${totalWorkersStarted} worker(s) across ${onlineNodes.length} node(s)`
+      );
 
       // STEP 4: Start background watchdog to detect stuck jobs
       this.startStuckJobWatchdog();
@@ -98,23 +124,19 @@ export class EncodingProcessorService implements OnModuleInit {
    * from backend crashes, reboots, or container restarts
    *
    * Strategy:
-   * - Find all jobs in ENCODING state
-   * - Check if they haven't been updated in the last 5 minutes
+   * - On startup, ALL jobs in ENCODING state are orphaned (no active ffmpeg processes)
    * - Reset them to QUEUED so they can be retried
+   * - This ensures clean recovery from any type of restart
    */
   private async autoHealOrphanedJobs(): Promise<void> {
     this.logger.log('🏥 Auto-heal: Checking for orphaned encoding jobs...');
 
     try {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-
-      // Find orphaned jobs (ENCODING but no progress in 5+ minutes)
+      // On backend startup, ALL jobs in ENCODING state are orphaned
+      // since we have no active ffmpeg processes yet
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
           stage: 'ENCODING',
-          updatedAt: {
-            lt: fiveMinutesAgo,
-          },
         },
         select: {
           id: true,
@@ -129,7 +151,9 @@ export class EncodingProcessorService implements OnModuleInit {
         return;
       }
 
-      this.logger.warn(`🔧 Found ${orphanedJobs.length} orphaned job(s) - resetting to QUEUED`);
+      this.logger.warn(
+        `🔧 Found ${orphanedJobs.length} orphaned job(s) from backend restart - resetting to QUEUED`
+      );
 
       // Reset each orphaned job back to QUEUED
       for (const job of orphanedJobs) {
@@ -160,127 +184,350 @@ export class EncodingProcessorService implements OnModuleInit {
 
   /**
    * Start background watchdog to detect stuck jobs during runtime
-   * Runs every 2 minutes to check for jobs that haven't progressed
+   *
+   * Enhanced watchdog features:
+   * - Runs every 60 seconds for faster detection
+   * - Detects jobs stuck for 5+ minutes (down from 10 minutes)
+   * - Attempts to kill hung FFmpeg processes before failing
+   * - Provides detailed diagnostic information
    */
   private startStuckJobWatchdog(): void {
-    this.logger.log('👀 Starting stuck job watchdog (checks every 2 minutes)');
+    this.logger.log('👀 Starting enhanced stuck job watchdog (checks every 60s, threshold: 5min)');
 
-    setInterval(
-      async () => {
-        try {
-          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    setInterval(async () => {
+      try {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-          const stuckJobs = await this.prisma.job.findMany({
-            where: {
-              stage: 'ENCODING',
-              updatedAt: {
-                lt: tenMinutesAgo,
-              },
+        const stuckJobs = await this.prisma.job.findMany({
+          where: {
+            stage: 'ENCODING',
+            updatedAt: {
+              lt: fiveMinutesAgo,
             },
-            select: {
-              id: true,
-              fileLabel: true,
-              progress: true,
-            },
-          });
+          },
+          select: {
+            id: true,
+            fileLabel: true,
+            progress: true,
+            updatedAt: true,
+          },
+        });
 
-          if (stuckJobs.length > 0) {
-            this.logger.warn(`⚠️  Watchdog detected ${stuckJobs.length} stuck job(s)`);
+        if (stuckJobs.length > 0) {
+          this.logger.warn(
+            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (no progress for 5+ minutes)`
+          );
 
-            for (const job of stuckJobs) {
-              this.logger.warn(
-                `  - ${job.fileLabel} stuck at ${job.progress}% - marking as FAILED`
-              );
+          for (const job of stuckJobs) {
+            const stuckDurationMs = Date.now() - new Date(job.updatedAt).getTime();
+            const stuckMinutes = Math.floor(stuckDurationMs / 60000);
 
-              // Get last stderr from ffmpeg for better error reporting
-              const lastStderr = this.ffmpegService.getLastStderr(job.id);
-              let errorMessage = 'Job stuck - no progress in 10+ minutes';
+            this.logger.warn(
+              `  - ${job.fileLabel} stuck at ${job.progress}% for ${stuckMinutes} minutes`
+            );
 
-              if (lastStderr) {
-                // Extract last few lines of stderr for context
-                const stderrLines = lastStderr.trim().split('\n').slice(-5);
-                const stderrContext = stderrLines.join('\n');
-                errorMessage += `\n\nLast ffmpeg output:\n${stderrContext}`;
-              } else {
-                errorMessage += ' (likely ffmpeg crash - no error output captured)';
-              }
+            // STEP 1: Try to kill the ffmpeg process
+            const killAttempted = await this.killStuckFFmpegProcess(job.id);
 
-              await this.queueService.failJob(job.id, errorMessage);
+            // STEP 2: Get diagnostic information
+            const lastStderr = this.ffmpegService.getLastStderr(job.id);
+            let errorMessage = `Job stuck - no progress for ${stuckMinutes} minutes`;
+
+            if (killAttempted) {
+              errorMessage += `\n\nFFmpeg process was killed by watchdog`;
+            } else {
+              errorMessage += `\n\nNo active FFmpeg process found (may have crashed)`;
             }
+
+            if (lastStderr) {
+              // Extract last few lines of stderr for context
+              const stderrLines = lastStderr.trim().split('\n').slice(-5);
+              const stderrContext = stderrLines.join('\n');
+              errorMessage += `\n\nLast ffmpeg output:\n${stderrContext}`;
+            } else {
+              errorMessage += `\n\nNo error output captured (likely process crash or kill)`;
+            }
+
+            // STEP 3: Add system diagnostics
+            const diagnostics = await this.getSystemDiagnostics(job.id);
+            errorMessage += `\n\n${diagnostics}`;
+
+            // STEP 4: Fail the job
+            this.logger.warn(`  ✗ Failing stuck job: ${job.fileLabel}`);
+            await this.queueService.failJob(job.id, errorMessage);
           }
-        } catch (error) {
-          this.logger.error('Watchdog check failed:', error);
         }
-      },
-      2 * 60 * 1000
-    ); // Every 2 minutes
+      } catch (error) {
+        this.logger.error('Watchdog check failed:', error);
+      }
+    }, 60 * 1000); // Every 60 seconds
   }
 
   /**
-   * Start worker for a node
+   * Attempt to kill a stuck FFmpeg process
+   *
+   * @param jobId - Job ID
+   * @returns True if process was found and killed
+   * @private
+   */
+  private async killStuckFFmpegProcess(jobId: string): Promise<boolean> {
+    try {
+      // Use FFmpeg service's kill method
+      const killed = await this.ffmpegService.killProcess(jobId);
+
+      if (killed) {
+        this.logger.log(`  ✓ Killed stuck FFmpeg process for job ${jobId}`);
+        return true;
+      }
+
+      this.logger.debug(`  - No active FFmpeg process found for job ${jobId}`);
+      return false;
+    } catch (error) {
+      this.logger.error(`  ✗ Failed to kill FFmpeg process for job ${jobId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get system diagnostics for stuck job troubleshooting
+   *
+   * @param jobId - Job ID
+   * @returns Diagnostic information string
+   * @private
+   */
+  private async getSystemDiagnostics(jobId: string): Promise<string> {
+    const diagnostics: string[] = ['System Diagnostics:'];
+
+    try {
+      // Memory status
+      const totalMemory = os.totalmem();
+      const freeMemory = os.freemem();
+      const usedMemoryPercent = ((totalMemory - freeMemory) / totalMemory) * 100;
+      diagnostics.push(
+        `- Memory: ${usedMemoryPercent.toFixed(1)}% used (${(freeMemory / 1024 ** 3).toFixed(2)}GB free)`
+      );
+
+      // Load average (Linux/macOS only)
+      if (process.platform !== 'win32') {
+        const loadAvg = os.loadavg();
+        diagnostics.push(`- Load average: ${loadAvg.map((l) => l.toFixed(2)).join(', ')}`);
+      }
+
+      // Active worker count
+      const activeWorkers = Array.from(this.workers.values()).filter(
+        (w) => w.currentJobId !== null
+      );
+      diagnostics.push(`- Active workers: ${activeWorkers.length}/${this.workers.size}`);
+
+      // FFmpeg process status
+      const hasProcess = this.ffmpegService.hasActiveProcess(jobId);
+      diagnostics.push(`- FFmpeg process active: ${hasProcess ? 'Yes' : 'No'}`);
+    } catch (error) {
+      diagnostics.push(`- Diagnostic collection failed: ${error}`);
+    }
+
+    return diagnostics.join('\n');
+  }
+
+  /**
+   * Start a worker pool for a node
+   *
+   * Starts multiple concurrent workers for a single node.
+   * Each worker will independently poll for jobs and process them.
+   *
+   * @param nodeId - Node unique identifier
+   * @param maxWorkers - Maximum number of concurrent workers (default: 4, max: 12)
+   * @returns Number of workers actually started
+   */
+  async startWorkerPool(
+    nodeId: string,
+    maxWorkers = this.DEFAULT_WORKERS_PER_NODE
+  ): Promise<number> {
+    // Validate maxWorkers
+    const validatedMaxWorkers = Math.min(Math.max(1, maxWorkers), this.MAX_WORKERS_PER_NODE);
+
+    // Get or create worker pool for this node
+    let pool = this.workerPools.get(nodeId);
+
+    if (pool) {
+      // Pool already exists - check if we can add more workers
+      const currentWorkerCount = pool.activeWorkers.size;
+      if (currentWorkerCount >= validatedMaxWorkers) {
+        this.logger.warn(
+          `Worker pool for node ${nodeId} already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
+        );
+        return 0;
+      }
+
+      // Update max workers if different
+      pool.maxWorkers = validatedMaxWorkers;
+    } else {
+      // Create new worker pool
+      pool = {
+        nodeId,
+        maxWorkers: validatedMaxWorkers,
+        activeWorkers: new Set(),
+      };
+      this.workerPools.set(nodeId, pool);
+    }
+
+    // Start workers up to the max limit
+    let workersStarted = 0;
+    for (let i = 1; i <= validatedMaxWorkers; i++) {
+      const workerId = `${nodeId}-worker-${i}`;
+
+      // Skip if this worker is already running
+      if (pool.activeWorkers.has(workerId)) {
+        continue;
+      }
+
+      try {
+        await this.startWorker(workerId, nodeId);
+        pool.activeWorkers.add(workerId);
+        workersStarted++;
+      } catch (error) {
+        this.logger.error(`Failed to start worker ${workerId}:`, error);
+      }
+    }
+
+    this.logger.log(
+      `Started ${workersStarted} worker(s) for node ${nodeId} (total: ${pool.activeWorkers.size}/${validatedMaxWorkers})`
+    );
+
+    return workersStarted;
+  }
+
+  /**
+   * Start a single worker with unique ID
    *
    * Begins processing jobs from the queue for the specified node.
    * Worker will continuously poll for new jobs while running.
    *
+   * @param workerId - Unique worker identifier (e.g., "nodeId-worker-1")
    * @param nodeId - Node unique identifier
+   * @private
    */
-  async startWorker(nodeId: string): Promise<void> {
-    if (this.workers.has(nodeId)) {
-      this.logger.warn(`Worker already running for node ${nodeId}`);
+  private async startWorker(workerId: string, nodeId: string): Promise<void> {
+    if (this.workers.has(workerId)) {
+      this.logger.warn(`Worker ${workerId} already running`);
       return;
     }
 
-    this.logger.log(`Starting worker for node ${nodeId}`);
-
     const worker: WorkerState = {
+      workerId,
       nodeId,
       isRunning: true,
       currentJobId: null,
-      intervalId: null,
+      startedAt: new Date(),
     };
 
-    this.workers.set(nodeId, worker);
+    // Initialize shutdown promise for graceful shutdown support
+    worker.shutdownPromise = new Promise<void>((resolve) => {
+      worker.shutdownResolve = resolve;
+    });
 
-    // Start processing loop
-    this.processLoop(nodeId);
+    this.workers.set(workerId, worker);
+
+    // Start processing loop (fire and forget - runs in background)
+    this.processLoop(workerId);
   }
 
   /**
-   * Stop worker for a node
+   * Stop worker pool for a node
    *
-   * Gracefully stops the worker after current job completes.
+   * Gracefully stops all workers for a node after current jobs complete.
    * Will not interrupt running jobs.
    *
    * @param nodeId - Node unique identifier
+   * @param workerId - Optional specific worker ID to stop (if not provided, stops all workers for node)
    */
-  async stopWorker(nodeId: string): Promise<void> {
-    const worker = this.workers.get(nodeId);
-    if (!worker) {
-      this.logger.warn(`No worker running for node ${nodeId}`);
+  async stopWorker(nodeId: string, workerId?: string): Promise<void> {
+    const pool = this.workerPools.get(nodeId);
+
+    if (!pool) {
+      this.logger.warn(`No worker pool found for node ${nodeId}`);
       return;
     }
 
-    this.logger.log(`Stopping worker for node ${nodeId}`);
-    worker.isRunning = false;
+    if (workerId) {
+      // Stop specific worker
+      const worker = this.workers.get(workerId);
+      if (!worker) {
+        this.logger.warn(`Worker ${workerId} not found`);
+        return;
+      }
 
-    // Wait for current job to complete
-    if (worker.currentJobId) {
-      this.logger.log(`Waiting for current job ${worker.currentJobId} to complete...`);
+      this.logger.log(`Stopping worker ${workerId}...`);
+
+      // Signal worker to stop
+      worker.isRunning = false;
+
+      // Wait for current job to complete
+      if (worker.currentJobId) {
+        this.logger.log(`Waiting for worker ${workerId} to complete job ${worker.currentJobId}...`);
+        await worker.shutdownPromise;
+        this.logger.log(`Worker ${workerId} completed its job and stopped gracefully`);
+      } else {
+        await worker.shutdownPromise;
+        this.logger.log(`Worker ${workerId} stopped gracefully`);
+      }
+
+      // Clean up worker state
+      this.workers.delete(workerId);
+      pool.activeWorkers.delete(workerId);
+    } else {
+      // Stop all workers for this node
+      this.logger.log(`Stopping all ${pool.activeWorkers.size} worker(s) for node ${nodeId}...`);
+
+      const shutdownPromises: Promise<void>[] = [];
+
+      for (const wId of pool.activeWorkers) {
+        const worker = this.workers.get(wId);
+        if (worker) {
+          // Signal worker to stop
+          worker.isRunning = false;
+
+          if (worker.currentJobId) {
+            this.logger.log(`Waiting for worker ${wId} to complete job ${worker.currentJobId}...`);
+          }
+
+          shutdownPromises.push(worker.shutdownPromise!);
+        }
+      }
+
+      // Wait for all workers to complete their current jobs
+      await Promise.all(shutdownPromises);
+      this.logger.log(`All workers for node ${nodeId} stopped gracefully`);
+
+      // Clean up worker states
+      for (const wId of pool.activeWorkers) {
+        this.workers.delete(wId);
+      }
+
+      // Clear the pool
+      pool.activeWorkers.clear();
+      this.workerPools.delete(nodeId);
     }
-
-    this.workers.delete(nodeId);
   }
 
   /**
-   * Process next job for a node
+   * Process next job for a worker
    *
    * Gets the next available job from queue and processes it.
    * Respects concurrent job limits from license configuration.
    *
-   * @param nodeId - Node unique identifier
+   * @param workerId - Unique worker identifier
    * @returns Processed job or null if none available
    */
-  async processNextJob(nodeId: string): Promise<JobWithPolicy | null> {
+  async processNextJob(workerId: string): Promise<JobWithPolicy | null> {
+    const worker = this.workers.get(workerId);
+    if (!worker) {
+      this.logger.error(`Worker ${workerId} not found`);
+      return null;
+    }
+
+    const nodeId = worker.nodeId;
+
     try {
       // Get next job from queue (respects concurrent limits)
       const job = await this.queueService.getNextJob(nodeId);
@@ -289,13 +536,10 @@ export class EncodingProcessorService implements OnModuleInit {
         return null;
       }
 
-      this.logger.log(`Processing job ${job.id} for node ${nodeId}`);
+      this.logger.log(`[${workerId}] Processing job ${job.id}`);
 
       // Update worker state
-      const worker = this.workers.get(nodeId);
-      if (worker) {
-        worker.currentJobId = job.id;
-      }
+      worker.currentJobId = job.id;
 
       try {
         // Verify source file exists
@@ -318,6 +562,9 @@ export class EncodingProcessorService implements OnModuleInit {
           throw new Error(errorMessage);
         }
 
+        // Perform resource preflight checks
+        await this.performResourcePreflightChecks(job);
+
         // Perform encoding
         const result = await this.encodeFile(job);
 
@@ -331,12 +578,10 @@ export class EncodingProcessorService implements OnModuleInit {
         return null;
       } finally {
         // Clear current job
-        if (worker) {
-          worker.currentJobId = null;
-        }
+        worker.currentJobId = null;
       }
     } catch (error) {
-      this.logger.error(`Error processing job for node ${nodeId}:`, error);
+      this.logger.error(`[${workerId}] Error processing job:`, error);
       return null;
     }
   }
@@ -375,7 +620,8 @@ export class EncodingProcessorService implements OnModuleInit {
   /**
    * Handle job failure
    *
-   * Implements retry logic (max 3 retries) and marks job as failed if retries exhausted.
+   * Implements retry logic with exponential backoff (max 3 retries).
+   * Backoff delays: 1 min, 2 min, 4 min for retries 1, 2, 3.
    *
    * @param job - Failed job
    * @param error - Error that caused failure
@@ -390,23 +636,133 @@ export class EncodingProcessorService implements OnModuleInit {
       const retryCount = job.retryCount || 0;
 
       if (shouldRetry && retryCount < this.MAX_RETRIES) {
-        this.logger.log(`Retrying job ${job.id} (attempt ${retryCount + 1}/${this.MAX_RETRIES})`);
+        // Calculate exponential backoff delay
+        // Base delay: 60 seconds, multiplied by 2^retryCount
+        // Retry 1: 60s (1 min), Retry 2: 120s (2 min), Retry 3: 240s (4 min)
+        const baseDelaySeconds = 60;
+        const delaySeconds = baseDelaySeconds * 2 ** retryCount;
+        const nextRetryAt = new Date(Date.now() + delaySeconds * 1000);
 
-        // Reset job to QUEUED for retry
-        await this.queueService.updateProgress(job.id, {
-          stage: 'QUEUED',
-          progress: 0,
+        this.logger.log(
+          `Retrying job ${job.id} (attempt ${retryCount + 1}/${this.MAX_RETRIES}) ` +
+            `after ${delaySeconds}s delay (at ${nextRetryAt.toISOString()})`
+        );
+
+        // Update job with retry information
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            stage: 'QUEUED',
+            progress: 0,
+            retryCount: retryCount + 1,
+            nextRetryAt,
+            error: `Retry ${retryCount + 1}/${this.MAX_RETRIES}: ${errorMessage}`,
+          },
         });
-
-        // Increment retry count (stored in job metadata)
-        // In production, you'd add a retryCount field to the Job model
       } else {
         // Mark job as failed
-        await this.queueService.failJob(job.id, errorMessage);
+        const failureReason = shouldRetry
+          ? `Max retries (${this.MAX_RETRIES}) exhausted: ${errorMessage}`
+          : errorMessage;
+        await this.queueService.failJob(job.id, failureReason);
       }
     } catch (updateError) {
       this.logger.error(`Error updating failed job ${job.id}:`, updateError);
     }
+  }
+
+  /**
+   * Perform resource preflight checks before starting encoding
+   *
+   * Verifies system has sufficient resources to complete the encoding job:
+   * - File is readable
+   * - Sufficient disk space (source file size + 20% buffer + 5GB minimum)
+   * - Sufficient free memory (at least 10% RAM available)
+   *
+   * @param job - Job to check resources for
+   * @throws Error if resources are insufficient
+   * @private
+   */
+  private async performResourcePreflightChecks(job: JobWithPolicy): Promise<void> {
+    const checks: string[] = [];
+
+    // Check 1: File accessibility (read permissions)
+    try {
+      await fs.promises.access(job.filePath, fs.constants.R_OK);
+      checks.push('✓ File readable');
+    } catch (error) {
+      throw new Error(
+        `Cannot read source file: ${job.filePath}\n\n` +
+          `Possible causes:\n` +
+          `- File permissions deny read access\n` +
+          `- File is locked by another process\n` +
+          `- Network share disconnected`
+      );
+    }
+
+    // Check 2: Disk space availability
+    const fileStats = await fs.promises.stat(job.filePath);
+    const fileSizeBytes = fileStats.size;
+    const outputDir = path.dirname(job.filePath);
+
+    try {
+      // Get filesystem stats for the output directory
+      const stats = await fs.promises.statfs(outputDir);
+      const availableBytes = stats.bavail * stats.bsize; // Available blocks * block size
+      const availableGB = availableBytes / 1024 ** 3;
+
+      // Calculate required space: file size + 20% buffer (for encoding overhead)
+      const requiredBytes = fileSizeBytes * (1 + this.DISK_SPACE_BUFFER_PERCENT / 100);
+      const requiredGB = requiredBytes / 1024 ** 3;
+
+      // Need at least the required space OR minimum 5GB, whichever is larger
+      const minimumRequiredBytes = Math.max(requiredBytes, this.MIN_FREE_DISK_SPACE_GB * 1024 ** 3);
+      const minimumRequiredGB = minimumRequiredBytes / 1024 ** 3;
+
+      if (availableBytes < minimumRequiredBytes) {
+        throw new Error(
+          `Insufficient disk space on ${outputDir}\n\n` +
+            `Available: ${availableGB.toFixed(2)} GB\n` +
+            `Required: ${minimumRequiredGB.toFixed(2)} GB (source file + ${this.DISK_SPACE_BUFFER_PERCENT}% buffer)\n` +
+            `Minimum: ${this.MIN_FREE_DISK_SPACE_GB} GB\n\n` +
+            `Please free up disk space before retrying this job.`
+        );
+      }
+
+      checks.push(
+        `✓ Disk space sufficient (${availableGB.toFixed(1)}GB available, ${requiredGB.toFixed(1)}GB needed)`
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Insufficient disk space')) {
+        throw error; // Re-throw our custom error
+      }
+      // If statfs fails, log warning but don't fail the job
+      this.logger.warn(`Could not check disk space for ${outputDir}: ${error}`);
+      checks.push('⚠ Disk space check skipped (statfs unavailable)');
+    }
+
+    // Check 3: Memory availability
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const freeMemoryPercent = (freeMemory / totalMemory) * 100;
+    const freeMemoryGB = freeMemory / 1024 ** 3;
+
+    if (freeMemoryPercent < this.MIN_FREE_MEMORY_PERCENT) {
+      this.logger.warn(
+        `Low memory warning: ${freeMemoryGB.toFixed(2)}GB (${freeMemoryPercent.toFixed(1)}%) free. ` +
+          `Job may be slower or fail if system runs out of memory.`
+      );
+      checks.push(
+        `⚠ Low memory (${freeMemoryGB.toFixed(1)}GB / ${freeMemoryPercent.toFixed(1)}% free)`
+      );
+    } else {
+      checks.push(
+        `✓ Memory sufficient (${freeMemoryGB.toFixed(1)}GB / ${freeMemoryPercent.toFixed(1)}% free)`
+      );
+    }
+
+    // Log all checks
+    this.logger.log(`Resource preflight checks for job ${job.id}:\n  ${checks.join('\n  ')}`);
   }
 
   /**
@@ -572,29 +928,37 @@ export class EncodingProcessorService implements OnModuleInit {
    * Processing loop for worker
    *
    * Continuously polls for new jobs while worker is running.
+   * Each worker runs independently and competes for jobs from the queue.
    *
-   * @param nodeId - Node ID
+   * @param workerId - Unique worker identifier
    * @private
    */
-  private async processLoop(nodeId: string): Promise<void> {
-    const worker = this.workers.get(nodeId);
+  private async processLoop(workerId: string): Promise<void> {
+    const worker = this.workers.get(workerId);
     if (!worker) return;
+
+    this.logger.log(`[${workerId}] Started processing loop`);
 
     while (worker.isRunning) {
       try {
-        const job = await this.processNextJob(nodeId);
+        const job = await this.processNextJob(workerId);
 
         if (!job) {
           // No job available, wait before polling again
           await this.sleep(5000);
         }
       } catch (error) {
-        this.logger.error(`Error in processing loop for node ${nodeId}:`, error);
+        this.logger.error(`[${workerId}] Error in processing loop:`, error);
         await this.sleep(5000);
       }
     }
 
-    this.logger.log(`Worker stopped for node ${nodeId}`);
+    this.logger.log(`[${workerId}] Stopped processing loop`);
+
+    // Resolve shutdown promise if it exists
+    if (worker.shutdownResolve) {
+      worker.shutdownResolve();
+    }
   }
 
   /**

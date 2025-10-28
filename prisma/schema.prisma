@@ -306,6 +306,8 @@ model Job {
   completedAt     DateTime?
   error           String? // Error message if failed
   isBlacklisted   Boolean           @default(false) // User marked this file to never encode automatically
+  retryCount      Int               @default(0) // Number of encoding retry attempts (max 3)
+  nextRetryAt     DateTime? // When to retry next (for exponential backoff)
 
   // Health Check Fields
   healthStatus       FileHealthStatus @default(UNKNOWN) // File health status

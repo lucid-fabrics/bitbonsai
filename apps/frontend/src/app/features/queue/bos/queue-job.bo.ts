@@ -21,11 +21,14 @@ export class QueueJobBo {
   nodeId: string;
   nodeName: string;
   createdAt: string;
+  updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
+  retryCount?: number;
+  nextRetryAt?: string;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -43,11 +46,14 @@ export class QueueJobBo {
     this.nodeId = this.extractNodeId(model);
     this.nodeName = this.extractNodeName(model);
     this.createdAt = model.createdAt;
+    this.updatedAt = model.updatedAt;
     this.startedAt = model.startedAt;
     this.completedAt = model.completedAt;
     this.error = model.error;
     this.sourceCodec = model.sourceCodec;
     this.targetCodec = model.targetCodec;
+    this.retryCount = model.retryCount;
+    this.nextRetryAt = model.nextRetryAt;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

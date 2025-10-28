@@ -528,6 +528,52 @@ export class QueueComponent implements OnInit {
     return jobs.reduce((sum, job) => sum + Number(job.originalSize), 0);
   }
 
+  /**
+   * Format timestamp to human-readable format
+   */
+  protected formatTimestamp(timestamp: string | null | undefined): string {
+    if (!timestamp) return 'N/A';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    // If less than 1 hour ago, show relative time
+    if (diffMins < 60) {
+      if (diffMins < 1) return 'Just now';
+      if (diffMins === 1) return '1 minute ago';
+      return `${diffMins} minutes ago`;
+    }
+
+    // Otherwise show formatted date
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    };
+    return date.toLocaleDateString('en-US', options);
+  }
+
+  /**
+   * Calculate expected final file size based on estimated compression
+   */
+  protected calculateExpectedSize(job: QueueJob): string {
+    const compressionPercent = this.getEstimatedCompression(job);
+    const expectedSize = job.originalSize * (1 - compressionPercent / 100);
+    return this.formatBytes(expectedSize);
+  }
+
+  /**
+   * Calculate and format expected savings with color coding
+   */
+  protected calculateExpectedSavings(job: QueueJob): string {
+    const compressionPercent = this.getEstimatedCompression(job);
+    const savedBytes = job.originalSize * (compressionPercent / 100);
+    return `~${this.formatBytes(savedBytes)} (${compressionPercent}%)`;
+  }
+
   protected calculateEstimatedTime(totalSizeBytes: number): { hours: number; minutes: number } {
     const avgEncodingSpeed = 50 * 1024 * 1024; // 50 MB/s
     const estimatedSeconds = totalSizeBytes / avgEncodingSpeed;
@@ -538,6 +584,36 @@ export class QueueComponent implements OnInit {
 
   protected getAvgEncodingSpeed(): number {
     return 50 * 1024 * 1024; // 50 MB/s
+  }
+
+  /**
+   * Detect if a job appears to be stuck
+   * A job is considered stuck if:
+   * - It's in ENCODING status
+   * - Progress is 0% or hasn't changed
+   * - It's been running for more than 5 minutes
+   */
+  protected isJobStuck(job: QueueJob): boolean {
+    if (job.status !== JobStatus.ENCODING || !job.startedAt) {
+      return false;
+    }
+
+    const startTime = new Date(job.startedAt).getTime();
+    const now = Date.now();
+    const elapsedMinutes = (now - startTime) / (1000 * 60);
+
+    // Job is stuck if it's been encoding for 5+ minutes with 0% progress
+    return elapsedMinutes >= 5 && job.progress === 0;
+  }
+
+  /**
+   * Get stuck job warning message
+   */
+  protected getStuckJobMessage(job: QueueJob): string {
+    if (!job.startedAt) return 'Job may be stuck';
+
+    const elapsedTime = this.getElapsedTime(job.startedAt);
+    return `Job appears stuck - no progress after ${elapsedTime}. The encoding process may have crashed or frozen. Check the error details or retry the job.`;
   }
 
   /**

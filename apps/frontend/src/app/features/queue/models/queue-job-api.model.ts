@@ -27,9 +27,12 @@ export interface QueueJobApiModel {
   node?: { name: string };
   nodeName?: string;
   createdAt: string;
+  updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
+  retryCount?: number;
+  nextRetryAt?: string;
 }
