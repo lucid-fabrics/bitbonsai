@@ -1,0 +1,74 @@
+@if (isOpen) {
+  <div class="modal-overlay" (click)="close()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <!-- Header -->
+      <div class="modal-header error-header">
+        <h2>Error Details</h2>
+        <button class="close-btn" (click)="close()" aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="modal-content">
+        <!-- Job Info -->
+        <div class="info-section">
+          <h3>Job Information</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Job ID</span>
+              <span class="value">{{ jobId }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">File</span>
+              <span class="value">{{ fileName }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Status</span>
+              <span class="value">
+                <span class="status-badge status-failed">{{ status }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Details -->
+        <div class="error-section">
+          <div class="section-header">
+            <h3>Error Details</h3>
+            <button class="copy-btn" (click)="copyToClipboard()">
+              <i class="fas fa-copy"></i>
+              Copy
+            </button>
+          </div>
+
+          <div class="error-content">
+            <pre>{{ error || 'No error details available' }}</pre>
+          </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="help-section">
+          <h3>
+            <i class="fas fa-info-circle"></i>
+            Troubleshooting Tips
+          </h3>
+          <ul>
+            <li><strong>Exit Code 1:</strong> Check file integrity and codec compatibility</li>
+            <li><strong>Segmentation Fault:</strong> Possible corrupted file or ffmpeg crash</li>
+            <li><strong>Invalid Data:</strong> Source file may be damaged or incomplete</li>
+            <li><strong>Permission Errors:</strong> Check file and directory permissions</li>
+          </ul>
+          <p class="note">
+            You can retry the job from the queue page if this was a temporary issue.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button class="btn btn-primary" (click)="close()">Close</button>
+      </div>
+    </div>
+  </div>
+}

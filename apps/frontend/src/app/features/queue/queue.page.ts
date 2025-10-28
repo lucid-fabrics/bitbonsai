@@ -18,6 +18,7 @@ import { QueueClient } from '../../core/clients/queue.client';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
+import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
 import { JobStatus } from './models/job-status.enum';
 import type { QueueFilters } from './models/queue-filters.model';
 import type { QueueJob } from './models/queue-job.model';
@@ -26,7 +27,13 @@ import type { QueueResponse } from './models/queue-response.model';
 @Component({
   selector: 'app-queue',
   standalone: true,
-  imports: [CommonModule, FormsModule, RichTooltipDirective, AddFilesModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RichTooltipDirective,
+    AddFilesModalComponent,
+    ErrorDetailsModalComponent,
+  ],
   templateUrl: './queue.page.html',
   styleUrls: ['./queue.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +63,13 @@ export class QueueComponent implements OnInit {
   protected showRetryAllDialog = false;
   protected selectedJobId: string | null = null;
   protected showAddFilesModal = false;
+  protected showErrorDetailsModal = false;
+  protected errorModalData: {
+    fileName: string;
+    error: string;
+    status: string;
+    jobId: string;
+  } | null = null;
 
   // Expose Math for template
   protected readonly Math = Math;
@@ -345,6 +359,21 @@ export class QueueComponent implements OnInit {
     console.log(`Created ${result.jobsCreated} job(s)`);
     this.closeAddFilesModal();
     this.refreshQueue(true); // Refresh with loading indicator
+  }
+
+  protected openErrorDetailsModal(job: QueueJob): void {
+    this.errorModalData = {
+      fileName: job.fileName,
+      error: job.error || 'No error details available',
+      status: job.status,
+      jobId: job.id,
+    };
+    this.showErrorDetailsModal = true;
+  }
+
+  protected closeErrorDetailsModal(): void {
+    this.showErrorDetailsModal = false;
+    this.errorModalData = null;
   }
 
   protected getStatusClass(status: JobStatus): string {

@@ -381,6 +381,18 @@
                         <i class="fas fa-redo"></i>
                       </button>
                     }
+                    @if (job.status === 'FAILED' && job.error) {
+                      <button
+                        (click)="openErrorDetailsModal(job)"
+                        class="action-btn error-btn"
+                        bbTooltip
+                        tooltipTitle="View Error Details"
+                        tooltipContent="Shows detailed error information including ffmpeg output, exit codes, and troubleshooting tips to help diagnose what went wrong."
+                        tooltipWhen="You need to understand why this job failed and how to fix it."
+                        tooltipPlacement="top">
+                        <i class="fas fa-exclamation-circle"></i>
+                      </button>
+                    }
                     <button class="action-btn details-btn" title="View Details">
                       <i [class]="expandedJobId === job.id ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                     </button>
@@ -752,3 +764,15 @@
   (close)="closeAddFilesModal()"
   (jobsCreated)="handleJobsCreated($event)">
 </app-add-files-modal>
+
+<!-- Error Details Modal -->
+@if (errorModalData) {
+  <app-error-details-modal
+    [isOpen]="showErrorDetailsModal"
+    [fileName]="errorModalData.fileName"
+    [error]="errorModalData.error"
+    [status]="errorModalData.status"
+    [jobId]="errorModalData.jobId"
+    (closeModal)="closeErrorDetailsModal()">
+  </app-error-details-modal>
+}
