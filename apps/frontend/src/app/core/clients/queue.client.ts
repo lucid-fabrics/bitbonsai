@@ -58,4 +58,12 @@ export class QueueClient {
   unblacklistJob(jobId: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${jobId}/unblacklist`, {});
   }
+
+  pauseJob(jobId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/pause`, {});
+  }
+
+  resumeJob(jobId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/resume`, {});
+  }
 }

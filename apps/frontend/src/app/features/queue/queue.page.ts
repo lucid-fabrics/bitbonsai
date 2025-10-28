@@ -92,6 +92,7 @@ export class QueueComponent implements OnInit {
     JobStatus.HEALTH_CHECK,
     JobStatus.QUEUED,
     JobStatus.ENCODING,
+    JobStatus.PAUSED,
     JobStatus.VERIFYING,
     JobStatus.COMPLETED,
     JobStatus.FAILED,
@@ -295,6 +296,36 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected pauseJob(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .pauseJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refreshQueue();
+        },
+        error: () => {
+          // Pause failed
+        },
+      });
+  }
+
+  protected resumeJob(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .resumeJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refreshQueue();
+        },
+        error: () => {
+          // Resume failed
+        },
+      });
+  }
+
   protected openCancelAllDialog(): void {
     this.showCancelAllDialog = true;
   }
@@ -379,6 +410,8 @@ export class QueueComponent implements OnInit {
         return 'fa-clock';
       case JobStatus.ENCODING:
         return 'fa-spinner fa-spin';
+      case JobStatus.PAUSED:
+        return 'fa-pause-circle';
       case JobStatus.COMPLETED:
         return 'fa-check-circle';
       case JobStatus.FAILED:
@@ -396,6 +429,8 @@ export class QueueComponent implements OnInit {
         return 'This job is waiting in the queue for an available encoding node. It will start automatically when a node becomes free.';
       case JobStatus.ENCODING:
         return 'This job is currently being encoded by a node. Progress is shown as a percentage. Encoding time depends on file size, quality settings, and node hardware.';
+      case JobStatus.PAUSED:
+        return 'This job has been paused and encoding has stopped. You can resume it at any time to continue from where it left off.';
       case JobStatus.COMPLETED:
         return 'This job has finished encoding successfully. The file has been optimized and space savings are shown. The original file has been replaced or backed up according to your settings.';
       case JobStatus.FAILED:

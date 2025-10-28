@@ -323,6 +323,11 @@
                       <i class="fas fa-hourglass-start"></i>
                       <span>Waiting in queue...</span>
                     </div>
+                  } @else if (job.status === 'PAUSED') {
+                    <div class="queue-position">
+                      <i class="fas fa-pause-circle"></i>
+                      <span>Paused at {{ job.progress }}%</span>
+                    </div>
                   } @else {
                     <span class="progress-placeholder">-</span>
                   }
@@ -369,6 +374,30 @@
                 <td class="col-node">{{ job.nodeName }}</td>
                 <td class="col-actions">
                   <div class="action-buttons">
+                    @if (job.status === 'ENCODING') {
+                      <button
+                        (click)="pauseJob(job.id, $event)"
+                        class="action-btn pause-btn"
+                        bbTooltip
+                        tooltipTitle="Pause Encoding"
+                        tooltipContent="Temporarily pauses the encoding process. You can resume this job later to continue from where it left off."
+                        tooltipWhen="You want to temporarily stop encoding this file to free up resources or prioritize other jobs."
+                        tooltipPlacement="top">
+                        <i class="fas fa-pause"></i>
+                      </button>
+                    }
+                    @if (job.status === 'PAUSED') {
+                      <button
+                        (click)="resumeJob(job.id, $event)"
+                        class="action-btn resume-btn"
+                        bbTooltip
+                        tooltipTitle="Resume Encoding"
+                        tooltipContent="Resumes the paused encoding process. The job will continue from where it was paused."
+                        tooltipWhen="You want to continue encoding this paused job."
+                        tooltipPlacement="top">
+                        <i class="fas fa-play"></i>
+                      </button>
+                    }
                     @if (job.status === 'QUEUED' || job.status === 'ENCODING') {
                       <button
                         (click)="openCancelDialog(job.id, $event)"
@@ -573,6 +602,8 @@
                 No jobs have completed yet. Jobs will appear here once they finish encoding successfully.
               } @else if (selectedStatus === JobStatus.ENCODING) {
                 No jobs are currently encoding. Jobs will appear here when encoding starts.
+              } @else if (selectedStatus === JobStatus.PAUSED) {
+                No jobs are paused. Jobs appear here when you manually pause an encoding job.
               } @else if (selectedStatus === JobStatus.QUEUED) {
                 No jobs are waiting in the queue. Add files or scan libraries to create new jobs.
               } @else if (selectedStatus === JobStatus.FAILED) {
