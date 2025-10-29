@@ -39,6 +39,9 @@ sync_files() {
         --exclude '*.db-journal' \
         ./prisma/ $UNRAID_SSH:$DEPLOY_PATH/prisma/
 
+    rsync -az --delete \
+        ./scripts/ $UNRAID_SSH:$DEPLOY_PATH/scripts/
+
     # Sync critical config files that are mounted in containers
     rsync -az \
         ./proxy.docker.conf.json \

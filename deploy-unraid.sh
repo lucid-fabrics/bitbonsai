@@ -2,6 +2,7 @@
 
 # BitBonsai - Deploy to Unraid with Prisma Migration Support
 # Automatically syncs code and handles database migrations
+# CRITICAL: Always regenerates Prisma AFTER restart to prevent 504 errors
 
 set -e  # Exit on error
 
@@ -14,7 +15,7 @@ echo "🚀 Deploying BitBonsai to Unraid..."
 echo ""
 
 # Step 1: Sync code files and config
-echo "📦 Step 1/5: Syncing application code and configuration..."
+echo "📦 Step 1/6: Syncing application code and configuration..."
 rsync -az --delete \
     --exclude 'node_modules' \
     --exclude 'dist' \
@@ -28,6 +29,9 @@ rsync -az --delete \
     --exclude 'node_modules' \
     ./libs/ $UNRAID_SSH:$DEPLOY_PATH/libs/
 
+rsync -az --delete \
+    ./scripts/ $UNRAID_SSH:$DEPLOY_PATH/scripts/
+
 # Sync critical config files that are mounted in containers
 rsync -az \
     ./proxy.docker.conf.json \
@@ -39,7 +43,7 @@ echo "✅ Code and configuration synced"
 echo ""
 
 # Step 2: Sync Prisma schema and migrations
-echo "📊 Step 2/5: Syncing Prisma schema and migrations..."
+echo "📊 Step 2/6: Syncing Prisma schema and migrations..."
 rsync -az --delete \
     --exclude '*.db' \
     --exclude '*.db-journal' \
@@ -48,26 +52,51 @@ rsync -az --delete \
 echo "✅ Prisma files synced"
 echo ""
 
-# Step 3: Regenerate Prisma Client inside backend container
-echo "🔄 Step 3/5: Regenerating Prisma Client..."
-ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-backend npx prisma generate" || {
-    echo "⚠️  Warning: Prisma generate failed (container might not be running yet)"
-}
-echo "✅ Prisma Client regenerated"
+# Step 3: Restart containers to pick up code changes
+echo "♻️  Step 3/6: Restarting containers..."
+ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker-compose -f docker-compose.unraid.yml restart"
+echo "✅ Containers restarted"
 echo ""
 
-# Step 4: Apply pending migrations
-echo "🗄️  Step 4/5: Applying database migrations..."
+# Step 4: Wait for containers to be ready
+echo "⏳ Step 4/6: Waiting for backend to be ready..."
+sleep 10
+echo "✅ Backend should be ready"
+echo ""
+
+# Step 5: Regenerate Prisma Client (CRITICAL - prevents 504 errors)
+echo "🔄 Step 5/6: Regenerating Prisma Client (prevents proxy errors)..."
+MAX_RETRIES=3
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-backend npx prisma generate"; then
+        echo "✅ Prisma Client regenerated successfully"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "⚠️  Retry $RETRY_COUNT/$MAX_RETRIES: Waiting 5 seconds..."
+            sleep 5
+        else
+            echo "❌ Failed to regenerate Prisma Client after $MAX_RETRIES attempts"
+            exit 1
+        fi
+    fi
+done
+echo ""
+
+# Step 6: Apply pending migrations
+echo "🗄️  Step 6/6: Applying database migrations..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-backend npx prisma migrate deploy" || {
-    echo "⚠️  Warning: Migration failed (will retry after restart)"
+    echo "⚠️  Warning: Migration failed (may not be needed)"
 }
 echo "✅ Migrations applied"
 echo ""
 
-# Step 5: Restart containers to pick up changes
-echo "♻️  Step 5/5: Restarting containers..."
+# Final restart to ensure all changes are loaded
+echo "♻️  Final restart to apply all changes..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker-compose -f docker-compose.unraid.yml restart"
-echo "✅ Containers restarted"
+echo "✅ Final restart complete"
 echo ""
 
 echo "🎉 Deployment complete!"

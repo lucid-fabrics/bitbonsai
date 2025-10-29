@@ -34,11 +34,15 @@ COPY libs ./libs
 # Copy backend source
 COPY apps/backend ./apps/backend
 
+# Copy startup script
+COPY scripts/backend-startup.sh /app/scripts/backend-startup.sh
+RUN chmod +x /app/scripts/backend-startup.sh
+
 # Expose backend ports (API + debugger)
 EXPOSE 3000 9229
 
-# Default command
-CMD ["npx", "nx", "serve", "backend", "--host", "0.0.0.0"]
+# Use startup script that regenerates Prisma before starting
+CMD ["/app/scripts/backend-startup.sh"]
 
 # Stage 3: Frontend development image
 FROM base AS frontend
