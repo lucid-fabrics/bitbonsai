@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { ToastController } from '@ionic/angular';
+import { ToastController, type ToastOptions } from '@ionic/angular';
 
 /**
  * ToastService
@@ -24,7 +24,7 @@ export class ToastService {
    * Use for: Successful operations, confirmations
    */
   async success(message: string, duration = 2000): Promise<void> {
-    const toast = await this.toastController.create({
+    const options: ToastOptions = {
       message,
       duration,
       position: 'bottom',
@@ -36,8 +36,9 @@ export class ToastService {
           role: 'cancel',
         },
       ],
-    });
+    };
 
+    const toast = await this.toastController.create(options);
     await toast.present();
   }
 
@@ -46,7 +47,7 @@ export class ToastService {
    * Use for: Information, status updates
    */
   async info(message: string, duration = 2000): Promise<void> {
-    const toast = await this.toastController.create({
+    const options: ToastOptions = {
       message,
       duration,
       position: 'bottom',
@@ -58,8 +59,9 @@ export class ToastService {
           role: 'cancel',
         },
       ],
-    });
+    };
 
+    const toast = await this.toastController.create(options);
     await toast.present();
   }
 
@@ -68,7 +70,7 @@ export class ToastService {
    * Use for: Warnings, non-critical issues
    */
   async warning(message: string, duration = 3000): Promise<void> {
-    const toast = await this.toastController.create({
+    const options: ToastOptions = {
       message,
       duration,
       position: 'bottom',
@@ -80,8 +82,9 @@ export class ToastService {
           role: 'cancel',
         },
       ],
-    });
+    };
 
+    const toast = await this.toastController.create(options);
     await toast.present();
   }
 
@@ -90,7 +93,7 @@ export class ToastService {
    * Use for: Errors, failed operations
    */
   async error(message: string, duration = 3000): Promise<void> {
-    const toast = await this.toastController.create({
+    const options: ToastOptions = {
       message,
       duration,
       position: 'bottom',
@@ -102,8 +105,9 @@ export class ToastService {
           role: 'cancel',
         },
       ],
-    });
+    };
 
+    const toast = await this.toastController.create(options);
     await toast.present();
   }
 
@@ -117,7 +121,7 @@ export class ToastService {
     icon?: string;
     position?: 'top' | 'bottom' | 'middle';
   }): Promise<void> {
-    const toast = await this.toastController.create({
+    const toastOptions: ToastOptions = {
       message: options.message,
       duration: options.duration || 2000,
       position: options.position || 'bottom',
@@ -129,8 +133,9 @@ export class ToastService {
           role: 'cancel',
         },
       ],
-    });
+    };
 
+    const toast = await this.toastController.create(toastOptions);
     await toast.present();
   }
 }
