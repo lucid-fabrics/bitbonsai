@@ -11,6 +11,7 @@ export interface QueueJob {
   status: JobStatus;
   progress: number; // 0-100
   etaSeconds?: number | null; // Estimated time remaining in seconds
+  fps?: number | null; // Current encoding speed in frames per second
   originalSize: number;
   currentSize: number;
   savedSize: number;
