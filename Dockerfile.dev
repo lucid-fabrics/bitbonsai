@@ -34,15 +34,28 @@ COPY libs ./libs
 # Copy backend source
 COPY apps/backend ./apps/backend
 
-# Copy startup script
-COPY scripts/backend-startup.sh /app/scripts/backend-startup.sh
-RUN chmod +x /app/scripts/backend-startup.sh
+# Create and copy startup script inline (avoid COPY issues during build)
+RUN echo '#!/bin/sh' > /app/backend-startup.sh && \
+    echo 'set -e' >> /app/backend-startup.sh && \
+    echo 'echo "🔧 BitBonsai Backend Startup..."' >> /app/backend-startup.sh && \
+    echo 'echo ""' >> /app/backend-startup.sh && \
+    echo 'echo "🔄 Regenerating Prisma Client..."' >> /app/backend-startup.sh && \
+    echo 'npx prisma generate' >> /app/backend-startup.sh && \
+    echo 'echo "✅ Prisma Client ready"' >> /app/backend-startup.sh && \
+    echo 'echo ""' >> /app/backend-startup.sh && \
+    echo 'echo "🗄️  Checking for database migrations..."' >> /app/backend-startup.sh && \
+    echo 'npx prisma migrate deploy || echo "⚠️  No migrations to apply or migration failed"' >> /app/backend-startup.sh && \
+    echo 'echo "✅ Database ready"' >> /app/backend-startup.sh && \
+    echo 'echo ""' >> /app/backend-startup.sh && \
+    echo 'echo "🚀 Starting NestJS backend..."' >> /app/backend-startup.sh && \
+    echo 'exec npx nx serve backend --host 0.0.0.0' >> /app/backend-startup.sh && \
+    chmod +x /app/backend-startup.sh
 
 # Expose backend ports (API + debugger)
 EXPOSE 3000 9229
 
 # Use startup script that regenerates Prisma before starting
-CMD ["/app/scripts/backend-startup.sh"]
+CMD ["/app/backend-startup.sh"]
 
 # Stage 3: Frontend development image
 FROM base AS frontend
