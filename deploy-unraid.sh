@@ -13,8 +13,8 @@ UNRAID_SSH="${UNRAID_USER}@${UNRAID_HOST}"
 echo "🚀 Deploying BitBonsai to Unraid..."
 echo ""
 
-# Step 1: Sync code files
-echo "📦 Step 1/5: Syncing application code..."
+# Step 1: Sync code files and config
+echo "📦 Step 1/5: Syncing application code and configuration..."
 rsync -az --delete \
     --exclude 'node_modules' \
     --exclude 'dist' \
@@ -28,7 +28,13 @@ rsync -az --delete \
     --exclude 'node_modules' \
     ./libs/ $UNRAID_SSH:$DEPLOY_PATH/libs/
 
-echo "✅ Code synced"
+# Sync critical config files that are mounted in containers
+rsync -az \
+    ./proxy.docker.conf.json \
+    ./angular.json \
+    $UNRAID_SSH:$DEPLOY_PATH/
+
+echo "✅ Code and configuration synced"
 echo ""
 
 # Step 2: Sync Prisma schema and migrations
