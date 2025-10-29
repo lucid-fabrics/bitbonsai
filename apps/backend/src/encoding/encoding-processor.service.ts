@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { Job, Policy } from '@prisma/client';
+import { type Job, JobStage, type Policy } from '@prisma/client';
 import { LibrariesService } from '../libraries/libraries.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
@@ -164,7 +164,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
           stage: {
-            in: ['HEALTH_CHECK', 'ENCODING', 'VERIFYING'],
+            in: [JobStage.HEALTH_CHECK, JobStage.ENCODING, JobStage.VERIFYING],
           },
         },
         select: {
@@ -188,16 +188,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Reset each orphaned job based on its stage
       for (const job of orphanedJobs) {
         try {
-          let newStage: string;
+          let newStage: JobStage;
           let errorMessage: string;
 
-          if (job.stage === 'HEALTH_CHECK') {
+          if (job.stage === JobStage.HEALTH_CHECK) {
             // Reset health check jobs to DETECTED so they get health-checked again
-            newStage = 'DETECTED';
+            newStage = JobStage.DETECTED;
             errorMessage = 'Health check interrupted by backend restart - will retry';
           } else {
             // Reset ENCODING and VERIFYING jobs to QUEUED
-            newStage = 'QUEUED';
+            newStage = JobStage.QUEUED;
             errorMessage = 'Auto-recovered from backend restart';
           }
 
