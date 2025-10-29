@@ -8,6 +8,7 @@ import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
+import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
 
 /**
  * QueueModule
@@ -19,6 +20,7 @@ import { RetrySchedulerService } from './services/retry-scheduler.service';
  * Runs background health check worker for just-in-time file validation.
  * Auto-heals failed jobs on container restart via AutoHealingService.
  * Background retry scheduler retries eligible failed jobs every 5 minutes.
+ * Monitors and recovers orphaned jobs via StuckJobRecoveryWorker (defense-in-depth).
  */
 @Module({
   imports: [forwardRef(() => EncodingModule), forwardRef(() => LibrariesModule)],
@@ -29,6 +31,7 @@ import { RetrySchedulerService } from './services/retry-scheduler.service';
     HealthCheckWorker,
     AutoHealingService,
     RetrySchedulerService,
+    StuckJobRecoveryWorker,
     PrismaService,
   ],
   exports: [QueueService],

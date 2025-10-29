@@ -402,6 +402,7 @@ export class QueueService {
    * @param updateJobDto - Progress update data
    * @returns Updated job
    * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if attempting to manually set HEALTH_CHECK stage
    */
   async updateProgress(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
     this.logger.log(`Updating progress for job: ${id}`);
@@ -413,6 +414,16 @@ export class QueueService {
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    // SECURITY: Prevent manual HEALTH_CHECK stage assignment
+    // HEALTH_CHECK is an internal stage only set by the health check worker
+    // Jobs manually moved to HEALTH_CHECK will be orphaned (worker only processes DETECTED)
+    if (updateJobDto.stage === JobStage.HEALTH_CHECK) {
+      throw new BadRequestException(
+        'Cannot manually set HEALTH_CHECK stage. This is an internal stage managed by the health check worker. ' +
+          'To prioritize a job, use the force-start endpoint instead.'
+      );
     }
 
     try {

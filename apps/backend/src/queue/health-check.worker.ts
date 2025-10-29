@@ -91,9 +91,14 @@ export class HealthCheckWorker implements OnModuleInit {
     }
 
     // Find jobs that need health checking
+    // Include both DETECTED and HEALTH_CHECK stages:
+    // - DETECTED: New jobs waiting for health check
+    // - HEALTH_CHECK: Orphaned jobs stuck in this stage (safety net for recovery)
     const jobs = await this.prisma.job.findMany({
       where: {
-        stage: JobStage.DETECTED,
+        stage: {
+          in: [JobStage.DETECTED, JobStage.HEALTH_CHECK],
+        },
         id: {
           notIn: Array.from(this.currentlyChecking),
         },
