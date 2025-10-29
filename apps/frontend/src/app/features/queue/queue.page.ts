@@ -15,6 +15,7 @@ import {
   startWith,
 } from 'rxjs';
 import { QueueClient } from '../../core/clients/queue.client';
+import { ToastService } from '../../core/services/toast.service';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
@@ -40,6 +41,7 @@ import type { QueueResponse } from './models/queue-response.model';
 })
 export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
+  private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -262,10 +264,12 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.toastService.success('Job cancelled');
           this.closeCancelDialog();
           this.refreshQueue();
         },
         error: () => {
+          this.toastService.error('Failed to cancel job');
           this.closeCancelDialog();
         },
       });
@@ -280,10 +284,12 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.toastService.success('Job cancelled and blacklisted');
           this.closeCancelDialog();
           this.refreshQueue();
         },
         error: () => {
+          this.toastService.error('Failed to cancel job');
           this.closeCancelDialog();
         },
       });
@@ -296,10 +302,11 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.toastService.success('Job moved back to queue');
           this.refreshQueue();
         },
         error: () => {
-          // Retry failed
+          this.toastService.error('Failed to retry job');
         },
       });
   }
@@ -311,10 +318,11 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.toastService.info('Job paused');
           this.refreshQueue();
         },
         error: () => {
-          // Pause failed
+          this.toastService.error('Failed to pause job');
         },
       });
   }
@@ -326,10 +334,11 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.toastService.info('Job resumed');
           this.refreshQueue();
         },
         error: () => {
-          // Resume failed
+          this.toastService.error('Failed to resume job');
         },
       });
   }
@@ -341,10 +350,11 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.toastService.success('Job prioritized and will start encoding within seconds');
           this.refreshQueue();
         },
         error: () => {
-          // Force start failed
+          this.toastService.error('Failed to force-start job');
         },
       });
   }
@@ -362,11 +372,14 @@ export class QueueComponent implements OnInit {
       .cancelAllQueued()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (result) => {
+          const count = result.cancelledCount;
+          this.toastService.success(count === 1 ? '1 job cancelled' : `${count} jobs cancelled`);
           this.closeCancelAllDialog();
           this.refreshQueue();
         },
         error: () => {
+          this.toastService.error('Failed to cancel jobs');
           this.closeCancelAllDialog();
         },
       });
@@ -385,11 +398,16 @@ export class QueueComponent implements OnInit {
       .retryAllCancelled()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (result) => {
+          const count = result.retriedCount;
+          this.toastService.success(
+            count === 1 ? '1 job moved back to queue' : `${count} jobs moved back to queue`
+          );
           this.closeRetryAllDialog();
           this.refreshQueue();
         },
         error: () => {
+          this.toastService.error('Failed to retry jobs');
           this.closeRetryAllDialog();
         },
       });
