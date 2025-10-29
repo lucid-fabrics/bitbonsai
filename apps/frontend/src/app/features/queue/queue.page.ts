@@ -113,6 +113,15 @@ export class QueueComponent implements OnInit {
           map((data) => {
             // Always clear loading when data arrives
             this.loadingSubject$.next(false);
+
+            // Client-side filter: when ENCODING is selected, show both ENCODING and PAUSED
+            if (data && this.selectedStatus === JobStatus.ENCODING) {
+              const filteredJobs = data.jobs.filter(
+                (job) => job.stage === JobStatus.ENCODING || job.stage === JobStatus.PAUSED
+              );
+              return { ...data, jobs: filteredJobs };
+            }
+
             return data;
           }),
           catchError(() => {
@@ -175,7 +184,9 @@ export class QueueComponent implements OnInit {
 
   private buildFilters(): QueueFilters {
     const filters: QueueFilters = {};
-    if (this.selectedStatus !== 'ALL') {
+    // When filtering by ENCODING, we want to show both ENCODING and PAUSED jobs
+    // So we don't send a status filter - we'll filter client-side instead
+    if (this.selectedStatus !== 'ALL' && this.selectedStatus !== JobStatus.ENCODING) {
       filters.status = this.selectedStatus as JobStatus;
     }
     if (this.selectedNodeId) {
