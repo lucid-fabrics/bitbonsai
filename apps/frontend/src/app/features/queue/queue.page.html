@@ -321,7 +321,7 @@
                         </span>
                         <span class="meta-item">
                           <i class="fas fa-tachometer-alt"></i>
-                          {{ calculateEncodingSpeed(job) }}
+                          {{ job.fps ? (job.fps | number: '1.1-1') + ' fps' : '-' }}
                         </span>
                         <span class="meta-item elapsed">
                           <i class="fas fa-hourglass-half"></i>
