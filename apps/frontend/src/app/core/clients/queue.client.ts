@@ -70,4 +70,9 @@ export class QueueClient {
   forceStartJob(jobId: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${jobId}/force-start`, {});
   }
+
+  clearJobs(stages?: string[]): Observable<{ deleted: number }> {
+    const params = stages && stages.length > 0 ? { stages: stages.join(',') } : {};
+    return this.http.post<{ deleted: number }>(`${this.apiUrl}/clear`, {}, { params });
+  }
 }

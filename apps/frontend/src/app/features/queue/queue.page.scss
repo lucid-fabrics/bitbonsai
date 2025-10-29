@@ -1466,6 +1466,17 @@
   }
 }
 
+.info-text {
+  color: $primary !important;
+  font-weight: 400 !important;
+  margin-top: 12px !important;
+  font-size: 13px !important;
+
+  i {
+    margin-right: 8px;
+  }
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
