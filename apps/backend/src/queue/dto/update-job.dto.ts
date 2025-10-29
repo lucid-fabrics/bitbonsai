@@ -22,6 +22,13 @@ export class UpdateJobDto {
   etaSeconds?: number;
 
   @ApiProperty({
+    description: 'Current encoding speed in frames per second',
+    example: 45.2,
+    required: false,
+  })
+  fps?: number;
+
+  @ApiProperty({
     description: 'Current stage of the job',
     enum: JobStage,
     example: JobStage.ENCODING,
