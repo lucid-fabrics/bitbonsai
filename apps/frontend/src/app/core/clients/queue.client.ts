@@ -72,7 +72,7 @@ export class QueueClient {
   }
 
   clearJobs(stages?: string[]): Observable<{ deleted: number }> {
-    const params = stages && stages.length > 0 ? { stages: stages.join(',') } : {};
-    return this.http.post<{ deleted: number }>(`${this.apiUrl}/clear`, {}, { params });
+    const options = stages && stages.length > 0 ? { params: { stages: stages.join(',') } } : {};
+    return this.http.post<{ deleted: number }>(`${this.apiUrl}/clear`, {}, options);
   }
 }
