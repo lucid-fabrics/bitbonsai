@@ -214,6 +214,94 @@ export class TopLibraryModel {
 }
 
 /**
+ * Node status with statistics
+ */
+export class NodeStatusModel {
+  @ApiProperty({
+    description: 'Node unique identifier',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  id!: string;
+
+  @ApiProperty({
+    description: 'Display name of the node',
+    example: 'Main Encoding Server',
+  })
+  name!: string;
+
+  @ApiProperty({
+    description: 'Node role',
+    example: 'MAIN',
+    enum: ['MAIN', 'LINKED'],
+  })
+  role!: string;
+
+  @ApiProperty({
+    description: 'Current operational status',
+    example: 'ONLINE',
+    enum: ['ONLINE', 'OFFLINE', 'ERROR'],
+  })
+  status!: string;
+
+  @ApiProperty({
+    description: 'Hardware acceleration type',
+    example: 'NVIDIA',
+    enum: ['NONE', 'NVIDIA', 'INTEL_QSV', 'AMD', 'APPLE_M'],
+  })
+  acceleration!: string;
+
+  @ApiProperty({
+    description: 'CPU usage percentage',
+    example: 45.5,
+    nullable: true,
+  })
+  cpu_usage!: number | null;
+
+  @ApiProperty({
+    description: 'Number of jobs currently encoding',
+    example: 3,
+  })
+  encoding_count!: number;
+
+  @ApiProperty({
+    description: 'Total number of completed jobs',
+    example: 127,
+  })
+  completed_count!: number;
+
+  @ApiProperty({
+    description: 'Total number of failed jobs',
+    example: 5,
+  })
+  failed_count!: number;
+
+  @ApiProperty({
+    description: 'Total size saved in bytes',
+    example: 16642998272,
+  })
+  total_saved_bytes!: number;
+
+  @ApiProperty({
+    description: 'Success rate percentage (completed / (completed + failed))',
+    example: 95.5,
+  })
+  success_rate!: number;
+
+  @ApiProperty({
+    description: 'Estimated time remaining for ALL queued jobs assigned to this node in seconds',
+    example: 14400,
+    nullable: true,
+  })
+  total_queue_time_seconds!: number | null;
+
+  @ApiProperty({
+    description: 'Timestamp of last heartbeat',
+    example: '2025-10-29T12:34:56.789Z',
+  })
+  last_heartbeat!: string;
+}
+
+/**
  * Complete overview response for the dashboard
  * Uses snake_case field names for frontend compatibility
  */
@@ -229,6 +317,12 @@ export class OverviewResponseDto {
     type: QueueSummaryModel,
   })
   queue_summary!: QueueSummaryModel;
+
+  @ApiProperty({
+    description: 'Node status with statistics for all nodes',
+    type: [NodeStatusModel],
+  })
+  node_status!: NodeStatusModel[];
 
   @ApiProperty({
     description: 'Recent activity showing last 10 completed jobs',
