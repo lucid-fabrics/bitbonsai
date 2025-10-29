@@ -23,9 +23,9 @@
           Cancel All Queued ({{ (queueData$ | async)!.stats!.queued }})
         </button>
       }
-      <button (click)="openClearJobsDialog(selectedStatus ? [selectedStatus] : undefined)" class="btn btn-warning">
+      <button (click)="openClearJobsDialog(selectedStatus !== 'ALL' ? [selectedStatus] : undefined)" class="btn btn-warning btn-clear-jobs">
         <i class="fas fa-trash-alt"></i>
-        @if (selectedStatus) {
+        @if (selectedStatus !== 'ALL') {
           Clear {{ selectedStatus }} Jobs
         } @else {
           Clear All Jobs

@@ -1528,6 +1528,16 @@
   display: flex;
   gap: 12px;
   align-items: center;
+
+  .btn-clear-jobs {
+    border: 1px solid rgba(251, 191, 36, 0.3);
+
+    &:hover {
+      border-color: rgba(251, 191, 36, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+    }
+  }
 }
 
 // Retry All Dialog Styles
