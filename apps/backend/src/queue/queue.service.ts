@@ -230,9 +230,14 @@ export class QueueService {
    * @param search - Optional search term for file path or file label
    * @returns Array of jobs matching the filters
    */
-  async findAll(stage?: JobStage, nodeId?: string, search?: string): Promise<Job[]> {
+  async findAll(
+    stage?: JobStage,
+    nodeId?: string,
+    search?: string,
+    libraryId?: string
+  ): Promise<Job[]> {
     this.logger.log(
-      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, search: ${search || 'none'})`
+      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, library: ${libraryId || 'all'}, search: ${search || 'none'})`
     );
 
     // Build where clause
@@ -242,6 +247,9 @@ export class QueueService {
     }
     if (nodeId) {
       where.nodeId = nodeId;
+    }
+    if (libraryId) {
+      where.libraryId = libraryId;
     }
     if (search) {
       // SQLite LIKE operator is case-insensitive by default for ASCII characters

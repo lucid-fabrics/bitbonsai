@@ -109,6 +109,12 @@ export class QueueController {
     description: 'Search jobs by file path or file label',
     example: 'movie.mkv',
   })
+  @ApiQuery({
+    name: 'libraryId',
+    required: false,
+    description: 'Filter jobs by library ID',
+    example: 'clq8x9z8x0001qh8x9z8x0001',
+  })
   @ApiOkResponse({
     description: 'List of jobs retrieved successfully',
     type: [CreateJobDto],
@@ -119,9 +125,10 @@ export class QueueController {
   async findAll(
     @Query('stage') stage?: JobStage,
     @Query('nodeId') nodeId?: string,
-    @Query('search') search?: string
+    @Query('search') search?: string,
+    @Query('libraryId') libraryId?: string
   ): Promise<Job[]> {
-    return this.queueService.findAll(stage, nodeId, search);
+    return this.queueService.findAll(stage, nodeId, search, libraryId);
   }
 
   /**
