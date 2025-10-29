@@ -1,6 +1,7 @@
 export interface OverviewModel {
   system_health: SystemHealthModel;
   queue_summary: QueueSummaryModel;
+  node_status: NodeStatusModel[];
   recent_activity: RecentActivityModel[];
   top_libraries: TopLibraryModel[];
   last_updated: string;
@@ -55,4 +56,20 @@ export interface TopLibraryModel {
   encoding_jobs: number;
   total_savings_bytes: number;
   total_before_bytes: number;
+}
+
+export interface NodeStatusModel {
+  id: string;
+  name: string;
+  role: string; // 'MAIN' | 'LINKED'
+  status: string; // 'ONLINE' | 'OFFLINE' | 'ERROR'
+  acceleration: string; // 'NONE' | 'NVIDIA' | 'INTEL_QSV' | 'AMD' | 'APPLE_M'
+  cpu_usage: number | null;
+  encoding_count: number;
+  completed_count: number;
+  failed_count: number;
+  total_saved_bytes: number;
+  success_rate: number;
+  total_queue_time_seconds: number | null;
+  last_heartbeat: string;
 }
