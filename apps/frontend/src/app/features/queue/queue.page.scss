@@ -860,6 +860,12 @@
     border-color: $accent-primary;
   }
 
+  &.force-start-btn:hover {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+    border-color: #fb923c;
+  }
+
   &.details-btn:hover {
     background: rgba(249, 190, 3, 0.2);
     color: $accent-primary;

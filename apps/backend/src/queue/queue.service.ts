@@ -707,6 +707,48 @@ export class QueueService {
   }
 
   /**
+   * Force start a queued job immediately
+   *
+   * Moves a job from QUEUED or DETECTED stage to HEALTH_CHECK immediately,
+   * bypassing the normal queue order. The health check worker will pick it up
+   * and start encoding right away.
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in QUEUED or DETECTED stage
+   */
+  async forceStartJob(id: string): Promise<Job> {
+    this.logger.log(`Force starting job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (existingJob.stage !== JobStage.QUEUED && existingJob.stage !== JobStage.DETECTED) {
+      throw new BadRequestException(
+        `Only queued or detected jobs can be force-started (current stage: ${existingJob.stage})`
+      );
+    }
+
+    // Move to HEALTH_CHECK stage and update createdAt to prioritize it
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.HEALTH_CHECK,
+        createdAt: new Date(), // Update timestamp to make it first in queue
+      },
+    });
+
+    this.logger.log(`Job force-started: ${id} - moved to HEALTH_CHECK stage`);
+    return job;
+  }
+
+  /**
    * Retry all cancelled jobs
    *
    * This method resets all CANCELLED jobs back to QUEUED stage,

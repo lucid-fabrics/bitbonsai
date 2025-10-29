@@ -334,6 +334,21 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected forceStartJob(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .forceStartJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refreshQueue();
+        },
+        error: () => {
+          // Force start failed
+        },
+      });
+  }
+
   protected openCancelAllDialog(): void {
     this.showCancelAllDialog = true;
   }

@@ -398,6 +398,18 @@
                         <i class="fas fa-play"></i>
                       </button>
                     }
+                    @if (job.status === 'QUEUED' || job.status === 'DETECTED') {
+                      <button
+                        (click)="forceStartJob(job.id, $event)"
+                        class="action-btn force-start-btn"
+                        bbTooltip
+                        tooltipTitle="Force Start Now"
+                        tooltipContent="Immediately starts encoding this job, bypassing the normal queue order. The job will be prioritized and start within seconds."
+                        tooltipWhen="You want to test or prioritize this specific file for immediate encoding."
+                        tooltipPlacement="top">
+                        <i class="fas fa-bolt"></i>
+                      </button>
+                    }
                     @if (job.status === 'QUEUED' || job.status === 'ENCODING') {
                       <button
                         (click)="openCancelDialog(job.id, $event)"

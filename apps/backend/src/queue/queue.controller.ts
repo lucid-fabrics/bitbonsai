@@ -535,6 +535,41 @@ export class QueueController {
   }
 
   /**
+   * Force start a queued job immediately
+   */
+  @Post(':id/force-start')
+  @ApiOperation({
+    summary: 'Force start a queued job immediately',
+    description:
+      'Moves a queued job to HEALTH_CHECK stage immediately, bypassing the normal queue order.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in QUEUED or DETECTED stage\n' +
+      '2. Updates job stage to HEALTH_CHECK (will be picked up immediately)\n' +
+      '3. Updates createdAt timestamp to prioritize it\n\n' +
+      '**Use Case**: User wants to encode a specific file immediately for testing or priority',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job force-started successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in QUEUED or DETECTED stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while force-starting job',
+  })
+  async forceStart(@Param('id') id: string): Promise<Job> {
+    return this.queueService.forceStartJob(id);
+  }
+
+  /**
    * Cancel all queued jobs
    */
   @Post('cancel-all')
