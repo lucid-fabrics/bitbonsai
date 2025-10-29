@@ -251,9 +251,15 @@ export class FfmpegService {
    * @param job - Job entity with file info
    * @param policy - Policy entity with encoding settings
    * @param hwaccel - Hardware acceleration config
+   * @param outputPath - Path to output file
    * @returns Array of ffmpeg arguments
    */
-  buildFfmpegCommand(job: Job, policy: Policy, hwaccel: HardwareAccelConfig): string[] {
+  buildFfmpegCommand(
+    job: Job,
+    policy: Policy,
+    hwaccel: HardwareAccelConfig,
+    outputPath: string
+  ): string[] {
     const args: string[] = [];
 
     // Hardware acceleration flags (if available)
@@ -289,10 +295,9 @@ export class FfmpegService {
     // -stats forces output even in non-interactive mode (pipes)
     args.push('-stats', '-stats_period', '1');
 
-    // Output to temp file (will be renamed atomically)
-    // Use .tmp.mp4 extension so FFmpeg can detect the format
-    const tempOutput = `${job.filePath}.tmp.mp4`;
-    args.push('-f', 'mp4', '-y', tempOutput); // -f mp4 to specify format explicitly
+    // Output to specified path (temp file that will be renamed atomically)
+    // Force mp4 format to ensure compatibility
+    args.push('-f', 'mp4', '-y', outputPath);
 
     this.logger.debug(`ffmpeg command: ffmpeg ${args.join(' ')}`);
     return args;
@@ -480,7 +485,7 @@ export class FfmpegService {
    * @returns Promise that resolves when encoding completes
    * @throws Error if ffmpeg fails or process error occurs
    */
-  async encodeFile(job: Job, policy: Policy): Promise<void> {
+  async encodeFile(job: Job, policy: Policy, customOutputPath?: string): Promise<void> {
     this.logger.log(`Starting encoding for job ${job.id}: ${job.fileLabel}`);
     this.logger.debug(`[${job.id}] encodeFile() called - setting up FFmpeg`);
 
@@ -492,9 +497,12 @@ export class FfmpegService {
     // Detect hardware acceleration
     const hwaccel = await this.detectHardwareAcceleration();
 
+    // Use custom output path if provided, otherwise default to ${inputPath}.tmp.mp4
+    const tempOutput = customOutputPath || `${job.filePath}.tmp.mp4`;
+    this.logger.debug(`[${job.id}] Output path: ${tempOutput}`);
+
     // Build ffmpeg command
-    const args = this.buildFfmpegCommand(job, policy, hwaccel);
-    const tempOutput = `${job.filePath}.tmp.mp4`;
+    const args = this.buildFfmpegCommand(job, policy, hwaccel, tempOutput);
 
     // Spawn ffmpeg process
     const ffmpegProcess = spawn('ffmpeg', args, {
@@ -912,7 +920,7 @@ export class FfmpegService {
       updatedAt: new Date(),
     } as Policy;
 
-    await this.encodeFile(job, policy);
+    await this.encodeFile(job, policy, options.outputPath);
   }
 
   /**
