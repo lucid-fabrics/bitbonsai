@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { type Job, JobStage } from '@prisma/client';
+import { FfmpegService } from '../encoding/ffmpeg.service';
 import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CompleteJobDto } from './dto/complete-job.dto';
@@ -28,7 +29,9 @@ export class QueueService {
   constructor(
     private prisma: PrismaService,
     @Inject(forwardRef(() => MediaAnalysisService))
-    private mediaAnalysis: MediaAnalysisService
+    private mediaAnalysis: MediaAnalysisService,
+    @Inject(forwardRef(() => FfmpegService))
+    private ffmpegService: FfmpegService
   ) {}
 
   /**
@@ -109,6 +112,33 @@ export class QueueService {
       this.logger.log(`Job created: ${job.id} (${job.fileLabel})`);
       return job;
     } catch (error) {
+      // ISSUE #9 FIX: Catch unique constraint violation (race condition)
+      // If another request created a job for this file while we were checking,
+      // the database unique index will prevent duplicate creation
+      const err = error as any;
+      if (err?.code === 'P2002' && err?.meta?.target?.includes('unique_active_job_per_file')) {
+        // Unique constraint violated - another job exists for this file
+        // Return the existing job
+        const existingJob = await this.prisma.job.findFirst({
+          where: {
+            filePath: createJobDto.filePath,
+            libraryId: createJobDto.libraryId,
+            stage: {
+              notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED],
+            },
+          },
+        });
+
+        if (existingJob) {
+          this.logger.log(
+            `Job already exists for file: ${createJobDto.filePath} (stage: ${existingJob.stage}, id: ${existingJob.id})`
+          );
+          throw new BadRequestException(
+            `Job already exists for this file (stage: ${existingJob.stage}). Cannot create duplicate.`
+          );
+        }
+      }
+
       this.logger.error('Failed to create job', error);
       throw error;
     }
@@ -343,8 +373,8 @@ export class QueueService {
       return null;
     }
 
-    // ATOMIC JOB CLAIMING:
-    // Use a transaction to atomically find and claim a job
+    // CRITICAL FIX: ATOMIC JOB CLAIMING WITH RACE CONDITION PREVENTION
+    // Use transaction + updateMany + count check to ensure only ONE worker claims a job
     // This prevents race conditions where multiple workers grab the same job
     const claimedJob = await this.prisma.$transaction(async (tx) => {
       // Find next queued job (prioritize healthy files)
@@ -368,17 +398,31 @@ export class QueueService {
         return null;
       }
 
-      // Atomically update to ENCODING to "claim" the job
-      // If another worker already claimed it, this will fail
-      return await tx.job.update({
+      // CRITICAL FIX: Use updateMany with WHERE clause to atomically claim the job
+      // This ensures only ONE worker can successfully claim the job
+      // If another worker already claimed it between findFirst and update,
+      // the WHERE stage=QUEUED condition will fail and count will be 0
+      const updateResult = await tx.job.updateMany({
         where: {
           id: job.id,
-          stage: JobStage.QUEUED, // Ensure it's still QUEUED (prevents double-claiming)
+          stage: JobStage.QUEUED, // CRITICAL: Ensure it's still QUEUED (prevents double-claiming)
         },
         data: {
           stage: JobStage.ENCODING,
           startedAt: new Date(),
         },
+      });
+
+      // Check if update was successful (count === 1 means we claimed it)
+      if (updateResult.count === 0) {
+        // Another worker claimed this job between our findFirst and updateMany
+        this.logger.debug(`Job ${job.id} was claimed by another worker, trying next job`);
+        return null;
+      }
+
+      // We successfully claimed the job - now fetch it with relations
+      return await tx.job.findUnique({
+        where: { id: job.id },
         include: {
           policy: true,
           library: true,
@@ -530,6 +574,24 @@ export class QueueService {
       throw new BadRequestException('Cannot cancel a completed job');
     }
 
+    // If job is currently encoding, kill the FFmpeg process first
+    if (existingJob.stage === JobStage.ENCODING) {
+      this.logger.log(`Job ${id} is encoding - killing FFmpeg process`);
+      try {
+        const killed = await this.ffmpegService.killProcess(id);
+        if (killed) {
+          // Wait for process to fully terminate (killProcess already has 2s grace period)
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          this.logger.log(`Successfully killed FFmpeg process for job ${id}`);
+        } else {
+          this.logger.warn(`FFmpeg process not found for job ${id}`);
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to kill FFmpeg for job ${id}: ${error}`);
+        // Continue with cancellation even if kill fails
+      }
+    }
+
     const job = await this.prisma.job.update({
       where: { id },
       data: {
@@ -582,17 +644,57 @@ export class QueueService {
   }
 
   /**
-   * Cancel all queued jobs
+   * Cancel all jobs (including encoding)
+   *
+   * Cancels all jobs except COMPLETED:
+   * - DETECTED: Waiting for health check
+   * - QUEUED: Waiting to start encoding
+   * - PAUSED: Manually paused during encoding
+   * - HEALTH_CHECK: Being validated
+   * - ENCODING: Actively processing (kills FFmpeg process)
    *
    * @returns Object with count of cancelled jobs
    */
   async cancelAllQueued(): Promise<{ cancelledCount: number }> {
-    this.logger.log('Cancelling all queued jobs');
+    this.logger.log('Cancelling all jobs (including encoding)');
 
     try {
+      // STEP 1: Get all ENCODING jobs and kill their FFmpeg processes
+      const encodingJobs = await this.prisma.job.findMany({
+        where: { stage: JobStage.ENCODING },
+        select: { id: true, fileLabel: true },
+      });
+
+      if (encodingJobs.length > 0) {
+        this.logger.log(`Killing ${encodingJobs.length} FFmpeg process(es) in parallel...`);
+
+        // LOW PRIORITY FIX #16: Parallelize FFmpeg kills for faster cancellation
+        const killPromises = encodingJobs.map(async (job) => {
+          try {
+            await this.ffmpegService.killProcess(job.id);
+            this.logger.log(`  ✓ Killed FFmpeg for: ${job.fileLabel}`);
+          } catch (error) {
+            this.logger.warn(`  ✗ Failed to kill FFmpeg for ${job.id}: ${error}`);
+          }
+        });
+
+        // Wait for all kills to complete (or fail)
+        await Promise.allSettled(killPromises);
+        this.logger.log(`Finished killing ${encodingJobs.length} FFmpeg process(es)`);
+      }
+
+      // STEP 2: Cancel all non-completed jobs in database
       const result = await this.prisma.job.updateMany({
         where: {
-          stage: JobStage.QUEUED,
+          stage: {
+            in: [
+              JobStage.DETECTED,
+              JobStage.QUEUED,
+              JobStage.PAUSED,
+              JobStage.HEALTH_CHECK,
+              JobStage.ENCODING,
+            ],
+          },
         },
         data: {
           stage: JobStage.CANCELLED,
@@ -600,10 +702,10 @@ export class QueueService {
         },
       });
 
-      this.logger.log(`Cancelled ${result.count} queued job(s)`);
+      this.logger.log(`Cancelled ${result.count} job(s) (all stages including encoding)`);
       return { cancelledCount: result.count };
     } catch (error) {
-      this.logger.error('Failed to cancel all queued jobs', error);
+      this.logger.error('Failed to cancel all jobs', error);
       throw error;
     }
   }
@@ -747,12 +849,13 @@ export class QueueService {
     }
 
     // Move to DETECTED stage so health check worker picks it up immediately
-    // Update createdAt to prioritize it (worker processes oldest first)
+    // Set createdAt to epoch (oldest possible date) to prioritize it first in queue
+    // Queue sorts by createdAt ASC, so epoch = highest priority
     const job = await this.prisma.job.update({
       where: { id },
       data: {
         stage: JobStage.DETECTED,
-        createdAt: new Date(), // Update timestamp to make it first in queue
+        createdAt: new Date(0), // Epoch time (1970) = highest priority
       },
     });
 

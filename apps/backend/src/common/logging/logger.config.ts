@@ -15,6 +15,13 @@ import * as winston from 'winston';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 
+// LOW PRIORITY FIX #21: Configurable log rotation parameters
+const LOG_MAX_SIZE = parseInt(process.env.LOG_MAX_SIZE || '10485760', 10); // 10MB default
+const LOG_MAX_FILES_ERROR = parseInt(process.env.LOG_MAX_FILES_ERROR || '5', 10);
+const LOG_MAX_FILES_COMBINED = parseInt(process.env.LOG_MAX_FILES_COMBINED || '10', 10);
+const LOG_MAX_FILES_HTTP = parseInt(process.env.LOG_MAX_FILES_HTTP || '5', 10);
+const LOG_MAX_FILES_EXCEPTIONS = parseInt(process.env.LOG_MAX_FILES_EXCEPTIONS || '3', 10);
+
 /**
  * Custom format for development logs with colors and timestamps
  */
@@ -57,32 +64,33 @@ export const winstonConfig: WinstonModuleOptions = {
     }),
 
     // File transports (production only)
+    // LOW PRIORITY FIX #21: Log rotation with configurable parameters via environment
     ...(isDevelopment
       ? []
       : [
-          // Error logs
+          // Error logs (critical issues only)
           new winston.transports.File({
             filename: 'logs/error.log',
             level: 'error',
-            maxsize: 10485760, // 10MB
-            maxFiles: 5,
+            maxsize: LOG_MAX_SIZE,
+            maxFiles: LOG_MAX_FILES_ERROR,
             tailable: true,
           }),
 
-          // Combined logs
+          // Combined logs (all levels)
           new winston.transports.File({
             filename: 'logs/combined.log',
-            maxsize: 10485760, // 10MB
-            maxFiles: 10,
+            maxsize: LOG_MAX_SIZE,
+            maxFiles: LOG_MAX_FILES_COMBINED,
             tailable: true,
           }),
 
-          // HTTP logs
+          // HTTP logs (request/response tracking)
           new winston.transports.File({
             filename: 'logs/http.log',
             level: 'http',
-            maxsize: 10485760, // 10MB
-            maxFiles: 5,
+            maxsize: LOG_MAX_SIZE,
+            maxFiles: LOG_MAX_FILES_HTTP,
             tailable: true,
           }),
         ]),
@@ -92,8 +100,8 @@ export const winstonConfig: WinstonModuleOptions = {
     : [
         new winston.transports.File({
           filename: 'logs/exceptions.log',
-          maxsize: 10485760,
-          maxFiles: 3,
+          maxsize: LOG_MAX_SIZE,
+          maxFiles: LOG_MAX_FILES_EXCEPTIONS,
         }),
         new winston.transports.Console(),
       ],
@@ -102,8 +110,8 @@ export const winstonConfig: WinstonModuleOptions = {
     : [
         new winston.transports.File({
           filename: 'logs/rejections.log',
-          maxsize: 10485760,
-          maxFiles: 3,
+          maxsize: LOG_MAX_SIZE,
+          maxFiles: LOG_MAX_FILES_EXCEPTIONS,
         }),
         new winston.transports.Console(),
       ],

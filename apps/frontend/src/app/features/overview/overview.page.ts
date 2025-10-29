@@ -1,6 +1,5 @@
-import { CommonModule, ViewportScroller } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
-  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -46,10 +45,9 @@ import {
   styleUrls: ['./overview.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OverviewComponent implements OnInit, OnDestroy, AfterViewInit {
+export class OverviewComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
   private readonly elementRef = inject(ElementRef);
-  private savedScrollPosition = 0;
 
   // Observables from NgRx store
   readonly overviewData$ = this.store.select(selectOverviewData);
@@ -83,41 +81,11 @@ export class OverviewComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     // Initialize overview - loads all data and starts polling
     this.store.dispatch(OverviewActions.initOverview());
-
-    // Subscribe to data changes and preserve scroll position
-    this.overviewData$.subscribe(() => {
-      // Save position immediately before any DOM updates
-      const scrollPos = this.savedScrollPosition;
-
-      // Use both setTimeout and requestAnimationFrame for maximum compatibility
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          if (scrollPos > 0) {
-            window.scrollTo({
-              top: scrollPos,
-              behavior: 'instant' as ScrollBehavior,
-            });
-          }
-        });
-      }, 0);
-    });
-  }
-
-  ngAfterViewInit(): void {
-    // Track scroll position whenever user scrolls
-    window.addEventListener('scroll', this.saveScrollPosition.bind(this), { passive: true });
   }
 
   ngOnDestroy(): void {
     // Stop polling when component is destroyed
     this.store.dispatch(OverviewActions.stopPolling());
-
-    // Clean up scroll listener
-    window.removeEventListener('scroll', this.saveScrollPosition.bind(this));
-  }
-
-  private saveScrollPosition(): void {
-    this.savedScrollPosition = window.scrollY || window.pageYOffset;
   }
 
   // Expose Math for template

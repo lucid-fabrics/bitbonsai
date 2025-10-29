@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Job, Policy } from '@prisma/client';
 import { LibrariesService } from '../libraries/libraries.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -48,12 +48,17 @@ interface JobResult {
  * - Progress tracking and metrics updates
  */
 @Injectable()
-export class EncodingProcessorService implements OnModuleInit {
+export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EncodingProcessorService.name);
 
   // Worker pool management
   private readonly workerPools = new Map<string, NodeWorkerPool>();
   private readonly workers = new Map<string, WorkerState>(); // workerId -> WorkerState
+  // ISSUE #10 FIX: Mutex locks for each node to prevent concurrent pool modifications
+  private readonly poolLocks = new Map<string, Promise<void>>();
+
+  // AUDIT #2 ISSUE #24 FIX: Store watchdog interval for cleanup
+  private watchdogIntervalId?: NodeJS.Timeout;
 
   // Configuration
   private readonly MAX_RETRIES = 3;
@@ -85,10 +90,10 @@ export class EncodingProcessorService implements OnModuleInit {
       // STEP 1: Auto-heal orphaned jobs from previous crash/reboot
       await this.autoHealOrphanedJobs();
 
-      // STEP 2: Get all online nodes
+      // STEP 2: Get all online nodes with their maxWorkers setting
       const onlineNodes = await this.prisma.node.findMany({
         where: { status: 'ONLINE' },
-        select: { id: true, name: true },
+        select: { id: true, name: true, maxWorkers: true },
       });
 
       if (onlineNodes.length === 0) {
@@ -96,13 +101,17 @@ export class EncodingProcessorService implements OnModuleInit {
         return;
       }
 
-      // STEP 3: Start worker pool for each online node
+      // STEP 3: Start worker pool for each online node using their configured maxWorkers
       let totalWorkersStarted = 0;
       for (const node of onlineNodes) {
         try {
-          const workersStarted = await this.startWorkerPool(node.id, this.DEFAULT_WORKERS_PER_NODE);
+          // Use node's maxWorkers if set, otherwise fall back to DEFAULT_WORKERS_PER_NODE
+          const maxWorkers = node.maxWorkers || this.DEFAULT_WORKERS_PER_NODE;
+          const workersStarted = await this.startWorkerPool(node.id, maxWorkers);
           totalWorkersStarted += workersStarted;
-          this.logger.log(`✓ Started ${workersStarted} worker(s) for node: ${node.name}`);
+          this.logger.log(
+            `✓ Started ${workersStarted} worker(s) for node: ${node.name} (max: ${maxWorkers})`
+          );
         } catch (error) {
           this.logger.error(`Failed to start workers for node ${node.name}:`, error);
         }
@@ -117,6 +126,24 @@ export class EncodingProcessorService implements OnModuleInit {
     } catch (error) {
       this.logger.error('Failed to initialize encoding processor:', error);
     }
+  }
+
+  /**
+   * AUDIT #2 ISSUE #24 FIX: Cleanup on module destruction
+   * Prevents memory leak from watchdog interval
+   */
+  async onModuleDestroy() {
+    this.logger.log('🛑 Shutting down encoding processor...');
+
+    // Clear watchdog interval
+    if (this.watchdogIntervalId) {
+      clearInterval(this.watchdogIntervalId);
+      this.watchdogIntervalId = undefined;
+      this.logger.log('✓ Watchdog interval cleared');
+    }
+
+    // Note: Worker cleanup happens naturally when workers detect isRunning=false
+    // FFmpeg process cleanup is handled by FfmpegService.onModuleDestroy()
   }
 
   /**
@@ -185,45 +212,78 @@ export class EncodingProcessorService implements OnModuleInit {
   /**
    * Start background watchdog to detect stuck jobs during runtime
    *
-   * Enhanced watchdog features:
+   * HIGH PRIORITY FIX: Dynamic timeout based on file size
+   * - Small files (<10GB): 5 minute timeout
+   * - Large files (>=10GB): 15 minute timeout
    * - Runs every 60 seconds for faster detection
-   * - Detects jobs stuck for 5+ minutes (down from 10 minutes)
    * - Attempts to kill hung FFmpeg processes before failing
    * - Provides detailed diagnostic information
    */
   private startStuckJobWatchdog(): void {
-    this.logger.log('👀 Starting enhanced stuck job watchdog (checks every 60s, threshold: 5min)');
+    this.logger.log(
+      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size)'
+    );
 
-    setInterval(async () => {
+    // AUDIT #2 ISSUE #24 FIX: Clear existing interval if any (hot reload protection)
+    if (this.watchdogIntervalId) {
+      clearInterval(this.watchdogIntervalId);
+    }
+
+    // AUDIT #2 ISSUE #24 FIX: Store interval ID for cleanup
+    this.watchdogIntervalId = setInterval(async () => {
       try {
+        // HIGH PRIORITY FIX: Dynamic timeout based on file size
+        // Small files get 5min timeout, large files get 15min timeout
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+        const tenGB = BigInt(10 * 1024 * 1024 * 1024);
 
         const stuckJobs = await this.prisma.job.findMany({
           where: {
             stage: 'ENCODING',
-            updatedAt: {
-              lt: fiveMinutesAgo,
-            },
+            OR: [
+              {
+                // Small files (<10GB): stuck for 5+ minutes
+                beforeSizeBytes: {
+                  lt: tenGB,
+                },
+                updatedAt: {
+                  lt: fiveMinutesAgo,
+                },
+              },
+              {
+                // Large files (>=10GB): stuck for 15+ minutes
+                beforeSizeBytes: {
+                  gte: tenGB,
+                },
+                updatedAt: {
+                  lt: fifteenMinutesAgo,
+                },
+              },
+            ],
           },
           select: {
             id: true,
             fileLabel: true,
             progress: true,
             updatedAt: true,
+            beforeSizeBytes: true,
           },
         });
 
         if (stuckJobs.length > 0) {
           this.logger.warn(
-            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (no progress for 5+ minutes)`
+            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (dynamic timeout: 5-15min based on file size)`
           );
 
           for (const job of stuckJobs) {
             const stuckDurationMs = Date.now() - new Date(job.updatedAt).getTime();
             const stuckMinutes = Math.floor(stuckDurationMs / 60000);
+            const fileSizeGB = Number(job.beforeSizeBytes) / 1024 ** 3;
+            const timeoutUsed = job.beforeSizeBytes < tenGB ? '5min' : '15min';
 
             this.logger.warn(
-              `  - ${job.fileLabel} stuck at ${job.progress}% for ${stuckMinutes} minutes`
+              `  - ${job.fileLabel} (${fileSizeGB.toFixed(2)}GB) stuck at ${job.progress}% for ${stuckMinutes} minutes (timeout: ${timeoutUsed})`
             );
 
             // STEP 1: Try to kill the ffmpeg process
@@ -330,10 +390,53 @@ export class EncodingProcessorService implements OnModuleInit {
   }
 
   /**
+   * ISSUE #10 FIX: Acquire mutex lock for pool operations
+   * Ensures only one operation modifies a pool at a time
+   *
+   * @param nodeId - Node unique identifier
+   * @private
+   */
+  private async acquirePoolLock(nodeId: string): Promise<void> {
+    // Wait for any existing lock to complete
+    const existingLock = this.poolLocks.get(nodeId);
+    if (existingLock) {
+      await existingLock;
+    }
+
+    // Create new lock promise
+    let releaseLock!: () => void;
+    const lockPromise = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    // Store lock and return release function through closure
+    this.poolLocks.set(nodeId, lockPromise);
+
+    // Store release function on the promise for later
+    (lockPromise as any).release = releaseLock;
+  }
+
+  /**
+   * ISSUE #10 FIX: Release mutex lock for pool operations
+   *
+   * @param nodeId - Node unique identifier
+   * @private
+   */
+  private releasePoolLock(nodeId: string): void {
+    const lockPromise = this.poolLocks.get(nodeId) as any;
+    if (lockPromise?.release) {
+      lockPromise.release();
+    }
+    this.poolLocks.delete(nodeId);
+  }
+
+  /**
    * Start a worker pool for a node
    *
    * Starts multiple concurrent workers for a single node.
    * Each worker will independently poll for jobs and process them.
+   *
+   * ISSUE #10 FIX: Wrapped in mutex lock to prevent concurrent modifications
    *
    * @param nodeId - Node unique identifier
    * @param maxWorkers - Maximum number of concurrent workers (default: 4, max: 12)
@@ -343,62 +446,72 @@ export class EncodingProcessorService implements OnModuleInit {
     nodeId: string,
     maxWorkers = this.DEFAULT_WORKERS_PER_NODE
   ): Promise<number> {
-    // Validate maxWorkers
-    const validatedMaxWorkers = Math.min(Math.max(1, maxWorkers), this.MAX_WORKERS_PER_NODE);
+    // ISSUE #10 FIX: Acquire lock before modifying pool
+    await this.acquirePoolLock(nodeId);
 
-    // Get or create worker pool for this node
-    let pool = this.workerPools.get(nodeId);
+    try {
+      // Validate maxWorkers
+      const validatedMaxWorkers = Math.min(Math.max(1, maxWorkers), this.MAX_WORKERS_PER_NODE);
 
-    if (pool) {
-      // Pool already exists - check if we can add more workers
-      const currentWorkerCount = pool.activeWorkers.size;
-      if (currentWorkerCount >= validatedMaxWorkers) {
-        this.logger.warn(
-          `Worker pool for node ${nodeId} already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
-        );
-        return 0;
+      // Get or create worker pool for this node
+      let pool = this.workerPools.get(nodeId);
+
+      if (pool) {
+        // Pool already exists - check if we can add more workers
+        const currentWorkerCount = pool.activeWorkers.size;
+        if (currentWorkerCount >= validatedMaxWorkers) {
+          this.logger.warn(
+            `Worker pool for node ${nodeId} already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
+          );
+          return 0;
+        }
+
+        // Update max workers if different
+        pool.maxWorkers = validatedMaxWorkers;
+      } else {
+        // Create new worker pool
+        pool = {
+          nodeId,
+          maxWorkers: validatedMaxWorkers,
+          activeWorkers: new Set(),
+        };
+        this.workerPools.set(nodeId, pool);
       }
 
-      // Update max workers if different
-      pool.maxWorkers = validatedMaxWorkers;
-    } else {
-      // Create new worker pool
-      pool = {
-        nodeId,
-        maxWorkers: validatedMaxWorkers,
-        activeWorkers: new Set(),
-      };
-      this.workerPools.set(nodeId, pool);
+      // Start workers up to the max limit
+      let workersStarted = 0;
+      for (let i = 1; i <= validatedMaxWorkers; i++) {
+        const workerId = `${nodeId}-worker-${i}`;
+
+        // Skip if this worker is already running
+        if (pool.activeWorkers.has(workerId)) {
+          continue;
+        }
+
+        try {
+          await this.startWorker(workerId, nodeId);
+          pool.activeWorkers.add(workerId);
+          workersStarted++;
+        } catch (error) {
+          this.logger.error(`Failed to start worker ${workerId}:`, error);
+        }
+      }
+
+      this.logger.log(
+        `Started ${workersStarted} worker(s) for node ${nodeId} (total: ${pool.activeWorkers.size}/${validatedMaxWorkers})`
+      );
+
+      return workersStarted;
+    } finally {
+      // ISSUE #10 FIX: Always release lock, even on error
+      this.releasePoolLock(nodeId);
     }
-
-    // Start workers up to the max limit
-    let workersStarted = 0;
-    for (let i = 1; i <= validatedMaxWorkers; i++) {
-      const workerId = `${nodeId}-worker-${i}`;
-
-      // Skip if this worker is already running
-      if (pool.activeWorkers.has(workerId)) {
-        continue;
-      }
-
-      try {
-        await this.startWorker(workerId, nodeId);
-        pool.activeWorkers.add(workerId);
-        workersStarted++;
-      } catch (error) {
-        this.logger.error(`Failed to start worker ${workerId}:`, error);
-      }
-    }
-
-    this.logger.log(
-      `Started ${workersStarted} worker(s) for node ${nodeId} (total: ${pool.activeWorkers.size}/${validatedMaxWorkers})`
-    );
-
-    return workersStarted;
   }
 
   /**
    * Start a single worker with unique ID
+   *
+   * CRITICAL FIX: Wrap processLoop in try-catch to prevent worker pool memory leak
    *
    * Begins processing jobs from the queue for the specified node.
    * Worker will continuously poll for new jobs while running.
@@ -429,7 +542,24 @@ export class EncodingProcessorService implements OnModuleInit {
     this.workers.set(workerId, worker);
 
     // Start processing loop (fire and forget - runs in background)
-    this.processLoop(workerId);
+    // CRITICAL FIX: Wrap in try-catch to handle worker crashes
+    this.processLoop(workerId).catch((error) => {
+      this.logger.error(`[${workerId}] Worker crashed:`, error);
+
+      // CLEANUP: Remove worker from tracking to prevent memory leak
+      const pool = this.workerPools.get(nodeId);
+      if (pool) {
+        pool.activeWorkers.delete(workerId);
+      }
+      this.workers.delete(workerId);
+
+      // Resolve shutdown promise to unblock any waiting callers
+      if (worker.shutdownResolve) {
+        worker.shutdownResolve();
+      }
+
+      this.logger.log(`[${workerId}] Worker cleanup complete after crash`);
+    });
   }
 
   /**
@@ -438,75 +568,89 @@ export class EncodingProcessorService implements OnModuleInit {
    * Gracefully stops all workers for a node after current jobs complete.
    * Will not interrupt running jobs.
    *
+   * ISSUE #10 FIX: Wrapped in mutex lock to prevent concurrent modifications
+   *
    * @param nodeId - Node unique identifier
    * @param workerId - Optional specific worker ID to stop (if not provided, stops all workers for node)
    */
   async stopWorker(nodeId: string, workerId?: string): Promise<void> {
-    const pool = this.workerPools.get(nodeId);
+    // ISSUE #10 FIX: Acquire lock before modifying pool
+    await this.acquirePoolLock(nodeId);
 
-    if (!pool) {
-      this.logger.warn(`No worker pool found for node ${nodeId}`);
-      return;
-    }
+    try {
+      const pool = this.workerPools.get(nodeId);
 
-    if (workerId) {
-      // Stop specific worker
-      const worker = this.workers.get(workerId);
-      if (!worker) {
-        this.logger.warn(`Worker ${workerId} not found`);
+      if (!pool) {
+        this.logger.warn(`No worker pool found for node ${nodeId}`);
         return;
       }
 
-      this.logger.log(`Stopping worker ${workerId}...`);
-
-      // Signal worker to stop
-      worker.isRunning = false;
-
-      // Wait for current job to complete
-      if (worker.currentJobId) {
-        this.logger.log(`Waiting for worker ${workerId} to complete job ${worker.currentJobId}...`);
-        await worker.shutdownPromise;
-        this.logger.log(`Worker ${workerId} completed its job and stopped gracefully`);
-      } else {
-        await worker.shutdownPromise;
-        this.logger.log(`Worker ${workerId} stopped gracefully`);
-      }
-
-      // Clean up worker state
-      this.workers.delete(workerId);
-      pool.activeWorkers.delete(workerId);
-    } else {
-      // Stop all workers for this node
-      this.logger.log(`Stopping all ${pool.activeWorkers.size} worker(s) for node ${nodeId}...`);
-
-      const shutdownPromises: Promise<void>[] = [];
-
-      for (const wId of pool.activeWorkers) {
-        const worker = this.workers.get(wId);
-        if (worker) {
-          // Signal worker to stop
-          worker.isRunning = false;
-
-          if (worker.currentJobId) {
-            this.logger.log(`Waiting for worker ${wId} to complete job ${worker.currentJobId}...`);
-          }
-
-          shutdownPromises.push(worker.shutdownPromise!);
+      if (workerId) {
+        // Stop specific worker
+        const worker = this.workers.get(workerId);
+        if (!worker) {
+          this.logger.warn(`Worker ${workerId} not found`);
+          return;
         }
+
+        this.logger.log(`Stopping worker ${workerId}...`);
+
+        // Signal worker to stop
+        worker.isRunning = false;
+
+        // Wait for current job to complete
+        if (worker.currentJobId) {
+          this.logger.log(
+            `Waiting for worker ${workerId} to complete job ${worker.currentJobId}...`
+          );
+          await worker.shutdownPromise;
+          this.logger.log(`Worker ${workerId} completed its job and stopped gracefully`);
+        } else {
+          await worker.shutdownPromise;
+          this.logger.log(`Worker ${workerId} stopped gracefully`);
+        }
+
+        // Clean up worker state
+        this.workers.delete(workerId);
+        pool.activeWorkers.delete(workerId);
+      } else {
+        // Stop all workers for this node
+        this.logger.log(`Stopping all ${pool.activeWorkers.size} worker(s) for node ${nodeId}...`);
+
+        const shutdownPromises: Promise<void>[] = [];
+
+        for (const wId of pool.activeWorkers) {
+          const worker = this.workers.get(wId);
+          if (worker) {
+            // Signal worker to stop
+            worker.isRunning = false;
+
+            if (worker.currentJobId) {
+              this.logger.log(
+                `Waiting for worker ${wId} to complete job ${worker.currentJobId}...`
+              );
+            }
+
+            shutdownPromises.push(worker.shutdownPromise!);
+          }
+        }
+
+        // Wait for all workers to complete their current jobs
+        await Promise.all(shutdownPromises);
+        this.logger.log(`All workers for node ${nodeId} stopped gracefully`);
+
+        // Clean up worker states
+        for (const wId of pool.activeWorkers) {
+          this.workers.delete(wId);
+        }
+
+        // Clear the pool
+        pool.activeWorkers.clear();
+        this.workerPools.delete(nodeId);
       }
-
-      // Wait for all workers to complete their current jobs
-      await Promise.all(shutdownPromises);
-      this.logger.log(`All workers for node ${nodeId} stopped gracefully`);
-
-      // Clean up worker states
-      for (const wId of pool.activeWorkers) {
-        this.workers.delete(wId);
-      }
-
-      // Clear the pool
-      pool.activeWorkers.clear();
-      this.workerPools.delete(nodeId);
+    } finally {
+      // ISSUE #10 FIX: Always release lock, even on error
+      this.releasePoolLock(nodeId);
     }
   }
 
@@ -620,8 +764,14 @@ export class EncodingProcessorService implements OnModuleInit {
   /**
    * Handle job failure
    *
+   * HIGH PRIORITY FIX: Clearer exponential backoff with 1-based attempt numbering
+   *
    * Implements retry logic with exponential backoff (max 3 retries).
-   * Backoff delays: 1 min, 2 min, 4 min for retries 1, 2, 3.
+   * Backoff delays:
+   * - Attempt 1 (retry after 1st failure): 1 min delay
+   * - Attempt 2 (retry after 2nd failure): 2 min delay
+   * - Attempt 3 (retry after 3rd failure): 4 min delay
+   * - After 3 attempts (4th failure): Job marked as FAILED
    *
    * @param job - Failed job
    * @param error - Error that caused failure
@@ -633,19 +783,28 @@ export class EncodingProcessorService implements OnModuleInit {
     try {
       // Check if this is a transient error that should be retried
       const shouldRetry = this.isTransientError(errorMessage);
-      const retryCount = job.retryCount || 0;
 
-      if (shouldRetry && retryCount < this.MAX_RETRIES) {
+      // HIGH PRIORITY FIX: Use 1-based attempt numbering for clarity
+      // currentAttempt = 0 means first attempt, 1 = second attempt, etc.
+      const currentAttempt = job.retryCount || 0;
+      const nextAttempt = currentAttempt + 1;
+      const totalAttempts = currentAttempt + 1; // Total attempts SO FAR (including this failure)
+
+      if (shouldRetry && nextAttempt <= this.MAX_RETRIES) {
         // Calculate exponential backoff delay
-        // Base delay: 60 seconds, multiplied by 2^retryCount
-        // Retry 1: 60s (1 min), Retry 2: 120s (2 min), Retry 3: 240s (4 min)
+        // HIGH PRIORITY FIX: Clearer calculation
+        // Base delay: 60 seconds, multiplied by 2^(attempt - 1)
+        // Attempt 1: 60 * 2^0 = 60s (1 min)
+        // Attempt 2: 60 * 2^1 = 120s (2 min)
+        // Attempt 3: 60 * 2^2 = 240s (4 min)
         const baseDelaySeconds = 60;
-        const delaySeconds = baseDelaySeconds * 2 ** retryCount;
+        const delaySeconds = baseDelaySeconds * 2 ** currentAttempt;
         const nextRetryAt = new Date(Date.now() + delaySeconds * 1000);
+        const delayMinutes = Math.floor(delaySeconds / 60);
 
         this.logger.log(
-          `Retrying job ${job.id} (attempt ${retryCount + 1}/${this.MAX_RETRIES}) ` +
-            `after ${delaySeconds}s delay (at ${nextRetryAt.toISOString()})`
+          `Retrying job ${job.id}: Attempt ${totalAttempts} of ${this.MAX_RETRIES} failed. ` +
+            `Next retry (attempt ${nextAttempt}) in ${delayMinutes} minute(s) at ${nextRetryAt.toISOString()}`
         );
 
         // Update job with retry information
@@ -654,16 +813,18 @@ export class EncodingProcessorService implements OnModuleInit {
           data: {
             stage: 'QUEUED',
             progress: 0,
-            retryCount: retryCount + 1,
+            retryCount: nextAttempt,
             nextRetryAt,
-            error: `Retry ${retryCount + 1}/${this.MAX_RETRIES}: ${errorMessage}`,
+            error: `Attempt ${totalAttempts}/${this.MAX_RETRIES} failed: ${errorMessage}. Retrying in ${delayMinutes}min...`,
           },
         });
       } else {
         // Mark job as failed
         const failureReason = shouldRetry
-          ? `Max retries (${this.MAX_RETRIES}) exhausted: ${errorMessage}`
-          : errorMessage;
+          ? `All ${this.MAX_RETRIES} retry attempts exhausted (${totalAttempts} total failures). Last error: ${errorMessage}`
+          : `Non-retriable error after ${totalAttempts} attempt(s): ${errorMessage}`;
+
+        this.logger.error(`Job ${job.id} permanently failed: ${failureReason}`);
         await this.queueService.failJob(job.id, failureReason);
       }
     } catch (updateError) {
@@ -690,7 +851,7 @@ export class EncodingProcessorService implements OnModuleInit {
     try {
       await fs.promises.access(job.filePath, fs.constants.R_OK);
       checks.push('✓ File readable');
-    } catch (error) {
+    } catch (_error) {
       throw new Error(
         `Cannot read source file: ${job.filePath}\n\n` +
           `Possible causes:\n` +
@@ -778,7 +939,7 @@ export class EncodingProcessorService implements OnModuleInit {
     // Create temporary output path
     const outputDir = path.dirname(job.filePath);
     const outputName = path.basename(job.filePath);
-    const tmpPath = path.join(outputDir, `.${outputName}.tmp`);
+    const tmpPath = path.join(outputDir, `.${outputName}.tmp-${job.id}-${Date.now()}`);
 
     try {
       const policy = job.policy;
@@ -797,6 +958,16 @@ export class EncodingProcessorService implements OnModuleInit {
       // Calculate file size changes
       const afterSizeBytes = BigInt(fs.statSync(tmpPath).size);
       const { savedBytes, savedPercent } = this.calculateSavings(beforeSizeBytes, afterSizeBytes);
+
+      // HIGH PRIORITY FIX: Verify disk space before atomic replacement
+      // During atomic replacement, we temporarily have BOTH original + encoded file
+      // So we need space for both files simultaneously
+      await this.verifyDiskSpaceForReplacement(
+        job.filePath,
+        tmpPath,
+        beforeSizeBytes,
+        afterSizeBytes
+      );
 
       // Replace original file with encoded version
       this.replaceFile(job.filePath, tmpPath, policy.atomicReplace);
@@ -870,6 +1041,64 @@ export class EncodingProcessorService implements OnModuleInit {
   }
 
   /**
+   * HIGH PRIORITY FIX: Verify disk space before atomic replacement
+   *
+   * During atomic replacement, we temporarily have BOTH files:
+   * 1. Original file renamed to .backup
+   * 2. Temp file renamed to original location
+   * 3. Backup deleted
+   *
+   * We need enough space for both original + temp file simultaneously.
+   *
+   * @private
+   */
+  private async verifyDiskSpaceForReplacement(
+    originalPath: string,
+    tmpPath: string,
+    originalSize: bigint,
+    tmpSize: bigint
+  ): Promise<void> {
+    const outputDir = path.dirname(originalPath);
+
+    try {
+      const stats = await fs.promises.statfs(outputDir);
+      const availableBytes = stats.bavail * stats.bsize;
+      const availableGB = availableBytes / 1024 ** 3;
+
+      // Calculate space needed for atomic replacement
+      // We need space for BOTH files temporarily (during rename operations)
+      const spaceNeededBytes = Number(originalSize) + Number(tmpSize);
+
+      // Add 1GB safety buffer
+      const requiredBytes = spaceNeededBytes + 1024 ** 3;
+      const requiredGB = requiredBytes / 1024 ** 3;
+
+      if (availableBytes < requiredBytes) {
+        throw new Error(
+          `Insufficient disk space for atomic file replacement on ${outputDir}\n\n` +
+            `Available: ${availableGB.toFixed(2)} GB\n` +
+            `Required: ${requiredGB.toFixed(2)} GB (original + encoded + 1GB safety buffer)\n` +
+            `Original file: ${(Number(originalSize) / 1024 ** 3).toFixed(2)} GB\n` +
+            `Encoded file: ${(Number(tmpSize) / 1024 ** 3).toFixed(2)} GB\n\n` +
+            `During atomic replacement, both files exist temporarily.\n` +
+            `Please free up disk space before retrying this job.`
+        );
+      }
+
+      this.logger.log(
+        `Disk space check passed: ${availableGB.toFixed(2)}GB available, ` +
+          `${requiredGB.toFixed(2)}GB needed for atomic replacement`
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Insufficient disk space')) {
+        throw error; // Re-throw our custom error
+      }
+      // If statfs fails, log warning but don't fail the job
+      this.logger.warn(`Could not check disk space for replacement on ${outputDir}: ${error}`);
+    }
+  }
+
+  /**
    * Replace original file with encoded version, optionally using atomic replacement
    * @private
    */
@@ -883,21 +1112,72 @@ export class EncodingProcessorService implements OnModuleInit {
 
   /**
    * Atomically replace file with backup on failure
+   *
+   * CRITICAL FIX: Proper rollback and cleanup logic with comprehensive error handling
+   *
    * @private
    */
   private atomicReplaceFile(originalPath: string, tmpPath: string): void {
     const backupPath = `${originalPath}.backup`;
-    fs.renameSync(originalPath, backupPath);
 
     try {
-      fs.renameSync(tmpPath, originalPath);
-      fs.unlinkSync(backupPath);
-    } catch (replaceError) {
-      // Restore backup on failure
-      if (fs.existsSync(backupPath)) {
-        fs.renameSync(backupPath, originalPath);
+      // Step 1: Create backup of original file
+      fs.renameSync(originalPath, backupPath);
+
+      // Step 2: Move temp file to original location
+      try {
+        fs.renameSync(tmpPath, originalPath);
+
+        // Step 3: Delete backup on success
+        try {
+          fs.unlinkSync(backupPath);
+        } catch (cleanupError) {
+          // Non-fatal: Log warning but don't fail the operation
+          this.logger.warn(`Failed to cleanup backup file ${backupPath}: ${cleanupError}`);
+        }
+      } catch (replaceError) {
+        // ROLLBACK: Restore backup on failure
+        this.logger.error(`Failed to replace file, rolling back: ${replaceError}`);
+
+        try {
+          if (fs.existsSync(backupPath)) {
+            // Delete failed temp file if it exists
+            if (fs.existsSync(originalPath)) {
+              fs.unlinkSync(originalPath);
+            }
+
+            // Restore backup
+            fs.renameSync(backupPath, originalPath);
+            this.logger.log(`Successfully rolled back to backup for ${originalPath}`);
+          } else {
+            this.logger.error(`Backup file missing during rollback: ${backupPath}`);
+          }
+        } catch (rollbackError) {
+          this.logger.error(`CRITICAL: Rollback failed for ${originalPath}: ${rollbackError}`);
+          // Re-throw with context about both errors
+          throw new Error(
+            `Atomic replacement failed and rollback also failed. ` +
+              `Replace error: ${replaceError}. Rollback error: ${rollbackError}. ` +
+              `Backup may still exist at: ${backupPath}`
+          );
+        }
+
+        // Re-throw original error after successful rollback
+        throw replaceError;
       }
-      throw replaceError;
+    } catch (backupError) {
+      // Failed to create backup - clean up temp file
+      this.logger.error(`Failed to create backup: ${backupError}`);
+
+      try {
+        if (fs.existsSync(tmpPath)) {
+          fs.unlinkSync(tmpPath);
+        }
+      } catch (cleanupError) {
+        this.logger.warn(`Failed to cleanup temp file after backup error: ${cleanupError}`);
+      }
+
+      throw backupError;
     }
   }
 
