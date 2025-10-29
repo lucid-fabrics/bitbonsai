@@ -683,4 +683,55 @@ export class QueueController {
   async remove(@Param('id') id: string): Promise<void> {
     return this.queueService.remove(id);
   }
+
+  /**
+   * Clear all jobs or jobs matching specific statuses
+   */
+  @Post('clear')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Clear all jobs or jobs with specific statuses',
+    description:
+      'Permanently deletes multiple jobs from the database.\n\n' +
+      '**Warning**: This action:\n' +
+      '- **Permanently removes** job records\n' +
+      '- **Does not affect** actual media files\n' +
+      '- **Cannot be undone**\n\n' +
+      '**Query Parameters**:\n' +
+      '- `stages`: Optional comma-separated list of job stages to delete (COMPLETED, FAILED, CANCELLED, etc.)\n' +
+      '- If no stages specified, **ALL jobs will be deleted**\n\n' +
+      '**Examples**:\n' +
+      '- `/queue/clear` - Deletes ALL jobs\n' +
+      '- `/queue/clear?stages=COMPLETED,FAILED` - Deletes only completed and failed jobs',
+  })
+  @ApiQuery({
+    name: 'stages',
+    required: false,
+    description: 'Comma-separated list of job stages to delete (e.g., COMPLETED,FAILED,CANCELLED)',
+    example: 'COMPLETED,FAILED',
+  })
+  @ApiOkResponse({
+    description: 'Jobs cleared successfully, returns count of deleted jobs',
+    schema: {
+      type: 'object',
+      properties: {
+        deleted: {
+          type: 'number',
+          description: 'Number of jobs deleted',
+          example: 42,
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while clearing jobs',
+  })
+  async clearJobs(@Query('stages') stagesParam?: string): Promise<{ deleted: number }> {
+    const stages = stagesParam
+      ? (stagesParam.split(',').map((s) => s.trim()) as JobStage[])
+      : undefined;
+
+    const deleted = await this.queueService.clearJobs(stages);
+    return { deleted };
+  }
 }
