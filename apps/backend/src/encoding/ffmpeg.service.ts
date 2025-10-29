@@ -469,6 +469,7 @@ export class FfmpegService implements OnModuleDestroy {
         .updateProgress(job.id, {
           progress: Math.round(progress * 100) / 100, // Round to 2 decimal places
           etaSeconds: eta,
+          fps: progressData.fps,
         })
         .catch((error) => {
           this.logger.error(`Failed to update job progress: ${error.message}`);

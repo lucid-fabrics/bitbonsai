@@ -14,6 +14,7 @@ export class QueueJobBo {
   status: JobStatus;
   progress: number;
   etaSeconds?: number | null;
+  fps?: number | null;
   originalSize: number;
   currentSize: number;
   savedSize: number;
@@ -39,6 +40,7 @@ export class QueueJobBo {
     this.status = this.extractStatus(model);
     this.progress = model.progress;
     this.etaSeconds = model.etaSeconds;
+    this.fps = model.fps;
     this.originalSize = this.parseSize(model.beforeSizeBytes || model.originalSize);
     this.currentSize = this.parseSize(model.afterSizeBytes || model.currentSize);
     this.savedSize = this.parseSize(model.savedBytes || model.savedSize);

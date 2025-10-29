@@ -16,6 +16,7 @@ export interface QueueJobApiModel {
   status?: JobStatus;
   progress: number;
   etaSeconds?: number | null;
+  fps?: number | null;
   beforeSizeBytes?: string;
   afterSizeBytes?: string;
   savedBytes?: string;
