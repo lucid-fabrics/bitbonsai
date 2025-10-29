@@ -1,5 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { EncodingModule } from '../encoding/encoding.module';
+import { LibrariesModule } from '../libraries/libraries.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { HealthCheckWorker } from './health-check.worker';
 import { QueueController } from './queue.controller';
@@ -20,7 +21,7 @@ import { RetrySchedulerService } from './services/retry-scheduler.service';
  * Background retry scheduler retries eligible failed jobs every 5 minutes.
  */
 @Module({
-  imports: [forwardRef(() => EncodingModule)],
+  imports: [forwardRef(() => EncodingModule), forwardRef(() => LibrariesModule)],
   controllers: [QueueController],
   providers: [
     QueueService,

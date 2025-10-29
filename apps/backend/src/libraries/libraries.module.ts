@@ -16,6 +16,6 @@ import { MediaAnalysisService } from './services/media-analysis.service';
   imports: [forwardRef(() => FileWatcherModule), forwardRef(() => QueueModule)],
   controllers: [LibrariesController],
   providers: [LibrariesService, MediaAnalysisService, PrismaService],
-  exports: [LibrariesService],
+  exports: [LibrariesService, MediaAnalysisService],
 })
 export class LibrariesModule {}

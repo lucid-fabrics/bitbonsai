@@ -1,5 +1,14 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { type Job, JobStage } from '@prisma/client';
+import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CompleteJobDto } from './dto/complete-job.dto';
 import type { CreateJobDto } from './dto/create-job.dto';
@@ -16,7 +25,11 @@ import type { UpdateJobDto } from './dto/update-job.dto';
 export class QueueService {
   private readonly logger = new Logger(QueueService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => MediaAnalysisService))
+    private mediaAnalysis: MediaAnalysisService
+  ) {}
 
   /**
    * Create a new encoding job
@@ -98,6 +111,84 @@ export class QueueService {
     } catch (error) {
       this.logger.error('Failed to create job', error);
       throw error;
+    }
+  }
+
+  /**
+   * Event handler for file.detected events from FileWatcherService
+   *
+   * Automatically creates encoding jobs when new video files are detected
+   * in watched library directories.
+   *
+   * @param payload - Event payload with libraryId, filePath, and fileName
+   */
+  @OnEvent('file.detected')
+  async handleFileDetected(payload: {
+    libraryId: string;
+    filePath: string;
+    fileName: string;
+  }): Promise<void> {
+    this.logger.log(`Handling file.detected event for: ${payload.fileName}`);
+
+    try {
+      // Get library to access nodeId and defaultPolicyId
+      const library = await this.prisma.library.findUnique({
+        where: { id: payload.libraryId },
+        include: {
+          defaultPolicy: true,
+        },
+      });
+
+      if (!library) {
+        this.logger.error(`Library ${payload.libraryId} not found, cannot create job`);
+        return;
+      }
+
+      if (!library.defaultPolicyId || !library.defaultPolicy) {
+        this.logger.warn(
+          `Library ${library.name} has no default policy. Skipping job creation for ${payload.fileName}`
+        );
+        return;
+      }
+
+      // Probe the video file to get codec info
+      const videoInfo = await this.mediaAnalysis.probeVideoFile(payload.filePath);
+
+      if (!videoInfo) {
+        this.logger.warn(`Failed to probe video file: ${payload.filePath}, skipping job creation`);
+        return;
+      }
+
+      // Check if file needs encoding (codec doesn't match target)
+      const needsEncoding = videoInfo.codec !== library.defaultPolicy.targetCodec;
+
+      if (!needsEncoding) {
+        this.logger.log(
+          `File ${payload.fileName} already uses target codec ${library.defaultPolicy.targetCodec}, skipping`
+        );
+        return;
+      }
+
+      // Create job
+      await this.create({
+        filePath: payload.filePath,
+        fileLabel: payload.fileName,
+        sourceCodec: videoInfo.codec,
+        targetCodec: library.defaultPolicy.targetCodec,
+        beforeSizeBytes: videoInfo.sizeBytes.toString(),
+        nodeId: library.nodeId,
+        libraryId: library.id,
+        policyId: library.defaultPolicyId,
+      });
+
+      this.logger.log(`Successfully created job for detected file: ${payload.fileName}`);
+    } catch (error) {
+      // Log error but don't throw - we don't want to crash the file watcher
+      if (error instanceof BadRequestException && error.message.includes('already exists')) {
+        this.logger.log(`Job already exists for ${payload.fileName}, skipping`);
+      } else {
+        this.logger.error(`Failed to create job for detected file ${payload.fileName}:`, error);
+      }
     }
   }
 
