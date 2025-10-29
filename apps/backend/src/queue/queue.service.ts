@@ -273,9 +273,10 @@ export class QueueService {
           },
         },
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
+      orderBy:
+        stage === 'FAILED'
+          ? { failedAt: 'desc' } // Most recent failures first
+          : { createdAt: 'asc' }, // Default: oldest first
     });
   }
 
