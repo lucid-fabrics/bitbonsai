@@ -735,16 +735,19 @@ export class QueueService {
       );
     }
 
-    // Move to HEALTH_CHECK stage and update createdAt to prioritize it
+    // Move to DETECTED stage so health check worker picks it up immediately
+    // Update createdAt to prioritize it (worker processes oldest first)
     const job = await this.prisma.job.update({
       where: { id },
       data: {
-        stage: JobStage.HEALTH_CHECK,
+        stage: JobStage.DETECTED,
         createdAt: new Date(), // Update timestamp to make it first in queue
       },
     });
 
-    this.logger.log(`Job force-started: ${id} - moved to HEALTH_CHECK stage`);
+    this.logger.log(
+      `Job force-started: ${id} - moved to DETECTED stage (will be picked up immediately)`
+    );
     return job;
   }
 
