@@ -541,11 +541,12 @@ export class QueueController {
   @ApiOperation({
     summary: 'Force start a queued job immediately',
     description:
-      'Moves a queued job to HEALTH_CHECK stage immediately, bypassing the normal queue order.\n\n' +
+      'Moves a queued job to DETECTED stage immediately, bypassing the normal queue order.\n\n' +
       '**Actions Performed**:\n' +
       '1. Validates job is in QUEUED or DETECTED stage\n' +
-      '2. Updates job stage to HEALTH_CHECK (will be picked up immediately)\n' +
-      '3. Updates createdAt timestamp to prioritize it\n\n' +
+      '2. Updates job stage to DETECTED\n' +
+      '3. Updates createdAt timestamp to prioritize it (worker processes oldest first)\n' +
+      '4. Health check worker picks it up within 2 seconds\n\n' +
       '**Use Case**: User wants to encode a specific file immediately for testing or priority',
   })
   @ApiParam({
