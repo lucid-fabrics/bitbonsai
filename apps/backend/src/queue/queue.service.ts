@@ -735,6 +735,12 @@ export class QueueService {
       throw new BadRequestException('Only encoding jobs can be paused');
     }
 
+    // Pause the FFmpeg process
+    const paused = await this.ffmpegService.pauseEncoding(id);
+    if (!paused) {
+      throw new BadRequestException('Failed to pause encoding process');
+    }
+
     const job = await this.prisma.job.update({
       where: { id },
       data: {
@@ -767,6 +773,12 @@ export class QueueService {
 
     if (existingJob.stage !== JobStage.PAUSED) {
       throw new BadRequestException('Only paused jobs can be resumed');
+    }
+
+    // Resume the FFmpeg process
+    const resumed = await this.ffmpegService.resumeEncoding(id);
+    if (!resumed) {
+      throw new BadRequestException('Failed to resume encoding process');
     }
 
     const job = await this.prisma.job.update({
