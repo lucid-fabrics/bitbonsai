@@ -57,6 +57,9 @@ export class QueueComponent implements OnInit {
   protected readonly queueData$: Observable<QueueResponse | null>;
   protected readonly isLoading$: Observable<boolean>;
   protected readonly availableNodes$: Observable<Map<string, string>>;
+  protected readonly availableLibraries$: Observable<
+    Map<string, { name: string; nodeName: string }>
+  >;
 
   // State
   protected expandedJobId: string | null = null;
@@ -87,6 +90,7 @@ export class QueueComponent implements OnInit {
   // Filter state
   protected selectedStatus: JobStatus | 'ALL' = 'ALL';
   protected selectedNodeId = '';
+  protected selectedLibraryId = '';
   protected searchQuery = '';
 
   // Available statuses for filter (exclude transient statuses that jobs pass through quickly)
@@ -151,6 +155,23 @@ export class QueueComponent implements OnInit {
         return nodeMap;
       })
     );
+
+    // Extract available libraries from queue data (Map of libraryId -> { name, nodeName })
+    this.availableLibraries$ = this.queueData$.pipe(
+      map((data) => {
+        const jobs = data?.jobs || [];
+        const libraryMap = new Map<string, { name: string; nodeName: string }>();
+        for (const job of jobs) {
+          if (job.libraryId && job.libraryName && job.nodeName) {
+            libraryMap.set(job.libraryId, {
+              name: job.libraryName,
+              nodeName: job.nodeName,
+            });
+          }
+        }
+        return libraryMap;
+      })
+    );
   }
 
   ngOnInit(): void {
@@ -165,6 +186,9 @@ export class QueueComponent implements OnInit {
       }
       if (params['nodeId']) {
         this.selectedNodeId = params['nodeId'];
+      }
+      if (params['libraryId']) {
+        this.selectedLibraryId = params['libraryId'];
       }
       if (params['search']) {
         this.searchQuery = params['search'];
@@ -193,6 +217,9 @@ export class QueueComponent implements OnInit {
     if (this.selectedNodeId) {
       filters.nodeId = this.selectedNodeId;
     }
+    if (this.selectedLibraryId) {
+      filters.libraryId = this.selectedLibraryId;
+    }
     if (this.searchQuery) {
       filters.search = this.searchQuery;
     }
@@ -211,6 +238,12 @@ export class QueueComponent implements OnInit {
     this.refreshQueue(true); // Show loading for user action
   }
 
+  protected onLibraryFilterChange(libraryId: string): void {
+    this.selectedLibraryId = libraryId;
+    this.updateQueryParams();
+    this.refreshQueue(true); // Show loading for user action
+  }
+
   protected onSearchChange(query: string): void {
     this.searchQuery = query;
     this.updateQueryParams();
@@ -225,6 +258,9 @@ export class QueueComponent implements OnInit {
     }
     if (this.selectedNodeId) {
       queryParams.nodeId = this.selectedNodeId;
+    }
+    if (this.selectedLibraryId) {
+      queryParams.libraryId = this.selectedLibraryId;
     }
     if (this.searchQuery) {
       queryParams.search = this.searchQuery;
