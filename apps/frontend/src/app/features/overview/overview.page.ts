@@ -8,19 +8,16 @@ import {
   type OnInit,
 } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faCompactDisc } from '@fortawesome/pro-regular-svg-icons';
 import {
   faChartLine,
   faCheck,
   faCheckCircle,
   faClock,
-  faFilm,
   faHardDrive,
   faMicrochip,
   faPlay,
   faSpinner,
   faTimes,
-  faTv,
 } from '@fortawesome/pro-solid-svg-icons';
 import { Store } from '@ngrx/store';
 import { distinctUntilChanged } from 'rxjs';
@@ -77,9 +74,6 @@ export class OverviewComponent implements OnInit, OnDestroy {
     encoding: faPlay,
     completed: faCheck,
     failed: faTimes,
-    movie: faFilm,
-    tvShow: faTv,
-    anime: faCompactDisc,
   };
 
   ngOnInit(): void {
@@ -108,6 +102,14 @@ export class OverviewComponent implements OnInit, OnDestroy {
     return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2)} TB`;
   }
 
+  formatSizeBytesCompact(bytes: number): string {
+    if (bytes === 0) return '0';
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}K`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)}M`;
+    if (bytes < 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}G`;
+    return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(1)}T`;
+  }
+
   formatStorageSaved(tb: number): string {
     const bytes = tb * 1024 * 1024 * 1024 * 1024; // Convert TB to bytes
 
@@ -121,9 +123,19 @@ export class OverviewComponent implements OnInit, OnDestroy {
   }
 
   formatDuration(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m`;
+    }
+    if (seconds < 86400) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
   }
 
   formatTime(isoString: string): string {
@@ -142,59 +154,8 @@ export class OverviewComponent implements OnInit, OnDestroy {
     return total > 0 ? Math.round((value / total) * 100) : 0;
   }
 
-  getMediaTypeIcon(mediaType: string) {
-    switch (mediaType) {
-      case 'MOVIE':
-      case 'ANIME_MOVIE':
-        return this.icons.movie;
-      case 'TV_SHOW':
-        return this.icons.tvShow;
-      case 'ANIME':
-        return this.icons.anime;
-      case 'MIXED':
-      case 'OTHER':
-      default:
-        return this.icons.queueStatus;
-    }
-  }
-
-  getMediaTypeLabel(mediaType: string): string {
-    switch (mediaType) {
-      case 'MOVIE':
-        return 'Movies';
-      case 'TV_SHOW':
-        return 'TV Shows';
-      case 'ANIME':
-        return 'Anime';
-      case 'ANIME_MOVIE':
-        return 'Anime Movies';
-      case 'MIXED':
-        return 'Mixed';
-      case 'OTHER':
-      default:
-        return 'Other';
-    }
-  }
-
-  getCompressionPercent(library: {
-    total_savings_bytes: number;
-    total_before_bytes: number;
-  }): number {
-    if (library.total_before_bytes === 0) return 0;
-    return (library.total_savings_bytes / library.total_before_bytes) * 100;
-  }
-
-  getCompletionPercent(library: { completed_jobs: number; job_count: number }): number {
-    if (library.job_count === 0) return 0;
-    return (library.completed_jobs / library.job_count) * 100;
-  }
-
   // TrackBy functions to prevent unnecessary re-renders
   trackByActivityId(index: number, activity: any): string {
     return activity.id;
-  }
-
-  trackByLibraryName(index: number, library: any): string {
-    return library.name;
   }
 }
