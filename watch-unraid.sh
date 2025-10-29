@@ -39,8 +39,11 @@ sync_files() {
         --exclude '*.db-journal' \
         ./prisma/ $UNRAID_SSH:$DEPLOY_PATH/prisma/
 
-    # Sync the Docker proxy config (not the local one)
-    scp ./proxy.docker.conf.json $UNRAID_SSH:$DEPLOY_PATH/proxy.conf.json
+    # Sync critical config files that are mounted in containers
+    rsync -az \
+        ./proxy.docker.conf.json \
+        ./angular.json \
+        $UNRAID_SSH:$DEPLOY_PATH/
 
     echo "✅ Synced at $(date '+%H:%M:%S')"
 }
