@@ -2,7 +2,7 @@ import * as os from 'node:os';
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage, NodeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import type { OverviewResponseDto } from './dto/overview-response.dto';
+import type { NodeStatusModel, OverviewResponseDto } from './dto/overview-response.dto';
 import type {
   OverviewStatsDto,
   QueueStatsDto,
@@ -20,11 +20,12 @@ import type {
 @Injectable()
 export class OverviewService {
   private readonly logger = new Logger(OverviewService.name);
+  private lastCpuMeasure: { idle: number; total: number; timestamp: number } | null = null;
 
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Calculate current CPU utilization percentage
+   * Calculate current CPU utilization percentage using delta measurement
    * @private
    * @returns CPU usage percentage (0-100)
    */
@@ -41,8 +42,23 @@ export class OverviewService {
       totalIdle += cpu.times.idle;
     }
 
-    // Calculate usage percentage
-    const cpuUsage = totalTick === 0 ? 0 : 100 - (100 * totalIdle) / totalTick;
+    const now = Date.now();
+
+    // If we don't have a previous measure, store current and return 0
+    if (!this.lastCpuMeasure) {
+      this.lastCpuMeasure = { idle: totalIdle, total: totalTick, timestamp: now };
+      return 0;
+    }
+
+    // Calculate deltas since last measurement
+    const idleDelta = totalIdle - this.lastCpuMeasure.idle;
+    const totalDelta = totalTick - this.lastCpuMeasure.total;
+
+    // Update last measurement
+    this.lastCpuMeasure = { idle: totalIdle, total: totalTick, timestamp: now };
+
+    // Calculate usage percentage from delta
+    const cpuUsage = totalDelta === 0 ? 0 : 100 - (100 * idleDelta) / totalDelta;
     return Number(cpuUsage.toFixed(1));
   }
 
@@ -53,6 +69,7 @@ export class OverviewService {
    * This method aggregates:
    * - System health (active nodes, queue status, storage saved, success rate)
    * - Queue summary (job counts by stage)
+   * - Node status (per-node statistics)
    * - Recent activity (last 10 completed jobs)
    * - Top libraries (by job count)
    *
@@ -62,9 +79,10 @@ export class OverviewService {
     this.logger.log('Fetching overview statistics for frontend');
 
     // Execute all queries in parallel for optimal performance
-    const [systemHealth, queueStats, recentActivity, topLibraries] = await Promise.all([
+    const [systemHealth, queueStats, nodeStatus, recentActivity, topLibraries] = await Promise.all([
       this.getSystemHealth(),
       this.getQueueSummary(),
+      this.getNodeStatus(),
       this.getRecentActivity(),
       this.getTopLibraries(),
     ]);
@@ -106,6 +124,7 @@ export class OverviewService {
         completed: queueStats.completed,
         failed: queueStats.failed,
       },
+      node_status: nodeStatus,
       recent_activity: recentActivity.map((activity) => {
         const beforeSizeBytes = BigInt(activity.beforeSizeBytes);
         const afterSizeBytes = activity.afterSizeBytes ? BigInt(activity.afterSizeBytes) : null;
@@ -344,6 +363,152 @@ export class OverviewService {
       progress: job.stage === JobStage.ENCODING ? job.progress : null,
       completedAt: job.completedAt || job.updatedAt, // Use updatedAt for encoding jobs
     }));
+  }
+
+  /**
+   * Get node status with statistics for all nodes
+   *
+   * Provides per-node statistics including:
+   * - Encoding job count
+   * - Completed job count
+   * - Total savings
+   * - CPU usage (from latest heartbeat)
+   * - Estimated time remaining
+   *
+   * @returns Array of node status objects
+   */
+  async getNodeStatus(): Promise<NodeStatusModel[]> {
+    this.logger.debug('Fetching node status with statistics');
+
+    // Get all nodes with their job counts
+    const nodes = await this.prisma.node.findMany({
+      include: {
+        _count: {
+          select: {
+            jobs: true,
+          },
+        },
+      },
+      orderBy: [
+        { role: 'asc' }, // MAIN first
+        { name: 'asc' },
+      ],
+    });
+
+    // Get encoding job counts per node
+    const encodingCounts = await this.prisma.job.groupBy({
+      by: ['nodeId'],
+      where: {
+        stage: JobStage.ENCODING,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Get completed job counts and savings per node
+    const completedStats = await this.prisma.job.groupBy({
+      by: ['nodeId'],
+      where: {
+        stage: JobStage.COMPLETED,
+      },
+      _count: {
+        id: true,
+      },
+      _sum: {
+        savedBytes: true,
+      },
+    });
+
+    // Get failed job counts per node
+    const failedCounts = await this.prisma.job.groupBy({
+      by: ['nodeId'],
+      where: {
+        stage: JobStage.FAILED,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Get queued jobs per node (for time estimation)
+    const queuedJobsByNode = await this.prisma.job.groupBy({
+      by: ['nodeId'],
+      where: {
+        stage: JobStage.QUEUED,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Calculate average encoding time per job (in seconds)
+    const completedJobs = await this.prisma.job.findMany({
+      where: {
+        stage: JobStage.COMPLETED,
+        startedAt: { not: null },
+        completedAt: { not: null },
+      },
+      select: {
+        startedAt: true,
+        completedAt: true,
+      },
+      take: 100, // Sample last 100 completed jobs
+      orderBy: {
+        completedAt: 'desc',
+      },
+    });
+
+    let avgEncodingTime = 0;
+    if (completedJobs.length > 0) {
+      const totalTime = completedJobs.reduce((sum, job) => {
+        if (job.startedAt && job.completedAt) {
+          return sum + (job.completedAt.getTime() - job.startedAt.getTime());
+        }
+        return sum;
+      }, 0);
+      avgEncodingTime = totalTime / completedJobs.length / 1000; // Convert to seconds
+    }
+
+    // Get system CPU usage for MAIN node
+    const systemCpuUsage = this.calculateCpuUsage();
+
+    // Map nodes to response format
+    return nodes.map((node) => {
+      const encodingCount = encodingCounts.find((c) => c.nodeId === node.id)?._count.id || 0;
+      const completedStat = completedStats.find((s) => s.nodeId === node.id);
+      const completedCount = completedStat?._count.id || 0;
+      const failedCount = failedCounts.find((f) => f.nodeId === node.id)?._count.id || 0;
+      const totalSavedBytes = completedStat?._sum.savedBytes || BigInt(0);
+
+      // Calculate success rate (show 0% if no jobs completed yet)
+      const totalJobs = completedCount + failedCount;
+      const successRate =
+        totalJobs > 0 ? Number(((completedCount / totalJobs) * 100).toFixed(1)) : 0;
+
+      // Calculate total queue time for this specific node
+      const queuedForNode = queuedJobsByNode.find((q) => q.nodeId === node.id)?._count.id || 0;
+      const totalQueueTime =
+        queuedForNode > 0 && avgEncodingTime > 0
+          ? Math.ceil(queuedForNode * avgEncodingTime)
+          : null;
+
+      return {
+        id: node.id,
+        name: node.name,
+        role: node.role,
+        status: node.status,
+        acceleration: node.acceleration,
+        cpu_usage: node.role === 'MAIN' ? systemCpuUsage : null, // Use system CPU for MAIN node
+        encoding_count: encodingCount,
+        completed_count: completedCount,
+        failed_count: failedCount,
+        total_saved_bytes: Number(totalSavedBytes),
+        success_rate: successRate,
+        total_queue_time_seconds: totalQueueTime,
+        last_heartbeat: node.lastHeartbeat.toISOString(),
+      };
+    });
   }
 
   /**
