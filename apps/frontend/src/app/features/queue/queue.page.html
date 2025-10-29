@@ -647,8 +647,8 @@
             <div class="empty-actions">
               @if (selectedStatus === JobStatus.DETECTED || selectedStatus === JobStatus.HEALTH_CHECK || selectedStatus === JobStatus.VERIFYING) {
                 <!-- For transient statuses, just show one clean button -->
-                <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-primary">
-                  <i class="fas fa-list"></i>
+                <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-primary btn-large">
+                  <i class="fas fa-th-large"></i>
                   View All Jobs
                 </button>
               } @else {
@@ -659,7 +659,7 @@
                 </button>
                 @if (selectedStatus !== 'ALL') {
                   <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-primary">
-                    <i class="fas fa-list"></i>
+                    <i class="fas fa-th-large"></i>
                     View All Jobs
                   </button>
                 }
