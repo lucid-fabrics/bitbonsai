@@ -230,6 +230,9 @@
                 <th class="col-progress">Progress</th>
                 <th class="col-size">Size & Compression</th>
                 <th class="col-node">Node</th>
+                @if (selectedStatus === JobStatus.FAILED) {
+                  <th class="col-failed-at">Failed At</th>
+                }
                 <th class="col-actions">Actions</th>
               </tr>
             </thead>
@@ -372,6 +375,9 @@
                   }
                 </td>
                 <td class="col-node">{{ job.nodeName }}</td>
+                @if (selectedStatus === JobStatus.FAILED) {
+                  <td class="col-failed-at">{{ formatTimestamp(job.failedAt) }}</td>
+                }
                 <td class="col-actions">
                   <div class="action-buttons">
                     @if (job.status === 'ENCODING') {
