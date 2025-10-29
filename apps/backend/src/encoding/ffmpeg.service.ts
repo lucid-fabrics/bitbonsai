@@ -854,6 +854,64 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * Pause encoding job
+   *
+   * Sends SIGSTOP signal to pause the ffmpeg process.
+   *
+   * @param jobId - Job unique identifier
+   * @returns True if paused, false if job not found or not encoding
+   */
+  async pauseEncoding(jobId: string): Promise<boolean> {
+    const activeEncoding = this.activeEncodings.get(jobId);
+    if (!activeEncoding) {
+      this.logger.warn(`Cannot pause job ${jobId}: not currently encoding`);
+      return false;
+    }
+
+    this.logger.log(`Pausing encoding for job ${jobId}`);
+
+    try {
+      // Send SIGSTOP to pause the process
+      activeEncoding.process.kill('SIGSTOP');
+      this.logger.log(`Encoding paused for job ${jobId}`);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to pause job ${jobId}: ${errorMessage}`);
+      return false;
+    }
+  }
+
+  /**
+   * Resume encoding job
+   *
+   * Sends SIGCONT signal to resume the paused ffmpeg process.
+   *
+   * @param jobId - Job unique identifier
+   * @returns True if resumed, false if job not found or not encoding
+   */
+  async resumeEncoding(jobId: string): Promise<boolean> {
+    const activeEncoding = this.activeEncodings.get(jobId);
+    if (!activeEncoding) {
+      this.logger.warn(`Cannot resume job ${jobId}: not currently encoding`);
+      return false;
+    }
+
+    this.logger.log(`Resuming encoding for job ${jobId}`);
+
+    try {
+      // Send SIGCONT to resume the process
+      activeEncoding.process.kill('SIGCONT');
+      this.logger.log(`Encoding resumed for job ${jobId}`);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to resume job ${jobId}: ${errorMessage}`);
+      return false;
+    }
+  }
+
+  /**
    * Get last stderr output for a job
    *
    * Returns the last 2000 characters of ffmpeg stderr output for error reporting.
