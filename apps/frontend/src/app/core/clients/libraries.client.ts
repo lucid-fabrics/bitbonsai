@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { Observable } from 'rxjs';
+import { type Observable, timeout } from 'rxjs';
 import type {
   BulkJobCreationResult,
   CreateAllJobsDto,
@@ -89,8 +89,11 @@ export class LibrariesClient {
 
   /**
    * Create jobs for all files in library (simplified workflow)
+   * Note: Uses 10 minute timeout for large libraries
    */
   createAllJobs(id: string, dto: CreateAllJobsDto): Observable<BulkJobCreationResult> {
-    return this.http.post<BulkJobCreationResult>(`${this.apiUrl}/${id}/create-all-jobs`, dto);
+    return this.http
+      .post<BulkJobCreationResult>(`${this.apiUrl}/${id}/create-all-jobs`, dto)
+      .pipe(timeout(600000)); // 10 minutes = 600000ms
   }
 }
