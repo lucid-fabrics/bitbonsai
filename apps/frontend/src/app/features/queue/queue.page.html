@@ -23,6 +23,14 @@
           Cancel All Queued ({{ (queueData$ | async)!.stats!.queued }})
         </button>
       }
+      <button (click)="openClearJobsDialog(selectedStatus ? [selectedStatus] : undefined)" class="btn btn-warning">
+        <i class="fas fa-trash-alt"></i>
+        @if (selectedStatus) {
+          Clear {{ selectedStatus }} Jobs
+        } @else {
+          Clear All Jobs
+        }
+      </button>
     </div>
   </div>
 
@@ -914,6 +922,43 @@
         </button>
         <button (click)="confirmCancelAll()" class="btn btn-danger">
           Yes, Cancel All
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Clear Jobs Dialog -->
+@if (showClearJobsDialog) {
+  <div class="dialog-overlay" (click)="closeClearJobsDialog()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-trash-alt"></i> Clear Jobs</h3>
+        <button (click)="closeClearJobsDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (clearJobsStages.length > 0) {
+          <p>Are you sure you want to permanently delete all <strong>{{ clearJobsStages.join(', ') }}</strong> jobs?</p>
+        } @else {
+          <p>Are you sure you want to permanently delete <strong>ALL</strong> jobs?</p>
+        }
+        <p class="warning-text">
+          <i class="fas fa-exclamation-triangle"></i>
+          This action cannot be undone! Job records will be permanently removed from the database.
+        </p>
+        <p class="info-text">
+          <i class="fas fa-info-circle"></i>
+          Note: This will NOT delete your actual media files, only the job records.
+        </p>
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeClearJobsDialog()" class="btn btn-secondary">
+          No, Keep Jobs
+        </button>
+        <button (click)="confirmClearJobs()" class="btn btn-danger">
+          Yes, Delete Jobs
         </button>
       </div>
     </div>

@@ -63,6 +63,8 @@ export class QueueComponent implements OnInit {
   protected showCancelDialog = false;
   protected showCancelAllDialog = false;
   protected showRetryAllDialog = false;
+  protected showClearJobsDialog = false;
+  protected clearJobsStages: string[] = [];
   protected selectedJobId: string | null = null;
   protected showAddFilesModal = false;
   protected showErrorDetailsModal = false;
@@ -409,6 +411,34 @@ export class QueueComponent implements OnInit {
         error: () => {
           this.toastService.error('Failed to retry jobs');
           this.closeRetryAllDialog();
+        },
+      });
+  }
+
+  protected openClearJobsDialog(stages?: string[]): void {
+    this.clearJobsStages = stages || [];
+    this.showClearJobsDialog = true;
+  }
+
+  protected closeClearJobsDialog(): void {
+    this.showClearJobsDialog = false;
+    this.clearJobsStages = [];
+  }
+
+  protected confirmClearJobs(): void {
+    this.queueApi
+      .clearJobs(this.clearJobsStages.length > 0 ? this.clearJobsStages : undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const count = result.deleted;
+          this.toastService.success(count === 1 ? '1 job deleted' : `${count} jobs deleted`);
+          this.closeClearJobsDialog();
+          this.refreshQueue();
+        },
+        error: () => {
+          this.toastService.error('Failed to clear jobs');
+          this.closeClearJobsDialog();
         },
       });
   }
