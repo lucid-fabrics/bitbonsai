@@ -43,6 +43,7 @@ sync_files() {
     rsync -az \
         ./proxy.docker.conf.json \
         ./angular.json \
+        ./docker-compose.unraid.yml \
         $UNRAID_SSH:$DEPLOY_PATH/
 
     echo "✅ Synced at $(date '+%H:%M:%S')"

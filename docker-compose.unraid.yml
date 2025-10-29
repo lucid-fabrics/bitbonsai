@@ -14,7 +14,7 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=file:/data/bitbonsai.db
       - PORT=3000
-      - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr
+      - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr,/unraid-media
       - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
       - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
@@ -26,6 +26,8 @@ services:
       - ./prisma:/app/prisma:cached
       # Unraid Downloads directory - maps to your encoding pipeline
       - /mnt/user/Downloads:/media:cached
+      # Unraid Media directory - for existing media library
+      - /mnt/user/media:/unraid-media:cached
       # Database persistence
       - bitbonsai-data:/data
       # Preserve node_modules (don't mount from host)
