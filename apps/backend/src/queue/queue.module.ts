@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { EncodingModule } from '../encoding/encoding.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { BackupCleanupWorker } from './backup-cleanup.worker';
 import { HealthCheckWorker } from './health-check.worker';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
@@ -21,6 +22,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Auto-heals failed jobs on container restart via AutoHealingService.
  * Background retry scheduler retries eligible failed jobs every 5 minutes.
  * Monitors and recovers orphaned jobs via StuckJobRecoveryWorker (defense-in-depth).
+ * Cleans up orphaned .backup files via BackupCleanupWorker (LOW PRIORITY FIX #17).
  */
 @Module({
   imports: [forwardRef(() => EncodingModule), forwardRef(() => LibrariesModule)],
@@ -32,6 +34,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     AutoHealingService,
     RetrySchedulerService,
     StuckJobRecoveryWorker,
+    BackupCleanupWorker,
     PrismaService,
   ],
   exports: [QueueService],

@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AccelerationType, Job, Policy } from '@prisma/client';
 import { QueueService } from '../queue/queue.service';
@@ -64,7 +64,7 @@ export interface FfmpegProgress {
  * - CPU: Software encoding fallback
  */
 @Injectable()
-export class FfmpegService {
+export class FfmpegService implements OnModuleDestroy {
   private readonly logger = new Logger(FfmpegService.name);
   private readonly activeEncodings = new Map<string, ActiveEncoding>();
 
@@ -80,6 +80,7 @@ export class FfmpegService {
   /**
    * SECURITY: Whitelist of allowed FFmpeg flags
    * Prevents command injection by only allowing safe, predefined flags
+   * LOW PRIORITY FIX #18: Expanded whitelist for more encoding options
    */
   private readonly ALLOWED_FFMPEG_FLAGS = new Set([
     // Video encoding options
@@ -93,6 +94,13 @@ export class FfmpegService {
     '-g',
     '-keyint_min',
     '-sc_threshold',
+    '-tune', // LOW PRIORITY FIX #18: Tune for film/animation/grain
+    '-refs', // LOW PRIORITY FIX #18: Reference frames
+    '-rc_lookahead', // LOW PRIORITY FIX #18: Rate control lookahead
+    '-b:v', // LOW PRIORITY FIX #18: Video bitrate
+    '-minrate', // LOW PRIORITY FIX #18: Minimum bitrate
+    '-x265-params', // LOW PRIORITY FIX #18: x265 encoder params
+    '-x264-params', // LOW PRIORITY FIX #18: x264 encoder params
 
     // Audio encoding options
     '-c:a',
@@ -110,10 +118,14 @@ export class FfmpegService {
 
     // Subtitle options
     '-c:s',
+    '-scodec', // LOW PRIORITY FIX #18: Subtitle codec
 
     // Metadata options
     '-metadata',
     '-map_metadata',
+
+    // Mapping options
+    '-map', // LOW PRIORITY FIX #18: Stream mapping
 
     // Threading options
     '-threads',
@@ -122,12 +134,72 @@ export class FfmpegService {
     '-qmin',
     '-qmax',
     '-qdiff',
+    '-qcomp', // LOW PRIORITY FIX #18: Quantizer compression
   ]);
 
   constructor(
+    @Inject(forwardRef(() => QueueService))
     private readonly queueService: QueueService,
     private readonly eventEmitter: EventEmitter2
   ) {}
+
+  /**
+   * HIGH PRIORITY FIX: OnModuleDestroy lifecycle hook to kill all FFmpeg processes
+   * Prevents zombie FFmpeg processes when backend shuts down or restarts
+   */
+  async onModuleDestroy(): Promise<void> {
+    this.logger.log('FfmpegService shutting down - killing all active FFmpeg processes');
+
+    const activeJobIds = Array.from(this.activeEncodings.keys());
+
+    if (activeJobIds.length === 0) {
+      this.logger.log('No active FFmpeg processes to kill');
+      return;
+    }
+
+    this.logger.log(`Killing ${activeJobIds.length} active FFmpeg process(es)...`);
+
+    // Kill all active processes
+    const killPromises = activeJobIds.map(async (jobId) => {
+      const encoding = this.activeEncodings.get(jobId);
+      if (!encoding) return;
+
+      try {
+        // Use process group kill to ensure all child processes are terminated
+        if (encoding.process.pid) {
+          // Kill entire process group (negative PID)
+          process.kill(-encoding.process.pid, 'SIGTERM');
+          this.logger.log(
+            `Killed FFmpeg process group for job ${jobId} (PID: ${encoding.process.pid})`
+          );
+        }
+
+        // Give it 2 seconds to gracefully shutdown
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Force kill if still alive
+        if (!encoding.process.killed) {
+          if (encoding.process.pid) {
+            process.kill(-encoding.process.pid, 'SIGKILL');
+            this.logger.log(`Force killed FFmpeg process group for job ${jobId}`);
+          }
+        }
+      } catch (error) {
+        // ESRCH error means process already dead - that's fine
+        const err = error as NodeJS.ErrnoException;
+        if (err.code !== 'ESRCH') {
+          this.logger.warn(`Failed to kill FFmpeg for job ${jobId}: ${error}`);
+        }
+      }
+    });
+
+    await Promise.allSettled(killPromises);
+
+    // Clear all tracking maps
+    this.activeEncodings.clear();
+
+    this.logger.log('FFmpeg cleanup complete');
+  }
 
   /**
    * SECURITY: Validate and filter FFmpeg flags
@@ -468,17 +540,86 @@ export class FfmpegService {
   }
 
   /**
+   * ISSUE #11 FIX: Get video duration from FFprobe before encoding
+   *
+   * Uses ffprobe to extract the actual video duration for accurate progress calculation.
+   * Falls back to 3600 seconds if ffprobe fails or duration cannot be determined.
+   *
+   * @param filePath - Path to video file
+   * @returns Duration in seconds, or 3600 if unable to determine
+   * @private
+   */
+  private async getVideoDuration(filePath: string): Promise<number> {
+    return new Promise((resolve) => {
+      const ffprobe = spawn('ffprobe', [
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
+        filePath,
+      ]);
+
+      let output = '';
+
+      ffprobe.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      // AUDIT #2 ISSUE #26 FIX: Store timeout ID for cleanup to prevent orphaned timeouts
+      const timeoutId = setTimeout(() => {
+        ffprobe.kill();
+        this.logger.warn(`[${filePath}] FFprobe timeout, using fallback 3600s`);
+        resolve(3600);
+      }, 10000);
+
+      ffprobe.on('close', (code) => {
+        // AUDIT #2 ISSUE #26 FIX: Clear timeout on completion
+        clearTimeout(timeoutId);
+
+        if (code === 0 && output.trim()) {
+          try {
+            const duration = Number.parseFloat(output.trim());
+            if (!Number.isNaN(duration) && duration > 0) {
+              this.logger.debug(`[${filePath}] FFprobe detected duration: ${duration.toFixed(2)}s`);
+              resolve(duration);
+              return;
+            }
+          } catch {
+            // Fall through to default
+          }
+        }
+
+        // Fall back to default 3600s if ffprobe fails or returns invalid data
+        this.logger.warn(
+          `[${filePath}] Failed to get duration from ffprobe (code: ${code}), using fallback 3600s`
+        );
+        resolve(3600);
+      });
+
+      ffprobe.on('error', (err) => {
+        // AUDIT #2 ISSUE #26 FIX: Clear timeout on error
+        clearTimeout(timeoutId);
+        this.logger.warn(`[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`);
+        resolve(3600);
+      });
+    });
+  }
+
+  /**
    * Encode file using ffmpeg
    *
    * Process:
-   * 1. Detect hardware acceleration
-   * 2. Build ffmpeg command
-   * 3. Spawn ffmpeg process
-   * 4. Parse stderr for progress
-   * 5. Emit progress events
-   * 6. Update job entity
-   * 7. Handle completion/errors
-   * 8. Atomic file replacement
+   * 1. Get video duration from FFprobe (ISSUE #11 FIX)
+   * 2. Detect hardware acceleration
+   * 3. Build ffmpeg command
+   * 4. Spawn ffmpeg process
+   * 5. Parse stderr for progress
+   * 6. Emit progress events
+   * 7. Update job entity
+   * 8. Handle completion/errors
+   * 9. Atomic file replacement
    *
    * @param job - Job entity with full relations (policy, library)
    * @param policy - Policy entity with encoding settings
@@ -493,6 +634,12 @@ export class FfmpegService {
     if (!existsSync(job.filePath)) {
       throw new Error(`File not found: ${job.filePath}`);
     }
+
+    // ISSUE #11 FIX: Get actual video duration from FFprobe
+    const estimatedDurationSeconds = await this.getVideoDuration(job.filePath);
+    this.logger.log(
+      `[${job.id}] Using duration: ${estimatedDurationSeconds.toFixed(2)}s for progress calculation`
+    );
 
     // Detect hardware acceleration
     const hwaccel = await this.detectHardwareAcceleration();
@@ -522,11 +669,6 @@ export class FfmpegService {
       lastStderr: '',
     };
     this.activeEncodings.set(job.id, activeEncoding);
-
-    // Get video duration (assuming it's in the job metadata or policy)
-    // For now, we'll estimate based on file size and bitrate
-    // In a real implementation, this would come from ffprobe scan
-    const estimatedDurationSeconds = 3600; // Placeholder: 1 hour
 
     return new Promise((resolve, reject) => {
       let stderrBuffer = '';

@@ -16,6 +16,7 @@ services:
       - PORT=3000
       - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr
       - LOG_LEVEL=debug
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       # Source code with HMR
       - ./apps/backend:/app/apps/backend:cached

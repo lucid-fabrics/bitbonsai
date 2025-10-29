@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
+import { FfmpegService } from '../encoding/ffmpeg.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -23,6 +24,8 @@ import { PrismaService } from '../prisma/prisma.service';
 export class StuckJobRecoveryWorker implements OnModuleInit {
   private readonly logger = new Logger(StuckJobRecoveryWorker.name);
   private isRunning = false;
+  // AUDIT #2 ISSUE #25 FIX: Store loop promise for graceful shutdown
+  private loopPromise?: Promise<void>;
 
   // Configuration
   private readonly INTERVAL_MS = parseInt(
@@ -36,7 +39,10 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   private readonly ENCODING_TIMEOUT_MIN = parseInt(process.env.ENCODING_TIMEOUT_MIN || '60', 10);
   private readonly VERIFYING_TIMEOUT_MIN = parseInt(process.env.VERIFYING_TIMEOUT_MIN || '30', 10);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ffmpegService: FfmpegService
+  ) {}
 
   /**
    * Start the recovery worker when module initializes
@@ -55,7 +61,8 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     }
 
     this.isRunning = true;
-    this.runWorkerLoop();
+    // AUDIT #2 ISSUE #25 FIX: Store loop promise for graceful shutdown
+    this.loopPromise = this.runWorkerLoop();
   }
 
   /**
@@ -140,6 +147,17 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckEncoding) {
+        // Check if FFmpeg is actively processing this job
+        const hasActiveProcess = this.ffmpegService.hasActiveProcess(job.id);
+
+        if (hasActiveProcess) {
+          // Job has an active FFmpeg process, skip recovery (it's still being processed)
+          this.logger.debug(
+            `Skipping recovery for job ${job.id}: FFmpeg process is still active (progress: ${job.progress}%)`
+          );
+          continue;
+        }
+
         await this.prisma.job.update({
           where: { id: job.id },
           data: {
@@ -210,9 +228,16 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
   /**
    * Stop the worker (for cleanup)
+   * AUDIT #2 ISSUE #25 FIX: Made async to await loop completion
    */
-  stop(): void {
+  async stop(): Promise<void> {
     this.logger.log('Stopping StuckJobRecoveryWorker');
     this.isRunning = false;
+
+    // AUDIT #2 ISSUE #25 FIX: Wait for loop to actually exit
+    if (this.loopPromise) {
+      await this.loopPromise;
+      this.logger.log('StuckJobRecoveryWorker loop exited gracefully');
+    }
   }
 }

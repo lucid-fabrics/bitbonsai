@@ -29,6 +29,8 @@ export class HealthCheckWorker implements OnModuleInit {
   private readonly logger = new Logger(HealthCheckWorker.name);
   private isRunning = false;
   private currentlyChecking = new Set<string>(); // Track in-progress checks
+  // AUDIT #2 ISSUE #25 FIX: Store loop promise for graceful shutdown
+  private loopPromise?: Promise<void>;
 
   // Configuration (can be moved to Settings later)
   private readonly CONCURRENCY = parseInt(process.env.HEALTH_CHECK_CONCURRENCY || '10', 10);
@@ -58,7 +60,8 @@ export class HealthCheckWorker implements OnModuleInit {
     }
 
     this.isRunning = true;
-    this.runWorkerLoop();
+    // AUDIT #2 ISSUE #25 FIX: Store loop promise for graceful shutdown
+    this.loopPromise = this.runWorkerLoop();
   }
 
   /**
@@ -80,6 +83,8 @@ export class HealthCheckWorker implements OnModuleInit {
 
   /**
    * Process a batch of health checks with parallel execution
+   *
+   * HIGH PRIORITY FIX: Exclude recently started health checks from orphan detection
    */
   private async processHealthChecks(): Promise<void> {
     // Calculate how many slots are available
@@ -90,18 +95,45 @@ export class HealthCheckWorker implements OnModuleInit {
       return;
     }
 
+    // HIGH PRIORITY FIX: Exclude jobs that started health check in last 5 minutes
+    // This prevents false-positive orphan detection when health checks are just starting
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
     // Find jobs that need health checking
     // Include both DETECTED and HEALTH_CHECK stages:
     // - DETECTED: New jobs waiting for health check
     // - HEALTH_CHECK: Orphaned jobs stuck in this stage (safety net for recovery)
+    //   BUT: Exclude recently started checks (healthCheckStartedAt > 5min ago)
     const jobs = await this.prisma.job.findMany({
       where: {
-        stage: {
-          in: [JobStage.DETECTED, JobStage.HEALTH_CHECK],
-        },
-        id: {
-          notIn: Array.from(this.currentlyChecking),
-        },
+        AND: [
+          {
+            stage: {
+              in: [JobStage.DETECTED, JobStage.HEALTH_CHECK],
+            },
+          },
+          {
+            id: {
+              notIn: Array.from(this.currentlyChecking),
+            },
+          },
+          {
+            // HIGH PRIORITY FIX: Exclude recently started health checks
+            OR: [
+              {
+                stage: JobStage.DETECTED, // Always include DETECTED jobs
+              },
+              {
+                // For HEALTH_CHECK stage, only include if:
+                stage: JobStage.HEALTH_CHECK,
+                OR: [
+                  { healthCheckStartedAt: null }, // No start time (orphaned before fix)
+                  { healthCheckStartedAt: { lt: fiveMinutesAgo } }, // Started over 5min ago (truly stuck)
+                ],
+              },
+            ],
+          },
+        ],
       },
       take: availableSlots,
       orderBy: {
@@ -143,10 +175,12 @@ export class HealthCheckWorker implements OnModuleInit {
       }
 
       // Update stage to HEALTH_CHECK (visible in UI)
+      // HIGH PRIORITY FIX: Set healthCheckStartedAt timestamp to prevent false orphan detection
       await this.prisma.job.update({
         where: { id: jobId },
         data: {
           stage: JobStage.HEALTH_CHECK,
+          healthCheckStartedAt: new Date(), // HIGH PRIORITY FIX: Track when check started
         },
       });
 
@@ -181,7 +215,7 @@ export class HealthCheckWorker implements OnModuleInit {
         data: {
           stage: nextStage,
           healthStatus: healthResult.status,
-          healthScore: healthResult.score,
+          healthScore: Math.min(100, healthResult.score),
           healthMessage,
           healthCheckedAt: new Date(),
           error: errorMessage,
@@ -283,9 +317,16 @@ export class HealthCheckWorker implements OnModuleInit {
 
   /**
    * Stop the worker (for cleanup)
+   * AUDIT #2 ISSUE #25 FIX: Made async to await loop completion
    */
-  stop(): void {
+  async stop(): Promise<void> {
     this.logger.log('Stopping HealthCheckWorker');
     this.isRunning = false;
+
+    // AUDIT #2 ISSUE #25 FIX: Wait for loop to actually exit
+    if (this.loopPromise) {
+      await this.loopPromise;
+      this.logger.log('HealthCheckWorker loop exited gracefully');
+    }
   }
 }
