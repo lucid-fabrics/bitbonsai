@@ -164,7 +164,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
           stage: {
-            in: [JobStage.HEALTH_CHECK, JobStage.ENCODING, JobStage.VERIFYING],
+            in: [JobStage.HEALTH_CHECK, JobStage.ENCODING, JobStage.VERIFYING, JobStage.PAUSED],
           },
         },
         select: {
@@ -196,9 +196,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             newStage = JobStage.DETECTED;
             errorMessage = 'Health check interrupted by backend restart - will retry';
           } else {
-            // Reset ENCODING and VERIFYING jobs to QUEUED
+            // Reset ENCODING, VERIFYING, and PAUSED jobs to QUEUED
             newStage = JobStage.QUEUED;
-            errorMessage = 'Auto-recovered from backend restart';
+            errorMessage =
+              job.stage === JobStage.PAUSED
+                ? 'Paused job reset after backend restart'
+                : 'Auto-recovered from backend restart';
           }
 
           await this.prisma.job.update({

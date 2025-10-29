@@ -775,12 +775,31 @@ export class QueueService {
       throw new BadRequestException('Only paused jobs can be resumed');
     }
 
-    // Resume the FFmpeg process
+    // Try to resume the FFmpeg process
     const resumed = await this.ffmpegService.resumeEncoding(id);
+
     if (!resumed) {
-      throw new BadRequestException('Failed to resume encoding process');
+      // Process not found (likely backend restart) - reset to QUEUED to restart from beginning
+      this.logger.warn(
+        `FFmpeg process not found for job ${id} - resetting to QUEUED to restart encoding`
+      );
+
+      const job = await this.prisma.job.update({
+        where: { id },
+        data: {
+          stage: JobStage.QUEUED,
+          progress: 0,
+          etaSeconds: null,
+          startedAt: null,
+          error: 'Restarted from paused state (process was lost)',
+        },
+      });
+
+      this.logger.log(`Job reset to QUEUED: ${id}`);
+      return job;
     }
 
+    // Process resumed successfully
     const job = await this.prisma.job.update({
       where: { id },
       data: {
