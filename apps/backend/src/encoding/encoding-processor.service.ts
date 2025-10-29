@@ -156,18 +156,21 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * - This ensures clean recovery from any type of restart
    */
   private async autoHealOrphanedJobs(): Promise<void> {
-    this.logger.log('🏥 Auto-heal: Checking for orphaned encoding jobs...');
+    this.logger.log('🏥 Auto-heal: Checking for orphaned jobs in all active states...');
 
     try {
-      // On backend startup, ALL jobs in ENCODING state are orphaned
-      // since we have no active ffmpeg processes yet
+      // On backend startup, ALL jobs in active processing states are orphaned
+      // since we have no active workers/processes running yet
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
-          stage: 'ENCODING',
+          stage: {
+            in: ['HEALTH_CHECK', 'ENCODING', 'VERIFYING'],
+          },
         },
         select: {
           id: true,
           fileLabel: true,
+          stage: true,
           progress: true,
           updatedAt: true,
         },
@@ -179,24 +182,38 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.logger.warn(
-        `🔧 Found ${orphanedJobs.length} orphaned job(s) from backend restart - resetting to QUEUED`
+        `🔧 Found ${orphanedJobs.length} orphaned job(s) from backend restart - recovering...`
       );
 
-      // Reset each orphaned job back to QUEUED
+      // Reset each orphaned job based on its stage
       for (const job of orphanedJobs) {
         try {
+          let newStage: string;
+          let errorMessage: string;
+
+          if (job.stage === 'HEALTH_CHECK') {
+            // Reset health check jobs to DETECTED so they get health-checked again
+            newStage = 'DETECTED';
+            errorMessage = 'Health check interrupted by backend restart - will retry';
+          } else {
+            // Reset ENCODING and VERIFYING jobs to QUEUED
+            newStage = 'QUEUED';
+            errorMessage = 'Auto-recovered from backend restart';
+          }
+
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
-              stage: 'QUEUED',
+              stage: newStage,
               progress: 0,
               etaSeconds: null,
-              error: 'Auto-recovered from backend restart',
+              error: errorMessage,
+              startedAt: null, // Clear startedAt to allow fresh start
             },
           });
 
           this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (was ${job.progress}% complete)`
+            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → ${newStage}, was ${job.progress}% complete)`
           );
         } catch (error) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
