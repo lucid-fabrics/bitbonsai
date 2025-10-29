@@ -958,6 +958,34 @@ export class QueueService {
   }
 
   /**
+   * Clear all jobs or jobs matching specific statuses
+   * @param stages Optional array of job stages to delete (if not provided, deletes ALL jobs)
+   * @returns Number of jobs deleted
+   */
+  async clearJobs(stages?: JobStage[]): Promise<number> {
+    const where = stages && stages.length > 0 ? { stage: { in: stages } } : {};
+
+    const logMessage =
+      stages && stages.length > 0
+        ? `Clearing jobs with stages: ${stages.join(', ')}`
+        : 'Clearing ALL jobs';
+
+    this.logger.warn(logMessage);
+
+    try {
+      const result = await this.prisma.job.deleteMany({
+        where,
+      });
+
+      this.logger.warn(`Deleted ${result.count} job(s)`);
+      return result.count;
+    } catch (error) {
+      this.logger.error('Failed to clear jobs', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get job statistics
    *
    * @param nodeId - Optional node ID to filter statistics
