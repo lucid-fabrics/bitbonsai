@@ -645,15 +645,24 @@
               }
             </div>
             <div class="empty-actions">
-              <button (click)="selectedStatus = 'ALL'; selectedNodeId = ''; searchQuery = ''; updateQueryParams(); refreshQueue(true)" class="btn btn-secondary">
-                <i class="fas fa-times-circle"></i>
-                Clear All Filters
-              </button>
-              @if (selectedStatus !== 'ALL') {
-                <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-ghost">
+              @if (selectedStatus === JobStatus.DETECTED || selectedStatus === JobStatus.HEALTH_CHECK || selectedStatus === JobStatus.VERIFYING) {
+                <!-- For transient statuses, just show one clean button -->
+                <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-primary">
                   <i class="fas fa-list"></i>
                   View All Jobs
                 </button>
+              } @else {
+                <!-- For other filters, show clear + view all -->
+                <button (click)="selectedStatus = 'ALL'; selectedNodeId = ''; searchQuery = ''; updateQueryParams(); refreshQueue(true)" class="btn btn-secondary">
+                  <i class="fas fa-times-circle"></i>
+                  Clear All Filters
+                </button>
+                @if (selectedStatus !== 'ALL') {
+                  <button (click)="selectedStatus = 'ALL'; updateQueryParams(); refreshQueue(true)" class="btn btn-primary">
+                    <i class="fas fa-list"></i>
+                    View All Jobs
+                  </button>
+                }
               }
             </div>
           </div>
