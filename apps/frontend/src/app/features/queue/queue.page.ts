@@ -85,15 +85,12 @@ export class QueueComponent implements OnInit {
   protected selectedNodeId = '';
   protected searchQuery = '';
 
-  // Available statuses for filter
+  // Available statuses for filter (exclude transient statuses that jobs pass through quickly)
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
     'ALL',
-    JobStatus.DETECTED,
-    JobStatus.HEALTH_CHECK,
     JobStatus.QUEUED,
     JobStatus.ENCODING,
     JobStatus.PAUSED,
-    JobStatus.VERIFYING,
     JobStatus.COMPLETED,
     JobStatus.FAILED,
     JobStatus.CANCELLED,
@@ -432,6 +429,24 @@ export class QueueComponent implements OnInit {
       default:
         return 'fa-question-circle';
     }
+  }
+
+  protected getStatusLabel(status: JobStatus | 'ALL'): string {
+    if (status === 'ALL') return 'All Jobs';
+
+    const labels: Record<JobStatus, string> = {
+      [JobStatus.DETECTED]: 'Detected',
+      [JobStatus.HEALTH_CHECK]: 'Health Check',
+      [JobStatus.QUEUED]: 'Queued',
+      [JobStatus.ENCODING]: 'Encoding',
+      [JobStatus.PAUSED]: 'Paused',
+      [JobStatus.VERIFYING]: 'Verifying',
+      [JobStatus.COMPLETED]: 'Completed',
+      [JobStatus.FAILED]: 'Failed',
+      [JobStatus.CANCELLED]: 'Cancelled',
+    };
+
+    return labels[status] || status;
   }
 
   protected getStatusExplanation(status: JobStatus): string {
