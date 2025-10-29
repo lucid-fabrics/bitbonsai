@@ -201,6 +201,23 @@
         </select>
       </div>
 
+      @if (availableLibraries$ | async; as availableLibraries) {
+        <div class="filter-group">
+          <label for="library-filter">Library:</label>
+          <select
+            id="library-filter"
+            [value]="selectedLibraryId"
+            (change)="onLibraryFilterChange($any($event.target).value)"
+            class="filter-select"
+          >
+            <option value="">All Libraries</option>
+            @for (library of availableLibraries | keyvalue; track library.key) {
+              <option [value]="library.key">{{ library.value.name }} ({{ library.value.nodeName }})</option>
+            }
+          </select>
+        </div>
+      }
+
       <div class="filter-group search-group">
         <label for="search-input">Search:</label>
         <input
@@ -616,7 +633,7 @@
       </div>
       } @else {
         <!-- Filter-aware empty states -->
-        @if (selectedStatus !== 'ALL' || selectedNodeId || searchQuery) {
+        @if (selectedStatus !== 'ALL' || selectedNodeId || selectedLibraryId || searchQuery) {
           <!-- Filtered but no results -->
           <div class="empty-state filtered">
             <div class="empty-icon">
@@ -646,6 +663,8 @@
                 No jobs match your search query "{{ searchQuery }}". Try a different search term.
               } @else if (selectedNodeId) {
                 No jobs are assigned to the selected node. Try selecting a different node or "All Nodes".
+              } @else if (selectedLibraryId) {
+                No jobs are assigned to the selected library. Try selecting a different library or "All Libraries".
               } @else {
                 No jobs match your current filters. Try adjusting your filters or clearing them.
               }
@@ -663,6 +682,12 @@
                   Node: {{ (availableNodes$ | async)?.get(selectedNodeId) || 'Unknown' }}
                 </span>
               }
+              @if (selectedLibraryId && (availableLibraries$ | async); as availableLibraries) {
+                <span class="filter-chip">
+                  <i class="fas fa-folder"></i>
+                  Library: {{ availableLibraries.get(selectedLibraryId)?.name || 'Unknown' }}
+                </span>
+              }
               @if (searchQuery) {
                 <span class="filter-chip">
                   <i class="fas fa-search"></i>
@@ -671,7 +696,7 @@
               }
             </div>
             <div class="empty-actions">
-              <button (click)="selectedStatus = 'ALL'; selectedNodeId = ''; searchQuery = ''; updateQueryParams(); refreshQueue(true)" class="btn btn-secondary">
+              <button (click)="selectedStatus = 'ALL'; selectedNodeId = ''; selectedLibraryId = ''; searchQuery = ''; updateQueryParams(); refreshQueue(true)" class="btn btn-secondary">
                 <i class="fas fa-times-circle"></i>
                 Clear All Filters
               </button>
