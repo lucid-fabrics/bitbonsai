@@ -21,6 +21,7 @@ export interface QueueJob {
   updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
+  failedAt?: string;
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
