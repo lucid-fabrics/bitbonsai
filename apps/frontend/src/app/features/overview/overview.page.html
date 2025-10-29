@@ -21,9 +21,8 @@
   }
 
   <!-- Main Dashboard Content -->
-  @if (hasData$ | async) {
-    @if (overviewData$ | async; as overviewData) {
-      <div class="dashboard-grid">
+  @if (overviewData$ | async; as overviewData) {
+    <div class="dashboard-grid">
         <!-- System Health Cards (Top Row) -->
         <section class="system-health">
           <div class="health-card health-card--success">
@@ -461,5 +460,4 @@
         </section>
       </div>
     }
-  }
 </div>
