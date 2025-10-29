@@ -117,7 +117,7 @@ export class QueueComponent implements OnInit {
             // Client-side filter: when ENCODING is selected, show both ENCODING and PAUSED
             if (data && this.selectedStatus === JobStatus.ENCODING) {
               const filteredJobs = data.jobs.filter(
-                (job) => job.stage === JobStatus.ENCODING || job.stage === JobStatus.PAUSED
+                (job) => job.status === JobStatus.ENCODING || job.status === JobStatus.PAUSED
               );
               return { ...data, jobs: filteredJobs };
             }
