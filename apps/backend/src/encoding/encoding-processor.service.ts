@@ -147,13 +147,19 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Auto-heal orphaned jobs that were left in ENCODING state
+   * Auto-heal orphaned jobs that were left in active states
    * from backend crashes, reboots, or container restarts
    *
    * Strategy:
-   * - On startup, ALL jobs in ENCODING state are orphaned (no active ffmpeg processes)
-   * - Reset them to QUEUED so they can be retried
+   * - On startup, ALL jobs in active processing states are orphaned (no active processes)
+   * - Reset them ALL to QUEUED so they can be retried immediately
+   * - Files that passed HEALTH_CHECK once don't need re-validation after restart
    * - This ensures clean recovery from any type of restart
+   *
+   * CRITICAL FIX: Reset ALL orphaned jobs to QUEUED (not DETECTED)
+   * - HEALTH_CHECK jobs already passed validation, no need to re-validate
+   * - ENCODING, VERIFYING, PAUSED jobs obviously need to restart
+   * - getNextJob() only fetches QUEUED jobs, so DETECTED jobs would be stuck
    */
   private async autoHealOrphanedJobs(): Promise<void> {
     this.logger.log('🏥 Auto-heal: Checking for orphaned jobs in all active states...');
@@ -185,29 +191,19 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         `🔧 Found ${orphanedJobs.length} orphaned job(s) from backend restart - recovering...`
       );
 
-      // Reset each orphaned job based on its stage
+      // Reset each orphaned job to QUEUED
+      // CRITICAL FIX: ALL jobs go to QUEUED (not DETECTED) to resume immediately
       for (const job of orphanedJobs) {
         try {
-          let newStage: JobStage;
-          let errorMessage: string;
-
-          if (job.stage === JobStage.HEALTH_CHECK) {
-            // Reset health check jobs to DETECTED so they get health-checked again
-            newStage = JobStage.DETECTED;
-            errorMessage = 'Health check interrupted by backend restart - will retry';
-          } else {
-            // Reset ENCODING, VERIFYING, and PAUSED jobs to QUEUED
-            newStage = JobStage.QUEUED;
-            errorMessage =
-              job.stage === JobStage.PAUSED
-                ? 'Paused job reset after backend restart'
-                : 'Auto-recovered from backend restart';
-          }
+          const errorMessage =
+            job.stage === JobStage.PAUSED
+              ? 'Paused job reset after backend restart'
+              : `Auto-recovered from backend restart (was ${job.stage})`;
 
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
-              stage: newStage,
+              stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
               progress: 0,
               etaSeconds: null,
               error: errorMessage,
@@ -216,7 +212,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           });
 
           this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → ${newStage}, was ${job.progress}% complete)`
+            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, was ${job.progress}% complete)`
           );
         } catch (error) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
