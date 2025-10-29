@@ -8,7 +8,8 @@ export interface QueueJobApiModel {
   fileLabel?: string;
   fileName?: string;
   filePath: string;
-  library?: { name: string };
+  library?: { id: string; name: string };
+  libraryId?: string;
   libraryName?: string;
   policy?: { name: string };
   policyName?: string;
@@ -25,7 +26,8 @@ export interface QueueJobApiModel {
   currentSize?: number;
   savedSize?: number;
   savedPercentage?: number;
-  node?: { name: string };
+  node?: { id: string; name: string };
+  nodeId?: string;
   nodeName?: string;
   createdAt: string;
   updatedAt?: string;

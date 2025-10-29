@@ -18,6 +18,7 @@ export class QueueClient {
     const params: Record<string, string> = {};
     if (filters?.status) params.stage = filters.status; // Backend expects 'stage' not 'status'
     if (filters?.nodeId) params.nodeId = filters.nodeId;
+    if (filters?.libraryId) params.libraryId = filters.libraryId;
     if (filters?.search) params.search = filters.search;
 
     return combineLatest([

@@ -5,7 +5,7 @@ export interface QueueJob {
   id: string;
   fileName: string;
   filePath: string;
-  libraryId?: string; // Optional: only for ready files
+  libraryId: string;
   libraryName: string;
   policyName: string;
   status: JobStatus;
