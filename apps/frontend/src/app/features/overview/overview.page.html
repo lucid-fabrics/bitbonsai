@@ -13,7 +13,7 @@
   }
 
   <!-- Error State -->
-  @if ((error$ | async) && !(isLoading$ | async)) {
+  @if ((error$ | async) && !(hasData$ | async)) {
     <div class="error-state">
       <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
       <p>{{ error$ | async }}</p>
@@ -21,7 +21,7 @@
   }
 
   <!-- Main Dashboard Content -->
-  @if ((hasData$ | async) && !(isLoading$ | async)) {
+  @if (hasData$ | async) {
     @if (overviewData$ | async; as overviewData) {
       <div class="dashboard-grid">
         <!-- System Health Cards (Top Row) -->
