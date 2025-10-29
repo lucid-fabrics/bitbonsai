@@ -24,6 +24,7 @@ services:
       - ./apps/backend:/app/apps/backend:cached
       - ./libs:/app/libs:cached
       - ./prisma:/app/prisma:cached
+      - ./scripts:/app/scripts:cached
       # Unraid Downloads directory - maps to your encoding pipeline
       - /mnt/user/Downloads:/media:cached
       # Unraid Media directory - for existing media library
@@ -32,7 +33,8 @@ services:
       - bitbonsai-data:/data
       # Preserve node_modules (don't mount from host)
       - /app/node_modules
-    command: npx nx serve backend --host 0.0.0.0
+    # Use startup script from Dockerfile that auto-regenerates Prisma
+    # command: /app/scripts/backend-startup.sh  # Inherited from Dockerfile
     restart: unless-stopped
     networks:
       - bitbonsai-network
