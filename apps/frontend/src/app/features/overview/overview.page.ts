@@ -23,6 +23,7 @@ import {
   faTv,
 } from '@fortawesome/pro-solid-svg-icons';
 import { Store } from '@ngrx/store';
+import { distinctUntilChanged } from 'rxjs';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { OverviewActions } from './+state/overview.actions';
 import {
@@ -50,7 +51,10 @@ export class OverviewComponent implements OnInit, OnDestroy {
   private readonly elementRef = inject(ElementRef);
 
   // Observables from NgRx store
-  readonly overviewData$ = this.store.select(selectOverviewData);
+  // Use distinctUntilChanged with deep comparison to prevent flashing when data values are identical
+  readonly overviewData$ = this.store
+    .select(selectOverviewData)
+    .pipe(distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)));
   readonly environmentInfo$ = this.store.select(selectEnvironmentInfo);
   readonly nodes$ = this.store.select(selectNodes);
   readonly isLoading$ = this.store.select(selectIsLoading);
