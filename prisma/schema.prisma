@@ -305,6 +305,7 @@ model Job {
   savedPercent    Float? // Percentage saved
   startedAt       DateTime?
   completedAt     DateTime?
+  failedAt        DateTime? // When job failed (for FAILED status)
   error           String? // Error message if failed
   isBlacklisted   Boolean           @default(false) // User marked this file to never encode automatically
   retryCount      Int               @default(0) // Number of encoding retry attempts (max 3)
