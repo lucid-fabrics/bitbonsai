@@ -542,6 +542,7 @@ export class QueueService {
       data: {
         stage: JobStage.FAILED,
         completedAt: new Date(),
+        failedAt: new Date(),
         error,
       },
     });
