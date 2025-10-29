@@ -9,6 +9,7 @@ export class QueueJobBo {
   id: string;
   fileName: string;
   filePath: string;
+  libraryId: string;
   libraryName: string;
   policyName: string;
   status: JobStatus;
@@ -35,6 +36,7 @@ export class QueueJobBo {
     this.id = model.id;
     this.fileName = this.extractFileName(model);
     this.filePath = model.filePath;
+    this.libraryId = this.extractLibraryId(model);
     this.libraryName = this.extractLibraryName(model);
     this.policyName = this.extractPolicyName(model);
     this.status = this.extractStatus(model);
@@ -60,6 +62,10 @@ export class QueueJobBo {
 
   private extractFileName(model: QueueJobApiModel): string {
     return model.fileLabel || model.fileName || '';
+  }
+
+  private extractLibraryId(model: QueueJobApiModel): string {
+    return model.library?.id || model.libraryId || '';
   }
 
   private extractLibraryName(model: QueueJobApiModel): string {
