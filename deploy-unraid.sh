@@ -37,6 +37,7 @@ rsync -az \
     ./proxy.docker.conf.json \
     ./angular.json \
     ./docker-compose.unraid.yml \
+    ./Dockerfile.dev \
     $UNRAID_SSH:$DEPLOY_PATH/
 
 echo "✅ Code and configuration synced"
