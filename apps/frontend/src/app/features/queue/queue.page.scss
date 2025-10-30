@@ -882,6 +882,128 @@
       border-color: $success;
     }
   }
+
+  // Priority button states
+  &.priority-btn {
+    position: relative;
+
+    &.priority-0 {
+      // Normal priority - default gray
+    }
+
+    &.priority-1 {
+      background: rgba(251, 146, 60, 0.15);
+      color: #fb923c;
+      border-color: rgba(251, 146, 60, 0.4);
+
+      &:hover {
+        background: rgba(251, 146, 60, 0.25);
+        border-color: #fb923c;
+      }
+    }
+
+    &.priority-2 {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.4);
+      animation: priority-pulse 2s infinite;
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: #ef4444;
+      }
+    }
+  }
+}
+
+// Priority dropdown
+.priority-dropdown {
+  position: relative;
+  display: inline-block;
+
+  &:hover .priority-menu {
+    display: block;
+  }
+}
+
+.priority-menu {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 140px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  .priority-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: $text-primary;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: $transition-fast;
+
+    i {
+      width: 16px;
+      text-align: center;
+    }
+
+    &:hover {
+      background: $bg-secondary;
+    }
+
+    &.active {
+      background: $bg-secondary;
+      border-color: $border-primary;
+    }
+
+    &.priority-0 {
+      // Normal - default
+    }
+
+    &.priority-1 {
+      color: #fb923c;
+
+      &:hover,
+      &.active {
+        background: rgba(251, 146, 60, 0.15);
+        border-color: rgba(251, 146, 60, 0.4);
+      }
+    }
+
+    &.priority-2 {
+      color: #ef4444;
+
+      &:hover,
+      &.active {
+        background: rgba(239, 68, 68, 0.15);
+        border-color: rgba(239, 68, 68, 0.4);
+      }
+    }
+  }
+}
+
+// Priority pulse animation
+@keyframes priority-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.6);
+  }
 }
 
 // Ready Actions

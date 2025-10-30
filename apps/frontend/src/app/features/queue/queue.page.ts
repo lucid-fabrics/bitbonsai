@@ -349,6 +349,24 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected setPriority(jobId: string, priority: number, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .updateJobPriority(jobId, priority)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          const priorityNames = ['Normal', 'High', 'Top Priority'];
+          this.toastService.success(`Priority set to ${priorityNames[priority]}`);
+          this.refreshQueue();
+        },
+        error: (err) => {
+          const errorMessage = err?.error?.message || 'Failed to update priority';
+          this.toastService.error(errorMessage);
+        },
+      });
+  }
+
   protected pauseJob(jobId: string, event: Event): void {
     event.stopPropagation();
     this.queueApi
