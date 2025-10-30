@@ -9,6 +9,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { CpuCapacityPanelComponent } from './components/cpu-capacity-panel/cpu-capacity-panel.component';
 import type { EnvironmentInfo } from './models/environment-info.model';
 import type { ActivateLicense, License } from './models/license.model';
 import { LicenseTier } from './models/license.model';
@@ -21,7 +22,7 @@ import { SettingsService } from './services/settings.service';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, CpuCapacityPanelComponent],
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
 })
