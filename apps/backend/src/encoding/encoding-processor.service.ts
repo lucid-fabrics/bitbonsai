@@ -268,7 +268,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           progress: true,
           updatedAt: true,
           tempFilePath: true, // TRUE RESUME: needed to check if temp file exists
-          startedFromSeconds: true, // TRUE RESUME: needed to preserve resume position
         },
       });
 
