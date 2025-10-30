@@ -320,6 +320,10 @@ model Job {
   healthCheckStartedAt DateTime? // HIGH PRIORITY FIX: When health check started (prevents orphan detection)
   healthCheckRetries   Int              @default(0) // Number of health check retry attempts
 
+  // Priority Fields
+  priority      Int       @default(0) // 0=normal, 1=high, 2=top (max 3 top priority at once)
+  prioritySetAt DateTime? // When priority was last changed (for tracking)
+
   // Relations
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
@@ -346,6 +350,8 @@ model Job {
   @@index([healthStatus]) // For filtering by health status
   @@index([healthScore]) // For prioritization (healthy files first)
   @@index([stage, healthScore]) // Composite for smart queue ordering
+  @@index([priority]) // For priority-based queue ordering
+  @@index([stage, priority, createdAt]) // Composite for efficient queue queries (ORDER BY priority DESC, createdAt ASC)
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs

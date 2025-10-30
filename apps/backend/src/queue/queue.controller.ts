@@ -28,6 +28,7 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
 import { JobStatsDto } from './dto/job-stats.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
+import { UpdatePriorityDto } from './dto/update-priority.dto';
 import { QueueService } from './queue.service';
 
 @ApiTags('queue')
@@ -575,6 +576,54 @@ export class QueueController {
   })
   async forceStart(@Param('id') id: string): Promise<Job> {
     return this.queueService.forceStartJob(id);
+  }
+
+  /**
+   * Update job priority
+   */
+  @Patch(':id/priority')
+  @ApiOperation({
+    summary: 'Update job priority',
+    description:
+      'Updates the priority level of a job for queue ordering.\n\n' +
+      '**Priority Levels**:\n' +
+      '- **0 = Normal** (default) - Standard FIFO queue order\n' +
+      '- **1 = High** - Processed before normal priority jobs\n' +
+      '- **2 = Top Priority** - Processed first (max 3 at once)\n\n' +
+      '**Behavior**:\n' +
+      '1. Queue ordering: ORDER BY priority DESC, healthScore DESC, createdAt ASC\n' +
+      '2. Max 3 top priority jobs enforced (returns 400 if exceeded)\n' +
+      '3. Priority auto-resets to 0 on completion/failure\n' +
+      '4. Live renice for actively encoding jobs (best-effort)\n\n' +
+      '**Process Priority**:\n' +
+      '- Top (2): nice -n -10 (higher CPU priority)\n' +
+      '- High (1): nice -n -5\n' +
+      '- Normal (0): nice -n 0\n\n' +
+      '**Use Case**: Prioritize important encoding jobs without canceling others',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job priority updated successfully',
+    type: UpdatePriorityDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid priority level or max 3 top priority jobs exceeded',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while updating priority',
+  })
+  async updatePriority(
+    @Param('id') id: string,
+    @Body() updatePriorityDto: UpdatePriorityDto
+  ): Promise<Job> {
+    return this.queueService.updateJobPriority(id, updatePriorityDto.priority);
   }
 
   /**

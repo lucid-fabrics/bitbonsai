@@ -609,13 +609,78 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * Get nice value for priority level
+   *
+   * @param priority - Job priority (0=normal, 1=high, 2=top)
+   * @returns Nice value for spawn (negative = higher priority)
+   */
+  private getNiceValue(priority: number): number {
+    switch (priority) {
+      case 2: // Top priority
+        return -10;
+      case 1: // High priority
+        return -5;
+      case 0: // Normal priority
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Renice an active FFmpeg process
+   *
+   * Changes CPU priority of a running encoding job.
+   * Uses renice command on Unix/Linux/macOS.
+   *
+   * @param jobId - Job unique identifier
+   * @param priority - New priority level (0=normal, 1=high, 2=top)
+   * @returns True if successfully reniced, false if no active process
+   * @throws Error if renice command fails
+   */
+  async reniceProcess(jobId: string, priority: number): Promise<boolean> {
+    const activeEncoding = this.activeEncodings.get(jobId);
+    if (!activeEncoding || !activeEncoding.process.pid) {
+      this.logger.warn(`Cannot renice job ${jobId}: no active FFmpeg process`);
+      return false;
+    }
+
+    const niceValue = this.getNiceValue(priority);
+    const pid = activeEncoding.process.pid;
+
+    this.logger.log(`Renicing FFmpeg process ${pid} (job ${jobId}) to nice ${niceValue}`);
+
+    return new Promise((resolve, reject) => {
+      // Use renice command to change priority of running process
+      const renice = spawn('renice', ['-n', niceValue.toString(), '-p', pid.toString()]);
+
+      renice.on('close', (code) => {
+        if (code === 0) {
+          this.logger.log(
+            `Successfully reniced FFmpeg process ${pid} (job ${jobId}) to nice ${niceValue}`
+          );
+          resolve(true);
+        } else {
+          const error = `renice command failed with exit code ${code}`;
+          this.logger.error(error);
+          reject(new Error(error));
+        }
+      });
+
+      renice.on('error', (err) => {
+        this.logger.error(`Failed to execute renice: ${err.message}`);
+        reject(err);
+      });
+    });
+  }
+
+  /**
    * Encode file using ffmpeg
    *
    * Process:
    * 1. Get video duration from FFprobe (ISSUE #11 FIX)
    * 2. Detect hardware acceleration
    * 3. Build ffmpeg command
-   * 4. Spawn ffmpeg process
+   * 4. Spawn ffmpeg process with nice (priority-based CPU scheduling)
    * 5. Parse stderr for progress
    * 6. Emit progress events
    * 7. Update job entity
@@ -652,10 +717,24 @@ export class FfmpegService implements OnModuleDestroy {
     // Build ffmpeg command
     const args = this.buildFfmpegCommand(job, policy, hwaccel, tempOutput);
 
-    // Spawn ffmpeg process
-    const ffmpegProcess = spawn('ffmpeg', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Get nice value based on job priority
+    const niceValue = this.getNiceValue((job as any).priority ?? 0);
+
+    // Spawn ffmpeg process with nice for CPU priority
+    // If priority is non-zero, wrap ffmpeg in nice command
+    let ffmpegProcess: ChildProcess;
+    if (niceValue !== 0) {
+      this.logger.log(
+        `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${(job as any).priority ?? 0})`
+      );
+      ffmpegProcess = spawn('nice', ['-n', niceValue.toString(), 'ffmpeg', ...args], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } else {
+      ffmpegProcess = spawn('ffmpeg', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    }
 
     this.logger.debug(
       `[${job.id}] FFmpeg process spawned (PID: ${ffmpegProcess.pid}), attaching stderr listener...`

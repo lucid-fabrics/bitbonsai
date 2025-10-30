@@ -76,4 +76,8 @@ export class QueueClient {
     const options = stages && stages.length > 0 ? { params: { stages: stages.join(',') } } : {};
     return this.http.post<{ deleted: number }>(`${this.apiUrl}/clear`, {}, options);
   }
+
+  updateJobPriority(jobId: string, priority: number): Observable<QueueJobApiModel> {
+    return this.http.patch<QueueJobApiModel>(`${this.apiUrl}/${jobId}/priority`, { priority });
+  }
 }

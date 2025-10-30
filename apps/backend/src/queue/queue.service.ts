@@ -386,7 +386,7 @@ export class QueueService {
     // Use transaction + updateMany + count check to ensure only ONE worker claims a job
     // This prevents race conditions where multiple workers grab the same job
     const claimedJob = await this.prisma.$transaction(async (tx) => {
-      // Find next queued job (prioritize healthy files)
+      // Find next queued job (prioritize by: priority DESC, healthScore DESC, createdAt ASC)
       // Exclude jobs with future nextRetryAt (exponential backoff)
       const job = await tx.job.findFirst({
         where: {
@@ -398,8 +398,9 @@ export class QueueService {
           ],
         },
         orderBy: [
-          { healthScore: 'desc' }, // Healthy files first (90-100 score)
-          { createdAt: 'asc' }, // Then FIFO within same health tier
+          { priority: 'desc' }, // Top priority (2) first, then high (1), then normal (0)
+          { healthScore: 'desc' }, // Healthy files first (90-100 score) within same priority
+          { createdAt: 'asc' }, // Then FIFO within same priority+health tier
         ],
       });
 
@@ -518,6 +519,8 @@ export class QueueService {
         savedBytes: BigInt(completeJobDto.savedBytes),
         savedPercent: completeJobDto.savedPercent,
         completedAt: new Date(),
+        priority: 0, // Auto-reset priority to normal on completion
+        prioritySetAt: null, // Clear priority timestamp
       },
       include: {
         node: {
@@ -553,6 +556,8 @@ export class QueueService {
         completedAt: new Date(),
         failedAt: new Date(),
         error,
+        priority: 0, // Auto-reset priority to normal on failure
+        prioritySetAt: null, // Clear priority timestamp
       },
     });
 
@@ -1088,6 +1093,83 @@ export class QueueService {
       totalSavedBytes: (totalSaved._sum.savedBytes || BigInt(0)).toString(),
       nodeId,
     };
+  }
+
+  /**
+   * Update job priority
+   *
+   * This method:
+   * 1. Validates priority level (0-2)
+   * 2. Enforces max 3 top priority (2) jobs limit
+   * 3. Updates job priority and timestamp
+   * 4. Supports live priority changes for running jobs (renice via FFmpeg service)
+   *
+   * @param id - Job unique identifier
+   * @param priority - New priority level (0=normal, 1=high, 2=top)
+   * @returns Updated job
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if priority validation fails
+   */
+  async updateJobPriority(id: string, priority: number): Promise<Job> {
+    this.logger.log(`Updating priority for job ${id} to ${priority}`);
+
+    // Validate job exists
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    // Validate priority is 0-2
+    if (priority < 0 || priority > 2) {
+      throw new BadRequestException('Priority must be between 0 and 2');
+    }
+
+    // If setting to top priority (2), enforce max 3 limit
+    if (priority === 2) {
+      const topPriorityCount = await this.prisma.job.count({
+        where: {
+          priority: 2,
+          stage: {
+            in: [JobStage.DETECTED, JobStage.HEALTH_CHECK, JobStage.QUEUED, JobStage.ENCODING],
+          },
+          id: { not: id }, // Exclude current job from count
+        },
+      });
+
+      if (topPriorityCount >= 3) {
+        throw new BadRequestException(
+          'Maximum 3 jobs can have top priority at once. Please lower priority of another job first.'
+        );
+      }
+    }
+
+    // Update job priority
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        priority,
+        prioritySetAt: new Date(),
+      },
+    });
+
+    // If job is currently encoding, renice the FFmpeg process
+    if (existingJob.stage === JobStage.ENCODING) {
+      try {
+        await this.ffmpegService.reniceProcess(id, priority);
+        this.logger.log(`Reniced FFmpeg process for job ${id} to priority ${priority}`);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to renice FFmpeg process for job ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        // Don't throw - priority is still updated in database, renice is best-effort
+      }
+    }
+
+    this.logger.log(`Job ${id} priority updated to ${priority}`);
+    return job;
   }
 
   /**
