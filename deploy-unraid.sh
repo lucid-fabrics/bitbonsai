@@ -38,6 +38,11 @@ rsync -az \
     ./angular.json \
     ./docker-compose.unraid.yml \
     ./Dockerfile.dev \
+    ./nx.json \
+    ./tsconfig.json \
+    ./package.json \
+    ./package-lock.json \
+    ./.npmrc \
     $UNRAID_SSH:$DEPLOY_PATH/
 
 echo "✅ Code and configuration synced"
