@@ -31,6 +31,8 @@ export class QueueJobBo {
   targetCodec?: string;
   retryCount?: number;
   nextRetryAt?: string;
+  priority?: number;
+  prioritySetAt?: string;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -58,6 +60,8 @@ export class QueueJobBo {
     this.targetCodec = model.targetCodec;
     this.retryCount = model.retryCount;
     this.nextRetryAt = model.nextRetryAt;
+    this.priority = model.priority;
+    this.prioritySetAt = model.prioritySetAt;
   }
 
   private extractFileName(model: QueueJobApiModel): string {
