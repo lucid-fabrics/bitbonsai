@@ -281,6 +281,12 @@
                   </span>
                 </td>
                 <td class="col-filename" [title]="job.fileName">
+                  @if ((job.priority ?? 0) === 2) {
+                    <i class="fas fa-fire priority-icon priority-icon--top" title="Top Priority"></i>
+                  }
+                  @if ((job.priority ?? 0) === 1) {
+                    <i class="fas fa-bolt priority-icon priority-icon--high" title="High Priority"></i>
+                  }
                   <span class="filename-text">{{ job.fileName }}</span>
                 </td>
                 <td class="col-library">{{ job.libraryName }}</td>
