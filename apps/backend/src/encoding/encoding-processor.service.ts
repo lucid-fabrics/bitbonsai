@@ -62,8 +62,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   // Configuration
   private readonly MAX_RETRIES = 3;
-  private readonly DEFAULT_WORKERS_PER_NODE = 4; // Like Unmanic's default
-  private readonly MAX_WORKERS_PER_NODE = 12; // Unmanic's max
+
+  // CPU-Aware Worker Calculation Constants
+  private readonly CORES_PER_HEVC_JOB = 4; // Each HEVC encode needs ~4 CPU cores minimum
+  private readonly WORKER_SAFETY_MARGIN = 0.5; // Use 50% of theoretical max for system stability
+  private readonly MIN_WORKERS_PER_NODE = 2; // Absolute minimum workers
+  private readonly MAX_WORKERS_PER_NODE = 12; // Absolute maximum workers (safety cap)
+
+  // Calculated optimal workers based on CPU capacity (set in constructor)
+  private readonly DEFAULT_WORKERS_PER_NODE: number;
 
   // Resource preflight thresholds
   private readonly MIN_FREE_DISK_SPACE_GB = 5; // Minimum 5GB free space
@@ -83,7 +90,55 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly queueService: QueueService,
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService
-  ) {}
+  ) {
+    // Calculate optimal workers based on CPU capacity
+    this.DEFAULT_WORKERS_PER_NODE = this.calculateOptimalWorkers();
+  }
+
+  /**
+   * Calculate optimal concurrent workers based on CPU capacity
+   *
+   * Formula: workers = Math.floor((cpuCores / CORES_PER_JOB) * SAFETY_MARGIN)
+   *
+   * Example for 128-thread CPU:
+   * - Theoretical max: 128 / 4 = 32 workers
+   * - With 50% safety margin: 32 * 0.5 = 16 workers
+   * - Capped at MAX (12): 12 workers
+   *
+   * This ensures system never hits 100% CPU, leaving headroom for:
+   * - OS operations
+   * - Network I/O
+   * - Database queries
+   * - File system operations
+   */
+  private calculateOptimalWorkers(): number {
+    const cpuCount = os.cpus().length;
+
+    // Theoretical maximum workers if CPU was only resource
+    const theoreticalMax = Math.floor(cpuCount / this.CORES_PER_HEVC_JOB);
+
+    // Apply safety margin for system stability
+    const optimalWorkers = Math.floor(theoreticalMax * this.WORKER_SAFETY_MARGIN);
+
+    // Clamp between MIN and MAX
+    const clampedWorkers = Math.max(
+      this.MIN_WORKERS_PER_NODE,
+      Math.min(optimalWorkers, this.MAX_WORKERS_PER_NODE)
+    );
+
+    this.logger.log('🧮 CPU-Aware Worker Calculation:');
+    this.logger.log(`  CPU Cores Detected: ${cpuCount}`);
+    this.logger.log(`  Cores Per HEVC Job: ${this.CORES_PER_HEVC_JOB}`);
+    this.logger.log(`  Theoretical Max Workers: ${theoreticalMax}`);
+    this.logger.log(`  Safety Margin: ${this.WORKER_SAFETY_MARGIN * 100}%`);
+    this.logger.log(`  Optimal Workers (after margin): ${optimalWorkers}`);
+    this.logger.log(
+      `  Final Workers (clamped ${this.MIN_WORKERS_PER_NODE}-${this.MAX_WORKERS_PER_NODE}): ${clampedWorkers}`
+    );
+    this.logger.log(`  🎯 Using ${clampedWorkers} concurrent workers per node`);
+
+    return clampedWorkers;
+  }
 
   /**
    * Auto-start worker pools for all online nodes on module initialization
