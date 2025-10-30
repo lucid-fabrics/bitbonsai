@@ -200,8 +200,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
           // TRUE RESUME: Check if temp file still exists
           const tempFileExists =
-            jobWithResume.tempFilePath &&
-            require('fs').existsSync(jobWithResume.tempFilePath);
+            jobWithResume.tempFilePath && require('fs').existsSync(jobWithResume.tempFilePath);
 
           const errorMessage =
             job.stage === JobStage.PAUSED
@@ -220,10 +219,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
               error: errorMessage,
               startedAt: null, // Clear startedAt to allow fresh start
               // TRUE RESUME: Clear resume state if temp file doesn't exist
-              ...(tempFileExists ? {} : {
-                tempFilePath: null,
-                resumeTimestamp: null,
-              }),
+              ...(tempFileExists
+                ? {}
+                : {
+                    tempFilePath: null,
+                    resumeTimestamp: null,
+                  }),
             },
           });
 

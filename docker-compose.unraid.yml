@@ -25,6 +25,10 @@ services:
       - ./libs:/app/libs:cached
       - ./prisma:/app/prisma:cached
       - ./scripts:/app/scripts:cached
+      # Workspace config files (required for NX to find projects)
+      - ./nx.json:/app/nx.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./package.json:/app/package.json:ro
       # Unraid Downloads directory - maps to your encoding pipeline
       - /mnt/user/Downloads:/media:cached
       # Unraid Media directory - for existing media library
@@ -53,8 +57,12 @@ services:
       # Source code with HMR (synced from Mac)
       - ./apps/frontend:/app/apps/frontend:cached
       - ./libs:/app/libs:cached
+      # Workspace config files (required for NX to find projects)
       - ./proxy.docker.conf.json:/app/proxy.conf.json:ro
       - ./angular.json:/app/angular.json:ro
+      - ./nx.json:/app/nx.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./package.json:/app/package.json:ro
       # Preserve node_modules (don't mount from host)
       - /app/node_modules
     command: npx nx serve frontend --host 0.0.0.0 --poll 2000 --disable-host-check

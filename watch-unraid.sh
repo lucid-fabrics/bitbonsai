@@ -47,6 +47,11 @@ sync_files() {
         ./proxy.docker.conf.json \
         ./angular.json \
         ./docker-compose.unraid.yml \
+        ./nx.json \
+        ./tsconfig.json \
+        ./package.json \
+        ./package-lock.json \
+        ./.npmrc \
         $UNRAID_SSH:$DEPLOY_PATH/
 
     echo "✅ Synced at $(date '+%H:%M:%S')"
