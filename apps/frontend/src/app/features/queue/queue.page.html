@@ -281,13 +281,7 @@
                   </span>
                 </td>
                 <td class="col-filename" [title]="job.fileName">
-                  @if ((job.priority ?? 0) === 2) {
-                    <fa-icon [icon]="icons.fire" class="priority-icon priority-icon--top" title="Top Priority"></fa-icon>
-                  }
-                  @if ((job.priority ?? 0) === 1) {
-                    <fa-icon [icon]="icons.bolt" class="priority-icon priority-icon--high" title="High Priority"></fa-icon>
-                  }
-                  <span class="filename-text">{{ job.fileName }}</span>
+                  {{ job.fileName }}
                 </td>
                 <td class="col-library">{{ job.libraryName }}</td>
                 <td class="col-codec">
