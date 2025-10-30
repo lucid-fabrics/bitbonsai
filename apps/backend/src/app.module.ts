@@ -23,6 +23,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { SettingsModule } from './settings/settings.module';
 import { SetupModule } from './setup/setup.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { SetupModule } from './setup/setup.module';
     SettingsModule,
     SetupModule,
     EncodingModule,
+    SystemModule,
   ],
   controllers: [],
   providers: [

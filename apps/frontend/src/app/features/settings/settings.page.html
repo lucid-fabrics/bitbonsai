@@ -47,6 +47,14 @@
       </button>
       <button
         class="tab-button"
+        [class.active]="activeTab === SettingsTab.RESOURCES"
+        (click)="setActiveTab(SettingsTab.RESOURCES)"
+      >
+        <i class="fa fa-microchip"></i>
+        <span>Resources</span>
+      </button>
+      <button
+        class="tab-button"
         [class.active]="activeTab === SettingsTab.ADVANCED"
         (click)="setActiveTab(SettingsTab.ADVANCED)"
       >
@@ -400,6 +408,16 @@
               </button>
             </div>
           }
+        </div>
+      }
+
+      <!-- RESOURCES TAB -->
+      @if (activeTab === SettingsTab.RESOURCES) {
+        <div class="tab-panel">
+          <h2>System Resources</h2>
+          <p class="tab-description">Monitor CPU capacity and understand how BitBonsai manages your system's resources</p>
+
+          <app-cpu-capacity-panel></app-cpu-capacity-panel>
         </div>
       }
 
