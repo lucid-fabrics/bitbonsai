@@ -193,26 +193,29 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // Reset each orphaned job to QUEUED
       // CRITICAL FIX: ALL jobs go to QUEUED (not DETECTED) to resume immediately
+      // TRUE RESUME: Keep progress and resume state (DON'T reset to 0%)
       for (const job of orphanedJobs) {
         try {
           const errorMessage =
             job.stage === JobStage.PAUSED
-              ? 'Paused job reset after backend restart'
-              : `Auto-recovered from backend restart (was ${job.stage})`;
+              ? 'Paused job reset after backend restart - will resume from last position'
+              : `Auto-recovered from backend restart (was ${job.stage}) - will resume from ${job.progress.toFixed(1)}%`;
 
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
               stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
-              progress: 0,
+              // TRUE RESUME: DON'T reset progress - keep it for resume logic
+              // progress: 0,  ← REMOVED
               etaSeconds: null,
               error: errorMessage,
               startedAt: null, // Clear startedAt to allow fresh start
+              // TRUE RESUME: Keep tempFilePath and resumeTimestamp for resume
             },
           });
 
           this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, was ${job.progress}% complete)`
+            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, will resume from ${job.progress.toFixed(1)}%)`
           );
         } catch (error) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);

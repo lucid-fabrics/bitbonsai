@@ -324,6 +324,11 @@ model Job {
   priority      Int       @default(0) // 0=normal, 1=high, 2=top (max 3 top priority at once)
   prioritySetAt DateTime? // When priority was last changed (for tracking)
 
+  // Resume State Fields (TRUE RESUME after backend crash/restart)
+  tempFilePath       String?   // Path to partial encoded file (e.g., "/path/video.mp4.tmp.mp4")
+  resumeTimestamp    String?   // HH:MM:SS.MS where encoding stopped
+  lastProgressUpdate DateTime? // When progress was last saved to DB
+
   // Relations
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
