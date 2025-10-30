@@ -453,13 +453,19 @@ export class QueueService {
    * Update job progress
    *
    * @param id - Job unique identifier
-   * @param updateJobDto - Progress update data
+   * @param updateJobDto - Progress update data (with optional resume state)
    * @returns Updated job
    * @throws NotFoundException if job does not exist
    * @throws BadRequestException if attempting to manually set HEALTH_CHECK stage
    */
-  async updateProgress(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
-    this.logger.log(`Updating progress for job: ${id}`);
+  async updateProgress(
+    id: string,
+    updateJobDto: UpdateJobDto & {
+      resumeTimestamp?: string;
+      tempFilePath?: string;
+    }
+  ): Promise<Job> {
+    this.logger.debug(`Updating progress for job: ${id}`);
 
     // Check if job exists
     const existingJob = await this.prisma.job.findUnique({
@@ -481,12 +487,24 @@ export class QueueService {
     }
 
     try {
+      // TRUE RESUME: Save resume state for crash recovery
+      const updateData: any = { ...updateJobDto };
+
+      // If resume state is provided, save it along with progress
+      if (updateJobDto.resumeTimestamp) {
+        updateData.resumeTimestamp = updateJobDto.resumeTimestamp;
+        updateData.lastProgressUpdate = new Date();
+      }
+      if (updateJobDto.tempFilePath) {
+        updateData.tempFilePath = updateJobDto.tempFilePath;
+      }
+
       const job = await this.prisma.job.update({
         where: { id },
-        data: updateJobDto,
+        data: updateData,
       });
 
-      this.logger.log(`Job ${id} progress updated: ${job.progress}%`);
+      this.logger.debug(`Job ${id} progress updated: ${job.progress}%`);
       return job;
     } catch (error) {
       this.logger.error(`Failed to update job progress: ${id}`, error);

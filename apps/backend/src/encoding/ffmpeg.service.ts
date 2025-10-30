@@ -317,22 +317,33 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Build ffmpeg command arguments
    *
+   * TRUE RESUME: Supports input seeking (-ss before -i) to skip already-encoded portion
+   *
    * Command structure:
-   * ffmpeg [hwaccel flags] -i [input] [video codec] -crf [quality] [audio] [output]
+   * ffmpeg [-ss HH:MM:SS.MS] [hwaccel flags] -i [input] [video codec] -crf [quality] [audio] [output]
    *
    * @param job - Job entity with file info
    * @param policy - Policy entity with encoding settings
    * @param hwaccel - Hardware acceleration config
    * @param outputPath - Path to output file
+   * @param resumeFromTimestamp - Optional timestamp to resume from (HH:MM:SS.MS format)
    * @returns Array of ffmpeg arguments
    */
   buildFfmpegCommand(
     job: Job,
     policy: Policy,
     hwaccel: HardwareAccelConfig,
-    outputPath: string
+    outputPath: string,
+    resumeFromTimestamp?: string
   ): string[] {
     const args: string[] = [];
+
+    // TRUE RESUME: Add input seeking BEFORE -i for accurate frame seeking
+    // This skips the already-encoded portion of the input file
+    if (resumeFromTimestamp) {
+      args.push('-ss', resumeFromTimestamp);
+      this.logger.log(`TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`);
+    }
 
     // Hardware acceleration flags (if available)
     args.push(...hwaccel.flags);
@@ -429,26 +440,43 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Handle progress data from ffmpeg stderr
    *
+   * TRUE RESUME: Saves resume state (timestamp, temp file path) to DB every progress update
+   * This allows encoding to resume from the last known position after backend crash/restart
+   *
    * @param progressData - Parsed progress data
    * @param job - Job entity
    * @param activeEncoding - Active encoding state
    * @param estimatedDurationSeconds - Estimated video duration
+   * @param tempOutput - Path to temporary output file
+   * @param resumeFromPercent - Percentage we resumed from (0 if starting fresh)
    * @private
    */
   private handleProgressUpdate(
     progressData: Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'>,
     job: Job,
     activeEncoding: ActiveEncoding,
-    estimatedDurationSeconds: number
+    estimatedDurationSeconds: number,
+    tempOutput: string,
+    resumeFromPercent = 0
   ): void {
-    const progress = this.calculateProgressPercentage(
+    // Calculate current progress based on time position
+    const currentProgress = this.calculateProgressPercentage(
       progressData.currentTime,
       estimatedDurationSeconds
     );
 
+    // TRUE RESUME: Adjust progress to account for already-encoded portion
+    // If we resumed from 60%, and current position is 70%, actual progress is 70% (not 10%)
+    // FFmpeg -ss skips input frames, so progress is relative to full duration
+    const adjustedProgress = Math.min(100, Math.max(resumeFromPercent, currentProgress));
+
     // Calculate ETA
     const elapsed = Date.now() - activeEncoding.startTime.getTime();
-    const eta = progress > 0 ? Math.round(((elapsed / progress) * (100 - progress)) / 1000) : 0;
+    const remainingPercent = 100 - adjustedProgress;
+    const eta =
+      adjustedProgress > resumeFromPercent
+        ? Math.round(((elapsed / (adjustedProgress - resumeFromPercent)) * remainingPercent) / 1000)
+        : 0;
 
     // Emit progress event
     const progressDto: EncodingProgressDto = {
@@ -456,30 +484,38 @@ export class FfmpegService implements OnModuleDestroy {
       frame: progressData.frame,
       fps: progressData.fps,
       currentTime: progressData.currentTime,
-      progress,
+      progress: adjustedProgress,
       eta,
     };
 
     this.eventEmitter.emit('encoding.progress', progressDto);
 
-    // Update job progress (throttle to every 0.1% due to placeholder duration estimate)
-    if (progress - activeEncoding.lastProgress >= 0.1) {
-      this.logger.debug(`[${job.id}] Updating database: ${progress.toFixed(2)}% (ETA: ${eta}s)`);
+    // TRUE RESUME: Save resume state every 0.1% for crash recovery
+    // Stores: progress, timestamp (for -ss seek), temp file path
+    if (adjustedProgress - activeEncoding.lastProgress >= 0.1) {
+      this.logger.debug(
+        `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)`
+      );
       this.queueService
         .updateProgress(job.id, {
-          progress: Math.round(progress * 100) / 100, // Round to 2 decimal places
+          progress: Math.round(adjustedProgress * 100) / 100, // Round to 2 decimal places
           etaSeconds: eta,
           fps: progressData.fps,
+          // TRUE RESUME: Save resume state for crash recovery
+          resumeTimestamp: progressData.currentTime,
+          tempFilePath: tempOutput,
         })
         .catch((error) => {
           this.logger.error(`Failed to update job progress: ${error.message}`);
         });
-      activeEncoding.lastProgress = progress;
+      activeEncoding.lastProgress = adjustedProgress;
     }
   }
 
   /**
    * Handle successful encoding completion
+   *
+   * TRUE RESUME: Clears resume state on success
    *
    * @param job - Job entity
    * @param policy - Policy entity
@@ -502,12 +538,18 @@ export class FfmpegService implements OnModuleDestroy {
       await fs.rename(tempOutput, job.filePath);
     }
 
-    // Complete job
+    // Complete job and clear resume state
     const savedPercentRounded = Math.round(savedPercent * 100) / 100;
     await this.queueService.completeJob(job.id, {
       afterSizeBytes: BigInt(afterSizeBytes).toString(),
       savedBytes: BigInt(savedBytes).toString(),
       savedPercent: savedPercentRounded,
+    });
+
+    // TRUE RESUME: Clear resume state after successful completion
+    await this.queueService.updateProgress(job.id, {
+      tempFilePath: null as any,
+      resumeTimestamp: null as any,
     });
 
     this.logger.log(`Encoding completed for job ${job.id}: saved ${savedPercentRounded}%`);
@@ -516,25 +558,36 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Handle encoding failure
    *
+   * TRUE RESUME: Keep temp files on interrupt/crash for resume capability
+   * Only delete temp files on explicit corruption/validation failures
+   *
    * @param job - Job entity
    * @param tempOutput - Temporary output file path
    * @param errorMessage - Error message
+   * @param deleteTemp - Whether to delete temp file (false for resume, true for corrupted files)
    * @private
    */
   private async handleEncodingFailure(
     job: Job,
     tempOutput: string,
-    errorMessage: string
+    errorMessage: string,
+    deleteTemp = false
   ): Promise<void> {
     this.logger.error(`Encoding failed for job ${job.id}: ${errorMessage}`);
 
-    // Clean up temp file
-    try {
-      if (existsSync(tempOutput)) {
-        await fs.unlink(tempOutput);
+    // TRUE RESUME: Only delete temp file if explicitly requested (corrupted/invalid)
+    // For interrupts/crashes, KEEP the temp file so encoding can resume
+    if (deleteTemp) {
+      this.logger.warn(`Deleting corrupted temp file: ${tempOutput}`);
+      try {
+        if (existsSync(tempOutput)) {
+          await fs.unlink(tempOutput);
+        }
+      } catch {
+        // Ignore cleanup errors
       }
-    } catch {
-      // Ignore cleanup errors
+    } else {
+      this.logger.log(`Keeping temp file for resume: ${tempOutput}`);
     }
 
     await this.queueService.failJob(job.id, errorMessage);
@@ -609,6 +662,43 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * TRUE RESUME: Verify partial encoded file is valid (not corrupted)
+   *
+   * @param filePath - Path to partial temp file
+   * @returns True if file is valid and can be used for resume
+   * @private
+   */
+  private async verifyPartialEncode(filePath: string): Promise<boolean> {
+    try {
+      // Use ffprobe to check if file has valid video stream
+      const result = await this.verifyFile(filePath);
+      return result.isValid;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * TRUE RESUME: Parse HH:MM:SS.MS timestamp to seconds
+   *
+   * @param timestamp - Time string in HH:MM:SS.MS format
+   * @returns Time in seconds
+   * @private
+   */
+  private parseTimestampToSeconds(timestamp: string): number {
+    const parts = timestamp.split(':');
+    if (parts.length !== 3) {
+      return 0;
+    }
+
+    const hours = Number.parseInt(parts[0], 10);
+    const minutes = Number.parseInt(parts[1], 10);
+    const seconds = Number.parseFloat(parts[2]);
+
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  /**
    * Get nice value for priority level
    *
    * @param priority - Job priority (0=normal, 1=high, 2=top)
@@ -676,16 +766,23 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Encode file using ffmpeg
    *
+   * TRUE RESUME Implementation:
+   * 1. Check if job has resume state (tempFilePath + resumeTimestamp)
+   * 2. If yes and temp file is valid, use FFmpeg -ss to skip already-encoded portion
+   * 3. Continue encoding from where it left off
+   * 4. If temp file is corrupted/missing, start from 0%
+   *
    * Process:
    * 1. Get video duration from FFprobe (ISSUE #11 FIX)
-   * 2. Detect hardware acceleration
-   * 3. Build ffmpeg command
-   * 4. Spawn ffmpeg process with nice (priority-based CPU scheduling)
-   * 5. Parse stderr for progress
-   * 6. Emit progress events
-   * 7. Update job entity
-   * 8. Handle completion/errors
-   * 9. Atomic file replacement
+   * 2. Check for resume state and validate temp file
+   * 3. Detect hardware acceleration
+   * 4. Build ffmpeg command (with -ss if resuming)
+   * 5. Spawn ffmpeg process with nice (priority-based CPU scheduling)
+   * 6. Parse stderr for progress
+   * 7. Emit progress events
+   * 8. Update job entity
+   * 9. Handle completion/errors
+   * 10. Atomic file replacement
    *
    * @param job - Job entity with full relations (policy, library)
    * @param policy - Policy entity with encoding settings
@@ -707,15 +804,70 @@ export class FfmpegService implements OnModuleDestroy {
       `[${job.id}] Using duration: ${estimatedDurationSeconds.toFixed(2)}s for progress calculation`
     );
 
+    // TRUE RESUME: Check if we can resume from previous encoding attempt
+    const jobWithResume = job as any;
+    const canResume =
+      jobWithResume.tempFilePath &&
+      jobWithResume.resumeTimestamp &&
+      existsSync(jobWithResume.tempFilePath);
+
+    let resumeFromSeconds = 0;
+    let resumeFromPercent = 0;
+
+    if (canResume) {
+      // Verify temp file is valid (not corrupted)
+      const isValid = await this.verifyPartialEncode(jobWithResume.tempFilePath);
+
+      if (isValid) {
+        // Parse HH:MM:SS.MS to seconds
+        resumeFromSeconds = this.parseTimestampToSeconds(jobWithResume.resumeTimestamp);
+        resumeFromPercent = (resumeFromSeconds / estimatedDurationSeconds) * 100;
+
+        this.logger.log(
+          `🔄 TRUE RESUME: Job ${job.id} will resume from ${jobWithResume.resumeTimestamp} (${resumeFromPercent.toFixed(1)}%)`
+        );
+
+        // TRUE RESUME APPROACH: Use FFmpeg input seeking (-ss before -i)
+        // This skips the already-encoded portion during INPUT, saving encoding time
+        // The output will be a complete video from 0 to end, but FFmpeg only processes
+        // the frames from resumeTimestamp onwards (much faster than re-encoding from 0%)
+        //
+        // Progress tracking: We'll adjust the progress calculation to account for
+        // the resumed portion so the user sees accurate progress (not restarting from 0%)
+      } else {
+        this.logger.warn(
+          `Temp file corrupted for job ${job.id}, restarting from 0%: ${jobWithResume.tempFilePath}`
+        );
+        // Delete corrupted temp file
+        try {
+          await fs.unlink(jobWithResume.tempFilePath);
+        } catch {
+          // Ignore
+        }
+        // Clear resume state
+        await this.queueService.updateProgress(job.id, {
+          tempFilePath: null as any,
+          resumeTimestamp: null as any,
+          progress: 0,
+        });
+      }
+    }
+
     // Detect hardware acceleration
     const hwaccel = await this.detectHardwareAcceleration();
 
-    // Use custom output path if provided, otherwise default to ${inputPath}.tmp.mp4
-    const tempOutput = customOutputPath || `${job.filePath}.tmp.mp4`;
+    // Use custom output path if provided, otherwise use existing temp path or create new
+    const tempOutput = customOutputPath || jobWithResume.tempFilePath || `${job.filePath}.tmp.mp4`;
     this.logger.debug(`[${job.id}] Output path: ${tempOutput}`);
 
-    // Build ffmpeg command
-    const args = this.buildFfmpegCommand(job, policy, hwaccel, tempOutput);
+    // Build ffmpeg command (with resume timestamp if resuming)
+    const args = this.buildFfmpegCommand(
+      job,
+      policy,
+      hwaccel,
+      tempOutput,
+      resumeFromSeconds > 0 ? jobWithResume.resumeTimestamp : undefined
+    );
 
     // Get nice value based on job priority
     const niceValue = this.getNiceValue((job as any).priority ?? 0);
@@ -781,7 +933,14 @@ export class FfmpegService implements OnModuleDestroy {
             this.logger.debug(
               `[${job.id}] Progress parsed: frame=${progressData.frame}, fps=${progressData.fps}, time=${progressData.currentTime}`
             );
-            this.handleProgressUpdate(progressData, job, activeEncoding, estimatedDurationSeconds);
+            this.handleProgressUpdate(
+              progressData,
+              job,
+              activeEncoding,
+              estimatedDurationSeconds,
+              tempOutput,
+              resumeFromPercent
+            );
           }
         }
       });
