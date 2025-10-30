@@ -63,6 +63,7 @@ export class QueueComponent implements OnInit {
 
   // State
   protected expandedJobId: string | null = null;
+  protected openPriorityMenuId: string | null = null;
   protected showCancelDialog = false;
   protected showCancelAllDialog = false;
   protected showRetryAllDialog = false;
@@ -349,8 +350,13 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected togglePriorityMenu(jobId: string): void {
+    this.openPriorityMenuId = this.openPriorityMenuId === jobId ? null : jobId;
+  }
+
   protected setPriority(jobId: string, priority: number, event: Event): void {
     event.stopPropagation();
+    this.openPriorityMenuId = null; // Close menu after selection
     this.queueApi
       .updateJobPriority(jobId, priority)
       .pipe(takeUntilDestroyed(this.destroyRef))

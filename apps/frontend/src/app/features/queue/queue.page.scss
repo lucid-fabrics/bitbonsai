@@ -947,14 +947,14 @@
 .priority-dropdown {
   position: relative;
   display: inline-block;
-
-  &:hover .priority-menu {
-    display: block;
-  }
 }
 
 .priority-menu {
   display: none;
+
+  &.show {
+    display: block;
+  }
   position: absolute;
   bottom: 100%;
   right: 0;
