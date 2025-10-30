@@ -724,6 +724,33 @@
   white-space: nowrap;
 }
 
+// Priority Icons (inline with job name)
+.priority-icon {
+  margin-right: 6px;
+  font-size: 14px;
+
+  &--high {
+    color: #fb923c; // Orange
+  }
+
+  &--top {
+    color: #ef4444; // Red
+    animation: priority-pulse-icon 2s infinite;
+  }
+}
+
+@keyframes priority-pulse-icon {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+}
+
 // Progress Bar
 .progress-container {
   display: flex;
