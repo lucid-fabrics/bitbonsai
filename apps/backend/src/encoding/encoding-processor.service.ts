@@ -87,13 +87,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('🔧 Initializing encoding processor...');
 
     try {
-      // Wait for Docker volume mounts to be fully initialized
-      // This prevents race condition where auto-heal checks for temp files
-      // before the volume mounts are ready
-      this.logger.log('⏳ Waiting for volume mounts to initialize...');
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // HYBRID APPROACH: Initial delay + volume mount probing + retry logic
+      // Step 1: Small initial delay to let basic initialization complete
+      this.logger.log('⏳ Waiting for basic initialization...');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // STEP 1: Auto-heal orphaned jobs from previous crash/reboot
+      // Step 2: Wait for volume mounts to be accessible
+      await this.waitForVolumeMounts();
+
+      // STEP 3: Auto-heal orphaned jobs from previous crash/reboot
       await this.autoHealOrphanedJobs();
 
       // STEP 2: Get all online nodes with their maxWorkers setting
@@ -153,6 +155,80 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Wait for Docker volume mounts to be fully accessible
+   * Probes the media directory to ensure volume is ready before auto-heal
+   * @private
+   */
+  private async waitForVolumeMounts(): Promise<void> {
+    const mediaPaths = (process.env.MEDIA_PATHS || '').split(',').filter(Boolean);
+    if (mediaPaths.length === 0) {
+      this.logger.warn('No MEDIA_PATHS configured, skipping volume mount check');
+      return;
+    }
+
+    const maxRetries = 10;
+    const retryDelay = 1000; // 1 second
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Test first media path (most critical one)
+        const testPath = mediaPaths[0];
+        const fs = require('fs');
+
+        // Try to access the directory
+        if (fs.existsSync(testPath)) {
+          this.logger.log(`✅ Volume mount ready: ${testPath} (attempt ${attempt}/${maxRetries})`);
+          return;
+        }
+      } catch (error) {
+        // Ignore errors, will retry
+      }
+
+      if (attempt < maxRetries) {
+        this.logger.debug(`⏳ Waiting for volume mounts... (attempt ${attempt}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    this.logger.warn(
+      `⚠️  Volume mounts not detected after ${maxRetries} attempts - proceeding anyway`
+    );
+  }
+
+  /**
+   * Check if temp file exists with retry logic
+   * Handles edge cases where volume mounts are still initializing
+   * @param tempFilePath - Path to temp file
+   * @returns true if file exists, false otherwise
+   * @private
+   */
+  private async checkTempFileWithRetry(tempFilePath: string | null): Promise<boolean> {
+    if (!tempFilePath) {
+      return false;
+    }
+
+    const maxRetries = 3;
+    const retryDelay = 500; // 500ms between retries
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(tempFilePath)) {
+          return true;
+        }
+      } catch (error) {
+        // Ignore errors, will retry
+      }
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Auto-heal orphaned jobs that were left in active states
    * from backend crashes, reboots, or container restarts
    *
@@ -204,9 +280,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         try {
           const jobWithResume = job as any;
 
-          // TRUE RESUME: Check if temp file still exists
-          const tempFileExists =
-            jobWithResume.tempFilePath && require('fs').existsSync(jobWithResume.tempFilePath);
+          // TRUE RESUME: Check if temp file still exists (with retry logic)
+          const tempFileExists = await this.checkTempFileWithRetry(jobWithResume.tempFilePath);
 
           // DEBUG: Log temp file check result
           if (jobWithResume.tempFilePath) {
