@@ -196,26 +196,39 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // TRUE RESUME: Keep progress and resume state (DON'T reset to 0%)
       for (const job of orphanedJobs) {
         try {
+          const jobWithResume = job as any;
+
+          // TRUE RESUME: Check if temp file still exists
+          const tempFileExists =
+            jobWithResume.tempFilePath &&
+            require('fs').existsSync(jobWithResume.tempFilePath);
+
           const errorMessage =
             job.stage === JobStage.PAUSED
               ? 'Paused job reset after backend restart - will resume from last position'
-              : `Auto-recovered from backend restart (was ${job.stage}) - will resume from ${job.progress.toFixed(1)}%`;
+              : tempFileExists
+                ? `Auto-recovered from backend restart (was ${job.stage}) - will resume from ${job.progress.toFixed(1)}%`
+                : `Auto-recovered from backend restart (was ${job.stage}) - restarting from 0% (temp file missing)`;
 
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
               stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
-              // TRUE RESUME: DON'T reset progress - keep it for resume logic
-              // progress: 0,  ← REMOVED
+              // TRUE RESUME: DON'T reset progress if temp file exists
+              ...(tempFileExists ? {} : { progress: 0 }),
               etaSeconds: null,
               error: errorMessage,
               startedAt: null, // Clear startedAt to allow fresh start
-              // TRUE RESUME: Keep tempFilePath and resumeTimestamp for resume
+              // TRUE RESUME: Clear resume state if temp file doesn't exist
+              ...(tempFileExists ? {} : {
+                tempFilePath: null,
+                resumeTimestamp: null,
+              }),
             },
           });
 
           this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, will resume from ${job.progress.toFixed(1)}%)`
+            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, ${tempFileExists ? `will resume from ${job.progress.toFixed(1)}%` : 'restarting from 0%'})`
           );
         } catch (error) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
