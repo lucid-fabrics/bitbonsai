@@ -38,4 +38,6 @@ export interface QueueJobApiModel {
   targetCodec?: string;
   retryCount?: number;
   nextRetryAt?: string;
+  priority?: number;
+  prioritySetAt?: string;
 }
