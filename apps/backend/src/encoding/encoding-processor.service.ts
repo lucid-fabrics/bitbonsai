@@ -980,6 +980,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         throw new Error('Job policy not loaded');
       }
 
+      // TRUE RESUME: Save temp file path to database BEFORE encoding starts
+      // This allows auto-heal to find the temp file after restart
+      await this.prisma.job.update({
+        where: { id: job.id },
+        data: { tempFilePath: tmpPath },
+      });
+
       // Perform encoding
       await this.performEncoding(job, tmpPath, policy);
 
