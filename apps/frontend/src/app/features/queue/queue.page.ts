@@ -3,6 +3,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } f
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import {
   BehaviorSubject,
   catchError,
@@ -31,6 +33,7 @@ import type { QueueResponse } from './models/queue-response.model';
   imports: [
     CommonModule,
     FormsModule,
+    FontAwesomeModule,
     RichTooltipDirective,
     AddFilesModalComponent,
     ErrorDetailsModalComponent,
@@ -48,6 +51,13 @@ export class QueueComponent implements OnInit {
 
   // Expose Number for template
   protected readonly Number = Number;
+
+  // FontAwesome icons for priority
+  protected readonly icons = {
+    fire: faFire,
+    bolt: faBolt,
+    layers: faLayerGroup,
+  };
 
   // Observables for reactive state
   private readonly refreshTrigger$ = new BehaviorSubject<{ showLoading: boolean }>({
