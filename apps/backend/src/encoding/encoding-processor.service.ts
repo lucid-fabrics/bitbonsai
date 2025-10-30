@@ -87,7 +87,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('🔧 Initializing encoding processor...');
 
     try {
-      // HYBRID APPROACH: Initial delay + volume mount probing + retry logic
+      // HYBRID APPROACH: Initial delay + volume mount probing + file system stabilization + retry logic
       // Step 1: Small initial delay to let basic initialization complete
       this.logger.log('⏳ Waiting for basic initialization...');
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -95,7 +95,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Step 2: Wait for volume mounts to be accessible
       await this.waitForVolumeMounts();
 
-      // STEP 3: Auto-heal orphaned jobs from previous crash/reboot
+      // Step 3: Let file system stabilize after volumes are mounted
+      this.logger.log('⏳ Waiting for file system to stabilize...');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // STEP 4: Auto-heal orphaned jobs from previous crash/reboot
       await this.autoHealOrphanedJobs();
 
       // STEP 2: Get all online nodes with their maxWorkers setting
@@ -171,14 +175,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Test first media path (most critical one)
-        const testPath = mediaPaths[0];
         const fs = require('fs');
 
-        // Try to access the directory
-        if (fs.existsSync(testPath)) {
-          this.logger.log(`✅ Volume mount ready: ${testPath} (attempt ${attempt}/${maxRetries})`);
-          return;
+        // Test ALL media paths - if ANY exist, volumes are ready
+        for (const testPath of mediaPaths) {
+          if (fs.existsSync(testPath)) {
+            this.logger.log(
+              `✅ Volume mount ready: ${testPath} (attempt ${attempt}/${maxRetries})`
+            );
+            return;
+          }
         }
       } catch (error) {
         // Ignore errors, will retry
@@ -207,8 +213,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       return false;
     }
 
-    const maxRetries = 3;
-    const retryDelay = 500; // 500ms between retries
+    const maxRetries = 5;
+    const retryDelay = 1000; // 1s between retries (more robust)
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -261,6 +267,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           stage: true,
           progress: true,
           updatedAt: true,
+          tempFilePath: true, // TRUE RESUME: needed to check if temp file exists
+          startedFromSeconds: true, // TRUE RESUME: needed to preserve resume position
         },
       });
 
