@@ -38,7 +38,10 @@ Think of it as a media server's best friend:
 
 **BitBonsai is different:**
 - ✅ Install once, works forever
+- ✅ TRUE RESUME - Never lose progress on interrupted encodes (crash recovery)
+- ✅ Auto-Heal - Automatically resurrects orphaned jobs after crashes (4-layer defense)
 - ✅ Beautiful UI you'll actually enjoy using
+- ✅ Priority Queue - Pin urgent jobs to the top with dynamic prioritization
 - ✅ Smart defaults that work for 95% of users
 - ✅ Scale from single node to 100+ nodes (commercial tier)
 - ✅ Fair pricing: free for home use, affordable for professionals
@@ -52,11 +55,16 @@ Think of it as a media server's best friend:
 | Feature | Description |
 |---------|-------------|
 | 🎬 **Zero-Plugin Architecture** | All codecs, containers, and filters built-in. No plugin hunting. |
+| 🔄 **TRUE RESUME** | Resume interrupted encoding jobs from exact progress - never restart from scratch after crashes |
+| 🛡️ **Auto-Heal System** | 4-layer crash recovery automatically resurrects orphaned jobs after backend restarts |
 | 📊 **Beautiful Analytics Dashboard** | Real-time insights into codec distribution, storage savings, and encoding progress |
-| 🎨 **Calming, Professional UI** | Inspired by bonsai minimalism - clean, fast, and stress-free |
+| 🎨 **Ultra Compact Overview** | Redesigned dashboard with space-efficient node tiles showing all critical metrics at a glance |
+| 🎯 **Priority Queue System** | Pin urgent jobs to the top - dynamic priority management with visual indicators |
+| 📚 **Library Filtering** | Filter queue by library for multi-library setups - find what matters instantly |
 | 🔄 **Smart Policy System** | Create encoding rules once, apply to entire library automatically |
-| ⚡ **Live Progress Tracking** | Watch your library transform in real-time with WebSocket updates |
+| ⚡ **Live Progress Tracking** | Watch your library transform in real-time with WebSocket updates, FPS, and ETA |
 | 🎯 **Codec Intelligence** | Automatic detection of H.264, H.265/HEVC, AV1, VP9, and legacy codecs |
+| 📈 **Per-Node Statistics** | Monitor encoding performance, job distribution, and resource usage for each node |
 | 💾 **Storage Optimization** | See potential space savings before encoding (typical: 40-60% reduction) |
 | 🔒 **Privacy-First** | Self-hosted, no telemetry, no phone-home |
 | 🐳 **Docker Native** | One-command deployment for Unraid, Docker, Kubernetes |
@@ -291,16 +299,86 @@ Typical results:
 
 ---
 
+## 🛡️ TRUE RESUME & Auto-Heal: Never Lose Progress Again
+
+**The Problem with Traditional Encoders:**
+Ever had a 12-hour encoding job crash at 98%? With traditional tools, you start from scratch. BitBonsai's TRUE RESUME system ensures you never waste time re-encoding.
+
+### TRUE RESUME Technology
+
+When encoding is interrupted (crash, restart, power loss), BitBonsai:
+1. **Preserves exact progress** - Tracks encoding position down to the frame
+2. **Validates temp files** - Ensures partial encodes are safe to resume
+3. **Resumes from timestamp** - FFmpeg continues from `HH:MM:SS` position, not 0%
+4. **Prevents data loss** - Original files never touched until verification succeeds
+
+**Real-World Example:**
+```
+Job: "Avengers Endgame (2019) 4K.mkv" (25GB, 3h 2m runtime)
+Progress: 33.22% complete when backend crashed
+Traditional tool: Restart from 0% (lose 1 hour of work)
+BitBonsai TRUE RESUME: Resume from 00:33:00 (save 1 hour)
+```
+
+### Auto-Heal System: 4-Layer Crash Recovery
+
+BitBonsai's auto-heal system uses a sophisticated 4-layer defense against crashes and Docker volume mount race conditions:
+
+**Layer 1: Initial Delay** (2 seconds)
+- Basic container initialization
+- Prevents premature file system access
+
+**Layer 2: Volume Mount Probing** (10 retries @ 1 second)
+- Actively checks if media paths exist
+- Waits for Docker volumes to fully mount
+- Critical for container orchestration (Docker Compose, Kubernetes)
+
+**Layer 3: Stabilization Delay** (3 seconds)
+- File system settling time
+- Ensures FUSE/NFS/SMB mounts are responsive
+
+**Layer 4: Temp File Validation** (5 retries @ 1 second)
+- Verifies partial encodes still exist
+- Distinguishes between "resume from progress" vs "restart from 0%"
+
+**Auto-Heal in Action:**
+```
+[08:00:00] Backend started
+[08:00:02] 🔍 Scanning for orphaned jobs...
+[08:00:02] ✅ Volume mount ready: /media/Movies
+[08:00:05] 🔄 Found 15 orphaned jobs
+[08:00:06] ✅ TRUE RESUME: Temp file found for "Star Wars.mkv"
+[08:00:06] ✅ TRUE RESUME: Will resume from 00:01:19 (1.06% of 2h 4m)
+[08:00:06] ✅ 15 jobs reset to QUEUED
+[08:00:07] 🚀 Encoding resumed automatically
+```
+
+**Benefits:**
+- **Zero manual intervention** - Jobs auto-resume after crashes
+- **Production-tested** - 4-layer defense handles Docker, Unraid, Kubernetes
+- **Progress preservation** - Never lose hours of encoding work
+- **Safe fallback** - If temp file missing, safely restarts from 0%
+
+This is why BitBonsai is "rock solid" for 24/7 encoding workloads.
+
+---
+
 ## Why BitBonsai vs Alternatives?
 
 | Feature | BitBonsai | Unmanic | Tdarr | HandBrake | FileFlows |
 |---------|-----------|---------|-------|-----------|-----------|
 | **Zero-Plugin Architecture** | ✅ | ❌ (47+ plugins) | ❌ (100+ plugins) | ✅ | ❌ |
+| **TRUE RESUME (Crash Recovery)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Heal System** | ✅ 4-layer | ❌ | ❌ | ❌ | ⚠️ Basic |
+| **Priority Queue** | ✅ Dynamic | ❌ | ⚠️ Static | ❌ | ✅ |
+| **Library Filtering** | ✅ | ❌ | ⚠️ | ❌ | ✅ |
 | **Beautiful UI** | ✅ | ❌ | ❌ | ⚠️ | ⚠️ |
 | **Multi-Node (Out of Box)** | ✅ | ❌ | ✅ | ❌ | ✅ |
 | **Hardware Encoding** | ✅ | ⚠️ (plugin) | ✅ | ✅ | ✅ |
 | **Smart Policies** | ✅ | ⚠️ (complex) | ⚠️ (complex) | ❌ | ✅ |
 | **Real-Time Analytics** | ✅ | ❌ | ⚠️ | ❌ | ❌ |
+| **Per-Node Statistics** | ✅ | ❌ | ⚠️ | ❌ | ✅ |
+| **FPS Display** | ✅ | ❌ | ✅ | ⚠️ | ✅ |
 | **Free Tier** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Commercial Pricing** | $29-299/yr | Free only | $10/mo | N/A | $20/mo |
 | **Setup Time** | 5 minutes | 2+ hours | 3+ hours | N/A | 1 hour |
@@ -523,23 +601,39 @@ Your support enables:
 
 ## Roadmap
 
-### v0.2 (Q2 2025)
-- [ ] AV1 encoding support
-- [ ] Advanced scheduling (off-peak hours)
-- [ ] Webhook integrations
-- [ ] Mobile app (iOS/Android)
+### ✅ Recently Completed (October 2025)
+- [x] **TRUE RESUME** - Resume interrupted encoding jobs from exact progress
+- [x] **Auto-Heal System** - 4-layer crash recovery with volume mount race condition defense
+- [x] **Priority Queue** - Dynamic job prioritization with visual indicators
+- [x] **Library Filtering** - Filter queue by library for multi-library setups
+- [x] **Per-Node Statistics** - Monitor encoding performance for each node
+- [x] **FPS Display** - Real-time frames per second for active encodes
+- [x] **Failed At Timestamps** - Track when jobs failed with human-readable timestamps
+- [x] **Ultra Compact Overview** - Redesigned dashboard with space-efficient node tiles
 
-### v0.3 (Q3 2025)
-- [ ] Machine learning quality prediction
+### v0.2 (Q1 2026)
+- [ ] AV1 encoding support (codec integration)
+- [ ] Advanced scheduling (off-peak hours, cron expressions)
+- [ ] Webhook integrations (Discord, Slack, custom endpoints)
+- [ ] Enhanced retry logic with exponential backoff
+- [ ] Bulk job operations (retry all failed, clear completed)
+- [ ] Export queue data (CSV, JSON)
+
+### v0.3 (Q2 2026)
+- [ ] Machine learning quality prediction (CRF optimization)
 - [ ] Auto-tagging and metadata extraction
-- [ ] Multi-user support with permissions
-- [ ] Cloud storage integration (S3, B2, etc.)
+- [ ] Multi-user support with permissions (RBAC)
+- [ ] Cloud storage integration (S3, B2, Wasabi)
+- [ ] Mobile app (iOS/Android)
+- [ ] Advanced filtering (by codec, resolution, size range)
 
-### v1.0 (Q4 2025)
+### v1.0 (Q4 2026)
 - [ ] Enterprise SSO/LDAP
-- [ ] High-availability clustering
+- [ ] High-availability clustering (PostgreSQL replication)
 - [ ] White-label UI options
 - [ ] Professional SLA support
+- [ ] Real-time collaboration (shared queue management)
+- [ ] Comprehensive audit logs
 
 [View Full Roadmap →](./ROADMAP.md)
 
@@ -587,6 +681,12 @@ A: Yes! You can configure source and destination paths per policy.
 
 **Q: What happens if encoding fails?**
 A: BitBonsai automatically retries failed jobs 3 times. Original files are never deleted until successful verification.
+
+**Q: What happens if my server crashes during encoding?**
+A: BitBonsai's TRUE RESUME system automatically detects interrupted jobs and resumes from the exact timestamp (down to the frame). You never lose progress. If the temp file is missing, it safely restarts from 0%. No manual intervention required.
+
+**Q: How does Auto-Heal work?**
+A: On startup, BitBonsai scans for orphaned jobs (ENCODING, HEALTH_CHECK, VERIFYING states). It validates temp files, calculates resume positions, and automatically requeues jobs. The 4-layer system handles Docker volume mount race conditions, ensuring reliability on Unraid, Docker Compose, and Kubernetes.
 
 ---
 

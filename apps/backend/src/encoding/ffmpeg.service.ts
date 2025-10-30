@@ -601,9 +601,8 @@ export class FfmpegService implements OnModuleDestroy {
    *
    * @param filePath - Path to video file
    * @returns Duration in seconds, or 3600 if unable to determine
-   * @private
    */
-  private async getVideoDuration(filePath: string): Promise<number> {
+  async getVideoDuration(filePath: string): Promise<number> {
     return new Promise((resolve) => {
       const ffprobe = spawn('ffprobe', [
         '-v',
@@ -1317,6 +1316,7 @@ export class FfmpegService implements OnModuleDestroy {
       targetQuality: number;
       hwAccel?: string;
       advancedSettings?: Record<string, unknown>;
+      startedFromSeconds?: number; // TRUE RESUME: FFmpeg input seeking position
     }
   ): Promise<void> {
     // Create a minimal job object for encodeFile

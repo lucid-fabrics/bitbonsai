@@ -26,6 +26,7 @@ export class QueueJobBo {
   updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
+  failedAt?: string;
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
@@ -55,6 +56,7 @@ export class QueueJobBo {
     this.updatedAt = model.updatedAt;
     this.startedAt = model.startedAt;
     this.completedAt = model.completedAt;
+    this.failedAt = model.failedAt;
     this.error = model.error;
     this.sourceCodec = model.sourceCodec;
     this.targetCodec = model.targetCodec;
