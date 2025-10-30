@@ -70,6 +70,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly MIN_FREE_MEMORY_PERCENT = 10; // Minimum 10% free RAM
   private readonly DISK_SPACE_BUFFER_PERCENT = 20; // 20% buffer for encoding overhead
 
+  // Auto-heal timing constants (Code Convention: no magic numbers)
+  private readonly AUTO_HEAL_INITIAL_DELAY_MS = 2000; // 2 seconds
+  private readonly AUTO_HEAL_STABILIZATION_DELAY_MS = 3000; // 3 seconds
+  private readonly VOLUME_MOUNT_PROBE_DELAY_MS = 1000; // 1 second
+  private readonly VOLUME_MOUNT_MAX_RETRIES = 10;
+  private readonly TEMP_FILE_CHECK_DELAY_MS = 1000; // 1 second
+  private readonly TEMP_FILE_MAX_RETRIES = 5;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
@@ -90,14 +98,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // HYBRID APPROACH: Initial delay + volume mount probing + file system stabilization + retry logic
       // Step 1: Small initial delay to let basic initialization complete
       this.logger.log('⏳ Waiting for basic initialization...');
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_INITIAL_DELAY_MS));
 
       // Step 2: Wait for volume mounts to be accessible
       await this.waitForVolumeMounts();
 
       // Step 3: Let file system stabilize after volumes are mounted
       this.logger.log('⏳ Waiting for file system to stabilize...');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_STABILIZATION_DELAY_MS));
 
       // STEP 4: Auto-heal orphaned jobs from previous crash/reboot
       await this.autoHealOrphanedJobs();
@@ -170,18 +178,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const maxRetries = 10;
-    const retryDelay = 1000; // 1 second
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= this.VOLUME_MOUNT_MAX_RETRIES; attempt++) {
       try {
-        const fs = require('fs');
-
         // Test ALL media paths - if ANY exist, volumes are ready
         for (const testPath of mediaPaths) {
           if (fs.existsSync(testPath)) {
             this.logger.log(
-              `✅ Volume mount ready: ${testPath} (attempt ${attempt}/${maxRetries})`
+              `✅ Volume mount ready: ${testPath} (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`
             );
             return;
           }
@@ -190,14 +193,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         // Ignore errors, will retry
       }
 
-      if (attempt < maxRetries) {
-        this.logger.debug(`⏳ Waiting for volume mounts... (attempt ${attempt}/${maxRetries})`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      if (attempt < this.VOLUME_MOUNT_MAX_RETRIES) {
+        this.logger.debug(
+          `⏳ Waiting for volume mounts... (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, this.VOLUME_MOUNT_PROBE_DELAY_MS));
       }
     }
 
     this.logger.warn(
-      `⚠️  Volume mounts not detected after ${maxRetries} attempts - proceeding anyway`
+      `⚠️  Volume mounts not detected after ${this.VOLUME_MOUNT_MAX_RETRIES} attempts - proceeding anyway`
     );
   }
 
@@ -210,27 +215,38 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private async checkTempFileWithRetry(tempFilePath: string | null): Promise<boolean> {
     if (!tempFilePath) {
+      this.logger.log('  ℹ️  TRUE RESUME: No temp file path provided, skipping check');
       return false;
     }
 
-    const maxRetries = 5;
-    const retryDelay = 1000; // 1s between retries (more robust)
+    this.logger.log(`  🔍 TRUE RESUME: Checking if temp file exists: ${tempFilePath}`);
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= this.TEMP_FILE_MAX_RETRIES; attempt++) {
       try {
-        const fs = require('fs');
         if (fs.existsSync(tempFilePath)) {
+          this.logger.log(
+            `  ✅ TRUE RESUME: Temp file found on attempt ${attempt}/${this.TEMP_FILE_MAX_RETRIES}`
+          );
           return true;
         }
+        this.logger.log(
+          `  ⏳ TRUE RESUME: Temp file not found (attempt ${attempt}/${this.TEMP_FILE_MAX_RETRIES}), retrying...`
+        );
       } catch (error) {
-        // Ignore errors, will retry
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `  ⚠️  TRUE RESUME: Error checking temp file (attempt ${attempt}/${this.TEMP_FILE_MAX_RETRIES}): ${errorMsg}`
+        );
       }
 
-      if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      if (attempt < this.TEMP_FILE_MAX_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, this.TEMP_FILE_CHECK_DELAY_MS));
       }
     }
 
+    this.logger.warn(
+      `  ❌ TRUE RESUME: Temp file not found after ${this.TEMP_FILE_MAX_RETRIES} attempts - will restart from 0%`
+    );
     return false;
   }
 
@@ -285,15 +301,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // TRUE RESUME: Keep progress and resume state (DON'T reset to 0%)
       for (const job of orphanedJobs) {
         try {
-          const jobWithResume = job as any;
-
           // TRUE RESUME: Check if temp file still exists (with retry logic)
-          const tempFileExists = await this.checkTempFileWithRetry(jobWithResume.tempFilePath);
+          const tempFileExists = await this.checkTempFileWithRetry(job.tempFilePath);
 
-          // DEBUG: Log temp file check result
-          if (jobWithResume.tempFilePath) {
-            this.logger.debug(`  Checking temp file: ${jobWithResume.tempFilePath}`);
-            this.logger.debug(`  File exists: ${tempFileExists}`);
+          // Log temp file check result for debugging
+          if (job.tempFilePath) {
+            this.logger.log(`  Checking temp file: ${job.tempFilePath}`);
+            this.logger.log(`  File exists: ${tempFileExists}`);
           }
 
           const errorMessage =
@@ -1082,8 +1096,48 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         data: { tempFilePath: tmpPath },
       });
 
+      // TRUE RESUME: Calculate resume position if temp file exists and job has progress
+      let startedFromSeconds: number | undefined;
+      if (job.progress > 0 && fs.existsSync(tmpPath)) {
+        this.logger.log(
+          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress, calculating resume position...`
+        );
+
+        try {
+          // Get video duration to calculate exact resume position
+          const durationSeconds = await this.ffmpegService.getVideoDuration(job.filePath);
+
+          if (durationSeconds > 0) {
+            startedFromSeconds = Math.floor((job.progress / 100) * durationSeconds);
+
+            // Convert seconds to HH:MM:SS format for resumeTimestamp field
+            const hours = Math.floor(startedFromSeconds / 3600);
+            const minutes = Math.floor((startedFromSeconds % 3600) / 60);
+            const seconds = startedFromSeconds % 60;
+            const resumeTimestamp = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            // Update database with resume position (using existing resumeTimestamp field)
+            await this.prisma.job.update({
+              where: { id: job.id },
+              data: { resumeTimestamp },
+            });
+
+            this.logger.log(
+              `  ✅ TRUE RESUME: Will resume from ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`
+            );
+          } else {
+            this.logger.warn(
+              `  ⚠️  TRUE RESUME: Could not determine video duration, starting from beginning`
+            );
+          }
+        } catch (error) {
+          this.logger.warn(`  ⚠️  TRUE RESUME: Error calculating resume position:`, error);
+          // Continue without resume - will restart from 0%
+        }
+      }
+
       // Perform encoding
-      await this.performEncoding(job, tmpPath, policy);
+      await this.performEncoding(job, tmpPath, policy, startedFromSeconds);
 
       // Verify output if enabled
       if (policy.verifyOutput) {
@@ -1129,7 +1183,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private async performEncoding(
     job: JobWithPolicy,
     tmpPath: string,
-    policy: JobWithPolicy['policy']
+    policy: JobWithPolicy['policy'],
+    startedFromSeconds?: number
   ): Promise<void> {
     if (!policy) {
       throw new Error('Policy is required for encoding');
@@ -1148,6 +1203,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       targetQuality: policy.targetQuality,
       hwAccel: hwaccel,
       advancedSettings: advancedSettings ?? undefined,
+      startedFromSeconds, // TRUE RESUME: Pass resume position to FFmpeg
     });
   }
 
