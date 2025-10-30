@@ -969,9 +969,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const beforeSizeBytes = BigInt(fs.statSync(job.filePath).size);
 
     // Create temporary output path
+    // CRITICAL: Use stable temp filename (job.id only) so TRUE RESUME works across restarts
     const outputDir = path.dirname(job.filePath);
     const outputName = path.basename(job.filePath);
-    const tmpPath = path.join(outputDir, `.${outputName}.tmp-${job.id}-${Date.now()}`);
+    const tmpPath = path.join(outputDir, `.${outputName}.tmp-${job.id}`);
 
     try {
       const policy = job.policy;
