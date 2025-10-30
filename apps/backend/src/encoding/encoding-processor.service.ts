@@ -87,6 +87,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('🔧 Initializing encoding processor...');
 
     try {
+      // Wait for Docker volume mounts to be fully initialized
+      // This prevents race condition where auto-heal checks for temp files
+      // before the volume mounts are ready
+      this.logger.log('⏳ Waiting for volume mounts to initialize...');
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
       // STEP 1: Auto-heal orphaned jobs from previous crash/reboot
       await this.autoHealOrphanedJobs();
 
@@ -201,6 +207,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           // TRUE RESUME: Check if temp file still exists
           const tempFileExists =
             jobWithResume.tempFilePath && require('fs').existsSync(jobWithResume.tempFilePath);
+
+          // DEBUG: Log temp file check result
+          if (jobWithResume.tempFilePath) {
+            this.logger.debug(`  Checking temp file: ${jobWithResume.tempFilePath}`);
+            this.logger.debug(`  File exists: ${tempFileExists}`);
+          }
 
           const errorMessage =
             job.stage === JobStage.PAUSED
