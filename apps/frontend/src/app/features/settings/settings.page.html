@@ -70,12 +70,18 @@
         <div class="tab-panel">
           <h2>License Information</h2>
 
-          @if (license) {
+          @if (loading()) {
+            <!-- Loading State -->
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading license information...</p>
+            </div>
+          } @else if (license()) {
             <!-- Current License Card -->
             <div class="license-card">
               <div class="license-header">
-                <span [class]="getTierBadgeClass(license!.tier)">
-                  {{ getTierDisplayName(license!.tier) }}
+                <span [class]="getTierBadgeClass(license()!.tier)">
+                  {{ getTierDisplayName(license()!.tier) }}
                 </span>
               </div>
 
@@ -84,7 +90,7 @@
                   <span class="label">License Key:</span>
                   <div class="value-with-action">
                     <span class="key-value">
-                      {{ licenseKeyRevealed ? license!.licenseKey : '****-****-****-****' }}
+                      {{ licenseKeyRevealed ? license()!.licenseKey : '****-****-****-****' }}
                     </span>
                     <button
                       type="button"
@@ -99,22 +105,22 @@
 
                 <div class="detail-row">
                   <span class="label">Email:</span>
-                  <span class="value">{{ license!.email }}</span>
+                  <span class="value">{{ license()!.email }}</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Valid Until:</span>
-                  <span class="value">{{ license!.validUntil }}</span>
+                  <span class="value">{{ license()!.validUntil }}</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Nodes:</span>
-                  <span class="value">{{ license!.usedNodes }} of {{ license!.maxNodes }} used</span>
+                  <span class="value">{{ license()!.usedNodes }} of {{ license()!.maxNodes }} used</span>
                 </div>
 
                 <div class="detail-row">
                   <span class="label">Concurrent Jobs:</span>
-                  <span class="value">{{ license!.maxConcurrentJobs }} max</span>
+                  <span class="value">{{ license()!.maxConcurrentJobs }} max</span>
                 </div>
               </div>
 
@@ -122,7 +128,7 @@
               <div class="features-section">
                 <h3>Features</h3>
                 <div class="features-list">
-                  @for (feature of license!.features; track feature.name) {
+                  @for (feature of license()!.features; track feature.name) {
                     <div class="feature-item" [class.disabled]="!feature.enabled">
                       <i [class]="feature.enabled ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
                       <span>{{ feature.name }}</span>
@@ -131,7 +137,7 @@
                 </div>
               </div>
 
-              @if (license!.tier !== LicenseTier.COMMERCIAL_PRO) {
+              @if (license()!.tier !== LicenseTier.COMMERCIAL_PRO) {
                 <button type="button" class="btn-primary btn-upgrade">
                   <i class="fa fa-arrow-up"></i>
                   Upgrade License
@@ -177,12 +183,65 @@
                 <button
                   type="submit"
                   class="btn-primary"
-                  [disabled]="licenseForm.invalid || loading"
+                  [disabled]="licenseForm.invalid || loading()"
                 >
                   <i class="fa fa-key"></i>
                   Activate License
                 </button>
               </form>
+            </div>
+          } @else {
+            <!-- No License Activated -->
+            <div class="no-license-state">
+              <div class="icon-placeholder">
+                <i class="fa fa-key fa-3x"></i>
+              </div>
+              <h3>No License Activated</h3>
+              <p>You're currently using the free tier. Activate a license to unlock additional features.</p>
+
+              <!-- Activate License Form -->
+              <div class="license-activation">
+                <form [formGroup]="licenseForm" (ngSubmit)="activateLicense()">
+                  <div class="form-group">
+                    <label for="licenseKey">License Key</label>
+                    <input
+                      id="licenseKey"
+                      type="text"
+                      class="form-control"
+                      formControlName="licenseKey"
+                      placeholder="XXX-XXXX-XXXX-XXXX"
+                      [class.invalid]="licenseKeyControl?.invalid && licenseKeyControl?.touched"
+                    />
+                    @if (licenseKeyControl?.invalid && licenseKeyControl?.touched) {
+                      <span class="error-message">Invalid license key format</span>
+                    }
+                  </div>
+
+                  <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                      id="email"
+                      type="email"
+                      class="form-control"
+                      formControlName="email"
+                      placeholder="your@email.com"
+                      [class.invalid]="emailControl?.invalid && emailControl?.touched"
+                    />
+                    @if (emailControl?.invalid && emailControl?.touched) {
+                      <span class="error-message">Invalid email address</span>
+                    }
+                  </div>
+
+                  <button
+                    type="submit"
+                    class="btn-primary"
+                    [disabled]="licenseForm.invalid || loading()"
+                  >
+                    <i class="fa fa-key"></i>
+                    Activate License
+                  </button>
+                </form>
+              </div>
             </div>
           }
         </div>
@@ -371,7 +430,7 @@
                   <code class="value">{{ systemSettings!.databasePath }}</code>
                 </div>
               </div>
-              <button type="button" class="btn-secondary" (click)="backupDatabase()" [disabled]="loading">
+              <button type="button" class="btn-secondary" (click)="backupDatabase()" [disabled]="loading()">
                 <i class="fa fa-download"></i>
                 Backup Database
               </button>
@@ -402,7 +461,7 @@
                 <i class="fa fa-exclamation-triangle"></i>
                 These actions cannot be undone. Proceed with caution.
               </p>
-              <button type="button" class="btn-danger" (click)="resetToDefaults()" [disabled]="loading">
+              <button type="button" class="btn-danger" (click)="resetToDefaults()" [disabled]="loading()">
                 <i class="fa fa-undo"></i>
                 Reset to Defaults
               </button>
@@ -577,7 +636,7 @@
                   <i class="fa fa-copy"></i>
                 </button>
               </div>
-              <button type="button" class="btn-secondary" (click)="regenerateApiKey()" [disabled]="loading">
+              <button type="button" class="btn-secondary" (click)="regenerateApiKey()" [disabled]="loading()">
                 <i class="fa fa-refresh"></i>
                 Regenerate API Key
               </button>

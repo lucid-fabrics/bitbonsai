@@ -1,4 +1,4 @@
-<div class="cpu-capacity-panel" *ngIf="!loading && resources">
+<div class="cpu-capacity-panel" *ngIf="!loading() && resources">
   <!-- Header -->
   <div class="panel-header">
     <div class="icon-wrapper">
@@ -33,9 +33,9 @@
     <div class="card-row">
       <div class="card-label">
         <span class="label-icon">⚡</span>
-        <span>Total Cores</span>
+        <span>CPU Threads</span>
       </div>
-      <div class="card-value">{{ resources.cpu.cores }} cores</div>
+      <div class="card-value">{{ resources.cpu.cores }} threads ({{ resources.cpu.cores / 2 }} physical cores)</div>
     </div>
   </div>
 
@@ -64,7 +64,7 @@
       <div class="calc-formula">
         <div class="formula-step">
           <span class="formula-label">Theoretical Max:</span>
-          <span class="formula-value">{{ resources.cpu.cores }} cores ÷ {{ resources.cpu.coresPerJob }} = {{ resources.cpu.theoreticalMaxWorkers }}</span>
+          <span class="formula-value">{{ resources.cpu.cores }} threads ÷ {{ resources.cpu.coresPerJob }} threads/job = {{ resources.cpu.theoreticalMaxWorkers }}</span>
         </div>
         <div class="formula-step">
           <span class="formula-label">Safety Margin:</span>
@@ -139,7 +139,7 @@
   </div>
 </div>
 
-<div class="loading-state" *ngIf="loading">
+<div class="loading-state" *ngIf="loading()">
   <div class="spinner"></div>
   <p>Loading system resources...</p>
 </div>

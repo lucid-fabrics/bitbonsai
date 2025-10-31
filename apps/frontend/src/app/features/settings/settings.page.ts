@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -35,12 +35,12 @@ export class SettingsComponent implements OnInit {
   // Expose enum for template
   protected readonly SettingsTab = SettingsTab;
 
-  // State signals
+  // State
   activeTab: SettingsTab = SettingsTab.LICENSE;
-  license: License | null = null;
+  license = signal<License | null>(null);
   environmentInfo: EnvironmentInfo | null = null;
   systemSettings: SystemSettings | null = null;
-  loading = false;
+  loading = signal(false);
   error: string | null = null;
   successMessage: string | null = null;
   licenseKeyRevealed = false;
@@ -98,18 +98,18 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadLicense(): void {
-    this.loading = true;
+    this.loading.set(true);
     this.licenseService
       .getCurrentLicense()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (license) => {
-          this.license = license;
-          this.loading = false;
+          this.license.set(license);
+          this.loading.set(false);
         },
         error: (_err) => {
           this.error = 'Failed to load license information';
-          this.loading = false;
+          this.loading.set(false);
         },
       });
   }
@@ -163,7 +163,7 @@ export class SettingsComponent implements OnInit {
   }
 
   onLocalNetworkBypassToggle(): void {
-    this.loading = true;
+    this.loading.set(true);
     this.clearMessages();
 
     this.settingsService
@@ -173,11 +173,11 @@ export class SettingsComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.loading = false;
+          this.loading.set(false);
           this.successMessage = `Local network auth bypass ${this.localNetworkBypassEnabled ? 'enabled' : 'disabled'} successfully`;
         },
         error: (_err) => {
-          this.loading = false;
+          this.loading.set(false);
           this.error = 'Failed to update security settings';
           // Revert toggle on error
           this.localNetworkBypassEnabled = !this.localNetworkBypassEnabled;
@@ -235,7 +235,7 @@ export class SettingsComponent implements OnInit {
 
   activateLicense(): void {
     if (this.licenseForm.valid) {
-      this.loading = true;
+      this.loading.set(true);
       this.clearMessages();
 
       const formValue = this.licenseForm.value;
@@ -249,14 +249,14 @@ export class SettingsComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (license) => {
-            this.license = license;
-            this.loading = false;
+            this.license.set(license);
+            this.loading.set(false);
             this.successMessage = 'License activated successfully!';
             this.licenseForm.reset();
           },
           error: (_err) => {
             this.error = 'Failed to activate license. Please check your key and try again.';
-            this.loading = false;
+            this.loading.set(false);
           },
         });
     }
@@ -264,7 +264,7 @@ export class SettingsComponent implements OnInit {
 
   updateSystemSettings(): void {
     if (this.settingsForm.valid) {
-      this.loading = true;
+      this.loading.set(true);
       this.clearMessages();
 
       const formValue = this.settingsForm.value;
@@ -283,19 +283,19 @@ export class SettingsComponent implements OnInit {
         .subscribe({
           next: (settings) => {
             this.systemSettings = settings;
-            this.loading = false;
+            this.loading.set(false);
             this.successMessage = 'Settings updated successfully!';
           },
           error: (_err) => {
             this.error = 'Failed to update settings';
-            this.loading = false;
+            this.loading.set(false);
           },
         });
     }
   }
 
   backupDatabase(): void {
-    this.loading = true;
+    this.loading.set(true);
     this.clearMessages();
 
     this.settingsService
@@ -303,12 +303,12 @@ export class SettingsComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result: { backupPath: string }) => {
-          this.loading = false;
+          this.loading.set(false);
           this.successMessage = `Database backed up to: ${result.backupPath}`;
         },
         error: (_err: Error) => {
           this.error = 'Failed to backup database';
-          this.loading = false;
+          this.loading.set(false);
         },
       });
   }
@@ -319,7 +319,7 @@ export class SettingsComponent implements OnInit {
         'Are you sure you want to reset all settings to defaults? This action cannot be undone.'
       )
     ) {
-      this.loading = true;
+      this.loading.set(true);
       this.clearMessages();
 
       this.settingsService
@@ -327,13 +327,13 @@ export class SettingsComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (result: { message: string }) => {
-            this.loading = false;
+            this.loading.set(false);
             this.successMessage = result.message;
             this.loadSystemSettings();
           },
           error: (_err: Error) => {
             this.error = 'Failed to reset settings';
-            this.loading = false;
+            this.loading.set(false);
           },
         });
     }
@@ -345,7 +345,7 @@ export class SettingsComponent implements OnInit {
         'Are you sure you want to regenerate the API key? The old key will be invalidated immediately.'
       )
     ) {
-      this.loading = true;
+      this.loading.set(true);
       this.clearMessages();
 
       this.settingsService
@@ -357,12 +357,12 @@ export class SettingsComponent implements OnInit {
             if (currentSettings) {
               this.systemSettings = { ...currentSettings, apiKey: result.apiKey };
             }
-            this.loading = false;
+            this.loading.set(false);
             this.successMessage = 'API key regenerated successfully!';
           },
           error: (_err: Error) => {
             this.error = 'Failed to regenerate API key';
-            this.loading = false;
+            this.loading.set(false);
           },
         });
     }
