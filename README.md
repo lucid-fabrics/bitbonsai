@@ -421,6 +421,7 @@ This is why BitBonsai is "rock solid" for 24/7 encoding workloads.
 - Docker 24+
 - Angular CLI 19+
 - NestJS CLI 10+
+- FFmpeg 7.1+ (John Van Sickle static builds included in Docker images)
 
 ### Local Development
 
@@ -650,7 +651,7 @@ BitBonsai is built with:
 - [PostgreSQL](https://postgresql.org) - Robust database
 - [Redis](https://redis.io) - High-performance caching
 - [BullMQ](https://bullmq.io) - Distributed job queue
-- [FFmpeg](https://ffmpeg.org) - Media encoding powerhouse
+- [FFmpeg 7.1+](https://ffmpeg.org) - Media encoding powerhouse ([John Van Sickle static builds](https://johnvansickle.com/ffmpeg/))
 
 Special thanks to the open-source community for making this possible.
 
