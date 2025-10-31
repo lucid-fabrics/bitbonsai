@@ -312,6 +312,10 @@ model Job {
   retryCount      Int               @default(0) // Number of encoding retry attempts (max 3)
   nextRetryAt     DateTime? // When to retry next (for exponential backoff)
 
+  // Auto-Heal Fields (TRUE RESUME tracking)
+  autoHealedAt       DateTime? // When this job was automatically healed by system restart
+  autoHealedProgress Float?    // Progress percentage when auto-healed (for visual indicator on progress bar)
+
   // Health Check Fields
   healthStatus         FileHealthStatus @default(UNKNOWN) // File health status
   healthScore          Int              @default(0) // Health score 0-100

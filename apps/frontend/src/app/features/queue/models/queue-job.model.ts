@@ -33,4 +33,6 @@ export interface QueueJob {
   nextRetryAt?: string; // When to retry next (for exponential backoff)
   priority?: number; // 0=normal, 1=high, 2=top (max 3 top priority at once)
   prioritySetAt?: string; // When priority was last changed
+  autoHealedAt?: string; // ISO timestamp when job was auto-healed by system restart
+  autoHealedProgress?: number; // Progress % when healing occurred (for green dot indicator, 0-100)
 }

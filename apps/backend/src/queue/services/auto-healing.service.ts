@@ -53,6 +53,7 @@ export class AutoHealingService implements OnModuleInit {
           fileLabel: true,
           retryCount: true,
           nextRetryAt: true,
+          progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
         },
       });
 
@@ -63,31 +64,37 @@ export class AutoHealingService implements OnModuleInit {
 
       this.logger.log(`Found ${eligibleJobs.length} failed job(s) eligible for retry`);
 
-      // Reset jobs back to QUEUED
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: {
-            in: eligibleJobs.map((j) => j.id),
-          },
-        },
-        data: {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          error: null,
-          completedAt: null,
-          startedAt: null,
-          retryCount: { increment: 1 },
-        },
-      });
-
-      this.logger.log(`Auto-healing complete: ${result.count} job(s) re-queued for retry`);
-
-      // Log each healed job
+      // Reset jobs back to QUEUED individually to capture progress at healing point
+      let healedCount = 0;
       for (const job of eligibleJobs) {
-        this.logger.log(`Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/3)`);
+        try {
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.QUEUED,
+              progress: 0,
+              error: null,
+              completedAt: null,
+              startedAt: null,
+              retryCount: job.retryCount + 1,
+              // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
+              autoHealedAt: new Date(),
+              autoHealedProgress: job.progress,
+            },
+          });
+
+          healedCount++;
+          this.logger.log(
+            `Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/3, was at ${(job.progress || 0).toFixed(1)}%)`
+          );
+        } catch (error) {
+          this.logger.error(`Failed to heal job ${job.id} (${job.fileLabel})`, error);
+        }
       }
 
-      return result.count;
+      this.logger.log(`Auto-healing complete: ${healedCount} job(s) re-queued for retry`);
+
+      return healedCount;
     } catch (error) {
       this.logger.error('Failed to heal failed jobs', error);
       return 0;

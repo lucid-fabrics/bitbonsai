@@ -282,6 +282,15 @@
                 </td>
                 <td class="col-filename" [title]="job.fileName">
                   {{ job.fileName }}
+                  @if (job.autoHealedAt) {
+                    <span class="auto-heal-badge"
+                          bbTooltip
+                          tooltipTitle="Auto-Healed"
+                          [tooltipContent]="'System auto-recovered this job on restart (was at ' + (job.autoHealedProgress || 0).toFixed(1) + '%)'"
+                          tooltipPlacement="top">
+                      <i class="fas fa-shield-alt"></i> Auto-Healed
+                    </span>
+                  }
                 </td>
                 <td class="col-library">{{ job.libraryName }}</td>
                 <td class="col-codec">
@@ -317,6 +326,15 @@
                         <div class="progress-fill-enhanced" [style.width.%]="job.progress">
                           <div class="progress-shimmer"></div>
                         </div>
+                        @if (job.autoHealedProgress !== undefined && job.autoHealedProgress !== null) {
+                          <div class="heal-indicator"
+                               [style.left.%]="job.autoHealedProgress"
+                               bbTooltip
+                               tooltipTitle="Auto-Heal Point"
+                               [tooltipContent]="'Job was auto-healed at ' + job.autoHealedProgress.toFixed(1) + '% on ' + formatTimestamp(job.autoHealedAt || '')"
+                               tooltipPlacement="top">
+                          </div>
+                        }
                         <span class="progress-percentage">
                           {{ job.progress }}%
                           @if (isJobStuck(job)) {
@@ -530,42 +548,112 @@
                 <tr class="details-row">
                   <td colspan="9">
                     <div class="job-details-expanded">
-                      <!-- Job Timeline -->
+                      <!-- Job Timeline (Horizontal) -->
                       <div class="timeline-section">
                         <h4><i class="fas fa-history"></i> Job Timeline</h4>
-                        <div class="timeline">
-                          <div class="timeline-item completed">
-                            <div class="timeline-marker"></div>
-                            <div class="timeline-content">
-                              <div class="timeline-title">Created</div>
-                              <div class="timeline-time">{{ formatTimestamp(job.createdAt) }}</div>
+                        <div class="timeline-horizontal">
+                          <!-- Created -->
+                          <div class="timeline-event completed">
+                            <div class="timeline-icon">
+                              <i class="fas fa-plus-circle"></i>
                             </div>
+                            <div class="timeline-label">Created</div>
+                            <div class="timeline-timestamp">{{ formatTimestamp(job.createdAt) }}</div>
                           </div>
+
+                          <!-- Health Check (if job went through it) -->
+                          @if (job.startedAt || job.status !== 'QUEUED') {
+                            <div class="timeline-connector completed"></div>
+                            <div class="timeline-event completed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-heartbeat"></i>
+                              </div>
+                              <div class="timeline-label">Health Check</div>
+                              <div class="timeline-timestamp">Passed</div>
+                            </div>
+                          }
+
+                          <!-- Started Encoding -->
                           @if (job.startedAt) {
-                            <div class="timeline-item completed">
-                              <div class="timeline-marker"></div>
-                              <div class="timeline-content">
-                                <div class="timeline-title">Started Encoding</div>
-                                <div class="timeline-time">{{ formatTimestamp(job.startedAt) }} • {{ getElapsedTime(job.startedAt) }} ago</div>
+                            <div class="timeline-connector completed"></div>
+                            <div class="timeline-event completed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-play-circle"></i>
                               </div>
+                              <div class="timeline-label">Started</div>
+                              <div class="timeline-timestamp">{{ formatTimestamp(job.startedAt) }}</div>
                             </div>
                           }
+
+                          <!-- Auto-Healed (if applicable) -->
+                          @if (job.autoHealedAt) {
+                            <div class="timeline-connector auto-heal"></div>
+                            <div class="timeline-event auto-heal">
+                              <div class="timeline-icon">
+                                <i class="fas fa-shield-alt"></i>
+                              </div>
+                              <div class="timeline-label">Auto-Healed</div>
+                              <div class="timeline-timestamp">{{ formatTimestamp(job.autoHealedAt) }} • {{ (job.autoHealedProgress || 0).toFixed(1) }}%</div>
+                            </div>
+                          }
+
+                          <!-- Retry Count (if any retries) -->
+                          @if (job.retryCount && job.retryCount > 0) {
+                            <div class="timeline-connector retry"></div>
+                            <div class="timeline-event retry">
+                              <div class="timeline-icon">
+                                <i class="fas fa-redo"></i>
+                              </div>
+                              <div class="timeline-label">Retry {{ job.retryCount }}/3</div>
+                              <div class="timeline-timestamp">In progress</div>
+                            </div>
+                          }
+
+                          <!-- Currently Encoding -->
                           @if (job.status === 'ENCODING' && job.progress > 0) {
-                            <div class="timeline-item active">
-                              <div class="timeline-marker pulsing"></div>
-                              <div class="timeline-content">
-                                <div class="timeline-title">Currently Encoding</div>
-                                <div class="timeline-time">{{ job.progress }}% complete</div>
+                            <div class="timeline-connector active"></div>
+                            <div class="timeline-event active">
+                              <div class="timeline-icon pulsing">
+                                <i class="fas fa-cog fa-spin"></i>
                               </div>
+                              <div class="timeline-label">Encoding</div>
+                              <div class="timeline-timestamp">{{ job.progress }}%</div>
                             </div>
                           }
+
+                          <!-- Expected Completion -->
                           @if (job.status === 'ENCODING' && job.etaSeconds) {
-                            <div class="timeline-item pending">
-                              <div class="timeline-marker"></div>
-                              <div class="timeline-content">
-                                <div class="timeline-title">Expected Completion</div>
-                                <div class="timeline-time">{{ formatETA(job.etaSeconds) }}</div>
+                            <div class="timeline-connector pending"></div>
+                            <div class="timeline-event pending">
+                              <div class="timeline-icon">
+                                <i class="fas fa-flag-checkered"></i>
                               </div>
+                              <div class="timeline-label">ETA</div>
+                              <div class="timeline-timestamp">{{ formatETA(job.etaSeconds) }}</div>
+                            </div>
+                          }
+
+                          <!-- Completed -->
+                          @if (job.status === 'COMPLETED') {
+                            <div class="timeline-connector completed"></div>
+                            <div class="timeline-event completed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-check-circle"></i>
+                              </div>
+                              <div class="timeline-label">Completed</div>
+                              <div class="timeline-timestamp">{{ formatTimestamp(job.completedAt || '') }}</div>
+                            </div>
+                          }
+
+                          <!-- Failed -->
+                          @if (job.status === 'FAILED') {
+                            <div class="timeline-connector failed"></div>
+                            <div class="timeline-event failed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-times-circle"></i>
+                              </div>
+                              <div class="timeline-label">Failed</div>
+                              <div class="timeline-timestamp">{{ formatTimestamp(job.failedAt || '') }}</div>
                             </div>
                           }
                         </div>
