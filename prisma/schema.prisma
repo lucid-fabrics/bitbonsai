@@ -92,6 +92,7 @@ enum JobStage {
   QUEUED
   ENCODING
   PAUSED
+  PAUSED_LOAD // CRITICAL FIX: Auto-paused due to high system load
   VERIFYING
   COMPLETED
   FAILED

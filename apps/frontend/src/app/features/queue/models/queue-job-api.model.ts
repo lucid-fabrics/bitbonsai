@@ -41,4 +41,6 @@ export interface QueueJobApiModel {
   nextRetryAt?: string;
   priority?: number;
   prioritySetAt?: string;
+  autoHealedAt?: string;
+  autoHealedProgress?: number;
 }

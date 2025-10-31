@@ -34,6 +34,8 @@ export class QueueJobBo {
   nextRetryAt?: string;
   priority?: number;
   prioritySetAt?: string;
+  autoHealedAt?: string;
+  autoHealedProgress?: number;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -64,6 +66,8 @@ export class QueueJobBo {
     this.nextRetryAt = model.nextRetryAt;
     this.priority = model.priority;
     this.prioritySetAt = model.prioritySetAt;
+    this.autoHealedAt = model.autoHealedAt;
+    this.autoHealedProgress = model.autoHealedProgress;
   }
 
   private extractFileName(model: QueueJobApiModel): string {
