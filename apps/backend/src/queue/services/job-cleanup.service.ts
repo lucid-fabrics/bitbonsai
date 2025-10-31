@@ -65,6 +65,8 @@ export class JobCleanupService implements OnModuleInit {
           fileLabel: true,
           nodeId: true,
           updatedAt: true,
+          progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
+          retryCount: true, // AUTO-HEAL TRACKING: needed to increment retry count
         },
       });
 
@@ -75,31 +77,37 @@ export class JobCleanupService implements OnModuleInit {
 
       this.logger.warn(`Found ${stuckJobs.length} stuck ENCODING job(s) - resetting to QUEUED`);
 
-      // Reset all stuck jobs in a single transaction
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: {
-            in: stuckJobs.map((job) => job.id),
-          },
-        },
-        data: {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          startedAt: null,
-        },
-      });
-
-      this.logger.log(`Successfully reset ${result.count} stuck job(s) to QUEUED stage`);
-
-      // Log details for each reset job
+      // Reset stuck jobs individually to capture progress at healing point
+      let resetCount = 0;
       for (const job of stuckJobs) {
-        const minutesStuck = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60);
-        this.logger.debug(
-          `Reset job ${job.id} (${job.fileLabel}) - stuck for ${minutesStuck} minutes on node ${job.nodeId}`
-        );
+        try {
+          const minutesStuck = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60);
+
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.QUEUED,
+              progress: 0,
+              startedAt: null,
+              retryCount: job.retryCount + 1,
+              // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
+              autoHealedAt: new Date(),
+              autoHealedProgress: job.progress,
+            },
+          });
+
+          resetCount++;
+          this.logger.debug(
+            `Reset job ${job.id} (${job.fileLabel}) - stuck for ${minutesStuck} minutes on node ${job.nodeId}, was at ${(job.progress || 0).toFixed(1)}%`
+          );
+        } catch (error) {
+          this.logger.error(`Failed to reset stuck job ${job.id} (${job.fileLabel})`, error);
+        }
       }
 
-      return result.count;
+      this.logger.log(`Successfully reset ${resetCount} stuck job(s) to QUEUED stage`);
+
+      return resetCount;
     } catch (error) {
       this.logger.error('Failed to cleanup stuck jobs', error);
       throw error;

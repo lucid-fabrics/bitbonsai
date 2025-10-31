@@ -339,6 +339,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           progress: true,
           updatedAt: true,
           tempFilePath: true, // TRUE RESUME: needed to check if temp file exists
+          retryCount: true, // AUTO-HEAL TRACKING: needed to increment retry count
         },
       });
 
@@ -381,6 +382,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
               etaSeconds: null,
               error: errorMessage,
               startedAt: null, // Clear startedAt to allow fresh start
+              // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
+              autoHealedAt: new Date(),
+              autoHealedProgress: job.progress,
+              retryCount: job.retryCount + 1,
               // TRUE RESUME: Clear resume state if temp file doesn't exist
               ...(tempFileExists
                 ? {}
