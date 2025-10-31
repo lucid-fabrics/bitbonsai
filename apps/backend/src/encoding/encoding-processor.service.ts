@@ -329,7 +329,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
           stage: {
-            in: [JobStage.HEALTH_CHECK, JobStage.ENCODING, JobStage.VERIFYING, JobStage.PAUSED],
+            in: [
+              JobStage.HEALTH_CHECK,
+              JobStage.ENCODING,
+              JobStage.VERIFYING,
+              JobStage.PAUSED,
+              JobStage.PAUSED_LOAD, // CRITICAL FIX: Include load-paused jobs in auto-heal
+            ],
           },
         },
         select: {
@@ -373,6 +379,41 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
                 ? `Auto-recovered from backend restart (was ${job.stage}) - will resume from ${job.progress.toFixed(1)}%`
                 : `Auto-recovered from backend restart (was ${job.stage}) - restarting from 0% (temp file missing)`;
 
+          // CRITICAL BUG FIX: Recalculate resumeTimestamp based on current progress
+          // The old resumeTimestamp is STALE (from when job first started encoding)
+          // We need to calculate the CORRECT timestamp for the current progress percentage
+          let recalculatedResumeTimestamp: string | null = null;
+          if (tempFileExists && job.progress > 0) {
+            try {
+              // Get the actual video file path from the job
+              const videoJob = await this.prisma.job.findUnique({
+                where: { id: job.id },
+                select: { filePath: true },
+              });
+
+              if (videoJob?.filePath) {
+                // Get video duration
+                const videoDuration = await this.ffmpegService.getVideoDuration(videoJob.filePath);
+
+                // Calculate resume time in seconds based on current progress
+                const resumeSeconds = (job.progress / 100) * videoDuration;
+
+                // Convert to HH:MM:SS.MS format
+                recalculatedResumeTimestamp =
+                  this.ffmpegService.formatSecondsToTimestamp(resumeSeconds);
+
+                this.logger.log(
+                  `  🔄 Recalculated resumeTimestamp for job ${job.fileLabel}: progress=${job.progress.toFixed(1)}%, videoDuration=${videoDuration.toFixed(2)}s, resumeSeconds=${resumeSeconds.toFixed(2)}s, resumeTimestamp=${recalculatedResumeTimestamp}`
+                );
+              }
+            } catch (error) {
+              this.logger.warn(
+                `  ⚠️  Failed to recalculate resumeTimestamp for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`
+              );
+              // Continue with existing resumeTimestamp (better than nothing)
+            }
+          }
+
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
@@ -386,9 +427,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
               autoHealedAt: new Date(),
               autoHealedProgress: job.progress,
               retryCount: job.retryCount + 1,
-              // TRUE RESUME: Clear resume state if temp file doesn't exist
+              // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
               ...(tempFileExists
-                ? {}
+                ? { resumeTimestamp: recalculatedResumeTimestamp }
                 : {
                     tempFilePath: null,
                     resumeTimestamp: null,
@@ -414,15 +455,17 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * Start background watchdog to detect stuck jobs during runtime
    *
    * HIGH PRIORITY FIX: Dynamic timeout based on file size
+   * CRITICAL FIX: Intelligent load management with auto-pause/resume
    * - Small files (<10GB): 5 minute timeout
    * - Large files (>=10GB): 15 minute timeout
    * - Runs every 60 seconds for faster detection
    * - Attempts to kill hung FFmpeg processes before failing
+   * - Auto-pauses jobs when load is high, resumes when load drops
    * - Provides detailed diagnostic information
    */
   private startStuckJobWatchdog(): void {
     this.logger.log(
-      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size)'
+      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size, load-based auto-pause)'
     );
 
     // AUDIT #2 ISSUE #24 FIX: Clear existing interval if any (hot reload protection)
@@ -433,6 +476,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // AUDIT #2 ISSUE #24 FIX: Store interval ID for cleanup
     this.watchdogIntervalId = setInterval(async () => {
       try {
+        // CRITICAL FIX: Intelligent load management FIRST (before stuck job detection)
+        await this.manageLoadBasedPausing();
+
+        // Then proceed with stuck job detection
         // HIGH PRIORITY FIX: Dynamic timeout based on file size
         // Small files get 5min timeout, large files get 15min timeout
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -546,6 +593,129 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`  ✗ Failed to kill FFmpeg process for job ${jobId}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * CRITICAL FIX: Intelligent load management with auto-pause/resume
+   *
+   * Load-Based Worker Limits:
+   * - Load < 50: All workers active (normal operation)
+   * - Load 50-100: Pause to 80% of workers
+   * - Load 100-200: Pause to 50% of workers
+   * - Load 200+: Pause to 30% of workers (emergency mode)
+   *
+   * @private
+   */
+  private async manageLoadBasedPausing(): Promise<void> {
+    // Only check load on Linux/macOS (load average not available on Windows)
+    if (process.platform === 'win32') {
+      return;
+    }
+
+    // Get 1-minute load average
+    const loadAvg = os.loadavg()[0];
+    const cpuCount = os.cpus().length;
+
+    // Count currently encoding jobs
+    const encodingJobs = await this.prisma.job.count({
+      where: { stage: 'ENCODING' },
+    });
+
+    // Determine target worker limit based on load
+    let targetWorkers: number;
+    let loadLevel: string;
+
+    if (loadAvg < 50) {
+      // Normal operation - all workers
+      targetWorkers = this.DEFAULT_WORKERS_PER_NODE;
+      loadLevel = 'normal';
+    } else if (loadAvg < 100) {
+      // Moderate load - 80% workers
+      targetWorkers = Math.ceil(this.DEFAULT_WORKERS_PER_NODE * 0.8);
+      loadLevel = 'moderate';
+    } else if (loadAvg < 200) {
+      // High load - 50% workers
+      targetWorkers = Math.ceil(this.DEFAULT_WORKERS_PER_NODE * 0.5);
+      loadLevel = 'high';
+    } else {
+      // Emergency - 30% workers (minimum 2)
+      targetWorkers = Math.max(2, Math.ceil(this.DEFAULT_WORKERS_PER_NODE * 0.3));
+      loadLevel = 'critical';
+    }
+
+    // Calculate jobs to pause/resume
+    const jobsToPause = encodingJobs - targetWorkers;
+    const pausedJobs = await this.prisma.job.count({
+      where: { stage: 'PAUSED_LOAD' },
+    });
+
+    // SCENARIO 1: Load is high, need to pause jobs
+    if (jobsToPause > 0 && encodingJobs > targetWorkers) {
+      this.logger.warn(
+        `🔥 High system load detected: ${loadAvg.toFixed(1)} (${loadLevel} level, ${cpuCount} CPUs)`
+      );
+      this.logger.warn(
+        `   Pausing ${jobsToPause} job(s) to reduce load from ${encodingJobs} to ${targetWorkers} workers`
+      );
+
+      // Get lowest priority QUEUED jobs to pause (don't interrupt encoding jobs)
+      const jobsToAutoPause = await this.prisma.job.findMany({
+        where: { stage: 'QUEUED' },
+        orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }], // Lowest priority, newest first
+        take: jobsToPause,
+        select: { id: true, fileLabel: true, priority: true },
+      });
+
+      // Pause each job
+      for (const job of jobsToAutoPause) {
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            stage: 'PAUSED_LOAD',
+            error: `Auto-paused due to ${loadLevel} system load (${loadAvg.toFixed(1)}). Will auto-resume when load drops.`,
+          },
+        });
+
+        this.logger.log(
+          `  ⏸️  Paused job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`
+        );
+      }
+    }
+
+    // SCENARIO 2: Load is acceptable, resume paused jobs
+    else if (pausedJobs > 0 && encodingJobs < targetWorkers) {
+      const jobsToResume = Math.min(pausedJobs, targetWorkers - encodingJobs);
+
+      this.logger.log(
+        `✅ System load acceptable: ${loadAvg.toFixed(1)} (${loadLevel} level, ${cpuCount} CPUs)`
+      );
+      this.logger.log(
+        `   Resuming ${jobsToResume} paused job(s) (${pausedJobs} paused, ${targetWorkers} target workers)`
+      );
+
+      // Get highest priority paused jobs to resume
+      const jobsToAutoResume = await this.prisma.job.findMany({
+        where: { stage: 'PAUSED_LOAD' },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }], // Highest priority, oldest first
+        take: jobsToResume,
+        select: { id: true, fileLabel: true, priority: true },
+      });
+
+      // Resume each job
+      for (const job of jobsToAutoResume) {
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            stage: 'QUEUED',
+            error: `Auto-resumed after load dropped to ${loadLevel} level (${loadAvg.toFixed(1)})`,
+          },
+        });
+
+        this.logger.log(
+          `  ▶️  Resumed job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`
+        );
+      }
     }
   }
 
@@ -966,6 +1136,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * Handle job failure
    *
    * HIGH PRIORITY FIX: Clearer exponential backoff with 1-based attempt numbering
+   * CRITICAL FIX: Detect non-retriable errors (corrupted source files)
    *
    * Implements retry logic with exponential backoff (max 3 retries).
    * Backoff delays:
@@ -982,8 +1153,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.logger.error(`Job ${job.id} failed: ${errorMessage}`);
 
     try {
+      // CRITICAL FIX: Check if error indicates corrupted source file (non-retriable)
+      const isNonRetriable = this.isNonRetriableError(errorMessage);
+
       // Check if this is a transient error that should be retried
-      const shouldRetry = this.isTransientError(errorMessage);
+      const shouldRetry = !isNonRetriable && this.isTransientError(errorMessage);
 
       // HIGH PRIORITY FIX: Use 1-based attempt numbering for clarity
       // currentAttempt = 0 means first attempt, 1 = second attempt, etc.
@@ -1021,9 +1195,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         });
       } else {
         // Mark job as failed
-        const failureReason = shouldRetry
-          ? `All ${this.MAX_RETRIES} retry attempts exhausted (${totalAttempts} total failures). Last error: ${errorMessage}`
-          : `Non-retriable error after ${totalAttempts} attempt(s): ${errorMessage}`;
+        let failureReason: string;
+        if (isNonRetriable) {
+          failureReason = `Non-retriable error (corrupted source file): ${errorMessage}`;
+          this.logger.error(`Job ${job.id} permanently failed - corrupted source file detected`);
+        } else if (shouldRetry) {
+          failureReason = `All ${this.MAX_RETRIES} retry attempts exhausted (${totalAttempts} total failures). Last error: ${errorMessage}`;
+        } else {
+          failureReason = `Non-retriable error after ${totalAttempts} attempt(s): ${errorMessage}`;
+        }
 
         this.logger.error(`Job ${job.id} permanently failed: ${failureReason}`);
         await this.queueService.failJob(job.id, failureReason);
@@ -1156,11 +1336,40 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         data: { tempFilePath: tmpPath },
       });
 
-      // TRUE RESUME: Calculate resume position if temp file exists and job has progress
+      // TRUE RESUME: Check if job has resume state from auto-heal
       let startedFromSeconds: number | undefined;
-      if (job.progress > 0 && fs.existsSync(tmpPath)) {
+      const jobWithResume = job as any;
+
+      if (job.progress > 0 && fs.existsSync(tmpPath) && jobWithResume.resumeTimestamp) {
         this.logger.log(
-          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress, calculating resume position...`
+          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress and resumeTimestamp=${jobWithResume.resumeTimestamp}`
+        );
+
+        try {
+          // Parse the HH:MM:SS format resumeTimestamp to seconds
+          const parts = jobWithResume.resumeTimestamp.split(':');
+          if (parts.length === 3) {
+            const hours = Number.parseInt(parts[0], 10);
+            const minutes = Number.parseInt(parts[1], 10);
+            const seconds = Number.parseFloat(parts[2]);
+            startedFromSeconds = Math.floor(hours * 3600 + minutes * 60 + seconds);
+
+            this.logger.log(
+              `  ✅ TRUE RESUME: Using resumeTimestamp from auto-heal: ${jobWithResume.resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}%)`
+            );
+          } else {
+            this.logger.warn(
+              `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${jobWithResume.resumeTimestamp}`
+            );
+          }
+        } catch (error) {
+          this.logger.warn(`  ⚠️  TRUE RESUME: Error parsing resumeTimestamp:`, error);
+          // Continue without resume - will restart from 0%
+        }
+      } else if (job.progress > 0 && fs.existsSync(tmpPath) && !jobWithResume.resumeTimestamp) {
+        // Fallback: Calculate resume position if temp file exists but no resumeTimestamp
+        this.logger.log(
+          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress but no resumeTimestamp, calculating...`
         );
 
         try {
@@ -1183,7 +1392,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             });
 
             this.logger.log(
-              `  ✅ TRUE RESUME: Will resume from ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`
+              `  ✅ TRUE RESUME: Calculated resumeTimestamp: ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`
             );
           } else {
             this.logger.warn(
@@ -1490,6 +1699,29 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     if (worker.shutdownResolve) {
       worker.shutdownResolve();
     }
+  }
+
+  /**
+   * CRITICAL FIX: Check if error is non-retriable (corrupted source file)
+   *
+   * @param errorMessage - Error message
+   * @returns True if error indicates corrupted source (should NOT retry)
+   * @private
+   */
+  private isNonRetriableError(errorMessage: string): boolean {
+    const nonRetriablePatterns = [
+      'non-retriable error', // Flag from FFmpeg service
+      'source file appears corrupted', // Decoder errors
+      'could not find ref with poc', // HEVC reference frame error
+      'error submitting packet to decoder', // Decoder error
+      'invalid data found when processing input', // Corrupted container
+      'corrupt decoded frame', // Corrupted frame
+      'missing reference picture', // Missing reference frame
+      'moov atom not found', // Corrupted MP4
+    ];
+
+    const errorLower = errorMessage.toLowerCase();
+    return nonRetriablePatterns.some((pattern) => errorLower.includes(pattern.toLowerCase()));
   }
 
   /**

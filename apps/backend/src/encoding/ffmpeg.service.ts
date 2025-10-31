@@ -515,6 +515,7 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Handle successful encoding completion
    *
+   * CRITICAL FIX: Verify temp file BEFORE rename to prevent race condition
    * TRUE RESUME: Clears resume state on success
    *
    * @param job - Job entity
@@ -523,6 +524,33 @@ export class FfmpegService implements OnModuleDestroy {
    * @private
    */
   private async handleEncodingSuccess(job: Job, policy: Policy, tempOutput: string): Promise<void> {
+    // ROCK SOLID FIX: Wait for filesystem to flush (FFmpeg may not have fully closed the file)
+    this.logger.log(`Waiting 5 seconds for filesystem flush after FFmpeg completion...`);
+    await this.sleep(5000);
+
+    // ROCK SOLID FIX: Verify temp file EXISTS with retries (filesystem may need time to sync)
+    const fileExists = await this.waitForFileExists(tempOutput, 10, 2000);
+    if (!fileExists) {
+      throw new Error(
+        `Temp file missing after 20 seconds: ${tempOutput}\n` +
+          `FFmpeg reported success but file was not written to disk.`
+      );
+    }
+
+    // ROCK SOLID FIX: Verify temp file is VALID before rename with retries
+    if (policy.verifyOutput) {
+      this.logger.log(`Verifying temp file with retries: ${tempOutput}`);
+      const verifyResult = await this.verifyFileWithRetries(tempOutput, 10);
+      if (!verifyResult.isValid) {
+        throw new Error(
+          `Temp file verification failed after retries: ${verifyResult.error || 'File is not playable'}`
+        );
+      }
+      this.logger.log(
+        `✓ Temp file verified successfully after ${verifyResult.attempts || 1} attempt(s)`
+      );
+    }
+
     // Get output file size
     const stats = await fs.stat(tempOutput);
     const afterSizeBytes = stats.size;
@@ -698,6 +726,21 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * TRUE RESUME: Convert seconds to HH:MM:SS.MS timestamp format
+   *
+   * @param totalSeconds - Time in seconds
+   * @returns Time string in HH:MM:SS.MS format
+   */
+  formatSecondsToTimestamp(totalSeconds: number): string {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const milliseconds = Math.floor((seconds % 1) * 100);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${Math.floor(seconds).toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+  }
+
+  /**
    * Get nice value for priority level
    *
    * @param priority - Job priority (0=normal, 1=high, 2=top)
@@ -805,34 +848,33 @@ export class FfmpegService implements OnModuleDestroy {
 
     // TRUE RESUME: Check if we can resume from previous encoding attempt
     const jobWithResume = job as any;
-    const canResume =
-      jobWithResume.tempFilePath &&
-      jobWithResume.resumeTimestamp &&
-      existsSync(jobWithResume.tempFilePath);
 
     let resumeFromSeconds = 0;
     let resumeFromPercent = 0;
 
-    if (canResume) {
+    // APPROACH 1: Resume from auto-heal (temp file may not exist yet, but resumeTimestamp is set)
+    if (jobWithResume.resumeTimestamp && job.progress > 0) {
+      // Parse HH:MM:SS.MS to seconds
+      resumeFromSeconds = this.parseTimestampToSeconds(jobWithResume.resumeTimestamp);
+      resumeFromPercent = (resumeFromSeconds / estimatedDurationSeconds) * 100;
+
+      this.logger.log(
+        `🔄 TRUE RESUME: Job ${job.id} will resume from ${jobWithResume.resumeTimestamp} (${resumeFromPercent.toFixed(1)}%) - auto-healed from ${job.progress.toFixed(1)}%`
+      );
+    }
+    // APPROACH 2: Resume from existing temp file (legacy approach)
+    else if (jobWithResume.tempFilePath && existsSync(jobWithResume.tempFilePath)) {
       // Verify temp file is valid (not corrupted)
       const isValid = await this.verifyPartialEncode(jobWithResume.tempFilePath);
 
       if (isValid) {
-        // Parse HH:MM:SS.MS to seconds
-        resumeFromSeconds = this.parseTimestampToSeconds(jobWithResume.resumeTimestamp);
-        resumeFromPercent = (resumeFromSeconds / estimatedDurationSeconds) * 100;
-
+        // Calculate resume position from temp file metadata
+        // This is a fallback if resumeTimestamp wasn't set
         this.logger.log(
-          `🔄 TRUE RESUME: Job ${job.id} will resume from ${jobWithResume.resumeTimestamp} (${resumeFromPercent.toFixed(1)}%)`
+          `🔄 TRUE RESUME: Found existing temp file for job ${job.id}, but no resumeTimestamp - restarting from 0%`
         );
-
-        // TRUE RESUME APPROACH: Use FFmpeg input seeking (-ss before -i)
-        // This skips the already-encoded portion during INPUT, saving encoding time
-        // The output will be a complete video from 0 to end, but FFmpeg only processes
-        // the frames from resumeTimestamp onwards (much faster than re-encoding from 0%)
-        //
-        // Progress tracking: We'll adjust the progress calculation to account for
-        // the resumed portion so the user sees accurate progress (not restarting from 0%)
+        // Note: We could add logic here to extract the last encoded timestamp from the temp file
+        // using ffprobe, but for now we'll just restart from 0% if resumeTimestamp is missing
       } else {
         this.logger.warn(
           `Temp file corrupted for job ${job.id}, restarting from 0%: ${jobWithResume.tempFilePath}`
@@ -1203,39 +1245,82 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Interpret ffmpeg exit code and return detailed error message
    *
+   * CRITICAL FIX: Detect corrupted source files (HEVC decoder errors)
+   *
    * Common ffmpeg exit codes:
    * - 0: Success
-   * - 1: Generic error
+   * - 1: Generic error (check stderr for decoder errors)
    * - 255/-1: Aborted/interrupted
    * - Other codes: Various specific errors
    *
    * @param code - FFmpeg exit code
    * @param stderr - Last stderr output for context
-   * @returns Detailed error message with explanation
+   * @returns Detailed error message with explanation and corruption flag
    */
   private interpretFfmpegExitCode(code: number, stderr: string): string {
     let explanation = '';
+    let isSourceCorrupted = false;
 
-    switch (code) {
-      case 1:
-        explanation = 'Generic encoding error';
-        break;
-      case 255:
-      case -1:
-        explanation = 'Process was aborted or interrupted';
-        break;
-      case 134:
-        explanation = 'Segmentation fault (ffmpeg crashed)';
-        break;
-      case 139:
-        explanation = 'Segmentation fault (signal 11)';
-        break;
-      default:
-        explanation = code > 128 ? `Process killed by signal ${code - 128}` : 'Unknown error';
+    // CRITICAL FIX: Detect corrupted source file patterns in stderr
+    if (stderr) {
+      const stderrLower = stderr.toLowerCase();
+
+      // Pattern 1: HEVC decoder errors (most common)
+      const hevcDecoderErrors = [
+        'could not find ref with poc', // HEVC reference frame error
+        'error submitting packet to decoder: invalid data found', // Decoder error
+        'corrupt decoded frame in stream', // Corrupted frame
+        'error while decoding stream', // Generic decoder error
+        'missing reference picture', // Missing reference frame
+        'illegal short term buffer state detected', // HEVC state corruption
+      ];
+
+      // Pattern 2: Container/demuxer errors
+      const containerErrors = [
+        'invalid data found when processing input', // Corrupted container
+        'moov atom not found', // Corrupted MP4
+        'invalid nal unit size', // Corrupted H.264/HEVC NAL
+      ];
+
+      // Check for corruption patterns
+      for (const pattern of [...hevcDecoderErrors, ...containerErrors]) {
+        if (stderrLower.includes(pattern)) {
+          isSourceCorrupted = true;
+          explanation = `Source file appears corrupted (decoder error: "${pattern}")`;
+          break;
+        }
+      }
+    }
+
+    // If not corrupted, use normal exit code interpretation
+    if (!isSourceCorrupted) {
+      switch (code) {
+        case 1:
+          explanation = 'Generic encoding error';
+          break;
+        case 255:
+        case -1:
+          explanation = 'Process was aborted or interrupted';
+          break;
+        case 134:
+          explanation = 'Segmentation fault (ffmpeg crashed)';
+          break;
+        case 139:
+          explanation = 'Segmentation fault (signal 11)';
+          break;
+        default:
+          explanation = code > 128 ? `Process killed by signal ${code - 128}` : 'Unknown error';
+      }
     }
 
     // Build detailed error message
     let errorMessage = `FFmpeg Error (Exit Code ${code}): ${explanation}\n\n`;
+
+    // CRITICAL FIX: Add non-retriable flag for corrupted sources
+    if (isSourceCorrupted) {
+      errorMessage += '⚠️  NON-RETRIABLE ERROR: The source file appears to be corrupted.\n';
+      errorMessage += 'Retrying will not fix this. Please verify the source file integrity.\n\n';
+    }
 
     // Add relevant stderr context
     if (stderr) {
@@ -1319,6 +1404,23 @@ export class FfmpegService implements OnModuleDestroy {
       startedFromSeconds?: number; // TRUE RESUME: FFmpeg input seeking position
     }
   ): Promise<void> {
+    // TRUE RESUME: Calculate progress and resumeTimestamp if startedFromSeconds is provided
+    let progress = 0;
+    let resumeTimestamp: string | undefined;
+    let tempFilePath: string | undefined;
+
+    if (options.startedFromSeconds && options.startedFromSeconds > 0) {
+      // Get video duration to calculate progress percentage
+      const durationSeconds = await this.getVideoDuration(options.inputPath);
+      progress = (options.startedFromSeconds / durationSeconds) * 100;
+      resumeTimestamp = this.formatSecondsToTimestamp(options.startedFromSeconds);
+      tempFilePath = options.outputPath; // Temp file path is the output path
+
+      this.logger.log(
+        `TRUE RESUME: encode() called with startedFromSeconds=${options.startedFromSeconds}, progress=${progress.toFixed(1)}%, resumeTimestamp=${resumeTimestamp}`
+      );
+    }
+
     // Create a minimal job object for encodeFile
     const job = {
       id: jobId,
@@ -1327,7 +1429,7 @@ export class FfmpegService implements OnModuleDestroy {
       sourceCodec: '',
       targetCodec: options.targetCodec,
       stage: 'ENCODING' as const,
-      progress: 0,
+      progress,
       etaSeconds: null,
       beforeSizeBytes: BigInt(0),
       afterSizeBytes: null,
@@ -1341,7 +1443,14 @@ export class FfmpegService implements OnModuleDestroy {
       policyId: '',
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as Job;
+      // TRUE RESUME: Add resume fields if resuming
+      ...(resumeTimestamp && tempFilePath
+        ? {
+            resumeTimestamp,
+            tempFilePath,
+          }
+        : {}),
+    } as any;
 
     const policy = {
       id: '',
@@ -1419,5 +1528,123 @@ export class FfmpegService implements OnModuleDestroy {
         });
       });
     });
+  }
+
+  /**
+   * ROCK SOLID: Sleep for specified milliseconds
+   */
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * ROCK SOLID: Wait for file to exist with retries
+   * @param filePath - Path to file
+   * @param maxRetries - Maximum number of retries (default: 10)
+   * @param delayMs - Delay between retries in milliseconds (default: 2000)
+   * @returns true if file exists, false if all retries exhausted
+   */
+  private async waitForFileExists(
+    filePath: string,
+    maxRetries: number = 10,
+    delayMs: number = 2000
+  ): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (existsSync(filePath)) {
+          if (attempt > 1) {
+            this.logger.log(`✓ File exists after ${attempt} attempt(s): ${filePath}`);
+          }
+          return true;
+        }
+
+        if (attempt < maxRetries) {
+          this.logger.warn(
+            `File not found (attempt ${attempt}/${maxRetries}), waiting ${delayMs}ms before retry: ${filePath}`
+          );
+          await this.sleep(delayMs);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Error checking file existence (attempt ${attempt}/${maxRetries}): ${errorMsg}`
+        );
+        if (attempt < maxRetries) {
+          await this.sleep(delayMs);
+        }
+      }
+    }
+
+    this.logger.error(
+      `File does not exist after ${maxRetries} attempts (${(maxRetries * delayMs) / 1000}s total): ${filePath}`
+    );
+    return false;
+  }
+
+  /**
+   * ROCK SOLID: Verify file with retries
+   * @param filePath - Path to file to verify
+   * @param maxRetries - Maximum number of retries (default: 10)
+   * @returns Verification result with attempt count
+   */
+  private async verifyFileWithRetries(
+    filePath: string,
+    maxRetries: number = 10
+  ): Promise<{ isValid: boolean; error?: string; attempts: number }> {
+    let lastError: string = '';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // First check: Does file exist?
+        if (!existsSync(filePath)) {
+          lastError = `File does not exist`;
+          if (attempt < maxRetries) {
+            this.logger.warn(
+              `Verification attempt ${attempt}/${maxRetries}: File missing, waiting 2s before retry`
+            );
+            await this.sleep(2000);
+            continue;
+          }
+          break;
+        }
+
+        // Second check: Run ffprobe verification
+        const result = await this.verifyFile(filePath);
+
+        if (result.isValid) {
+          return {
+            isValid: true,
+            attempts: attempt,
+          };
+        }
+
+        lastError = result.error || 'Unknown verification error';
+
+        if (attempt < maxRetries) {
+          // Exponential backoff: 2s, 4s, 8s, 16s, 32s (max 32s)
+          const backoffMs = Math.min(2000 * 2 ** (attempt - 1), 32000);
+          this.logger.warn(
+            `Verification attempt ${attempt}/${maxRetries} failed: ${lastError}\n` +
+              `Waiting ${backoffMs}ms before retry...`
+          );
+          await this.sleep(backoffMs);
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'Exception during verification';
+        this.logger.error(
+          `Exception in verification attempt ${attempt}/${maxRetries}: ${lastError}`
+        );
+
+        if (attempt < maxRetries) {
+          await this.sleep(2000);
+        }
+      }
+    }
+
+    return {
+      isValid: false,
+      error: lastError || 'Verification failed after all retries',
+      attempts: maxRetries,
+    };
   }
 }
