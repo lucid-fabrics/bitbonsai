@@ -21,7 +21,6 @@ import {
 } from '@fortawesome/pro-solid-svg-icons';
 import { Store } from '@ngrx/store';
 import { distinctUntilChanged } from 'rxjs';
-import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { OverviewActions } from './+state/overview.actions';
 import {
   selectChildNodes,
@@ -38,7 +37,7 @@ import {
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, RichTooltipDirective],
+  imports: [CommonModule, FontAwesomeModule],
   templateUrl: './overview.page.html',
   styleUrls: ['./overview.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

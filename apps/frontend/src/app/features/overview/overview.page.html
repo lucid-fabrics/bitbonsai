@@ -143,7 +143,7 @@
                         <div class="activity-compact__progress-bar">
                           <div class="activity-compact__progress-fill" [style.width.%]="activity.progress"></div>
                         </div>
-                        <span class="activity-compact__stat">{{ activity.progress?.toFixed(0) }}%</span>
+                        <span class="activity-compact__stat">{{ activity.progress.toFixed(0) }}%</span>
                       } @else if (activity.stage === 'COMPLETED' && activity.saved_percent !== null) {
                         <span class="activity-compact__stat activity-compact__stat--savings" [class.activity-compact__stat--negative]="activity.saved_percent < 0">
                           {{ activity.saved_percent > 0 ? '-' : '+' }}{{ Math.abs(activity.saved_percent).toFixed(0) }}%

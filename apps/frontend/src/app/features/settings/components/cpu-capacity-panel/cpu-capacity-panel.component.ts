@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 
 interface SystemResources {
@@ -42,7 +42,7 @@ interface SystemResources {
 })
 export class CpuCapacityPanelComponent implements OnInit {
   resources?: SystemResources;
-  loading = true;
+  loading = signal(true);
   showDetails = false;
 
   constructor(private http: HttpClient) {}
@@ -52,13 +52,13 @@ export class CpuCapacityPanelComponent implements OnInit {
   }
 
   loadSystemResources() {
-    this.http.get<SystemResources>(`${environment.apiUrl}/api/v1/system/resources`).subscribe({
+    this.http.get<SystemResources>(`${environment.apiUrl}/system/resources`).subscribe({
       next: (data) => {
         this.resources = data;
-        this.loading = false;
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
       },
     });
   }
