@@ -289,6 +289,15 @@ export class QueueComponent implements OnInit {
     this.refreshTrigger$.next({ showLoading });
   }
 
+  protected clearAllFilters(): void {
+    this.selectedStatus = 'ALL';
+    this.selectedNodeId = '';
+    this.selectedLibraryId = '';
+    this.searchQuery = '';
+    this.updateQueryParams();
+    this.refreshQueue(true);
+  }
+
   protected toggleJobDetails(jobId: string): void {
     this.expandedJobId = this.expandedJobId === jobId ? null : jobId;
   }
