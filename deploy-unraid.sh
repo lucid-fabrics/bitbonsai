@@ -58,20 +58,28 @@ rsync -az --delete \
 echo "✅ Prisma files synced"
 echo ""
 
-# Step 3: Restart containers to pick up code changes
-echo "♻️  Step 3/6: Restarting containers..."
+# Step 3: Rebuild backend to compile TypeScript changes
+echo "🔨 Step 3/7: Rebuilding backend application..."
+ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-backend sh -c 'rm -rf dist/ && npx nx build backend --skip-nx-cache'" || {
+    echo "⚠️  Warning: Backend rebuild failed (container may not be running yet)"
+}
+echo "✅ Backend rebuilt"
+echo ""
+
+# Step 4: Restart containers to pick up code changes
+echo "♻️  Step 4/7: Restarting containers..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker-compose -f docker-compose.unraid.yml restart"
 echo "✅ Containers restarted"
 echo ""
 
-# Step 4: Wait for containers to be ready
-echo "⏳ Step 4/6: Waiting for backend to be ready..."
+# Step 5: Wait for containers to be ready
+echo "⏳ Step 5/7: Waiting for backend to be ready..."
 sleep 10
 echo "✅ Backend should be ready"
 echo ""
 
-# Step 5: Regenerate Prisma Client (CRITICAL - prevents 504 errors)
-echo "🔄 Step 5/6: Regenerating Prisma Client (prevents proxy errors)..."
+# Step 6: Regenerate Prisma Client (CRITICAL - prevents 504 errors)
+echo "🔄 Step 6/7: Regenerating Prisma Client (prevents proxy errors)..."
 MAX_RETRIES=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -91,8 +99,8 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 echo ""
 
-# Step 6: Apply pending migrations
-echo "🗄️  Step 6/6: Applying database migrations..."
+# Step 7: Apply pending migrations
+echo "🗄️  Step 7/7: Applying database migrations..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-backend npx prisma migrate deploy" || {
     echo "⚠️  Warning: Migration failed (may not be needed)"
 }
