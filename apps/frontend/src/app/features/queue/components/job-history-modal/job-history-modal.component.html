@@ -44,7 +44,7 @@
                   <!-- Title & Metadata -->
                   <div class="event-header">
                     <div class="event-title">
-                      {{ event.systemMessage || getEventTypeLabel(event.eventType) }}
+                      {{ getErrorSummary(event) }}
                     </div>
                     <div class="event-time">
                       <span class="relative-time">{{ getRelativeTime(event.createdAt) }}</span>
@@ -52,11 +52,13 @@
                     </div>
                   </div>
 
-                  <!-- Summary Section - What Happened -->
-                  <div class="event-summary">
-                    <i class="fas fa-info-circle"></i>
-                    <span>{{ getErrorSummary(event) }}</span>
-                  </div>
+                  <!-- System Message (if different from summary) -->
+                  @if (event.systemMessage && event.systemMessage !== getErrorSummary(event)) {
+                    <div class="event-system-message">
+                      <i class="fas fa-info-circle"></i>
+                      <span>{{ event.systemMessage }}</span>
+                    </div>
+                  }
 
                   <!-- Event Metadata Pills -->
                   <div class="event-metadata">
