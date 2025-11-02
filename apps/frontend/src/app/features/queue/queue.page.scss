@@ -2914,7 +2914,7 @@
 
     // Show mobile status select on mobile
     .mobile-status-select {
-      display: flex !important;
+      display: block !important; // Keep as grid item, don't use flex
     }
 
     // Hide desktop status buttons on mobile
@@ -2956,7 +2956,8 @@
     }
 
     .search-group {
-      // Search shares row 2 with library (50% width each)
+      // Search always takes full width (2 columns) on mobile
+      grid-column: 1 / -1;
 
       .search-input {
         width: 100%;
