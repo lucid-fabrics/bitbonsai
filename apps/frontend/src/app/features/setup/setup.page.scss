@@ -1,11 +1,12 @@
 @use '../../../styles/variables' as *;
+@use 'sass:color';
 
 .setup-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, $bg-primary 0%, darken($bg-primary, 3%) 100%);
+  background: linear-gradient(135deg, $bg-primary 0%, color.adjust($bg-primary, $lightness: -3%) 100%);
   padding: 2rem;
   position: relative;
   overflow: hidden;
