@@ -159,6 +159,22 @@ export class JobHistoryModalComponent {
       return 'The video encoding failed. Check the technical details below for specific error information.';
     }
 
+    // Additional specific error patterns
+    if (
+      combinedError.includes('av_interleaved_write_frame') ||
+      combinedError.includes('broken pipe')
+    ) {
+      return 'The encoding process was interrupted while writing output. This may indicate a disk write error or insufficient space.';
+    }
+
+    if (combinedError.includes('invalid argument') || combinedError.includes('invalid option')) {
+      return 'The encoding settings contain an invalid configuration. The encoding profile may need to be adjusted.';
+    }
+
+    if (combinedError.includes('decoder') && combinedError.includes('not found')) {
+      return 'The required video decoder is missing or not available. The video format may not be supported.';
+    }
+
     // Generic event type summaries
     switch (event.eventType) {
       case JobEventType.CANCELLED:
@@ -172,9 +188,7 @@ export class JobHistoryModalComponent {
       case JobEventType.RESTARTED:
         return 'The job was manually restarted to attempt encoding again.';
       default:
-        if (event.errorMessage) {
-          return 'An error occurred during encoding. See technical details below for more information.';
-        }
+        // Fall back to system message or event type - no generic "error occurred" message
         return event.systemMessage || this.getEventTypeLabel(event.eventType);
     }
   }
