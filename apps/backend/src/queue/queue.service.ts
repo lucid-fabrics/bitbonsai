@@ -644,6 +644,12 @@ export class QueueService {
       throw new NotFoundException(`Job with ID "${id}" not found`);
     }
 
+    // IDEMPOTENCY: If job is already FAILED, don't record duplicate event
+    if (existingJob.stage === JobStage.FAILED) {
+      this.logger.warn(`Job ${id} is already FAILED - skipping duplicate failure event`);
+      return existingJob;
+    }
+
     const job = await this.prisma.job.update({
       where: { id },
       data: {
