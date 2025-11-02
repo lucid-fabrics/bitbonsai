@@ -621,7 +621,7 @@ export class LibrariesService {
 
     this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
 
-    // Analyze files using FFprobe
+    // Analyze files using FFprobe (returns ALL files, no codec filtering)
     const analysis = await this.mediaAnalysis.analyzeFiles(videoFiles, policy.targetCodec);
 
     // Get ALL jobs for this library to annotate files with status
@@ -702,19 +702,16 @@ export class LibrariesService {
       };
     };
 
-    // Annotate all files with job status
-    const annotatedNeedsEncoding = analysis.needsEncoding.map(annotateFile);
-    const annotatedAlreadyOptimized = analysis.alreadyOptimized.map(annotateFile);
+    // Annotate ALL files with job status (all files are in needsEncoding array now)
+    const annotatedFiles = analysis.needsEncoding.map(annotateFile);
 
     // Filter out blacklisted files only (show all others with status)
     const blacklistedPaths = new Set(allJobs.filter((j) => j.isBlacklisted).map((j) => j.filePath));
 
-    const filteredNeedsEncoding = annotatedNeedsEncoding.filter(
-      (file) => !blacklistedPaths.has(file.filePath)
-    );
-    const filteredAlreadyOptimized = annotatedAlreadyOptimized.filter(
-      (file) => !blacklistedPaths.has(file.filePath)
-    );
+    const filteredFiles = annotatedFiles.filter((file) => !blacklistedPaths.has(file.filePath));
+
+    // Count how many can actually be added to queue
+    const canAddCount = filteredFiles.filter((f) => f.canAddToQueue).length;
 
     // Limit results to first 100 for performance (frontend can paginate if needed)
     const preview: ScanPreviewDto = {
@@ -730,16 +727,16 @@ export class LibrariesService {
       })),
       totalFiles: analysis.totalFiles - blacklistedPaths.size,
       totalSizeBytes: analysis.totalSizeBytes.toString(),
-      needsEncodingCount: filteredNeedsEncoding.filter((f) => f.canAddToQueue).length,
-      alreadyOptimizedCount: filteredAlreadyOptimized.length,
-      needsEncoding: filteredNeedsEncoding.slice(0, 100),
-      alreadyOptimized: filteredAlreadyOptimized.slice(0, 100),
+      needsEncodingCount: canAddCount, // Files that can be added to queue
+      alreadyOptimizedCount: 0, // No longer used (kept for backward compatibility)
+      needsEncoding: filteredFiles.slice(0, 100), // All files (limited to 100)
+      alreadyOptimized: [], // No longer used (kept for backward compatibility)
       errors: analysis.errors,
       scannedAt: new Date(),
     };
 
     this.logger.log(
-      `Scan preview complete: ${preview.needsEncodingCount} need encoding, ${preview.alreadyOptimizedCount} already optimized`
+      `Scan preview complete: ${preview.totalFiles} total files, ${preview.needsEncodingCount} can be added to queue`
     );
 
     return preview;
@@ -1023,14 +1020,8 @@ export class LibrariesService {
           continue;
         }
 
-        // Check if file needs encoding (codec doesn't match target)
-        const needsEncoding = videoInfo.codec !== policy.targetCodec;
-
-        if (!needsEncoding) {
-          result.filesSkipped++;
-          result.skippedFiles.push({ path: filePath, reason: 'Already optimized' });
-          continue;
-        }
+        // No codec filtering - allow re-encoding files already in target codec
+        // This supports use cases like H.265 → H.265 with different quality/preset settings
 
         // Create job
         const fileLabel = filePath.split('/').pop() || filePath;

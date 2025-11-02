@@ -216,9 +216,9 @@ export class MediaAnalysisService {
    * Batch analyze multiple video files
    *
    * @param filePaths - Array of absolute file paths
-   * @param targetCodec - Target codec from policy
+   * @param targetCodec - Target codec from policy (for reference only, doesn't filter results)
    * @param concurrency - Number of files to probe concurrently (default: 3)
-   * @returns Analysis results categorized by encoding needs
+   * @returns Analysis results with ALL files (filtering by queue status happens in libraries.service)
    */
   async analyzeFiles(
     filePaths: string[],
@@ -230,8 +230,8 @@ export class MediaAnalysisService {
     const analysis: ScanAnalysis = {
       totalFiles: 0,
       totalSizeBytes: BigInt(0),
-      needsEncoding: [],
-      alreadyOptimized: [],
+      needsEncoding: [], // All files go here (name kept for backward compatibility)
+      alreadyOptimized: [], // Kept empty for backward compatibility
       errors: [],
     };
 
@@ -250,7 +250,7 @@ export class MediaAnalysisService {
         })
       );
 
-      // Categorize results
+      // Add all valid files to needsEncoding array (no codec filtering)
       for (const { filePath, info, error } of results) {
         if (error) {
           analysis.errors.push({ filePath, error });
@@ -265,16 +265,15 @@ export class MediaAnalysisService {
         analysis.totalFiles++;
         analysis.totalSizeBytes += BigInt(info.sizeBytes);
 
-        if (this.needsEncoding(info, targetCodec)) {
-          analysis.needsEncoding.push(info);
-        } else {
-          analysis.alreadyOptimized.push(info);
-        }
+        // Add ALL files to needsEncoding array
+        // Job status filtering (QUEUED, ENCODING, COMPLETED, etc.) happens in libraries.service
+        // This allows re-encoding files already in target codec (e.g., H.265 → H.265 with different settings)
+        analysis.needsEncoding.push(info);
       }
     }
 
     this.logger.log(
-      `Analysis complete: ${analysis.needsEncoding.length} need encoding, ${analysis.alreadyOptimized.length} already optimized, ${analysis.errors.length} errors`
+      `Analysis complete: ${analysis.needsEncoding.length} total files, ${analysis.errors.length} errors`
     );
 
     return analysis;
