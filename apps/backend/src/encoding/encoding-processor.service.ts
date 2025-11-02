@@ -376,8 +376,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             job.stage === JobStage.PAUSED
               ? 'Paused job reset after backend restart - will resume from last position'
               : tempFileExists
-                ? `Auto-recovered from backend restart (was ${job.stage}) - will resume from ${job.progress.toFixed(1)}%`
-                : `Auto-recovered from backend restart (was ${job.stage}) - restarting from 0% (temp file missing)`;
+                ? `Auto-heal: Successfully resumed from ${job.progress.toFixed(1)}% (was ${job.stage} before restart)`
+                : `Auto-heal attempted but temp file was lost during restart - restarting from 0% (was ${job.stage} at ${job.progress.toFixed(1)}%)`;
 
           // CRITICAL BUG FIX: Recalculate resumeTimestamp based on current progress
           // The old resumeTimestamp is STALE (from when job first started encoding)
@@ -423,9 +423,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
               etaSeconds: null,
               error: errorMessage,
               startedAt: null, // Clear startedAt to allow fresh start
-              // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
-              autoHealedAt: new Date(),
-              autoHealedProgress: job.progress,
+              // AUTO-HEAL TRACKING: ONLY set when temp file exists (successful resume)
+              // Green dot indicator should only show when auto-heal actually worked
+              ...(tempFileExists
+                ? {
+                    autoHealedAt: new Date(),
+                    autoHealedProgress: job.progress,
+                  }
+                : {}),
               retryCount: job.retryCount + 1,
               // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
               ...(tempFileExists
