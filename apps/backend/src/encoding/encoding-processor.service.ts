@@ -1427,8 +1427,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         afterSizeBytes
       );
 
-      // Replace original file with encoded version
-      this.replaceFile(job.filePath, tmpPath, policy.atomicReplace);
+      // Replace original file with encoded version (with Keep Original support)
+      await this.replaceFile(job, tmpPath, policy.atomicReplace);
 
       return {
         beforeSizeBytes,
@@ -1477,14 +1477,50 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Verify encoded file is playable
+   * Verify encoded file is playable WITH ROCK SOLID RETRIES
    * @private
    */
   private async verifyEncodedFile(tmpPath: string): Promise<void> {
-    const result = await this.ffmpegService.verifyFile(tmpPath);
-    if (!result.isValid) {
-      throw new Error(result.error || 'Output verification failed - file is not playable');
+    this.logger.log(
+      `ROCK SOLID: Waiting 5 seconds for filesystem flush after FFmpeg completion...`
+    );
+    await this.sleep(5000);
+
+    // ROCK SOLID: Retry verification with exponential backoff (max 10 attempts)
+    const maxRetries = 10;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const result = await this.ffmpegService.verifyFile(tmpPath);
+
+      if (result.isValid) {
+        if (attempt > 1) {
+          this.logger.log(`✓ ROCK SOLID: File verified successfully after ${attempt} attempt(s)`);
+        }
+        return; // Success!
+      }
+
+      // File verification failed
+      if (attempt < maxRetries) {
+        const backoffMs = Math.min(2000 * 2 ** (attempt - 1), 32000);
+        this.logger.warn(
+          `ROCK SOLID: Verification attempt ${attempt}/${maxRetries} failed: ${result.error}. ` +
+            `Retrying in ${backoffMs}ms...`
+        );
+        await this.sleep(backoffMs);
+      } else {
+        // Final attempt failed
+        throw new Error(
+          `ROCK SOLID: Verification failed after ${maxRetries} attempts. Last error: ${result.error || 'File is not playable'}`
+        );
+      }
     }
+  }
+
+  /**
+   * Sleep helper for ROCK SOLID retries
+   * @private
+   */
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -1559,14 +1595,52 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Replace original file with encoded version, optionally using atomic replacement
+   * Replace original file with encoded version
+   *
+   * KEEP ORIGINAL FEATURE: If user requested to keep original via "Keep Original" button,
+   * rename original to .original instead of deleting it
+   *
    * @private
    */
-  private replaceFile(originalPath: string, tmpPath: string, atomicReplace: boolean): void {
-    if (atomicReplace) {
-      this.atomicReplaceFile(originalPath, tmpPath);
-    } else {
+  private async replaceFile(
+    job: JobWithPolicy,
+    tmpPath: string,
+    atomicReplace: boolean
+  ): Promise<void> {
+    const jobData = job as any; // Access keepOriginalRequested field
+    const originalPath = job.filePath;
+
+    // KEEP ORIGINAL FEATURE: Check if user requested to keep the original file
+    if (jobData.keepOriginalRequested) {
+      // User clicked "Keep Original" - rename original to .original and keep both files
+      const originalBackupPath = `${originalPath}.original`;
+
+      this.logger.log(`KEEP ORIGINAL: Renaming original to ${originalBackupPath}`);
+      fs.renameSync(originalPath, originalBackupPath);
       fs.renameSync(tmpPath, originalPath);
+
+      // Update job with backup info
+      await this.queueService.update(job.id, {
+        originalBackupPath,
+        originalSizeBytes: job.beforeSizeBytes,
+        replacementAction: 'KEPT_BOTH',
+      });
+
+      this.logger.log(`KEEP ORIGINAL: Successfully kept original as backup`);
+    } else {
+      // Default behavior: replace original file (delete it)
+      if (atomicReplace) {
+        this.atomicReplaceFile(originalPath, tmpPath);
+      } else {
+        fs.renameSync(tmpPath, originalPath);
+      }
+
+      // Mark as replaced
+      await this.queueService.update(job.id, {
+        replacementAction: 'REPLACED',
+      });
+
+      this.logger.log('Original file replaced with encoded version');
     }
   }
 
@@ -1742,16 +1816,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     ];
 
     return transientErrors.some((err) => errorMessage.toLowerCase().includes(err.toLowerCase()));
-  }
-
-  /**
-   * Sleep for specified milliseconds
-   *
-   * @param ms - Milliseconds to sleep
-   * @private
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**

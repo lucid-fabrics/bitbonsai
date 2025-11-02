@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -8,17 +9,21 @@ import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import {
   BehaviorSubject,
   catchError,
-  exhaustMap,
   interval,
   map,
   type Observable,
   of,
   shareReplay,
   startWith,
+  switchMap,
 } from 'rxjs';
 import { QueueClient } from '../../core/clients/queue.client';
 import { ToastService } from '../../core/services/toast.service';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
@@ -48,6 +53,7 @@ export class QueueComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(Dialog);
 
   // Expose Number for template
   protected readonly Number = Number;
@@ -118,7 +124,7 @@ export class QueueComponent implements OnInit {
   constructor() {
     // Create observable stream for queue data
     this.queueData$ = this.refreshTrigger$.pipe(
-      exhaustMap(({ showLoading }) => {
+      switchMap(({ showLoading }) => {
         // Only show loading for user-initiated actions, not polling
         if (showLoading) {
           this.loadingSubject$.next(true);
@@ -369,6 +375,101 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected recheckJob(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .recheckJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedJob) => {
+          if (updatedJob.stage === 'COMPLETED') {
+            this.toastService.success('Job rechecked and moved to COMPLETED');
+          } else {
+            this.toastService.warning(
+              'Job still FAILED after recheck - file is invalid or missing'
+            );
+          }
+          this.refreshQueue();
+        },
+        error: (err) => {
+          this.toastService.error(
+            `Failed to recheck job: ${err.error?.message || 'Unknown error'}`
+          );
+        },
+      });
+  }
+
+  protected detectAndRequeue(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .detectAndRequeue(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedJob) => {
+          if (updatedJob.stage === 'QUEUED') {
+            this.toastService.success('No compression detected - job requeued for retry');
+          } else {
+            this.toastService.info('Compression was successful - no action taken');
+          }
+          this.refreshQueue();
+        },
+        error: (err) => {
+          const message = err.error?.message || 'Unknown error';
+          // If the error is about successful compression, show it as info instead of error
+          if (message.includes('successfully compressed')) {
+            this.toastService.info(message);
+          } else {
+            this.toastService.error(`Failed to detect compression: ${message}`);
+          }
+        },
+      });
+  }
+
+  protected deleteJob(job: QueueJob, event: Event): void {
+    event.stopPropagation();
+
+    const dialogData: ConfirmationDialogData = {
+      title: 'Delete Job Entry?',
+      itemName: job.fileName,
+      itemType: 'job entry',
+      willHappen: [
+        'Permanently remove this job record from the database',
+        'Clean up the queue view',
+      ],
+      wontHappen: [
+        'Delete or modify the actual media file',
+        'Affect other jobs or their progress',
+        'Delete any encoded videos',
+      ],
+      irreversible: true,
+      confirmButtonText: 'Delete Job Entry',
+      cancelButtonText: 'Keep Job Entry',
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result === true) {
+        this.queueApi
+          .deleteJob(job.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.toastService.success('Job deleted successfully');
+              this.refreshQueue();
+            },
+            error: (err) => {
+              const errorMessage = err?.error?.message || 'Failed to delete job';
+              this.toastService.error(errorMessage);
+            },
+          });
+      }
+    });
+  }
+
   protected togglePriorityMenu(jobId: string): void {
     this.openPriorityMenuId = this.openPriorityMenuId === jobId ? null : jobId;
   }
@@ -436,6 +537,71 @@ export class QueueComponent implements OnInit {
         },
         error: () => {
           this.toastService.error('Failed to force-start job');
+        },
+      });
+  }
+
+  protected keepOriginal(job: QueueJob, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .keepOriginal(job.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.toastService.success(`Will keep original for: ${job.fileName}`);
+          this.refreshQueue();
+        },
+        error: (err) => {
+          const errorMessage = err?.error?.message || 'Failed to keep original';
+          this.toastService.error(errorMessage);
+        },
+      });
+  }
+
+  protected deleteOriginal(job: QueueJob, event: Event): void {
+    event.stopPropagation();
+
+    // Confirmation dialog
+    const sizeInMB = job.originalSizeBytes
+      ? (job.originalSizeBytes / (1024 * 1024)).toFixed(2)
+      : '0';
+    const confirmDelete = confirm(
+      `Delete original file (${sizeInMB} MB)?\n\nThis will free up disk space but cannot be undone.`
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    this.queueApi
+      .deleteOriginal(job.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const freedMB = (Number(result.freedSpace) / (1024 * 1024)).toFixed(2);
+          this.toastService.success(`Freed ${freedMB} MB of disk space`);
+          this.refreshQueue();
+        },
+        error: (err) => {
+          const errorMessage = err?.error?.message || 'Failed to delete original';
+          this.toastService.error(errorMessage);
+        },
+      });
+  }
+
+  protected restoreOriginal(job: QueueJob, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .restoreOriginal(job.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.toastService.success('Original file restored');
+          this.refreshQueue();
+        },
+        error: (err) => {
+          const errorMessage = err?.error?.message || 'Failed to restore original';
+          this.toastService.error(errorMessage);
         },
       });
   }
@@ -639,6 +805,8 @@ export class QueueComponent implements OnInit {
   }
 
   protected formatBytes(bytes: number): string {
+    // Handle invalid inputs (NaN, null, undefined)
+    if (!bytes || isNaN(bytes) || bytes < 0) return '0 B';
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -748,6 +916,56 @@ export class QueueComponent implements OnInit {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    };
+    return date.toLocaleDateString('en-US', options);
+  }
+
+  /**
+   * Format as relative time (always shows "X ago" format)
+   */
+  protected formatRelativeTime(timestamp: string | null | undefined): string {
+    if (!timestamp) return 'N/A';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) {
+      return diffMins === 1 ? '1 minute ago' : `${diffMins} minutes ago`;
+    }
+    if (diffHours < 24) {
+      return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+    }
+    if (diffDays < 30) {
+      return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+    }
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) {
+      return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
+    }
+    const diffYears = Math.floor(diffMonths / 12);
+    return diffYears === 1 ? '1 year ago' : `${diffYears} years ago`;
+  }
+
+  /**
+   * Format absolute datetime for timeline (full precision)
+   */
+  protected formatAbsoluteDateTime(timestamp: string | null | undefined): string {
+    if (!timestamp) return '';
+
+    const date = new Date(timestamp);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
     };
     return date.toLocaleDateString('en-US', options);
   }

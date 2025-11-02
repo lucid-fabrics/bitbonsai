@@ -36,6 +36,11 @@ export class QueueJobBo {
   prioritySetAt?: string;
   autoHealedAt?: string;
   autoHealedProgress?: number;
+  // Keep Original Feature
+  keepOriginalRequested?: boolean;
+  originalBackupPath?: string | null;
+  originalSizeBytes?: number | null;
+  replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -68,6 +73,13 @@ export class QueueJobBo {
     this.prioritySetAt = model.prioritySetAt;
     this.autoHealedAt = model.autoHealedAt;
     this.autoHealedProgress = model.autoHealedProgress;
+    // Keep Original Feature
+    this.keepOriginalRequested = model.keepOriginalRequested ?? false;
+    this.originalBackupPath = model.originalBackupPath ?? null;
+    this.originalSizeBytes = model.originalSizeBytes
+      ? this.parseSize(model.originalSizeBytes)
+      : null;
+    this.replacementAction = model.replacementAction ?? null;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

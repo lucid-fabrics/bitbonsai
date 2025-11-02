@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { type Job, JobStage } from '@prisma/client';
+import { type Job, JobStage, Prisma } from '@prisma/client';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -528,29 +528,36 @@ export class QueueService {
   async completeJob(id: string, completeJobDto: CompleteJobDto): Promise<Job> {
     this.logger.log(`Completing job: ${id}`);
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.COMPLETED,
-        progress: 100,
-        afterSizeBytes: BigInt(completeJobDto.afterSizeBytes),
-        savedBytes: BigInt(completeJobDto.savedBytes),
-        savedPercent: completeJobDto.savedPercent,
-        completedAt: new Date(),
-        priority: 0, // Auto-reset priority to normal on completion
-        prioritySetAt: null, // Clear priority timestamp
-      },
-      include: {
-        node: {
-          include: {
-            license: true,
+    // CRITICAL FIX #1: Use transaction to ensure atomic completion + metrics update
+    // This prevents race conditions where job shows COMPLETED via API but disappears after restart
+    const job = await this.prisma.$transaction(async (tx) => {
+      // Step 1: Update job to COMPLETED
+      const completedJob = await tx.job.update({
+        where: { id },
+        data: {
+          stage: JobStage.COMPLETED,
+          progress: 100,
+          afterSizeBytes: BigInt(completeJobDto.afterSizeBytes),
+          savedBytes: BigInt(completeJobDto.savedBytes),
+          savedPercent: completeJobDto.savedPercent,
+          completedAt: new Date(),
+          priority: 0, // Auto-reset priority to normal on completion
+          prioritySetAt: null, // Clear priority timestamp
+        },
+        include: {
+          node: {
+            include: {
+              license: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Update metrics asynchronously
-    await this.updateMetrics(job);
+      // Step 2: Update metrics INSIDE transaction (not outside)
+      await this.updateMetrics(completedJob, tx);
+
+      return completedJob;
+    });
 
     this.logger.log(`Job completed: ${id} (saved ${completeJobDto.savedPercent}%)`);
     return job;
@@ -1191,6 +1198,347 @@ export class QueueService {
   }
 
   /**
+   * Request to keep original file after encoding
+   *
+   * This method sets a flag on an encoding job to preserve the original file
+   * when encoding completes. The original will be renamed to .original extension.
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job with keepOriginalRequested=true
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in ENCODING stage
+   */
+  async requestKeepOriginal(id: string): Promise<Job> {
+    this.logger.log(`Requesting keep original for job: ${id}`);
+
+    const job = await this.findOne(id);
+
+    if (job.stage !== JobStage.ENCODING) {
+      throw new BadRequestException('Can only request keep-original for ENCODING jobs');
+    }
+
+    const updatedJob = await this.prisma.job.update({
+      where: { id },
+      data: {
+        keepOriginalRequested: true,
+        originalSizeBytes: job.beforeSizeBytes, // Capture original size
+      },
+    });
+
+    this.logger.log(`Keep original requested for job: ${id}`);
+    return updatedJob;
+  }
+
+  /**
+   * Delete original backup file
+   *
+   * This method deletes the .original backup file and frees disk space.
+   * This action cannot be undone.
+   *
+   * @param id - Job unique identifier
+   * @returns Object with freed space in bytes
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if no original backup exists
+   */
+  async deleteOriginalBackup(id: string): Promise<{ freedSpace: bigint }> {
+    this.logger.log(`Deleting original backup for job: ${id}`);
+
+    const job = await this.findOne(id);
+
+    if (!job.originalBackupPath) {
+      throw new BadRequestException('No original backup exists for this job');
+    }
+
+    const size = job.originalSizeBytes || BigInt(0);
+
+    // Delete the original backup file
+    const fs = await import('fs/promises');
+    try {
+      await fs.unlink(job.originalBackupPath);
+    } catch (error) {
+      this.logger.error(`Failed to delete original backup file: ${job.originalBackupPath}`, error);
+      throw new BadRequestException(
+        `Failed to delete original backup file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    // Update job to clear backup info
+    await this.prisma.job.update({
+      where: { id },
+      data: {
+        originalBackupPath: null,
+        originalSizeBytes: null,
+      },
+    });
+
+    this.logger.log(`Original backup deleted for job: ${id} (freed ${size} bytes)`);
+    return { freedSpace: size };
+  }
+
+  /**
+   * Restore original file
+   *
+   * This method swaps the encoded file with the original backup.
+   * The original becomes the active file, and the encoded version becomes the backup.
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if no original backup exists
+   */
+  async restoreOriginal(id: string): Promise<Job> {
+    this.logger.log(`Restoring original for job: ${id}`);
+
+    const job = await this.findOne(id);
+
+    if (!job.originalBackupPath) {
+      throw new BadRequestException('No original backup to restore');
+    }
+
+    // Swap files back
+    const fs = await import('fs/promises');
+    const encodedPath = `${job.filePath}.encoded`;
+
+    try {
+      await fs.rename(job.filePath, encodedPath); // Save encoded version
+      await fs.rename(job.originalBackupPath, job.filePath); // Restore original
+    } catch (error) {
+      this.logger.error(`Failed to restore original file for job: ${id}`, error);
+      throw new BadRequestException(
+        `Failed to restore original file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    // Update job - now .encoded is the backup
+    const updatedJob = await this.prisma.job.update({
+      where: { id },
+      data: {
+        originalBackupPath: encodedPath, // Now .encoded is the backup
+        replacementAction: 'KEPT_BOTH', // Still keeping both
+      },
+    });
+
+    this.logger.log(`Original restored for job: ${id}`);
+    return updatedJob;
+  }
+
+  /**
+   * Recheck a failed job to validate if it's truly failed or completed
+   *
+   * This method re-validates a FAILED job by checking file existence and health.
+   * Useful for jobs incorrectly marked as FAILED due to race conditions.
+   *
+   * Actions performed:
+   * 1. Validates job is in FAILED stage
+   * 2. Checks if encoded file exists at original path
+   * 3. Runs health check using ffprobe
+   * 4. If file is healthy, recalculates file sizes and moves to COMPLETED
+   * 5. If file is invalid or missing, updates error message with recheck results
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job (COMPLETED if file is valid, FAILED with updated error if not)
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in FAILED stage
+   */
+  async recheckFailedJob(id: string): Promise<Job> {
+    this.logger.log(`Rechecking failed job: ${id}`);
+
+    // Step 1: Validate job exists and is in FAILED stage
+    const job = await this.findOne(id);
+
+    if (job.stage !== JobStage.FAILED) {
+      throw new BadRequestException(`Can only recheck FAILED jobs (current stage: ${job.stage})`);
+    }
+
+    // Step 2: Check if encoded file exists at original path
+    const fs = await import('fs/promises');
+    let fileExists = false;
+    let fileSize = BigInt(0);
+
+    try {
+      const stats = await fs.stat(job.filePath);
+      fileExists = stats.isFile();
+      fileSize = BigInt(stats.size);
+      this.logger.log(`File exists at ${job.filePath} (${fileSize} bytes)`);
+    } catch (error) {
+      this.logger.warn(
+        `File not found at ${job.filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    if (!fileExists) {
+      // File doesn't exist - update error message and keep in FAILED
+      const updatedJob = await this.prisma.job.update({
+        where: { id },
+        data: {
+          error: `RECHECK FAILED: File does not exist at expected path: ${job.filePath}\n\nOriginal error:\n${job.error}`,
+        },
+      });
+
+      this.logger.log(`Recheck failed: File not found for job ${id}`);
+      return updatedJob;
+    }
+
+    // Step 3: Run health check using ffprobe
+    const verifyResult = await this.ffmpegService.verifyFile(job.filePath);
+
+    if (!verifyResult.isValid) {
+      // File exists but is corrupted - update error message and keep in FAILED
+      const updatedJob = await this.prisma.job.update({
+        where: { id },
+        data: {
+          error: `RECHECK FAILED: File exists but failed health check: ${verifyResult.error}\n\nOriginal error:\n${job.error}`,
+        },
+      });
+
+      this.logger.log(`Recheck failed: File is corrupted for job ${id}`);
+      return updatedJob;
+    }
+
+    // Step 4: File is valid! Calculate metrics and check if encoding actually compressed
+    this.logger.log(`Recheck passed! File is valid for job ${id}`);
+
+    // Calculate savings
+    const afterSizeBytes = fileSize;
+    const beforeSizeBytes = BigInt(job.beforeSizeBytes);
+    const savedBytes = beforeSizeBytes - afterSizeBytes;
+    const savedPercent = (Number(savedBytes) / Number(beforeSizeBytes)) * 100;
+    const savedPercentRounded = Math.round(savedPercent * 100) / 100;
+
+    // VALIDATION: Check if encoding actually compressed the file
+    // If file is same size or larger, encoding failed to compress - reject recheck
+    if (savedBytes <= BigInt(0)) {
+      const updatedJob = await this.prisma.job.update({
+        where: { id },
+        data: {
+          error: `RECHECK FAILED: Encoding did not compress the file.\n\nBefore: ${Number(beforeSizeBytes).toLocaleString()} bytes\nAfter: ${Number(afterSizeBytes).toLocaleString()} bytes\nDifference: ${savedBytes >= BigInt(0) ? 'NO COMPRESSION' : 'FILE GREW'}\n\nThis suggests encoding settings were not applied correctly. The job should be retried.\n\nOriginal error:\n${job.error}`,
+        },
+      });
+
+      this.logger.log(
+        `Recheck rejected: File did not compress (before: ${beforeSizeBytes}, after: ${afterSizeBytes})`
+      );
+      return updatedJob;
+    }
+
+    // Use transaction to ensure atomic completion + metrics update (same pattern as completeJob)
+    const completedJob = await this.prisma.$transaction(async (tx) => {
+      // Update job to COMPLETED
+      const updated = await tx.job.update({
+        where: { id },
+        data: {
+          stage: JobStage.COMPLETED,
+          progress: 100,
+          afterSizeBytes,
+          savedBytes,
+          savedPercent: savedPercentRounded,
+          completedAt: new Date(),
+          failedAt: null,
+          error: null, // Clear error
+          priority: 0, // Auto-reset priority to normal on completion
+          prioritySetAt: null, // Clear priority timestamp
+        },
+        include: {
+          node: {
+            include: {
+              license: true,
+            },
+          },
+        },
+      });
+
+      // Update metrics INSIDE transaction (same as completeJob)
+      await this.updateMetrics(updated, tx);
+
+      return updated;
+    });
+
+    this.logger.log(`Job ${id} rechecked and moved to COMPLETED (saved ${savedPercentRounded}%)`);
+    return completedJob;
+  }
+
+  /**
+   * Detect if a completed job actually compressed the file, and requeue if not
+   *
+   * This method checks if a COMPLETED job has savedBytes <= 0, indicating that
+   * the encoding did not actually compress the file. If so, it moves the job
+   * back to QUEUED stage to retry with different settings.
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job
+   */
+  async detectAndRequeueIfUncompressed(id: string): Promise<Job> {
+    this.logger.log(`Detecting compression for completed job: ${id}`);
+
+    // Step 1: Validate job exists and is in COMPLETED stage
+    const job = await this.findOne(id);
+
+    if (job.stage !== JobStage.COMPLETED) {
+      throw new BadRequestException(
+        `Can only detect compression for COMPLETED jobs (current stage: ${job.stage})`
+      );
+    }
+
+    // Step 2: Check if encoding actually compressed the file
+    const savedBytes = BigInt(job.savedBytes || 0);
+
+    if (savedBytes > BigInt(0)) {
+      // Compression was successful - do not requeue
+      throw new BadRequestException(
+        `Job successfully compressed the file by ${Number(savedBytes).toLocaleString()} bytes (${job.savedPercent}%). Cannot requeue.`
+      );
+    }
+
+    // Step 3: No compression detected - requeue the job
+    this.logger.log(`No compression detected (savedBytes: ${savedBytes}). Requeuing job ${id}...`);
+
+    const requeuedJob = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        completedAt: null,
+        savedBytes: BigInt(0),
+        savedPercent: 0,
+        afterSizeBytes: null,
+        error: null,
+        priority: 0,
+        prioritySetAt: null,
+      },
+      include: {
+        node: {
+          include: {
+            license: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Job ${id} requeued (no compression detected - before: ${Number(job.beforeSizeBytes).toLocaleString()} bytes, after: ${Number(job.afterSizeBytes).toLocaleString()} bytes)`
+    );
+
+    return requeuedJob;
+  }
+
+  /**
+   * Update a job with arbitrary data
+   *
+   * This is a generic update method used internally by other methods.
+   *
+   * @param id - Job unique identifier
+   * @param data - Update data
+   * @returns Updated job
+   * @private
+   */
+  async update(id: string, data: Partial<Job>): Promise<Job> {
+    return this.prisma.job.update({
+      where: { id },
+      data,
+    });
+  }
+
+  /**
    * Update metrics after job completion
    *
    * This method:
@@ -1198,15 +1546,22 @@ export class QueueService {
    * 2. Creates or updates license-wide daily metrics
    *
    * @param job - Completed job with node and license info
+   * @param tx - Optional Prisma transaction client (for atomic operations)
    * @private
    */
-  private async updateMetrics(job: Job & { node: { licenseId: string } }): Promise<void> {
+  private async updateMetrics(
+    job: Job & { node: { licenseId: string } },
+    tx?: Prisma.TransactionClient
+  ): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Use transaction if provided, otherwise use regular prisma client
+    const prisma = tx || this.prisma;
+
     try {
-      // Node-specific metric
-      await this.prisma.metric.upsert({
+      // Node-specific metric only (removed license-wide metric that caused null nodeId errors)
+      await prisma.metric.upsert({
         where: {
           date_nodeId_licenseId: {
             date: today,
@@ -1229,34 +1584,14 @@ export class QueueService {
         },
       });
 
-      // License-wide metric (nodeId: null for system-wide metrics)
-      await this.prisma.metric.upsert({
-        where: {
-          date_nodeId_licenseId: {
-            date: today,
-            nodeId: null as unknown as string,
-            licenseId: job.node.licenseId,
-          },
-        },
-        create: {
-          date: today,
-          nodeId: null as unknown as string,
-          licenseId: job.node.licenseId,
-          jobsCompleted: 1,
-          totalSavedBytes: job.savedBytes || BigInt(0),
-          avgThroughputFilesPerHour: 0,
-          codecDistribution: {},
-        },
-        update: {
-          jobsCompleted: { increment: 1 },
-          totalSavedBytes: { increment: job.savedBytes || BigInt(0) },
-        },
-      });
-
       this.logger.log(`Metrics updated for job: ${job.id}`);
     } catch (error) {
       this.logger.error(`Failed to update metrics for job: ${job.id}`, error);
-      // Don't throw - metrics update failure shouldn't fail the job completion
+      // If we're in a transaction, throw to rollback everything
+      // Otherwise, don't throw - metrics update failure shouldn't fail the job completion
+      if (tx) {
+        throw error;
+      }
     }
   }
 }

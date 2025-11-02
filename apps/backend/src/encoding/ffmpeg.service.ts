@@ -551,36 +551,12 @@ export class FfmpegService implements OnModuleDestroy {
       );
     }
 
-    // Get output file size
-    const stats = await fs.stat(tempOutput);
-    const afterSizeBytes = stats.size;
-    const savedBytes = Number(job.beforeSizeBytes) - afterSizeBytes;
-    const savedPercent = (savedBytes / Number(job.beforeSizeBytes)) * 100;
+    // CRITICAL FIX: Do NOT move/replace files here!
+    // File replacement is handled by encoding-processor.service.ts after verification
+    // This method should only verify the temp file and mark the job as ready for completion
+    // The temp file MUST remain at tempOutput location for encoding-processor to verify and replace
 
-    // Atomic replacement: rename temp file to original
-    if (policy.atomicReplace) {
-      await fs.rename(tempOutput, job.filePath);
-    } else {
-      // Keep both files (add .original extension)
-      await fs.rename(job.filePath, `${job.filePath}.original`);
-      await fs.rename(tempOutput, job.filePath);
-    }
-
-    // Complete job and clear resume state
-    const savedPercentRounded = Math.round(savedPercent * 100) / 100;
-    await this.queueService.completeJob(job.id, {
-      afterSizeBytes: BigInt(afterSizeBytes).toString(),
-      savedBytes: BigInt(savedBytes).toString(),
-      savedPercent: savedPercentRounded,
-    });
-
-    // TRUE RESUME: Clear resume state after successful completion
-    await this.queueService.updateProgress(job.id, {
-      tempFilePath: null as any,
-      resumeTimestamp: null as any,
-    });
-
-    this.logger.log(`Encoding completed for job ${job.id}: saved ${savedPercentRounded}%`);
+    this.logger.log(`Encoding completed successfully for job ${job.id}`);
   }
 
   /**

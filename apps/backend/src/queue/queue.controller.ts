@@ -627,6 +627,203 @@ export class QueueController {
   }
 
   /**
+   * Request to keep original file after encoding
+   */
+  @Post(':id/keep-original')
+  @ApiOperation({
+    summary: 'Request to keep original file after encoding',
+    description:
+      'Marks an encoding job to preserve the original file when complete.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in ENCODING stage\n' +
+      '2. Sets keepOriginalRequested flag to true\n' +
+      '3. Captures original file size\n\n' +
+      '**On Completion**:\n' +
+      '- Original file renamed to .original extension\n' +
+      '- Encoded file takes the original filename\n' +
+      '- Both files preserved on disk\n\n' +
+      '**Use Case**: User wants to keep original file for comparison or backup',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Keep original requested successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in ENCODING stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while requesting keep original',
+  })
+  async keepOriginal(@Param('id') id: string): Promise<Job> {
+    return this.queueService.requestKeepOriginal(id);
+  }
+
+  /**
+   * Delete original backup file
+   */
+  @Delete(':id/original')
+  @ApiOperation({
+    summary: 'Delete original backup file to free space',
+    description:
+      'Permanently deletes the .original backup file.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates original backup exists\n' +
+      '2. Deletes the .original file from disk\n' +
+      '3. Updates job to clear backup info\n' +
+      '4. Returns freed space in bytes\n\n' +
+      '**Warning**: This action cannot be undone.\n\n' +
+      '**Use Case**: User wants to free disk space by removing original backup',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Original backup deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        freedSpace: { type: 'string', example: '524288000' },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'No original backup exists for this job',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while deleting original backup',
+  })
+  async deleteOriginal(@Param('id') id: string): Promise<{ freedSpace: string }> {
+    const result = await this.queueService.deleteOriginalBackup(id);
+    return { freedSpace: result.freedSpace.toString() };
+  }
+
+  /**
+   * Restore original file
+   */
+  @Post(':id/restore-original')
+  @ApiOperation({
+    summary: 'Restore original file (swap with encoded)',
+    description:
+      'Swaps the encoded file with the original backup.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates original backup exists\n' +
+      '2. Renames encoded file to .encoded extension\n' +
+      '3. Restores original file to main filename\n' +
+      '4. Updates job backup path to .encoded\n\n' +
+      '**Result**: Original becomes active file, encoded becomes backup.\n\n' +
+      '**Use Case**: User wants to revert to original file after encoding',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Original file restored successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'No original backup to restore',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while restoring original',
+  })
+  async restoreOriginal(@Param('id') id: string): Promise<Job> {
+    return this.queueService.restoreOriginal(id);
+  }
+
+  /**
+   * Recheck a failed job to validate if it's truly failed or completed
+   */
+  @Post(':id/recheck')
+  @ApiOperation({
+    summary: 'Recheck a failed job',
+    description:
+      'Re-validates a FAILED job by checking file existence and health.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in FAILED stage\n' +
+      '2. Checks if encoded file exists at original path\n' +
+      '3. Runs health check using ffprobe\n' +
+      '4. If file is healthy, recalculates file sizes\n' +
+      '5. Moves job back to COMPLETED stage\n' +
+      '6. Clears error message and failedAt timestamp\n\n' +
+      '**Use Case**: Jobs incorrectly marked as FAILED due to race conditions or verification issues.\n\n' +
+      '**Result**: Job moved to COMPLETED if file is valid, or remains FAILED with updated error message.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job rechecked successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in FAILED stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while rechecking job',
+  })
+  async recheckJob(@Param('id') id: string): Promise<Job> {
+    return this.queueService.recheckFailedJob(id);
+  }
+
+  /**
+   * Detect and requeue completed job if no compression occurred
+   */
+  @Post(':id/detect-and-requeue')
+  @ApiOperation({
+    summary: 'Detect and requeue if no compression occurred',
+    description:
+      'Checks if a COMPLETED job actually compressed the file.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in COMPLETED stage\n' +
+      '2. Checks if savedBytes <= 0 (same size or larger)\n' +
+      '3. If no compression detected: moves job back to QUEUED stage\n' +
+      '4. Resets progress, clears completion data\n' +
+      '5. If compression was successful: returns error\n\n' +
+      '**Use Case**: Detect completed jobs where encoding failed to compress the file.\n\n' +
+      '**Result**: Job moved to QUEUED if no compression, or error if compression was successful.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job requeued successfully (no compression detected)',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in COMPLETED stage or compression was successful',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while detecting compression',
+  })
+  async detectAndRequeue(@Param('id') id: string): Promise<Job> {
+    return this.queueService.detectAndRequeueIfUncompressed(id);
+  }
+
+  /**
    * Cancel all queued jobs
    */
   @Post('cancel-all')

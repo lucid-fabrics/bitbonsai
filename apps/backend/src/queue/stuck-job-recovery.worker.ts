@@ -29,14 +29,15 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
   // Configuration
   private readonly INTERVAL_MS = parseInt(
-    process.env.RECOVERY_INTERVAL_MS || `${5 * 60 * 1000}`,
+    process.env.RECOVERY_INTERVAL_MS || `${2 * 60 * 1000}`,
     10
-  ); // 5 minutes
+  ); // 2 minutes (reduced from 5)
   private readonly HEALTH_CHECK_TIMEOUT_MIN = parseInt(
     process.env.HEALTH_CHECK_TIMEOUT_MIN || '5',
     10
   );
-  private readonly ENCODING_TIMEOUT_MIN = parseInt(process.env.ENCODING_TIMEOUT_MIN || '60', 10);
+  // CAPA FIX: Reduced from 60min to 10min for faster stuck job detection
+  private readonly ENCODING_TIMEOUT_MIN = parseInt(process.env.ENCODING_TIMEOUT_MIN || '10', 10);
   private readonly VERIFYING_TIMEOUT_MIN = parseInt(process.env.VERIFYING_TIMEOUT_MIN || '30', 10);
 
   constructor(
@@ -125,18 +126,32 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     }
 
     // Scenario 2: Jobs stuck in ENCODING for too long without progress
+    // CAPA FIX: Use lastProgressUpdate instead of updatedAt for more accurate stuck detection
     const encodingCutoff = new Date(now.getTime() - this.ENCODING_TIMEOUT_MIN * 60 * 1000);
     const stuckEncoding = await this.prisma.job.findMany({
       where: {
         stage: JobStage.ENCODING,
-        updatedAt: {
-          lt: encodingCutoff,
-        },
+        OR: [
+          // No progress update for X minutes
+          {
+            lastProgressUpdate: {
+              lt: encodingCutoff,
+            },
+          },
+          // Or lastProgressUpdate is null (should never happen but safety net)
+          {
+            lastProgressUpdate: null,
+            updatedAt: {
+              lt: encodingCutoff,
+            },
+          },
+        ],
       },
       select: {
         id: true,
         fileLabel: true,
         updatedAt: true,
+        lastProgressUpdate: true,
         progress: true,
       },
     });
@@ -147,29 +162,43 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckEncoding) {
-        // Check if FFmpeg is actively processing this job
+        // CAPA CRITICAL FIX: Check if FFmpeg is actively processing this job
         const hasActiveProcess = this.ffmpegService.hasActiveProcess(job.id);
 
         if (hasActiveProcess) {
-          // Job has an active FFmpeg process, skip recovery (it's still being processed)
-          this.logger.debug(
-            `Skipping recovery for job ${job.id}: FFmpeg process is still active (progress: ${job.progress}%)`
+          // CAPA CRITICAL FIX: FFmpeg process is still running but FROZEN (no progress for >10min)
+          // We need to forcefully kill it before resetting the job
+          this.logger.warn(
+            `Job ${job.fileLabel} has frozen FFmpeg process (progress: ${job.progress}%, stuck for >${this.ENCODING_TIMEOUT_MIN}min). Killing process...`
           );
-          continue;
+
+          const killed = await this.ffmpegService.killProcess(job.id);
+          if (killed) {
+            this.logger.log(`✅ Successfully killed frozen FFmpeg process for job ${job.id}`);
+          } else {
+            this.logger.error(
+              `❌ Failed to kill FFmpeg process for job ${job.id}. Job will NOT be reset.`
+            );
+            continue; // Skip this job if we couldn't kill the process
+          }
         }
 
+        // CAPA CRITICAL FIX: Preserve temp file and resume state when recovering frozen jobs
+        // DO NOT reset progress or startedAt - this allows job to resume from where it froze
         await this.prisma.job.update({
           where: { id: job.id },
           data: {
             stage: JobStage.QUEUED,
-            progress: 0,
-            startedAt: null,
-            error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min). Suspected node crash. Job reset to queue.`,
+            // Keep progress, tempFilePath, resumeTimestamp intact for resume capability
+            error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min). Frozen FFmpeg process killed. Job will resume from ${job.progress}%.`,
           },
         });
 
+        // CAPA FIX: Show lastProgressUpdate time for better visibility
+        const lastUpdate = job.lastProgressUpdate || job.updatedAt;
+        const stuckMinutes = Math.round((now.getTime() - lastUpdate.getTime()) / 1000 / 60);
         this.logger.log(
-          `🔄 Recovered stuck ENCODING job: ${job.fileLabel} (progress: ${job.progress}%, stuck for ${Math.round((now.getTime() - job.updatedAt.getTime()) / 1000 / 60)}min) → QUEUED`
+          `🔄 Recovered stuck ENCODING job: ${job.fileLabel} (progress: ${job.progress}%, no progress for ${stuckMinutes}min) → QUEUED`
         );
       }
     }

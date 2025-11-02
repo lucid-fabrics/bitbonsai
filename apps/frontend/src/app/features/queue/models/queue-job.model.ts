@@ -35,4 +35,9 @@ export interface QueueJob {
   prioritySetAt?: string; // When priority was last changed
   autoHealedAt?: string; // ISO timestamp when job was auto-healed by system restart
   autoHealedProgress?: number; // Progress % when healing occurred (for green dot indicator, 0-100)
+  // Keep Original Feature
+  keepOriginalRequested?: boolean;
+  originalBackupPath?: string | null;
+  originalSizeBytes?: number | null;
+  replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
 }
