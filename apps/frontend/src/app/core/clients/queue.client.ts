@@ -44,6 +44,14 @@ export class QueueClient {
     return this.http.post<void>(`${this.apiUrl}/${jobId}/retry`, {});
   }
 
+  recheckJob(jobId: string): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/recheck`, {});
+  }
+
+  detectAndRequeue(jobId: string): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/detect-and-requeue`, {});
+  }
+
   retryAllCancelled(): Observable<{
     retriedCount: number;
     totalSizeBytes: string;
@@ -79,5 +87,21 @@ export class QueueClient {
 
   updateJobPriority(jobId: string, priority: number): Observable<QueueJobApiModel> {
     return this.http.patch<QueueJobApiModel>(`${this.apiUrl}/${jobId}/priority`, { priority });
+  }
+
+  keepOriginal(jobId: string): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/keep-original`, {});
+  }
+
+  deleteOriginal(jobId: string): Observable<{ freedSpace: string }> {
+    return this.http.delete<{ freedSpace: string }>(`${this.apiUrl}/${jobId}/original`);
+  }
+
+  restoreOriginal(jobId: string): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/restore-original`, {});
+  }
+
+  deleteJob(jobId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${jobId}`);
   }
 }

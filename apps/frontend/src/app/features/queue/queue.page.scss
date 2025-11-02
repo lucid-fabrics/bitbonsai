@@ -2092,6 +2092,20 @@
           font-size: 10px;
           color: $text-secondary;
           text-align: center;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+
+          .timestamp-relative {
+            font-weight: 500;
+            color: $text-primary;
+          }
+
+          .timestamp-absolute {
+            font-size: 9px;
+            color: rgba($text-secondary, 0.7);
+            font-weight: 400;
+          }
         }
 
         &.completed .timeline-icon {

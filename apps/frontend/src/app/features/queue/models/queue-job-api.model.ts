@@ -43,4 +43,9 @@ export interface QueueJobApiModel {
   prioritySetAt?: string;
   autoHealedAt?: string;
   autoHealedProgress?: number;
+  // Keep Original Feature
+  keepOriginalRequested?: boolean;
+  originalBackupPath?: string | null;
+  originalSizeBytes?: string | null;
+  replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
 }

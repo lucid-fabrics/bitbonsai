@@ -334,6 +334,12 @@ model Job {
   resumeTimestamp    String?   // HH:MM:SS.MS where encoding stopped
   lastProgressUpdate DateTime? // When progress was last saved to DB
 
+  // Original File Tracking (Keep Original Feature)
+  keepOriginalRequested Boolean @default(false) // User clicked "Keep Original" during encoding
+  originalBackupPath    String? // Path to .original backup if kept (e.g., "/path/movie.mkv.original")
+  originalSizeBytes     BigInt? // Size of original file before encoding
+  replacementAction     String? // 'REPLACED' or 'KEPT_BOTH' - what happened to original file
+
   // Relations
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)

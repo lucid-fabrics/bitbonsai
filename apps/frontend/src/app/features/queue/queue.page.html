@@ -434,6 +434,28 @@
                         tooltipPlacement="top">
                         <i class="fas fa-pause"></i>
                       </button>
+                      @if (!job.keepOriginalRequested) {
+                        <button
+                          (click)="keepOriginal(job, $event)"
+                          class="action-btn keep-original-btn"
+                          bbTooltip
+                          tooltipTitle="Keep Original"
+                          tooltipContent="Preserves the original file after encoding completes. The original will be renamed to .original extension, allowing you to compare quality or restore it later."
+                          tooltipWhen="You want to keep the original file as a backup or for quality comparison."
+                          tooltipPlacement="top">
+                          <i class="fas fa-save"></i>
+                        </button>
+                      } @else {
+                        <button
+                          class="action-btn keep-original-btn active"
+                          disabled
+                          bbTooltip
+                          tooltipTitle="Keeping Original"
+                          tooltipContent="Original file will be preserved after encoding completes."
+                          tooltipPlacement="top">
+                          <i class="fas fa-check"></i>
+                        </button>
+                      }
                     }
                     @if (job.status === 'PAUSED') {
                       <button
@@ -526,6 +548,30 @@
                         <i class="fas fa-redo"></i>
                       </button>
                     }
+                    @if (job.status === 'FAILED') {
+                      <button
+                        (click)="recheckJob(job.id, $event)"
+                        class="action-btn recheck-btn"
+                        bbTooltip
+                        tooltipTitle="Recheck Job"
+                        tooltipContent="Re-validates if the file is truly failed by checking file existence and running health checks. If the file is actually valid, the job will be moved back to COMPLETED. Useful for jobs incorrectly marked as FAILED due to race conditions."
+                        tooltipWhen="You suspect the job was incorrectly marked as failed and the file might actually be valid."
+                        tooltipPlacement="top">
+                        <i class="fas fa-check-circle"></i>
+                      </button>
+                    }
+                    @if (job.status === 'COMPLETED') {
+                      <button
+                        (click)="detectAndRequeue(job.id, $event)"
+                        class="action-btn detect-btn"
+                        bbTooltip
+                        tooltipTitle="Detect & Requeue"
+                        tooltipContent="Checks if encoding actually compressed the file. If the file is the same size or larger than the original, the job will be automatically requeued for retry. If compression was successful, you'll get an error message."
+                        tooltipWhen="You notice a completed job has the same file size as the original, indicating encoding didn't actually compress it."
+                        tooltipPlacement="top">
+                        <i class="fas fa-search"></i>
+                      </button>
+                    }
                     @if (job.status === 'FAILED' && job.error) {
                       <button
                         (click)="openErrorDetailsModal(job)"
@@ -536,6 +582,18 @@
                         tooltipWhen="You need to understand why this job failed and how to fix it."
                         tooltipPlacement="top">
                         <i class="fas fa-exclamation-circle"></i>
+                      </button>
+                    }
+                    @if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+                      <button
+                        (click)="deleteJob(job, $event)"
+                        class="action-btn delete-btn"
+                        bbTooltip
+                        tooltipTitle="Delete Job Entry"
+                        tooltipContent="Permanently removes this job record from the database. The actual media file will NOT be affected. This action cannot be undone."
+                        tooltipWhen="You want to clean up failed/cancelled job entries from the queue."
+                        tooltipPlacement="top">
+                        <i class="fas fa-trash"></i>
                       </button>
                     }
                     <button class="action-btn details-btn" title="View Details">
@@ -558,7 +616,10 @@
                               <i class="fas fa-plus-circle"></i>
                             </div>
                             <div class="timeline-label">Created</div>
-                            <div class="timeline-timestamp">{{ formatTimestamp(job.createdAt) }}</div>
+                            <div class="timeline-timestamp">
+                              <div class="timestamp-relative">{{ formatRelativeTime(job.createdAt) }}</div>
+                              <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.createdAt) }}</div>
+                            </div>
                           </div>
 
                           <!-- Health Check (if job went through it) -->
@@ -581,7 +642,10 @@
                                 <i class="fas fa-play-circle"></i>
                               </div>
                               <div class="timeline-label">Started</div>
-                              <div class="timeline-timestamp">{{ formatTimestamp(job.startedAt) }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.startedAt) }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.startedAt) }}</div>
+                              </div>
                             </div>
                           }
 
@@ -593,7 +657,10 @@
                                 <i class="fas fa-shield-alt"></i>
                               </div>
                               <div class="timeline-label">Auto-Healed</div>
-                              <div class="timeline-timestamp">{{ formatTimestamp(job.autoHealedAt) }} • {{ (job.autoHealedProgress || 0).toFixed(1) }}%</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.autoHealedAt) }} • {{ (job.autoHealedProgress || 0).toFixed(1) }}%</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.autoHealedAt) }}</div>
+                              </div>
                             </div>
                           }
 
@@ -641,7 +708,10 @@
                                 <i class="fas fa-check-circle"></i>
                               </div>
                               <div class="timeline-label">Completed</div>
-                              <div class="timeline-timestamp">{{ formatTimestamp(job.completedAt || '') }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.completedAt || '') }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.completedAt || '') }}</div>
+                              </div>
                             </div>
                           }
 
@@ -653,7 +723,10 @@
                                 <i class="fas fa-times-circle"></i>
                               </div>
                               <div class="timeline-label">Failed</div>
-                              <div class="timeline-timestamp">{{ formatTimestamp(job.failedAt || '') }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.failedAt || '') }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.failedAt || '') }}</div>
+                              </div>
                             </div>
                           }
                         </div>
@@ -683,6 +756,87 @@
                           }
                         </div>
                       </div>
+
+                      <!-- Original File Status (for COMPLETED jobs) -->
+                      @if (job.status === 'COMPLETED') {
+                        <div class="original-file-section">
+                          <h4><i class="fas fa-file-archive"></i> Original File Status</h4>
+                          <div class="original-file-info">
+                            @if (job.originalBackupPath) {
+                              <div class="original-kept">
+                                <div class="original-status">
+                                  <i class="fas fa-check-circle status-icon success"></i>
+                                  <span class="status-label">Original Kept</span>
+                                  <span class="badge badge-success">KEPT</span>
+                                </div>
+                                <div class="original-details">
+                                  <div class="detail-row">
+                                    <span class="detail-label">Backup Path:</span>
+                                    <span class="detail-value path">{{ job.originalBackupPath }}</span>
+                                  </div>
+                                  <div class="detail-row">
+                                    <span class="detail-label">Original Size:</span>
+                                    <span class="detail-value">{{ formatBytes(job.originalSizeBytes || 0) }}</span>
+                                  </div>
+                                  <div class="detail-row">
+                                    <span class="detail-label">Encoded Size:</span>
+                                    <span class="detail-value">{{ formatBytes(job.currentSize) }}</span>
+                                  </div>
+                                </div>
+                                <div class="original-actions">
+                                  <button
+                                    (click)="deleteOriginal(job, $event)"
+                                    class="action-btn delete-original-btn"
+                                    bbTooltip
+                                    tooltipTitle="Delete Original"
+                                    tooltipContent="Permanently deletes the original backup file to free disk space. This action cannot be undone."
+                                    tooltipWhen="You've verified the encoded file quality and no longer need the original backup."
+                                    tooltipPlacement="top">
+                                    <i class="fas fa-trash"></i>
+                                    Delete Original
+                                  </button>
+                                  <button
+                                    (click)="restoreOriginal(job, $event)"
+                                    class="action-btn restore-original-btn"
+                                    bbTooltip
+                                    tooltipTitle="Restore Original"
+                                    tooltipContent="Swaps the encoded file with the original backup. The original becomes the active file, and the encoded version becomes the backup."
+                                    tooltipWhen="You prefer the original file quality or encountered issues with the encoded version."
+                                    tooltipPlacement="top">
+                                    <i class="fas fa-undo"></i>
+                                    Restore Original
+                                  </button>
+                                </div>
+                              </div>
+                            } @else if (job.replacementAction === 'REPLACED') {
+                              <div class="original-replaced">
+                                <div class="original-status">
+                                  <i class="fas fa-times-circle status-icon replaced"></i>
+                                  <span class="status-label">Original Deleted</span>
+                                  <span class="badge badge-info">REPLACED</span>
+                                </div>
+                                <div class="original-details">
+                                  <div class="detail-row">
+                                    <span class="detail-label">Space Freed:</span>
+                                    <span class="detail-value savings">{{ formatBytes(job.savedSize) }}</span>
+                                  </div>
+                                  <div class="detail-row">
+                                    <span class="detail-label">Savings:</span>
+                                    <span class="detail-value savings">{{ job.savedPercentage.toFixed(2) }}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            } @else {
+                              <div class="original-unknown">
+                                <div class="original-status">
+                                  <i class="fas fa-question-circle status-icon"></i>
+                                  <span class="status-label">Status Unknown</span>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
 
                       <!-- Retry Information -->
                       @if (job.retryCount && job.retryCount > 0) {
