@@ -229,6 +229,33 @@
     }
   }
 
+  // Summary Section - What Happened
+  .event-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba($accent-primary, 0.08);
+    border: 1px solid rgba($accent-primary, 0.2);
+    border-radius: 8px;
+    margin-top: 4px;
+
+    i {
+      font-size: 16px;
+      color: $accent-primary;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    span {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.6;
+      color: $text-primary;
+      font-weight: 500;
+    }
+  }
+
   // Metadata Pills
   .event-metadata {
     display: flex;
@@ -255,38 +282,16 @@
     }
   }
 
-  // Error Section
+  // Technical Details Section
   .event-error {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 4px;
-  }
-
-  .error-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px;
-    background: rgba($danger, 0.08);
-    border: 1px solid rgba($danger, 0.2);
-    border-radius: 8px;
-    color: rgba($danger, 0.9);
-    font-size: 13px;
-    line-height: 1.5;
-
-    i {
-      font-size: 14px;
-      margin-top: 2px;
-      flex-shrink: 0;
-    }
+    margin-top: 8px;
   }
 
   .toggle-details-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 8px 14px;
     background: transparent;
     border: 1px solid $border-secondary;
     border-radius: 6px;
@@ -295,35 +300,54 @@
     font-weight: 500;
     cursor: pointer;
     transition: $transition-fast;
-    align-self: flex-start;
+    width: 100%;
+    justify-content: center;
 
     i {
-      font-size: 10px;
+      font-size: 11px;
     }
 
     &:hover {
-      background: $bg-tertiary;
-      border-color: $accent-primary;
+      background: rgba($bg-tertiary, 0.5);
+      border-color: rgba($accent-primary, 0.5);
       color: $accent-primary;
     }
   }
 
   .error-details {
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba($danger, 0.2);
+    border: 1px solid rgba($border-secondary, 0.4);
     border-radius: 8px;
     padding: 16px;
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
+    margin-top: 8px;
 
-    pre {
-      margin: 0;
-      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-      font-size: 11px;
-      line-height: 1.6;
-      color: rgba($danger, 0.8);
-      white-space: pre-wrap;
-      word-wrap: break-word;
+    .error-section {
+      &:not(:last-child) {
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba($border-secondary, 0.2);
+      }
+
+      .error-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: $text-secondary;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      pre {
+        margin: 0;
+        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        color: $text-tertiary;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
     }
   }
 
