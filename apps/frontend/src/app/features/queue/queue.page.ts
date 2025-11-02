@@ -27,6 +27,7 @@ import {
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
+import { JobHistoryModalComponent } from './components/job-history-modal/job-history-modal.component';
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
@@ -44,6 +45,7 @@ import type { QueueResponse } from './models/queue-response.model';
     RichTooltipDirective,
     AddFilesModalComponent,
     ErrorDetailsModalComponent,
+    JobHistoryModalComponent,
   ],
   templateUrl: './queue.page.html',
   styleUrls: ['./queue.page.scss'],
@@ -95,6 +97,12 @@ export class QueueComponent implements OnInit {
     error: string;
     status: string;
     jobId: string;
+  } | null = null;
+  protected showJobHistoryModal = false;
+  protected jobHistoryModalData: {
+    fileName: string;
+    jobId: string;
+    history: JobHistoryEvent[];
   } | null = null;
 
   // Job history cache (jobId -> history events)
@@ -739,6 +747,46 @@ export class QueueComponent implements OnInit {
   protected closeErrorDetailsModal(): void {
     this.showErrorDetailsModal = false;
     this.errorModalData = null;
+  }
+
+  protected openJobHistoryModal(job: QueueJob, event: Event): void {
+    event.stopPropagation();
+
+    // Fetch history if not cached
+    if (!this.jobHistoryCache.has(job.id)) {
+      this.queueApi
+        .getJobHistory(job.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (history) => {
+            this.jobHistoryCache.set(job.id, history);
+            this.jobHistoryModalData = {
+              fileName: job.fileName,
+              jobId: job.id,
+              history: history,
+            };
+            this.showJobHistoryModal = true;
+          },
+          error: (error) => {
+            console.error(`Failed to fetch job history for ${job.id}:`, error);
+            this.toastService.error('Failed to load job history');
+            this.jobHistoryCache.set(job.id, []);
+          },
+        });
+    } else {
+      // Use cached history
+      this.jobHistoryModalData = {
+        fileName: job.fileName,
+        jobId: job.id,
+        history: this.jobHistoryCache.get(job.id) || [],
+      };
+      this.showJobHistoryModal = true;
+    }
+  }
+
+  protected closeJobHistoryModal(): void {
+    this.showJobHistoryModal = false;
+    this.jobHistoryModalData = null;
   }
 
   protected getStatusClass(status: JobStatus): string {
