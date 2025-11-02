@@ -583,6 +583,8 @@
       &.col-progress { width: 150px; }
       &.col-size { width: 200px; }
       &.col-node { width: 100px; }
+      &.col-failed-at { width: 130px; font-size: 11px; }
+      &.col-why { width: 180px; color: rgba(255, 87, 87, 0.9); font-size: 12px; }
       &.col-actions { width: 120px; text-align: center; }
     }
   }

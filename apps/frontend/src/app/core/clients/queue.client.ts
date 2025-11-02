@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { combineLatest, map, type Observable } from 'rxjs';
 import { QueueJobBo } from '../../features/queue/bos/queue-job.bo';
+import type { JobHistoryEvent } from '../../features/queue/models/job-history-event.model';
 import type { QueueFilters } from '../../features/queue/models/queue-filters.model';
 import type { QueueJobApiModel } from '../../features/queue/models/queue-job-api.model';
 import type { QueueResponse } from '../../features/queue/models/queue-response.model';
@@ -103,5 +104,18 @@ export class QueueClient {
 
   deleteJob(jobId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${jobId}`);
+  }
+
+  /**
+   * Get job failure/event history timeline
+   *
+   * Fetches the complete history of all failure, cancellation, restart, and auto-heal events for a job.
+   * Returns events in reverse chronological order (newest first).
+   *
+   * @param jobId - ID of the job to get history for
+   * @returns Observable of job history events array
+   */
+  getJobHistory(jobId: string): Observable<JobHistoryEvent[]> {
+    return this.http.get<JobHistoryEvent[]>(`${this.apiUrl}/${jobId}/history`);
   }
 }

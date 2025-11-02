@@ -27,6 +27,8 @@ import {
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
+import type { JobHistoryEvent } from './models/job-history-event.model';
+import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
 import type { QueueFilters } from './models/queue-filters.model';
 import type { QueueJob } from './models/queue-job.model';
@@ -95,6 +97,9 @@ export class QueueComponent implements OnInit {
     jobId: string;
   } | null = null;
 
+  // Job history cache (jobId -> history events)
+  protected jobHistoryCache = new Map<string, JobHistoryEvent[]>();
+
   // Expose Math for template
   protected readonly Math = Math;
 
@@ -103,6 +108,9 @@ export class QueueComponent implements OnInit {
 
   // Expose JobStatus enum for template
   protected readonly JobStatus = JobStatus;
+
+  // Expose JobEventType enum for template
+  protected readonly JobEventType = JobEventType;
 
   // Filter state
   protected selectedStatus: JobStatus | 'ALL' = 'ALL';
@@ -306,6 +314,23 @@ export class QueueComponent implements OnInit {
 
   protected toggleJobDetails(jobId: string): void {
     this.expandedJobId = this.expandedJobId === jobId ? null : jobId;
+
+    // Fetch job history when expanding a job (if not already cached)
+    if (this.expandedJobId && !this.jobHistoryCache.has(jobId)) {
+      this.queueApi
+        .getJobHistory(jobId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (history) => {
+            this.jobHistoryCache.set(jobId, history);
+          },
+          error: (error) => {
+            console.error(`Failed to fetch job history for ${jobId}:`, error);
+            // Set empty array to prevent retrying on every expand
+            this.jobHistoryCache.set(jobId, []);
+          },
+        });
+    }
   }
 
   protected openCancelDialog(jobId: string, event: Event): void {
@@ -971,6 +996,28 @@ export class QueueComponent implements OnInit {
   }
 
   /**
+   * Get user-friendly label for job event type (fallback when systemMessage is not available)
+   */
+  protected getEventTypeLabel(eventType: JobEventType): string {
+    switch (eventType) {
+      case JobEventType.FAILED:
+        return 'Encoding Failed';
+      case JobEventType.CANCELLED:
+        return 'Job Cancelled';
+      case JobEventType.RESTARTED:
+        return 'Job Restarted';
+      case JobEventType.AUTO_HEALED:
+        return 'Auto-Healed';
+      case JobEventType.BACKEND_RESTART:
+        return 'Backend Restart';
+      case JobEventType.TIMEOUT:
+        return 'Encoding Timeout';
+      default:
+        return 'Job Event';
+    }
+  }
+
+  /**
    * Calculate expected final file size based on estimated compression
    */
   protected calculateExpectedSize(job: QueueJob): string {
@@ -1097,5 +1144,48 @@ export class QueueComponent implements OnInit {
 
     // Default conservative estimate
     return 0.4;
+  }
+
+  /**
+   * Extract a short, simple failure reason from error message
+   * Returns a brief user-friendly explanation (max ~50 chars)
+   */
+  protected getShortFailureReason(error: string | null | undefined): string {
+    if (!error) return 'Unknown error';
+
+    // Common error patterns with short explanations
+    const patterns = [
+      { regex: /no space left/i, reason: 'Out of disk space' },
+      { regex: /permission denied/i, reason: 'Permission denied' },
+      { regex: /file not found/i, reason: 'File not found' },
+      { regex: /invalid data found/i, reason: 'Invalid or corrupted file' },
+      { regex: /codec.*not (found|supported)/i, reason: 'Codec not supported' },
+      { regex: /invalid argument/i, reason: 'Invalid encoding parameters' },
+      { regex: /timed out/i, reason: 'Encoding timed out' },
+      { regex: /connection (refused|reset)/i, reason: 'Connection failed' },
+      { regex: /segmentation fault/i, reason: 'FFmpeg crashed' },
+      { regex: /killed/i, reason: 'Process terminated' },
+      { regex: /out of memory/i, reason: 'Out of memory' },
+    ];
+
+    // Check for known patterns
+    for (const { regex, reason } of patterns) {
+      if (regex.test(error)) {
+        return reason;
+      }
+    }
+
+    // Extract first line if error is multi-line
+    const firstLine = error.split('\n')[0].trim();
+
+    // If first line is very long, truncate it intelligently
+    if (firstLine.length > 50) {
+      // Try to extract meaningful part before common delimiters
+      const meaningfulPart =
+        firstLine.split(':')[0] || firstLine.split('-')[0] || firstLine.substring(0, 50);
+      return meaningfulPart.trim() + '...';
+    }
+
+    return firstLine || 'Unknown error';
   }
 }
