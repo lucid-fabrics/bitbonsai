@@ -907,6 +907,146 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Mobile Card Layout (< 768px) -->
+      <div class="mobile-job-list">
+        @for (job of queueData.jobs; track job.id) {
+          <div class="mobile-job-card"
+               [class.expanded]="expandedJobId === job.id"
+               [class]="'status-' + job.status.toLowerCase()"
+               (click)="toggleJobDetails(job.id)">
+
+            <!-- Card Header: Status + Filename -->
+            <div class="card-header-mobile">
+              <span class="status-badge-mobile" [class]="getStatusClass(job.status)">
+                <i [class]="'fas ' + getStatusIcon(job.status)"></i>
+                {{ job.status }}
+              </span>
+              <h4 class="filename-mobile" [title]="job.fileName">
+                {{ job.fileName }}
+              </h4>
+              @if (job.autoHealedAt) {
+                <span class="auto-heal-badge-mobile">
+                  <i class="fas fa-shield-alt"></i> Auto-Healed
+                </span>
+              }
+            </div>
+
+            <!-- Card Meta: Library + Node -->
+            <div class="card-meta-mobile">
+              <span><i class="fas fa-book"></i> {{ job.libraryName }}</span>
+              <span><i class="fas fa-server"></i> {{ job.nodeName }}</span>
+            </div>
+
+            <!-- Progress (ENCODING jobs) -->
+            @if (job.status === JobStatus.ENCODING) {
+              <div class="progress-mobile">
+                <div class="progress-bar-mobile">
+                  <div class="progress-fill-mobile" [style.width.%]="job.progress"></div>
+                  <span class="progress-text-mobile">{{ job.progress.toFixed(1) }}%</span>
+                </div>
+                <div class="progress-meta-mobile">
+                  @if (job.etaSeconds) {
+                    <span><i class="fas fa-clock"></i> {{ formatETA(job.etaSeconds) }}</span>
+                  }
+                  @if (job.fps) {
+                    <span><i class="fas fa-tachometer-alt"></i> {{ job.fps }} FPS</span>
+                  }
+                  @if (job.startedAt) {
+                    <span><i class="fas fa-hourglass-half"></i> {{ getElapsedTime(job.startedAt) }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Size Compression (COMPLETED jobs) -->
+            @if (job.status === JobStatus.COMPLETED && job.currentSize && job.originalSize) {
+              <div class="size-mobile">
+                <div class="size-comparison">
+                  <span class="size-before">{{ formatBytes(job.originalSize) }}</span>
+                  <i class="fas fa-arrow-right"></i>
+                  <span class="size-after">{{ formatBytes(job.currentSize) }}</span>
+                </div>
+                <div class="size-savings">
+                  <i class="fas fa-piggy-bank"></i>
+                  {{ formatBytes(job.originalSize - job.currentSize) }} saved
+                  ({{ ((job.originalSize - job.currentSize) / job.originalSize * 100).toFixed(1) }}%)
+                </div>
+              </div>
+            }
+
+            <!-- Error Summary (FAILED jobs) -->
+            @if (job.status === JobStatus.FAILED && job.error) {
+              <div class="error-mobile">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ getShortFailureReason(job.error) }}</span>
+              </div>
+            }
+
+            <!-- Primary Actions (44x44px touch targets) -->
+            <div class="actions-mobile" (click)="$event.stopPropagation()">
+              @if (job.status === JobStatus.QUEUED) {
+                <button class="action-btn-mobile primary" (click)="forceStartJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Force Start" tooltipPlacement="top">
+                  <i class="fas fa-play-circle"></i>
+                </button>
+                <button class="action-btn-mobile" (click)="openCancelDialog(job.id, $event)"
+                        bbTooltip tooltipTitle="Cancel" tooltipPlacement="top">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.ENCODING) {
+                <button class="action-btn-mobile" (click)="pauseJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Pause" tooltipPlacement="top">
+                  <i class="fas fa-pause-circle"></i>
+                </button>
+                <button class="action-btn-mobile" (click)="openCancelDialog(job.id, $event)"
+                        bbTooltip tooltipTitle="Cancel" tooltipPlacement="top">
+                  <i class="fas fa-stop-circle"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.PAUSED) {
+                <button class="action-btn-mobile primary" (click)="resumeJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Resume" tooltipPlacement="top">
+                  <i class="fas fa-play-circle"></i>
+                </button>
+                <button class="action-btn-mobile" (click)="openCancelDialog(job.id, $event)"
+                        bbTooltip tooltipTitle="Cancel" tooltipPlacement="top">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.FAILED || job.status === JobStatus.CANCELLED) {
+                <button class="action-btn-mobile primary" (click)="retryJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Retry" tooltipPlacement="top">
+                  <i class="fas fa-redo"></i>
+                </button>
+                <button class="action-btn-mobile danger" (click)="deleteJob(job, $event)"
+                        bbTooltip tooltipTitle="Delete" tooltipPlacement="top">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.COMPLETED) {
+                <button class="action-btn-mobile" (click)="detectAndRequeue(job.id, $event)"
+                        bbTooltip tooltipTitle="Re-queue" tooltipPlacement="top">
+                  <i class="fas fa-redo-alt"></i>
+                </button>
+              }
+
+              <!-- History button (all statuses) -->
+              @if ((job.retryCount ?? 0) > 0 || jobHistoryCache.has(job.id)) {
+                <button class="action-btn-mobile" (click)="openJobHistoryModal(job, $event)"
+                        bbTooltip tooltipTitle="View History" tooltipPlacement="top">
+                  <i class="fas fa-history"></i>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
       } @else {
         <!-- Filter-aware empty states -->
         @if (selectedStatus !== 'ALL' || selectedNodeId || selectedLibraryId || searchQuery) {

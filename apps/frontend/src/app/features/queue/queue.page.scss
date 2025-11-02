@@ -2772,3 +2772,521 @@
   font-size: 12px;
   font-weight: 500;
 }
+
+// ============================================
+// MOBILE RESPONSIVE LAYOUT (< 768px)
+// ============================================
+
+@media (max-width: 767px) {
+  // ===== CONTAINER =====
+  .queue-container {
+    padding: 12px;
+  }
+
+  // ===== PAGE HEADER =====
+  .page-header {
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+
+    .subtitle {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .btn-add-files {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    .header-actions {
+      flex-direction: column;
+      gap: 8px;
+
+      .btn {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 14px;
+        justify-content: center;
+
+        // Make text wrap if needed
+        white-space: normal;
+        text-align: center;
+      }
+    }
+  }
+
+  // ===== PIPELINE DASHBOARD =====
+  .progress-dashboard {
+    margin-bottom: 16px;
+  }
+
+  .pipeline-container {
+    padding: 12px;
+    gap: 12px;
+
+    .pipeline-stage {
+      padding: 10px 12px;
+      min-width: unset;
+
+      .stage-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+      }
+
+      .stage-content {
+        .stage-title {
+          font-size: 12px;
+        }
+
+        .stage-count {
+          font-size: 18px;
+        }
+
+        .stage-meta {
+          font-size: 10px;
+        }
+      }
+    }
+
+    .pipeline-alert {
+      padding: 10px 12px;
+
+      .alert-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+      }
+
+      .alert-content {
+        .alert-title {
+          font-size: 11px;
+        }
+
+        .alert-count {
+          font-size: 14px;
+        }
+      }
+    }
+  }
+
+  // ===== FILTER BAR =====
+  .filter-bar {
+    padding: 12px;
+    flex-direction: column;
+    gap: 12px;
+
+    .filter-group {
+      width: 100%;
+
+      label {
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+
+      .filter-select {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+    }
+
+    // Convert status filter buttons to stacked layout
+    .status-filters {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+
+      .filter-btn {
+        padding: 8px 4px;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .search-group {
+      .search-input {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px; // Prevents iOS zoom on focus
+      }
+    }
+  }
+
+  // ===== HIDE DESKTOP TABLE =====
+  .table-wrapper {
+    display: none !important;
+  }
+
+  // ===== MOBILE CARD LIST =====
+  .mobile-job-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0;
+  }
+
+  .mobile-job-card {
+    background: $bg-tertiary;
+    border: 1px solid $border-secondary;
+    border-left: 4px solid $border-secondary;
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:active {
+      transform: scale(0.98);
+      background: rgba($bg-tertiary, 0.9);
+    }
+
+    // Status-specific border colors
+    &.status-queued {
+      border-left-color: #fbbf24;
+    }
+
+    &.status-encoding {
+      border-left-color: $accent-primary;
+    }
+
+    &.status-paused {
+      border-left-color: #f97316;
+    }
+
+    &.status-completed {
+      border-left-color: $success;
+    }
+
+    &.status-failed {
+      border-left-color: $danger;
+    }
+
+    &.status-cancelled {
+      border-left-color: $text-secondary;
+    }
+  }
+
+  // Card Header
+  .card-header-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .status-badge-mobile {
+    align-self: flex-start;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    i {
+      font-size: 10px;
+    }
+  }
+
+  .filename-mobile {
+    font-size: 15px;
+    font-weight: 600;
+    color: $text-white;
+    margin: 0;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .auto-heal-badge-mobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba($success, 0.15);
+    border: 1px solid rgba($success, 0.3);
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: $success;
+    align-self: flex-start;
+
+    i {
+      font-size: 9px;
+    }
+  }
+
+  // Card Meta
+  .card-meta-mobile {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: $text-secondary;
+    margin-bottom: 10px;
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      i {
+        font-size: 10px;
+        opacity: 0.7;
+      }
+    }
+  }
+
+  // Progress (ENCODING jobs)
+  .progress-mobile {
+    margin-bottom: 12px;
+  }
+
+  .progress-bar-mobile {
+    position: relative;
+    height: 32px;
+    background: rgba($accent-primary, 0.1);
+    border: 1px solid rgba($accent-primary, 0.2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+
+    .progress-fill-mobile {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, $accent-primary, lighten($accent-primary, 10%));
+      transition: width 0.3s ease;
+
+      // Shimmer animation
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        animation: shimmer 2s infinite;
+      }
+    }
+
+    .progress-text-mobile {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 13px;
+      font-weight: 700;
+      color: $text-dark;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      z-index: 2;
+    }
+  }
+
+  .progress-meta-mobile {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: $text-secondary;
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      i {
+        font-size: 10px;
+        opacity: 0.7;
+      }
+
+      &:first-child {
+        color: $accent-primary;
+        font-weight: 600;
+      }
+    }
+  }
+
+  // Size Compression (COMPLETED jobs)
+  .size-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    background: rgba($success, 0.05);
+    border: 1px solid rgba($success, 0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .size-comparison {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+
+    .size-before {
+      color: $text-tertiary;
+      text-decoration: line-through;
+    }
+
+    .size-after {
+      color: $success;
+      font-weight: 600;
+    }
+
+    i {
+      color: $text-secondary;
+      font-size: 11px;
+    }
+  }
+
+  .size-savings {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: $success;
+    font-weight: 600;
+
+    i {
+      font-size: 11px;
+    }
+  }
+
+  // Error Summary (FAILED jobs)
+  .error-mobile {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: rgba($danger, 0.08);
+    border: 1px solid rgba($danger, 0.25);
+    border-radius: 8px;
+    margin-bottom: 12px;
+
+    i {
+      color: $danger;
+      font-size: 14px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    span {
+      flex: 1;
+      font-size: 12px;
+      line-height: 1.5;
+      color: $text-primary;
+    }
+  }
+
+  // Actions (44x44px touch targets - iOS minimum)
+  .actions-mobile {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn-mobile {
+    flex: 1;
+    min-width: 44px; // iOS minimum
+    height: 44px; // iOS minimum
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba($bg-primary, 0.5);
+    border: 1px solid $border-secondary;
+    border-radius: 10px;
+    color: $text-secondary;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:active {
+      transform: scale(0.92);
+    }
+
+    &.primary {
+      background: rgba($accent-primary, 0.15);
+      border-color: rgba($accent-primary, 0.4);
+      color: $accent-primary;
+
+      &:active {
+        background: rgba($accent-primary, 0.25);
+      }
+    }
+
+    &.danger {
+      background: rgba($danger, 0.12);
+      border-color: rgba($danger, 0.35);
+      color: $danger;
+
+      &:active {
+        background: rgba($danger, 0.22);
+      }
+    }
+
+    &.more {
+      flex: 0 0 44px; // Fixed width for "more" button
+      background: $bg-secondary;
+    }
+  }
+
+  // ===== STATS SUMMARY =====
+  .stats-summary {
+    grid-template-columns: 1fr;
+    gap: 10px;
+
+    .stat-card {
+      padding: 12px;
+
+      .stat-label {
+        font-size: 11px;
+      }
+
+      .stat-value {
+        font-size: 20px;
+      }
+
+      .stat-meta {
+        font-size: 10px;
+      }
+    }
+  }
+
+  // ===== EMPTY STATE =====
+  .empty-state {
+    padding: 40px 20px;
+
+    i {
+      font-size: 40px;
+    }
+
+    h3 {
+      font-size: 18px;
+    }
+
+    p {
+      font-size: 13px;
+    }
+  }
+}
+
+// Show desktop table, hide mobile cards on >= 768px
+@media (min-width: 768px) {
+  .mobile-job-list {
+    display: none !important;
+  }
+}
