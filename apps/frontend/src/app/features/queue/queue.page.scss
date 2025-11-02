@@ -905,6 +905,12 @@
     border-color: $accent-primary;
   }
 
+  &.history-btn:hover {
+    background: rgba(147, 197, 253, 0.2);
+    color: #93c5fd;
+    border-color: #93c5fd;
+  }
+
   &.create-job-btn {
     background: rgba(74, 222, 128, 0.1);
     color: $success;

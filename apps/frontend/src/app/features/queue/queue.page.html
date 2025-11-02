@@ -586,6 +586,18 @@
                         <i class="fas fa-exclamation-circle"></i>
                       </button>
                     }
+                    @if ((job.status === 'FAILED' || job.status === 'CANCELLED') && (job.retryCount > 0 || jobHistoryCache.has(job.id))) {
+                      <button
+                        (click)="openJobHistoryModal(job, $event)"
+                        class="action-btn history-btn"
+                        bbTooltip
+                        tooltipTitle="View Event History"
+                        tooltipContent="Shows a timeline of all failure, cancellation, restart, and auto-heal events for this job. Useful for troubleshooting repeated failures."
+                        tooltipWhen="You want to see the complete history of what happened to this job."
+                        tooltipPlacement="top">
+                        <i class="fas fa-history"></i>
+                      </button>
+                    }
                     @if (job.status === 'FAILED' || job.status === 'CANCELLED') {
                       <button
                         (click)="deleteJob(job, $event)"
@@ -859,75 +871,6 @@
                         </div>
                       }
 
-                      <!-- Job Event History Timeline -->
-                      @if (jobHistoryCache.get(job.id) && jobHistoryCache.get(job.id)!.length > 0) {
-                        <div class="job-history-section">
-                          <h4><i class="fas fa-history"></i> Job Event History</h4>
-                          <div class="history-timeline">
-                            @for (event of jobHistoryCache.get(job.id); track event.id) {
-                              <div class="history-event" [class.event-failed]="event.eventType === JobEventType.FAILED" [class.event-cancelled]="event.eventType === JobEventType.CANCELLED" [class.event-restarted]="event.eventType === JobEventType.RESTARTED" [class.event-auto-healed]="event.eventType === JobEventType.AUTO_HEALED" [class.event-backend-restart]="event.eventType === JobEventType.BACKEND_RESTART" [class.event-timeout]="event.eventType === JobEventType.TIMEOUT">
-                                <!-- Event Icon -->
-                                <div class="event-icon">
-                                  @if (event.eventType === JobEventType.FAILED) {
-                                    <i class="fas fa-times-circle"></i>
-                                  } @else if (event.eventType === JobEventType.CANCELLED) {
-                                    <i class="fas fa-ban"></i>
-                                  } @else if (event.eventType === JobEventType.RESTARTED) {
-                                    <i class="fas fa-redo"></i>
-                                  } @else if (event.eventType === JobEventType.AUTO_HEALED) {
-                                    <i class="fas fa-shield-alt"></i>
-                                  } @else if (event.eventType === JobEventType.BACKEND_RESTART) {
-                                    <i class="fas fa-server"></i>
-                                  } @else if (event.eventType === JobEventType.TIMEOUT) {
-                                    <i class="fas fa-hourglass-end"></i>
-                                  }
-                                </div>
-
-                                <!-- Event Details -->
-                                <div class="event-details">
-                                  <!-- System Message (user-friendly title) -->
-                                  <div class="event-title">
-                                    {{ event.systemMessage || getEventTypeLabel(event.eventType) }}
-                                  </div>
-
-                                  <!-- Metadata -->
-                                  <div class="event-metadata">
-                                    <span class="event-timestamp">
-                                      <i class="fas fa-clock"></i>
-                                      {{ formatTimestamp(event.createdAt) }}
-                                    </span>
-                                    <span class="event-progress">
-                                      <i class="fas fa-percentage"></i>
-                                      {{ event.progress.toFixed(1) }}%
-                                    </span>
-                                    @if (event.fps) {
-                                      <span class="event-fps">
-                                        <i class="fas fa-tachometer-alt"></i>
-                                        {{ event.fps }} FPS
-                                      </span>
-                                    }
-                                  </div>
-
-                                  <!-- Error Message (if applicable) -->
-                                  @if (event.errorMessage) {
-                                    <div class="event-error-message">
-                                      <i class="fas fa-exclamation-circle"></i>
-                                      {{ event.errorMessage }}
-                                    </div>
-                                  }
-
-                                  <!-- Additional Context -->
-                                  @if (event.triggeredBy) {
-                                    <div class="event-context">
-                                      Triggered by: <strong>{{ event.triggeredBy }}</strong>
-                                    </div>
-                                  }
-                                </div>
-                              </div>
-                            }
-                          </div>
-                        </div>
-                      }
 
                       <!-- File Information -->
                       <div class="file-info-section">
@@ -1329,6 +1272,17 @@
   (close)="closeAddFilesModal()"
   (jobsCreated)="handleJobsCreated()">
 </app-add-files-modal>
+
+<!-- Job History Modal -->
+@if (jobHistoryModalData) {
+  <app-job-history-modal
+    [isOpen]="showJobHistoryModal"
+    [fileName]="jobHistoryModalData.fileName"
+    [jobId]="jobHistoryModalData.jobId"
+    [history]="jobHistoryModalData.history"
+    (closeModal)="closeJobHistoryModal()">
+  </app-job-history-modal>
+}
 
 <!-- Error Details Modal -->
 @if (errorModalData) {
