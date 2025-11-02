@@ -68,8 +68,8 @@ export class QueueService {
       throw new NotFoundException(`Policy with ID "${createJobDto.policyId}" not found`);
     }
 
-    // Check if job already exists for this file path
-    const existingJob = await this.prisma.job.findFirst({
+    // Check if job already exists for this file path (active stages only)
+    const existingActiveJob = await this.prisma.job.findFirst({
       where: {
         filePath: createJobDto.filePath,
         stage: {
@@ -85,13 +85,36 @@ export class QueueService {
       },
     });
 
-    if (existingJob) {
+    if (existingActiveJob) {
       this.logger.log(
-        `Job already exists for file: ${createJobDto.filePath} (stage: ${existingJob.stage}, id: ${existingJob.id})`
+        `Job already exists for file: ${createJobDto.filePath} (stage: ${existingActiveJob.stage}, id: ${existingActiveJob.id})`
       );
       throw new BadRequestException(
-        `Job already exists for this file (stage: ${existingJob.stage}). Cannot create duplicate.`
+        `Job already exists for this file (stage: ${existingActiveJob.stage}). Cannot create duplicate.`
       );
+    }
+
+    // Delete any old FAILED/CANCELLED jobs for this file to prevent duplicates across tabs
+    const oldJobs = await this.prisma.job.findMany({
+      where: {
+        filePath: createJobDto.filePath,
+        stage: {
+          in: [JobStage.FAILED, JobStage.CANCELLED],
+        },
+      },
+    });
+
+    if (oldJobs.length > 0) {
+      this.logger.log(
+        `Deleting ${oldJobs.length} old job(s) for file: ${createJobDto.filePath} (stages: ${oldJobs.map((j) => j.stage).join(', ')})`
+      );
+      await this.prisma.job.deleteMany({
+        where: {
+          id: {
+            in: oldJobs.map((j) => j.id),
+          },
+        },
+      });
     }
 
     try {

@@ -507,6 +507,15 @@
           color: $danger;
           margin-top: 6px;
         }
+
+        .file-info {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: #3b82f6; // Blue for informational
+          margin-top: 6px;
+        }
       }
     }
   }

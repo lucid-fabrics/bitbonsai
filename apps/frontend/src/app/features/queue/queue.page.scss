@@ -447,6 +447,9 @@
 
 // Filter Bar
 .filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   background: $bg-secondary;
   border: 1px solid $border-primary;
   border-radius: 8px;
@@ -456,6 +459,7 @@
   gap: 24px;
   align-items: flex-end;
   flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
   .filter-group {
     display: flex;
