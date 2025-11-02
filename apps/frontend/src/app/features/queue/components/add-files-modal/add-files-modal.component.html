@@ -24,7 +24,7 @@
     <div class="modal-body">
       <!-- View: Library Selection -->
       @if ((viewMode$ | async) === 'library-selection') {
-        <!-- Always subscribe to libraryPreviews$ to trigger HTTP call -->
+        <!-- Always subscribe to data, then decide what to show -->
         @if (libraryPreviews$ | async; as previews) {
           <!-- Loading State -->
           @if (isLoadingLibraries$ | async) {
@@ -99,8 +99,8 @@
             }
           </div>
           }
-        }
-      }
+          }  <!-- Close @else (Libraries List) -->
+        }  <!-- Close libraryPreviews$ subscription -->
       }
 
       <!-- View: File Selection -->
@@ -195,6 +195,16 @@
                 <div class="file-blocked">
                   <i class="fas fa-exclamation-triangle"></i>
                   {{ file.blockedReason }}
+                </div>
+                }
+                @if (file.canAddToQueue && file.jobStage && (file.jobStage === 'FAILED' || file.jobStage === 'CANCELLED')) {
+                <div class="file-info">
+                  <i class="fas fa-info-circle"></i>
+                  @if (file.jobStage === 'FAILED') {
+                    Previous encoding failed - can retry
+                  } @else {
+                    Previously cancelled - can retry
+                  }
                 </div>
                 }
               </div>
