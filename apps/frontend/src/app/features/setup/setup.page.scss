@@ -409,12 +409,12 @@
 
   &:focus {
     border-color: $accent-primary;
-    background: lighten($bg-tertiary, 2%);
+    background: color.adjust($bg-tertiary, $lightness: 2%);
     box-shadow: 0 0 0 3px rgba($accent-primary, 0.1);
   }
 
   &:hover:not(:focus) {
-    border-color: lighten($border-secondary, 5%);
+    border-color: color.adjust($border-secondary, $lightness: 5%);
   }
 
   &.input-error {
@@ -598,8 +598,8 @@
   border: 1px solid $border-secondary;
 
   &:hover:not(:disabled) {
-    background: lighten($bg-tertiary, 3%);
-    border-color: lighten($border-secondary, 5%);
+    background: color.adjust($bg-tertiary, $lightness: 3%);
+    border-color: color.adjust($border-secondary, $lightness: 5%);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 
