@@ -23,6 +23,7 @@ import {
 } from '@nestjs/swagger';
 import type { Library } from '@prisma/client';
 import { CreateLibraryDto } from './dto/create-library.dto';
+import { LibraryFilesDto } from './dto/library-files.dto';
 import { LibraryStatsDto } from './dto/library-stats.dto';
 import {
   BulkJobCreationResultDto,
@@ -155,6 +156,40 @@ export class LibrariesController {
   })
   async findOne(@Param('id') id: string): Promise<LibraryStatsDto> {
     return this.librariesService.findOne(id);
+  }
+
+  /**
+   * Get all video files in a library
+   */
+  @Get(':id/files')
+  @ApiOperation({
+    summary: 'Get all video files in library',
+    description:
+      '**Browse Library Files** - Shows ALL video files in the library folder.\n\n' +
+      'This endpoint:\n' +
+      '- Scans the library directory recursively for video files\n' +
+      '- Analyzes each file with FFprobe to get metadata\n' +
+      '- Returns file details: codec, resolution, size, duration\n' +
+      '- Includes file health status\n\n' +
+      '**Use Case**: Browse and review all files in a library, not just ones needing encoding',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Library unique identifier (CUID)',
+    example: 'clq8x9z8x0002qh8x9z8x0002',
+  })
+  @ApiOkResponse({
+    description: 'Library files retrieved successfully',
+    type: LibraryFilesDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Library not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching library files',
+  })
+  async getLibraryFiles(@Param('id') id: string): Promise<LibraryFilesDto> {
+    return this.librariesService.getLibraryFiles(id);
   }
 
   /**

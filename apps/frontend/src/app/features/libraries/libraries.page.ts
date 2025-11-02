@@ -16,13 +16,14 @@ import {
   selectLibrariesLoading,
 } from './+state/libraries.selectors';
 import { LibraryCardComponent } from './components/library-card/library-card.component';
+import { LibraryFilesModalComponent } from './components/library-files-modal/library-files-modal.component';
 import { LibraryFormComponent } from './components/library-form/library-form.component';
 import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/library.model';
 
 @Component({
   selector: 'app-libraries',
   standalone: true,
-  imports: [CommonModule, LibraryCardComponent, LibraryFormComponent],
+  imports: [CommonModule, LibraryCardComponent, LibraryFormComponent, LibraryFilesModalComponent],
   templateUrl: './libraries.page.html',
   styleUrls: ['./libraries.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,6 +45,10 @@ export class LibrariesComponent implements OnInit {
 
   // Scan state
   scanningLibraryId: string | null = null;
+
+  // Files modal state
+  showFilesModal = false;
+  selectedLibraryIdForFiles: string | null = null;
 
   ngOnInit(): void {
     this.store.dispatch(LibrariesActions.loadLibraries());
@@ -142,5 +147,15 @@ export class LibrariesComponent implements OnInit {
 
   isScanning(libraryId: string): boolean {
     return this.scanningLibraryId === libraryId;
+  }
+
+  onViewFiles(library: Library): void {
+    this.selectedLibraryIdForFiles = library.id;
+    this.showFilesModal = true;
+  }
+
+  onCloseFilesModal(): void {
+    this.showFilesModal = false;
+    this.selectedLibraryIdForFiles = null;
   }
 }

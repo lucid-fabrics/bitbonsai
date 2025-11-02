@@ -108,6 +108,17 @@
     <div class="footer-right">
       <button
         class="btn btn-icon"
+        (click)="onViewFiles()"
+        bbTooltip
+        tooltipTitle="View All Files"
+        tooltipContent="Browse all video files in this library. Shows file details including codec, resolution, size, and health status. Useful for reviewing your media collection."
+        tooltipWhen="You want to see all files in the library, not just ones needing encoding."
+        tooltipPlacement="top">
+        <i class="fas fa-list"></i>
+        View Files
+      </button>
+      <button
+        class="btn btn-icon"
         (click)="onEdit()"
         bbTooltip
         tooltipTitle="Edit Library Settings"

@@ -1053,6 +1053,17 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log(`[${workerId}] Processing job ${job.id}`);
 
+      // AV1 THROTTLING: Log throttling status if job is resource-throttled
+      const jobWithThrottle = job as any;
+      if (jobWithThrottle.resourceThrottled) {
+        this.logger.warn(`[${job.id}] RESOURCE THROTTLED JOB STARTING`);
+        this.logger.warn(`[${job.id}] Reason: ${jobWithThrottle.resourceThrottleReason}`);
+        this.logger.warn(`[${job.id}] FFmpeg threads: ${jobWithThrottle.ffmpegThreads}`);
+        if (jobWithThrottle.warning) {
+          this.logger.warn(`[${job.id}] Warning: ${jobWithThrottle.warning}`);
+        }
+      }
+
       // Update worker state
       worker.currentJobId = job.id;
 

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 /**
  * DTO for creating a new encoding job
@@ -69,4 +69,36 @@ export class CreateJobDto {
   @IsNotEmpty()
   @IsString()
   policyId!: string;
+
+  @ApiPropertyOptional({
+    description: 'User-facing warning message for this job',
+    example: 'AV1 encoding will take significantly longer than other codecs',
+  })
+  @IsOptional()
+  @IsString()
+  warning?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether this job has resource throttling enabled',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  resourceThrottled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Reason why resources were throttled',
+    example: 'AV1 source codec requires reduced CPU usage',
+  })
+  @IsOptional()
+  @IsString()
+  resourceThrottleReason?: string;
+
+  @ApiPropertyOptional({
+    description: 'Number of FFmpeg threads to use for this job',
+    example: 8,
+  })
+  @IsOptional()
+  @IsInt()
+  ffmpegThreads?: number;
 }

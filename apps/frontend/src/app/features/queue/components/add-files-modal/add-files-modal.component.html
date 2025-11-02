@@ -1,52 +1,33 @@
 <!-- Modal Overlay -->
 @if (isOpen) {
 <div class="modal-overlay" (click)="closeModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
     <!-- Modal Header -->
     <div class="modal-header">
       <div class="header-content">
-        <h2>Add Files to Queue</h2>
-        <p class="step-indicator">Step {{ currentStep }} of {{ steps.length }}</p>
+        <i class="fas fa-plus-circle header-icon"></i>
+        <div class="header-text">
+          <h2>Add Files to Queue</h2>
+          @if ((viewMode$ | async) === 'library-selection') {
+            <p class="subtitle">Select which library's files to add</p>
+          } @else if ((viewMode$ | async) === 'file-selection') {
+            <p class="subtitle">{{ (selectedLibrary$ | async)?.libraryName }}</p>
+          }
+        </div>
       </div>
-      <button class="close-btn" (click)="closeModal()" [disabled]="isCreatingJobs">
+      <button class="close-btn" (click)="closeModal()" [disabled]="isCreatingJobs$ | async">
         <i class="fas fa-times"></i>
       </button>
     </div>
 
-    <!-- Step Progress Bar -->
-    <div class="step-progress">
-      @for (step of steps; track step.id) {
-      <div
-        class="step-item"
-        [class.active]="step.id === currentStep"
-        [class.completed]="step.id < currentStep"
-      >
-        <div class="step-circle">
-          @if (step.id < currentStep) {
-          <i class="fas fa-check"></i>
-          }
-          @if (step.id >= currentStep) {
-          <span>{{ step.id }}</span>
-          }
-        </div>
-        <div class="step-label">{{ step.title }}</div>
-      </div>
-      }
-    </div>
-
     <!-- Modal Body -->
     <div class="modal-body">
-      <!-- Step 1: Library & Policy Selection -->
-      @if (currentStep === 1) {
-      <div class="step-content">
-        <div class="step-header">
-          <h3>{{ steps[0].title }}</h3>
-          <p>{{ steps[0].description }}</p>
-        </div>
-
-        @if (libraries$ | async; as libraries) {
+      <!-- View: Library Selection -->
+      @if ((viewMode$ | async) === 'library-selection') {
+        <!-- Always subscribe to libraryPreviews$ to trigger HTTP call -->
+        @if (libraryPreviews$ | async; as previews) {
           <!-- Loading State -->
-          @if (isLoading$ | async) {
+          @if (isLoadingLibraries$ | async) {
           <div class="loading-state">
             <i class="fas fa-spinner fa-spin"></i>
             <p>Loading libraries...</p>
@@ -54,144 +35,222 @@
           }
 
           <!-- Error State -->
-          @if ((error$ | async) && !(isLoading$ | async)) {
+          @else if (librariesError$ | async; as error) {
           <div class="error-state">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>{{ error$ | async }}</p>
-            <button class="btn btn-primary" (click)="retryLoadLibraries()">
-              <i class="fas fa-redo"></i>
-              Retry
+            <i class="fas fa-exclamation-triangle error-icon"></i>
+            <h3>Failed to Load Libraries</h3>
+            <p>{{ error }}</p>
+            <button class="btn btn-primary" (click)="closeModal()">
+              <i class="fas fa-times"></i>
+              Close
             </button>
           </div>
           }
 
-          <!-- Data State -->
-          @if (!(isLoading$ | async) && !(error$ | async)) {
-            <!-- Empty State -->
-            @if (libraries.length === 0) {
-            <div class="empty-state">
-              <i class="fas fa-folder-open"></i>
-              <h3>No Libraries Available</h3>
-              <p>No enabled libraries with policies found. Please configure a library first.</p>
-            </div>
-            }
+          <!-- Libraries List -->
+          @else {
+          <!-- Empty State -->
+          @if (previews.length === 0) {
+          <div class="empty-state">
+            <i class="fas fa-folder-open empty-icon"></i>
+            <h3>No Files to Encode</h3>
+            <p>All libraries are fully optimized or no libraries are configured.</p>
+          </div>
+          }
 
-            <!-- Library Selection -->
-            @if (libraries.length > 0) {
-            <div class="library-grid">
-              @for (library of libraries; track library.id) {
-              <div
-                class="library-card"
-                [class.selected]="isLibrarySelected(library.id)"
-                (click)="selectLibrary(library)"
-              >
-                <div class="library-checkbox">
-                  <i
-                    class="fas"
-                    [ngClass]="isLibrarySelected(library.id) ? 'fa-check-circle' : 'fa-circle'"
-                  ></i>
-                </div>
-                <div class="library-info">
-                  <h4>{{ library.name }}</h4>
-                  <div class="library-stats">
-                    <span class="stat">
-                      <i class="fas fa-file-video"></i>
-                      {{ library.totalFiles }} files
-                    </span>
-                    <span class="stat">
-                      <i class="fas fa-hdd"></i>
-                      {{ BytesBo.formatBytes(+library.totalSizeBytes) }}
-                    </span>
+          <!-- Library Cards -->
+          @else {
+          <div class="library-grid">
+            @for (preview of previews; track preview.libraryId) {
+            <div
+              class="library-card"
+              (click)="selectLibrary(preview)"
+              [class.disabled]="preview.needsEncodingCount === 0"
+            >
+              <div class="library-icon">
+                <i class="fas fa-folder"></i>
+              </div>
+              <div class="library-info">
+                <h4>{{ preview.libraryName }}</h4>
+                <div class="library-stats">
+                  <div class="stat">
+                    <i class="fas fa-file-video"></i>
+                    <span class="stat-value">{{ preview.needsEncodingCount }}</span>
+                    <span class="stat-label">files ready</span>
                   </div>
+                  <div class="stat">
+                    <i class="fas fa-hdd"></i>
+                    <span class="stat-value">{{ BytesBo.formatBytes(+preview.totalSizeBytes) }}</span>
+                  </div>
+                  @if (preview.targetCodec) {
+                  <div class="stat">
+                    <i class="fas fa-cog"></i>
+                    <span class="stat-value">{{ preview.targetCodec }}</span>
+                  </div>
+                  }
                 </div>
+              </div>
+              @if (preview.needsEncodingCount > 0) {
+              <div class="library-action">
+                <i class="fas fa-chevron-right"></i>
               </div>
               }
             </div>
+            }
+          </div>
+          }
+        }
+      }
+      }
 
-            <!-- Policy Selection (shown when library is selected) -->
-            @if (selectedLibraryId && getSelectedLibrary(libraries); as selectedLib) {
-            <div class="policy-section">
-              <h4>Select Encoding Policy</h4>
-              <div class="policy-selector">
-                <select
-                  class="policy-select"
-                  [value]="selectedPolicyId || ''"
-                  (change)="onPolicyChange($any($event.target).value)"
-                >
-                  @for (policy of selectedLib.policies; track policy.id) {
-                  <option [value]="policy.id">
-                    {{ policy.name }} ({{ policy.preset }})
-                  </option>
-                  }
-                </select>
+      <!-- View: File Selection -->
+      @if ((viewMode$ | async) === 'file-selection' && (selectedLibrary$ | async); as library) {
+        <div class="file-selection-container">
+          <!-- Back Button -->
+          <button class="back-btn" (click)="backToLibrarySelection()">
+            <i class="fas fa-arrow-left"></i>
+            Back to Libraries
+          </button>
+
+          <!-- Policy Selector -->
+          @if (library.availablePolicies.length > 1) {
+          <div class="policy-selector">
+            <label for="policy-select">
+              <i class="fas fa-cog"></i>
+              Encoding Policy
+            </label>
+            <select
+              id="policy-select"
+              [value]="selectedPolicyId$ | async"
+              (change)="selectedPolicyId$.next($any($event.target).value)"
+            >
+              @for (policy of library.availablePolicies; track policy.id) {
+              <option [value]="policy.id">{{ policy.name }} ({{ policy.preset }})</option>
+              }
+            </select>
+          </div>
+          }
+
+          <!-- Selection Controls -->
+          <div class="selection-controls">
+            <div class="selection-info">
+              <i class="fas fa-check-circle"></i>
+              <span>{{ getSelectedFileCount() }} / {{ getTotalFileCount() }} files selected</span>
+            </div>
+            <div class="selection-buttons">
+              <button class="btn btn-sm" (click)="selectAllFiles()">
+                <i class="fas fa-check-double"></i>
+                Select All
+              </button>
+              <button class="btn btn-sm" (click)="deselectAllFiles()">
+                <i class="fas fa-times-circle"></i>
+                Deselect All
+              </button>
+            </div>
+          </div>
+
+          <!-- File List -->
+          <div class="file-list">
+            @for (file of library.needsEncoding; track file.filePath) {
+            <div
+              class="file-item"
+              [class.selected]="isFileSelected(file.filePath)"
+              [class.disabled]="!file.canAddToQueue"
+              (click)="file.canAddToQueue && toggleFileSelection(file.filePath)"
+            >
+              <div class="file-checkbox">
+                <i
+                  class="fas"
+                  [class.fa-check-square]="isFileSelected(file.filePath)"
+                  [class.fa-square]="!isFileSelected(file.filePath)"
+                ></i>
               </div>
-              <div class="policy-info">
-                <i class="fas fa-info-circle"></i>
-                <p>
-                  All files in <strong>{{ selectedLib.name }}</strong> will be queued for encoding
-                  with the selected policy.
-                </p>
+              <div class="file-details">
+                <div class="file-name">
+                  <i class="fas fa-file-video"></i>
+                  {{ file.fileName }}
+                </div>
+                <div class="file-meta">
+                  <span class="meta-item">
+                    <span [class]="'codec-badge ' + getFileCodecBadgeClass(file)">
+                      {{ file.codec }}
+                    </span>
+                  </span>
+                  <span class="meta-item">
+                    <i class="fas fa-expand-alt"></i>
+                    {{ file.resolution }}
+                  </span>
+                  <span class="meta-item">
+                    <i class="fas fa-hdd"></i>
+                    {{ BytesBo.formatBytes(file.sizeBytes) }}
+                  </span>
+                  @if (file.duration > 0) {
+                  <span class="meta-item">
+                    <i class="fas fa-clock"></i>
+                    {{ (file.duration / 60) | number: '1.0-0' }} min
+                  </span>
+                  }
+                </div>
+                @if (!file.canAddToQueue && file.blockedReason) {
+                <div class="file-blocked">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  {{ file.blockedReason }}
+                </div>
+                }
               </div>
             </div>
             }
-            }
-          }
-        }
-      </div>
+          </div>
+        </div>
       }
 
-      <!-- Step 2: Job Creation Progress & Results -->
-      @if (currentStep === 2) {
-      <div class="step-content">
-        <div class="step-header">
-          <h3>{{ steps[1].title }}</h3>
-          <p>{{ steps[1].description }}</p>
+      <!-- View: Creating Jobs -->
+      @if ((viewMode$ | async) === 'creating-jobs') {
+        <div class="creating-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <h3>Creating Encoding Jobs</h3>
+          <p>Please wait while we add your selected files to the queue...</p>
         </div>
+      }
 
-        <!-- Creating Jobs (Loading) -->
-        @if (isCreatingJobs) {
-        <div class="creation-progress">
-          <div class="progress-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-          </div>
-          <p>Scanning library and creating jobs...</p>
-          <p class="progress-hint">This may take a few moments depending on library size</p>
-        </div>
-        }
-
-        <!-- Creation Complete (Success) -->
-        @if (!isCreatingJobs && (creationResult$ | async); as result) {
-        <div class="creation-success">
+      <!-- View: Results -->
+      @if ((viewMode$ | async) === 'results' && (creationResult$ | async); as result) {
+        <div class="results-container">
           <div class="success-icon">
             <i class="fas fa-check-circle"></i>
           </div>
+          <h3>Jobs Created Successfully!</h3>
 
-          <div class="summary-stats">
-            <div class="summary-card success">
-              <div class="summary-icon">
+          <div class="result-stats">
+            <div class="result-card success">
+              <div class="result-icon">
                 <i class="fas fa-plus-circle"></i>
               </div>
-              <div class="summary-content">
-                <div class="summary-value">{{ result.jobsCreated }}</div>
-                <div class="summary-label">Jobs Created</div>
+              <div class="result-content">
+                <div class="result-value">{{ result.jobsCreated }}</div>
+                <div class="result-label">Jobs Created</div>
               </div>
             </div>
 
-            <div class="summary-card warning">
-              <div class="summary-icon">
+            @if (result.filesSkipped > 0) {
+            <div class="result-card warning">
+              <div class="result-icon">
                 <i class="fas fa-exclamation-triangle"></i>
               </div>
-              <div class="summary-content">
-                <div class="summary-value">{{ result.filesSkipped }}</div>
-                <div class="summary-label">Files Skipped</div>
+              <div class="result-content">
+                <div class="result-value">{{ result.filesSkipped }}</div>
+                <div class="result-label">Files Skipped</div>
               </div>
             </div>
+            }
           </div>
 
-          <!-- Skipped Files Details -->
           @if (result.skippedFiles.length > 0) {
           <div class="skipped-files">
-            <h4>Skipped Files ({{ result.skippedFiles.length }})</h4>
+            <h4>
+              <i class="fas fa-info-circle"></i>
+              Skipped Files ({{ result.skippedFiles.length }})
+            </h4>
             <div class="skipped-list">
               @for (skipped of result.skippedFiles.slice(0, 10); track skipped.path) {
               <div class="skipped-item">
@@ -208,44 +267,39 @@
           </div>
           }
         </div>
-        }
-
-        <!-- Creation Error -->
-        @if (!isCreatingJobs && (creationError$ | async); as error) {
-        <div class="error-state">
-          <i class="fas fa-exclamation-triangle"></i>
-          <h3>Failed to Create Jobs</h3>
-          <p>{{ error }}</p>
-          <button class="btn btn-primary" (click)="currentStep = 1">
-            <i class="fas fa-arrow-left"></i>
-            Back to Selection
-          </button>
-        </div>
-        }
-      </div>
       }
     </div>
 
     <!-- Modal Footer -->
     <div class="modal-footer">
-      <!-- Step 1: Selection -->
-      @if (currentStep === 1) {
+      <!-- Library Selection Footer -->
+      @if ((viewMode$ | async) === 'library-selection') {
       <button class="btn btn-secondary" (click)="closeModal()">
+        <i class="fas fa-times"></i>
         Cancel
-      </button>
-      <button
-        class="btn btn-success"
-        (click)="createJobs()"
-        [disabled]="!canProceed()"
-      >
-        <i class="fas fa-plus-circle"></i>
-        Add All Files to Queue
       </button>
       }
 
-      <!-- Step 2: Results -->
-      @if (currentStep === 2 && !isCreatingJobs) {
+      <!-- File Selection Footer -->
+      @if ((viewMode$ | async) === 'file-selection') {
+      <button class="btn btn-secondary" (click)="backToLibrarySelection()">
+        <i class="fas fa-arrow-left"></i>
+        Back
+      </button>
+      <button
+        class="btn btn-success"
+        (click)="addToQueue()"
+        [disabled]="!canAddToQueue()"
+      >
+        <i class="fas fa-plus"></i>
+        Add {{ getSelectedFileCount() }} File{{ getSelectedFileCount() !== 1 ? 's' : '' }} to Queue
+      </button>
+      }
+
+      <!-- Results Footer -->
+      @if ((viewMode$ | async) === 'results') {
       <button class="btn btn-secondary" (click)="closeModal()">
+        <i class="fas fa-times"></i>
         Close
       </button>
       <button class="btn btn-primary" (click)="viewQueue()">

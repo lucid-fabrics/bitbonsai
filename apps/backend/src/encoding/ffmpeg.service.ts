@@ -360,6 +360,15 @@ export class FfmpegService implements OnModuleDestroy {
     const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
     args.push('-c:a', audioCodec);
 
+    // AV1 THROTTLING: Apply thread limit if specified on job
+    const jobWithThreads = job as any;
+    if (jobWithThreads.ffmpegThreads) {
+      args.push('-threads', jobWithThreads.ffmpegThreads.toString());
+      this.logger.warn(
+        `[${job.id}] Using ${jobWithThreads.ffmpegThreads} threads (resource throttled: ${jobWithThreads.resourceThrottleReason || 'unknown reason'})`
+      );
+    }
+
     // SECURITY: Validate and add additional ffmpeg flags from policy
     if (advancedSettings.ffmpegFlags) {
       const customFlags = advancedSettings.ffmpegFlags as string[];
