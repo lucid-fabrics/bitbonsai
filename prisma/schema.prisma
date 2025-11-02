@@ -340,6 +340,14 @@ model Job {
   originalSizeBytes     BigInt? // Size of original file before encoding
   replacementAction     String? // 'REPLACED' or 'KEPT_BOTH' - what happened to original file
 
+  // AV1 Resource Throttling Fields (Smart CPU Management)
+  warning                 String?  // User-facing warning message (e.g., "AV1 encoding will take longer")
+  resourceThrottled       Boolean  @default(false) // Is job running with reduced resources?
+  resourceThrottleReason  String?  // Why resources were throttled
+  ffmpegThreads           Int?     // Number of threads FFmpeg is using for this job
+  startedFromSeconds      Float?   // Healing point: seconds where encoding resumed from
+  healingPointSeconds     Float?   // Healing point: detected resume point in temp file
+
   // Relations
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)

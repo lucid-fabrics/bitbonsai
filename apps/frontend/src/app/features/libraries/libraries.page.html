@@ -80,6 +80,7 @@
             (scan)="onScanLibrary($event)"
             (delete)="onDeleteLibrary($event)"
             (toggleWatch)="onToggleWatch($event)"
+            (viewFiles)="onViewFiles($event)"
           />
         }
       </div>
@@ -99,4 +100,11 @@
       </div>
     </div>
   }
+
+  <!-- Library Files Modal -->
+  <app-library-files-modal
+    [isOpen]="showFilesModal"
+    [libraryId]="selectedLibraryIdForFiles"
+    (close)="onCloseFilesModal()"
+  />
 </div>

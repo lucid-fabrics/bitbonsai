@@ -106,6 +106,11 @@ export class QueueService {
           nodeId: createJobDto.nodeId,
           libraryId: createJobDto.libraryId,
           policyId: createJobDto.policyId,
+          // AV1 THROTTLING: Include throttling fields if provided
+          warning: createJobDto.warning,
+          resourceThrottled: createJobDto.resourceThrottled ?? false,
+          resourceThrottleReason: createJobDto.resourceThrottleReason,
+          ffmpegThreads: createJobDto.ffmpegThreads,
         },
       });
 
@@ -199,7 +204,34 @@ export class QueueService {
         return;
       }
 
-      // Create job
+      // AV1 THROTTLING: Detect AV1 source codec and set warning + resource limits
+      let warning: string | undefined;
+      let resourceThrottled = false;
+      let resourceThrottleReason: string | undefined;
+      let ffmpegThreads: number | undefined;
+
+      if (videoInfo.codec.toLowerCase() === 'av1') {
+        const durationHours = videoInfo.duration / 3600;
+        const estimatedHours = Math.round(durationHours * 150); // AV1 is ~150x slower
+
+        warning =
+          `⚠️ WARNING: AV1 → HEVC TRANSCODING\n\n` +
+          `This is an extremely resource-intensive task:\n` +
+          `• Expected encoding time: ${estimatedHours}+ hours (for ${Math.round(durationHours)}h video)\n` +
+          `• CPU usage will be limited to 8 threads to prevent system instability\n` +
+          `• Output file may be LARGER than source (AV1 is more efficient than HEVC)\n\n` +
+          `⚠️ RECOMMENDATION: Skip this file or reconsider target codec`;
+
+        resourceThrottled = true;
+        resourceThrottleReason = 'AV1 source codec requires reduced CPU usage';
+        ffmpegThreads = 8; // Limit to 8 threads
+
+        this.logger.warn(
+          `AV1 source detected for ${payload.fileName} - will throttle to ${ffmpegThreads} threads`
+        );
+      }
+
+      // Create job (with AV1 throttling fields if applicable)
       await this.create({
         filePath: payload.filePath,
         fileLabel: payload.fileName,
@@ -209,6 +241,10 @@ export class QueueService {
         nodeId: library.nodeId,
         libraryId: library.id,
         policyId: library.defaultPolicyId,
+        warning,
+        resourceThrottled,
+        resourceThrottleReason,
+        ffmpegThreads,
       });
 
       this.logger.log(`Successfully created job for detected file: ${payload.fileName}`);

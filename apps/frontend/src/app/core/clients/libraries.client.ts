@@ -7,6 +7,7 @@ import type {
   CreateJobsFromScanDto,
   CreateLibraryDto,
   Library,
+  LibraryFiles,
   ScanPreview,
   UpdateLibraryDto,
 } from '../../features/libraries/models/library.model';
@@ -95,5 +96,13 @@ export class LibrariesClient {
     return this.http
       .post<BulkJobCreationResult>(`${this.apiUrl}/${id}/create-all-jobs`, dto)
       .pipe(timeout(600000)); // 10 minutes = 600000ms
+  }
+
+  /**
+   * Get all video files in a library with metadata
+   * Note: Uses 5 minute timeout for large libraries
+   */
+  getLibraryFiles(id: string): Observable<LibraryFiles> {
+    return this.http.get<LibraryFiles>(`${this.apiUrl}/${id}/files`).pipe(timeout(300000)); // 5 minutes = 300000ms
   }
 }

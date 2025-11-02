@@ -10,16 +10,17 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { BehaviorSubject, catchError, map, Observable, of } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, shareReplay } from 'rxjs';
 import { LibrariesClient } from '../../../../core/clients/libraries.client';
-import type { BulkJobCreationResult, Library } from '../../../libraries/models/library.model';
+import type {
+  BulkJobCreationResult,
+  CreateJobsFromScanDto,
+  ScanPreview,
+  VideoFile,
+} from '../../../libraries/models/library.model';
 import { BytesBo } from '../../../nodes/bos/bytes.bo';
 
-interface WizardStep {
-  id: number;
-  title: string;
-  description: string;
-}
+type ViewMode = 'library-selection' | 'file-selection' | 'creating-jobs' | 'results';
 
 @Component({
   selector: 'app-add-files-modal',
@@ -40,127 +41,183 @@ export class AddFilesModalComponent {
   // Expose BOs for template
   protected readonly BytesBo = BytesBo;
 
-  // Wizard steps (simplified to 2 steps)
-  protected readonly steps: WizardStep[] = [
-    {
-      id: 1,
-      title: 'Select Library & Policy',
-      description: 'Choose library and encoding policy',
-    },
-    {
-      id: 2,
-      title: 'Creating Jobs',
-      description: 'Jobs are being created in the background',
-    },
-  ];
+  // View mode state
+  protected viewMode$ = new BehaviorSubject<ViewMode>('library-selection');
 
-  // Current step state
-  protected currentStep = 1;
+  // Library selection state
+  protected readonly libraryPreviews$: Observable<ScanPreview[]>;
+  protected readonly isLoadingLibraries$ = new BehaviorSubject<boolean>(true);
+  protected readonly librariesError$ = new BehaviorSubject<string | null>(null);
 
-  // Step 1: Library and policy selection
-  protected readonly libraries$: Observable<Library[]>;
-  protected readonly isLoading$ = new BehaviorSubject<boolean>(true);
-  protected readonly error$ = new BehaviorSubject<string | null>(null);
-  protected selectedLibraryId: string | null = null;
-  protected selectedPolicyId: string | null = null;
+  // File selection state
+  protected selectedLibrary$ = new BehaviorSubject<ScanPreview | null>(null);
+  protected selectedPolicyId$ = new BehaviorSubject<string | null>(null);
+  protected selectedFiles$ = new BehaviorSubject<Set<string>>(new Set());
+  protected isLoadingFiles$ = new BehaviorSubject<boolean>(false);
 
-  // Step 2: Job creation progress
-  protected isCreatingJobs = false;
+  // Job creation state
+  protected isCreatingJobs$ = new BehaviorSubject<boolean>(false);
   protected creationResult$ = new BehaviorSubject<BulkJobCreationResult | null>(null);
   protected creationError$ = new BehaviorSubject<string | null>(null);
 
   constructor() {
-    // Fetch libraries with cached stats (INSTANT - no file scanning)
-    this.libraries$ = this.librariesApi.getLibraries().pipe(
-      map((libraries) => {
-        this.isLoading$.next(false);
-        // Filter to only enabled libraries with policies
-        return libraries.filter((lib) => lib.enabled && lib.policies && lib.policies.length > 0);
+    // Fetch all ready-to-queue files across all libraries
+    this.libraryPreviews$ = this.librariesApi.getAllReadyFiles().pipe(
+      map((previews) => {
+        this.isLoadingLibraries$.next(false);
+        // Filter to only libraries with files that need encoding
+        return previews.filter((preview) => preview.needsEncodingCount > 0);
       }),
       catchError((error) => {
-        this.isLoading$.next(false);
-        this.error$.next(error?.message || 'Failed to load libraries. Please try again.');
+        this.isLoadingLibraries$.next(false);
+        this.librariesError$.next(error?.message || 'Failed to load libraries. Please try again.');
         return of([]);
-      })
+      }),
+      shareReplay(1) // Cache the result and share among all subscribers
     );
   }
 
-  // Step 1: Selection methods
-  protected selectLibrary(library: Library): void {
-    this.selectedLibraryId = library.id;
-    // Auto-select default policy or first available policy
-    if (library.defaultPolicyId) {
-      this.selectedPolicyId = library.defaultPolicyId;
-    } else if (library.policies && library.policies.length > 0) {
-      this.selectedPolicyId = library.policies[0].id;
+  // Library selection methods
+  protected selectLibrary(preview: ScanPreview): void {
+    this.selectedLibrary$.next(preview);
+    // Auto-select default policy
+    if (preview.policyId) {
+      this.selectedPolicyId$.next(preview.policyId);
     }
+
+    // Select all files by default
+    const allFilePaths = new Set(preview.needsEncoding.map((file) => file.filePath));
+    this.selectedFiles$.next(allFilePaths);
+
+    // Switch to file selection view
+    this.viewMode$.next('file-selection');
   }
 
-  protected isLibrarySelected(libraryId: string): boolean {
-    return this.selectedLibraryId === libraryId;
+  protected backToLibrarySelection(): void {
+    this.selectedLibrary$.next(null);
+    this.selectedPolicyId$.next(null);
+    this.selectedFiles$.next(new Set());
+    this.viewMode$.next('library-selection');
   }
 
-  protected onPolicyChange(policyId: string): void {
-    this.selectedPolicyId = policyId;
+  // File selection methods
+  protected toggleFileSelection(filePath: string): void {
+    const currentSelection = this.selectedFiles$.value;
+    const newSelection = new Set(currentSelection);
+
+    if (newSelection.has(filePath)) {
+      newSelection.delete(filePath);
+    } else {
+      newSelection.add(filePath);
+    }
+
+    this.selectedFiles$.next(newSelection);
   }
 
-  protected getSelectedLibrary(libraries: Library[]): Library | null {
-    return libraries.find((lib) => lib.id === this.selectedLibraryId) || null;
+  protected isFileSelected(filePath: string): boolean {
+    return this.selectedFiles$.value.has(filePath);
   }
 
-  protected canProceed(): boolean {
-    return this.selectedLibraryId !== null && this.selectedPolicyId !== null;
+  protected selectAllFiles(): void {
+    const library = this.selectedLibrary$.value;
+    if (!library) return;
+
+    const allFilePaths = new Set(library.needsEncoding.map((file) => file.filePath));
+    this.selectedFiles$.next(allFilePaths);
   }
 
-  // Step 2: Job creation
-  protected createJobs(): void {
-    if (!this.selectedLibraryId || !this.selectedPolicyId) {
+  protected deselectAllFiles(): void {
+    this.selectedFiles$.next(new Set());
+  }
+
+  protected getSelectedFileCount(): number {
+    return this.selectedFiles$.value.size;
+  }
+
+  protected getTotalFileCount(): number {
+    return this.selectedLibrary$.value?.needsEncoding.length || 0;
+  }
+
+  protected canAddToQueue(): boolean {
+    return (
+      this.selectedLibrary$.value !== null &&
+      this.selectedPolicyId$.value !== null &&
+      this.getSelectedFileCount() > 0
+    );
+  }
+
+  // Job creation methods
+  protected addToQueue(): void {
+    const library = this.selectedLibrary$.value;
+    const policyId = this.selectedPolicyId$.value;
+    const selectedFiles = Array.from(this.selectedFiles$.value);
+
+    if (!library || !policyId || selectedFiles.length === 0) {
       return;
     }
 
-    this.isCreatingJobs = true;
-    this.currentStep = 2;
+    this.isCreatingJobs$.next(true);
+    this.viewMode$.next('creating-jobs');
     this.creationError$.next(null);
 
+    const dto: CreateJobsFromScanDto = {
+      policyId,
+      filePaths: selectedFiles,
+    };
+
     this.librariesApi
-      .createAllJobs(this.selectedLibraryId, { policyId: this.selectedPolicyId })
+      .createJobsFromScan(library.libraryId, dto)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          this.isCreatingJobs = false;
-          this.creationResult$.next(result);
-          this.jobsCreated.emit({ jobsCreated: result.jobsCreated });
+        next: (result: any) => {
+          this.isCreatingJobs$.next(false);
+          const bulkResult: BulkJobCreationResult = {
+            jobsCreated: result.jobsCreated || 0,
+            filesSkipped: result.filesSkipped || 0,
+            skippedFiles: result.skippedFiles || [],
+          };
+          this.creationResult$.next(bulkResult);
+          this.viewMode$.next('results');
+          this.jobsCreated.emit({ jobsCreated: bulkResult.jobsCreated });
         },
         error: (error) => {
-          this.isCreatingJobs = false;
+          this.isCreatingJobs$.next(false);
           this.creationError$.next(error?.message || 'Failed to create jobs. Please try again.');
+          this.viewMode$.next('file-selection');
         },
       });
   }
 
   // Modal controls
   protected closeModal(): void {
-    if (!this.isCreatingJobs) {
+    if (!this.isCreatingJobs$.value) {
       this.resetModal();
       this.close.emit();
     }
   }
 
   protected resetModal(): void {
-    this.currentStep = 1;
-    this.selectedLibraryId = null;
-    this.selectedPolicyId = null;
-    this.isCreatingJobs = false;
+    this.viewMode$.next('library-selection');
+    this.selectedLibrary$.next(null);
+    this.selectedPolicyId$.next(null);
+    this.selectedFiles$.next(new Set());
+    this.isCreatingJobs$.next(false);
     this.creationResult$.next(null);
     this.creationError$.next(null);
-  }
-
-  protected retryLoadLibraries(): void {
-    window.location.reload();
+    // Don't reset isLoadingLibraries - shareReplay will use cached data
   }
 
   protected viewQueue(): void {
     this.closeModal();
-    // Navigate to queue page - handled by parent component
+  }
+
+  // Helper methods for file details
+  protected getFileCodecBadgeClass(file: VideoFile): string {
+    const codec = file.codec.toLowerCase();
+    if (codec.includes('hevc') || codec.includes('h.265')) return 'codec-hevc';
+    if (codec.includes('av1')) return 'codec-av1';
+    if (codec.includes('h.264') || codec.includes('avc')) return 'codec-h264';
+    if (codec.includes('vp9')) return 'codec-vp9';
+    return 'codec-other';
   }
 }

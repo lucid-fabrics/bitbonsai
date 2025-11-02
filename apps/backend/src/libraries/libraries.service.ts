@@ -15,6 +15,7 @@ import { FileWatcherService } from '../file-watcher/file-watcher.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import type { CreateLibraryDto } from './dto/create-library.dto';
+import type { LibraryFilesDto } from './dto/library-files.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
 import type { BulkJobCreationResultDto, ScanPreviewDto } from './dto/scan-preview.dto';
 import type { UpdateLibraryDto } from './dto/update-library.dto';
@@ -1058,6 +1059,97 @@ export class LibrariesService {
 
     this.logger.log(
       `Bulk job creation complete: ${result.jobsCreated} jobs created, ${result.filesSkipped} files skipped`
+    );
+
+    return result;
+  }
+
+  /**
+   * Get all video files in a library with metadata
+   *
+   * Scans the library folder recursively and returns detailed information
+   * about ALL video files found, not just ones that need encoding.
+   *
+   * @param libraryId - Library unique identifier
+   * @returns Library files with metadata
+   */
+  async getLibraryFiles(libraryId: string): Promise<LibraryFilesDto> {
+    this.logger.log(`Getting all files for library: ${libraryId}`);
+
+    const library = await this.prisma.library.findUnique({
+      where: { id: libraryId },
+    });
+
+    if (!library) {
+      throw new NotFoundException(`Library with ID "${libraryId}" not found`);
+    }
+
+    // Collect all video file paths using streaming scan
+    const videoFiles: string[] = [];
+
+    for await (const filePath of this.scanDirectoryStream(library.path)) {
+      videoFiles.push(filePath);
+    }
+
+    this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
+
+    // Analyze files in batches to avoid overwhelming FFprobe
+    const analyzedFiles: any[] = [];
+    let totalSizeBytes = BigInt(0);
+    const batchSize = 5; // Analyze 5 files at a time
+
+    for (let i = 0; i < videoFiles.length; i += batchSize) {
+      const batch = videoFiles.slice(i, i + batchSize);
+
+      const results = await Promise.all(
+        batch.map(async (filePath) => {
+          try {
+            const videoInfo = await this.mediaAnalysis.probeVideoFile(filePath);
+
+            if (!videoInfo) {
+              return null;
+            }
+
+            // Extract file name from path
+            const fileName = filePath.split('/').pop() || filePath;
+
+            totalSizeBytes += BigInt(videoInfo.sizeBytes);
+
+            return {
+              filePath: videoInfo.filePath,
+              fileName,
+              codec: videoInfo.codec,
+              resolution: videoInfo.resolution,
+              sizeBytes: videoInfo.sizeBytes,
+              duration: videoInfo.duration,
+              healthStatus: videoInfo.healthStatus,
+              healthMessage: videoInfo.healthMessage,
+            };
+          } catch (error) {
+            this.logger.error(`Failed to analyze file ${filePath}`, error);
+            return null;
+          }
+        })
+      );
+
+      // Filter out null results (failed probes)
+      analyzedFiles.push(...results.filter((file) => file !== null));
+    }
+
+    // Sort files by file name for better UX
+    analyzedFiles.sort((a, b) => a.fileName.localeCompare(b.fileName));
+
+    const result: LibraryFilesDto = {
+      libraryId: library.id,
+      libraryName: library.name,
+      totalFiles: analyzedFiles.length,
+      totalSizeBytes: totalSizeBytes.toString(),
+      files: analyzedFiles,
+      scannedAt: new Date(),
+    };
+
+    this.logger.log(
+      `Retrieved ${result.totalFiles} files (${result.totalSizeBytes} bytes) for library ${library.name}`
     );
 
     return result;

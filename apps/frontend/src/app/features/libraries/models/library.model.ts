@@ -117,3 +117,23 @@ export interface BulkJobCreationResult {
   filesSkipped: number;
   skippedFiles: Array<{ path: string; reason: string }>;
 }
+
+export interface LibraryFile {
+  filePath: string;
+  fileName: string;
+  codec: string;
+  resolution: string;
+  sizeBytes: number;
+  duration: number;
+  healthStatus: FileHealthStatus;
+  healthMessage?: string;
+}
+
+export interface LibraryFiles {
+  libraryId: string;
+  libraryName: string;
+  totalFiles: number;
+  totalSizeBytes: string;
+  files: LibraryFile[];
+  scannedAt: Date;
+}
