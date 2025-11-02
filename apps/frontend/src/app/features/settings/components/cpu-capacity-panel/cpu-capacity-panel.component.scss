@@ -1,3 +1,4 @@
+@use 'sass:color';
 @import '../../../../../styles/variables';
 
 .cpu-capacity-panel {
@@ -18,7 +19,7 @@
   .icon-wrapper {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, $accent-primary, lighten($accent-primary, 10%));
+    background: linear-gradient(135deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -139,7 +140,7 @@
 
   .worker-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, $accent-primary, lighten($accent-primary, 15%));
+    background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 15%));
     transition: width 0.5s ease;
     border-radius: 16px;
   }
@@ -232,7 +233,7 @@
     transition: all 0.2s;
 
     &:hover {
-      background: lighten($bg-tertiary, 2%);
+      background: color.adjust($bg-tertiary, $lightness: 2%);
       border-color: $accent-primary;
     }
 
@@ -267,7 +268,7 @@
     }
 
     &:hover:not(.current) {
-      border-color: lighten($border-primary, 10%);
+      border-color: color.adjust($border-primary, $lightness: 10%);
     }
 
     .scenario-header {
@@ -380,7 +381,7 @@
 
     .memory-bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, $accent-primary, lighten($accent-primary, 10%));
+      background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
       transition: width 0.5s ease;
     }
   }

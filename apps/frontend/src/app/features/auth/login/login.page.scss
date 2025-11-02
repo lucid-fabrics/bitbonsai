@@ -1,11 +1,12 @@
 @use '../../../../styles/variables' as *;
+@use 'sass:color';
 
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, $bg-primary 0%, darken($bg-primary, 3%) 100%);
+  background: linear-gradient(135deg, $bg-primary 0%, color.adjust($bg-primary, $lightness: -3%) 100%);
   padding: 2rem;
   position: relative;
   overflow: hidden;
@@ -219,12 +220,12 @@
 
   &:focus {
     border-color: $accent-primary;
-    background: lighten($bg-tertiary, 2%);
+    background: color.adjust($bg-tertiary, $lightness: 2%);
     box-shadow: 0 0 0 3px rgba($accent-primary, 0.1);
   }
 
   &:hover:not(:focus) {
-    border-color: lighten($border-secondary, 5%);
+    border-color: color.adjust($border-secondary, $lightness: 5%);
   }
 
   &.input-error {
