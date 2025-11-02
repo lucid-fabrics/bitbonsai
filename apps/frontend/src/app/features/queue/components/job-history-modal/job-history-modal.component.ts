@@ -104,6 +104,81 @@ export class JobHistoryModalComponent {
     }
   }
 
+  /**
+   * Generate a human-readable summary from error message and details
+   */
+  getErrorSummary(event: JobHistoryEvent): string {
+    const errorMsg = event.errorMessage?.toLowerCase() || '';
+    const errorDetails = event.errorDetails?.toLowerCase() || '';
+    const combinedError = `${errorMsg} ${errorDetails}`;
+
+    // FFmpeg specific errors
+    if (
+      combinedError.includes('invalid data found when processing input') ||
+      combinedError.includes('moov atom not found')
+    ) {
+      return 'The video file appears to be corrupted or incomplete. The file may have been damaged during transfer or recording.';
+    }
+
+    if (combinedError.includes('no such file or directory') || combinedError.includes('enoent')) {
+      return 'The source video file could not be found. It may have been moved, deleted, or the path is incorrect.';
+    }
+
+    if (combinedError.includes('permission denied') || combinedError.includes('eacces')) {
+      return 'BitBonsai does not have permission to access the video file or output directory.';
+    }
+
+    if (
+      combinedError.includes('disk') &&
+      (combinedError.includes('full') || combinedError.includes('space'))
+    ) {
+      return 'The disk is full. Free up space on the destination drive to continue encoding.';
+    }
+
+    if (combinedError.includes('codec') && combinedError.includes('not supported')) {
+      return 'The video uses an unsupported codec. The file may need to be re-encoded with different settings.';
+    }
+
+    if (combinedError.includes('timeout') || combinedError.includes('timed out')) {
+      return 'The encoding process took too long and was stopped. This may indicate a problem with the video file or encoding settings.';
+    }
+
+    if (
+      combinedError.includes('killed') ||
+      combinedError.includes('sigkill') ||
+      combinedError.includes('sigterm')
+    ) {
+      return 'The encoding process was terminated unexpectedly. This usually happens when the system runs out of memory or the backend was restarted.';
+    }
+
+    if (
+      combinedError.includes('conversion failed') ||
+      combinedError.includes('error while') ||
+      combinedError.includes('failed')
+    ) {
+      return 'The video encoding failed. Check the technical details below for specific error information.';
+    }
+
+    // Generic event type summaries
+    switch (event.eventType) {
+      case JobEventType.CANCELLED:
+        return 'The encoding job was manually cancelled by a user or administrator.';
+      case JobEventType.TIMEOUT:
+        return 'The encoding process exceeded the maximum allowed time and was automatically stopped.';
+      case JobEventType.BACKEND_RESTART:
+        return 'The BitBonsai backend service was restarted while this job was processing.';
+      case JobEventType.AUTO_HEALED:
+        return 'The job automatically recovered from a previous failure and will retry encoding.';
+      case JobEventType.RESTARTED:
+        return 'The job was manually restarted to attempt encoding again.';
+      default:
+        if (event.errorMessage) {
+          return 'An error occurred during encoding. See technical details below for more information.';
+        }
+        return event.systemMessage || this.getEventTypeLabel(event.eventType);
+    }
+  }
+
   copyToClipboard() {
     const historyText = `Job History: ${this.fileName}
 Job ID: ${this.jobId}

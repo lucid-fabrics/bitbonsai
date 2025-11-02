@@ -52,6 +52,12 @@
                     </div>
                   </div>
 
+                  <!-- Summary Section - What Happened -->
+                  <div class="event-summary">
+                    <i class="fas fa-info-circle"></i>
+                    <span>{{ getErrorSummary(event) }}</span>
+                  </div>
+
                   <!-- Event Metadata Pills -->
                   <div class="event-metadata">
                     <span class="meta-pill">
@@ -82,26 +88,29 @@
                     }
                   </div>
 
-                  <!-- Error Message (if any) -->
-                  @if (event.errorMessage) {
+                  <!-- Technical Details (collapsible) -->
+                  @if (event.errorMessage || event.errorDetails) {
                     <div class="event-error">
-                      <div class="error-header">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span>{{ event.errorMessage }}</span>
-                      </div>
+                      <button class="toggle-details-btn" (click)="toggleEventDetails(event.id); $event.stopPropagation()">
+                        <i class="fas" [class.fa-chevron-down]="!isEventExpanded(event.id)" [class.fa-chevron-up]="isEventExpanded(event.id)"></i>
+                        {{ isEventExpanded(event.id) ? 'Hide' : 'Show' }} Technical Details
+                      </button>
 
-                      <!-- Expandable Error Details -->
-                      @if (event.errorDetails) {
-                        <button class="toggle-details-btn" (click)="toggleEventDetails(event.id); $event.stopPropagation()">
-                          <i class="fas" [class.fa-chevron-down]="!isEventExpanded(event.id)" [class.fa-chevron-up]="isEventExpanded(event.id)"></i>
-                          {{ isEventExpanded(event.id) ? 'Hide' : 'Show' }} Technical Details
-                        </button>
-
-                        @if (isEventExpanded(event.id)) {
-                          <div class="error-details">
-                            <pre>{{ event.errorDetails }}</pre>
-                          </div>
-                        }
+                      @if (isEventExpanded(event.id)) {
+                        <div class="error-details">
+                          @if (event.errorMessage) {
+                            <div class="error-section">
+                              <div class="error-section-title">Error Message</div>
+                              <pre>{{ event.errorMessage }}</pre>
+                            </div>
+                          }
+                          @if (event.errorDetails) {
+                            <div class="error-section">
+                              <div class="error-section-title">Stack Trace</div>
+                              <pre>{{ event.errorDetails }}</pre>
+                            </div>
+                          }
+                        </div>
                       }
                     </div>
                   }
