@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { type Job, JobStage, Prisma } from '@prisma/client';
+import { type Job, JobEventType, JobStage, Prisma } from '@prisma/client';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +15,7 @@ import type { CompleteJobDto } from './dto/complete-job.dto';
 import type { CreateJobDto } from './dto/create-job.dto';
 import type { JobStatsDto } from './dto/job-stats.dto';
 import type { UpdateJobDto } from './dto/update-job.dto';
+import { JobHistoryService } from './services/job-history.service';
 
 /**
  * QueueService
@@ -31,7 +32,8 @@ export class QueueService {
     @Inject(forwardRef(() => MediaAnalysisService))
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => FfmpegService))
-    private ffmpegService: FfmpegService
+    private ffmpegService: FfmpegService,
+    private jobHistoryService: JobHistoryService
   ) {}
 
   /**
@@ -633,6 +635,15 @@ export class QueueService {
   async failJob(id: string, error: string): Promise<Job> {
     this.logger.log(`Failing job: ${id}`);
 
+    // Fetch job data before updating to capture current state
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
     const job = await this.prisma.job.update({
       where: { id },
       data: {
@@ -643,6 +654,19 @@ export class QueueService {
         priority: 0, // Auto-reset priority to normal on failure
         prioritySetAt: null, // Clear priority timestamp
       },
+    });
+
+    // Record failure event in history
+    await this.jobHistoryService.recordEvent({
+      jobId: id,
+      eventType: JobEventType.FAILED,
+      stage: existingJob.stage,
+      progress: existingJob.progress,
+      errorMessage: error,
+      fps: existingJob.fps ?? undefined,
+      etaSeconds: existingJob.etaSeconds ?? undefined,
+      retryNumber: existingJob.retryCount,
+      triggeredBy: 'SYSTEM',
     });
 
     this.logger.log(`Job failed: ${id} (${error})`);
@@ -698,6 +722,17 @@ export class QueueService {
         completedAt: new Date(),
         isBlacklisted: blacklist,
       },
+    });
+
+    // Record cancellation event in history
+    await this.jobHistoryService.recordEvent({
+      jobId: id,
+      eventType: JobEventType.CANCELLED,
+      stage: existingJob.stage,
+      progress: existingJob.progress,
+      fps: existingJob.fps ?? undefined,
+      etaSeconds: existingJob.etaSeconds ?? undefined,
+      triggeredBy: 'USER',
     });
 
     this.logger.log(`Job cancelled: ${id} (blacklisted: ${blacklist})`);
@@ -943,6 +978,15 @@ export class QueueService {
         completedAt: null,
         startedAt: null,
       },
+    });
+
+    // Record restart event in history
+    await this.jobHistoryService.recordEvent({
+      jobId: id,
+      eventType: JobEventType.RESTARTED,
+      stage: JobStage.QUEUED,
+      progress: 0,
+      triggeredBy: 'USER',
     });
 
     this.logger.log(`Job retried: ${id}`);

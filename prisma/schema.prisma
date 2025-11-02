@@ -107,6 +107,15 @@ enum FileHealthStatus {
   CORRUPTED
 }
 
+enum JobEventType {
+  FAILED             // Job failed during encoding
+  CANCELLED          // User cancelled the job
+  RESTARTED          // Job restarted after failure
+  AUTO_HEALED        // Job auto-healed after backend restart
+  BACKEND_RESTART    // Job interrupted by backend restart
+  TIMEOUT            // Job timed out
+}
+
 // ============================================================================
 // SETTINGS MODEL (System Configuration)
 // ============================================================================
@@ -358,6 +367,9 @@ model Job {
   policyId String
   policy   Policy @relation(fields: [policyId], references: [id], onDelete: Restrict)
 
+  // Relations
+  history JobHistory[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -382,6 +394,47 @@ model Job {
   // NOTE: Partial unique index implemented via raw SQL migration (20251029000000_add_unique_active_job_per_file)
   // Cannot be expressed in Prisma schema syntax, handled by migration SQL directly
   @@map("jobs")
+}
+
+// ============================================================================
+// JOB HISTORY MODEL (Failure/Event Tracking)
+// ============================================================================
+
+model JobHistory {
+  id String @id @default(cuid())
+
+  // Event Details
+  eventType JobEventType // Type of event (FAILED, CANCELLED, etc)
+  stage     JobStage // What stage the job was in when event occurred
+  progress  Float // Progress percentage when event occurred
+
+  // Error Information
+  errorMessage   String? // Error message if failed
+  errorDetails   String? // Additional error context
+  wasAutoHealed  Boolean @default(false) // Was this a successful auto-heal?
+  tempFileExists Boolean? // Did temp file exist during this event?
+
+  // Context
+  retryNumber   Int? // Which retry attempt was this?
+  triggeredBy   String? // 'USER', 'SYSTEM', 'BACKEND_RESTART', 'TIMEOUT'
+  systemMessage String? // User-friendly message explaining what happened
+
+  // Performance Data (when available)
+  fps              Float? // FPS at time of event
+  etaSeconds       Int? // ETA at time of event
+  startedFromSeconds Float? // If resumed, where it started from
+
+  // Relations
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([jobId, createdAt]) // For timeline queries
+  @@map("job_history")
 }
 
 // ============================================================================

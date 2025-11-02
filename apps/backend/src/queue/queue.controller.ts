@@ -30,11 +30,15 @@ import { JobStatsDto } from './dto/job-stats.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdatePriorityDto } from './dto/update-priority.dto';
 import { QueueService } from './queue.service';
+import { JobHistoryService } from './services/job-history.service';
 
 @ApiTags('queue')
 @Controller('queue')
 export class QueueController {
-  constructor(private readonly queueService: QueueService) {}
+  constructor(
+    private readonly queueService: QueueService,
+    private readonly jobHistoryService: JobHistoryService
+  ) {}
 
   /**
    * Create a new encoding job
@@ -239,6 +243,77 @@ export class QueueController {
   })
   async findOne(@Param('id') id: string): Promise<Job> {
     return this.queueService.findOne(id);
+  }
+
+  /**
+   * Get job failure/event history timeline
+   */
+  @Get(':id/history')
+  @ApiOperation({
+    summary: 'Get job event history timeline',
+    description:
+      'Retrieves the complete event history for a job, including all failures, cancellations, restarts, and auto-heal events.\n\n' +
+      '**History Includes**:\n' +
+      '- **FAILED** - When encoding failed with error details\n' +
+      '- **CANCELLED** - When user or system cancelled the job\n' +
+      '- **RESTARTED** - When job was manually restarted\n' +
+      '- **AUTO_HEALED** - When job auto-resumed after backend restart\n' +
+      '- **BACKEND_RESTART** - When encoding was interrupted by backend restart\n' +
+      '- **TIMEOUT** - When encoding exceeded time limits\n\n' +
+      '**Each Event Contains**:\n' +
+      '- User-friendly system message explaining what happened\n' +
+      '- Progress percentage when event occurred\n' +
+      '- Error details (if applicable)\n' +
+      '- Performance metrics (FPS, ETA) at time of event\n' +
+      '- Timestamp of when event occurred\n\n' +
+      '**Use Case**: Display failure history timeline in UI for debugging and user transparency',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job history timeline retrieved successfully (ordered newest to oldest)',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: 'clq8x9z8x0004qh8x9z8x0004' },
+          eventType: {
+            type: 'string',
+            enum: ['FAILED', 'CANCELLED', 'RESTARTED', 'AUTO_HEALED', 'BACKEND_RESTART', 'TIMEOUT'],
+          },
+          stage: { type: 'string', example: 'ENCODING' },
+          progress: { type: 'number', example: 45.3 },
+          systemMessage: { type: 'string', example: 'Attempt #2 failed at 45.3%' },
+          errorMessage: { type: 'string', nullable: true },
+          errorDetails: { type: 'string', nullable: true },
+          wasAutoHealed: { type: 'boolean', example: false },
+          tempFileExists: { type: 'boolean', nullable: true },
+          retryNumber: { type: 'number', nullable: true },
+          triggeredBy: { type: 'string', nullable: true, example: 'USER' },
+          fps: { type: 'number', nullable: true, example: 12.5 },
+          etaSeconds: { type: 'number', nullable: true, example: 3600 },
+          startedFromSeconds: { type: 'number', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching job history',
+  })
+  async getJobHistory(@Param('id') id: string) {
+    // Verify job exists first
+    await this.queueService.findOne(id);
+
+    // Return history timeline
+    return this.jobHistoryService.getJobHistory(id);
   }
 
   /**
