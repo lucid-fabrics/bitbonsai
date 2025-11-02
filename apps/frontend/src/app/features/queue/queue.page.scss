@@ -2956,7 +2956,7 @@
     }
 
     .search-group {
-      grid-column: span 2; // Search takes full width on bottom row
+      // Search shares row 2 with library (50% width each)
 
       .search-input {
         width: 100%;
