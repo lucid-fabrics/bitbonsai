@@ -2785,12 +2785,15 @@
 @media (max-width: 767px) {
   // ===== CONTAINER =====
   .queue-container {
-    padding: 12px;
+    padding: 8px;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   // ===== PAGE HEADER =====
   .page-header {
-    padding: 12px;
+    padding: 8px;
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
@@ -2904,7 +2907,7 @@
 
   // ===== FILTER BAR =====
   .filter-bar {
-    padding: 10px 12px;
+    padding: 8px;
 
     // MOBILE: Compact 2x2 grid layout
     display: grid;
