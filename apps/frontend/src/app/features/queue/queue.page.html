@@ -171,7 +171,23 @@
   <!-- Filter Bar -->
   @if (availableNodes$ | async; as availableNodes) {
     <div class="filter-bar">
-      <div class="filter-group">
+      <!-- Mobile Status Dropdown (shown on mobile only) -->
+      <div class="filter-group mobile-status-select">
+        <label for="status-filter-mobile">Status:</label>
+        <select
+          id="status-filter-mobile"
+          [value]="selectedStatus"
+          (change)="onStatusFilterChange($any($event.target).value)"
+          class="filter-select"
+        >
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ getStatusLabel(status) }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Desktop Status Buttons (hidden on mobile) -->
+      <div class="filter-group desktop-status-buttons">
         <label>Status:</label>
         <div class="status-filters">
           @for (status of statuses; track status) {

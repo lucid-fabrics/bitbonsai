@@ -461,6 +461,11 @@
   flex-wrap: wrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
+  // Hide mobile status select on desktop
+  .mobile-status-select {
+    display: none;
+  }
+
   .filter-group {
     display: flex;
     flex-direction: column;
@@ -2899,46 +2904,85 @@
 
   // ===== FILTER BAR =====
   .filter-bar {
-    padding: 12px;
-    flex-direction: column;
-    gap: 12px;
+    padding: 10px 12px;
+
+    // MOBILE: Compact 2x2 grid layout
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 8px;
+
+    // Show mobile status select on mobile
+    .mobile-status-select {
+      display: flex !important;
+    }
+
+    // Hide desktop status buttons on mobile
+    .desktop-status-buttons {
+      display: none !important;
+    }
 
     .filter-group {
       width: 100%;
+      margin: 0;
 
+      // Hide labels on mobile (save space)
       label {
-        font-size: 12px;
-        margin-bottom: 6px;
+        display: none;
       }
 
       .filter-select {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 14px;
         font-size: 14px;
-      }
-    }
+        background: $bg-tertiary;
+        border: 1px solid $border-secondary;
+        border-radius: 8px;
+        color: $text-primary;
+        cursor: pointer;
+        transition: $transition-fast;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0aec0' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
 
-    // Convert status filter buttons to stacked layout
-    .status-filters {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-
-      .filter-btn {
-        padding: 8px 4px;
-        font-size: 11px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        &:focus {
+          outline: none;
+          border-color: $accent-primary;
+          background-color: rgba($bg-tertiary, 0.8);
+        }
       }
     }
 
     .search-group {
+      grid-column: span 2; // Search takes full width on bottom row
+
       .search-input {
         width: 100%;
-        padding: 12px;
+        padding: 12px 14px;
         font-size: 16px; // Prevents iOS zoom on focus
+        background: $bg-tertiary;
+        border: 1px solid $border-secondary;
+        border-radius: 8px;
+        color: $text-primary;
+
+        &::placeholder {
+          color: $text-tertiary;
+          opacity: 0.7;
+        }
+
+        &:focus {
+          outline: none;
+          border-color: $accent-primary;
+          background-color: rgba($bg-tertiary, 0.8);
+        }
       }
+    }
+
+    // Status filters - hide completely on mobile (we'll add a select dropdown in HTML)
+    .status-filters {
+      display: none !important;
     }
   }
 
