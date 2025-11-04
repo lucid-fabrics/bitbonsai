@@ -108,6 +108,9 @@ export class QueueComponent implements OnInit {
   // Job history cache (jobId -> history events)
   protected jobHistoryCache = new Map<string, JobHistoryEvent[]>();
 
+  // Manual preview capture state
+  protected capturingJobId: string | null = null;
+
   // Expose Math for template
   protected readonly Math = Math;
 
@@ -554,6 +557,26 @@ export class QueueComponent implements OnInit {
         },
         error: () => {
           this.toastService.error('Failed to resume job');
+        },
+      });
+  }
+
+  protected captureCurrentFrame(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.capturingJobId = jobId;
+
+    this.queueApi
+      .capturePreview(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.toastService.success('Preview captured successfully');
+          this.capturingJobId = null;
+          this.refreshQueue();
+        },
+        error: (err) => {
+          this.toastService.error(err?.error?.message || 'Failed to capture preview');
+          this.capturingJobId = null;
         },
       });
   }
@@ -1235,5 +1258,39 @@ export class QueueComponent implements OnInit {
     }
 
     return firstLine || 'Unknown error';
+  }
+
+  /**
+   * Parse preview image paths from JSON string and convert to HTTP URLs
+   * Uses existing endpoint: GET /:id/preview/:index (1-based)
+   * Returns empty array if paths are not available
+   */
+  protected parsePreviewPaths(paths: string | null | undefined, jobId: string): string[] {
+    if (!paths) return [];
+    try {
+      const filePaths = JSON.parse(paths) as string[];
+      return filePaths.map((_, index) => {
+        // Convert to HTTP URL using existing endpoint (1-based index)
+        return `/api/v1/queue/${jobId}/preview/${index + 1}`;
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get preview image URL for a specific job and index
+   * Index is 1-based (1-4 for the 4 preview images)
+   */
+  protected getPreviewUrl(jobId: string, index: number): string {
+    return `/api/v1/queue/${jobId}/preview/${index}`;
+  }
+
+  /**
+   * Get preview label for a specific index
+   * Returns label like "Manual #1", "Manual #2", etc.
+   */
+  protected getPreviewLabel(index: number): string {
+    return `Manual #${index + 1}`;
   }
 }

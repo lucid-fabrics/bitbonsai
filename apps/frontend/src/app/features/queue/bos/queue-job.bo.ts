@@ -41,6 +41,8 @@ export class QueueJobBo {
   originalBackupPath?: string | null;
   originalSizeBytes?: number | null;
   replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
+  // Encoding Preview
+  previewImagePaths?: string | null;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -80,6 +82,8 @@ export class QueueJobBo {
       ? this.parseSize(model.originalSizeBytes)
       : null;
     this.replacementAction = model.replacementAction ?? null;
+    // Encoding Preview
+    this.previewImagePaths = model.previewImagePaths ?? null;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

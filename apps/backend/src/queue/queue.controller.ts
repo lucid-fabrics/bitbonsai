@@ -1,15 +1,28 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
+  NotFoundException,
   Param,
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import { execFile } from 'child_process';
+import { Response } from 'express';
+import { createReadStream, existsSync } from 'fs';
+import * as fs from 'fs/promises';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -22,6 +35,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { type Job, JobStage } from '@prisma/client';
+import { EncodingPreviewService } from '../encoding/encoding-preview.service';
+import { FfmpegService } from '../encoding/ffmpeg.service';
 import { CancelJobDto } from './dto/cancel-job.dto';
 import { CompleteJobDto } from './dto/complete-job.dto';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -35,9 +50,13 @@ import { JobHistoryService } from './services/job-history.service';
 @ApiTags('queue')
 @Controller('queue')
 export class QueueController {
+  private readonly logger = new Logger(QueueController.name);
+
   constructor(
     private readonly queueService: QueueService,
-    private readonly jobHistoryService: JobHistoryService
+    private readonly jobHistoryService: JobHistoryService,
+    private readonly previewService: EncodingPreviewService,
+    private readonly ffmpegService: FfmpegService
   ) {}
 
   /**
@@ -210,6 +229,228 @@ export class QueueController {
   })
   async getNextJob(@Param('nodeId') nodeId: string): Promise<Job | null> {
     return this.queueService.getNextJob(nodeId);
+  }
+
+  /**
+   * Get preview image for a job
+   */
+  @Get(':id/preview/:index')
+  @ApiOperation({
+    summary: 'Get encoding preview image',
+    description:
+      'Serves a preview screenshot image generated during encoding.\n\n' +
+      '**Preview System**:\n' +
+      '- Generates 9 preview screenshots at 10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90%\n' +
+      '- Updates every 30 seconds during encoding\n' +
+      '- Stored in `/tmp/bitbonsai-previews/{jobId}/`\n' +
+      '- Automatically cleaned up when job completes/fails\n\n' +
+      '**Index Parameter**:\n' +
+      '- **1-9**: Preview at 10%, 20%, ..., 90% progress\n\n' +
+      '**Use Case**: Display live encoding previews in UI carousel',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiParam({
+    name: 'index',
+    description: 'Preview image index (1-9)',
+    example: '1',
+  })
+  @ApiOkResponse({
+    description: 'Preview image served successfully',
+    schema: {
+      type: 'string',
+      format: 'binary',
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found or preview image does not exist',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while serving preview',
+  })
+  async getPreviewImage(
+    @Param('id') id: string,
+    @Param('index') index: string,
+    @Res({ passthrough: false }) res: Response
+  ): Promise<void> {
+    // Verify job exists
+    const job = await this.queueService.findOne(id);
+
+    // Parse and validate preview index
+    const previewIndex = parseInt(index, 10);
+    if (isNaN(previewIndex) || previewIndex < 1 || previewIndex > 9) {
+      throw new NotFoundException(`Invalid preview index. Must be between 1 and 9.`);
+    }
+
+    // Parse preview image paths from JSON
+    const previewPaths: string[] = job.previewImagePaths ? JSON.parse(job.previewImagePaths) : [];
+
+    // Get the requested preview path (1-indexed to 0-indexed)
+    const previewPath = previewPaths[previewIndex - 1];
+
+    if (!previewPath || !existsSync(previewPath)) {
+      throw new NotFoundException(`Preview image ${previewIndex} not yet generated for this job`);
+    }
+
+    // Serve the image file
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'no-cache');
+
+    const fileStream = createReadStream(previewPath);
+    fileStream.pipe(res);
+  }
+
+  /**
+   * Manually capture a preview screenshot at current encoding progress
+   */
+  @Post(':id/preview/capture')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Manually capture preview at current progress',
+    description:
+      'Captures a preview screenshot from the temp file at the current encoding progress.\n\n' +
+      '**Use Case**: User clicks "Capture Now" button to get a snapshot of current encoding progress.\n\n' +
+      '**Requirements**:\n' +
+      '- Job must be in ENCODING stage\n' +
+      '- Temp file must exist\n' +
+      '- Returns updated job with new preview path added to previewImagePaths array',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Preview captured successfully, returns updated job',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in ENCODING stage or temp file does not exist',
+  })
+  async capturePreview(@Param('id') id: string): Promise<Job> {
+    const job = await this.queueService.findOne(id);
+
+    // Verify job is in ENCODING stage
+    if (job.stage !== JobStage.ENCODING) {
+      throw new BadRequestException(
+        `Cannot capture preview. Job is in ${job.stage} stage (must be ENCODING)`
+      );
+    }
+
+    // Verify source file exists
+    if (!job.filePath || !existsSync(job.filePath)) {
+      throw new BadRequestException('Cannot capture preview. Source file does not exist');
+    }
+
+    if (job.progress === null || job.progress === undefined) {
+      throw new BadRequestException('Cannot capture preview. Missing progress information');
+    }
+
+    // Get duration from source file using ffprobe
+    let durationSeconds: number;
+    try {
+      const { stdout } = await execFileAsync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-show_entries',
+          'format=duration',
+          '-of',
+          'default=noprint_wrappers=1:nokey=1',
+          job.filePath,
+        ],
+        {
+          timeout: 5000,
+        }
+      );
+      durationSeconds = parseFloat(stdout.trim());
+
+      if (isNaN(durationSeconds) || durationSeconds <= 0) {
+        throw new Error('Invalid duration');
+      }
+    } catch (error: any) {
+      this.logger.error('Failed to get file duration', {
+        jobId: job.id,
+        filePath: job.filePath,
+        error: error?.message,
+      });
+      throw new BadRequestException('Failed to get file duration for preview capture');
+    }
+
+    // Calculate timestamp based on current encoding progress
+    // Extract frame from original source file at this timestamp
+    const timestampSeconds = (job.progress / 100) * durationSeconds;
+
+    // Generate manual preview path
+    const manualPreviewPath = `/tmp/bitbonsai-previews/${job.id}/manual-${Date.now()}.jpg`;
+
+    // Create job preview directory if it doesn't exist
+    const jobPreviewDir = `/tmp/bitbonsai-previews/${job.id}`;
+    await fs.mkdir(jobPreviewDir, { recursive: true });
+
+    // Extract a frame from the source file at current encoding progress
+    // Much more reliable than reading from temp file during encoding
+    try {
+      await execFileAsync(
+        'ffmpeg',
+        [
+          '-y', // Overwrite existing
+          '-ss',
+          timestampSeconds.toString(), // Seek to current progress position
+          '-i',
+          job.filePath, // Use original source file
+          '-vf',
+          'scale=640:-1', // Scale down for fast loading
+          '-frames:v',
+          '1',
+          '-q:v',
+          '2', // High quality JPEG
+          manualPreviewPath,
+        ],
+        {
+          timeout: 10000, // 10 second timeout (seeking can take time on large files)
+        }
+      );
+
+      this.logger.log(
+        `Preview captured successfully for job ${job.id} at ${timestampSeconds.toFixed(1)}s (${job.progress}%)`
+      );
+    } catch (error: any) {
+      // Log full error details for debugging
+      this.logger.error('Failed to capture preview frame', {
+        jobId: job.id,
+        sourceFilePath: job.filePath,
+        timestampSeconds,
+        progress: job.progress,
+        duration: durationSeconds,
+        manualPreviewPath,
+        errorMessage: error?.message,
+        errorStderr: error?.stderr,
+        errorStdout: error?.stdout,
+        errorCode: error?.code,
+        fullError: error,
+      });
+
+      throw new BadRequestException(
+        `Failed to capture preview: ${error?.message || 'Unknown error'}`
+      );
+    }
+
+    // Update job with new preview path
+    const existingPaths: string[] = job.previewImagePaths ? JSON.parse(job.previewImagePaths) : [];
+
+    // Add new manual preview path to existing array
+    const updatedPaths = [...existingPaths, manualPreviewPath];
+
+    return await this.queueService.update(job.id, {
+      previewImagePaths: JSON.stringify(updatedPaths),
+    });
   }
 
   /**

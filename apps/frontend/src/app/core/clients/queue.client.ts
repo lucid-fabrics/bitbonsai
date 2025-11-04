@@ -118,4 +118,17 @@ export class QueueClient {
   getJobHistory(jobId: string): Observable<JobHistoryEvent[]> {
     return this.http.get<JobHistoryEvent[]>(`${this.apiUrl}/${jobId}/history`);
   }
+
+  /**
+   * Manually capture a preview screenshot at current encoding progress
+   *
+   * Triggers a manual preview capture from the temp file at the current progress.
+   * User-initiated via "Capture Now" button.
+   *
+   * @param jobId - ID of the job to capture preview for
+   * @returns Observable of updated job with new preview path
+   */
+  capturePreview(jobId: string): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/preview/capture`, {});
+  }
 }

@@ -48,4 +48,6 @@ export interface QueueJobApiModel {
   originalBackupPath?: string | null;
   originalSizeBytes?: string | null;
   replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
+  // Encoding Preview Feature
+  previewImagePaths?: string | null; // JSON array of preview image paths
 }

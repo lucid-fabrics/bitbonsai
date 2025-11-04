@@ -3362,3 +3362,109 @@
     display: none !important;
   }
 }
+
+// ============================================
+// ENCODING PREVIEW CAPTURE BUTTON
+// ============================================
+
+.btn-capture {
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  border-radius: 6px;
+  color: $text-primary;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: $transition-fast;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  i {
+    font-size: 12px;
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(249, 190, 3, 0.2);
+    color: $accent-primary;
+    border-color: $accent-primary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ============================================
+// ENCODING PREVIEW GALLERY
+// ============================================
+
+.preview-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid $border-secondary;
+}
+
+.preview-item {
+  position: relative;
+  aspect-ratio: 16/9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  transition: $transition-fast;
+
+  &:hover {
+    transform: scale(1.05);
+    border-color: $accent-primary;
+    box-shadow: 0 4px 12px rgba(249, 190, 3, 0.2);
+  }
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  color: $text-primary;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.preview-placeholder {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: $text-secondary;
+  font-size: 13px;
+
+  i {
+    font-size: 24px;
+    opacity: 0.5;
+  }
+
+  span {
+    opacity: 0.7;
+  }
+}
