@@ -80,12 +80,16 @@ export class AutoHealingService implements OnModuleInit {
               // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
               autoHealedAt: new Date(),
               autoHealedProgress: job.progress,
+              // AUDIT #3 FIX: Clear resume state to prevent using stale temp files
+              // This prevents auto-healed jobs from failing immediately due to missing/invalid temp files
+              resumeTimestamp: null,
+              tempFilePath: null,
             },
           });
 
           healedCount++;
           this.logger.log(
-            `Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/3, was at ${(job.progress || 0).toFixed(1)}%)`
+            `Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/3, was at ${(job.progress || 0).toFixed(1)}%, cleared resume state)`
           );
         } catch (error) {
           this.logger.error(`Failed to heal job ${job.id} (${job.fileLabel})`, error);

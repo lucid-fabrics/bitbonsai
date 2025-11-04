@@ -40,4 +40,6 @@ export interface QueueJob {
   originalBackupPath?: string | null;
   originalSizeBytes?: number | null;
   replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
+  // Encoding Preview Feature
+  previewImagePaths?: string | null; // JSON array of preview image paths
 }

@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AccelerationType, Job, Policy } from '@prisma/client';
 import { QueueService } from '../queue/queue.service';
 import type { EncodingProgressDto } from './dto/encoding-progress.dto';
+import { EncodingPreviewService } from './encoding-preview.service';
 
 /**
  * Hardware acceleration configuration for different platforms
@@ -73,6 +74,10 @@ export class FfmpegService implements OnModuleDestroy {
   private readonly stderrCache = new Map<string, { stderr: string; timestamp: Date }>();
   private readonly STDERR_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
+  // Preview generation throttling (jobId -> last generation timestamp)
+  private readonly lastPreviewGeneration = new Map<string, number>();
+  private readonly PREVIEW_THROTTLE_MS = 30 * 1000; // 30 seconds
+
   // Regex for parsing ffmpeg progress output
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
   private readonly progressRegex = /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
@@ -140,7 +145,8 @@ export class FfmpegService implements OnModuleDestroy {
   constructor(
     @Inject(forwardRef(() => QueueService))
     private readonly queueService: QueueService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly previewService: EncodingPreviewService
   ) {}
 
   /**
@@ -389,7 +395,16 @@ export class FfmpegService implements OnModuleDestroy {
 
     // Output to specified path (temp file that will be renamed atomically)
     // Force mp4 format to ensure compatibility
-    args.push('-f', 'mp4', '-y', outputPath);
+    // Use fragmented MP4 for streaming compatibility and instant readability
+    // This allows preview captures to work at any encoding progress (moov atom at start)
+    args.push(
+      '-movflags',
+      '+frag_keyframe+empty_moov+default_base_moof',
+      '-f',
+      'mp4',
+      '-y',
+      outputPath
+    );
 
     this.logger.debug(`ffmpeg command: ffmpeg ${args.join(' ')}`);
     return args;
@@ -518,6 +533,38 @@ export class FfmpegService implements OnModuleDestroy {
           this.logger.error(`Failed to update job progress: ${error.message}`);
         });
       activeEncoding.lastProgress = adjustedProgress;
+
+      // ENCODING PREVIEW: Generate preview screenshots (throttled to 30 seconds)
+      const now = Date.now();
+      const lastGeneration = this.lastPreviewGeneration.get(job.id) || 0;
+      if (
+        now - lastGeneration >= this.PREVIEW_THROTTLE_MS &&
+        tempOutput &&
+        existsSync(tempOutput)
+      ) {
+        this.lastPreviewGeneration.set(job.id, now);
+        this.logger.debug(
+          `[${job.id}] Generating encoding previews at ${adjustedProgress.toFixed(2)}%`
+        );
+
+        // Generate previews asynchronously (don't block progress updates)
+        this.previewService
+          .generatePreviews(job.id, tempOutput, estimatedDurationSeconds, adjustedProgress)
+          .then((previewPaths) => {
+            if (previewPaths.length > 0) {
+              // Update job with preview paths
+              this.queueService.updateJobPreview(job.id, previewPaths).catch((err) => {
+                this.logger.warn(
+                  `Failed to update preview paths for job ${job.id}: ${err.message}`
+                );
+              });
+              this.logger.debug(`[${job.id}] Generated ${previewPaths.length} preview screenshots`);
+            }
+          })
+          .catch((error) => {
+            this.logger.warn(`Failed to generate previews for job ${job.id}: ${error.message}`);
+          });
+      }
     }
   }
 
@@ -565,6 +612,10 @@ export class FfmpegService implements OnModuleDestroy {
     // This method should only verify the temp file and mark the job as ready for completion
     // The temp file MUST remain at tempOutput location for encoding-processor to verify and replace
 
+    // ENCODING PREVIEW: Clean up preview screenshots
+    await this.previewService.cleanupPreviews(job.id);
+    this.lastPreviewGeneration.delete(job.id);
+
     this.logger.log(`Encoding completed successfully for job ${job.id}`);
   }
 
@@ -599,6 +650,10 @@ export class FfmpegService implements OnModuleDestroy {
       } catch {
         // Ignore cleanup errors
       }
+
+      // ENCODING PREVIEW: Clean up preview screenshots when deleting temp file
+      await this.previewService.cleanupPreviews(job.id);
+      this.lastPreviewGeneration.delete(job.id);
     } else {
       this.logger.log(`Keeping temp file for resume: ${tempOutput}`);
     }

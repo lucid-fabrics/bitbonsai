@@ -762,6 +762,51 @@
                         </div>
                       </div>
 
+                      <!-- Encoding Preview (for ENCODING jobs) -->
+                      @if (job.status === 'ENCODING') {
+                        <div class="encoding-preview-section">
+                          <div class="preview-header">
+                            <h4><i class="fas fa-images"></i> Encoding Preview</h4>
+                            <button
+                              (click)="captureCurrentFrame(job.id, $event)"
+                              class="btn btn-sm btn-capture"
+                              [disabled]="capturingJobId === job.id"
+                              bbTooltip
+                              tooltipTitle="Capture Now"
+                              tooltipContent="Take a screenshot from the temp file at the current encoding progress. The preview will be added to the gallery below."
+                              tooltipPlacement="top">
+                              @if (capturingJobId === job.id) {
+                                <i class="fas fa-spinner fa-spin"></i> Capturing...
+                              } @else {
+                                <i class="fas fa-camera"></i> Capture Now
+                              }
+                            </button>
+                          </div>
+                          <div class="preview-gallery">
+                            @let previewPaths = parsePreviewPaths(job.previewImagePaths, job.id);
+                            @if (previewPaths.length > 0) {
+                              @for (preview of previewPaths; track $index) {
+                                <div class="preview-item">
+                                  <img
+                                    [src]="getPreviewUrl(job.id, $index + 1)"
+                                    [alt]="'Preview ' + ($index + 1)"
+                                    (error)="$event.target.style.display='none'"
+                                    class="preview-image" />
+                                  <div class="preview-label">
+                                    {{ getPreviewLabel($index) }}
+                                  </div>
+                                </div>
+                              }
+                            } @else {
+                              <div class="preview-placeholder">
+                                <i class="fas fa-camera"></i>
+                                <span>No previews yet. Click "Capture Now" to create one.</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
                       <!-- Expected Results -->
                       <div class="results-section">
                         <h4><i class="fas fa-calculator"></i> Expected Results</h4>

@@ -174,6 +174,30 @@ export class HealthCheckWorker implements OnModuleInit {
         return;
       }
 
+      // AUDIT #3 FIX: Validate file exists before attempting health analysis
+      // This provides better error context when source files are deleted
+      const fs = await import('fs/promises');
+      try {
+        await fs.access(job.filePath);
+      } catch {
+        // File missing - provide contextual error message
+        await this.prisma.job.update({
+          where: { id: jobId },
+          data: {
+            stage: JobStage.FAILED,
+            healthStatus: FileHealthStatus.CORRUPTED,
+            healthScore: 0,
+            healthMessage: '❌ Source file was deleted before health check could run',
+            healthCheckedAt: new Date(),
+            error: `File not found at expected path: ${job.filePath}\n\nThe file may have been moved or deleted after the job was created.`,
+          },
+        });
+        this.logger.error(
+          `✗ ${job.fileLabel} - FILE MISSING (deleted before health check) → FAILED`
+        );
+        return;
+      }
+
       // Update stage to HEALTH_CHECK (visible in UI)
       // HIGH PRIORITY FIX: Set healthCheckStartedAt timestamp to prevent false orphan detection
       await this.prisma.job.update({

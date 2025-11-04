@@ -343,6 +343,9 @@ model Job {
   resumeTimestamp    String?   // HH:MM:SS.MS where encoding stopped
   lastProgressUpdate DateTime? // When progress was last saved to DB
 
+  // Encoding Preview Fields (Live thumbnails during encoding)
+  previewImagePaths String? // JSON array of preview image paths (generated from temp file)
+
   // Original File Tracking (Keep Original Feature)
   keepOriginalRequested Boolean @default(false) // User clicked "Keep Original" during encoding
   originalBackupPath    String? // Path to .original backup if kept (e.g., "/path/movie.mkv.original")

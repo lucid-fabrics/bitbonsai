@@ -537,6 +537,17 @@ export class QueueService {
       throw new NotFoundException(`Job with ID "${id}" not found`);
     }
 
+    // AUDIT #3 FIX: Validate input parameters
+    if (updateJobDto.progress !== undefined) {
+      if (updateJobDto.progress < 0 || updateJobDto.progress > 100) {
+        throw new BadRequestException('Progress must be between 0 and 100');
+      }
+    }
+
+    if (updateJobDto.etaSeconds !== undefined && updateJobDto.etaSeconds < 0) {
+      throw new BadRequestException('ETA cannot be negative');
+    }
+
     // SECURITY: Prevent manual HEALTH_CHECK stage assignment
     // HEALTH_CHECK is an internal stage only set by the health check worker
     // Jobs manually moved to HEALTH_CHECK will be orphaned (worker only processes DETECTED)
@@ -569,6 +580,33 @@ export class QueueService {
       return job;
     } catch (error) {
       this.logger.error(`Failed to update job progress: ${id}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update job preview image paths
+   *
+   * @param id - Job unique identifier
+   * @param previewPaths - Array of preview image file paths
+   * @returns Updated job
+   * @throws NotFoundException if job does not exist
+   */
+  async updateJobPreview(id: string, previewPaths: string[]): Promise<Job> {
+    this.logger.debug(`Updating preview paths for job: ${id}`);
+
+    try {
+      const job = await this.prisma.job.update({
+        where: { id },
+        data: {
+          previewImagePaths: JSON.stringify(previewPaths),
+        },
+      });
+
+      this.logger.debug(`Job ${id} preview paths updated: ${previewPaths.length} images`);
+      return job;
+    } catch (error) {
+      this.logger.error(`Failed to update job preview paths: ${id}`, error);
       throw error;
     }
   }
@@ -1654,14 +1692,24 @@ export class QueueService {
    * 1. Creates or updates node-specific daily metrics
    * 2. Creates or updates license-wide daily metrics
    *
+   * AUDIT #3 FIX: Added null safety checks for node relation
+   *
    * @param job - Completed job with node and license info
    * @param tx - Optional Prisma transaction client (for atomic operations)
    * @private
    */
   private async updateMetrics(
-    job: Job & { node: { licenseId: string } },
+    job: Job & { node?: { licenseId: string } },
     tx?: Prisma.TransactionClient
   ): Promise<void> {
+    // AUDIT #3 FIX: Validate node relation exists before accessing
+    if (!job.node?.licenseId) {
+      this.logger.warn(
+        `Cannot update metrics for job ${job.id}: missing node relation or licenseId`
+      );
+      return;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
