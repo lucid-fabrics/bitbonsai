@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } f
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { CarouselImage, ImageCarouselComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import {
@@ -18,6 +19,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { QueueClient } from '../../core/clients/queue.client';
+import { SettingsClient } from '../../core/clients/settings.client';
 import { ToastService } from '../../core/services/toast.service';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import {
@@ -46,6 +48,7 @@ import type { QueueResponse } from './models/queue-response.model';
     AddFilesModalComponent,
     ErrorDetailsModalComponent,
     JobHistoryModalComponent,
+    ImageCarouselComponent,
   ],
   templateUrl: './queue.page.html',
   styleUrls: ['./queue.page.scss'],
@@ -53,6 +56,7 @@ import type { QueueResponse } from './models/queue-response.model';
 })
 export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
+  private readonly settingsApi = inject(SettingsClient);
   private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -111,6 +115,11 @@ export class QueueComponent implements OnInit {
   // Manual preview capture state
   protected capturingJobId: string | null = null;
 
+  // Fullscreen carousel state
+  protected showFullscreenCarousel = false;
+  protected fullscreenCarouselImages: CarouselImage[] = [];
+  protected fullscreenCarouselInitialIndex = 0;
+
   // Expose Math for template
   protected readonly Math = Math;
 
@@ -124,10 +133,14 @@ export class QueueComponent implements OnInit {
   protected readonly JobEventType = JobEventType;
 
   // Filter state
-  protected selectedStatus: JobStatus | 'ALL' = 'ALL';
+  protected selectedStatus: JobStatus | 'ALL' = JobStatus.ENCODING; // Default to ENCODING, overridden by user settings
   protected selectedNodeId = '';
   protected selectedLibraryId = '';
   protected searchQuery = '';
+
+  // Pagination state
+  protected currentPage = 1;
+  protected pageSize = 20;
 
   // Available statuses for filter (exclude transient statuses that jobs pass through quickly)
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
@@ -154,15 +167,6 @@ export class QueueComponent implements OnInit {
           map((data) => {
             // Always clear loading when data arrives
             this.loadingSubject$.next(false);
-
-            // Client-side filter: when ENCODING is selected, show both ENCODING and PAUSED
-            if (data && this.selectedStatus === JobStatus.ENCODING) {
-              const filteredJobs = data.jobs.filter(
-                (job) => job.status === JobStatus.ENCODING || job.status === JobStatus.PAUSED
-              );
-              return { ...data, jobs: filteredJobs };
-            }
-
             return data;
           }),
           catchError(() => {
@@ -211,7 +215,27 @@ export class QueueComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Restore filter state from query params
+    // Load default queue view from settings
+    this.settingsApi
+      .getDefaultQueueView()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          // Apply default queue view if it's valid and no query param is set
+          if (
+            settings.defaultQueueView &&
+            this.statuses.includes(settings.defaultQueueView as any)
+          ) {
+            this.selectedStatus = settings.defaultQueueView as JobStatus | 'ALL';
+          }
+        },
+        error: (err) => {
+          // If settings can't be loaded, fallback to ENCODING (default behavior)
+          console.warn('Failed to load default queue view setting:', err);
+        },
+      });
+
+    // Restore filter state from query params (takes precedence over default setting)
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       if (params['status']) {
         const status = params['status'];
@@ -245,9 +269,8 @@ export class QueueComponent implements OnInit {
 
   private buildFilters(): QueueFilters {
     const filters: QueueFilters = {};
-    // When filtering by ENCODING, we want to show both ENCODING and PAUSED jobs
-    // So we don't send a status filter - we'll filter client-side instead
-    if (this.selectedStatus !== 'ALL' && this.selectedStatus !== JobStatus.ENCODING) {
+    // Send status filter to API for proper server-side pagination
+    if (this.selectedStatus !== 'ALL') {
       filters.status = this.selectedStatus as JobStatus;
     }
     if (this.selectedNodeId) {
@@ -259,29 +282,46 @@ export class QueueComponent implements OnInit {
     if (this.searchQuery) {
       filters.search = this.searchQuery;
     }
+    // Add pagination parameters
+    filters.page = this.currentPage;
+    filters.limit = this.pageSize;
     return filters;
   }
 
   protected onStatusFilterChange(status: JobStatus | 'ALL'): void {
     this.selectedStatus = status;
+    this.currentPage = 1; // Reset to page 1 when filter changes
     this.updateQueryParams();
     this.refreshQueue(true); // Show loading for user action
+
+    // Save the new default queue view preference to backend
+    this.settingsApi
+      .updateDefaultQueueView(status)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (err) => {
+          console.warn('Failed to save default queue view preference:', err);
+        },
+      });
   }
 
   protected onNodeFilterChange(nodeId: string): void {
     this.selectedNodeId = nodeId;
+    this.currentPage = 1; // Reset to page 1 when filter changes
     this.updateQueryParams();
     this.refreshQueue(true); // Show loading for user action
   }
 
   protected onLibraryFilterChange(libraryId: string): void {
     this.selectedLibraryId = libraryId;
+    this.currentPage = 1; // Reset to page 1 when filter changes
     this.updateQueryParams();
     this.refreshQueue(true); // Show loading for user action
   }
 
   protected onSearchChange(query: string): void {
     this.searchQuery = query;
+    this.currentPage = 1; // Reset to page 1 when filter changes
     this.updateQueryParams();
     this.refreshQueue(true); // Show loading for user action
   }
@@ -841,6 +881,7 @@ export class QueueComponent implements OnInit {
     const labels: Record<JobStatus, string> = {
       [JobStatus.DETECTED]: 'Detected',
       [JobStatus.HEALTH_CHECK]: 'Health Check',
+      [JobStatus.NEEDS_DECISION]: 'Needs Decision',
       [JobStatus.QUEUED]: 'Queued',
       [JobStatus.ENCODING]: 'Encoding',
       [JobStatus.PAUSED]: 'Paused',
@@ -1292,5 +1333,66 @@ export class QueueComponent implements OnInit {
    */
   protected getPreviewLabel(index: number): string {
     return `Manual #${index + 1}`;
+  }
+
+  /**
+   * Convert preview paths to carousel images
+   */
+  protected parsePreviewImages(paths: string | null | undefined, jobId: string): CarouselImage[] {
+    if (!paths) return [];
+    try {
+      const filePaths = JSON.parse(paths) as string[];
+      return filePaths.map((_, index) => ({
+        src: `/api/v1/queue/${jobId}/preview/${index + 1}`,
+        alt: `Preview ${index + 1}`,
+        label: this.getPreviewLabel(index),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Open fullscreen carousel for a job's preview images
+   */
+  protected openFullscreenCarousel(
+    jobId: string,
+    paths: string | null | undefined,
+    initialIndex = 0
+  ): void {
+    this.fullscreenCarouselImages = this.parsePreviewImages(paths, jobId);
+    this.fullscreenCarouselInitialIndex = initialIndex;
+    this.showFullscreenCarousel = true;
+  }
+
+  /**
+   * Close fullscreen carousel
+   */
+  protected closeFullscreenCarousel(): void {
+    this.showFullscreenCarousel = false;
+    this.fullscreenCarouselImages = [];
+    this.fullscreenCarouselInitialIndex = 0;
+  }
+
+  /**
+   * Pagination Methods
+   */
+  protected onPageSizeChange(newSize: number): void {
+    this.pageSize = newSize;
+    this.currentPage = 1; // Reset to page 1 when changing page size
+    this.refreshTrigger$.next({ showLoading: true });
+  }
+
+  protected goToPage(page: number): void {
+    this.currentPage = page;
+    this.refreshTrigger$.next({ showLoading: true });
+  }
+
+  protected nextPage(): void {
+    this.goToPage(this.currentPage + 1);
+  }
+
+  protected previousPage(): void {
+    this.goToPage(this.currentPage - 1);
   }
 }

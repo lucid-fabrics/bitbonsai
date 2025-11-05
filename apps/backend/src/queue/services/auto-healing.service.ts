@@ -77,9 +77,9 @@ export class AutoHealingService implements OnModuleInit {
               completedAt: null,
               startedAt: null,
               retryCount: job.retryCount + 1,
-              // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
+              // AUTO-HEAL TRACKING: Record when job was auto-healed and where it resumed from (0% since temp file is cleared)
               autoHealedAt: new Date(),
-              autoHealedProgress: job.progress,
+              autoHealedProgress: 0, // Job restarts from 0% since temp file is cleared
               // AUDIT #3 FIX: Clear resume state to prevent using stale temp files
               // This prevents auto-healed jobs from failing immediately due to missing/invalid temp files
               resumeTimestamp: null,

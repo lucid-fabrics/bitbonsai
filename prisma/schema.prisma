@@ -89,6 +89,7 @@ enum TargetCodec {
 enum JobStage {
   DETECTED
   HEALTH_CHECK
+  NEEDS_DECISION // User decision required before proceeding (e.g., AC3 audio + MP4)
   QUEUED
   ENCODING
   PAUSED
@@ -124,6 +125,8 @@ model Settings {
   id                           String   @id @default(cuid())
   isSetupComplete              Boolean  @default(false)
   allowLocalNetworkWithoutAuth Boolean  @default(false)
+  defaultQueueView             String   @default("ENCODING") // Default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)
+  readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 
@@ -333,6 +336,12 @@ model Job {
   healthCheckedAt      DateTime? // When health check was performed
   healthCheckStartedAt DateTime? // HIGH PRIORITY FIX: When health check started (prevents orphan detection)
   healthCheckRetries   Int              @default(0) // Number of health check retry attempts
+
+  // Health Check Decision Fields (NEEDS_DECISION state)
+  decisionRequired Boolean @default(false) // Does this job require user decision before proceeding?
+  decisionIssues   String? // JSON array of HealthCheckIssue objects requiring decisions
+  decisionMadeAt   DateTime? // When user resolved the decision
+  decisionData     String? // JSON object with user's decision choices
 
   // Priority Fields
   priority      Int       @default(0) // 0=normal, 1=high, 2=top (max 3 top priority at once)

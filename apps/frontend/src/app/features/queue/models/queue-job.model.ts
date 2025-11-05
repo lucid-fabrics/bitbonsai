@@ -42,4 +42,9 @@ export interface QueueJob {
   replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
   // Encoding Preview Feature
   previewImagePaths?: string | null; // JSON array of preview image paths
+  // Health Check Decision Feature
+  decisionRequired?: boolean; // Does this job require user decision before proceeding?
+  decisionIssues?: string | null; // JSON array of HealthCheckIssue objects requiring decisions
+  decisionMadeAt?: string | null; // When user resolved the decision
+  decisionData?: string | null; // JSON object with user's decision choices
 }

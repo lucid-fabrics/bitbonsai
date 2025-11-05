@@ -4,6 +4,8 @@ import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
 import { EnvironmentService } from '../common/environment.service';
+import { DefaultQueueViewDto } from './dto/default-queue-view.dto';
+import { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import { SecuritySettingsDto } from './dto/security-settings.dto';
 import { SystemSettingsDto } from './dto/system-settings.dto';
 import type { UpdateSystemSettingsDto } from './dto/update-system-settings.dto';
@@ -200,5 +202,77 @@ export class SettingsController {
     @Body() updateDto: SecuritySettingsDto
   ): Promise<SecuritySettingsDto> {
     return this.settingsService.updateSecuritySettings(updateDto);
+  }
+
+  @Get('default-queue-view')
+  @ApiOperation({
+    summary: 'Get default queue view preference',
+    description:
+      "Retrieve the user's preferred default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Default queue view preference retrieved successfully',
+    type: DefaultQueueViewDto,
+  })
+  async getDefaultQueueView(): Promise<DefaultQueueViewDto> {
+    return this.settingsService.getDefaultQueueView();
+  }
+
+  @Patch('default-queue-view')
+  @ApiOperation({
+    summary: 'Update default queue view preference',
+    description:
+      "Update the user's preferred default queue filter view. This setting will be applied when the queue page loads.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Default queue view preference updated successfully',
+    type: DefaultQueueViewDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid queue view provided',
+  })
+  async updateDefaultQueueView(
+    @Body() updateDto: DefaultQueueViewDto
+  ): Promise<DefaultQueueViewDto> {
+    return this.settingsService.updateDefaultQueueView(updateDto);
+  }
+
+  @Get('ready-files-cache-ttl')
+  @ApiOperation({
+    summary: 'Get ready files cache TTL',
+    description:
+      'Retrieve the cache TTL (Time To Live) in minutes for the /api/v1/libraries/ready endpoint. This setting controls how long library scan results are cached.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cache TTL retrieved successfully',
+    type: ReadyFilesCacheTtlDto,
+  })
+  async getReadyFilesCacheTtl(): Promise<ReadyFilesCacheTtlDto> {
+    return this.settingsService.getReadyFilesCacheTtl();
+  }
+
+  @Patch('ready-files-cache-ttl')
+  @ApiOperation({
+    summary: 'Update ready files cache TTL',
+    description:
+      'Update the cache TTL (Time To Live) in minutes for the /api/v1/libraries/ready endpoint. Minimum value is 5 minutes to prevent excessive file system scans.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cache TTL updated successfully',
+    type: ReadyFilesCacheTtlDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid TTL value (must be at least 5 minutes)',
+  })
+  async updateReadyFilesCacheTtl(
+    @Body() updateDto: ReadyFilesCacheTtlDto
+  ): Promise<ReadyFilesCacheTtlDto> {
+    return this.settingsService.updateReadyFilesCacheTtl(updateDto.readyFilesCacheTtlMinutes);
   }
 }

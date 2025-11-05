@@ -12,6 +12,13 @@ import type {
   UpdateLibraryDto,
 } from '../../features/libraries/models/library.model';
 
+export interface CacheMetadata {
+  cacheAgeSeconds: number;
+  cacheTtlMinutes: number;
+  cacheValid: boolean;
+  cacheTimestamp: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -104,5 +111,19 @@ export class LibrariesClient {
    */
   getLibraryFiles(id: string): Observable<LibraryFiles> {
     return this.http.get<LibraryFiles>(`${this.apiUrl}/${id}/files`).pipe(timeout(300000)); // 5 minutes = 300000ms
+  }
+
+  /**
+   * Get cache metadata for ready files cache
+   */
+  getReadyFilesCacheMetadata(): Observable<CacheMetadata> {
+    return this.http.get<CacheMetadata>(`${this.apiUrl}/ready-cache-metadata`);
+  }
+
+  /**
+   * Refresh ready files cache (invalidate and force reload)
+   */
+  refreshReadyFilesCache(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/refresh-ready-cache`, {});
   }
 }

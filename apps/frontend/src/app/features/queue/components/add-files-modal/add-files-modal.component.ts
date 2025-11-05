@@ -6,11 +6,24 @@ import {
   EventEmitter,
   Input,
   inject,
+  OnDestroy,
   Output,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { BehaviorSubject, catchError, map, Observable, of, shareReplay } from 'rxjs';
+import {
+  BehaviorSubject,
+  catchError,
+  interval,
+  map,
+  Observable,
+  of,
+  Subject,
+  shareReplay,
+  switchMap,
+  takeUntil,
+} from 'rxjs';
+import type { CacheMetadata } from '../../../../core/clients/libraries.client';
 import { LibrariesClient } from '../../../../core/clients/libraries.client';
 import type {
   BulkJobCreationResult,
@@ -30,9 +43,10 @@ type ViewMode = 'library-selection' | 'file-selection' | 'creating-jobs' | 'resu
   styleUrls: ['./add-files-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AddFilesModalComponent {
+export class AddFilesModalComponent implements OnDestroy {
   private readonly librariesApi = inject(LibrariesClient);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly destroy$ = new Subject<void>();
 
   @Input() isOpen = false;
   @Output() close = new EventEmitter<void>();
@@ -43,6 +57,11 @@ export class AddFilesModalComponent {
 
   // View mode state
   protected viewMode$ = new BehaviorSubject<ViewMode>('library-selection');
+
+  // Cache state
+  protected cacheMetadata$ = new BehaviorSubject<CacheMetadata | null>(null);
+  protected cacheAgeDisplay$ = new BehaviorSubject<string>('Loading...');
+  protected isRefreshing$ = new BehaviorSubject<boolean>(false);
 
   // Library selection state
   protected readonly libraryPreviews$: Observable<ScanPreview[]>;
@@ -75,6 +94,90 @@ export class AddFilesModalComponent {
       }),
       shareReplay(1) // Cache the result and share among all subscribers
     );
+
+    // Load cache metadata on init
+    this.loadCacheMetadata();
+
+    // Update cache age display every second
+    interval(1000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.updateCacheAgeDisplay();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadCacheMetadata(): void {
+    this.librariesApi
+      .getReadyFilesCacheMetadata()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (metadata) => {
+          this.cacheMetadata$.next(metadata);
+          this.updateCacheAgeDisplay();
+        },
+        error: () => {
+          this.cacheMetadata$.next(null);
+        },
+      });
+  }
+
+  private updateCacheAgeDisplay(): void {
+    const metadata = this.cacheMetadata$.value;
+    if (!metadata) {
+      this.cacheAgeDisplay$.next('Unknown');
+      return;
+    }
+
+    const ageSeconds = metadata.cacheAgeSeconds;
+
+    // If cache has never been populated (age = 0)
+    if (ageSeconds === 0) {
+      this.cacheAgeDisplay$.next('Not cached');
+      return;
+    }
+
+    if (ageSeconds < 5) {
+      this.cacheAgeDisplay$.next('Fresh');
+    } else if (ageSeconds < 60) {
+      this.cacheAgeDisplay$.next(`${ageSeconds}s ago`);
+    } else {
+      const minutes = Math.floor(ageSeconds / 60);
+      const seconds = ageSeconds % 60;
+      this.cacheAgeDisplay$.next(`${minutes}m ${seconds}s ago`);
+    }
+  }
+
+  protected refreshCache(): void {
+    if (this.isRefreshing$.value) return;
+
+    this.isRefreshing$.next(true);
+
+    this.librariesApi
+      .refreshReadyFilesCache()
+      .pipe(
+        switchMap(() => this.librariesApi.getAllReadyFiles()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (previews) => {
+          this.isRefreshing$.next(false);
+          // Update library previews by re-emitting the stream
+          this.isLoadingLibraries$.next(false);
+          // Reload cache metadata
+          this.loadCacheMetadata();
+          // Force reload of library previews
+          window.location.reload();
+        },
+        error: (error) => {
+          this.isRefreshing$.next(false);
+          this.librariesError$.next(error?.message || 'Failed to refresh cache. Please try again.');
+        },
+      });
   }
 
   // Library selection methods
@@ -85,9 +188,11 @@ export class AddFilesModalComponent {
       this.selectedPolicyId$.next(preview.policyId);
     }
 
-    // Select all files by default
-    const allFilePaths = new Set(preview.needsEncoding.map((file) => file.filePath));
-    this.selectedFiles$.next(allFilePaths);
+    // Select only files that can be added to queue (exclude already encoded, in progress, etc.)
+    const selectableFilePaths = new Set(
+      preview.needsEncoding.filter((file) => file.canAddToQueue).map((file) => file.filePath)
+    );
+    this.selectedFiles$.next(selectableFilePaths);
 
     // Switch to file selection view
     this.viewMode$.next('file-selection');
@@ -122,8 +227,11 @@ export class AddFilesModalComponent {
     const library = this.selectedLibrary$.value;
     if (!library) return;
 
-    const allFilePaths = new Set(library.needsEncoding.map((file) => file.filePath));
-    this.selectedFiles$.next(allFilePaths);
+    // Only select files that can be added to queue
+    const selectableFilePaths = new Set(
+      library.needsEncoding.filter((file) => file.canAddToQueue).map((file) => file.filePath)
+    );
+    this.selectedFiles$.next(selectableFilePaths);
   }
 
   protected deselectAllFiles(): void {

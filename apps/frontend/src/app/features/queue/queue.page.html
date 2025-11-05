@@ -783,20 +783,12 @@
                             </button>
                           </div>
                           <div class="preview-gallery">
-                            @let previewPaths = parsePreviewPaths(job.previewImagePaths, job.id);
-                            @if (previewPaths.length > 0) {
-                              @for (preview of previewPaths; track $index) {
-                                <div class="preview-item">
-                                  <img
-                                    [src]="getPreviewUrl(job.id, $index + 1)"
-                                    [alt]="'Preview ' + ($index + 1)"
-                                    (error)="$event.target.style.display='none'"
-                                    class="preview-image" />
-                                  <div class="preview-label">
-                                    {{ getPreviewLabel($index) }}
-                                  </div>
-                                </div>
-                              }
+                            @let previewImages = parsePreviewImages(job.previewImagePaths, job.id);
+                            @if (previewImages.length > 0) {
+                              <bb-image-carousel
+                                [images]="previewImages"
+                                [showThumbnails]="true"
+                                (imageClick)="openFullscreenCarousel(job.id, job.previewImagePaths, $event)" />
                             } @else {
                               <div class="preview-placeholder">
                                 <i class="fas fa-camera"></i>
@@ -1282,6 +1274,113 @@
       </div>
     </div>
   }
+
+  <!-- Pagination Controls -->
+  @if (queueData$ | async; as queueData) {
+    @if (queueData.total > 0) {
+      <div class="pagination-controls">
+        <!-- Page Size Selector -->
+        <div class="page-size-selector">
+          <label for="page-size">Show:</label>
+          <select
+            id="page-size"
+            [value]="pageSize"
+            (change)="onPageSizeChange(Number($any($event.target).value))"
+            class="page-size-select">
+            <option [value]="5">5</option>
+            <option [value]="10">10</option>
+            <option [value]="20">20</option>
+            <option [value]="50">50</option>
+            <option [value]="100">100</option>
+            <option [value]="250">250</option>
+            <option [value]="500">500</option>
+          </select>
+        </div>
+
+        <!-- Pagination Info -->
+        <div class="pagination-info">
+          @let startIndex = (queueData.page - 1) * queueData.limit + 1;
+          @let endIndex = Math.min(queueData.page * queueData.limit, queueData.total);
+          Showing {{ startIndex }}-{{ endIndex }} of {{ queueData.total }} total jobs
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="pagination-nav">
+          <!-- Previous Button -->
+          <button
+            (click)="previousPage()"
+            [disabled]="currentPage === 1"
+            class="page-btn"
+            title="Previous Page">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="page-numbers">
+            @let totalPages = queueData.totalPages;
+
+            <!-- First page -->
+            @if (currentPage > 2) {
+              <button
+                (click)="goToPage(1)"
+                class="page-btn">
+                1
+              </button>
+              @if (currentPage > 3) {
+                <span class="page-ellipsis">...</span>
+              }
+            }
+
+            <!-- Previous page -->
+            @if (currentPage > 1) {
+              <button
+                (click)="goToPage(currentPage - 1)"
+                class="page-btn">
+                {{ currentPage - 1 }}
+              </button>
+            }
+
+            <!-- Current page -->
+            <button
+              class="page-btn active"
+              disabled>
+              {{ currentPage }}
+            </button>
+
+            <!-- Next page -->
+            @if (currentPage < totalPages) {
+              <button
+                (click)="goToPage(currentPage + 1)"
+                class="page-btn">
+                {{ currentPage + 1 }}
+              </button>
+            }
+
+            <!-- Last page -->
+            @if (currentPage < totalPages - 1) {
+              @if (currentPage < totalPages - 2) {
+                <span class="page-ellipsis">...</span>
+              }
+              <button
+                (click)="goToPage(totalPages)"
+                class="page-btn">
+                {{ totalPages }}
+              </button>
+            }
+          </div>
+
+          <!-- Next Button -->
+          <button
+            (click)="nextPage()"
+            [disabled]="currentPage === queueData.totalPages"
+            class="page-btn"
+            title="Next Page">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    }
+  }
 </div>
 
 <!-- Cancel Confirmation Dialog -->
@@ -1495,4 +1594,14 @@
     [jobId]="errorModalData.jobId"
     (closeModal)="closeErrorDetailsModal()">
   </app-error-details-modal>
+}
+
+<!-- Fullscreen Carousel Modal -->
+@if (showFullscreenCarousel) {
+  <bb-image-carousel
+    [images]="fullscreenCarouselImages"
+    [initialIndex]="fullscreenCarouselInitialIndex"
+    [showThumbnails]="true"
+    [fullscreen]="true"
+    (close)="closeFullscreenCarousel()" />
 }

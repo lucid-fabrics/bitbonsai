@@ -22,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Library } from '@prisma/client';
+import { CacheMetadataDto } from './dto/cache-metadata.dto';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { LibraryFilesDto } from './dto/library-files.dto';
 import { LibraryStatsDto } from './dto/library-stats.dto';
@@ -86,6 +87,7 @@ export class LibrariesController {
       '- Aggregates files from all libraries with policies\n' +
       "- Shows files that need encoding but haven't been queued yet\n" +
       '- Excludes blacklisted files\n' +
+      '- Results are cached (configurable TTL via settings)\n' +
       '- Useful for the "Ready" filter in the queue page\n\n' +
       '**Response**: Array of scan previews, one per library',
   })
@@ -98,6 +100,55 @@ export class LibrariesController {
   })
   async getAllReadyFiles(): Promise<ScanPreviewDto[]> {
     return this.librariesService.getAllReadyFiles();
+  }
+
+  /**
+   * Get cache metadata for ready files cache
+   */
+  @Get('ready-cache-metadata')
+  @ApiOperation({
+    summary: 'Get ready files cache metadata',
+    description:
+      '**Cache Metadata** - Returns information about the ready files cache.\n\n' +
+      'Provides cache age, TTL, and validity status for the /api/v1/libraries/ready endpoint cache.',
+  })
+  @ApiOkResponse({
+    description: 'Cache metadata retrieved successfully',
+    type: CacheMetadataDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching cache metadata',
+  })
+  async getReadyCacheMetadata(): Promise<CacheMetadataDto> {
+    return this.librariesService.getCacheMetadata();
+  }
+
+  /**
+   * Refresh ready files cache
+   */
+  @Post('refresh-ready-cache')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Refresh ready files cache',
+    description:
+      '**Refresh Cache** - Invalidates the ready files cache, forcing a fresh scan on next request.\n\n' +
+      'Use this when you want to see newly added files immediately without waiting for cache expiration.',
+  })
+  @ApiOkResponse({
+    description: 'Cache refreshed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Ready files cache invalidated successfully' },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while refreshing cache',
+  })
+  async refreshReadyCache(): Promise<{ message: string }> {
+    this.librariesService.invalidateReadyFilesCache();
+    return { message: 'Ready files cache invalidated successfully' };
   }
 
   /**

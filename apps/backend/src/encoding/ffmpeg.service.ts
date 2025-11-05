@@ -612,8 +612,10 @@ export class FfmpegService implements OnModuleDestroy {
     // This method should only verify the temp file and mark the job as ready for completion
     // The temp file MUST remain at tempOutput location for encoding-processor to verify and replace
 
-    // ENCODING PREVIEW: Clean up preview screenshots
-    await this.previewService.cleanupPreviews(job.id);
+    // ENCODING PREVIEW: Keep preview screenshots on success so users can view them later
+    // Preview images are small (~20-80KB each, 9 total = ~500KB max) and provide valuable feedback
+    // Only clean up on failure to save space for corrupted encodes
+    // await this.previewService.cleanupPreviews(job.id); // Disabled - keep previews for completed jobs
     this.lastPreviewGeneration.delete(job.id);
 
     this.logger.log(`Encoding completed successfully for job ${job.id}`);

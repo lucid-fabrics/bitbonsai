@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { QueueModule } from '../queue/queue.module';
+import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
 import { EncodingPreviewService } from './encoding-preview.service';
 import { EncodingProcessorService } from './encoding-processor.service';
@@ -20,7 +21,19 @@ import { FileHealthService } from './file-health.service';
 @Module({
   imports: [EventEmitterModule.forRoot(), forwardRef(() => QueueModule), LibrariesModule],
   controllers: [EncodingController],
-  providers: [EncodingProcessorService, FfmpegService, FileHealthService, EncodingPreviewService],
-  exports: [EncodingProcessorService, FfmpegService, FileHealthService, EncodingPreviewService],
+  providers: [
+    EncodingProcessorService,
+    FfmpegService,
+    FileHealthService,
+    ContainerCompatibilityService,
+    EncodingPreviewService,
+  ],
+  exports: [
+    EncodingProcessorService,
+    FfmpegService,
+    FileHealthService,
+    ContainerCompatibilityService,
+    EncodingPreviewService,
+  ],
 })
 export class EncodingModule {}
