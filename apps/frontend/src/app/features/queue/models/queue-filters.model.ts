@@ -5,4 +5,6 @@ export interface QueueFilters {
   nodeId?: string;
   libraryId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }

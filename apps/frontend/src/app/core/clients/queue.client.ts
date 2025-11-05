@@ -21,14 +21,26 @@ export class QueueClient {
     if (filters?.nodeId) params.nodeId = filters.nodeId;
     if (filters?.libraryId) params.libraryId = filters.libraryId;
     if (filters?.search) params.search = filters.search;
+    if (filters?.page) params.page = filters.page.toString();
+    if (filters?.limit) params.limit = filters.limit.toString();
 
     return combineLatest([
-      this.http.get<QueueJobApiModel[]>(this.apiUrl, { params }),
+      this.http.get<{
+        jobs: QueueJobApiModel[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>(this.apiUrl, { params }),
       this.http.get<QueueStats>(`${this.apiUrl}/stats`),
     ]).pipe(
-      map(([jobs, stats]) => ({
-        jobs: jobs.map((job) => new QueueJobBo(job)),
+      map(([response, stats]) => ({
+        jobs: response.jobs.map((job) => new QueueJobBo(job)),
         stats,
+        total: response.total,
+        page: response.page,
+        limit: response.limit,
+        totalPages: response.totalPages,
       }))
     );
   }

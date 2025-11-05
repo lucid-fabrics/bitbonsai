@@ -3402,9 +3402,10 @@
 // ============================================
 
 .preview-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
+  // Grid layout removed - carousel component handles its own layout
+  // display: grid;
+  // grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  // gap: 12px;
   margin-top: 16px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.02);
@@ -3467,4 +3468,153 @@
   span {
     opacity: 0.7;
   }
+}
+
+// ============================================
+// PAGINATION CONTROLS
+// ============================================
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 24px;
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  label {
+    font-size: 14px;
+    font-weight: 500;
+    color: $text-secondary;
+    white-space: nowrap;
+  }
+
+  .page-size-select {
+    padding: 8px 12px;
+    background: $bg-tertiary;
+    border: 1px solid $border-secondary;
+    border-radius: 6px;
+    color: $text-primary;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 80px;
+    transition: $transition-fast;
+
+    &:hover {
+      border-color: $accent-primary;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $accent-primary;
+      background: rgba($bg-tertiary, 0.8);
+    }
+  }
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+}
+
+.pagination-info {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  color: $text-secondary;
+  font-weight: 500;
+  white-space: nowrap;
+
+  @media (max-width: 768px) {
+    order: -1; // Show info first on mobile
+  }
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+.page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  border-radius: 6px;
+  color: $text-primary;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: $transition-fast;
+
+  &:hover:not(:disabled) {
+    background: rgba($accent-primary, 0.15);
+    border-color: $accent-primary;
+    color: $accent-primary;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  &.active {
+    background: $accent-primary;
+    border-color: $accent-primary;
+    color: $text-dark;
+    font-weight: 600;
+  }
+
+  i {
+    font-size: 12px;
+  }
+
+  @media (max-width: 768px) {
+    min-width: 40px;
+    height: 40px;
+  }
+}
+
+.page-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  color: $text-tertiary;
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
 }

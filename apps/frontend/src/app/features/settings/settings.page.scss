@@ -1082,3 +1082,60 @@ input:focus + .slider {
     }
   }
 }
+
+// Cache Settings
+.cache-settings {
+  background: rgba(138, 180, 248, 0.03);
+  border-color: rgba(138, 180, 248, 0.2);
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    i {
+      color: $accent-primary;
+      font-size: 20px;
+    }
+  }
+}
+
+.cache-settings-container {
+  margin-top: 24px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.setting-info {
+  flex: 1;
+}
+
+.setting-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-white;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.setting-description {
+  font-size: 14px;
+  color: $text-secondary;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.setting-input {
+  width: 120px;
+  flex-shrink: 0;
+
+  .form-control {
+    text-align: center;
+    padding: 8px 12px;
+  }
+}

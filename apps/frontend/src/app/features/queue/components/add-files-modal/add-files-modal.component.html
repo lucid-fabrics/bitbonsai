@@ -10,6 +10,20 @@
           <h2>Add Files to Queue</h2>
           @if ((viewMode$ | async) === 'library-selection') {
             <p class="subtitle">Select which library's files to add</p>
+            <div class="cache-info">
+              <span class="cache-age">
+                <i class="fas fa-clock"></i>
+                Cache: {{ cacheAgeDisplay$ | async }}
+                @if (cacheMetadata$ | async; as metadata) {
+                  <i class="fas fa-info-circle cache-tooltip"
+                     [title]="'Library data is cached for ' + metadata.cacheTtlMinutes + ' minutes to improve performance. Click refresh to reload or configure TTL in Settings.'"></i>
+                }
+              </span>
+              <button class="btn-refresh" (click)="refreshCache()" [disabled]="(isRefreshing$ | async) || (isLoadingLibraries$ | async)">
+                <i class="fas fa-sync" [class.fa-spin]="(isRefreshing$ | async) || (isLoadingLibraries$ | async)"></i>
+                Refresh
+              </button>
+            </div>
           } @else if ((viewMode$ | async) === 'file-selection') {
             <p class="subtitle">{{ (selectedLibrary$ | async)?.libraryName }}</p>
           }
@@ -24,31 +38,32 @@
     <div class="modal-body">
       <!-- View: Library Selection -->
       @if ((viewMode$ | async) === 'library-selection') {
-        <!-- Always subscribe to data, then decide what to show -->
-        @if (libraryPreviews$ | async; as previews) {
-          <!-- Loading State -->
-          @if (isLoadingLibraries$ | async) {
-          <div class="loading-state">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Loading libraries...</p>
-          </div>
-          }
+        <!-- Hidden subscription to trigger API call -->
+        <span [hidden]="true">{{ libraryPreviews$ | async }}</span>
 
-          <!-- Error State -->
-          @else if (librariesError$ | async; as error) {
-          <div class="error-state">
-            <i class="fas fa-exclamation-triangle error-icon"></i>
-            <h3>Failed to Load Libraries</h3>
-            <p>{{ error }}</p>
-            <button class="btn btn-primary" (click)="closeModal()">
-              <i class="fas fa-times"></i>
-              Close
-            </button>
-          </div>
-          }
+        <!-- Loading State -->
+        @if (isLoadingLibraries$ | async) {
+        <div class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading libraries...</p>
+        </div>
+        }
 
-          <!-- Libraries List -->
-          @else {
+        <!-- Error State -->
+        @else if (librariesError$ | async; as error) {
+        <div class="error-state">
+          <i class="fas fa-exclamation-triangle error-icon"></i>
+          <h3>Failed to Load Libraries</h3>
+          <p>{{ error }}</p>
+          <button class="btn btn-primary" (click)="closeModal()">
+            <i class="fas fa-times"></i>
+            Close
+          </button>
+        </div>
+        }
+
+        <!-- Libraries List -->
+        @else if (libraryPreviews$ | async; as previews) {
           <!-- Empty State -->
           @if (previews.length === 0) {
           <div class="empty-state">
@@ -99,8 +114,7 @@
             }
           </div>
           }
-          }  <!-- Close @else (Libraries List) -->
-        }  <!-- Close libraryPreviews$ subscription -->
+        }
       }
 
       <!-- View: File Selection -->

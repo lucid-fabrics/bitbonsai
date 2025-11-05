@@ -9,11 +9,14 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Library } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import { FileWatcherService } from '../file-watcher/file-watcher.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
+import { SettingsService } from '../settings/settings.service';
+import type { CacheMetadataDto } from './dto/cache-metadata.dto';
 import type { CreateLibraryDto } from './dto/create-library.dto';
 import type { LibraryFilesDto } from './dto/library-files.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
@@ -31,13 +34,23 @@ import { MediaAnalysisService } from './services/media-analysis.service';
 export class LibrariesService {
   private readonly logger = new Logger(LibrariesService.name);
 
+  // Cache for getAllReadyFiles() with configurable TTL
+  private readyFilesCache: {
+    data: ScanPreviewDto[] | null;
+    timestamp: number;
+  } = {
+    data: null,
+    timestamp: 0,
+  };
+
   constructor(
     private prisma: PrismaService,
     @Inject(forwardRef(() => FileWatcherService))
     private fileWatcher: FileWatcherService,
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => QueueService))
-    private queueService: QueueService
+    private queueService: QueueService,
+    private settingsService: SettingsService
   ) {}
 
   /**
@@ -713,7 +726,7 @@ export class LibrariesService {
     // Count how many can actually be added to queue
     const canAddCount = filteredFiles.filter((f) => f.canAddToQueue).length;
 
-    // Limit results to first 100 for performance (frontend can paginate if needed)
+    // Return all files (no artificial limit - frontend can handle filtering/pagination)
     const preview: ScanPreviewDto = {
       libraryId: library.id,
       libraryName: library.name,
@@ -729,7 +742,7 @@ export class LibrariesService {
       totalSizeBytes: analysis.totalSizeBytes.toString(),
       needsEncodingCount: canAddCount, // Files that can be added to queue
       alreadyOptimizedCount: 0, // No longer used (kept for backward compatibility)
-      needsEncoding: filteredFiles.slice(0, 100), // All files (limited to 100)
+      needsEncoding: filteredFiles, // All files (including those already encoded for visibility)
       alreadyOptimized: [], // No longer used (kept for backward compatibility)
       errors: analysis.errors,
       scannedAt: new Date(),
@@ -859,7 +872,56 @@ export class LibrariesService {
 
     this.logger.log(`Created ${jobs.length} encoding jobs`);
 
+    // Invalidate ready files cache since jobs were just created
+    if (jobs.length > 0) {
+      this.invalidateReadyFilesCache();
+    }
+
     return { jobsCreated: jobs.length, jobs };
+  }
+
+  /**
+   * Invalidate the ready files cache
+   * Called when jobs are created or library data changes
+   * Made public so it can be called from the controller
+   */
+  invalidateReadyFilesCache(): void {
+    this.readyFilesCache.data = null;
+    this.readyFilesCache.timestamp = 0;
+    this.logger.log('Ready files cache invalidated');
+  }
+
+  /**
+   * Get cache metadata information
+   * Returns cache age, TTL, and validity status
+   */
+  async getCacheMetadata(): Promise<CacheMetadataDto> {
+    const now = Date.now();
+
+    // Get TTL from settings
+    const { readyFilesCacheTtlMinutes } = await this.settingsService.getReadyFilesCacheTtl();
+    const cacheTtlMs = readyFilesCacheTtlMinutes * 60 * 1000;
+
+    // If cache has never been populated (timestamp = 0), return 0 age
+    if (this.readyFilesCache.timestamp === 0) {
+      return {
+        cacheAgeSeconds: 0,
+        cacheTtlMinutes: readyFilesCacheTtlMinutes,
+        cacheValid: false,
+        cacheTimestamp: null,
+      };
+    }
+
+    const cacheAge = now - this.readyFilesCache.timestamp;
+    const cacheAgeSeconds = Math.floor(cacheAge / 1000);
+    const cacheValid = this.readyFilesCache.data !== null && cacheAge < cacheTtlMs;
+
+    return {
+      cacheAgeSeconds,
+      cacheTtlMinutes: readyFilesCacheTtlMinutes,
+      cacheValid,
+      cacheTimestamp: new Date(this.readyFilesCache.timestamp),
+    };
   }
 
   /**
@@ -868,10 +930,29 @@ export class LibrariesService {
    * Aggregates scan preview data from all libraries to show files that are ready
    * to be added to the queue but haven't been queued yet.
    *
+   * **Performance Optimization**: Results are cached to avoid
+   * expensive file system scans and FFprobe analysis on every request.
+   * Cache TTL is configurable via settings (default: 5 minutes).
+   *
    * @returns Aggregated scan preview data from all libraries
    */
   async getAllReadyFiles(): Promise<ScanPreviewDto[]> {
-    this.logger.log('Fetching ready files from all libraries');
+    // Get TTL from settings
+    const { readyFilesCacheTtlMinutes } = await this.settingsService.getReadyFilesCacheTtl();
+    const cacheTtlMs = readyFilesCacheTtlMinutes * 60 * 1000;
+
+    // Check if cache is still valid (within TTL)
+    const now = Date.now();
+    const cacheAge = now - this.readyFilesCache.timestamp;
+
+    if (this.readyFilesCache.data && cacheAge < cacheTtlMs) {
+      this.logger.log(
+        `Returning cached ready files (age: ${Math.round(cacheAge / 1000)}s, TTL: ${readyFilesCacheTtlMinutes}m)`
+      );
+      return this.readyFilesCache.data;
+    }
+
+    this.logger.log('Cache miss or expired - fetching ready files from all libraries');
 
     // Get all enabled libraries with at least one policy
     const libraries = await this.prisma.library.findMany({
@@ -888,7 +969,11 @@ export class LibrariesService {
 
     if (librariesWithPolicies.length === 0) {
       this.logger.log('No libraries with policies found');
-      return [];
+      const emptyResult: ScanPreviewDto[] = [];
+      // Cache the empty result too
+      this.readyFilesCache.data = emptyResult;
+      this.readyFilesCache.timestamp = now;
+      return emptyResult;
     }
 
     // Get scan preview for each library (in parallel for performance)
@@ -913,7 +998,39 @@ export class LibrariesService {
       `Fetched ${successfulPreviews.length} library previews with ${successfulPreviews.reduce((sum, p) => sum + p.needsEncodingCount, 0)} total ready files`
     );
 
+    // Update cache
+    this.readyFilesCache.data = successfulPreviews;
+    this.readyFilesCache.timestamp = now;
+
     return successfulPreviews;
+  }
+
+  /**
+   * Cron job that automatically refreshes the ready files cache every 5 minutes.
+   * This ensures the cache is always warm when users open the "Add Files to Queue" modal,
+   * providing instant results instead of making them wait 30+ seconds.
+   *
+   * Runs every 5 minutes at the start of the minute (e.g., 10:00, 10:05, 10:10)
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async autoRefreshReadyFilesCache(): Promise<void> {
+    try {
+      this.logger.log('Running scheduled cache refresh for ready files');
+      const startTime = Date.now();
+
+      // Call getAllReadyFiles() which will refresh the cache
+      const previews = await this.getAllReadyFiles();
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      const totalFiles = previews.reduce((sum, p) => sum + p.needsEncodingCount, 0);
+
+      this.logger.log(
+        `Scheduled cache refresh completed in ${duration}s - ` +
+          `${previews.length} libraries, ${totalFiles} ready files`
+      );
+    } catch (error) {
+      this.logger.error('Failed to refresh ready files cache via cron job', error);
+    }
   }
 
   /**

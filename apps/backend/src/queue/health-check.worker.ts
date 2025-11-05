@@ -1,7 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { FileHealthStatus, JobStage } from '@prisma/client';
+import { ContainerCompatibilityService } from '../encoding/container-compatibility.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
+import type { HealthCheckIssue } from './models/health-check-issue.model';
+import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
 
 /**
  * HealthCheckWorker
@@ -40,7 +43,8 @@ export class HealthCheckWorker implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly fileHealthService: FileHealthService
+    private readonly fileHealthService: FileHealthService,
+    private readonly containerCompatibilityService: ContainerCompatibilityService
   ) {}
 
   /**
@@ -213,11 +217,28 @@ export class HealthCheckWorker implements OnModuleInit {
       // Perform health analysis
       const healthResult = await this.fileHealthService.analyzeFile(job.filePath);
 
-      // Determine next stage based on health result
+      // Check for container compatibility issues (AC3/DTS with MP4, etc.)
+      const compatibilityIssues = await this.containerCompatibilityService.checkCompatibility(
+        job.filePath,
+        'mp4' // TODO: Get target container from policy
+      );
+
+      // Determine next stage based on health result and compatibility
       let nextStage: JobStage;
       let errorMessage: string | null = null;
 
-      if (healthResult.canEncode && healthResult.score >= this.MIN_HEALTH_SCORE) {
+      // Check if there are BLOCKER issues requiring user decision
+      const blockerIssues = compatibilityIssues.filter(
+        (issue) => issue.severity === HealthCheckIssueSeverity.BLOCKER
+      );
+
+      if (blockerIssues.length > 0) {
+        // Has blocker issues - requires user decision
+        nextStage = JobStage.NEEDS_DECISION;
+        this.logger.warn(
+          `⚠️ ${job.fileLabel} - NEEDS DECISION (${blockerIssues.length} blocker issue(s)) → NEEDS_DECISION`
+        );
+      } else if (healthResult.canEncode && healthResult.score >= this.MIN_HEALTH_SCORE) {
         // Healthy enough to encode
         nextStage = JobStage.QUEUED;
         this.logger.log(`✓ ${job.fileLabel} - HEALTHY (score: ${healthResult.score}/100) → QUEUED`);
@@ -233,6 +254,17 @@ export class HealthCheckWorker implements OnModuleInit {
       // Build health message
       const healthMessage = this.buildHealthMessage(healthResult);
 
+      // Prepare decision data if there are compatibility issues
+      const decisionData: {
+        decisionRequired?: boolean;
+        decisionIssues?: string;
+      } = {};
+
+      if (blockerIssues.length > 0) {
+        decisionData.decisionRequired = true;
+        decisionData.decisionIssues = JSON.stringify(blockerIssues);
+      }
+
       // Update job with health results
       await this.prisma.job.update({
         where: { id: jobId },
@@ -243,6 +275,7 @@ export class HealthCheckWorker implements OnModuleInit {
           healthMessage,
           healthCheckedAt: new Date(),
           error: errorMessage,
+          ...decisionData,
         },
       });
     } catch (error) {

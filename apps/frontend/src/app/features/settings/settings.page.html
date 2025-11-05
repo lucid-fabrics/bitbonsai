@@ -540,6 +540,37 @@
               </div>
             </div>
 
+            <!-- Library Cache Settings Section -->
+            <div class="info-card cache-settings">
+              <h3>
+                <i class="fa fa-database"></i>
+                Library Cache Settings
+              </h3>
+              <div class="cache-settings-container">
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="readyFilesCacheTtl" class="setting-label">
+                      Ready Files Cache TTL (minutes)
+                    </label>
+                    <p class="setting-description">
+                      How long to cache library scan results. Minimum: 5 minutes. Higher values reduce disk I/O but may delay showing new files.
+                    </p>
+                  </div>
+                  <div class="setting-input">
+                    <input
+                      type="number"
+                      id="readyFilesCacheTtl"
+                      class="form-control"
+                      [(ngModel)]="readyFilesCacheTtl"
+                      [ngModelOptions]="{standalone: true}"
+                      min="5"
+                      (change)="saveReadyFilesCacheTtl()"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="section-divider"></div>
 
             <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">

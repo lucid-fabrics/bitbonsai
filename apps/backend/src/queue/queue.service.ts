@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { type Job, JobEventType, JobStage, Prisma } from '@prisma/client';
+import { FileHealthStatus, type Job, JobEventType, JobStage, Prisma } from '@prisma/client';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -295,10 +295,17 @@ export class QueueService {
     stage?: JobStage,
     nodeId?: string,
     search?: string,
-    libraryId?: string
-  ): Promise<Job[]> {
+    libraryId?: string,
+    page?: number,
+    limit?: number
+  ): Promise<{ jobs: Job[]; total: number; page: number; limit: number; totalPages: number }> {
+    // Default pagination values
+    const currentPage = page && page > 0 ? page : 1;
+    const pageSize = limit && limit > 0 ? limit : 20; // Default 20 items per page
+    const skip = (currentPage - 1) * pageSize;
+
     this.logger.log(
-      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, library: ${libraryId || 'all'}, search: ${search || 'none'})`
+      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, library: ${libraryId || 'all'}, search: ${search || 'none'}, page: ${currentPage}, limit: ${pageSize})`
     );
 
     // Build where clause
@@ -317,36 +324,54 @@ export class QueueService {
       where.OR = [{ filePath: { contains: search } }, { fileLabel: { contains: search } }];
     }
 
-    return this.prisma.job.findMany({
-      where,
-      include: {
-        node: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-          },
-        },
-        library: {
-          select: {
-            id: true,
-            name: true,
-            mediaType: true,
-          },
-        },
-        policy: {
-          select: {
-            id: true,
-            name: true,
-            preset: true,
-          },
+    const includeClause = {
+      node: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
         },
       },
-      orderBy:
-        stage === 'FAILED'
-          ? { failedAt: 'desc' } // Most recent failures first
-          : { createdAt: 'asc' }, // Default: oldest first
-    });
+      library: {
+        select: {
+          id: true,
+          name: true,
+          mediaType: true,
+        },
+      },
+      policy: {
+        select: {
+          id: true,
+          name: true,
+          preset: true,
+        },
+      },
+    };
+
+    const orderByClause =
+      stage === 'FAILED' ? { failedAt: 'desc' as const } : { createdAt: 'asc' as const };
+
+    // Fetch total count and paginated jobs in parallel
+    const [jobs, total] = await Promise.all([
+      this.prisma.job.findMany({
+        where,
+        include: includeClause,
+        orderBy: orderByClause,
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      jobs,
+      total,
+      page: currentPage,
+      limit: pageSize,
+      totalPages,
+    };
   }
 
   /**
@@ -1084,6 +1109,52 @@ export class QueueService {
   }
 
   /**
+   * Force recheck health status for a job
+   *
+   * Clears all health check data and forces the job through health check again.
+   * Useful for testing or forcing re-analysis after code changes.
+   *
+   * @param id - Job unique identifier
+   * @returns Updated job
+   * @throws NotFoundException if job does not exist
+   */
+  async recheckHealth(id: string): Promise<Job> {
+    this.logger.log(`Rechecking health for job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    // Clear all health check data and reset to DETECTED stage
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.DETECTED,
+        healthStatus: FileHealthStatus.UNKNOWN,
+        healthScore: 0,
+        healthMessage: null,
+        healthCheckedAt: null,
+        healthCheckStartedAt: null,
+        healthCheckRetries: 0,
+        decisionRequired: false,
+        decisionIssues: null,
+        decisionMadeAt: null,
+        decisionData: null,
+        error: null,
+      },
+    });
+
+    this.logger.log(
+      `Job health check cleared: ${id} - reset to DETECTED stage (will be rechecked immediately)`
+    );
+    return job;
+  }
+
+  /**
    * Retry all cancelled jobs
    *
    * This method resets all CANCELLED jobs back to QUEUED stage,
@@ -1666,6 +1737,54 @@ export class QueueService {
     );
 
     return requeuedJob;
+  }
+
+  /**
+   * Resolve a user decision for a job in NEEDS_DECISION stage
+   *
+   * This method:
+   * 1. Validates job is in NEEDS_DECISION stage
+   * 2. Saves user's decision data
+   * 3. Clears decision flags
+   * 4. Moves job to QUEUED stage for processing
+   *
+   * @param id - Job unique identifier
+   * @param decisionData - User's decision choices (e.g., { "audio_codec_incompatible": "remux_to_mkv" })
+   * @returns Updated job in QUEUED stage
+   * @throws NotFoundException if job does not exist
+   * @throws BadRequestException if job is not in NEEDS_DECISION stage
+   */
+  async resolveDecision(id: string, decisionData?: Record<string, any>): Promise<Job> {
+    this.logger.log(`Resolving decision for job: ${id}`);
+
+    const existingJob = await this.prisma.job.findUnique({
+      where: { id },
+    });
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (existingJob.stage !== JobStage.NEEDS_DECISION) {
+      throw new BadRequestException(
+        `Can only resolve decisions for jobs in NEEDS_DECISION stage (current stage: ${existingJob.stage})`
+      );
+    }
+
+    // Move job to QUEUED and clear decision fields
+    const job = await this.prisma.job.update({
+      where: { id },
+      data: {
+        stage: JobStage.QUEUED,
+        decisionRequired: false,
+        decisionIssues: null,
+        decisionMadeAt: new Date(),
+        decisionData: decisionData ? JSON.stringify(decisionData) : null,
+      },
+    });
+
+    this.logger.log(`Decision resolved for job ${id} - moved to QUEUED stage`);
+    return job;
   }
 
   /**

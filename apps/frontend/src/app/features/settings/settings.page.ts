@@ -9,6 +9,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { SettingsClient } from '../../core/clients/settings.client';
 import { CpuCapacityPanelComponent } from './components/cpu-capacity-panel/cpu-capacity-panel.component';
 import type { EnvironmentInfo } from './models/environment-info.model';
 import type { ActivateLicense, License } from './models/license.model';
@@ -29,6 +30,7 @@ import { SettingsService } from './services/settings.service';
 export class SettingsComponent implements OnInit {
   private readonly licenseService = inject(LicenseService);
   private readonly settingsService = inject(SettingsService);
+  private readonly settingsClient = inject(SettingsClient);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -46,6 +48,7 @@ export class SettingsComponent implements OnInit {
   licenseKeyRevealed = false;
   apiKeyRevealed = false;
   localNetworkBypassEnabled = false;
+  readyFilesCacheTtl = 5;
 
   // Forms
   licenseForm!: FormGroup<{
@@ -95,6 +98,7 @@ export class SettingsComponent implements OnInit {
     this.loadEnvironmentInfo();
     this.loadSystemSettings();
     this.loadSecuritySettings();
+    this.loadReadyFilesCacheTtl();
   }
 
   private loadLicense(): void {
@@ -366,6 +370,46 @@ export class SettingsComponent implements OnInit {
           },
         });
     }
+  }
+
+  private loadReadyFilesCacheTtl(): void {
+    this.settingsClient
+      .getReadyFilesCacheTtl()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.readyFilesCacheTtl = settings.readyFilesCacheTtlMinutes;
+        },
+        error: () => {
+          // Failed to load cache TTL
+        },
+      });
+  }
+
+  saveReadyFilesCacheTtl(): void {
+    // Validate minimum value
+    if (this.readyFilesCacheTtl < 5) {
+      this.error = 'Cache TTL must be at least 5 minutes';
+      this.readyFilesCacheTtl = 5;
+      return;
+    }
+
+    this.loading.set(true);
+    this.clearMessages();
+
+    this.settingsClient
+      .updateReadyFilesCacheTtl(this.readyFilesCacheTtl)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.successMessage = 'Cache TTL updated successfully';
+        },
+        error: (_err) => {
+          this.loading.set(false);
+          this.error = 'Failed to update cache TTL';
+        },
+      });
   }
 
   private clearMessages(): void {

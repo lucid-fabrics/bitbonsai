@@ -81,6 +81,76 @@
         color: $text-secondary;
         margin: 0;
       }
+
+      .cache-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        font-size: 12px;
+
+        .cache-age {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: $text-secondary;
+
+          i.fa-clock {
+            color: $accent-primary;
+          }
+
+          .cache-tooltip {
+            cursor: help;
+            color: $text-tertiary;
+            transition: color 0.2s ease;
+
+            &:hover {
+              color: $accent-primary;
+            }
+          }
+        }
+
+        .btn-refresh {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          color: $text-white;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: $accent-primary;
+            color: $accent-primary;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          i.fa-spin {
+            animation: spin 1s linear infinite;
+          }
+        }
+      }
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
     }
   }
 

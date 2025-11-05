@@ -42,6 +42,7 @@ import { CompleteJobDto } from './dto/complete-job.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
 import { JobStatsDto } from './dto/job-stats.dto';
+import { ResolveDecisionDto } from './dto/resolve-decision.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdatePriorityDto } from './dto/update-priority.dto';
 import { QueueService } from './queue.service';
@@ -139,8 +140,22 @@ export class QueueController {
     description: 'Filter jobs by library ID',
     example: 'clq8x9z8x0001qh8x9z8x0001',
   })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (1-indexed)',
+    example: 1,
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of items per page',
+    example: 20,
+    type: Number,
+  })
   @ApiOkResponse({
-    description: 'List of jobs retrieved successfully',
+    description: 'Paginated list of jobs retrieved successfully',
     type: [CreateJobDto],
   })
   @ApiInternalServerErrorResponse({
@@ -150,9 +165,14 @@ export class QueueController {
     @Query('stage') stage?: JobStage,
     @Query('nodeId') nodeId?: string,
     @Query('search') search?: string,
-    @Query('libraryId') libraryId?: string
-  ): Promise<Job[]> {
-    return this.queueService.findAll(stage, nodeId, search, libraryId);
+    @Query('libraryId') libraryId?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ): Promise<{ jobs: Job[]; total: number; page: number; limit: number; totalPages: number }> {
+    // Convert string query params to numbers if present
+    const pageNum = page ? Number(page) : undefined;
+    const limitNum = limit ? Number(limit) : undefined;
+    return this.queueService.findAll(stage, nodeId, search, libraryId, pageNum, limitNum);
   }
 
   /**
@@ -291,8 +311,15 @@ export class QueueController {
     // Get the requested preview path (1-indexed to 0-indexed)
     const previewPath = previewPaths[previewIndex - 1];
 
+    // BUGFIX: Return 204 No Content instead of 404 when preview doesn't exist
+    // This prevents error spam in logs for jobs with old/stale preview paths
+    // Frontend already handles image loading errors gracefully
     if (!previewPath || !existsSync(previewPath)) {
-      throw new NotFoundException(`Preview image ${previewIndex} not yet generated for this job`);
+      this.logger.debug(
+        `Preview image ${previewIndex} not available for job ${id} (path: ${previewPath || 'undefined'})`
+      );
+      res.status(204).send();
+      return;
     }
 
     // Serve the image file
@@ -417,6 +444,17 @@ export class QueueController {
           timeout: 10000, // 10 second timeout (seeking can take time on large files)
         }
       );
+
+      // BUGFIX: Verify file exists before saving path to database
+      // This prevents empty placeholders from appearing in the UI
+      if (!existsSync(manualPreviewPath)) {
+        this.logger.error('Manual preview file not found after FFmpeg extraction', {
+          jobId: job.id,
+          manualPreviewPath,
+          timestampSeconds,
+        });
+        throw new BadRequestException('Preview file not created. FFmpeg may have failed silently.');
+      }
 
       this.logger.log(
         `Preview captured successfully for job ${job.id} at ${timestampSeconds.toFixed(1)}s (${job.progress}%)`
@@ -859,6 +897,39 @@ export class QueueController {
   }
 
   /**
+   * Force recheck a job's health status
+   */
+  @Post(':id/recheck')
+  @ApiOperation({
+    summary: 'Force recheck health status for a job',
+    description:
+      'Clears health check data and forces the job through health check again.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Clears all health check data (status, score, message, etc.)\n' +
+      '2. Clears decision data if present\n' +
+      '3. Resets job to DETECTED stage\n' +
+      '4. Health check worker picks it up within 2 seconds\n\n' +
+      '**Use Case**: Testing health check system, forcing re-analysis after code changes',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job health check cleared and reset to DETECTED',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while rechecking job',
+  })
+  async recheckHealth(@Param('id') id: string): Promise<Job> {
+    return this.queueService.recheckHealth(id);
+  }
+
+  /**
    * Force start a queued job immediately
    */
   @Post(':id/force-start')
@@ -1099,6 +1170,55 @@ export class QueueController {
   })
   async recheckJob(@Param('id') id: string): Promise<Job> {
     return this.queueService.recheckFailedJob(id);
+  }
+
+  /**
+   * Resolve user decision for a job requiring action
+   */
+  @Post(':id/resolve-decision')
+  @ApiOperation({
+    summary: 'Resolve health check decision',
+    description:
+      'Resolves a user decision for a job in NEEDS_DECISION stage.\n\n' +
+      '**When Required**:\n' +
+      '- Job has blocker health check issues requiring user input\n' +
+      '- Examples: AC3 audio incompatible with MP4 container, resolution exceeds limits\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Validates job is in NEEDS_DECISION stage\n' +
+      '2. Saves user decision data (e.g., "remux to MKV" or "proceed anyway")\n' +
+      '3. Clears decision flags\n' +
+      '4. Moves job to QUEUED stage for processing\n\n' +
+      '**Decision Data Format**:\n' +
+      '```json\n' +
+      '{\n' +
+      '  "audio_codec_incompatible": "remux_to_mkv",\n' +
+      '  "resolution_too_high": "proceed_anyway"\n' +
+      '}\n' +
+      '```\n\n' +
+      '**Use Case**: User reviews health check issues in UI and selects how to proceed with encoding',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'cmhk7s91m003rrz53eqrwruyf',
+  })
+  @ApiOkResponse({
+    description: 'Decision resolved successfully, job moved to QUEUED',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Job is not in NEEDS_DECISION stage',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while resolving decision',
+  })
+  async resolveDecision(
+    @Param('id') id: string,
+    @Body() resolveDecisionDto: ResolveDecisionDto
+  ): Promise<Job> {
+    return this.queueService.resolveDecision(id, resolveDecisionDto.decisionData);
   }
 
   /**
