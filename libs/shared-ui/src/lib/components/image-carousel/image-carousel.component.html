@@ -1,0 +1,99 @@
+<div
+  class="carousel-container"
+  [class.fullscreen]="fullscreen"
+  (click)="onBackdropClick($event)">
+  @if (fullscreen) {
+    <div class="carousel-controls">
+      <button class="zoom-button" (click)="zoomOut()" [disabled]="zoomLevel <= minZoom" aria-label="Zoom out">
+        <i class="fas fa-search-minus"></i>
+      </button>
+      <span class="zoom-level">{{ (zoomLevel * 100).toFixed(0) }}%</span>
+      <button class="zoom-button" (click)="zoomIn()" [disabled]="zoomLevel >= maxZoom" aria-label="Zoom in">
+        <i class="fas fa-search-plus"></i>
+      </button>
+      <button class="zoom-button reset-zoom" (click)="resetZoom()" [disabled]="zoomLevel === 1" aria-label="Reset zoom">
+        <i class="fas fa-compress-arrows-alt"></i>
+      </button>
+    </div>
+    <button class="close-button" (click)="closeCarousel()" aria-label="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  }
+
+  <div class="carousel-main">
+    @if (images.length > 1) {
+      <button
+        class="carousel-nav prev"
+        (click)="previous()"
+        aria-label="Previous image">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+    }
+
+    <!-- Previous image preview (fullscreen only) -->
+    @if (fullscreen && images.length > 1) {
+      <div class="carousel-side-preview prev" (click)="previous()">
+        <img
+          [src]="getPreviousImage().src"
+          [alt]="getPreviousImage().alt" />
+      </div>
+    }
+
+    <div class="carousel-viewport">
+      @if (images.length > 0) {
+        <div class="carousel-image-wrapper">
+          <img
+            [src]="images[currentIndex].src"
+            [alt]="images[currentIndex].alt"
+            class="carousel-image"
+            [style.transform]="fullscreen ? getImageTransform() : 'none'"
+            (click)="onImageClick()" />
+          @if (images[currentIndex].label) {
+            <div class="image-label">
+              {{ images[currentIndex].label }}
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="no-images">
+          <i class="fas fa-images"></i>
+          <span>No images available</span>
+        </div>
+      }
+    </div>
+
+    <!-- Next image preview (fullscreen only) -->
+    @if (fullscreen && images.length > 1) {
+      <div class="carousel-side-preview next" (click)="next()">
+        <img
+          [src]="getNextImage().src"
+          [alt]="getNextImage().alt" />
+      </div>
+    }
+
+    @if (images.length > 1) {
+      <button class="carousel-nav next" (click)="next()" aria-label="Next image">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    }
+  </div>
+
+  @if (showThumbnails && images.length > 1) {
+    <div class="carousel-thumbnails">
+      @for (image of images; track $index) {
+        <button
+          #thumbnail
+          class="thumbnail"
+          [class.active]="currentIndex === $index"
+          (click)="goToIndex($index)"
+          [attr.aria-label]="'Go to image ' + ($index + 1)">
+          <img [src]="image.src" [alt]="image.alt" />
+        </button>
+      }
+    </div>
+  }
+
+  @if (images.length > 1) {
+    <div class="carousel-counter">{{ currentIndex + 1 }} / {{ images.length }}</div>
+  }
+</div>
