@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommonModule } from './common/common.module';
 import { DatabaseInitService } from './database/database-init.service';
+import { DiscoveryModule } from './discovery/discovery.module';
 import { EncodingModule } from './encoding/encoding.module';
 import { FilesystemModule } from './filesystem/filesystem.module';
 import { HealthModule } from './health/health.module';
@@ -17,12 +18,14 @@ import { LicenseModule } from './license/license.module';
 import { LicensesModule } from './licenses/licenses.module';
 import { MediaStatsModule } from './media-stats/media-stats.module';
 import { NodesModule } from './nodes/nodes.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OverviewModule } from './overview/overview.module';
 import { PoliciesModule } from './policies/policies.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { SettingsModule } from './settings/settings.module';
 import { SetupModule } from './setup/setup.module';
+import { SyncModule } from './sync/sync.module';
 import { SystemModule } from './system/system.module';
 
 @Module({
@@ -44,8 +47,10 @@ import { SystemModule } from './system/system.module';
     PrismaModule,
     CommonModule,
     AuthModule,
+    DiscoveryModule,
     HealthModule,
     MediaStatsModule,
+    NotificationsModule,
     PoliciesModule,
     LicenseModule,
     LicensesModule,
@@ -57,6 +62,7 @@ import { SystemModule } from './system/system.module';
     QueueModule,
     SettingsModule,
     SetupModule,
+    SyncModule,
     EncodingModule,
     SystemModule,
   ],
