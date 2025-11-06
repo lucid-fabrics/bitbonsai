@@ -10,6 +10,7 @@ import {
   faFolderOpen,
   faGear,
   faListCheck,
+  faRadar,
   faServer,
   faSignOutAlt,
   faSliders,
@@ -67,6 +68,7 @@ export class SidebarComponent implements OnInit {
     { label: 'Libraries', icon: faFolderOpen, route: '/libraries', mainNodeOnly: true },
     { label: 'Policies', icon: faSliders, route: '/policies', mainNodeOnly: true },
     { label: 'Nodes', icon: faServer, route: '/nodes', mainNodeOnly: true },
+    { label: 'Discovery', icon: faRadar, route: '/discovery', mainNodeOnly: true },
     { label: 'Insights', icon: faChartBar, route: '/insights', mainNodeOnly: true },
     { label: 'Settings', icon: faGear, route: '/settings' },
   ];

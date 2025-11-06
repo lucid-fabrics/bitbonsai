@@ -77,7 +77,7 @@ export class ToastService {
     // Add close button
     const closeBtn = document.createElement('button');
     closeBtn.className = 'toast-close';
-    closeBtn.innerHTML = '×';
+    closeBtn.textContent = '×'; // Use textContent instead of innerHTML to prevent XSS
     closeBtn.onclick = () => this.removeToast(toast);
     toast.appendChild(closeBtn);
 

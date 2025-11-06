@@ -47,4 +47,7 @@ export interface QueueJob {
   decisionIssues?: string | null; // JSON array of HealthCheckIssue objects requiring decisions
   decisionMadeAt?: string | null; // When user resolved the decision
   decisionData?: string | null; // JSON object with user's decision choices
+  // File Missing Badge Feature
+  stage?: string; // Job stage from backend (FAILED, QUEUED, etc.)
+  fileExists?: boolean; // Does the source file still exist on disk? (for FAILED jobs)
 }

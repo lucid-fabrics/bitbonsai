@@ -48,11 +48,6 @@
             class="carousel-image"
             [style.transform]="fullscreen ? getImageTransform() : 'none'"
             (click)="onImageClick()" />
-          @if (images[currentIndex].label) {
-            <div class="image-label">
-              {{ images[currentIndex].label }}
-            </div>
-          }
         </div>
       } @else {
         <div class="no-images">
