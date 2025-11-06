@@ -1,0 +1,188 @@
+#!/bin/bash
+set -e
+
+PROXMOX_HOST="${1:-pve-mirna}"
+PROXMOX_IP="${2:-192.168.1.2}"
+CONTAINER_ID="${3:-200}"
+CONTAINER_HOSTNAME="bitbonsai"
+
+echo "=========================================="
+echo "BitBonsai LXC Deployment to Proxmox"
+echo "=========================================="
+echo "Target: $PROXMOX_HOST ($PROXMOX_IP)"
+echo "Container ID: $CONTAINER_ID"
+echo "=========================================="
+echo ""
+
+# Check if we're in the right directory
+if [ ! -f "deploy-to-proxmox.sh" ]; then
+  echo "Error: Must run from deploy-lxc directory"
+  exit 1
+fi
+
+# Package the application (exclude node_modules, dist, etc.)
+echo "[1/7] Packaging BitBonsai application..."
+cd ..
+tar czf deploy-lxc/app/bitbonsai.tar.gz \
+  --exclude='node_modules' \
+  --exclude='dist' \
+  --exclude='.nx' \
+  --exclude='.git' \
+  --exclude='deploy-lxc' \
+  --exclude='data' \
+  apps/ \
+  libs/ \
+  prisma/ \
+  package.json \
+  package-lock.json \
+  nx.json \
+  tsconfig.base.json
+
+cd deploy-lxc
+
+echo "   Package size: $(du -h app/bitbonsai.tar.gz | cut -f1)"
+
+# Copy deployment package to Proxmox
+echo "[2/7] Copying deployment package to Proxmox..."
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "mkdir -p /tmp/bitbonsai-deploy"
+scp -i ~/.ssh/pve_ai_key -r * root@$PROXMOX_IP:/tmp/bitbonsai-deploy/
+
+# Create and configure LXC container
+echo "[3/7] Creating LXC container..."
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+set -e
+
+CONTAINER_ID=200
+CONTAINER_HOSTNAME="bitbonsai"
+TEMPLATE="local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+
+# Download Ubuntu 24.04 template if not exists
+if ! pveam list local | grep -q "ubuntu-24.04-standard"; then
+  echo "   Downloading Ubuntu 24.04 LXC template..."
+  pveam download local ubuntu-24.04-standard_24.04-2_amd64.tar.zst
+fi
+
+# Remove existing container if exists
+if pct status $CONTAINER_ID &>/dev/null; then
+  echo "   Removing existing container $CONTAINER_ID..."
+  pct stop $CONTAINER_ID || true
+  pct destroy $CONTAINER_ID || true
+fi
+
+# Create new container
+echo "   Creating container $CONTAINER_ID..."
+pct create $CONTAINER_ID $TEMPLATE \
+  --hostname $CONTAINER_HOSTNAME \
+  --cores 4 \
+  --memory 4096 \
+  --swap 2048 \
+  --storage local-lvm \
+  --rootfs local-lvm:32 \
+  --net0 name=eth0,bridge=vmbr0,firewall=1,ip=dhcp \
+  --features nesting=1 \
+  --unprivileged 1 \
+  --start 1 \
+  --onboot 1
+
+# Wait for container to start
+echo "   Waiting for container to start..."
+sleep 10
+
+# Wait for network
+pct exec $CONTAINER_ID -- bash -c "
+  for i in {1..30}; do
+    if ping -c 1 8.8.8.8 &>/dev/null; then
+      echo '   Network is up'
+      break
+    fi
+    echo '   Waiting for network... ($i/30)'
+    sleep 2
+  done
+"
+REMOTE_SCRIPT
+
+# Install system dependencies
+echo "[4/7] Installing system dependencies in container..."
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+set -e
+
+CONTAINER_ID=200
+
+# Copy installation script
+pct push $CONTAINER_ID /tmp/bitbonsai-deploy/scripts/install.sh /tmp/install.sh
+
+# Run installation
+pct exec $CONTAINER_ID -- bash /tmp/install.sh
+
+# Install nginx
+pct exec $CONTAINER_ID -- apt-get install -y nginx
+REMOTE_SCRIPT
+
+# Deploy application
+echo "[5/7] Deploying application..."
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+set -e
+
+CONTAINER_ID=200
+
+# Extract application
+pct push $CONTAINER_ID /tmp/bitbonsai-deploy/app/bitbonsai.tar.gz /opt/bitbonsai.tar.gz
+pct exec $CONTAINER_ID -- tar xzf /opt/bitbonsai.tar.gz -C /opt/bitbonsai/
+pct exec $CONTAINER_ID -- rm /opt/bitbonsai.tar.gz
+
+# Run deployment script
+pct push $CONTAINER_ID /tmp/bitbonsai-deploy/scripts/deploy-app.sh /tmp/deploy-app.sh
+pct exec $CONTAINER_ID -- bash /tmp/deploy-app.sh
+REMOTE_SCRIPT
+
+# Configure services
+echo "[6/7] Configuring systemd services..."
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+set -e
+
+CONTAINER_ID=200
+
+# Install backend service
+pct push $CONTAINER_ID /tmp/bitbonsai-deploy/config/bitbonsai-backend.service /etc/systemd/system/bitbonsai-backend.service
+
+# Install nginx config
+pct push $CONTAINER_ID /tmp/bitbonsai-deploy/config/bitbonsai-frontend.conf /etc/nginx/sites-available/bitbonsai
+pct exec $CONTAINER_ID -- ln -sf /etc/nginx/sites-available/bitbonsai /etc/nginx/sites-enabled/bitbonsai
+pct exec $CONTAINER_ID -- rm -f /etc/nginx/sites-enabled/default
+
+# Enable and start services
+pct exec $CONTAINER_ID -- systemctl daemon-reload
+pct exec $CONTAINER_ID -- systemctl enable bitbonsai-backend
+pct exec $CONTAINER_ID -- systemctl start bitbonsai-backend
+pct exec $CONTAINER_ID -- systemctl restart nginx
+
+# Generate JWT secret
+JWT_SECRET=$(openssl rand -base64 32)
+pct exec $CONTAINER_ID -- bash -c "echo 'JWT_SECRET=$JWT_SECRET' >> /opt/bitbonsai/.env"
+REMOTE_SCRIPT
+
+# Get container IP
+echo "[7/7] Getting container information..."
+CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I | awk '{print \$1}'")
+
+echo ""
+echo "=========================================="
+echo "Deployment Complete!"
+echo "=========================================="
+echo "Container ID: $CONTAINER_ID"
+echo "Container IP: $CONTAINER_IP"
+echo "Frontend URL: http://$CONTAINER_IP"
+echo "Backend API: http://$CONTAINER_IP/api"
+echo ""
+echo "SSH Access:"
+echo "  ssh root@$CONTAINER_IP"
+echo "  Password: bitbonsai"
+echo ""
+echo "BitBonsai Web Credentials:"
+echo "  Username: admin"
+echo "  Password: admin"
+echo ""
+echo "To access from Proxmox host:"
+echo "  ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP"
+echo "  pct enter $CONTAINER_ID"
+echo "=========================================="
