@@ -10,8 +10,11 @@ import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import {
   BehaviorSubject,
   catchError,
+  filter,
+  fromEvent,
   interval,
   map,
+  merge,
   type Observable,
   of,
   shareReplay,
@@ -259,8 +262,23 @@ export class QueueComponent implements OnInit {
   }
 
   private startPolling(): void {
-    interval(5000)
-      .pipe(startWith(0), takeUntilDestroyed(this.destroyRef))
+    // Create visibility change observable
+    const visibilityChange$ = fromEvent(document, 'visibilitychange').pipe(
+      startWith(null), // Emit immediately on subscription
+      map(() => document.visibilityState === 'visible')
+    );
+
+    // Poll only when page is visible
+    visibilityChange$
+      .pipe(
+        switchMap(
+          (isVisible) =>
+            isVisible
+              ? interval(5000).pipe(startWith(0)) // Poll immediately and every 5s when visible
+              : [] // Stop polling when hidden
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe(() => {
         // Silent refresh for polling - don't show loading spinner
         this.refreshTrigger$.next({ showLoading: false });

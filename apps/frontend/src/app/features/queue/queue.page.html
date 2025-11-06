@@ -308,6 +308,15 @@
                       <i class="fas fa-shield-alt"></i> Auto-Healed
                     </span>
                   }
+                  @if (job.stage === 'FAILED' && job.fileExists === false) {
+                    <span class="file-missing-badge"
+                          bbTooltip
+                          tooltipTitle="File Missing"
+                          tooltipContent="Source file no longer exists at original location. File may have been moved, renamed, or deleted by media server."
+                          tooltipPlacement="top">
+                      <i class="fas fa-exclamation-triangle"></i> File Missing
+                    </span>
+                  }
                 </td>
                 <td class="col-library">{{ job.libraryName }}</td>
                 <td class="col-codec">

@@ -16,11 +16,18 @@ import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 import { NodeService } from './core/services/node.service';
 import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
+import { NotificationContainerComponent } from './shared/components/notification-container/notification-container.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SidebarComponent, ApiConnectionErrorComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    SidebarComponent,
+    ApiConnectionErrorComponent,
+    NotificationContainerComponent,
+  ],
   template: `
     @if (showLayout()) {
       <div class="app-layout">
@@ -33,6 +40,7 @@ import { ApiConnectionErrorComponent } from './shared/components/api-connection-
       <router-outlet />
     }
     <app-api-connection-error />
+    <app-notification-container />
   `,
   styles: [
     `

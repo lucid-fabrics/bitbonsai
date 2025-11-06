@@ -34,6 +34,14 @@ export const routes: Routes = [
     // Setup guard will redirect away if setup is already complete
   },
   {
+    path: 'node-setup',
+    loadComponent: () =>
+      import('./features/node-setup/node-setup-wizard.component').then(
+        (m) => m.NodeSetupWizardComponent
+      ),
+    // Child node setup wizard - no guards (public access for initial setup)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginComponent),
     canActivate: [setupGuard],
@@ -66,6 +74,12 @@ export const routes: Routes = [
   {
     path: 'nodes',
     loadComponent: () => import('./features/nodes/nodes.page').then((m) => m.NodesComponent),
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
+  },
+  {
+    path: 'discovery',
+    loadComponent: () =>
+      import('./features/discovery/discovery.page').then((m) => m.DiscoveryComponent),
     canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {

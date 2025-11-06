@@ -2704,6 +2704,35 @@
   }
 }
 
+.file-missing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  margin-left: 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  cursor: help;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  i {
+    color: #ef4444;
+    font-size: 9px;
+  }
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+  }
+}
+
 // Size & Compression Display
 .size-info {
   display: flex;

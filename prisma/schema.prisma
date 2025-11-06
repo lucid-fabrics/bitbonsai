@@ -54,6 +54,13 @@ enum NodeStatus {
   ERROR
 }
 
+enum SyncStatus {
+  PENDING
+  SYNCING
+  COMPLETED
+  FAILED
+}
+
 enum AccelerationType {
   CPU
   INTEL_QSV
@@ -208,6 +215,12 @@ model Node {
   maxWorkers       Int              @default(1) // Number of concurrent encoding jobs
   cpuLimit         Int              @default(80) // Maximum CPU usage percentage (1-100)
 
+  // Policy Sync Fields (Child Node Configuration)
+  lastSyncedAt   DateTime?   // When policies/settings were last synced to this child node
+  syncStatus     SyncStatus  @default(PENDING) // Current sync status (PENDING, SYNCING, COMPLETED, FAILED)
+  syncRetryCount Int         @default(0) // Number of sync retry attempts (max 3)
+  syncError      String?     // Error message if sync failed
+
   // Relations
   licenseId String
   license   License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
@@ -223,6 +236,7 @@ model Node {
   @@index([role])
   @@index([licenseId])
   @@index([lastHeartbeat])
+  @@index([syncStatus])
   @@map("nodes")
 }
 

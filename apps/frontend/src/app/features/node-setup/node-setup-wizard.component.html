@@ -1,0 +1,347 @@
+<div class="wizard-container">
+  <!-- Progress Bar -->
+  <div class="wizard-progress">
+    <div class="progress-bar">
+      <div
+        class="progress-fill"
+        [style.width.%]="(currentStep() / 4) * 100"
+      ></div>
+    </div>
+    <div class="progress-steps">
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Welcome"
+        [class.current]="currentStep() === WizardStep.Welcome"
+      >
+        <div class="step-number">1</div>
+        <div class="step-label">Welcome</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Scanning"
+        [class.current]="currentStep() === WizardStep.Scanning"
+      >
+        <div class="step-number">2</div>
+        <div class="step-label">Scan</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.SelectNode"
+        [class.current]="currentStep() === WizardStep.SelectNode"
+      >
+        <div class="step-number">3</div>
+        <div class="step-label">Select</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Pairing"
+        [class.current]="currentStep() === WizardStep.Pairing"
+      >
+        <div class="step-number">4</div>
+        <div class="step-label">Connect</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Complete"
+        [class.current]="currentStep() === WizardStep.Complete"
+      >
+        <div class="step-number">5</div>
+        <div class="step-label">Done</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Welcome -->
+  @if (currentStep() === WizardStep.Welcome) {
+    <div class="wizard-step step-welcome">
+      <div class="welcome-icon">
+        <i class="fa-solid fa-network-wired"></i>
+      </div>
+      <h1>Connect to Main Node</h1>
+      <p class="welcome-description">
+        Let's connect this child node to your BitBonsai main node. We'll scan your network
+        to find available main nodes and establish a secure connection.
+      </p>
+      <div class="welcome-features">
+        <div class="feature">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Automatic network discovery</span>
+        </div>
+        <div class="feature">
+          <i class="fa-solid fa-lock"></i>
+          <span>Secure pairing process</span>
+        </div>
+        <div class="feature">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span>Hardware detection</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-large" (click)="startWizard()">
+        <i class="fa-solid fa-radar"></i>
+        Scan for Nodes
+      </button>
+    </div>
+  }
+
+  <!-- Step 2: Scanning -->
+  @if (currentStep() === WizardStep.Scanning) {
+    <div class="wizard-step step-scanning">
+      @if (isScanning()) {
+        <div class="scanning-animation">
+          <div class="radar">
+            <div class="radar-ping"></div>
+            <div class="radar-ping radar-ping-2"></div>
+            <div class="radar-ping radar-ping-3"></div>
+            <div class="radar-center">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+          </div>
+        </div>
+        <h2>Scanning Network</h2>
+        <p class="scanning-description">
+          Looking for BitBonsai main nodes on your local network...
+        </p>
+        <div class="discovered-count">
+          @if (discoveredNodes().length > 0) {
+            <div class="count-badge pulse">
+              {{ discoveredNodes().length }}
+              {{ discoveredNodes().length === 1 ? 'node' : 'nodes' }} found
+            </div>
+          }
+        </div>
+      } @else {
+        @if (errorMessage()) {
+          <div class="scan-error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <h2>No Nodes Found</h2>
+            <p class="error-message">{{ errorMessage() }}</p>
+            <div class="error-actions">
+              <button class="btn btn-primary" (click)="retryScan()">
+                <i class="fa-solid fa-rotate-right"></i>
+                Retry Scan
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="scan-complete">
+            <i class="fa-solid fa-circle-check"></i>
+            <h2>Scan Complete</h2>
+            <p class="success-message">
+              Found {{ discoveredNodes().length }}
+              {{ discoveredNodes().length === 1 ? 'main node' : 'main nodes' }}
+            </p>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- Step 3: Select Node -->
+  @if (currentStep() === WizardStep.SelectNode) {
+    <div class="wizard-step step-select">
+      <h2>Select Main Node</h2>
+      <p class="select-description">
+        Choose which main node you want to connect to:
+      </p>
+
+      <div class="nodes-list">
+        @for (node of discoveredNodes(); track node.id) {
+          <div
+            class="node-card"
+            [class.selected]="selectedNodeId() === node.id"
+            (click)="selectNode(node.id)"
+          >
+            <div class="node-header">
+              <div class="node-icon">
+                <i class="fa-solid fa-server"></i>
+              </div>
+              <div class="node-info">
+                <h3>{{ node.name }}</h3>
+                <div class="node-address">{{ node.ipAddress }}:{{ node.port }}</div>
+              </div>
+              <div class="node-selection">
+                @if (selectedNodeId() === node.id) {
+                  <i class="fa-solid fa-circle-check"></i>
+                } @else {
+                  <i class="fa-regular fa-circle"></i>
+                }
+              </div>
+            </div>
+            <div class="node-details">
+              <div class="detail">
+                <i class="fa-solid fa-microchip"></i>
+                <span>{{ NodeBo.getAccelerationLabel(node.acceleration) }}</span>
+              </div>
+              <div class="detail">
+                <i class="fa-solid fa-memory"></i>
+                <span>{{ node.cpuCores }} cores, {{ node.totalMemoryGB }}GB RAM</span>
+              </div>
+              <div class="detail">
+                <i class="fa-solid fa-code-branch"></i>
+                <span>v{{ node.version }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (selectedNode()) {
+        <div class="node-name-input">
+          <label for="childNodeName">Give this child node a name:</label>
+          <input
+            type="text"
+            id="childNodeName"
+            [(ngModel)]="childNodeName"
+            placeholder="e.g., Encoding Node 1"
+            class="input"
+          />
+          <p class="input-hint">
+            This name will identify this node in the main node's dashboard
+          </p>
+        </div>
+      }
+
+      <div class="step-actions">
+        <button class="btn btn-secondary" (click)="goBack()">
+          <i class="fa-solid fa-arrow-left"></i>
+          Back
+        </button>
+        <button
+          class="btn btn-primary"
+          [disabled]="!canProceedToPairing()"
+          (click)="proceedToPairing()"
+        >
+          Connect
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 4: Pairing -->
+  @if (currentStep() === WizardStep.Pairing) {
+    <div class="wizard-step step-pairing">
+      @if (errorMessage()) {
+        <div class="pairing-error">
+          <i class="fa-solid fa-circle-xmark"></i>
+          <h2>Connection Failed</h2>
+          <p class="error-message">{{ errorMessage() }}</p>
+          <div class="error-actions">
+            <button class="btn btn-secondary" (click)="goBack()">
+              <i class="fa-solid fa-arrow-left"></i>
+              Go Back
+            </button>
+            <button class="btn btn-primary" (click)="initiatePairing()">
+              <i class="fa-solid fa-rotate-right"></i>
+              Retry
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="pairing-animation">
+          <div class="connecting-icon">
+            <i class="fa-solid fa-link"></i>
+          </div>
+        </div>
+
+        <h2>Requesting Connection</h2>
+        <p class="pairing-description">
+          Sending pairing request to
+          <strong>{{ selectedNode()?.name }}</strong>...
+        </p>
+
+        @if (pairingCode()) {
+          <div class="pairing-code-section">
+            <p class="code-label">Pairing Code:</p>
+            <div class="pairing-code">{{ pairingCode() }}</div>
+            <p class="code-hint">
+              Enter this code on the main node to approve the connection
+            </p>
+          </div>
+        }
+
+        @if (pairingStatus() === PairingStatus.WAITING_APPROVAL) {
+          <div class="waiting-approval">
+            <div class="spinner"></div>
+            <p>Waiting for approval from main node...</p>
+            <div class="timeout-progress">
+              <div class="timeout-bar">
+                <div
+                  class="timeout-fill"
+                  [style.width.%]="pairingTimeoutProgress()"
+                ></div>
+              </div>
+              <p class="timeout-text">
+                {{ 120 - pairingElapsedSeconds() }}s remaining
+              </p>
+            </div>
+          </div>
+        }
+
+        <div class="step-actions">
+          <button class="btn btn-secondary" (click)="goBack()">
+            <i class="fa-solid fa-xmark"></i>
+            Cancel
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Step 5: Complete -->
+  @if (currentStep() === WizardStep.Complete) {
+    <div class="wizard-step step-complete">
+      <div class="success-icon">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <h1>Connection Successful!</h1>
+      <p class="success-description">
+        Successfully connected to
+        <strong>{{ connectedMainNode()?.name || 'main node' }}</strong>
+      </p>
+
+      @if (hardwareDetection()) {
+        <div class="hardware-summary">
+          <h3>Hardware Detection Summary</h3>
+          <div class="hardware-grid">
+            <div class="hardware-item">
+              <i class="fa-solid fa-microchip"></i>
+              <div class="hardware-info">
+                <div class="hardware-label">Acceleration</div>
+                <div class="hardware-value">
+                  {{ NodeBo.getAccelerationLabel(hardwareDetection()!.acceleration) }}
+                </div>
+              </div>
+            </div>
+            <div class="hardware-item">
+              <i class="fa-solid fa-memory"></i>
+              <div class="hardware-info">
+                <div class="hardware-label">CPU Cores</div>
+                <div class="hardware-value">{{ hardwareDetection()!.cpuCores }}</div>
+              </div>
+            </div>
+            <div class="hardware-item">
+              <i class="fa-solid fa-server"></i>
+              <div class="hardware-info">
+                <div class="hardware-label">Memory</div>
+                <div class="hardware-value">{{ hardwareDetection()!.totalMemoryGB }} GB</div>
+              </div>
+            </div>
+            <div class="hardware-item">
+              <i class="fa-solid fa-hard-drive"></i>
+              <div class="hardware-info">
+                <div class="hardware-label">Available Disk</div>
+                <div class="hardware-value">{{ hardwareDetection()!.availableDiskGB }} GB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <button class="btn btn-primary btn-large" (click)="completeWizard()">
+        <i class="fa-solid fa-rocket"></i>
+        Start Encoding
+      </button>
+    </div>
+  }
+</div>
