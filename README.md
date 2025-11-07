@@ -257,6 +257,100 @@ docker run -d \
   lucidfabrics/bitbonsai-worker:latest
 ```
 
+### Node Discovery & Pairing
+
+BitBonsai supports **two methods** for connecting child nodes to your MAIN node:
+
+#### 1. Auto-Discovery (mDNS/Bonjour) - Recommended
+
+**How it works:**
+- MAIN node broadcasts its presence on the local network using mDNS (`_bitbonsai._tcp.local`)
+- Child nodes scan for available MAIN nodes
+- User selects from discovered nodes and enters pairing code
+- Fully automated - no manual IP address entry required
+
+**Docker Configuration Requirement:**
+> ⚠️ **CRITICAL**: mDNS broadcasts **only work with host networking mode**
+
+For auto-discovery to function, your MAIN node Docker container must use `--network=host`:
+
+```bash
+# MAIN node with auto-discovery enabled
+docker run -d \
+  --name=bitbonsai \
+  --network=host \           # Required for mDNS broadcasts
+  --restart=unless-stopped \
+  -e TZ=America/New_York \
+  -v /mnt/user/media:/media \
+  -v /mnt/user/appdata/bitbonsai:/data \
+  lucidfabrics/bitbonsai:latest
+```
+
+**Docker Compose with host networking:**
+```yaml
+services:
+  bitbonsai:
+    image: lucidfabrics/bitbonsai:latest
+    network_mode: host        # Required for mDNS
+    restart: unless-stopped
+    environment:
+      - TZ=America/New_York
+    volumes:
+      - /mnt/user/media:/media
+      - /mnt/user/appdata/bitbonsai:/data
+```
+
+**When to use:**
+- Single subnet/VLAN (mDNS doesn't cross VLANs)
+- You control the Docker host configuration
+- Prefer automatic node discovery
+- All nodes on same local network
+
+#### 2. Manual Pairing - Universal
+
+**How it works:**
+- User manually enters MAIN node URL (e.g., `http://192.168.1.100:4210`)
+- Child node requests pairing token from MAIN node
+- User enters pairing code
+- Works across any network configuration
+
+**No special Docker configuration required** - works with bridge networking:
+
+```bash
+# MAIN node with manual pairing (bridge networking)
+docker run -d \
+  --name=bitbonsai \
+  --restart=unless-stopped \
+  -p 3000:3000 \              # Standard port mapping
+  -e TZ=America/New_York \
+  -v /mnt/user/media:/media \
+  -v /mnt/user/appdata/bitbonsai:/data \
+  lucidfabrics/bitbonsai:latest
+```
+
+**When to use:**
+- Docker bridge networking (default)
+- Nodes across different VLANs/subnets
+- Remote nodes over VPN/WireGuard
+- Firewall restrictions prevent mDNS
+- Kubernetes/orchestrated deployments
+
+#### Comparison
+
+| Feature | Auto-Discovery (mDNS) | Manual Pairing |
+|---------|----------------------|----------------|
+| **Docker Networking** | Requires `--network=host` | Works with bridge mode |
+| **Setup Complexity** | Automatic (scan & select) | Manual (enter IP/URL) |
+| **Cross-VLAN Support** | ❌ No | ✅ Yes |
+| **VPN/Remote Nodes** | ❌ No | ✅ Yes |
+| **Firewall Friendly** | ⚠️ mDNS port 5353/UDP | ✅ Standard HTTP/HTTPS |
+| **Best For** | Home networks, single subnet | Enterprise, VLANs, remote nodes |
+
+**Recommendation:**
+- **Home/lab networks**: Use auto-discovery with `--network=host` for convenience
+- **Production/enterprise**: Use manual pairing for better security and firewall control
+- **Mixed environments**: MAIN node supports both simultaneously - users choose at setup time
+
 ---
 
 ## How It Works
@@ -688,6 +782,12 @@ A: BitBonsai's TRUE RESUME system automatically detects interrupted jobs and res
 
 **Q: How does Auto-Heal work?**
 A: On startup, BitBonsai scans for orphaned jobs (ENCODING, HEALTH_CHECK, VERIFYING states). It validates temp files, calculates resume positions, and automatically requeues jobs. The 4-layer system handles Docker volume mount race conditions, ensuring reliability on Unraid, Docker Compose, and Kubernetes.
+
+**Q: Why can't my child node discover the MAIN node?**
+A: mDNS auto-discovery requires `--network=host` on your MAIN node Docker container. Standard bridge networking blocks mDNS broadcasts. If you can't use host networking (e.g., Unraid, Docker Compose with port conflicts), use the **Manual Pairing** option instead - it works across any network configuration. See [Node Discovery & Pairing](#node-discovery--pairing) for details.
+
+**Q: Can I use both auto-discovery and manual pairing?**
+A: Yes! The MAIN node supports both methods simultaneously. Child nodes can choose their preferred method during setup. Auto-discovery is easier for home networks, while manual pairing works across VLANs, VPNs, and complex network topologies.
 
 ---
 

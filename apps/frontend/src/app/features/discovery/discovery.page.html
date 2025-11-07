@@ -1,273 +1,194 @@
 <div class="discovery-container">
+  <!-- Header -->
   <div class="page-header">
-    <div>
-      <h1>Node Discovery</h1>
-      <p class="subtitle">
-        Discover and manage child nodes on your network
-      </p>
-    </div>
-    <div class="header-actions">
-      <button (click)="refreshDiscovery(true)" class="btn btn-secondary">
-        <i class="fas fa-sync-alt"></i>
-        Refresh
-      </button>
+    <div class="header-content">
+      <div class="header-left">
+        <h1>Discover MAIN Nodes</h1>
+        <p class="subtitle">Find and connect to an existing BitBonsai MAIN node on your network</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary" (click)="searchForMainNodes()" [disabled]="isSearching">
+          <i class="fas" [class.fa-spinner]="isSearching" [class.fa-spin]="isSearching" [class.fa-search]="!isSearching"></i>
+          {{ isSearching ? 'Searching...' : 'Search Again' }}
+        </button>
+      </div>
     </div>
   </div>
 
-  @if (discoveryData$ | async; as data) {
-    <!-- Discovered Nodes Panel -->
-    <div class="panel discovered-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <i class="fas fa-radar"></i>
-          <h2>Discovered Nodes</h2>
-          @if (getPendingNodes(data.discoveredNodes).length > 0) {
-            <span class="badge badge-pending">{{ getPendingNodes(data.discoveredNodes).length }}</span>
-          }
+  <!-- Error Alert -->
+  @if (error) {
+    <div class="error-alert">
+      <i class="fas fa-exclamation-circle"></i>
+      <span>{{ error }}</span>
+      <button class="close-btn" (click)="error = null">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  }
+
+  <!-- Current Registration Request Status -->
+  @if (currentRequest && currentRequest.status === RegistrationRequestStatus.PENDING) {
+    <div class="pending-request-card">
+      <div class="card-header">
+        <div class="status-indicator pulsing"></div>
+        <div class="header-content">
+          <h2>Registration Request Pending</h2>
+          <p>Waiting for MAIN node approval</p>
         </div>
-        <p class="panel-description">
-          New nodes detected on your network awaiting approval
-        </p>
       </div>
 
-      <div class="panel-body">
-        @if (getPendingNodes(data.discoveredNodes).length === 0) {
-          <div class="empty-state">
-            <div class="empty-icon">
-              <i class="fas fa-satellite-dish"></i>
-            </div>
-            <h3>No Nodes Discovered</h3>
-            <p>
-              New child nodes will appear here when they join your network.
-              Make sure child nodes are running and configured to connect to this main node.
-            </p>
+      <div class="card-body">
+        <div class="request-info">
+          <div class="info-row">
+            <span class="label">Pairing Token:</span>
+            <span class="value token">{{ currentRequest.pairingToken }}</span>
           </div>
-        } @else {
-          <div class="discovered-grid">
-            @for (node of getPendingNodes(data.discoveredNodes); track node.id) {
-              <div class="discovered-card" [class.recently-discovered]="DiscoveryNodeBo.isRecentlyDiscovered(node)">
-                @if (DiscoveryNodeBo.isRecentlyDiscovered(node)) {
-                  <div class="new-badge">
-                    <i class="fas fa-sparkles"></i>
-                    New
-                  </div>
-                }
-
-                <div class="card-header">
-                  <div class="node-info">
-                    <h3 class="node-name">{{ node.name }}</h3>
-                    <p class="node-address">{{ node.ipAddress }}:{{ node.port }}</p>
-                  </div>
-                  <div class="node-status">
-                    <span class="status-indicator pulsing"></span>
-                    <span class="status-text">Waiting</span>
-                  </div>
-                </div>
-
-                <div class="card-body">
-                  <div class="hardware-info">
-                    <div class="info-row">
-                      <i class="fas fa-microchip"></i>
-                      <span class="label">CPU:</span>
-                      <span class="value">{{ node.cpuModel }}</span>
-                    </div>
-                    <div class="info-row">
-                      <i class="fas fa-cube"></i>
-                      <span class="label">Cores:</span>
-                      <span class="value">{{ formatCores(node.cpuCores) }}</span>
-                    </div>
-                    <div class="info-row">
-                      <i class="fas fa-memory"></i>
-                      <span class="label">Memory:</span>
-                      <span class="value">{{ formatMemory(node.totalMemoryGB) }}</span>
-                    </div>
-                    <div class="info-row">
-                      <i [class]="'fas ' + DiscoveryNodeBo.getAccelerationIcon(node.acceleration)"></i>
-                      <span class="label">Acceleration:</span>
-                      <span class="value" [class]="DiscoveryNodeBo.getAccelerationClass(node.acceleration)">
-                        {{ node.acceleration }}
-                      </span>
-                    </div>
-                    <div class="info-row">
-                      <i class="fas fa-desktop"></i>
-                      <span class="label">Platform:</span>
-                      <span class="value">{{ node.platform }}</span>
-                    </div>
-                    <div class="info-row">
-                      <i class="fas fa-code-branch"></i>
-                      <span class="label">Version:</span>
-                      <span class="value">{{ node.version }}</span>
-                    </div>
-                  </div>
-
-                  <div class="discovered-meta">
-                    <i class="fas fa-clock"></i>
-                    Discovered {{ formatDate(node.discoveredAt) }}
-                  </div>
-                </div>
-
-                <div class="card-actions">
-                  <button
-                    (click)="onApproveNode(node, $event)"
-                    class="btn btn-approve"
-                    [disabled]="isApproving(node.id) || isRejecting(node.id)">
-                    @if (isApproving(node.id)) {
-                      <i class="fas fa-spinner fa-spin"></i>
-                      Approving...
-                    } @else {
-                      <i class="fas fa-check"></i>
-                      Approve
-                    }
-                  </button>
-                  <button
-                    (click)="onRejectNode(node, $event)"
-                    class="btn btn-ignore"
-                    [disabled]="isApproving(node.id) || isRejecting(node.id)">
-                    @if (isRejecting(node.id)) {
-                      <i class="fas fa-spinner fa-spin"></i>
-                      Ignoring...
-                    } @else {
-                      <i class="fas fa-ban"></i>
-                      Ignore
-                    }
-                  </button>
-                </div>
-              </div>
-            }
+          <div class="info-row">
+            <span class="label">Requested:</span>
+            <span class="value">{{ formatTimestamp(currentRequest.requestedAt) }}</span>
           </div>
-        }
+          <div class="info-row">
+            <span class="label">Expires:</span>
+            <span class="value">{{ getTimeRemaining(currentRequest) }}</span>
+          </div>
+        </div>
+
+        <div class="help-text">
+          <i class="fas fa-info-circle"></i>
+          <p>
+            Your registration request has been sent to the MAIN node. The MAIN node administrator will
+            review your request and approve or reject it. You can also share the 6-digit pairing token
+            above with the MAIN node administrator for manual approval.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <button class="btn btn-danger" (click)="onCancelRequest()" [disabled]="isLoadingRequest">
+          <i class="fas fa-times"></i>
+          Cancel Request
+        </button>
+        <button class="btn btn-secondary" (click)="onBecomeMainNode()">
+          <i class="fas fa-crown"></i>
+          Become MAIN Node Instead
+        </button>
       </div>
     </div>
+  }
 
-    <!-- Managed Nodes Panel -->
-    <div class="panel managed-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <i class="fas fa-network-wired"></i>
-          <h2>Managed Nodes</h2>
-          @if (data.managedNodes.length > 0) {
-            <span class="badge badge-success">{{ data.managedNodes.length }}</span>
-          }
-        </div>
-        <p class="panel-description">
-          Approved child nodes actively participating in encoding
-        </p>
-      </div>
-
-      <div class="panel-body">
-        @if (data.managedNodes.length === 0) {
-          <div class="empty-state">
-            <div class="empty-icon">
-              <i class="fas fa-server"></i>
-            </div>
-            <h3>No Managed Nodes</h3>
-            <p>
-              Approve discovered nodes to add them to your encoding network.
-              Managed nodes will appear here once approved.
-            </p>
-          </div>
-        } @else {
-          <div class="managed-grid">
-            @for (node of data.managedNodes; track node.id) {
-              <div class="managed-card">
-                <div class="card-header">
-                  <div class="node-info">
-                    <h3 class="node-name">{{ node.name }}</h3>
-                    <p class="node-address">{{ node.ipAddress }}</p>
-                  </div>
-                  <div class="node-status" [class]="DiscoveryNodeBo.getOnlineStatusClass(node.status)">
-                    <span class="status-indicator" [class.online]="node.status === 'ONLINE'"></span>
-                    <span class="status-text">{{ node.status }}</span>
-                  </div>
-                </div>
-
-                <div class="card-body">
-                  <div class="activity-info">
-                    <div class="activity-label">Current Activity:</div>
-                    <div class="activity-value">
-                      {{ DiscoveryNodeBo.getCurrentActivity(node) }}
-                    </div>
-                  </div>
-
-                  <!-- Sync Status Badge -->
-                  <div class="sync-status-badge" [class]="DiscoveryNodeBo.getSyncStatusClass(node.syncStatus)">
-                    <i [class]="'fas ' + DiscoveryNodeBo.getSyncStatusIcon(node.syncStatus)"></i>
-                    <span>{{ DiscoveryNodeBo.getSyncStatusLabel(node.syncStatus) }}</span>
-                    @if (node.lastSyncedAt) {
-                      <span class="sync-timestamp">
-                        {{ DiscoveryNodeBo.formatLastSynced(node.lastSyncedAt) }}
-                      </span>
-                    }
-                  </div>
-
-                  <!-- Retry Sync Button (if failed) -->
-                  @if (node.syncStatus === 'FAILED') {
-                    <div class="sync-error-actions">
-                      @if (node.syncError) {
-                        <p class="sync-error-message">
-                          <i class="fas fa-exclamation-circle"></i>
-                          {{ node.syncError }}
-                        </p>
-                      }
-                      <button (click)="retrySyncNode(node.id)" class="btn btn-retry">
-                        <i class="fas fa-redo"></i>
-                        Retry Sync
-                      </button>
-                    </div>
-                  }
-
-                  <div class="stats-grid">
-                    <div class="stat-item">
-                      <i class="fas fa-microchip"></i>
-                      <div class="stat-content">
-                        <span class="stat-label">CPU Usage</span>
-                        <span class="stat-value" [class]="DiscoveryNodeBo.getCpuUsageClass(node.cpuUsage)">
-                          {{ DiscoveryNodeBo.formatUsagePercent(node.cpuUsage) }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="stat-item">
-                      <i class="fas fa-memory"></i>
-                      <div class="stat-content">
-                        <span class="stat-label">Memory Usage</span>
-                        <span class="stat-value" [class]="DiscoveryNodeBo.getMemoryUsageClass(node.memoryUsage)">
-                          {{ DiscoveryNodeBo.formatUsagePercent(node.memoryUsage) }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="stat-item">
-                      <i class="fas fa-tasks"></i>
-                      <div class="stat-content">
-                        <span class="stat-label">Active Jobs</span>
-                        <span class="stat-value">{{ node.activeJobs }}</span>
-                      </div>
-                    </div>
-                    <div class="stat-item">
-                      <i class="fas fa-check-circle"></i>
-                      <div class="stat-content">
-                        <span class="stat-label">Completed</span>
-                        <span class="stat-value">{{ node.completedJobs }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="card-footer">
-                  <span class="approved-date">
-                    <i class="fas fa-calendar-check"></i>
-                    Approved {{ formatDate(node.approvedAt) }}
-                  </span>
-                </div>
-              </div>
-            }
-          </div>
+  <!-- Discovered MAIN Nodes -->
+  @if (!currentRequest) {
+    <div class="discovered-nodes-section">
+      <div class="section-header">
+        <h2>Discovered MAIN Nodes</h2>
+        @if (discoveredMainNodes.length > 0) {
+          <span class="count-badge">{{ discoveredMainNodes.length }} found</span>
         }
       </div>
-    </div>
-  } @else {
-    <div class="loading-state">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>Loading discovery data...</p>
+
+      <!-- Empty State -->
+      @if (discoveredMainNodes.length === 0 && !isSearching) {
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-satellite-dish"></i>
+          </div>
+          <h3>No MAIN Nodes Found</h3>
+          <p class="empty-description">
+            No BitBonsai MAIN nodes were detected on your network. Make sure:
+          </p>
+          <ul class="empty-checklist">
+            <li>The MAIN node is running and accessible on your network</li>
+            <li>You're on the same network or subnet as the MAIN node</li>
+            <li>Network firewalls aren't blocking mDNS discovery</li>
+          </ul>
+
+          <div class="empty-actions">
+            <button class="btn btn-primary" (click)="searchForMainNodes()">
+              <i class="fas fa-search"></i>
+              Search Again
+            </button>
+            <button class="btn btn-secondary" (click)="onBecomeMainNode()">
+              <i class="fas fa-crown"></i>
+              Become MAIN Node Instead
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Loading State -->
+      @if (isSearching) {
+        <div class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Searching for MAIN nodes on your network...</p>
+          <p class="loading-subtext">This may take a few seconds</p>
+        </div>
+      }
+
+      <!-- Discovered Nodes Grid -->
+      @if (discoveredMainNodes.length > 0 && !isSearching) {
+        <div class="nodes-grid">
+          @for (node of discoveredMainNodes; track node.nodeId) {
+            <div class="node-card">
+              <div class="card-badge">
+                <i class="fas fa-crown"></i>
+                MAIN NODE
+              </div>
+
+              <div class="card-header">
+                <h3>{{ node.nodeName }}</h3>
+                <p class="node-version">v{{ node.version }}</p>
+              </div>
+
+              <div class="card-body">
+                <div class="node-details">
+                  <div class="detail-row">
+                    <i class="fas fa-network-wired"></i>
+                    <div class="detail-content">
+                      <span class="detail-label">Network</span>
+                      <span class="detail-value">{{ node.ipAddress }}</span>
+                    </div>
+                  </div>
+                  <div class="detail-row">
+                    <i class="fas fa-server"></i>
+                    <div class="detail-content">
+                      <span class="detail-label">API Endpoint</span>
+                      <span class="detail-value">{{ node.apiUrl }}</span>
+                    </div>
+                  </div>
+                  <div class="detail-row">
+                    <i class="fas fa-plug"></i>
+                    <div class="detail-content">
+                      <span class="detail-label">Port</span>
+                      <span class="detail-value">{{ node.port }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <button
+                  class="btn btn-primary btn-block"
+                  (click)="onRegisterWithMainNode(node)"
+                  [disabled]="isLoadingRequest">
+                  <i class="fas fa-link"></i>
+                  Connect to this MAIN Node
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="alternative-section">
+          <p class="alternative-text">
+            <strong>Don't see your MAIN node?</strong> Try searching again or enter a pairing token manually
+            in the MAIN node's interface (Nodes → Register New Node).
+          </p>
+          <button class="btn btn-secondary btn-small" (click)="onBecomeMainNode()">
+            <i class="fas fa-crown"></i>
+            Or become a MAIN node instead
+          </button>
+        </div>
+      }
     </div>
   }
 </div>

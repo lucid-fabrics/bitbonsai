@@ -7,11 +7,16 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Public } from '../auth/guards/public.decorator';
+import { RegistrationRequestService } from '../nodes/services/registration-request.service';
 import { PolicySyncService } from '../sync/policy-sync.service';
 import { CompletePairingDto } from './dto/complete-pairing.dto';
 import { DiscoveredNodeDto } from './dto/discovered-node.dto';
+import { PairRequestDto } from './dto/pair-request.dto';
+import { PairingStatus, PairResponseDto } from './dto/pair-response.dto';
 import { PairingTokenResponseDto } from './dto/pairing-token-response.dto';
 import { RequestPairingDto } from './dto/request-pairing.dto';
+import { ScanResultDto } from './dto/scan-result.dto';
 import { NodeDiscoveryService } from './node-discovery.service';
 
 @ApiTags('discovery')
@@ -20,7 +25,8 @@ import { NodeDiscoveryService } from './node-discovery.service';
 export class DiscoveryController {
   constructor(
     private readonly discoveryService: NodeDiscoveryService,
-    private readonly syncService: PolicySyncService
+    private readonly syncService: PolicySyncService,
+    private readonly registrationRequestService: RegistrationRequestService
   ) {}
 
   /**
@@ -29,6 +35,7 @@ export class DiscoveryController {
    * Performs a 5-second mDNS scan to discover available MAIN nodes.
    * Used by LINKED nodes during initial setup to find pairing targets.
    */
+  @Public()
   @Get('scan')
   @ApiOperation({
     summary: 'Scan for MAIN nodes',
@@ -43,18 +50,167 @@ export class DiscoveryController {
       '- Node ID and display name\n' +
       '- IP address and API port\n' +
       '- Version information\n' +
-      '- Discovery timestamp\n\n' +
+      '- Discovery timestamp\n' +
+      '- Scan duration\n\n' +
       '**Note**: Only works on local network (mDNS/Bonjour)',
   })
   @ApiOkResponse({
     description: 'Scan completed successfully',
-    type: [DiscoveredNodeDto],
+    type: ScanResultDto,
   })
   @ApiInternalServerErrorResponse({
     description: 'Scan failed due to network or system error',
   })
-  async scanForMainNodes(): Promise<DiscoveredNodeDto[]> {
-    return this.discoveryService.scanForMainNodes();
+  async scanForMainNodes(): Promise<ScanResultDto> {
+    const startTime = Date.now();
+    const nodes = await this.discoveryService.scanForMainNodes();
+    const scanDurationMs = Date.now() - startTime;
+
+    return {
+      nodes,
+      scanDurationMs,
+    };
+  }
+
+  /**
+   * Initiate pairing with a MAIN node (auto-discovery flow)
+   *
+   * Creates a registration request and returns the pairing code.
+   * The child node displays this code for the user to enter on the main node.
+   */
+  @Public()
+  @Post('pair')
+  @ApiOperation({
+    summary: 'Initiate pairing with MAIN node',
+    description:
+      'Initiates pairing process with a discovered MAIN node (auto-discovery flow).\n\n' +
+      '**Use Case**: Child node has scanned network and user selected a main node\n\n' +
+      '**Process**:\n' +
+      '1. Creates registration request on MAIN node\n' +
+      '2. Generates 6-digit pairing code (24h expiration)\n' +
+      '3. Returns code for user to enter on MAIN node\n' +
+      '4. MAIN node admin approves request\n' +
+      '5. Child node receives connection token\n\n' +
+      '**Response**: Pairing status and code to display to user',
+  })
+  @ApiOkResponse({
+    description: 'Pairing initiated successfully',
+    type: PairResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid request or main node unavailable',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to initiate pairing',
+  })
+  async initiatePairing(@Body() dto: PairRequestDto): Promise<PairResponseDto> {
+    try {
+      // Create registration request
+      const request = await this.registrationRequestService.createRegistrationRequest({
+        mainNodeId: dto.mainNodeId,
+        childNodeName: dto.childNodeName,
+      });
+
+      // Return response matching frontend expectations
+      return {
+        status: PairingStatus.WAITING_APPROVAL,
+        requestId: request.id,
+        pairingCode: request.pairingToken,
+        message: `Pairing code generated. Enter code ${request.pairingToken} on the main node to approve connection.`,
+      };
+    } catch (error) {
+      return {
+        status: PairingStatus.ERROR,
+        message: error instanceof Error ? error.message : 'Failed to initiate pairing',
+      };
+    }
+  }
+
+  /**
+   * Poll pairing status
+   *
+   * Checks the status of a pairing request to see if it has been approved, rejected, or is still pending.
+   */
+  @Public()
+  @Get('pair/:requestId/status')
+  @ApiOperation({
+    summary: 'Poll pairing status',
+    description:
+      'Checks the current status of a pairing request.\n\n' +
+      '**Use Case**: Child node polls this endpoint while waiting for MAIN node approval\n\n' +
+      '**Response**: Current pairing status and connection token if approved',
+  })
+  @ApiOkResponse({
+    description: 'Pairing status retrieved successfully',
+    type: PairResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid request ID',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to check pairing status',
+  })
+  async getPairingStatus(@Param('requestId') requestId: string): Promise<PairResponseDto> {
+    try {
+      const request = await this.registrationRequestService.getRequest(requestId);
+
+      // Map registration request status to pairing status
+      switch (request.status) {
+        case 'PENDING':
+          return {
+            status: PairingStatus.WAITING_APPROVAL,
+            pairingCode: request.pairingToken,
+            message: 'Waiting for approval from main node',
+          };
+
+        case 'APPROVED':
+          // Registration was approved, child node should have been created
+          if (!request.childNodeId) {
+            return {
+              status: PairingStatus.ERROR,
+              message: 'Request approved but child node not created',
+            };
+          }
+
+          // Get the child node to retrieve its API key (connection token)
+          // Note: In a real implementation, we'd need a way to securely return this
+          // For now, return success without the actual token
+          return {
+            status: PairingStatus.APPROVED,
+            message: 'Pairing approved successfully',
+            // TODO: Return actual connection token and main node info
+          };
+
+        case 'REJECTED':
+          return {
+            status: PairingStatus.REJECTED,
+            message: request.rejectionReason || 'Pairing request was rejected',
+          };
+
+        case 'EXPIRED':
+          return {
+            status: PairingStatus.TIMEOUT,
+            message: 'Pairing code has expired',
+          };
+
+        case 'CANCELLED':
+          return {
+            status: PairingStatus.ERROR,
+            message: 'Pairing request was cancelled',
+          };
+
+        default:
+          return {
+            status: PairingStatus.ERROR,
+            message: `Unknown status: ${request.status}`,
+          };
+      }
+    } catch (error) {
+      return {
+        status: PairingStatus.ERROR,
+        message: error instanceof Error ? error.message : 'Failed to check pairing status',
+      };
+    }
   }
 
   /**

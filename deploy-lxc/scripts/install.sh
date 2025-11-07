@@ -57,7 +57,7 @@ echo "  FFmpeg: $(ffmpeg -version | head -n1)"
 
 # Install global npm packages
 echo "[8/8] Installing global npm packages..."
-npm install -g nx@latest prisma@latest
+npm install -g prisma@latest
 
 # Create bitbonsai user
 echo "[9/8] Creating bitbonsai user..."

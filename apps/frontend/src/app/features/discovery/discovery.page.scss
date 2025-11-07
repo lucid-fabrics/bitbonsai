@@ -102,13 +102,13 @@
     }
 
     .badge-pending {
-      background: rgba($warning-color, 0.2);
-      color: $warning-color;
+      background: rgba($warning, 0.2);
+      color: $warning;
     }
 
     .badge-success {
-      background: rgba($success-color, 0.2);
-      color: $success-color;
+      background: rgba($success, 0.2);
+      color: $success;
     }
   }
 
@@ -218,14 +218,14 @@
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
-      background: rgba($warning-color, 0.1);
+      background: rgba($warning, 0.1);
       border-radius: 8px;
 
       .status-indicator {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: $warning-color;
+        background: $warning;
 
         &.pulsing {
           animation: pulse 2s ease-in-out infinite;
@@ -235,7 +235,7 @@
       .status-text {
         font-size: 12px;
         font-weight: 600;
-        color: $warning-color;
+        color: $warning;
         text-transform: uppercase;
       }
     }
@@ -339,11 +339,11 @@
     }
 
     .btn-approve {
-      background: $success-color;
+      background: $success;
       color: $text-white;
 
       &:not(:disabled):hover {
-        background: color.adjust($success-color, $lightness: 5%);
+        background: color.adjust($success, $lightness: 5%);
       }
     }
 
@@ -417,14 +417,14 @@
       border-radius: 8px;
 
       &.status-online {
-        background: rgba($success-color, 0.1);
+        background: rgba($success, 0.1);
 
         .status-indicator {
-          background: $success-color;
+          background: $success;
         }
 
         .status-text {
-          color: $success-color;
+          color: $success;
         }
       }
 
@@ -505,9 +505,9 @@
       }
 
       &.sync-status-pending {
-        background: rgba($warning-color, 0.1);
-        color: $warning-color;
-        border: 1px solid rgba($warning-color, 0.2);
+        background: rgba($warning, 0.1);
+        color: $warning;
+        border: 1px solid rgba($warning, 0.2);
       }
 
       &.sync-status-syncing {
@@ -517,15 +517,15 @@
       }
 
       &.sync-status-completed {
-        background: rgba($success-color, 0.1);
-        color: $success-color;
-        border: 1px solid rgba($success-color, 0.2);
+        background: rgba($success, 0.1);
+        color: $success;
+        border: 1px solid rgba($success, 0.2);
       }
 
       &.sync-status-failed {
-        background: rgba($error-color, 0.1);
-        color: $error-color;
-        border: 1px solid rgba($error-color, 0.2);
+        background: rgba($danger, 0.1);
+        color: $danger;
+        border: 1px solid rgba($danger, 0.2);
       }
     }
 
@@ -533,8 +533,8 @@
     .sync-error-actions {
       margin-bottom: 16px;
       padding: 12px;
-      background: rgba($error-color, 0.05);
-      border: 1px solid rgba($error-color, 0.2);
+      background: rgba($danger, 0.05);
+      border: 1px solid rgba($danger, 0.2);
       border-radius: 8px;
 
       .sync-error-message {
@@ -542,7 +542,7 @@
         align-items: center;
         gap: 8px;
         font-size: 12px;
-        color: $error-color;
+        color: $danger;
         margin: 0 0 12px 0;
         line-height: 1.5;
 
@@ -554,7 +554,7 @@
       .btn-retry {
         width: 100%;
         padding: 8px 16px;
-        background: $error-color;
+        background: $danger;
         color: $text-white;
         border: none;
         border-radius: 6px;
@@ -568,7 +568,7 @@
         gap: 8px;
 
         &:hover {
-          background: color.adjust($error-color, $lightness: 5%);
+          background: color.adjust($danger, $lightness: 5%);
           transform: translateY(-1px);
         }
       }
@@ -609,15 +609,15 @@
             color: $text-white;
 
             &.usage-low {
-              color: $success-color;
+              color: $success;
             }
 
             &.usage-medium {
-              color: $warning-color;
+              color: $warning;
             }
 
             &.usage-high {
-              color: $error-color;
+              color: $danger;
             }
           }
         }
@@ -637,7 +637,7 @@
       color: $text-secondary;
 
       i {
-        color: $success-color;
+        color: $success;
       }
     }
   }

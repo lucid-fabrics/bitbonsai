@@ -91,18 +91,24 @@ export class AppComponent implements OnInit {
       )
       .subscribe((event: NavigationEnd) => {
         const url = event.urlAfterRedirects;
-        this.showLayout.set(url !== '/login' && url !== '/setup');
+        this.showLayout.set(url !== '/login' && url !== '/setup' && url !== '/node-setup');
       });
 
     // Set initial value based on current route
     const currentUrl = this.router.url;
-    this.showLayout.set(currentUrl !== '/login' && currentUrl !== '/setup');
+    this.showLayout.set(
+      currentUrl !== '/login' && currentUrl !== '/setup' && currentUrl !== '/node-setup'
+    );
 
-    // Fetch current node information only when authenticated
+    // Fetch current node information only when authenticated AND not on setup/node-setup routes
     // This is used for route guards and UI restrictions based on node role
     this.authService.isAuthenticated$
       .pipe(
-        filter((isAuthenticated) => isAuthenticated),
+        filter((isAuthenticated) => {
+          const currentUrl = this.router.url;
+          const isSetupRoute = currentUrl === '/setup' || currentUrl === '/node-setup';
+          return isAuthenticated && !isSetupRoute;
+        }),
         switchMap(() => this.nodeService.getCurrentNode()),
         takeUntilDestroyed(this.destroyRef)
       )

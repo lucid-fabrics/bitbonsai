@@ -29,14 +29,25 @@ import { NodeResponseDto } from './dto/node-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
 import type { PairNodeDto } from './dto/pair-node.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
+import { ApproveRequestDto } from './dto/registration/approve-request.dto';
+import { CreateRegistrationRequestDto } from './dto/registration/create-registration-request.dto';
+import { DiscoveredMainNodeDto } from './dto/registration/discovered-main-node.dto';
+import { RegistrationRequestResponseDto } from './dto/registration/registration-request-response.dto';
+import { RejectRequestDto } from './dto/registration/reject-request.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
+import { NodeDiscoveryService } from './services/node-discovery.service';
+import { RegistrationRequestService } from './services/registration-request.service';
 
 @ApiTags('nodes')
 @ApiBearerAuth('JWT-auth')
 @Controller('nodes')
 export class NodesController {
-  constructor(private readonly nodesService: NodesService) {}
+  constructor(
+    private readonly nodesService: NodesService,
+    private readonly nodeDiscoveryService: NodeDiscoveryService,
+    private readonly registrationRequestService: RegistrationRequestService
+  ) {}
 
   /**
    * Register a new node
@@ -413,5 +424,279 @@ export class NodesController {
   })
   async remove(@Param('id') id: string): Promise<void> {
     return this.nodesService.remove(id);
+  }
+
+  // ============================================================================
+  // NODE DISCOVERY & REGISTRATION REQUEST ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Discover MAIN nodes on the network (for CHILD nodes)
+   */
+  @Public()
+  @Get('discovery/main-nodes')
+  @ApiOperation({
+    summary: 'Discover MAIN nodes via mDNS',
+    description:
+      'Discovers available MAIN nodes on the local network using mDNS broadcasting.\n\n' +
+      '**Discovery Process**:\n' +
+      '1. Broadcasts mDNS query for bitbonsai-main services\n' +
+      '2. Listens for responses for 5 seconds\n' +
+      '3. Returns list of discovered MAIN nodes with their details\n\n' +
+      '**Use Case**: CHILD node startup, user selecting which MAIN node to register with',
+  })
+  @ApiOkResponse({
+    description: 'List of discovered MAIN nodes',
+    type: [DiscoveredMainNodeDto],
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred during discovery',
+  })
+  async discoverMainNodes(): Promise<DiscoveredMainNodeDto[]> {
+    return this.nodeDiscoveryService.discoverMainNodes();
+  }
+
+  /**
+   * Create a registration request (CHILD → MAIN)
+   */
+  @Public()
+  @Post('registration-requests')
+  @ApiOperation({
+    summary: 'Send registration request to MAIN node',
+    description:
+      'Creates a registration request from a CHILD node to a MAIN node.\n\n' +
+      '**Registration Process**:\n' +
+      '1. Collects system information (IP, hostname, hardware specs)\n' +
+      '2. Generates 6-digit pairing token (24h expiration)\n' +
+      "3. Sends request to MAIN node's pending queue\n" +
+      '4. If duplicate MAC address detected, resets TTL of existing request\n\n' +
+      '**Response**: Registration request details including pairing token\n\n' +
+      '**Use Case**: Flow 1 - Child-initiated auto-registration',
+  })
+  @ApiCreatedResponse({
+    description: 'Registration request created successfully',
+    type: RegistrationRequestResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid request data',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while creating request',
+  })
+  async createRegistrationRequest(
+    @Body() createDto: CreateRegistrationRequestDto
+  ): Promise<RegistrationRequestResponseDto> {
+    return this.registrationRequestService.createRegistrationRequest(createDto) as any;
+  }
+
+  /**
+   * Get pending registration requests for MAIN node
+   */
+  @Get('registration-requests/pending')
+  @ApiOperation({
+    summary: 'Get pending registration requests',
+    description:
+      'Returns all pending registration requests for the current MAIN node.\n\n' +
+      '**Filtering**:\n' +
+      '- Only returns PENDING requests\n' +
+      '- Excludes expired requests\n' +
+      '- Ordered by requested date (newest first)\n\n' +
+      '**Use Case**: MAIN node pending requests page, notification bell',
+  })
+  @ApiOkResponse({
+    description: 'List of pending registration requests',
+    type: [RegistrationRequestResponseDto],
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching requests',
+  })
+  async getPendingRequests(): Promise<RegistrationRequestResponseDto[]> {
+    // Get current node (must be MAIN)
+    const currentNode = await this.nodesService.getCurrentNode();
+    return this.registrationRequestService.getPendingRequests(currentNode.id) as any;
+  }
+
+  /**
+   * Get a specific registration request
+   */
+  @Get('registration-requests/:id')
+  @ApiOperation({
+    summary: 'Get registration request details',
+    description: 'Retrieves detailed information about a specific registration request.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Registration request unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Registration request retrieved successfully',
+    type: RegistrationRequestResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Registration request not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching request',
+  })
+  async getRegistrationRequest(@Param('id') id: string): Promise<RegistrationRequestResponseDto> {
+    return this.registrationRequestService.getRequest(id) as any;
+  }
+
+  /**
+   * Approve a registration request
+   */
+  @Post('registration-requests/:id/approve')
+  @ApiOperation({
+    summary: 'Approve registration request',
+    description:
+      'Approves a pending registration request and creates the CHILD node.\n\n' +
+      '**Approval Process**:\n' +
+      '1. Validates request is PENDING and not expired\n' +
+      '2. Checks license node limit\n' +
+      '3. Creates CHILD node with specified configuration\n' +
+      '4. Updates request status to APPROVED\n' +
+      '5. Returns updated request with child node ID\n\n' +
+      '**Use Case**: MAIN node administrator approving a pending request',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Registration request unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Registration request approved successfully',
+    type: RegistrationRequestResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Request is not in PENDING state or has expired',
+  })
+  @ApiConflictResponse({
+    description: 'Maximum nodes reached for license',
+  })
+  @ApiNotFoundResponse({
+    description: 'Registration request not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while approving request',
+  })
+  async approveRegistrationRequest(
+    @Param('id') id: string,
+    @Body() approveDto?: ApproveRequestDto
+  ): Promise<RegistrationRequestResponseDto> {
+    return this.registrationRequestService.approveRequest(id, approveDto) as any;
+  }
+
+  /**
+   * Reject a registration request
+   */
+  @Post('registration-requests/:id/reject')
+  @ApiOperation({
+    summary: 'Reject registration request',
+    description:
+      'Rejects a pending registration request with a reason.\n\n' +
+      '**Rejection Process**:\n' +
+      '1. Validates request is PENDING\n' +
+      '2. Updates request status to REJECTED\n' +
+      '3. Stores rejection reason\n\n' +
+      '**Use Case**: MAIN node administrator denying an unauthorized device',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Registration request unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Registration request rejected successfully',
+    type: RegistrationRequestResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Request is not in PENDING state',
+  })
+  @ApiNotFoundResponse({
+    description: 'Registration request not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while rejecting request',
+  })
+  async rejectRegistrationRequest(
+    @Param('id') id: string,
+    @Body() rejectDto: RejectRequestDto
+  ): Promise<RegistrationRequestResponseDto> {
+    return this.registrationRequestService.rejectRequest(id, rejectDto) as any;
+  }
+
+  /**
+   * Cancel a registration request (by ID)
+   */
+  @Delete('registration-requests/:id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Cancel registration request',
+    description:
+      'Cancels a pending registration request.\n\n' +
+      '**Cancellation Process**:\n' +
+      '1. Validates request is PENDING\n' +
+      '2. Updates request status to CANCELLED\n\n' +
+      '**Use Case**: CHILD node user decides to become MAIN instead',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Registration request unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Registration request cancelled successfully',
+    type: RegistrationRequestResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Request is not in PENDING state',
+  })
+  @ApiNotFoundResponse({
+    description: 'Registration request not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while cancelling request',
+  })
+  async cancelRegistrationRequest(
+    @Param('id') id: string
+  ): Promise<RegistrationRequestResponseDto> {
+    return this.registrationRequestService.cancelRequest(id) as any;
+  }
+
+  /**
+   * Cancel a registration request (by pairing token)
+   */
+  @Public()
+  @Delete('registration-requests/token/:token/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Cancel registration request by token',
+    description:
+      'Cancels a pending registration request using the pairing token.\n\n' +
+      "**Use Case**: CHILD node cancellation when user doesn't have request ID",
+  })
+  @ApiParam({
+    name: 'token',
+    description: '6-digit pairing token',
+    example: '123456',
+  })
+  @ApiOkResponse({
+    description: 'Registration request cancelled successfully',
+    type: RegistrationRequestResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Request is not in PENDING state or token has expired',
+  })
+  @ApiNotFoundResponse({
+    description: 'Invalid pairing token',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while cancelling request',
+  })
+  async cancelRegistrationRequestByToken(
+    @Param('token') token: string
+  ): Promise<RegistrationRequestResponseDto> {
+    return this.registrationRequestService.cancelRequestByToken(token) as any;
   }
 }

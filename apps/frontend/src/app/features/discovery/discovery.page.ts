@@ -1,218 +1,252 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
-  BehaviorSubject,
-  catchError,
-  combineLatest,
-  fromEvent,
-  interval,
-  map,
-  type Observable,
-  of,
-  shareReplay,
-  startWith,
-  switchMap,
-} from 'rxjs';
-import { DiscoveryClient } from '../../core/clients/discovery.client';
-import { ToastService } from '../../core/services/toast.service';
-import { DiscoveryNodeBo } from './bos/discovery-node.bo';
-import type { DiscoveredNode } from './models/discovered-node.model';
-import { DiscoveryStatus } from './models/discovered-node.model';
-import type { ManagedNode } from './models/managed-node.model';
-
-interface DiscoveryData {
-  discoveredNodes: DiscoveredNode[];
-  managedNodes: ManagedNode[];
-}
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
+import { interval } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
+import { NodesClient } from '../../core/clients/nodes.client';
+import type {
+  DiscoveredMainNode,
+  RegistrationRequest,
+} from '../nodes/models/registration-request.model';
+import {
+  ContainerType,
+  RegistrationRequestStatus,
+} from '../nodes/models/registration-request.model';
 
 @Component({
   selector: 'app-discovery',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [CommonModule],
   templateUrl: './discovery.page.html',
   styleUrls: ['./discovery.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DiscoveryComponent implements OnInit {
-  private readonly discoveryApi = inject(DiscoveryClient);
-  private readonly toastService = inject(ToastService);
+  private readonly nodesClient = inject(NodesClient);
+  private readonly dialog = inject(Dialog);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
 
-  // Expose enums and BOs for template
-  protected readonly DiscoveryStatus = DiscoveryStatus;
-  protected readonly DiscoveryNodeBo = DiscoveryNodeBo;
+  // Expose enums to template
+  readonly RegistrationRequestStatus = RegistrationRequestStatus;
+  readonly ContainerType = ContainerType;
 
-  // Observables for reactive state
-  private readonly refreshTrigger$ = new BehaviorSubject<{ showLoading: boolean }>({
-    showLoading: true,
-  });
-  private readonly loadingSubject$ = new BehaviorSubject<boolean>(true);
-  protected readonly discoveryData$: Observable<DiscoveryData | null>;
-  protected readonly isLoading$: Observable<boolean>;
-
-  // State for actions in progress
-  protected approvingNodeIds = new Set<string>();
-  protected rejectingNodeIds = new Set<string>();
-
-  constructor() {
-    // Create observable stream for discovery data
-    this.discoveryData$ = this.refreshTrigger$.pipe(
-      switchMap(({ showLoading }) => {
-        // Only show loading for user-initiated actions, not polling
-        if (showLoading) {
-          this.loadingSubject$.next(true);
-        }
-
-        // Fetch both discovered and managed nodes
-        return combineLatest([
-          this.discoveryApi.getDiscoveredNodes().pipe(catchError(() => of([]))),
-          this.discoveryApi.getManagedNodes().pipe(catchError(() => of([]))),
-        ]).pipe(
-          map(([discoveredNodes, managedNodes]) => {
-            // Always clear loading when data arrives
-            this.loadingSubject$.next(false);
-            return { discoveredNodes, managedNodes };
-          }),
-          catchError(() => {
-            // Always clear loading on error
-            this.loadingSubject$.next(false);
-            return of(null);
-          })
-        );
-      }),
-      shareReplay({ bufferSize: 1, refCount: true })
-    );
-
-    // Use the loading subject as the loading observable
-    this.isLoading$ = this.loadingSubject$.asObservable();
-  }
+  // State
+  discoveredMainNodes: DiscoveredMainNode[] = [];
+  currentRequest: RegistrationRequest | null = null;
+  isSearching = false;
+  isLoadingRequest = false;
+  error: string | null = null;
 
   ngOnInit(): void {
+    this.searchForMainNodes();
+    this.checkCurrentRequest();
     this.startPolling();
   }
 
-  private startPolling(): void {
-    // Create visibility change observable
-    const visibilityChange$ = fromEvent(document, 'visibilitychange').pipe(
-      startWith(null), // Emit immediately on subscription
-      map(() => document.visibilityState === 'visible')
-    );
+  /**
+   * Search for MAIN nodes on the network using mDNS
+   */
+  searchForMainNodes(): void {
+    this.isSearching = true;
+    this.error = null;
+    this.cdr.markForCheck();
 
-    // Poll only when page is visible
-    visibilityChange$
+    this.nodesClient
+      .discoverMainNodes()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (nodes) => {
+          this.discoveredMainNodes = nodes;
+          this.isSearching = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.error = err.error?.message || 'Failed to discover MAIN nodes';
+          this.isSearching = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /**
+   * Check if there's a current pending registration request
+   */
+  private checkCurrentRequest(): void {
+    this.isLoadingRequest = true;
+    this.cdr.markForCheck();
+
+    this.nodesClient
+      .getPendingRequests()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (requests) => {
+          // Find the first pending request for this node
+          this.currentRequest =
+            requests.find((r) => r.status === RegistrationRequestStatus.PENDING) || null;
+          this.isLoadingRequest = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.isLoadingRequest = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /**
+   * Poll for request status updates every 5 seconds
+   */
+  private startPolling(): void {
+    interval(5000)
       .pipe(
-        switchMap(
-          (isVisible) =>
-            isVisible
-              ? interval(5000).pipe(startWith(0)) // Poll immediately and every 5s when visible
-              : [] // Stop polling when hidden
-        ),
+        switchMap(() => this.nodesClient.getPendingRequests()),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(() => {
-        // Silent refresh for polling - don't show loading spinner
-        this.refreshTrigger$.next({ showLoading: false });
+      .subscribe({
+        next: (requests) => {
+          const previousStatus = this.currentRequest?.status;
+          this.currentRequest =
+            requests.find((r) => r.status === RegistrationRequestStatus.PENDING) || null;
+
+          // If request was approved, redirect to dashboard
+          if (previousStatus === RegistrationRequestStatus.PENDING && !this.currentRequest) {
+            this.router.navigate(['/overview']);
+          }
+
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Ignore polling errors
+        },
       });
   }
 
-  protected refreshDiscovery(showLoading = false): void {
-    this.refreshTrigger$.next({ showLoading });
-  }
+  /**
+   * Send registration request to a MAIN node
+   */
+  onRegisterWithMainNode(mainNode: DiscoveredMainNode): void {
+    this.isLoadingRequest = true;
+    this.error = null;
+    this.cdr.markForCheck();
 
-  protected onApproveNode(node: DiscoveredNode, event: Event): void {
-    event.stopPropagation();
-
-    this.approvingNodeIds.add(node.id);
-
-    this.discoveryApi
-      .approveNode({ discoveredNodeId: node.id })
+    this.nodesClient
+      .createRegistrationRequest({ mainNodeId: mainNode.nodeId })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success(`${node.name} approved and added to network`);
-            this.refreshDiscovery(true);
-          } else {
-            this.toastService.error('Failed to approve node');
-          }
-          this.approvingNodeIds.delete(node.id);
+        next: (request) => {
+          this.currentRequest = request;
+          this.isLoadingRequest = false;
+          this.cdr.markForCheck();
         },
         error: (err) => {
-          const errorMessage = err?.error?.message || 'Failed to approve node';
-          this.toastService.error(errorMessage);
-          this.approvingNodeIds.delete(node.id);
+          this.error = err.error?.message || 'Failed to send registration request';
+          this.isLoadingRequest = false;
+          this.cdr.markForCheck();
         },
       });
   }
 
-  protected onRejectNode(node: DiscoveredNode, event: Event): void {
-    event.stopPropagation();
+  /**
+   * Cancel the current registration request
+   */
+  onCancelRequest(): void {
+    if (!this.currentRequest) return;
 
-    this.rejectingNodeIds.add(node.id);
+    this.isLoadingRequest = true;
+    this.error = null;
+    this.cdr.markForCheck();
 
-    this.discoveryApi
-      .rejectNode({ discoveredNodeId: node.id })
+    this.nodesClient
+      .cancelRequest(this.currentRequest.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.info(`${node.name} ignored`);
-            this.refreshDiscovery(true);
-          } else {
-            this.toastService.error('Failed to reject node');
-          }
-          this.rejectingNodeIds.delete(node.id);
+        next: () => {
+          this.currentRequest = null;
+          this.isLoadingRequest = false;
+          this.cdr.markForCheck();
         },
         error: (err) => {
-          const errorMessage = err?.error?.message || 'Failed to reject node';
-          this.toastService.error(errorMessage);
-          this.rejectingNodeIds.delete(node.id);
+          this.error = err.error?.message || 'Failed to cancel request';
+          this.isLoadingRequest = false;
+          this.cdr.markForCheck();
         },
       });
   }
 
-  protected isApproving(nodeId: string): boolean {
-    return this.approvingNodeIds.has(nodeId);
+  /**
+   * Navigate to setup to become a MAIN node instead
+   */
+  onBecomeMainNode(): void {
+    this.router.navigate(['/setup'], {
+      queryParams: { becomeMain: true },
+    });
   }
 
-  protected isRejecting(nodeId: string): boolean {
-    return this.rejectingNodeIds.has(nodeId);
-  }
-
-  protected getPendingNodes(nodes: DiscoveredNode[]): DiscoveredNode[] {
-    return nodes.filter((node) => node.status === DiscoveryStatus.PENDING);
-  }
-
-  protected formatMemory(memoryGB: number): string {
-    return `${memoryGB} GB`;
-  }
-
-  protected formatCores(cores: number): string {
-    return `${cores} cores`;
-  }
-
-  protected formatDate(dateString: string): string {
-    const date = new Date(dateString);
+  /**
+   * Get time remaining until request expiration
+   */
+  getTimeRemaining(request: RegistrationRequest): string {
+    const expiresAt = new Date(request.tokenExpiresAt);
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
+    const diff = expiresAt.getTime() - now.getTime();
 
-    // If less than 1 hour ago, show relative time
+    if (diff <= 0) return 'Expired';
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  }
+
+  /**
+   * Format timestamp
+   */
+  formatTimestamp(date: Date): string {
+    const d = new Date(date);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diff / 60000);
+
     if (diffMins < 60) {
       if (diffMins < 1) return 'Just now';
       if (diffMins === 1) return '1 minute ago';
       return `${diffMins} minutes ago`;
     }
 
-    // Otherwise show formatted date
     const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     };
-    return date.toLocaleDateString('en-US', options);
+    return d.toLocaleDateString('en-US', options);
+  }
+
+  /**
+   * Get container type label
+   */
+  getContainerTypeLabel(type: ContainerType): string {
+    const labels: Record<ContainerType, string> = {
+      [ContainerType.BARE_METAL]: 'Bare Metal',
+      [ContainerType.DOCKER]: 'Docker',
+      [ContainerType.LXC]: 'LXC Container',
+      [ContainerType.VM]: 'Virtual Machine',
+      [ContainerType.UNKNOWN]: 'Unknown',
+    };
+    return labels[type];
   }
 }

@@ -20,6 +20,13 @@
         }
       </div>
     }
+
+    <!-- Pending Requests Bell (MAIN nodes only) -->
+    @if (isMainNode$ | async) {
+      <div class="notification-area">
+        <app-pending-requests-bell />
+      </div>
+    }
   </div>
 
   <nav class="sidebar-nav">

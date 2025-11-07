@@ -20,23 +20,30 @@ if [ ! -f "deploy-to-proxmox.sh" ]; then
   exit 1
 fi
 
-# Package the application (exclude node_modules, dist, etc.)
-echo "[1/7] Packaging BitBonsai application..."
+# Build application locally
+echo "[1/7] Building BitBonsai application locally..."
 cd ..
+
+# Reset Nx cache to ensure fresh build
+echo "   Resetting Nx cache..."
+npx nx reset
+
+# Build frontend and backend
+echo "   Building frontend..."
+npx nx build frontend --prod --skip-nx-cache
+
+echo "   Building backend..."
+npx nx build backend --prod
+
+# Package only production artifacts
+echo "   Packaging production artifacts..."
 tar czf deploy-lxc/app/bitbonsai.tar.gz \
   --exclude='node_modules' \
-  --exclude='dist' \
-  --exclude='.nx' \
-  --exclude='.git' \
-  --exclude='deploy-lxc' \
-  --exclude='data' \
-  apps/ \
-  libs/ \
+  dist/ \
   prisma/ \
   package.json \
   package-lock.json \
-  nx.json \
-  tsconfig.base.json
+  .npmrc
 
 cd deploy-lxc
 
@@ -49,10 +56,10 @@ scp -i ~/.ssh/pve_ai_key -r * root@$PROXMOX_IP:/tmp/bitbonsai-deploy/
 
 # Create and configure LXC container
 echo "[3/7] Creating LXC container..."
-ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID << 'SCRIPT'
 set -e
 
-CONTAINER_ID=200
+CONTAINER_ID=$1
 CONTAINER_HOSTNAME="bitbonsai"
 TEMPLATE="local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 
@@ -95,35 +102,32 @@ pct exec $CONTAINER_ID -- bash -c "
       echo '   Network is up'
       break
     fi
-    echo '   Waiting for network... ($i/30)'
+    echo '   Waiting for network... (\$i/30)'
     sleep 2
   done
 "
-REMOTE_SCRIPT
+SCRIPT
 
 # Install system dependencies
 echo "[4/7] Installing system dependencies in container..."
-ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID << 'SCRIPT'
 set -e
 
-CONTAINER_ID=200
+CONTAINER_ID=$1
 
 # Copy installation script
 pct push $CONTAINER_ID /tmp/bitbonsai-deploy/scripts/install.sh /tmp/install.sh
 
 # Run installation
 pct exec $CONTAINER_ID -- bash /tmp/install.sh
-
-# Install nginx
-pct exec $CONTAINER_ID -- apt-get install -y nginx
-REMOTE_SCRIPT
+SCRIPT
 
 # Deploy application
 echo "[5/7] Deploying application..."
-ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID << 'SCRIPT'
 set -e
 
-CONTAINER_ID=200
+CONTAINER_ID=$1
 
 # Extract application
 pct push $CONTAINER_ID /tmp/bitbonsai-deploy/app/bitbonsai.tar.gz /opt/bitbonsai.tar.gz
@@ -133,37 +137,77 @@ pct exec $CONTAINER_ID -- rm /opt/bitbonsai.tar.gz
 # Run deployment script
 pct push $CONTAINER_ID /tmp/bitbonsai-deploy/scripts/deploy-app.sh /tmp/deploy-app.sh
 pct exec $CONTAINER_ID -- bash /tmp/deploy-app.sh
-REMOTE_SCRIPT
+SCRIPT
 
 # Configure services
 echo "[6/7] Configuring systemd services..."
-ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP << 'REMOTE_SCRIPT'
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID << 'SCRIPT'
 set -e
 
-CONTAINER_ID=200
+CONTAINER_ID=$1
 
 # Install backend service
 pct push $CONTAINER_ID /tmp/bitbonsai-deploy/config/bitbonsai-backend.service /etc/systemd/system/bitbonsai-backend.service
 
-# Install nginx config
-pct push $CONTAINER_ID /tmp/bitbonsai-deploy/config/bitbonsai-frontend.conf /etc/nginx/sites-available/bitbonsai
-pct exec $CONTAINER_ID -- ln -sf /etc/nginx/sites-available/bitbonsai /etc/nginx/sites-enabled/bitbonsai
-pct exec $CONTAINER_ID -- rm -f /etc/nginx/sites-enabled/default
-
-# Enable and start services
+# Enable and start backend service
 pct exec $CONTAINER_ID -- systemctl daemon-reload
 pct exec $CONTAINER_ID -- systemctl enable bitbonsai-backend
 pct exec $CONTAINER_ID -- systemctl start bitbonsai-backend
-pct exec $CONTAINER_ID -- systemctl restart nginx
 
 # Generate JWT secret
 JWT_SECRET=$(openssl rand -base64 32)
 pct exec $CONTAINER_ID -- bash -c "echo 'JWT_SECRET=$JWT_SECRET' >> /opt/bitbonsai/.env"
-REMOTE_SCRIPT
+SCRIPT
 
 # Get container IP
 echo "[7/7] Getting container information..."
-CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I | awk '{print \$1}'")
+CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I | awk '{print \\\$1}'")
+
+# Health Check
+echo ""
+echo "=========================================="
+echo "Running Health Checks..."
+echo "=========================================="
+
+# Wait for services to fully start
+echo "⏳ Waiting for services to start (30 seconds)..."
+sleep 30
+
+# Check backend service
+echo "🔍 Checking backend service..."
+BACKEND_STATUS=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- systemctl is-active bitbonsai-backend" || echo "failed")
+if [ "$BACKEND_STATUS" = "active" ]; then
+  echo "   ✅ Backend service: Running"
+else
+  echo "   ❌ Backend service: $BACKEND_STATUS"
+fi
+
+# Check frontend service
+echo "🔍 Checking frontend service..."
+FRONTEND_STATUS=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- systemctl is-active bitbonsai-frontend" || echo "failed")
+if [ "$FRONTEND_STATUS" = "active" ]; then
+  echo "   ✅ Frontend service: Running"
+else
+  echo "   ❌ Frontend service: $FRONTEND_STATUS"
+fi
+
+# Test backend API health endpoint
+echo "🔍 Testing backend API health..."
+BACKEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "http://$CONTAINER_IP:3100/api/v1/health" 2>/dev/null || echo "000")
+if [ "$BACKEND_HEALTH" = "200" ]; then
+  echo "   ✅ Backend API: HTTP $BACKEND_HEALTH (Healthy)"
+else
+  echo "   ❌ Backend API: HTTP $BACKEND_HEALTH (Unhealthy)"
+fi
+
+# Test frontend accessibility
+echo "🔍 Testing frontend accessibility..."
+FRONTEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "http://$CONTAINER_IP:3000/" 2>/dev/null || echo "000")
+if [ "$FRONTEND_HEALTH" = "200" ]; then
+  echo "   ✅ Frontend: HTTP $FRONTEND_HEALTH (Accessible)"
+else
+  echo "   ❌ Frontend: HTTP $FRONTEND_HEALTH (Not accessible)"
+fi
 
 echo ""
 echo "=========================================="
@@ -171,8 +215,11 @@ echo "Deployment Complete!"
 echo "=========================================="
 echo "Container ID: $CONTAINER_ID"
 echo "Container IP: $CONTAINER_IP"
-echo "Frontend URL: http://$CONTAINER_IP"
-echo "Backend API: http://$CONTAINER_IP/api"
+echo ""
+echo "Access URLs:"
+echo "  Frontend:  http://$CONTAINER_IP:3000"
+echo "  Backend:   http://$CONTAINER_IP:3100/api/v1"
+echo "  API Docs:  http://$CONTAINER_IP:3100/api/docs"
 echo ""
 echo "SSH Access:"
 echo "  ssh root@$CONTAINER_IP"
