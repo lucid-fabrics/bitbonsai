@@ -85,9 +85,27 @@ export class NodesService implements OnModuleInit {
    * @throws ConflictException if maximum nodes reached for license
    */
   async registerNode(data: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
+    // If no license key provided, use main node's license (for child node registration from main)
+    let licenseKey = data.licenseKey;
+    if (!licenseKey) {
+      const mainNode = await this.prisma.node.findFirst({
+        where: { role: NodeRole.MAIN },
+        include: { license: true },
+      });
+
+      if (!mainNode) {
+        throw new BadRequestException(
+          'No main node found. License key is required for first node registration.'
+        );
+      }
+
+      licenseKey = mainNode.license.key;
+      this.logger.debug(`Using main node's license (${licenseKey}) for child node registration`);
+    }
+
     // Validate license
     const license = await this.prisma.license.findUnique({
-      where: { key: data.licenseKey },
+      where: { key: licenseKey },
       include: {
         _count: {
           select: { nodes: true },
@@ -107,14 +125,23 @@ export class NodesService implements OnModuleInit {
     const pairingToken = this.generatePairingToken();
     const pairingExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    // Determine role
+    const role = license._count.nodes === 0 ? NodeRole.MAIN : NodeRole.LINKED;
+
+    // Provide intelligent defaults for optional fields
+    const nodeName =
+      data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
+    const nodeVersion = data.version || process.env.APP_VERSION || '1.0.0';
+    const nodeAcceleration = data.acceleration || 'CPU'; // Default to CPU (every node has a CPU)
+
     // Create node
     const node = await this.prisma.node.create({
       data: {
-        name: data.name,
-        role: license._count.nodes === 0 ? 'MAIN' : 'LINKED',
+        name: nodeName,
+        role,
         status: 'ONLINE',
-        version: data.version,
-        acceleration: data.acceleration,
+        version: nodeVersion,
+        acceleration: nodeAcceleration,
         apiKey: this.generateApiKey(),
         pairingToken,
         pairingExpiresAt,

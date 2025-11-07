@@ -14,9 +14,10 @@ export interface SetupStatus {
  * Initialize setup request payload
  */
 export interface InitializeSetup {
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   allowLocalNetworkWithoutAuth: boolean;
+  nodeType?: string;
 }
 
 /**

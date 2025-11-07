@@ -2,10 +2,18 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import type { Node } from '../../features/nodes/models/node.model';
+import type {
+  ApproveRequestDto,
+  CreateRegistrationRequestDto,
+  DiscoveredMainNode,
+  RegistrationRequest,
+  RejectRequestDto,
+} from '../../features/nodes/models/registration-request.model';
 
 export interface RegisterResponse {
   message: string;
   command: string;
+  pairingToken: string;
   expiresIn: number;
 }
 
@@ -88,5 +96,75 @@ export class NodesClient {
    */
   deleteNode(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  // ============================================================================
+  // DISCOVERY & REGISTRATION REQUEST METHODS
+  // ============================================================================
+
+  /**
+   * Discover MAIN nodes on the network via mDNS
+   */
+  discoverMainNodes(): Observable<DiscoveredMainNode[]> {
+    return this.http.get<DiscoveredMainNode[]>(`${this.apiUrl}/discovery/main-nodes`);
+  }
+
+  /**
+   * Create a registration request from CHILD to MAIN node
+   */
+  createRegistrationRequest(data: CreateRegistrationRequestDto): Observable<RegistrationRequest> {
+    return this.http.post<RegistrationRequest>(`${this.apiUrl}/registration-requests`, data);
+  }
+
+  /**
+   * Get all pending registration requests (for MAIN node)
+   */
+  getPendingRequests(): Observable<RegistrationRequest[]> {
+    return this.http.get<RegistrationRequest[]>(`${this.apiUrl}/registration-requests/pending`);
+  }
+
+  /**
+   * Get a specific registration request
+   */
+  getRegistrationRequest(id: string): Observable<RegistrationRequest> {
+    return this.http.get<RegistrationRequest>(`${this.apiUrl}/registration-requests/${id}`);
+  }
+
+  /**
+   * Approve a registration request
+   */
+  approveRequest(id: string, data?: ApproveRequestDto): Observable<RegistrationRequest> {
+    return this.http.post<RegistrationRequest>(
+      `${this.apiUrl}/registration-requests/${id}/approve`,
+      data || {}
+    );
+  }
+
+  /**
+   * Reject a registration request
+   */
+  rejectRequest(id: string, data: RejectRequestDto): Observable<RegistrationRequest> {
+    return this.http.post<RegistrationRequest>(
+      `${this.apiUrl}/registration-requests/${id}/reject`,
+      data
+    );
+  }
+
+  /**
+   * Cancel a registration request (by ID)
+   */
+  cancelRequest(id: string): Observable<RegistrationRequest> {
+    return this.http.delete<RegistrationRequest>(
+      `${this.apiUrl}/registration-requests/${id}/cancel`
+    );
+  }
+
+  /**
+   * Cancel a registration request (by token)
+   */
+  cancelRequestByToken(token: string): Observable<RegistrationRequest> {
+    return this.http.delete<RegistrationRequest>(
+      `${this.apiUrl}/registration-requests/token/${token}/cancel`
+    );
   }
 }

@@ -11,6 +11,7 @@ import { routes } from './app/app.routes';
 import { CurrentNodeEffects } from './app/core/+state/current-node.effects';
 import { currentNodeReducer } from './app/core/+state/current-node.reducer';
 import { authInterceptor } from './app/core/auth/auth.interceptor';
+import { apiBaseUrlInterceptor } from './app/core/interceptors/api-base-url.interceptor';
 import { apiErrorInterceptor } from './app/core/interceptors/api-error.interceptor';
 import { MediaStatsEffects } from './app/features/dashboard/+state/dashboard.effects';
 import { mediaStatsReducer } from './app/features/dashboard/+state/dashboard.reducer';
@@ -32,7 +33,9 @@ import { settingsReducer } from './app/features/settings/+state/settings.reducer
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor, apiErrorInterceptor])),
+    provideHttpClient(
+      withInterceptors([apiBaseUrlInterceptor, authInterceptor, apiErrorInterceptor])
+    ),
     provideAnimations(),
     provideStore({
       // Core state

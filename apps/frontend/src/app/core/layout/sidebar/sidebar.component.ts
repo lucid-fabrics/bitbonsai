@@ -10,7 +10,6 @@ import {
   faFolderOpen,
   faGear,
   faListCheck,
-  faRadar,
   faServer,
   faSignOutAlt,
   faSliders,
@@ -18,6 +17,7 @@ import {
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { PendingRequestsBellComponent } from '../../../shared/components/pending-requests-bell/pending-requests-bell.component';
 import { CurrentNodeActions } from '../../+state/current-node.actions';
 import {
   selectCurrentNode,
@@ -37,7 +37,7 @@ interface MenuItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule],
+  imports: [CommonModule, RouterModule, FontAwesomeModule, PendingRequestsBellComponent],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -68,7 +68,7 @@ export class SidebarComponent implements OnInit {
     { label: 'Libraries', icon: faFolderOpen, route: '/libraries', mainNodeOnly: true },
     { label: 'Policies', icon: faSliders, route: '/policies', mainNodeOnly: true },
     { label: 'Nodes', icon: faServer, route: '/nodes', mainNodeOnly: true },
-    { label: 'Discovery', icon: faRadar, route: '/discovery', mainNodeOnly: true },
+    // Discovery removed - only accessible during setup or via direct URL for CHILD nodes
     { label: 'Insights', icon: faChartBar, route: '/insights', mainNodeOnly: true },
     { label: 'Settings', icon: faGear, route: '/settings' },
   ];

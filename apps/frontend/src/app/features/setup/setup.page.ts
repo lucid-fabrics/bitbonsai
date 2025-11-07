@@ -32,8 +32,17 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
  */
 enum SetupStep {
   Welcome = 0,
-  LocalNetworkAccess = 1,
-  AdminAccount = 2,
+  NodeType = 1,
+  LocalNetworkAccess = 2,
+  AdminAccount = 3,
+}
+
+/**
+ * Node Type Selection
+ */
+enum NodeType {
+  Main = 'main',
+  Child = 'child',
 }
 
 /**
@@ -71,8 +80,9 @@ export class SetupComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  // Expose enum to template
+  // Expose enums to template
   readonly SetupStep = SetupStep;
+  readonly NodeType = NodeType;
 
   // Signals for reactive state management
   readonly currentStep = signal<SetupStep>(SetupStep.Welcome);
@@ -82,9 +92,14 @@ export class SetupComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
 
+  // Node type form
+  readonly nodeTypeForm = this.fb.nonNullable.group({
+    nodeType: [NodeType.Main as string, [Validators.required]],
+  });
+
   // Local network access form
   readonly networkForm = this.fb.nonNullable.group({
-    allowLocalNetworkWithoutAuth: [false],
+    allowLocalNetworkWithoutAuth: [true],
   });
 
   // Admin account form
@@ -98,10 +113,19 @@ export class SetupComponent {
   );
 
   /**
-   * Get total number of steps
+   * Get total number of steps (depends on node type)
    */
   get totalSteps(): number {
-    return 3;
+    const nodeType = this.nodeTypeForm.get('nodeType')?.value;
+    // Welcome (0) + NodeType (1) + LocalNetworkAccess (2) + (AdminAccount (3) OR ChildNodePairing (4))
+    return nodeType === NodeType.Child ? 4 : 4;
+  }
+
+  /**
+   * Check if selected node type is child
+   */
+  get isChildNode(): boolean {
+    return this.nodeTypeForm.get('nodeType')?.value === NodeType.Child;
   }
 
   /**
@@ -124,19 +148,32 @@ export class SetupComponent {
   nextStep(): void {
     this.errorMessage.set(null);
 
-    // Validate current step before proceeding
+    // Handle final step based on node type
+    if (this.currentStep() === SetupStep.LocalNetworkAccess) {
+      if (this.isChildNode) {
+        // Child node: redirect to auto-discovery wizard
+        this.router.navigate(['/node-setup']);
+        return;
+      } else {
+        // Main node: go to admin account creation
+        this.currentStep.set(SetupStep.AdminAccount);
+        return;
+      }
+    }
+
+    // Validate admin account before submission
     if (this.currentStep() === SetupStep.AdminAccount) {
       if (this.adminForm.invalid) {
         this.adminForm.markAllAsTouched();
         return;
       }
-      // This is the last step, submit the form
+      // This is the last step for main node, submit the form
       this.submitSetup();
       return;
     }
 
-    // Move to next step
-    this.currentStep.update((step) => Math.min(step + 1, SetupStep.AdminAccount));
+    // Move to next step (Welcome -> NodeType -> LocalNetworkAccess)
+    this.currentStep.update((step) => step + 1);
   }
 
   /**
@@ -162,7 +199,7 @@ export class SetupComponent {
   }
 
   /**
-   * Submit the setup form
+   * Submit the setup form (main node only)
    */
   submitSetup(): void {
     if (this.adminForm.invalid) {
@@ -176,12 +213,14 @@ export class SetupComponent {
 
     const { username, password } = this.adminForm.getRawValue();
     const { allowLocalNetworkWithoutAuth } = this.networkForm.getRawValue();
+    const { nodeType } = this.nodeTypeForm.getRawValue();
 
     this.setupService
       .initializeSetup({
         username,
         password,
         allowLocalNetworkWithoutAuth,
+        nodeType,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

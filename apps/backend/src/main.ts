@@ -31,22 +31,20 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"], // Required for Angular
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'], // Allow Font Awesome
           scriptSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https:'],
-          connectSrc: ["'self'"],
-          fontSrc: ["'self'"],
+          connectSrc: ["'self'", 'http://*:3100', 'ws://*:3000'], // Allow backend API and WebSocket connections
+          fontSrc: ["'self'", 'https://cdnjs.cloudflare.com'], // Allow Font Awesome fonts
           objectSrc: ["'none'"],
           mediaSrc: ["'self'"],
           frameSrc: ["'none'"],
+          // Don't upgrade HTTP to HTTPS when not using SSL
+          upgradeInsecureRequests: null,
         },
       },
       crossOriginEmbedderPolicy: false, // Required for some video playback scenarios
-      hsts: {
-        maxAge: 31536000, // 1 year
-        includeSubDomains: true,
-        preload: true,
-      },
+      hsts: false, // Disable HSTS when not using HTTPS
       frameguard: {
         action: 'deny', // Prevent clickjacking
       },
@@ -54,6 +52,27 @@ async function bootstrap() {
       noSniff: true, // X-Content-Type-Options: nosniff
       referrerPolicy: {
         policy: 'strict-origin-when-cross-origin',
+      },
+    })
+  );
+
+  // Serve static frontend files from production build
+  const express = require('express');
+  const path = require('path');
+  // In production, frontend is at dist/frontend/browser (moved by deploy script)
+  // __dirname is dist/apps/backend, so we need ../../frontend/browser
+  const frontendPath = path.join(__dirname, '../../frontend/browser');
+
+  // Serve static files (JS, CSS, images)
+  app.use(
+    express.static(frontendPath, {
+      index: false, // Don't auto-serve index.html for directories
+      maxAge: '1y', // Cache static assets for 1 year
+      setHeaders: (res: any, filePath: string) => {
+        // Don't cache index.html
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
       },
     })
   );
@@ -77,6 +96,9 @@ async function bootstrap() {
       const allowedOrigins = [
         'http://localhost:4200', // Development frontend (default)
         'http://localhost:4201', // Development frontend (HMR)
+        'http://localhost:3000', // LXC frontend on port 3000
+        `http://*:${port}`, // Allow any IP on same port (for LXC deployments)
+        'http://*:3000', // Allow any IP on port 3000 (LXC frontend)
         process.env.FRONTEND_URL,
         ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
       ].filter(Boolean) as string[];
@@ -163,10 +185,23 @@ async function bootstrap() {
     },
   });
 
+  // Catch-all route to serve index.html for Angular routing
+  // Must be AFTER all API routes and Swagger setup
+  app.use((req: any, res: any, next: any) => {
+    // Skip if this is an API or Swagger route
+    if (req.originalUrl.startsWith('/api')) {
+      next();
+      return;
+    }
+    // Serve index.html for all other routes (Angular routing)
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 BitBonsai API running on: http://0.0.0.0:${port}/api/v1`);
   console.log(`📚 Swagger API Docs available at: http://0.0.0.0:${port}/api/docs`);
+  console.log(`🌐 Frontend available at: http://0.0.0.0:${port}/`);
 }
 
 bootstrap().catch((err) => {

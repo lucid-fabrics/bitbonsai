@@ -66,15 +66,15 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    * Initialize mDNS discovery service
    */
   async onModuleInit() {
+    // Always initialize Bonjour first (needed for scanning even if no node exists yet)
+    this.bonjour = new Bonjour();
+
     try {
-      // Determine current node role
+      // Try to determine current node role
       const currentNode = await this.nodesService.getCurrentNode();
       this.currentNodeRole = currentNode.role;
 
       this.logger.log(`🔍 Discovery service initialized for ${this.currentNodeRole} node`);
-
-      // Initialize Bonjour
-      this.bonjour = new Bonjour();
 
       // If MAIN node, start broadcasting
       if (this.currentNodeRole === NodeRole.MAIN) {
@@ -83,7 +83,9 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         this.logger.log('💡 LINKED node - ready to scan for MAIN nodes');
       }
     } catch (error) {
-      this.logger.error('Failed to initialize discovery service:', error);
+      // Node doesn't exist yet (e.g., during initial setup)
+      // Bonjour is already initialized, so scanning will work
+      this.logger.log('🔍 Discovery service initialized - no node configured yet');
     }
   }
 

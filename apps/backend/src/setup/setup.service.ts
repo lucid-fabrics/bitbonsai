@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import type { InitializeSetupDto } from './dto/initialize-setup.dto';
+import { InitializeSetupDto, NodeType } from './dto/initialize-setup.dto';
 import type { SetupStatusDto } from './dto/setup-status.dto';
 
 /**
@@ -48,19 +48,21 @@ export class SetupService {
   }
 
   /**
-   * Initialize the system with the first admin user
+   * Initialize the system with the first admin user (main node) or generate pairing token (child node)
    *
    * SECURITY FEATURES:
    * - Only allows initialization if no users exist (prevents re-initialization)
-   * - Hashes password using bcrypt (10 rounds)
-   * - Creates admin user with ADMIN role
+   * - For main nodes: Hashes password using bcrypt (10 rounds), creates admin user with ADMIN role
+   * - For child nodes: Generates pairing token for pairing with main node
    * - Updates security settings based on user preference
    *
    * @param dto Setup initialization data
-   * @returns Success message
-   * @throws BadRequestException if setup has already been completed
+   * @returns Success message and optional pairing token for child nodes
+   * @throws BadRequestException if setup has already been completed or validation fails
    */
-  async initializeSetup(dto: InitializeSetupDto): Promise<{ message: string }> {
+  async initializeSetup(
+    dto: InitializeSetupDto
+  ): Promise<{ message: string; pairingToken?: string }> {
     // Check if setup has already been completed
     const userCount = await this.prisma.user.count();
 
@@ -68,21 +70,31 @@ export class SetupService {
       throw new BadRequestException('Setup has already been completed');
     }
 
-    // Hash password using bcrypt
-    const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
+    // Default to main node if not specified
+    const nodeType = dto.nodeType || NodeType.Main;
 
-    // Create first admin user
-    // Note: Using username as email since email is required in schema
-    // This can be updated later through user management
-    await this.prisma.user.create({
-      data: {
-        username: dto.username,
-        email: `${dto.username}@local.bitbonsai`,
-        passwordHash,
-        role: 'ADMIN',
-        isActive: true,
-      },
-    });
+    // Validate required fields for main node
+    if (nodeType === NodeType.Main) {
+      if (!dto.username || !dto.password) {
+        throw new BadRequestException('Username and password are required for main node setup');
+      }
+
+      // Hash password using bcrypt
+      const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
+
+      // Create first admin user
+      // Note: Using username as email since email is required in schema
+      // This can be updated later through user management
+      await this.prisma.user.create({
+        data: {
+          username: dto.username,
+          email: `${dto.username}@local.bitbonsai`,
+          passwordHash,
+          role: 'ADMIN',
+          isActive: true,
+        },
+      });
+    }
 
     // Update or create security settings and mark setup as complete
     const existingSettings = await this.prisma.settings.findFirst();
@@ -104,9 +116,29 @@ export class SetupService {
       });
     }
 
+    // For child nodes, generate pairing token
+    if (nodeType === NodeType.Child) {
+      const pairingToken = this.generatePairingToken();
+      return {
+        message: 'Child node setup completed. Use the pairing token to connect to a main node.',
+        pairingToken,
+      };
+    }
+
     return {
       message: 'Setup completed successfully',
     };
+  }
+
+  /**
+   * Generate a secure pairing token for child node registration
+   *
+   * @returns Pairing token string
+   */
+  private generatePairingToken(): string {
+    // Generate a random 8-character token
+    const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+    return `BITBONSAI-${randomPart}`;
   }
 
   /**

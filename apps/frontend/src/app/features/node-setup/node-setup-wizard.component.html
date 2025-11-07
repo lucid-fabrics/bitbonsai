@@ -4,7 +4,7 @@
     <div class="progress-bar">
       <div
         class="progress-fill"
-        [style.width.%]="(currentStep() / 4) * 100"
+        [style.width.%]="(currentStep() / 6) * 100"
       ></div>
     </div>
     <div class="progress-steps">
@@ -18,19 +18,19 @@
       </div>
       <div
         class="step"
-        [class.active]="currentStep() >= WizardStep.Scanning"
-        [class.current]="currentStep() === WizardStep.Scanning"
+        [class.active]="currentStep() >= WizardStep.ChooseMethod"
+        [class.current]="currentStep() === WizardStep.ChooseMethod"
       >
         <div class="step-number">2</div>
-        <div class="step-label">Scan</div>
+        <div class="step-label">Method</div>
       </div>
       <div
         class="step"
         [class.active]="currentStep() >= WizardStep.SelectNode"
-        [class.current]="currentStep() === WizardStep.SelectNode"
+        [class.current]="currentStep() === WizardStep.SelectNode || currentStep() === WizardStep.Scanning || currentStep() === WizardStep.ManualCode"
       >
         <div class="step-number">3</div>
-        <div class="step-label">Select</div>
+        <div class="step-label">Connect</div>
       </div>
       <div
         class="step"
@@ -38,7 +38,7 @@
         [class.current]="currentStep() === WizardStep.Pairing"
       >
         <div class="step-number">4</div>
-        <div class="step-label">Connect</div>
+        <div class="step-label">Pairing</div>
       </div>
       <div
         class="step"
@@ -59,8 +59,8 @@
       </div>
       <h1>Connect to Main Node</h1>
       <p class="welcome-description">
-        Let's connect this child node to your BitBonsai main node. We'll scan your network
-        to find available main nodes and establish a secure connection.
+        Let's connect this child node to your BitBonsai main node.
+        Choose how you want to connect.
       </p>
       <div class="welcome-features">
         <div class="feature">
@@ -68,22 +68,129 @@
           <span>Automatic network discovery</span>
         </div>
         <div class="feature">
+          <i class="fa-solid fa-keyboard"></i>
+          <span>Manual pairing code entry</span>
+        </div>
+        <div class="feature">
           <i class="fa-solid fa-lock"></i>
           <span>Secure pairing process</span>
         </div>
-        <div class="feature">
-          <i class="fa-solid fa-gauge-high"></i>
-          <span>Hardware detection</span>
-        </div>
       </div>
       <button class="btn btn-primary btn-large" (click)="startWizard()">
-        <i class="fa-solid fa-radar"></i>
-        Scan for Nodes
+        <i class="fa-solid fa-arrow-right"></i>
+        Get Started
       </button>
     </div>
   }
 
-  <!-- Step 2: Scanning -->
+  <!-- Step 2: Choose Pairing Method -->
+  @if (currentStep() === WizardStep.ChooseMethod) {
+    <div class="wizard-step step-choose-method">
+      <h2>Choose Connection Method</h2>
+      <p class="method-description">
+        How would you like to connect to your main node?
+      </p>
+
+      <div class="method-cards">
+        <div class="method-card" (click)="selectPairingMethod(PairingMethod.AutoDiscovery)">
+          <div class="method-icon">
+            <i class="fa-solid fa-radar"></i>
+          </div>
+          <h3>Auto-Discover</h3>
+          <p>Automatically scan your local network to find the main node</p>
+          <div class="method-badges">
+            <span class="badge badge-primary">Recommended</span>
+            <span class="badge badge-info">Fast</span>
+          </div>
+        </div>
+
+        <div class="method-card" (click)="selectPairingMethod(PairingMethod.ManualCode)">
+          <div class="method-icon">
+            <i class="fa-solid fa-keyboard"></i>
+          </div>
+          <h3>Manual Code</h3>
+          <p>Enter a 6-digit pairing code from your main node</p>
+          <div class="method-badges">
+            <span class="badge badge-secondary">Advanced</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Step 3: Manual Code Entry -->
+  @if (currentStep() === WizardStep.ManualCode) {
+    <div class="wizard-step step-manual-code">
+      <h2>Enter Pairing Code</h2>
+      <p class="manual-description">
+        Enter the 6-digit pairing code from your main node
+      </p>
+
+      @if (errorMessage()) {
+        <div class="alert alert-error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <div class="manual-form">
+        <div class="form-group">
+          <label for="pairingCode">Pairing Code</label>
+          <input
+            type="text"
+            id="pairingCode"
+            class="input input-large text-center"
+            placeholder="123456"
+            maxlength="6"
+            [(ngModel)]="manualPairingCode"
+            (input)="errorMessage.set(null)"
+          />
+          <p class="input-hint">
+            Get this code from your main node at <strong>Nodes → Add Child Node</strong>
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="mainNodeUrl">Main Node Address (Optional)</label>
+          <input
+            type="text"
+            id="mainNodeUrl"
+            class="input"
+            placeholder="http://192.168.1.100:3100"
+            [(ngModel)]="manualMainNodeUrl"
+            (input)="errorMessage.set(null)"
+          />
+          <p class="input-hint">
+            Leave empty to auto-detect from the network
+          </p>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-secondary" (click)="goBack()">
+          <i class="fa-solid fa-arrow-left"></i>
+          Back
+        </button>
+        <button
+          class="btn btn-link"
+          (click)="switchToAutoDiscovery()"
+        >
+          <i class="fa-solid fa-radar"></i>
+          Switch to Auto-Discover
+        </button>
+        <button
+          class="btn btn-primary"
+          [disabled]="manualPairingCode().length !== 6"
+          (click)="proceedWithManualCode()"
+        >
+          Continue
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 4: Scanning -->
   @if (currentStep() === WizardStep.Scanning) {
     <div class="wizard-step step-scanning">
       @if (isScanning()) {
@@ -116,6 +223,14 @@
             <h2>No Nodes Found</h2>
             <p class="error-message">{{ errorMessage() }}</p>
             <div class="error-actions">
+              <button class="btn btn-secondary" (click)="goBack()">
+                <i class="fa-solid fa-arrow-left"></i>
+                Back
+              </button>
+              <button class="btn btn-link" (click)="switchToManualCode()">
+                <i class="fa-solid fa-keyboard"></i>
+                Try Manual Code
+              </button>
               <button class="btn btn-primary" (click)="retryScan()">
                 <i class="fa-solid fa-rotate-right"></i>
                 Retry Scan
@@ -206,6 +321,17 @@
           <i class="fa-solid fa-arrow-left"></i>
           Back
         </button>
+        @if (pairingMethod() === PairingMethod.AutoDiscovery) {
+          <button class="btn btn-link" (click)="switchToManualCode()">
+            <i class="fa-solid fa-keyboard"></i>
+            Switch to Manual Code
+          </button>
+        } @else {
+          <button class="btn btn-link" (click)="switchToAutoDiscovery()">
+            <i class="fa-solid fa-radar"></i>
+            Switch to Auto-Discover
+          </button>
+        }
         <button
           class="btn btn-primary"
           [disabled]="!canProceedToPairing()"

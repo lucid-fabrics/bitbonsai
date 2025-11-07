@@ -17,14 +17,24 @@ import { PairingStatus } from './models/discovery.model';
 import { DiscoveryService } from './services/discovery.service';
 
 /**
+ * Pairing Method Selection
+ */
+enum PairingMethod {
+  AutoDiscovery = 'auto-discovery',
+  ManualCode = 'manual-code',
+}
+
+/**
  * Wizard Steps for Child Node Setup
  */
 enum WizardStep {
   Welcome = 0,
-  Scanning = 1,
-  SelectNode = 2,
-  Pairing = 3,
-  Complete = 4,
+  ChooseMethod = 1,
+  Scanning = 2,
+  ManualCode = 3,
+  SelectNode = 4,
+  Pairing = 5,
+  Complete = 6,
 }
 
 /**
@@ -62,10 +72,12 @@ export class NodeSetupWizardComponent {
   // Expose enums and BOs to template
   readonly WizardStep = WizardStep;
   readonly PairingStatus = PairingStatus;
+  readonly PairingMethod = PairingMethod;
   readonly NodeBo = NodeBo;
 
   // Wizard state
   readonly currentStep = signal<WizardStep>(WizardStep.Welcome);
+  readonly pairingMethod = signal<PairingMethod | null>(null);
   readonly isLoading = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
@@ -77,6 +89,10 @@ export class NodeSetupWizardComponent {
   // Selection state
   readonly selectedNodeId = signal<string | null>(null);
   readonly childNodeName = signal<string>('');
+
+  // Manual code entry state
+  readonly manualPairingCode = signal<string>('');
+  readonly manualMainNodeUrl = signal<string>('');
 
   // Pairing state
   readonly pairingStatus = signal<PairingStatus | null>(null);
@@ -113,12 +129,45 @@ export class NodeSetupWizardComponent {
   });
 
   /**
-   * Start the wizard by beginning network scan
+   * Start the wizard by going to pairing method selection
    */
   startWizard(): void {
+    this.currentStep.set(WizardStep.ChooseMethod);
+    this.errorMessage.set(null);
+  }
+
+  /**
+   * Select pairing method and proceed
+   */
+  selectPairingMethod(method: PairingMethod): void {
+    this.pairingMethod.set(method);
+    this.errorMessage.set(null);
+
+    if (method === PairingMethod.AutoDiscovery) {
+      this.currentStep.set(WizardStep.Scanning);
+      this.startNetworkScan();
+    } else {
+      this.currentStep.set(WizardStep.ManualCode);
+    }
+  }
+
+  /**
+   * Switch to auto-discovery mode from any step
+   */
+  switchToAutoDiscovery(): void {
+    this.pairingMethod.set(PairingMethod.AutoDiscovery);
     this.currentStep.set(WizardStep.Scanning);
     this.errorMessage.set(null);
     this.startNetworkScan();
+  }
+
+  /**
+   * Switch to manual code entry mode from any step
+   */
+  switchToManualCode(): void {
+    this.pairingMethod.set(PairingMethod.ManualCode);
+    this.currentStep.set(WizardStep.ManualCode);
+    this.errorMessage.set(null);
   }
 
   /**
@@ -164,6 +213,29 @@ export class NodeSetupWizardComponent {
   retryScan(): void {
     this.errorMessage.set(null);
     this.startNetworkScan();
+  }
+
+  /**
+   * Proceed with manual pairing code
+   */
+  proceedWithManualCode(): void {
+    const code = this.manualPairingCode().trim();
+    const nodeUrl = this.manualMainNodeUrl().trim();
+
+    // Validate inputs
+    if (!code || code.length !== 6) {
+      this.errorMessage.set('Please enter a valid 6-digit pairing code');
+      return;
+    }
+
+    if (!nodeUrl) {
+      this.errorMessage.set('Please enter the main node URL');
+      return;
+    }
+
+    // Set node name step - user needs to enter child node name before pairing
+    this.currentStep.set(WizardStep.SelectNode);
+    this.errorMessage.set(null);
   }
 
   /**
@@ -302,10 +374,19 @@ export class NodeSetupWizardComponent {
   goBack(): void {
     this.errorMessage.set(null);
 
-    if (this.currentStep() === WizardStep.SelectNode) {
-      this.currentStep.set(WizardStep.Scanning);
-      this.startNetworkScan();
-    } else if (this.currentStep() === WizardStep.Pairing) {
+    const current = this.currentStep();
+
+    if (current === WizardStep.Scanning || current === WizardStep.ManualCode) {
+      this.currentStep.set(WizardStep.ChooseMethod);
+    } else if (current === WizardStep.SelectNode) {
+      // Go back based on pairing method
+      if (this.pairingMethod() === PairingMethod.AutoDiscovery) {
+        this.currentStep.set(WizardStep.Scanning);
+        this.startNetworkScan();
+      } else {
+        this.currentStep.set(WizardStep.ManualCode);
+      }
+    } else if (current === WizardStep.Pairing) {
       this.stopPairingTimer();
       this.currentStep.set(WizardStep.SelectNode);
     }
