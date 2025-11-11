@@ -4,7 +4,7 @@
     <div class="progress-bar">
       <div
         class="progress-fill"
-        [style.width.%]="(currentStep() / 6) * 100"
+        [style.width.%]="(currentStep() / 8) * 100"
       ></div>
     </div>
     <div class="progress-steps">
@@ -42,10 +42,18 @@
       </div>
       <div
         class="step"
+        [class.active]="currentStep() >= WizardStep.CapabilityTest"
+        [class.current]="currentStep() === WizardStep.CapabilityTest || currentStep() === WizardStep.CapabilityResults"
+      >
+        <div class="step-number">5</div>
+        <div class="step-label">Testing</div>
+      </div>
+      <div
+        class="step"
         [class.active]="currentStep() >= WizardStep.Complete"
         [class.current]="currentStep() === WizardStep.Complete"
       >
-        <div class="step-number">5</div>
+        <div class="step-number">6</div>
         <div class="step-label">Done</div>
       </div>
     </div>
@@ -260,11 +268,11 @@
       </p>
 
       <div class="nodes-list">
-        @for (node of discoveredNodes(); track node.id) {
+        @for (node of discoveredNodes(); track node.nodeId) {
           <div
             class="node-card"
-            [class.selected]="selectedNodeId() === node.id"
-            (click)="selectNode(node.id)"
+            [class.selected]="selectedNodeId() === node.nodeId"
+            (click)="selectNode(node.nodeId)"
           >
             <div class="node-header">
               <div class="node-icon">
@@ -272,10 +280,10 @@
               </div>
               <div class="node-info">
                 <h3>{{ node.name }}</h3>
-                <div class="node-address">{{ node.ipAddress }}:{{ node.port }}</div>
+                <div class="node-address">{{ node.ipAddress }}:{{ node.apiPort }}</div>
               </div>
               <div class="node-selection">
-                @if (selectedNodeId() === node.id) {
+                @if (selectedNodeId() === node.nodeId) {
                   <i class="fa-solid fa-circle-check"></i>
                 } @else {
                   <i class="fa-regular fa-circle"></i>
@@ -284,12 +292,8 @@
             </div>
             <div class="node-details">
               <div class="detail">
-                <i class="fa-solid fa-microchip"></i>
-                <span>{{ NodeBo.getAccelerationLabel(node.acceleration) }}</span>
-              </div>
-              <div class="detail">
-                <i class="fa-solid fa-memory"></i>
-                <span>{{ node.cpuCores }} cores, {{ node.totalMemoryGB }}GB RAM</span>
+                <i class="fa-solid fa-server"></i>
+                <span>{{ node.hostname }}</span>
               </div>
               <div class="detail">
                 <i class="fa-solid fa-code-branch"></i>
@@ -414,7 +418,32 @@
     </div>
   }
 
-  <!-- Step 5: Complete -->
+  <!-- Step 6: Capability Test -->
+  @if (currentStep() === WizardStep.CapabilityTest) {
+    <div class="wizard-step step-capability-test">
+      @if (approvedNodeId()) {
+        <app-capability-test
+          [nodeId]="approvedNodeId()!"
+          (testComplete)="handleCapabilityTestComplete($event)"
+        ></app-capability-test>
+      }
+    </div>
+  }
+
+  <!-- Step 7: Capability Results -->
+  @if (currentStep() === WizardStep.CapabilityResults) {
+    <div class="wizard-step step-capability-results">
+      @if (capabilityTestResults()) {
+        <app-capability-results
+          [testResults]="capabilityTestResults()!"
+          (back)="handleCapabilityResultsBack()"
+          (complete)="handleCapabilityResultsComplete($event)"
+        ></app-capability-results>
+      }
+    </div>
+  }
+
+  <!-- Step 8: Complete -->
   @if (currentStep() === WizardStep.Complete) {
     <div class="wizard-step step-complete">
       <div class="success-icon">

@@ -105,11 +105,34 @@ export class DiscoveryController {
   })
   async initiatePairing(@Body() dto: PairRequestDto): Promise<PairResponseDto> {
     try {
-      // Create registration request
-      const request = await this.registrationRequestService.createRegistrationRequest({
-        mainNodeId: dto.mainNodeId,
-        childNodeName: dto.childNodeName,
+      // Get the discovered node from cache to find its URL
+      const discoveredNodes = await this.discoveryService.getDiscoveredNodes();
+      const mainNode = discoveredNodes.find((n) => n.nodeId === dto.mainNodeId);
+
+      if (!mainNode) {
+        return {
+          status: PairingStatus.ERROR,
+          message: 'MAIN node not found. Please scan again.',
+        };
+      }
+
+      // Make HTTP request to MAIN node to create registration request
+      const mainNodeUrl = `http://${mainNode.ipAddress}:${mainNode.apiPort}`;
+      const response = await fetch(`${mainNodeUrl}/api/v1/nodes/registration-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mainNodeId: dto.mainNodeId,
+          childNodeName: dto.childNodeName,
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create registration request on MAIN node');
+      }
+
+      const request = await response.json();
 
       // Return response matching frontend expectations
       return {

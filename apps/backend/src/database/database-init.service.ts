@@ -36,8 +36,10 @@ export class DatabaseInitService implements OnModuleInit {
       const licenseCount = await this.prisma.license.count();
 
       if (licenseCount === 0) {
-        this.logger.log('📦 No licenses found. Initializing database with default data...');
-        await this.createDefaultLicenseAndNode();
+        // Don't auto-create nodes - let the setup wizard handle it
+        // Just create a default license for the setup wizard to use
+        this.logger.log('📦 No licenses found. Creating default FREE license...');
+        await this.createDefaultLicense();
       } else {
         this.logger.log('✅ Database already initialized');
       }
@@ -48,9 +50,9 @@ export class DatabaseInitService implements OnModuleInit {
   }
 
   /**
-   * Create default FREE license and MAIN node
+   * Create default FREE license only (no nodes - let setup wizard create them)
    */
-  private async createDefaultLicenseAndNode(): Promise<void> {
+  private async createDefaultLicense(): Promise<void> {
     const licenseKey = this.generateLicenseKey('FREE');
 
     // Create FREE license
@@ -67,26 +69,7 @@ export class DatabaseInitService implements OnModuleInit {
     });
 
     this.logger.log(`✅ Created FREE license: ${license.key}`);
-
-    // Create MAIN node
-    const hostname = process.env.HOSTNAME || 'bitbonsai-main';
-    const apiUrl = process.env.API_URL || 'http://localhost:3000';
-
-    const node = await this.prisma.node.create({
-      data: {
-        name: 'Main Node',
-        role: 'MAIN' as NodeRole,
-        status: 'ONLINE' as NodeStatus,
-        version: '0.1.0',
-        acceleration: 'CPU' as AccelerationType,
-        apiKey: this.generateApiKey(),
-        lastHeartbeat: new Date(),
-        licenseId: license.id,
-      },
-    });
-
-    this.logger.log(`✅ Created MAIN node: ${node.name} (${node.id})`);
-    this.logger.log('🎉 Database initialization complete!');
+    this.logger.log('🎉 Database initialization complete! Run setup wizard to create nodes.');
   }
 
   /**

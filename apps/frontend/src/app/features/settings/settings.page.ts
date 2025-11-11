@@ -49,6 +49,7 @@ export class SettingsComponent implements OnInit {
   apiKeyRevealed = false;
   localNetworkBypassEnabled = false;
   readyFilesCacheTtl = 5;
+  maxAutoHealRetries = 15;
 
   // Forms
   licenseForm!: FormGroup<{
@@ -99,6 +100,7 @@ export class SettingsComponent implements OnInit {
     this.loadSystemSettings();
     this.loadSecuritySettings();
     this.loadReadyFilesCacheTtl();
+    this.loadAutoHealRetryLimit();
   }
 
   private loadLicense(): void {
@@ -408,6 +410,46 @@ export class SettingsComponent implements OnInit {
         error: (_err) => {
           this.loading.set(false);
           this.error = 'Failed to update cache TTL';
+        },
+      });
+  }
+
+  private loadAutoHealRetryLimit(): void {
+    this.settingsClient
+      .getAutoHealRetryLimit()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.maxAutoHealRetries = settings.maxAutoHealRetries;
+        },
+        error: () => {
+          // Failed to load auto-heal retry limit
+        },
+      });
+  }
+
+  saveAutoHealRetryLimit(): void {
+    // Validate minimum value
+    if (this.maxAutoHealRetries < 3) {
+      this.error = 'Auto-heal retry limit must be at least 3';
+      this.maxAutoHealRetries = 3;
+      return;
+    }
+
+    this.loading.set(true);
+    this.clearMessages();
+
+    this.settingsClient
+      .updateAutoHealRetryLimit(this.maxAutoHealRetries)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.successMessage = 'Auto-heal retry limit updated successfully';
+        },
+        error: (_err) => {
+          this.loading.set(false);
+          this.error = 'Failed to update auto-heal retry limit';
         },
       });
   }

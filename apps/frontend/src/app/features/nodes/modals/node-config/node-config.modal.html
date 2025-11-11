@@ -34,20 +34,56 @@
         <div class="form-group">
           <label for="maxWorkers">
             Concurrent Workers
-            <span class="label-hint">(1-10)</span>
+            <span class="label-hint">(1-20)</span>
           </label>
+
+          <!-- Recommendation Box -->
+          @if (optimalConfig && !loadingRecommendations) {
+            <div class="recommendation-box">
+              <div class="recommendation-header">
+                <i class="fas fa-lightbulb"></i>
+                <strong>Auto-Detected Recommendation</strong>
+              </div>
+              <div class="recommendation-content">
+                <div class="recommendation-summary">{{ optimalConfig.summary }}</div>
+                <div class="recommendation-details">
+                  <span><strong>CPU Cores:</strong> {{ optimalConfig.totalCpuCores }}</span>
+                  <span><strong>Recommended:</strong> {{ optimalConfig.recommendedMaxWorkers }} workers</span>
+                  <span><strong>Cores per job:</strong> {{ optimalConfig.cpuCoresPerJob }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-recommendation"
+                  (click)="applyRecommended()"
+                >
+                  <i class="fas fa-magic"></i>
+                  Apply Recommended Settings
+                </button>
+              </div>
+            </div>
+          }
+
           <input
             id="maxWorkers"
             type="number"
             class="form-control"
             formControlName="maxWorkers"
             min="1"
-            max="10"
+            max="20"
           />
           <div class="form-help">
             <i class="fas fa-info-circle"></i>
             Number of concurrent encoding jobs this node can handle
           </div>
+
+          <!-- Dynamic Warning -->
+          @if (showWorkerWarning) {
+            <div class="warning-message worker-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ workerWarningMessage }}
+            </div>
+          }
+
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('required')) {
             <div class="error-message">Max workers is required</div>
           }
@@ -55,7 +91,7 @@
             <div class="error-message">Max workers must be at least 1</div>
           }
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('max')) {
-            <div class="error-message">Max workers cannot exceed 10</div>
+            <div class="error-message">Max workers cannot exceed 20</div>
           }
         </div>
 

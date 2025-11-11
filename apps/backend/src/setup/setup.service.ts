@@ -21,17 +21,33 @@ export class SetupService {
    * Check if the initial setup has been completed
    *
    * Uses a combined check for reliability and recovery:
-   * 1. If no users exist → setup is NOT complete (recovery mode, even if flag says true)
-   * 2. If users exist → check the explicit flag
+   * 1. For MAIN nodes: If no users exist → setup is NOT complete (recovery mode)
+   * 2. For LINKED (child) nodes: Skip user check, they don't need users
+   * 3. Otherwise → check the explicit flag
    *
-   * This approach prevents lockout if all users are accidentally deleted.
+   * This approach prevents lockout if all users are accidentally deleted on MAIN nodes,
+   * while allowing child nodes to function without users.
    *
    * @returns Setup status indicating if setup is complete
    */
   async getSetupStatus(): Promise<SetupStatusDto> {
+    // Check if this is a LINKED (child) node
+    const linkedNode = await this.prisma.node.findFirst({
+      where: { role: 'LINKED' },
+    });
+
+    // For child nodes, skip user check and just return the flag
+    if (linkedNode) {
+      const settings = await this.prisma.settings.findFirst();
+      return {
+        isSetupComplete: settings?.isSetupComplete ?? false,
+      };
+    }
+
+    // For MAIN nodes: RECOVERY MODE if no users exist
     const userCount = await this.prisma.user.count();
 
-    // RECOVERY MODE: If no users exist, setup is NOT complete
+    // RECOVERY MODE: If no users exist on MAIN node, setup is NOT complete
     // This allows recovery even if the flag says setup is done
     if (userCount === 0) {
       return {
@@ -116,8 +132,48 @@ export class SetupService {
       });
     }
 
-    // For child nodes, generate pairing token
+    // For child nodes, create a LINKED node entry to mark this as a child node instance
     if (nodeType === NodeType.Child) {
+      // Find or create a license for this child node
+      let license = await this.prisma.license.findFirst();
+
+      if (!license) {
+        // Create a FREE license if none exists
+        license = await this.prisma.license.create({
+          data: {
+            key: `FREE-${this.generateRandomString(10)}`,
+            tier: 'FREE',
+            status: 'ACTIVE',
+            email: 'child-node@bitbonsai.local',
+            maxNodes: 1,
+            maxConcurrentJobs: 2,
+            features: {
+              multiNode: false,
+              advancedPresets: false,
+              api: false,
+              priorityQueue: false,
+              cloudStorage: false,
+              webhooks: false,
+            },
+          },
+        });
+      }
+
+      // Create a LINKED node entry (represents this child node)
+      const hostname = process.env.HOSTNAME || 'child-node';
+      await this.prisma.node.create({
+        data: {
+          name: `Child Node (${hostname})`,
+          role: 'LINKED',
+          status: 'ONLINE',
+          version: '0.1.0',
+          acceleration: 'CPU', // Will be updated after hardware detection
+          apiKey: this.generateRandomString(32),
+          lastHeartbeat: new Date(),
+          licenseId: license.id,
+        },
+      });
+
       const pairingToken = this.generatePairingToken();
       return {
         message: 'Child node setup completed. Use the pairing token to connect to a main node.',
@@ -139,6 +195,21 @@ export class SetupService {
     // Generate a random 8-character token
     const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
     return `BITBONSAI-${randomPart}`;
+  }
+
+  /**
+   * Generate a random alphanumeric string
+   *
+   * @param length Length of the string to generate
+   * @returns Random string
+   */
+  private generateRandomString(length: number): string {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
   }
 
   /**

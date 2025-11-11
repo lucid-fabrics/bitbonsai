@@ -10,7 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
  *
  * Recovery Criteria:
  * - Job must be in FAILED stage
- * - retryCount must be < 3 (not permanently failed)
+ * - retryCount must be < maxAutoHealRetries (configurable, default: 15)
  * - Respects nextRetryAt timestamp (exponential backoff)
  */
 @Injectable()
@@ -31,7 +31,7 @@ export class AutoHealingService implements OnModuleInit {
    * Recover all eligible failed jobs
    *
    * Finds failed jobs that:
-   * - Have retry attempts remaining (retryCount < 3)
+   * - Have retry attempts remaining (retryCount < maxAutoHealRetries from settings)
    * - nextRetryAt is null or in the past
    * - Not permanently failed
    *
@@ -41,11 +41,20 @@ export class AutoHealingService implements OnModuleInit {
     try {
       const now = new Date();
 
+      // Get max retry limit from settings (default: 15)
+      let maxRetries = 15;
+      const settings = await this.prisma.settings.findFirst();
+      if (settings) {
+        maxRetries = settings.maxAutoHealRetries;
+      }
+
+      this.logger.log(`Auto-heal max retry limit: ${maxRetries}`);
+
       // Find eligible failed jobs
       const eligibleJobs = await this.prisma.job.findMany({
         where: {
           stage: JobStage.FAILED,
-          retryCount: { lt: 3 },
+          retryCount: { lt: maxRetries },
           OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
         },
         select: {
@@ -89,7 +98,7 @@ export class AutoHealingService implements OnModuleInit {
 
           healedCount++;
           this.logger.log(
-            `Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/3, was at ${(job.progress || 0).toFixed(1)}%, cleared resume state)`
+            `Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, was at ${(job.progress || 0).toFixed(1)}%, cleared resume state)`
           );
         } catch (error) {
           this.logger.error(`Failed to heal job ${job.id} (${job.fileLabel})`, error);

@@ -7,13 +7,11 @@ services:
       dockerfile: Dockerfile.dev
       target: backend
     container_name: bitbonsai-backend
-    ports:
-      - "3100:3000"     # Backend API (accessible from network) - using 3100 to avoid pikatask conflict
-      - "9239:9229"     # Node.js debug port for remote debugging - using 9239 to avoid conflicts
+    network_mode: host  # Required for mDNS auto-discovery
     environment:
       - NODE_ENV=development
       - DATABASE_URL=file:/data/bitbonsai.db
-      - PORT=3000
+      - PORT=3100  # Backend API port (direct access with host networking)
       - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr,/unraid-media
       - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
@@ -40,8 +38,7 @@ services:
     # Use startup script from Dockerfile that auto-regenerates Prisma
     # command: /app/scripts/backend-startup.sh  # Inherited from Dockerfile
     restart: unless-stopped
-    networks:
-      - bitbonsai-network
+    # Note: network_mode: host is incompatible with networks: directive
 
   bitbonsai-frontend:
     build:

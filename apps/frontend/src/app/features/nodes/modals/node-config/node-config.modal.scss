@@ -257,3 +257,80 @@
     transform: translateY(0);
   }
 }
+
+// Recommendation box styling
+.recommendation-box {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(249, 190, 3, 0.08);
+  border: 1px solid rgba(249, 190, 3, 0.25);
+  border-radius: 8px;
+}
+
+.recommendation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #f9be03;
+
+  i {
+    font-size: 1.1rem;
+  }
+}
+
+.recommendation-summary {
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #e0e0e0;
+}
+
+.recommendation-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+
+  span {
+    color: #888;
+  }
+}
+
+.btn-recommendation {
+  width: 100%;
+  padding: 0.6rem;
+  background: #f9be03;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+
+  &:hover {
+    transform: translateY(-1px);
+    background: #fcd34d;
+    box-shadow: 0 4px 12px rgba(249, 190, 3, 0.3);
+  }
+
+  i {
+    margin-right: 0.5rem;
+  }
+}
+
+.worker-warning {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  color: #856404;
+  font-size: 0.9rem;
+  
+  i {
+    margin-right: 0.5rem;
+    color: #ffc107;
+  }
+}

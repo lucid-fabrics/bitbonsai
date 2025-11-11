@@ -10,6 +10,10 @@ export interface ReadyFilesCacheTtlSettings {
   readyFilesCacheTtlMinutes: number;
 }
 
+export interface AutoHealRetryLimitSettings {
+  maxAutoHealRetries: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -34,6 +38,16 @@ export class SettingsClient {
   updateReadyFilesCacheTtl(ttlMinutes: number): Observable<ReadyFilesCacheTtlSettings> {
     return this.http.patch<ReadyFilesCacheTtlSettings>(`${this.apiUrl}/ready-files-cache-ttl`, {
       readyFilesCacheTtlMinutes: ttlMinutes,
+    });
+  }
+
+  getAutoHealRetryLimit(): Observable<AutoHealRetryLimitSettings> {
+    return this.http.get<AutoHealRetryLimitSettings>(`${this.apiUrl}/auto-heal-retry-limit`);
+  }
+
+  updateAutoHealRetryLimit(maxRetries: number): Observable<AutoHealRetryLimitSettings> {
+    return this.http.patch<AutoHealRetryLimitSettings>(`${this.apiUrl}/auto-heal-retry-limit`, {
+      maxAutoHealRetries: maxRetries,
     });
   }
 }

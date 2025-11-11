@@ -10,7 +10,9 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { Store } from '@ngrx/store';
 import { filter, switchMap } from 'rxjs/operators';
+import { selectIsMainNode } from './core/+state/current-node.selectors';
 import { AuthService } from './core/auth/auth.service';
 import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
@@ -40,7 +42,9 @@ import { NotificationContainerComponent } from './shared/components/notification
       <router-outlet />
     }
     <app-api-connection-error />
-    <app-notification-container />
+    @if ((isMainNode$ | async) !== false) {
+      <app-notification-container />
+    }
   `,
   styles: [
     `
@@ -71,11 +75,15 @@ export class AppComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly nodeService = inject(NodeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly store = inject(Store);
 
   // Track if we should show the app layout (sidebar + main content)
   // Hide layout on login and setup pages - using signal for reactivity with OnPush
   // Initialize to false to prevent flash of content during initial route check
   readonly showLayout = signal(false);
+
+  // Only show notifications for MAIN nodes (child nodes don't need real-time notifications)
+  readonly isMainNode$ = this.store.select(selectIsMainNode);
 
   constructor() {
     const library = inject(FaIconLibrary);

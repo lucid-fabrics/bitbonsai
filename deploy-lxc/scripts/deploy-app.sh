@@ -11,7 +11,7 @@ cd /opt/bitbonsai
 # Create .env file with required environment variables
 echo "[1/7] Creating environment configuration..."
 if [ ! -f .env ]; then
-  echo "DATABASE_URL=file:./prisma/bitbonsai.db" > .env
+  echo "DATABASE_URL=file:/opt/bitbonsai/data/bitbonsai.db" > .env
   echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
   echo "PORT=3100" >> .env
   echo "NODE_ENV=production" >> .env
@@ -24,7 +24,7 @@ else
   fi
   # Ensure DATABASE_URL exists
   if ! grep -q "DATABASE_URL" .env; then
-    echo "DATABASE_URL=file:./prisma/bitbonsai.db" >> .env
+    echo "DATABASE_URL=file:/opt/bitbonsai/data/bitbonsai.db" >> .env
     echo "✓ Added DATABASE_URL to existing .env"
   fi
   echo "✓ Environment file configured"
@@ -51,10 +51,10 @@ if [ -d "dist/apps/frontend" ]; then
   echo "✓ Moved frontend files to dist/frontend/browser/"
 fi
 
-# Create prisma directory if it doesn't exist
+# Create data directory for database
 echo "[6/7] Ensuring database directory exists..."
-mkdir -p prisma
-chown -R bitbonsai:bitbonsai prisma
+mkdir -p data
+chown -R bitbonsai:bitbonsai data
 
 # Fix permissions
 echo "[7/10] Setting permissions..."
@@ -93,7 +93,7 @@ After=network.target
 Type=simple
 User=bitbonsai
 WorkingDirectory=/opt/bitbonsai
-ExecStart=/usr/bin/npx http-server dist/frontend/browser -p 3000 -a 0.0.0.0 --proxy http://${CONTAINER_IP}:3100?
+ExecStart=/usr/bin/npx http-server dist/frontend/browser -p 3000 -a 0.0.0.0 --proxy http://${CONTAINER_IP}:3100? --spa
 Restart=always
 RestartSec=10
 

@@ -4,6 +4,7 @@ import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
 import { EnvironmentService } from '../common/environment.service';
+import { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import { DefaultQueueViewDto } from './dto/default-queue-view.dto';
 import { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import { SecuritySettingsDto } from './dto/security-settings.dto';
@@ -274,5 +275,41 @@ export class SettingsController {
     @Body() updateDto: ReadyFilesCacheTtlDto
   ): Promise<ReadyFilesCacheTtlDto> {
     return this.settingsService.updateReadyFilesCacheTtl(updateDto.readyFilesCacheTtlMinutes);
+  }
+
+  @Get('auto-heal-retry-limit')
+  @ApiOperation({
+    summary: 'Get auto-heal retry limit',
+    description:
+      'Retrieve the maximum retry count for auto-heal to resurrect failed jobs. Jobs exceeding this limit will not be automatically healed on backend restart.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Auto-heal retry limit retrieved successfully',
+    type: AutoHealRetryLimitDto,
+  })
+  async getAutoHealRetryLimit(): Promise<AutoHealRetryLimitDto> {
+    return this.settingsService.getAutoHealRetryLimit();
+  }
+
+  @Patch('auto-heal-retry-limit')
+  @ApiOperation({
+    summary: 'Update auto-heal retry limit',
+    description:
+      'Update the maximum retry count for auto-heal. Minimum value is 3 to prevent overly aggressive auto-healing. Recommended: 10-20 for high-load systems.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Auto-heal retry limit updated successfully',
+    type: AutoHealRetryLimitDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid retry limit (must be at least 3)',
+  })
+  async updateAutoHealRetryLimit(
+    @Body() updateDto: AutoHealRetryLimitDto
+  ): Promise<AutoHealRetryLimitDto> {
+    return this.settingsService.updateAutoHealRetryLimit(updateDto.maxAutoHealRetries);
   }
 }

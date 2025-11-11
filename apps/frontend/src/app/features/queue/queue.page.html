@@ -268,12 +268,19 @@
                 <th class="col-library">Library</th>
                 <th class="col-codec">Codec</th>
                 <th class="col-policy">Policy</th>
-                <th class="col-progress">Progress</th>
+                @if (selectedStatus !== JobStatus.COMPLETED) {
+                  <th class="col-progress">Progress</th>
+                }
                 <th class="col-size">Size & Compression</th>
                 <th class="col-node">Node</th>
                 @if (selectedStatus === JobStatus.FAILED) {
                   <th class="col-failed-at">Failed At</th>
                   <th class="col-why">Why?</th>
+                }
+                @if (selectedStatus === JobStatus.COMPLETED) {
+                  <th class="col-started-at">Started At</th>
+                  <th class="col-completed-at">Completed At</th>
+                  <th class="col-duration">Duration</th>
                 }
                 <th class="col-actions">Actions</th>
               </tr>
@@ -345,8 +352,9 @@
                     {{ job.policyName }}
                   </span>
                 </td>
-                <td class="col-progress">
-                  @if (job.status === 'ENCODING') {
+                @if (selectedStatus !== JobStatus.COMPLETED) {
+                  <td class="col-progress">
+                    @if (job.status === 'ENCODING') {
                     <div class="progress-details">
                       <div class="progress-bar-enhanced" [class.stuck]="isJobStuck(job)">
                         <div class="progress-fill-enhanced" [style.width.%]="job.progress">
@@ -400,10 +408,11 @@
                       <i class="fas fa-pause-circle"></i>
                       <span>Paused at {{ job.progress }}%</span>
                     </div>
-                  } @else {
-                    <span class="progress-placeholder">-</span>
-                  }
-                </td>
+                    } @else {
+                      <span class="progress-placeholder">-</span>
+                    }
+                  </td>
+                }
                 <td class="col-size">
                   @if (job.status === 'COMPLETED' && job.currentSize > 0) {
                     <!-- Completed: Show actual results -->
@@ -447,6 +456,11 @@
                 @if (selectedStatus === JobStatus.FAILED) {
                   <td class="col-failed-at">{{ formatTimestamp(job.failedAt) }}</td>
                   <td class="col-why">{{ getShortFailureReason(job.error) }}</td>
+                }
+                @if (selectedStatus === JobStatus.COMPLETED) {
+                  <td class="col-started-at">{{ formatTimestamp(job.startedAt) }}</td>
+                  <td class="col-completed-at">{{ formatTimestamp(job.completedAt) }}</td>
+                  <td class="col-duration">{{ getEncodingDuration(job.startedAt, job.completedAt) }}</td>
                 }
                 <td class="col-actions">
                   <div class="action-buttons">
