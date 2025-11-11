@@ -3,7 +3,7 @@ import type { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 // Regular icons (1 icon)
 import { faCompactDisc } from '@fortawesome/pro-regular-svg-icons';
 
-// Solid icons (69 icons)
+// Solid icons (86 icons)
 import {
   faArrowDown,
   faArrowLeft,
@@ -20,6 +20,10 @@ import {
   faChevronDown,
   faChevronUp,
   faCircle,
+  faCircleCheck,
+  faCircleDot,
+  faCircleExclamation,
+  faCircleXmark,
   faClock,
   faCodeBranch,
   faCog,
@@ -49,19 +53,27 @@ import {
   faInbox,
   faInfoCircle,
   faKey,
+  faKeyboard,
   faLayerGroup,
   faLightbulb,
   faLink,
   faList,
   faListCheck,
+  faLock,
+  faMagnifyingGlass,
+  faMemory,
   faMicrochip,
+  faNetworkWired,
   faNotesMedical,
   faPauseCircle,
   faPlay,
   faPlus,
   faPlusCircle,
   faPowerOff,
+  faRadar,
   faRedo,
+  faRocket,
+  faRotateRight,
   faSave,
   faSearch,
   faServer,
@@ -77,14 +89,16 @@ import {
   faTasks,
   faTimes,
   faTimesCircle,
+  faTowerBroadcast,
   faTrash,
   faTv,
   faUsers,
   faWrench,
+  faXmark,
 } from '@fortawesome/pro-solid-svg-icons';
 
 export function configureFontAwesome(library: FaIconLibrary): void {
-  // Add solid icons (69 icons)
+  // Add solid icons (86 icons)
   library.addIcons(
     faArrowDown,
     faArrowLeft,
@@ -101,6 +115,10 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faChevronDown,
     faChevronUp,
     faCircle,
+    faCircleCheck,
+    faCircleDot,
+    faCircleExclamation,
+    faCircleXmark,
     faClock,
     faCodeBranch,
     faCog,
@@ -130,19 +148,27 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faInbox,
     faInfoCircle,
     faKey,
+    faKeyboard,
     faLayerGroup,
     faLightbulb,
     faLink,
     faList,
     faListCheck,
+    faLock,
+    faMagnifyingGlass,
+    faMemory,
     faMicrochip,
+    faNetworkWired,
     faNotesMedical,
     faPauseCircle,
     faPlay,
     faPlus,
     faPlusCircle,
     faPowerOff,
+    faRadar,
     faRedo,
+    faRocket,
+    faRotateRight,
     faSave,
     faSearch,
     faServer,
@@ -158,10 +184,12 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faTasks,
     faTimes,
     faTimesCircle,
+    faTowerBroadcast,
     faTrash,
     faTv,
     faUsers,
-    faWrench
+    faWrench,
+    faXmark
   );
 
   // Add regular icons (1 icon)

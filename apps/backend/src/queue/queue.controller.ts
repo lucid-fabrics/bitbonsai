@@ -1341,6 +1341,67 @@ export class QueueController {
   }
 
   /**
+   * Retry all failed jobs (optionally filtered by error category)
+   */
+  @Post('retry-all-failed')
+  @ApiOperation({
+    summary: 'Retry all failed jobs',
+    description:
+      'Resets ALL failed jobs (or failed jobs matching a specific error category) back to QUEUED stage.\n\n' +
+      '**Actions Performed**:\n' +
+      '1. Finds all jobs with stage = FAILED\n' +
+      '2. Optionally filters by error category if errorFilter query param is provided\n' +
+      '3. Updates matching jobs to stage = QUEUED\n' +
+      '4. Resets progress to 0% and clears timestamps\n\n' +
+      '**Error Categories**:\n' +
+      '- FFmpeg Error Code {number} (e.g., "FFmpeg Error Code 255")\n' +
+      '- FFmpeg Error (Other)\n' +
+      '- Job Timeout/Stuck\n' +
+      '- File Not Found\n' +
+      '- Codec Error\n' +
+      '- Network Error\n' +
+      '- Disk Space Error\n' +
+      '- Permission Error\n' +
+      '- Memory Error\n' +
+      '- [Original error message if no category matches]\n\n' +
+      '**Returns**:\n' +
+      '- Count of retried jobs\n' +
+      '- List of retried jobs with their error messages\n\n' +
+      '**Use Case**: Bulk retry failed jobs, optionally filtering by error category (e.g., retry all FFmpeg exit code 255 errors)',
+  })
+  @ApiQuery({
+    name: 'errorFilter',
+    required: false,
+    type: String,
+    description:
+      'Optional: Filter failed jobs by error category (e.g., "FFmpeg Error Code 255", "Job Timeout/Stuck")',
+  })
+  @ApiOkResponse({
+    description: 'Failed jobs have been retried',
+    schema: {
+      example: {
+        retriedCount: 5,
+        jobs: [
+          {
+            id: 'job-123',
+            fileLabel: 'movie.mp4',
+            error: 'FFmpeg failed with exit code 1',
+          },
+        ],
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while retrying failed jobs',
+  })
+  async retryAllFailed(@Query('errorFilter') errorFilter?: string): Promise<{
+    retriedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; error: string }>;
+  }> {
+    return this.queueService.retryAllFailed(errorFilter);
+  }
+
+  /**
    * Delete a job
    */
   @Delete(':id')

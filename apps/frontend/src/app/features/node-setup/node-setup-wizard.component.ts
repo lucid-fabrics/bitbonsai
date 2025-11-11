@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -80,6 +81,7 @@ export class NodeSetupWizardComponent implements OnInit {
   private readonly discoveryService = inject(DiscoveryService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly http = inject(HttpClient);
 
   // Expose enums and BOs to template
   readonly WizardStep = WizardStep;
@@ -148,6 +150,7 @@ export class NodeSetupWizardComponent implements OnInit {
   /**
    * Component initialization
    * Checks for pending pairing requests and resumes polling if needed
+   * Validates the pending request before resuming to avoid stale state
    */
   ngOnInit(): void {
     const pendingRequestId = localStorage.getItem('bitbonsai_pending_pairing_request_id');
@@ -155,22 +158,41 @@ export class NodeSetupWizardComponent implements OnInit {
     const pendingMainNodeUrl = localStorage.getItem('bitbonsai_pending_main_node_url');
 
     if (pendingRequestId && pendingPairingCode && pendingMainNodeUrl) {
-      // Resume pairing flow
-      this.currentStep.set(WizardStep.Pairing);
-      this.pairingRequestId.set(pendingRequestId);
-      this.pairingCode.set(pendingPairingCode);
-      this.pairingStatus.set(PairingStatus.WAITING_APPROVAL);
-
-      // Restore main node URL in discovery service
+      // Validate the pending request before resuming
       this.discoveryService.setMainNodeUrl(pendingMainNodeUrl);
 
-      // Start elapsed timer
-      this.pairingTimerInterval = setInterval(() => {
-        this.pairingElapsedSeconds.update((s) => s + 1);
-      }, 1000);
+      // Check if the request is still valid (not expired, already approved, or rejected)
+      this.http
+        .get<any>(`${pendingMainNodeUrl}/api/v1/nodes/registration-requests/${pendingRequestId}`)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (request: any) => {
+            if (request.status === 'PENDING') {
+              // Valid pending request - resume polling
+              this.currentStep.set(WizardStep.Pairing);
+              this.pairingRequestId.set(pendingRequestId);
+              this.pairingCode.set(pendingPairingCode);
+              this.pairingStatus.set(PairingStatus.WAITING_APPROVAL);
 
-      // Resume polling
-      this.startPollingPairingStatus(pendingRequestId);
+              // Start elapsed timer
+              this.pairingTimerInterval = setInterval(() => {
+                this.pairingElapsedSeconds.update((s) => s + 1);
+              }, 1000);
+
+              // Resume polling
+              this.startPollingPairingStatus(pendingRequestId);
+            } else {
+              // Request already processed or expired - clear stale state
+              console.log('[Setup] Clearing stale pairing state (status:', request.status, ')');
+              this.clearPendingPairingState();
+            }
+          },
+          error: () => {
+            // Request not found or network error - clear stale state
+            console.log('[Setup] Clearing stale pairing state (request not found)');
+            this.clearPendingPairingState();
+          },
+        });
     }
   }
 
@@ -558,20 +580,50 @@ export class NodeSetupWizardComponent implements OnInit {
   handleCapabilityResultsComplete(config: { maxWorkers: number; cpuLimit: number }): void {
     console.log('[Setup] Capability results complete with config:', config);
 
-    // Fetch hardware detection for completion screen
-    this.discoveryService
-      .getHardwareDetection()
+    const mainNodeUrl = this.discoveryService.getMainNodeUrl();
+    const nodeId = this.approvedNodeId();
+
+    if (!mainNodeUrl || !nodeId) {
+      console.error('[Setup] Cannot save config: missing main node URL or node ID');
+      this.errorMessage.set('Configuration save failed: missing connection information');
+      return;
+    }
+
+    // Save maxWorkers and cpuLimit to the node via MAIN node's backend
+    const updateUrl = `${mainNodeUrl}/api/v1/nodes/${nodeId}`;
+
+    this.http
+      .patch(updateUrl, {
+        maxWorkers: config.maxWorkers,
+        cpuLimit: config.cpuLimit,
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (hardware) => {
-          console.log('[Setup] Hardware detection complete:', hardware);
-          this.hardwareDetection.set(hardware);
-          this.currentStep.set(WizardStep.Complete);
+        next: () => {
+          console.log('[Setup] Node configuration saved successfully');
+
+          // Fetch hardware detection for completion screen
+          this.discoveryService
+            .getHardwareDetection()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (hardware) => {
+                console.log('[Setup] Hardware detection complete:', hardware);
+                this.hardwareDetection.set(hardware);
+                this.currentStep.set(WizardStep.Complete);
+              },
+              error: (err) => {
+                // Even if hardware detection fails, proceed to complete
+                console.warn('[Setup] Hardware detection failed, proceeding anyway:', err);
+                this.currentStep.set(WizardStep.Complete);
+              },
+            });
         },
         error: (err) => {
-          // Even if hardware detection fails, proceed to complete
-          console.warn('[Setup] Hardware detection failed, proceeding anyway:', err);
-          this.currentStep.set(WizardStep.Complete);
+          console.error('[Setup] Failed to save node configuration:', err);
+          this.errorMessage.set(
+            `Failed to save configuration: ${err?.error?.message || err?.message || 'Unknown error'}`
+          );
         },
       });
   }

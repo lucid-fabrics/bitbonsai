@@ -17,6 +17,7 @@ import {
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../../../environments/environment';
 import { PendingRequestsBellComponent } from '../../../shared/components/pending-requests-bell/pending-requests-bell.component';
 import { CurrentNodeActions } from '../../+state/current-node.actions';
 import {
@@ -49,6 +50,7 @@ export class SidebarComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
   readonly logoutIcon = faSignOutAlt;
+  readonly appVersion = environment.version;
 
   /**
    * Check if authentication is required (local network bypass disabled)
@@ -63,7 +65,7 @@ export class SidebarComponent implements OnInit {
     );
 
   private readonly allMenuItems: MenuItem[] = [
-    { label: 'Overview', icon: faChartLine, route: '/overview', mainNodeOnly: true },
+    { label: 'Overview', icon: faChartLine, route: '/overview' },
     { label: 'Queue', icon: faListCheck, route: '/queue' },
     { label: 'Libraries', icon: faFolderOpen, route: '/libraries', mainNodeOnly: true },
     { label: 'Policies', icon: faSliders, route: '/policies', mainNodeOnly: true },

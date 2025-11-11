@@ -33,13 +33,16 @@ export class CreateLibraryDto {
   })
   @IsNotEmpty()
   @IsString()
-  // SECURITY: Prevent path traversal attacks
+  // SECURITY: Prevent path traversal attacks (ENHANCED)
   // - Must be an absolute path (starts with /)
-  // - Cannot contain .. (parent directory references)
-  // - Cannot contain consecutive slashes
-  // - Only allows alphanumeric, dash, underscore, dot, and forward slash
-  @Matches(/^\/[a-zA-Z0-9/_\-.]+$/, {
-    message: 'Path must be an absolute path without path traversal sequences (..)',
+  // - Cannot contain .. (parent directory references) ANYWHERE in path
+  // - Cannot contain consecutive slashes (//)
+  // - Cannot contain special characters that could be exploited
+  // - Only allows alphanumeric, dash, underscore, dot, space, and forward slash
+  // - Rejects paths with encoded characters (%2e%2e, etc.)
+  @Matches(/^\/(?!.*\.\.)(?!.*\/\/)(?!.*%)[a-zA-Z0-9/_\-. ]+$/, {
+    message:
+      'Path must be an absolute path without path traversal sequences (..), consecutive slashes, or encoded characters',
   })
   path!: string;
 

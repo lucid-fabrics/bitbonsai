@@ -48,7 +48,7 @@ export class SettingsController {
   })
   async getSystemSettings(): Promise<SystemSettingsDto> {
     return {
-      version: '0.1.0',
+      version: process.env.APP_VERSION || '1.0.0',
       databaseType: DatabaseType.SQLITE,
       databasePath: '/config/bitbonsai.db',
       storageInfo: {
@@ -83,7 +83,7 @@ export class SettingsController {
     @Body() updateDto: UpdateSystemSettingsDto
   ): Promise<SystemSettingsDto> {
     return {
-      version: '0.1.0',
+      version: process.env.APP_VERSION || '1.0.0',
       databaseType: DatabaseType.SQLITE,
       databasePath: '/config/bitbonsai.db',
       storageInfo: {

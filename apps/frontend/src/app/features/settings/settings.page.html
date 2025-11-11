@@ -408,63 +408,126 @@
           <h2>System Configuration</h2>
 
           @if (systemSettings) {
-            <!-- Version Info -->
-            <div class="info-card">
-              <h3>Version Information</h3>
-              <div class="version-info">
-                <span class="version-label">BitBonsai</span>
-                <span class="version-number">v{{ systemSettings!.version }}</span>
+            <!-- System Overview Card - Compact version -->
+            <div class="info-card compact-card">
+              <div class="compact-grid">
+                <!-- Version -->
+                <div class="compact-item">
+                  <div class="compact-icon version-icon">
+                    <i class="fa fa-tag"></i>
+                  </div>
+                  <div class="compact-details">
+                    <span class="compact-label">Version</span>
+                    <span class="compact-value">v{{ systemSettings!.version }}</span>
+                  </div>
+                </div>
+
+                <!-- Database -->
+                <div class="compact-item">
+                  <div class="compact-icon database-icon">
+                    <i class="fa fa-database"></i>
+                  </div>
+                  <div class="compact-details">
+                    <span class="compact-label">Database</span>
+                    <span class="compact-value">{{ systemSettings!.databaseType }}</span>
+                  </div>
+                </div>
+
+                <!-- Storage -->
+                <div class="compact-item">
+                  <div class="compact-icon storage-icon">
+                    <i class="fa fa-hdd"></i>
+                  </div>
+                  <div class="compact-details">
+                    <span class="compact-label">Storage Used</span>
+                    <span class="compact-value">{{ systemSettings!.storageInfo.usagePercent.toFixed(1) }}%</span>
+                  </div>
+                </div>
+
+                <!-- Database Path -->
+                <div class="compact-item full-span">
+                  <div class="compact-icon path-icon">
+                    <i class="fa fa-folder"></i>
+                  </div>
+                  <div class="compact-details">
+                    <span class="compact-label">Database Path</span>
+                    <code class="compact-value path-value">{{ systemSettings!.databasePath }}</code>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Inline actions -->
+              <div class="compact-actions">
+                <button type="button" class="btn-secondary btn-sm" (click)="backupDatabase()" [disabled]="loading()">
+                  <i class="fa fa-download"></i>
+                  Backup Database
+                </button>
               </div>
             </div>
 
-            <!-- Database Info -->
-            <div class="info-card">
-              <h3>Database</h3>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="label">Type:</span>
-                  <span class="value">{{ systemSettings!.databaseType }}</span>
-                </div>
-                <div class="info-item full-width">
-                  <span class="label">Path:</span>
-                  <code class="value">{{ systemSettings!.databasePath }}</code>
-                </div>
+            <!-- Storage Progress Bar (separate, visual card) -->
+            <div class="info-card storage-card">
+              <div class="storage-header">
+                <h3>Storage Usage</h3>
+                <span class="storage-percentage">{{ systemSettings!.storageInfo.usagePercent.toFixed(1) }}%</span>
               </div>
-              <button type="button" class="btn-secondary" (click)="backupDatabase()" [disabled]="loading()">
-                <i class="fa fa-download"></i>
-                Backup Database
-              </button>
-            </div>
-
-            <!-- Storage Info -->
-            <div class="info-card">
-              <h3>Storage Usage</h3>
-              <div class="storage-info">
-                <div class="storage-bar">
-                  <div
-                    class="storage-fill"
-                    [style.width.%]="systemSettings!.storageInfo.usagePercent"
-                  ></div>
-                </div>
-                <div class="storage-stats">
-                  <span>{{ systemSettings!.storageInfo.usedGb.toFixed(1) }} GB used</span>
-                  <span>{{ systemSettings!.storageInfo.totalGb.toFixed(1) }} GB total</span>
-                  <span>{{ systemSettings!.storageInfo.usagePercent.toFixed(1) }}%</span>
-                </div>
+              <div class="storage-bar-container">
+                <div
+                  class="storage-bar-fill"
+                  [style.width.%]="systemSettings!.storageInfo.usagePercent"
+                  [class.storage-warning]="systemSettings!.storageInfo.usagePercent > 80"
+                  [class.storage-critical]="systemSettings!.storageInfo.usagePercent > 90"
+                ></div>
+              </div>
+              <div class="storage-details">
+                <span>{{ systemSettings!.storageInfo.usedGb.toFixed(1) }} GB used</span>
+                <span>{{ systemSettings!.storageInfo.totalGb.toFixed(1) }} GB total</span>
               </div>
             </div>
 
-            <!-- Danger Zone -->
-            <div class="info-card danger-zone">
-              <h3>Danger Zone</h3>
-              <p class="warning-text">
-                <i class="fa fa-exclamation-triangle"></i>
-                These actions cannot be undone. Proceed with caution.
-              </p>
-              <button type="button" class="btn-danger" (click)="resetToDefaults()" [disabled]="loading()">
-                <i class="fa fa-undo"></i>
-                Reset to Defaults
-              </button>
+            <!-- Node Unregistration (Only shown for LINKED nodes) - Compact version -->
+            @if (isLinkedNode$ | async) {
+              <div class="info-card node-unregister-card">
+                <div class="unregister-header">
+                  <div class="unregister-info">
+                    <h3>
+                      <i class="fa fa-unlink"></i>
+                      Unregister Node
+                    </h3>
+                    <p class="description">
+                      Connected as <strong>Child Node</strong>
+                      @if (mainNode$ | async; as mainNode) {
+                        to <strong>{{ mainNode.name }}</strong>
+                      }
+                    </p>
+                  </div>
+                  <button type="button" class="btn-danger btn-compact" (click)="unregisterNode()" [disabled]="loading()">
+                    <i class="fa fa-unlink"></i>
+                    Unregister
+                  </button>
+                </div>
+                <div class="unregister-note">
+                  <i class="fa fa-info-circle"></i>
+                  Unregistering will disconnect this node and reset it to unconfigured state.
+                </div>
+              </div>
+            }
+
+            <!-- Danger Zone - Compact version -->
+            <div class="info-card danger-card">
+              <div class="danger-header">
+                <div>
+                  <h3>
+                    <i class="fa fa-exclamation-triangle"></i>
+                    Danger Zone
+                  </h3>
+                  <p class="description">Irreversible actions that reset system configuration</p>
+                </div>
+                <button type="button" class="btn-danger btn-compact" (click)="resetToDefaults()" [disabled]="loading()">
+                  <i class="fa fa-undo"></i>
+                  Reset to Defaults
+                </button>
+              </div>
             </div>
           }
         </div>
@@ -484,199 +547,189 @@
       @if (activeTab === SettingsTab.ADVANCED) {
         <div class="tab-panel">
           <h2>Advanced Settings</h2>
+          <p class="tab-description">Configure security, caching, logging, and API integration settings</p>
 
           @if (systemSettings) {
-            <!-- Security Settings Section -->
-            <div class="info-card security-settings">
-              <h3>
-                <i class="fa fa-shield-alt"></i>
-                Security Settings
-              </h3>
-
-              <div class="security-toggle-container">
-                <div class="toggle-header">
-                  <div class="toggle-info">
-                    <label for="localNetworkBypass" class="toggle-label">
-                      Allow Local Network Access Without Login
-                      @if (localNetworkBypassEnabled) {
-                        <span class="warning-badge">
-                          <i class="fa fa-exclamation-triangle"></i>
-                          Active
-                        </span>
-                      }
-                    </label>
-                    <p class="toggle-description">
-                      When enabled, users on your local network (192.168.x.x, 10.x.x.x) can access BitBonsai without logging in.
-                      <strong>Only enable this if you trust your local network.</strong>
-                    </p>
+            <!-- Settings Grid - 2 columns -->
+            <div class="advanced-grid">
+              <!-- Security Toggle Card -->
+              <div class="info-card setting-card">
+                <div class="setting-card-header">
+                  <div class="setting-icon security-icon">
+                    <i class="fa fa-shield-alt"></i>
                   </div>
-                  <div class="toggle-switch">
-                    <label class="switch">
-                      <input
-                        type="checkbox"
-                        id="localNetworkBypass"
-                        [(ngModel)]="localNetworkBypassEnabled"
-                        (ngModelChange)="onLocalNetworkBypassToggle()"
-                        [ngModelOptions]="{standalone: true}"
-                      />
-                      <span class="slider"></span>
-                    </label>
+                  <div class="setting-header-text">
+                    <h3>Local Network Auth Bypass</h3>
+                    <p>Skip login for local network users</p>
                   </div>
+                  <label class="switch">
+                    <input
+                      type="checkbox"
+                      id="localNetworkBypass"
+                      [(ngModel)]="localNetworkBypassEnabled"
+                      (ngModelChange)="onLocalNetworkBypassToggle()"
+                      [ngModelOptions]="{standalone: true}"
+                    />
+                    <span class="slider"></span>
+                  </label>
                 </div>
-
                 @if (localNetworkBypassEnabled) {
-                  <div class="security-warning">
-                    <i class="fa fa-info-circle"></i>
-                    <div class="warning-content">
-                      <strong>Security Notice:</strong>
-                      <ul>
-                        <li>Anyone on your local network can access this BitBonsai instance</li>
-                        <li>This setting should only be used on trusted private networks</li>
-                        <li>Do not enable this on public or shared networks</li>
-                      </ul>
-                    </div>
+                  <div class="setting-note warning-note">
+                    <i class="fa fa-exclamation-triangle"></i>
+                    Anyone on local network can access without authentication
                   </div>
                 }
               </div>
-            </div>
 
-            <!-- Library Cache Settings Section -->
-            <div class="info-card cache-settings">
-              <h3>
-                <i class="fa fa-database"></i>
-                Library Cache Settings
-              </h3>
-              <div class="cache-settings-container">
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <label for="readyFilesCacheTtl" class="setting-label">
-                      Ready Files Cache TTL (minutes)
-                    </label>
-                    <p class="setting-description">
-                      How long to cache library scan results. Minimum: 5 minutes. Higher values reduce disk I/O but may delay showing new files.
-                    </p>
+              <!-- Cache Settings Card -->
+              <div class="info-card setting-card">
+                <div class="setting-card-header">
+                  <div class="setting-icon cache-icon">
+                    <i class="fa fa-database"></i>
                   </div>
-                  <div class="setting-input">
-                    <input
-                      type="number"
-                      id="readyFilesCacheTtl"
-                      class="form-control"
-                      [(ngModel)]="readyFilesCacheTtl"
-                      [ngModelOptions]="{standalone: true}"
-                      min="5"
-                      (change)="saveReadyFilesCacheTtl()"
-                    />
+                  <div class="setting-header-text">
+                    <h3>Library Cache TTL</h3>
+                    <p>Cache duration for library scans (min)</p>
                   </div>
+                  <input
+                    type="number"
+                    class="form-control setting-input-inline"
+                    [(ngModel)]="readyFilesCacheTtl"
+                    [ngModelOptions]="{standalone: true}"
+                    min="5"
+                    (change)="saveReadyFilesCacheTtl()"
+                  />
                 </div>
-              </div>
-            </div>
-
-            <!-- Auto-Heal Settings Section -->
-            <div class="info-card cache-settings">
-              <h3>
-                <i class="fa fa-heartbeat"></i>
-                Auto-Heal Settings
-              </h3>
-              <div class="cache-settings-container">
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <label for="maxAutoHealRetries" class="setting-label">
-                      Max Auto-Heal Retry Attempts
-                    </label>
-                    <p class="setting-description">
-                      Maximum number of retry attempts before auto-heal stops trying to resurrect a failed job. Minimum: 3, Default: 15. Higher values are recommended for high-load systems where jobs may fail due to resource contention.
-                    </p>
-                  </div>
-                  <div class="setting-input">
-                    <input
-                      type="number"
-                      id="maxAutoHealRetries"
-                      class="form-control"
-                      [(ngModel)]="maxAutoHealRetries"
-                      [ngModelOptions]="{standalone: true}"
-                      min="3"
-                      (change)="saveAutoHealRetryLimit()"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">
-              <!-- FFmpeg Path -->
-              <div class="form-group">
-                <label for="ffmpegPath">FFmpeg Path</label>
-                <input
-                  id="ffmpegPath"
-                  type="text"
-                  class="form-control"
-                  formControlName="ffmpegPath"
-                  placeholder="/usr/bin/ffmpeg"
-                  [class.invalid]="ffmpegPathControl?.invalid && ffmpegPathControl?.touched"
-                />
-                @if (ffmpegPathControl?.invalid && ffmpegPathControl?.touched) {
-                  <span class="error-message">Path must be absolute (start with /)</span>
-                }
-              </div>
-
-              <!-- Log Level -->
-              <div class="form-group">
-                <label for="logLevel">Log Level</label>
-                <select id="logLevel" class="form-control" formControlName="logLevel">
-                  <option [value]="LogLevel.DEBUG">Debug</option>
-                  <option [value]="LogLevel.INFO">Info</option>
-                  <option [value]="LogLevel.WARN">Warning</option>
-                  <option [value]="LogLevel.ERROR">Error</option>
-                </select>
-              </div>
-
-              <!-- Analytics Toggle -->
-              <div class="form-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" formControlName="analyticsEnabled" />
-                  <span>Enable Analytics</span>
-                </label>
-                <div class="field-hint">
+                <div class="setting-note">
                   <i class="fa fa-info-circle"></i>
-                  <strong>When enabled:</strong> BitBonsai sends anonymous usage statistics to help us understand how the software is used and improve it. No personal data, file names, or media content is ever collected.
-                  <strong>When disabled:</strong> No analytics data is sent. Your BitBonsai instance operates completely privately with zero telemetry.
+                  Higher values reduce disk I/O but may delay showing new files
                 </div>
               </div>
 
-              <!-- Webhook URL -->
-              <div class="form-group">
-                <label for="webhookUrl">Webhook URL (Optional)</label>
-                <input
-                  id="webhookUrl"
-                  type="text"
-                  class="form-control"
-                  formControlName="webhookUrl"
-                  placeholder="https://example.com/webhook"
-                  [class.invalid]="webhookUrlControl?.invalid && webhookUrlControl?.touched"
-                />
-                @if (webhookUrlControl?.invalid && webhookUrlControl?.touched) {
-                  <span class="error-message">Webhook URL must use HTTPS</span>
-                }
-                <p class="help-text">Receive notifications for job completions and errors</p>
+              <!-- Auto-Heal Settings Card -->
+              <div class="info-card setting-card">
+                <div class="setting-card-header">
+                  <div class="setting-icon heal-icon">
+                    <i class="fa fa-heartbeat"></i>
+                  </div>
+                  <div class="setting-header-text">
+                    <h3>Auto-Heal Retry Limit</h3>
+                    <p>Max retry attempts for failed jobs</p>
+                  </div>
+                  <input
+                    type="number"
+                    class="form-control setting-input-inline"
+                    [(ngModel)]="maxAutoHealRetries"
+                    [ngModelOptions]="{standalone: true}"
+                    min="3"
+                    (change)="saveAutoHealRetryLimit()"
+                  />
+                </div>
+                <div class="setting-note">
+                  <i class="fa fa-info-circle"></i>
+                  Recommended: 10-20 for high-load systems
+                </div>
               </div>
 
-              <button
-                type="submit"
-                class="btn-primary"
-                [disabled]="settingsForm.invalid || loading"
-              >
-                <i class="fa fa-save"></i>
-                Save Settings
-              </button>
+              <!-- Analytics Toggle Card -->
+              <div class="info-card setting-card">
+                <div class="setting-card-header">
+                  <div class="setting-icon analytics-icon">
+                    <i class="fa fa-chart-line"></i>
+                  </div>
+                  <div class="setting-header-text">
+                    <h3>Anonymous Analytics</h3>
+                    <p>Help improve BitBonsai</p>
+                  </div>
+                  <label class="switch">
+                    <input
+                      type="checkbox"
+                      [checked]="settingsForm.value.analyticsEnabled ?? true"
+                      (change)="settingsForm.patchValue({ analyticsEnabled: $any($event.target).checked })"
+                    />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div class="setting-note">
+                  <i class="fa fa-info-circle"></i>
+                  No personal data, filenames, or media content collected
+                </div>
+              </div>
+            </div>
+
+            <!-- System Configuration Form (Full Width) -->
+            <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">
+              <div class="info-card">
+                <h3>System Configuration</h3>
+                <div class="form-row-grid">
+                  <!-- FFmpeg Path -->
+                  <div class="form-group">
+                    <label for="ffmpegPath">FFmpeg Path</label>
+                    <input
+                      id="ffmpegPath"
+                      type="text"
+                      class="form-control"
+                      formControlName="ffmpegPath"
+                      placeholder="/usr/bin/ffmpeg"
+                      [class.invalid]="ffmpegPathControl?.invalid && ffmpegPathControl?.touched"
+                    />
+                    @if (ffmpegPathControl?.invalid && ffmpegPathControl?.touched) {
+                      <span class="error-message">Path must be absolute (start with /)</span>
+                    }
+                  </div>
+
+                  <!-- Log Level -->
+                  <div class="form-group">
+                    <label for="logLevel">Log Level</label>
+                    <select id="logLevel" class="form-control" formControlName="logLevel">
+                      <option [value]="LogLevel.DEBUG">Debug</option>
+                      <option [value]="LogLevel.INFO">Info</option>
+                      <option [value]="LogLevel.WARN">Warning</option>
+                      <option [value]="LogLevel.ERROR">Error</option>
+                    </select>
+                  </div>
+
+                  <!-- Webhook URL -->
+                  <div class="form-group full-width">
+                    <label for="webhookUrl">Webhook URL (Optional)</label>
+                    <input
+                      id="webhookUrl"
+                      type="text"
+                      class="form-control"
+                      formControlName="webhookUrl"
+                      placeholder="https://example.com/webhook"
+                      [class.invalid]="webhookUrlControl?.invalid && webhookUrlControl?.touched"
+                    />
+                    @if (webhookUrlControl?.invalid && webhookUrlControl?.touched) {
+                      <span class="error-message">Webhook URL must use HTTPS</span>
+                    }
+                    <p class="help-text">Receive notifications for job completions and errors</p>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  class="btn-primary"
+                  [disabled]="settingsForm.invalid || loading"
+                >
+                  <i class="fa fa-save"></i>
+                  Save Configuration
+                </button>
+              </div>
             </form>
 
-            <!-- API Key Management -->
-            <div class="section-divider"></div>
-            <div class="api-key-section">
-              <h3>API Key</h3>
-              <p class="help-text">Use this key for external integrations and API access</p>
+            <!-- API Key Management (Full Width) -->
+            <div class="info-card">
+              <div class="api-key-header">
+                <div>
+                  <h3>API Key</h3>
+                  <p class="description">Use this key for external integrations and API access</p>
+                </div>
+                <button type="button" class="btn-secondary btn-sm" (click)="regenerateApiKey()" [disabled]="loading()">
+                  <i class="fa fa-refresh"></i>
+                  Regenerate
+                </button>
+              </div>
               <div class="api-key-display">
                 <code class="api-key-value">
                   {{ apiKeyRevealed ? systemSettings!.apiKey : '**********************' }}
@@ -698,10 +751,6 @@
                   <i class="fa fa-copy"></i>
                 </button>
               </div>
-              <button type="button" class="btn-secondary" (click)="regenerateApiKey()" [disabled]="loading()">
-                <i class="fa fa-refresh"></i>
-                Regenerate API Key
-              </button>
             </div>
           }
         </div>

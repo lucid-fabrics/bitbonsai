@@ -232,11 +232,21 @@ export class DiscoveryService {
     const payload = {
       nodeType: 'child',
       allowLocalNetworkWithoutAuth: true,
+      mainNodeUrl: this.mainNodeUrl, // Save main node URL for unregistration
     };
 
     console.log('[DiscoveryService] Calling POST /api/v1/setup/initialize with payload:', payload);
 
     return this.http.post<void>('/api/v1/setup/initialize', payload);
+  }
+
+  /**
+   * Get main node URL
+   *
+   * @returns Main node URL or null if not set
+   */
+  getMainNodeUrl(): string | null {
+    return this.mainNodeUrl;
   }
 
   /**

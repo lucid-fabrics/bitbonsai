@@ -1,6 +1,7 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, interval, map, Observable, of, switchMap, takeWhile } from 'rxjs';
-import { NodesClient } from '../clients/nodes.client';
+import { DiscoveryService } from '../../features/node-setup/services/discovery.service';
 import type { CapabilityTestProgress, CapabilityTestResult } from '../models/capability-test.model';
 
 /**
@@ -13,7 +14,8 @@ import type { CapabilityTestProgress, CapabilityTestResult } from '../models/cap
   providedIn: 'root',
 })
 export class CapabilityTestService {
-  private readonly nodesClient = inject(NodesClient);
+  private readonly http = inject(HttpClient);
+  private readonly discoveryService = inject(DiscoveryService);
 
   /**
    * Start capability test and poll for results
@@ -28,8 +30,27 @@ export class CapabilityTestService {
    * @returns Observable of test progress
    */
   startTest(nodeId: string): Observable<CapabilityTestProgress> {
-    // Start by calling the backend to initiate the test
-    return this.nodesClient.testCapabilities(nodeId).pipe(
+    // Get the main node URL from discovery service
+    const mainNodeUrl = this.discoveryService.getMainNodeUrl();
+
+    if (!mainNodeUrl) {
+      // If no main node URL, return error immediately
+      const errorProgress: CapabilityTestProgress = {
+        currentPhase: 0,
+        totalPhases: 4,
+        progress: 0,
+        currentTest: 'No main node URL available',
+        results: null,
+        isComplete: false,
+        error: 'Main node URL not set. Please restart the pairing process.',
+      };
+      return of(errorProgress);
+    }
+
+    // Call the MAIN node's backend (not the child node's backend)
+    const testUrl = `${mainNodeUrl}/api/v1/nodes/${nodeId}/test-capabilities`;
+
+    return this.http.post<CapabilityTestResult>(testUrl, {}).pipe(
       switchMap((result: CapabilityTestResult) => {
         // Simulate animated progress for better UX
         let currentPhase = 0;
@@ -84,7 +105,15 @@ export class CapabilityTestService {
    * @returns Observable of capability test result
    */
   getTestStatus(nodeId: string): Observable<CapabilityTestResult> {
-    return this.nodesClient.getNodeCapabilities(nodeId);
+    const mainNodeUrl = this.discoveryService.getMainNodeUrl();
+
+    if (!mainNodeUrl) {
+      throw new Error('Main node URL not set');
+    }
+
+    return this.http.get<CapabilityTestResult>(
+      `${mainNodeUrl}/api/v1/nodes/${nodeId}/capabilities`
+    );
   }
 
   /**

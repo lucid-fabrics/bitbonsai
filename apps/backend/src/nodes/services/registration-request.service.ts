@@ -198,62 +198,76 @@ export class RegistrationRequestService {
 
   /**
    * Approve a registration request and create the CHILD node
+   *
+   * RACE CONDITION FIX: Uses transaction with atomic status check to prevent
+   * multiple simultaneous approvals of the same request
    */
   async approveRequest(
     requestId: string,
     approveDto?: ApproveRequestDto
   ): Promise<NodeRegistrationRequest> {
-    const request = await this.getRequest(requestId);
+    // RACE CONDITION FIX: Move all validation and creation inside transaction
+    // This prevents race conditions where multiple approval requests arrive simultaneously
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Fetch request within transaction to get latest state
+      const request = await tx.nodeRegistrationRequest.findUnique({
+        where: { id: requestId },
+        include: { mainNode: true },
+      });
 
-    // Validate request is in PENDING state
-    if (request.status !== RegistrationRequestStatus.PENDING) {
-      throw new BadRequestException(`Request is not in PENDING state (current: ${request.status})`);
-    }
+      if (!request) {
+        throw new NotFoundException(`Registration request ${requestId} not found`);
+      }
 
-    // Check if expired
-    if (request.tokenExpiresAt < new Date()) {
-      throw new BadRequestException(`Request has expired`);
-    }
+      // Validate request is in PENDING state (atomic check)
+      if (request.status !== RegistrationRequestStatus.PENDING) {
+        throw new BadRequestException(
+          `Request is not in PENDING state (current: ${request.status})`
+        );
+      }
 
-    // Get MAIN node's license
-    const mainNode = await this.prisma.node.findUnique({
-      where: { id: request.mainNodeId },
-      include: {
-        license: {
-          include: {
-            _count: { select: { nodes: true } },
+      // Check if expired
+      if (request.tokenExpiresAt < new Date()) {
+        throw new BadRequestException(`Request has expired`);
+      }
+
+      // Get MAIN node's license (within transaction)
+      const mainNode = await tx.node.findUnique({
+        where: { id: request.mainNodeId },
+        include: {
+          license: {
+            include: {
+              _count: { select: { nodes: true } },
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!mainNode) {
-      throw new NotFoundException(`MAIN node ${request.mainNodeId} not found`);
-    }
+      if (!mainNode) {
+        throw new NotFoundException(`MAIN node ${request.mainNodeId} not found`);
+      }
 
-    // Check license node limit
-    if (mainNode.license._count.nodes >= mainNode.license.maxNodes) {
-      throw new ConflictException(
-        `Maximum nodes (${mainNode.license.maxNodes}) reached for this license`
+      // Check license node limit
+      if (mainNode.license._count.nodes >= mainNode.license.maxNodes) {
+        throw new ConflictException(
+          `Maximum nodes (${mainNode.license.maxNodes}) reached for this license`
+        );
+      }
+
+      // Detect node capabilities before creating the node
+      this.logger.log('🔍 Detecting node capabilities...');
+      const capabilities = await this.capabilityDetector.detectCapabilities(
+        request.id, // Use request ID temporarily
+        request.ipAddress
       );
-    }
 
-    // Detect node capabilities before creating the node
-    this.logger.log('🔍 Detecting node capabilities...');
-    const capabilities = await this.capabilityDetector.detectCapabilities(
-      request.id, // Use request ID temporarily
-      request.ipAddress
-    );
+      this.logger.log(`📊 Capabilities detected: ${JSON.stringify(capabilities, null, 2)}`);
 
-    this.logger.log(`📊 Capabilities detected: ${JSON.stringify(capabilities, null, 2)}`);
+      // Extract hardware specs from request
+      const hardwareSpecs = request.hardwareSpecs as Record<string, unknown>;
+      const cpuCores = (hardwareSpecs?.cpuCores as number) || os.cpus().length;
+      const ramGB = (hardwareSpecs?.ramGb as number) || Math.round(os.totalmem() / 1024 ** 3);
 
-    // Extract hardware specs from request
-    const hardwareSpecs = request.hardwareSpecs as any;
-    const cpuCores = hardwareSpecs?.cpuCores || os.cpus().length;
-    const ramGB = hardwareSpecs?.ramGb || Math.round(os.totalmem() / 1024 ** 3);
-
-    // Create the CHILD node using a transaction
-    const [childNode, updatedRequest] = await this.prisma.$transaction(async (tx) => {
       // Create CHILD node with capability data
       const newNode = await tx.node.create({
         data: {
@@ -271,13 +285,14 @@ export class RegistrationRequestService {
           networkLocation: capabilities.networkLocation,
           hasSharedStorage: capabilities.hasSharedStorage,
           storageBasePath: capabilities.storageBasePath,
+          ipAddress: request.ipAddress, // Store IP for future capability tests
           latencyMs: capabilities.latencyMs,
           cpuCores,
           ramGB,
         },
       });
 
-      // Update request status
+      // Update request status atomically
       const updatedReq = await tx.nodeRegistrationRequest.update({
         where: { id: requestId },
         data: {
@@ -287,18 +302,18 @@ export class RegistrationRequestService {
         },
       });
 
-      return [newNode, updatedReq];
+      return { request, newNode, updatedReq };
     });
 
     this.logger.log(
-      `✅ Registration request approved: ${request.childNodeName} (${request.ipAddress}) → Node ID: ${childNode.id}`
+      `✅ Registration request approved: ${result.request.childNodeName} (${result.request.ipAddress}) → Node ID: ${result.newNode.id}`
     );
 
     // Return the updated request with the child node's API key included
     // This is needed for the child node to authenticate future requests
     return {
-      ...updatedRequest,
-      apiKey: childNode.apiKey,
+      ...result.updatedReq,
+      apiKey: result.newNode.apiKey,
     } as NodeRegistrationRequest;
   }
 

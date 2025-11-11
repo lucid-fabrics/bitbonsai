@@ -67,10 +67,10 @@ export class NodeCapabilityDetectorService {
       networkLocation = NetworkLocation.REMOTE;
     }
 
-    // Test shared storage access (only meaningful for LOCAL nodes)
+    // Test shared storage access (check for NFS/SMB shares)
     const { hasSharedStorage, storageBasePath } =
       networkLocation === NetworkLocation.LOCAL
-        ? await this.testSharedStorageAccess(nodeId)
+        ? await this.testSharedStorageAccess(nodeId, nodeIp)
         : { hasSharedStorage: false, storageBasePath: null };
 
     // Measure bandwidth (only if useful)
@@ -110,25 +110,107 @@ export class NodeCapabilityDetectorService {
   }
 
   /**
-   * Test if node can access main node's shared storage
+   * Test if node can access main node's shared storage via NFS or Samba
+   *
+   * This checks from the CHILD node's perspective by:
+   * 1. Checking if media paths are already mounted (for LOCAL nodes)
+   * 2. Scanning for NFS exports on the main node
+   * 3. Scanning for SMB/CIFS shares on the main node
+   *
+   * NULL SAFETY FIX: Added null checks for media paths and shares
    *
    * @param nodeId - Node ID
+   * @param nodeIp - Node's IP address (to check against)
    * @returns Shared storage access result
    */
   async testSharedStorageAccess(
-    nodeId: string
+    nodeId: string,
+    nodeIp?: string
   ): Promise<{ hasSharedStorage: boolean; storageBasePath: string | null }> {
-    this.logger.log(`📂 Testing shared storage access for node ${nodeId}`);
+    this.logger.log(
+      `📂 Testing shared storage access for node ${nodeId} (IP: ${nodeIp || 'unknown'})`
+    );
 
-    // Get media paths from main node's environment
-    const mediaPaths = (process.env.MEDIA_PATHS || '').split(',').filter(Boolean);
-
-    if (mediaPaths.length === 0) {
+    // NULL SAFETY: Get media paths from main node's environment
+    const mediaPathsEnv = process.env.MEDIA_PATHS;
+    if (!mediaPathsEnv) {
       this.logger.warn('No MEDIA_PATHS configured, cannot test shared storage');
       return { hasSharedStorage: false, storageBasePath: null };
     }
 
-    // Test each media path
+    const mediaPaths = mediaPathsEnv
+      .split(',')
+      .filter(Boolean)
+      .filter((p) => p.trim().length > 0);
+
+    if (mediaPaths.length === 0) {
+      this.logger.warn('MEDIA_PATHS is empty after filtering, cannot test shared storage');
+      return { hasSharedStorage: false, storageBasePath: null };
+    }
+
+    // If this is testing from the main node itself (localhost), just check local access
+    if (!nodeIp || nodeIp === '127.0.0.1' || nodeIp === 'localhost') {
+      return this.testLocalStorageAccess(mediaPaths);
+    }
+
+    // For remote nodes, check if the main node exposes these paths via NFS or Samba
+    const nfsShares = await this.scanNFSExports();
+    const smbShares = await this.scanSMBShares();
+
+    this.logger.log(`Found ${nfsShares.length} NFS exports and ${smbShares.length} SMB shares`);
+
+    // NULL SAFETY: Check if any of our media paths are exposed via network shares
+    for (const mediaPath of mediaPaths) {
+      if (!mediaPath || mediaPath.trim().length === 0) {
+        continue; // Skip empty paths
+      }
+
+      // Check NFS exports
+      for (const nfsExport of nfsShares) {
+        if (!nfsExport || nfsExport.trim().length === 0) {
+          continue; // Skip empty exports
+        }
+
+        if (mediaPath.startsWith(nfsExport) || nfsExport.startsWith(mediaPath)) {
+          this.logger.log(`✅ Media path ${mediaPath} is accessible via NFS export ${nfsExport}`);
+          return {
+            hasSharedStorage: true,
+            storageBasePath: mediaPath,
+          };
+        }
+      }
+
+      // Check SMB shares
+      for (const smbShare of smbShares) {
+        if (!smbShare || smbShare.trim().length === 0) {
+          continue; // Skip empty shares
+        }
+
+        const lowerSmbShare = smbShare.toLowerCase();
+        if (
+          mediaPath.includes(lowerSmbShare) ||
+          lowerSmbShare.includes('media') ||
+          lowerSmbShare.includes('video')
+        ) {
+          this.logger.log(`✅ Media path ${mediaPath} may be accessible via SMB share ${smbShare}`);
+          return {
+            hasSharedStorage: true,
+            storageBasePath: mediaPath,
+          };
+        }
+      }
+    }
+
+    this.logger.log('🚫 No shared storage (NFS/SMB) access detected');
+    return { hasSharedStorage: false, storageBasePath: null };
+  }
+
+  /**
+   * Test local storage access (for MAIN node or same machine)
+   */
+  private async testLocalStorageAccess(
+    mediaPaths: string[]
+  ): Promise<{ hasSharedStorage: boolean; storageBasePath: string | null }> {
     for (const testPath of mediaPaths) {
       try {
         // Check if path exists and is readable
@@ -137,19 +219,78 @@ export class NodeCapabilityDetectorService {
         // Check if we can list directory
         const files = await fs.readdir(testPath);
 
-        this.logger.log(`✅ Shared storage ACCESSIBLE: ${testPath} (${files.length} items found)`);
+        this.logger.log(`✅ Local storage ACCESSIBLE: ${testPath} (${files.length} items found)`);
 
         return {
           hasSharedStorage: true,
           storageBasePath: testPath,
         };
       } catch (error) {
-        this.logger.warn(`❌ Shared storage NOT accessible: ${testPath} - ${error}`);
+        this.logger.warn(`❌ Local storage NOT accessible: ${testPath} - ${error}`);
       }
     }
 
-    this.logger.log('🚫 No shared storage access detected');
     return { hasSharedStorage: false, storageBasePath: null };
+  }
+
+  /**
+   * Scan for NFS exports on this machine
+   *
+   * Checks /etc/exports for NFS shares
+   */
+  private async scanNFSExports(): Promise<string[]> {
+    try {
+      const exportsPath = '/etc/exports';
+      const content = await fs.readFile(exportsPath, 'utf-8');
+
+      // Parse NFS exports (format: "/path/to/share host(options)")
+      const lines = content.split('\n').filter((line) => line.trim() && !line.startsWith('#'));
+
+      const exports: string[] = [];
+      for (const line of lines) {
+        const match = line.match(/^([^\s]+)/);
+        if (match) {
+          exports.push(match[1]);
+        }
+      }
+
+      this.logger.log(`Found ${exports.length} NFS exports: ${exports.join(', ')}`);
+      return exports;
+    } catch (error) {
+      this.logger.debug(`No NFS exports found or /etc/exports not readable: ${error}`);
+      return [];
+    }
+  }
+
+  /**
+   * Scan for SMB/CIFS shares on this machine
+   *
+   * Uses smbclient or checks Samba config
+   */
+  private async scanSMBShares(): Promise<string[]> {
+    try {
+      // Try to read Samba config
+      const smbConfPath = '/etc/samba/smb.conf';
+      const content = await fs.readFile(smbConfPath, 'utf-8');
+
+      // Parse share names (format: "[sharename]")
+      const shareMatches = content.matchAll(/^\[([^\]]+)\]/gm);
+      const shares: string[] = [];
+
+      for (const match of shareMatches) {
+        const shareName = match[1];
+        // Skip special shares
+        if (!['global', 'printers', 'print$', 'homes'].includes(shareName.toLowerCase())) {
+          shares.push(shareName);
+        }
+      }
+
+      this.logger.log(`Found ${shares.length} SMB shares: ${shares.join(', ')}`);
+      return shares;
+    } catch (error) {
+      this.logger.debug(`No SMB shares found or smb.conf not readable: ${error}`);
+      return [];
+    }
   }
 
   /**
