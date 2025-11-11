@@ -82,18 +82,17 @@ EOF
 
 # Create systemd service for frontend
 echo "[9/10] Creating frontend systemd service..."
-# Get container IP for proxy configuration
-CONTAINER_IP=$(hostname -I | awk '{print $1}')
+# Create frontend service (using localhost for backend proxy - future-proof)
 cat > /etc/systemd/system/bitbonsai-frontend.service <<EOF
 [Unit]
 Description=BitBonsai Frontend Web Server
-After=network.target
+After=network.target bitbonsai-backend.service
 
 [Service]
 Type=simple
 User=bitbonsai
 WorkingDirectory=/opt/bitbonsai
-ExecStart=/usr/bin/npx http-server dist/frontend/browser -p 3000 -a 0.0.0.0 --proxy http://${CONTAINER_IP}:3100? --spa
+ExecStart=/usr/bin/npx http-server dist/frontend/browser -p 3000 -a 0.0.0.0 --proxy http://localhost:3100? --spa
 Restart=always
 RestartSec=10
 
