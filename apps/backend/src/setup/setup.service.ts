@@ -171,6 +171,7 @@ export class SetupService {
           apiKey: this.generateRandomString(32),
           lastHeartbeat: new Date(),
           licenseId: license.id,
+          mainNodeUrl: dto.mainNodeUrl, // Save main node URL for unregistration
         },
       });
 

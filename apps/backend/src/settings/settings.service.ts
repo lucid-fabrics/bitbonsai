@@ -19,18 +19,23 @@ export class SettingsService {
    * Get security settings
    *
    * Returns the current security settings, or creates default settings if none exist
+   * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getSecuritySettings(): Promise<SecuritySettingsDto> {
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
 
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          allowLocalNetworkWithoutAuth: false,
-        },
-      });
-    }
+      // Create default settings if they don't exist
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            allowLocalNetworkWithoutAuth: false,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       allowLocalNetworkWithoutAuth: settings.allowLocalNetworkWithoutAuth,
@@ -41,25 +46,30 @@ export class SettingsService {
    * Update security settings
    *
    * Updates the security settings and returns the updated values
+   * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateSecuritySettings(dto: SecuritySettingsDto): Promise<SecuritySettingsDto> {
-    // Get existing settings or create if doesn't exist
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      // Get existing settings or create if doesn't exist
+      let s = await tx.settings.findFirst();
 
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
-        },
-      });
-    } else {
-      settings = await this.prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
-        },
-      });
-    }
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
+          },
+        });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: {
+            allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       allowLocalNetworkWithoutAuth: settings.allowLocalNetworkWithoutAuth,
@@ -70,18 +80,23 @@ export class SettingsService {
    * Get default queue view preference
    *
    * Returns the user's preferred default queue filter view (ENCODING, QUEUED, COMPLETED, etc.)
+   * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getDefaultQueueView(): Promise<DefaultQueueViewDto> {
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
 
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          defaultQueueView: 'ENCODING',
-        },
-      });
-    }
+      // Create default settings if they don't exist
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            defaultQueueView: 'ENCODING',
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       defaultQueueView: settings.defaultQueueView,
@@ -92,25 +107,30 @@ export class SettingsService {
    * Update default queue view preference
    *
    * Updates the user's preferred default queue filter view
+   * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateDefaultQueueView(dto: DefaultQueueViewDto): Promise<DefaultQueueViewDto> {
-    // Get existing settings or create if doesn't exist
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      // Get existing settings or create if doesn't exist
+      let s = await tx.settings.findFirst();
 
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          defaultQueueView: dto.defaultQueueView,
-        },
-      });
-    } else {
-      settings = await this.prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          defaultQueueView: dto.defaultQueueView,
-        },
-      });
-    }
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            defaultQueueView: dto.defaultQueueView,
+          },
+        });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: {
+            defaultQueueView: dto.defaultQueueView,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       defaultQueueView: settings.defaultQueueView,
@@ -121,18 +141,23 @@ export class SettingsService {
    * Get ready files cache TTL setting
    *
    * Returns the current cache TTL in minutes for the /api/v1/libraries/ready endpoint
+   * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getReadyFilesCacheTtl(): Promise<ReadyFilesCacheTtlDto> {
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
 
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          readyFilesCacheTtlMinutes: 5,
-        },
-      });
-    }
+      // Create default settings if they don't exist
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            readyFilesCacheTtlMinutes: 5,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       readyFilesCacheTtlMinutes: settings.readyFilesCacheTtlMinutes,
@@ -144,6 +169,7 @@ export class SettingsService {
    *
    * Updates the cache TTL in minutes for the /api/v1/libraries/ready endpoint
    * Minimum value is 5 minutes to prevent excessive file system scans
+   * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateReadyFilesCacheTtl(ttlMinutes: number): Promise<ReadyFilesCacheTtlDto> {
     // Validate minimum TTL
@@ -151,23 +177,27 @@ export class SettingsService {
       throw new BadRequestException('Cache TTL must be at least 5 minutes');
     }
 
-    // Get existing settings or create if doesn't exist
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      // Get existing settings or create if doesn't exist
+      let s = await tx.settings.findFirst();
 
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          readyFilesCacheTtlMinutes: ttlMinutes,
-        },
-      });
-    } else {
-      settings = await this.prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          readyFilesCacheTtlMinutes: ttlMinutes,
-        },
-      });
-    }
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            readyFilesCacheTtlMinutes: ttlMinutes,
+          },
+        });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: {
+            readyFilesCacheTtlMinutes: ttlMinutes,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       readyFilesCacheTtlMinutes: settings.readyFilesCacheTtlMinutes,
@@ -179,18 +209,23 @@ export class SettingsService {
    *
    * Returns the maximum retry count for auto-heal to resurrect failed jobs.
    * Jobs exceeding this limit will not be automatically healed on backend restart.
+   * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getAutoHealRetryLimit(): Promise<AutoHealRetryLimitDto> {
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
 
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          maxAutoHealRetries: 15,
-        },
-      });
-    }
+      // Create default settings if they don't exist
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            maxAutoHealRetries: 15,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       maxAutoHealRetries: settings.maxAutoHealRetries,
@@ -202,6 +237,7 @@ export class SettingsService {
    *
    * Updates the maximum retry count for auto-heal.
    * Minimum value is 3 to prevent overly aggressive auto-healing.
+   * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateAutoHealRetryLimit(maxRetries: number): Promise<AutoHealRetryLimitDto> {
     // Validate minimum retry limit
@@ -209,23 +245,27 @@ export class SettingsService {
       throw new BadRequestException('Auto-heal retry limit must be at least 3');
     }
 
-    // Get existing settings or create if doesn't exist
-    let settings = await this.prisma.settings.findFirst();
+    const settings = await this.prisma.$transaction(async (tx) => {
+      // Get existing settings or create if doesn't exist
+      let s = await tx.settings.findFirst();
 
-    if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: {
-          maxAutoHealRetries: maxRetries,
-        },
-      });
-    } else {
-      settings = await this.prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          maxAutoHealRetries: maxRetries,
-        },
-      });
-    }
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            maxAutoHealRetries: maxRetries,
+          },
+        });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: {
+            maxAutoHealRetries: maxRetries,
+          },
+        });
+      }
+
+      return s;
+    });
 
     return {
       maxAutoHealRetries: settings.maxAutoHealRetries,

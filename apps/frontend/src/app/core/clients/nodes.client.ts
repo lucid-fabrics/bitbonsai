@@ -116,6 +116,17 @@ export class NodesClient {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  /**
+   * Unregister current node from its main node
+   * Resets node to unconfigured state
+   */
+  unregisterSelf(): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}/unregister-self`,
+      {}
+    );
+  }
+
   // ============================================================================
   // DISCOVERY & REGISTRATION REQUEST METHODS
   // ============================================================================

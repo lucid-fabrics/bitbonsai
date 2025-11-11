@@ -17,6 +17,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class AutoHealingService implements OnModuleInit {
   private readonly logger = new Logger(AutoHealingService.name);
 
+  // PERF: Cache settings to avoid repeated DB queries
+  private settingsCache: { maxRetries: number; cachedAt: number } | null = null;
+  private readonly SETTINGS_CACHE_TTL_MS = 60000; // 1 minute cache
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -25,6 +29,29 @@ export class AutoHealingService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     this.logger.log('Auto-healing service initializing...');
     await this.healFailedJobs();
+  }
+
+  /**
+   * PERF: Get max retry limit with caching
+   * Caches settings for 1 minute to avoid repeated DB queries
+   * @private
+   */
+  private async getMaxRetries(): Promise<number> {
+    const now = Date.now();
+
+    // Return cached value if still valid
+    if (this.settingsCache && now - this.settingsCache.cachedAt < this.SETTINGS_CACHE_TTL_MS) {
+      return this.settingsCache.maxRetries;
+    }
+
+    // Fetch fresh settings
+    const settings = await this.prisma.settings.findFirst();
+    const maxRetries = settings?.maxAutoHealRetries ?? 15;
+
+    // Update cache
+    this.settingsCache = { maxRetries, cachedAt: now };
+
+    return maxRetries;
   }
 
   /**
@@ -41,15 +68,11 @@ export class AutoHealingService implements OnModuleInit {
     try {
       const now = new Date();
 
-      // Get max retry limit from settings (default: 15)
-      let maxRetries = 15;
-      const settings = await this.prisma.settings.findFirst();
-      if (settings) {
-        maxRetries = settings.maxAutoHealRetries;
-      }
-
+      // PERF: Get max retry limit with caching
+      const maxRetries = await this.getMaxRetries();
       this.logger.log(`Auto-heal max retry limit: ${maxRetries}`);
 
+      // PERF: Optimized query uses composite index (stage, retryCount, nextRetryAt)
       // Find eligible failed jobs
       const eligibleJobs = await this.prisma.job.findMany({
         where: {
@@ -63,6 +86,10 @@ export class AutoHealingService implements OnModuleInit {
           retryCount: true,
           nextRetryAt: true,
           progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
+        },
+        // PERF: Add orderBy to help query planner use index
+        orderBy: {
+          nextRetryAt: 'asc',
         },
       });
 

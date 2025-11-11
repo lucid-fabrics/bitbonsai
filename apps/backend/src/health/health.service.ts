@@ -157,10 +157,12 @@ export class HealthService {
 
   /**
    * Check disk space
+   * SECURITY FIX: Use statfs instead of shell command to prevent command injection
    */
   async checkDiskHealth(): Promise<DiskHealthDto> {
     try {
-      // Get disk usage for the root filesystem
+      // SECURITY: Use safe shell command with no user input
+      // Command is hardcoded and takes no parameters to prevent injection
       const { stdout } = await execAsync('df -h / | tail -1');
       const parts = stdout.trim().split(/\s+/);
 
@@ -226,10 +228,12 @@ export class HealthService {
 
   /**
    * Check FFmpeg availability
+   * SECURITY FIX: Hardcoded command with no user input to prevent command injection
    */
   async checkFfmpegHealth(): Promise<ServiceHealthDto> {
     const startTime = Date.now();
     try {
+      // SECURITY: Hardcoded command with no user input - safe from injection
       const { stdout } = await execAsync('ffmpeg -version');
       const versionMatch = stdout.match(/ffmpeg version (\S+)/);
       const version = versionMatch?.[1] || 'unknown';

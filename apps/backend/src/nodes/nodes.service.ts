@@ -406,11 +406,24 @@ export class NodesService implements OnModuleInit {
   /**
    * Get all nodes with basic information
    *
-   * @returns List of all nodes
+   * PERF: Optimized to select only needed fields and include license info
+   * @returns List of all nodes with license information
    */
   async findAll(): Promise<Node[]> {
     const nodes = await this.prisma.node.findMany({
       orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+      // PERF: Include license info to avoid N+1 queries if consumers need it
+      include: {
+        license: {
+          select: {
+            id: true,
+            tier: true,
+            maxNodes: true,
+            maxConcurrentJobs: true,
+            status: true,
+          },
+        },
+      },
     });
 
     // Calculate uptime dynamically based on createdAt timestamp
@@ -556,6 +569,14 @@ export class NodesService implements OnModuleInit {
   /**
    * Remove a node from the system
    *
+   * For LINKED (child) nodes, this will:
+   * 1. Notify the child node to reset itself (if reachable)
+   * 2. Delete the node from main node's database
+   *
+   * RACE CONDITION FIX: Uses try-catch with timeout on fetch to prevent
+   * blocking deletion if child node is unreachable. Uses AbortController
+   * for 5-second timeout to prevent hanging network requests.
+   *
    * Warning: This will cascade delete all associated libraries and jobs
    *
    * @param id Node identifier
@@ -564,15 +585,161 @@ export class NodesService implements OnModuleInit {
   async remove(id: string): Promise<void> {
     const node = await this.prisma.node.findUnique({
       where: { id },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        publicUrl: true,
+        mainNodeUrl: true,
+        apiKey: true,
+      },
     });
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
     }
 
+    // If this is a LINKED (child) node, try to notify it to reset itself
+    if (node.role === NodeRole.LINKED) {
+      const childUrl = node.publicUrl || node.mainNodeUrl;
+      if (childUrl) {
+        try {
+          this.logger.log(
+            `🔔 Notifying child node ${node.name} (${childUrl}) to reset after unlink from main node`
+          );
+
+          // RACE CONDITION FIX: Add timeout to prevent hanging
+          // Use AbortController for timeout (5 second limit)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+          try {
+            // Call the child node's unregister-self endpoint to make it reset
+            const response = await fetch(`${childUrl}/api/v1/nodes/unregister-self`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${node.apiKey}`, // Use stored API key for auth
+              },
+              signal: controller.signal, // Add abort signal for timeout
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+              this.logger.log(
+                `✅ Child node ${node.name} successfully notified to reset (will redirect to setup)`
+              );
+            } else {
+              this.logger.warn(
+                `⚠️ Child node ${node.name} returned status ${response.status} - may need manual reset`
+              );
+            }
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+              this.logger.warn(
+                `⚠️ Timeout notifying child node ${node.name} (>5s) - proceeding with deletion`
+              );
+            } else {
+              throw fetchError; // Re-throw non-timeout errors
+            }
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          this.logger.warn(
+            `⚠️ Failed to notify child node ${node.name} to reset: ${errorMessage} - child may need manual reset`
+          );
+          // Continue with deletion even if notification fails
+        }
+      } else {
+        this.logger.warn(
+          `⚠️ Child node ${node.name} has no URL configured - cannot notify to reset`
+        );
+      }
+    }
+
+    // Delete the node from main node's database
+    // This will cascade delete all associated libraries and jobs
     await this.prisma.node.delete({
       where: { id },
     });
+
+    this.logger.log(`🗑️ Node ${node.name} (${id}) deleted from main node's database`);
+  }
+
+  /**
+   * Unregister current node from main node
+   *
+   * This is called when a LINKED node wants to reset its configuration.
+   * It will:
+   * 1. Clear local pairing configuration
+   * 2. Reset node to unconfigured state
+   *
+   * Note: The main node will detect the child is offline via heartbeat monitoring.
+   *
+   * @returns Success status and message
+   * @throws BadRequestException if called on a MAIN node
+   * @throws NotFoundException if current node not found
+   */
+  async unregisterSelf(): Promise<{ success: boolean; message: string }> {
+    const currentNode = await this.getCurrentNode();
+
+    // Only LINKED nodes can unregister
+    if (currentNode.role === NodeRole.MAIN) {
+      throw new BadRequestException('MAIN nodes cannot unregister');
+    }
+
+    this.logger.log(`🔄 Unregistering node: ${currentNode.name} (${currentNode.id})`);
+
+    // Notify main node to remove this child node from its database
+    if (currentNode.mainNodeUrl) {
+      try {
+        this.logger.log(
+          `📡 Notifying main node at ${currentNode.mainNodeUrl} to remove this child node`
+        );
+        const response = await fetch(`${currentNode.mainNodeUrl}/api/v1/nodes/${currentNode.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          this.logger.log(`✅ Main node successfully removed child node ${currentNode.id}`);
+        } else {
+          this.logger.warn(
+            `⚠️ Main node returned status ${response.status} when removing child node`
+          );
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`❌ Failed to notify main node: ${errorMessage}`);
+        // Continue with local unregistration even if main node notification fails
+      }
+    } else {
+      this.logger.warn(`⚠️ No mainNodeUrl found - cannot notify main node of unregistration`);
+    }
+
+    // Clear local configuration and reset to unconfigured state
+    await this.prisma.node.update({
+      where: { id: currentNode.id },
+      data: {
+        role: NodeRole.MAIN, // Reset to MAIN (will be determined on next setup)
+        pairingToken: null,
+        pairingExpiresAt: null,
+        mainNodeUrl: null, // Clear main node URL
+      },
+    });
+
+    const message = 'Node unregistered successfully. Please reconfigure this node.';
+
+    this.logger.log(`✅ Node reset to unconfigured state`);
+
+    return {
+      success: true,
+      message,
+    };
   }
 
   /**

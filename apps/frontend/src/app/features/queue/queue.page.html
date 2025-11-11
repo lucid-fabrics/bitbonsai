@@ -17,6 +17,12 @@
           Retry All Cancelled ({{ (queueData$ | async)!.stats!.cancelled }})
         </button>
       }
+      @if ((queueData$ | async)?.stats?.failed && (queueData$ | async)!.stats!.failed > 0) {
+        <button (click)="openRetryFailedDialog()" class="btn btn-success">
+          <i class="fas fa-redo"></i>
+          Retry Failed Jobs ({{ (queueData$ | async)!.stats!.failed }})
+        </button>
+      }
       @if ((queueData$ | async)?.stats?.queued && (queueData$ | async)!.stats!.queued > 0) {
         <button (click)="openCancelAllDialog()" class="btn btn-danger">
           <i class="fas fa-times-circle"></i>
@@ -1517,6 +1523,127 @@
         <button (click)="confirmRetryAll()" class="btn btn-success">
           <i class="fas fa-redo"></i>
           Retry All Cancelled Jobs
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Retry Failed Jobs Dialog -->
+@if (showRetryFailedDialog) {
+  <div class="dialog-overlay" (click)="closeRetryFailedDialog()">
+    <div class="dialog-content retry-failed-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-redo"></i> Retry Failed Jobs</h3>
+        <button (click)="closeRetryFailedDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          @let failedJobs = getFailedJobs(data);
+          @let uniqueErrors = getUniqueFailureReasons(data);
+          @let filteredJobs = getFilteredFailedJobs(data, retryFailedSelectedError);
+
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-content">
+              <strong>What happens next?</strong>
+              <p>
+                @if (retryFailedSelectedError) {
+                  {{ filteredJobs.length }} failed job(s) with the selected error will be moved back to the queue and processed by available encoding nodes.
+                } @else {
+                  All {{ failedJobs.length }} failed job(s) will be moved back to the queue and processed by available encoding nodes.
+                }
+              </p>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <h4>Filter by Error Reason</h4>
+            <p class="filter-description">Select a specific error to retry only those jobs, or leave unselected to retry all failed jobs.</p>
+
+            <div class="error-filter-list">
+              <div
+                class="error-filter-option"
+                [class.selected]="retryFailedSelectedError === null"
+                (click)="retryFailedSelectedError = null"
+              >
+                <div class="error-radio">
+                  @if (retryFailedSelectedError === null) {
+                    <i class="fas fa-circle-dot"></i>
+                  } @else {
+                    <i class="far fa-circle"></i>
+                  }
+                </div>
+                <div class="error-content">
+                  <div class="error-label">All Failed Jobs</div>
+                  <div class="error-count">{{ failedJobs.length }} jobs</div>
+                </div>
+              </div>
+
+              @for (errorReason of uniqueErrors; track errorReason.error) {
+                <div
+                  class="error-filter-option"
+                  [class.selected]="retryFailedSelectedError === errorReason.error"
+                  (click)="retryFailedSelectedError = errorReason.error"
+                >
+                  <div class="error-radio">
+                    @if (retryFailedSelectedError === errorReason.error) {
+                      <i class="fas fa-circle-dot"></i>
+                    } @else {
+                      <i class="far fa-circle"></i>
+                    }
+                  </div>
+                  <div class="error-content">
+                    <div class="error-label">{{ errorReason.error }}</div>
+                    <div class="error-count">{{ errorReason.count }} {{ errorReason.count === 1 ? 'job' : 'jobs' }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-file-video"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ filteredJobs.length }}</div>
+                <div class="summary-label">Files to Retry</div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ formatBytes(calculateTotalSize(filteredJobs)) }}</div>
+                <div class="summary-label">Total File Size</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="policy-note">
+            <i class="fas fa-cog"></i>
+            <span>Jobs will use their original encoding policy settings</span>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeRetryFailedDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button (click)="confirmRetryFailed()" class="btn btn-success">
+          <i class="fas fa-redo"></i>
+          @if (retryFailedSelectedError) {
+            Retry Selected Failed Jobs
+          } @else {
+            Retry All Failed Jobs
+          }
         </button>
       </div>
     </div>

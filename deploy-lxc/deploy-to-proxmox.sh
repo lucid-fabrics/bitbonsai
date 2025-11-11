@@ -185,7 +185,7 @@ SCRIPT
 
 # Get container IP
 echo "[7/7] Getting container information..."
-CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I | awk '{print \\\$1}'")
+CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I" | awk '{print $1}')
 
 # Health Check
 echo ""

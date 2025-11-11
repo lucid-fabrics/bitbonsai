@@ -21,6 +21,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/guards/public.decorator';
 import { CurrentNodeDto } from './dto/current-node.dto';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
@@ -54,9 +55,11 @@ export class NodesController {
 
   /**
    * Register a new node
+   * SECURITY: Strict rate limiting to prevent abuse
    */
   @Public()
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // SECURITY: 5 registrations per minute per IP
   @ApiOperation({
     summary: 'Register a new node',
     description:
@@ -74,7 +77,8 @@ export class NodesController {
       '**Next Steps**:\n' +
       '1. Save the API key in node configuration\n' +
       '2. Complete pairing by entering the 6-digit code in web UI (/nodes/pair)\n' +
-      '3. Start sending heartbeats (/nodes/:id/heartbeat)',
+      '3. Start sending heartbeats (/nodes/:id/heartbeat)\n\n' +
+      '**SECURITY**: Rate limited to 5 registrations per minute to prevent abuse',
   })
   @ApiCreatedResponse({
     description: 'Node registered successfully',
@@ -95,8 +99,10 @@ export class NodesController {
 
   /**
    * Complete node pairing
+   * SECURITY: Rate limited to prevent brute force attacks on pairing tokens
    */
   @Post('pair')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // SECURITY: 10 pairing attempts per minute
   @ApiOperation({
     summary: 'Complete node pairing',
     description:
@@ -110,7 +116,8 @@ export class NodesController {
       '- Token must match exactly (6 digits)\n' +
       '- Token must not be expired (10 minute expiration)\n' +
       '- Token can only be used once\n\n' +
-      '**Use Case**: Web UI pairing flow, CLI pairing verification',
+      '**Use Case**: Web UI pairing flow, CLI pairing verification\n\n' +
+      '**SECURITY**: Rate limited to 10 attempts per minute to prevent brute force',
   })
   @ApiOkResponse({
     description: 'Node paired successfully',
@@ -467,6 +474,44 @@ export class NodesController {
     return this.nodesService.remove(id);
   }
 
+  /**
+   * Unregister current node from main node
+   */
+  @Post('unregister-self')
+  @ApiOperation({
+    summary: 'Unregister current node',
+    description:
+      'Unregisters the current LINKED node from its MAIN node.\n\n' +
+      '**Unregistration Process**:\n' +
+      '1. Attempts to notify MAIN node (3 retries, 2s delay)\n' +
+      '2. Clears local pairing configuration\n' +
+      '3. Resets node to unconfigured state\n\n' +
+      '**Response**: After unregistration, redirect to /node-setup to reconfigure\n\n' +
+      '**Use Case**: Child node reconfiguration, changing main node',
+  })
+  @ApiOkResponse({
+    description: 'Node unregistered successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Successfully unregistered from main node' },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Only LINKED nodes can unregister (MAIN nodes cannot)',
+  })
+  @ApiNotFoundResponse({
+    description: 'Current node not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred during unregistration',
+  })
+  async unregisterSelf(): Promise<{ success: boolean; message: string }> {
+    return this.nodesService.unregisterSelf();
+  }
+
   // ============================================================================
   // NODE DISCOVERY & REGISTRATION REQUEST ENDPOINTS
   // ============================================================================
@@ -499,9 +544,11 @@ export class NodesController {
 
   /**
    * Create a registration request (CHILD → MAIN)
+   * SECURITY: Rate limited to prevent spam and abuse
    */
   @Public()
   @Post('registration-requests')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // SECURITY: 10 requests per minute
   @ApiOperation({
     summary: 'Send registration request to MAIN node',
     description:
@@ -512,7 +559,8 @@ export class NodesController {
       "3. Sends request to MAIN node's pending queue\n" +
       '4. If duplicate MAC address detected, resets TTL of existing request\n\n' +
       '**Response**: Registration request details including pairing token\n\n' +
-      '**Use Case**: Flow 1 - Child-initiated auto-registration',
+      '**Use Case**: Flow 1 - Child-initiated auto-registration\n\n' +
+      '**SECURITY**: Rate limited to 10 requests per minute to prevent spam',
   })
   @ApiCreatedResponse({
     description: 'Registration request created successfully',
@@ -776,8 +824,21 @@ export class NodesController {
   async testNodeCapabilities(@Param('id') id: string): Promise<any> {
     const node = await this.nodesService.findOne(id);
 
-    // Get node's IP from registration request or use stored IP
-    const nodeIp = '127.0.0.1'; // TODO: Get from node record or request
+    // Get IP address: prefer stored ipAddress, then extract from URLs, fallback to localhost
+    let nodeIp = node.ipAddress || '127.0.0.1';
+
+    // If no stored IP, try extracting from URLs
+    if (!node.ipAddress) {
+      const urlToUse = node.publicUrl || node.mainNodeUrl;
+      if (urlToUse) {
+        try {
+          const url = new URL(urlToUse);
+          nodeIp = url.hostname;
+        } catch (error) {
+          // Silent fallback to localhost
+        }
+      }
+    }
 
     const result = await this.capabilityDetector.detectCapabilities(id, nodeIp);
 

@@ -11,7 +11,7 @@ import { setupGuard } from './core/guards/setup.guard';
  * - Login: Public (setupGuard only) - requires setup to be complete
  * - All other routes: Require setup completion + authentication (setupGuard + authGuard)
  * - MAIN nodes: Can access all authenticated pages
- * - LINKED nodes (child nodes): Restricted to queue and settings pages only
+ * - LINKED nodes (child nodes): Can access overview, queue, and settings pages
  *
  * Guard Order:
  * 1. setupGuard - ensures setup is complete before allowing access
@@ -19,7 +19,10 @@ import { setupGuard } from './core/guards/setup.guard';
  * 3. mainNodeGuard - ensures MAIN node for restricted routes
  *
  * Protected Routes (MAIN node only):
- * - overview, libraries, policies, nodes, insights
+ * - libraries, policies, nodes, insights
+ *
+ * Accessible to Both MAIN and LINKED nodes:
+ * - overview, queue, settings
  */
 export const routes: Routes = [
   {
@@ -51,7 +54,8 @@ export const routes: Routes = [
     path: 'overview',
     loadComponent: () =>
       import('./features/overview/overview.page').then((m) => m.OverviewComponent),
-    canActivate: [setupGuard, authGuard, mainNodeGuard],
+    canActivate: [setupGuard, authGuard],
+    // Overview is accessible to both MAIN and LINKED nodes
   },
   {
     path: 'queue',
@@ -102,6 +106,13 @@ export const routes: Routes = [
       import('./features/settings/settings.page').then((m) => m.SettingsComponent),
     canActivate: [setupGuard, authGuard],
     // Settings is accessible to both MAIN and LINKED nodes (but requires setup + auth)
+  },
+  {
+    path: 'settings/:tab',
+    loadComponent: () =>
+      import('./features/settings/settings.page').then((m) => m.SettingsComponent),
+    canActivate: [setupGuard, authGuard],
+    // Settings with tab parameter (e.g., /settings/license)
   },
   {
     path: '**',

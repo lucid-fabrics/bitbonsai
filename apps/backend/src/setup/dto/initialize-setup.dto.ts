@@ -45,4 +45,13 @@ export class InitializeSetupDto {
   @IsEnum(NodeType)
   @IsOptional()
   nodeType?: NodeType;
+
+  @ApiProperty({
+    description: 'URL of the main node (required for child nodes)',
+    example: 'http://192.168.1.100:3100',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  mainNodeUrl?: string;
 }

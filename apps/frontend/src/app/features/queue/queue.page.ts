@@ -94,6 +94,8 @@ export class QueueComponent implements OnInit {
   protected showCancelDialog = false;
   protected showCancelAllDialog = false;
   protected showRetryAllDialog = false;
+  protected showRetryFailedDialog = false;
+  protected retryFailedSelectedError: string | null = null;
   protected showClearJobsDialog = false;
   protected clearJobsStages: string[] = [];
   protected selectedJobId: string | null = null;
@@ -774,6 +776,38 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected openRetryFailedDialog(): void {
+    this.retryFailedSelectedError = null;
+    this.showRetryFailedDialog = true;
+  }
+
+  protected closeRetryFailedDialog(): void {
+    this.showRetryFailedDialog = false;
+    this.retryFailedSelectedError = null;
+  }
+
+  protected confirmRetryFailed(): void {
+    this.queueApi
+      .retryAllFailed(this.retryFailedSelectedError || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const count = result.retriedCount;
+          this.toastService.success(
+            count === 1
+              ? '1 failed job moved back to queue'
+              : `${count} failed jobs moved back to queue`
+          );
+          this.closeRetryFailedDialog();
+          this.refreshQueue();
+        },
+        error: () => {
+          this.toastService.error('Failed to retry failed jobs');
+          this.closeRetryFailedDialog();
+        },
+      });
+  }
+
   protected openClearJobsDialog(stages?: string[]): void {
     this.clearJobsStages = stages || [];
     this.showClearJobsDialog = true;
@@ -1064,6 +1098,144 @@ export class QueueComponent implements OnInit {
 
   protected getCancelledJobs(data: QueueResponse): QueueResponse['jobs'] {
     return data.jobs.filter((job) => job.status === 'CANCELLED');
+  }
+
+  protected getFailedJobs(data: QueueResponse): QueueResponse['jobs'] {
+    return data.jobs.filter((job) => job.status === 'FAILED');
+  }
+
+  /**
+   * Categorize an error message into a meaningful group
+   */
+  private categorizeError(error: string): string {
+    const errorLower = error.toLowerCase();
+
+    // FFmpeg exit code errors
+    const ffmpegExitMatch = error.match(/ffmpeg.*exit code (\d+)/i);
+    if (ffmpegExitMatch) {
+      const exitCode = ffmpegExitMatch[1];
+      return `FFmpeg Error Code ${exitCode}`;
+    }
+
+    // Generic FFmpeg errors without exit code
+    if (errorLower.includes('ffmpeg') && errorLower.includes('error')) {
+      return 'FFmpeg Error (Other)';
+    }
+
+    // Timeout/stuck errors
+    if (
+      errorLower.includes('timeout') ||
+      errorLower.includes('timed out') ||
+      errorLower.includes('stuck') ||
+      errorLower.includes('no progress')
+    ) {
+      return 'Job Timeout/Stuck';
+    }
+
+    // File not found/missing
+    if (
+      errorLower.includes('file not found') ||
+      errorLower.includes('no such file') ||
+      errorLower.includes('enoent') ||
+      errorLower.includes('does not exist')
+    ) {
+      return 'File Not Found';
+    }
+
+    // Codec errors
+    if (
+      errorLower.includes('codec') ||
+      errorLower.includes('unsupported') ||
+      errorLower.includes('invalid codec')
+    ) {
+      return 'Codec Error';
+    }
+
+    // Network/connection errors
+    if (
+      errorLower.includes('network') ||
+      errorLower.includes('connection') ||
+      errorLower.includes('econnrefused') ||
+      errorLower.includes('econnreset')
+    ) {
+      return 'Network Error';
+    }
+
+    // Disk space errors
+    if (
+      errorLower.includes('no space') ||
+      errorLower.includes('enospc') ||
+      errorLower.includes('disk full')
+    ) {
+      return 'Disk Space Error';
+    }
+
+    // Permission errors
+    if (
+      errorLower.includes('permission') ||
+      errorLower.includes('eacces') ||
+      errorLower.includes('eperm')
+    ) {
+      return 'Permission Error';
+    }
+
+    // Memory errors
+    if (errorLower.includes('out of memory') || errorLower.includes('enomem')) {
+      return 'Memory Error';
+    }
+
+    // If no category matches, return original error
+    return error;
+  }
+
+  /**
+   * Group failed jobs by error category
+   */
+  protected getUniqueFailureReasons(
+    data: QueueResponse
+  ): Array<{ error: string; count: number; category: string }> {
+    const failedJobs = this.getFailedJobs(data);
+    const categoryCounts = new Map<string, { count: number; originalErrors: Set<string> }>();
+
+    for (const job of failedJobs) {
+      const originalError = job.error || 'Unknown error';
+      const category = this.categorizeError(originalError);
+
+      if (!categoryCounts.has(category)) {
+        categoryCounts.set(category, { count: 0, originalErrors: new Set() });
+      }
+
+      const entry = categoryCounts.get(category)!;
+      entry.count++;
+      entry.originalErrors.add(originalError);
+    }
+
+    return Array.from(categoryCounts.entries())
+      .map(([category, data]) => ({
+        error: category,
+        count: data.count,
+        category: category,
+      }))
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+  }
+
+  /**
+   * Filter failed jobs by error category
+   */
+  protected getFilteredFailedJobs(
+    data: QueueResponse,
+    errorFilter: string | null
+  ): QueueResponse['jobs'] {
+    const failedJobs = this.getFailedJobs(data);
+    if (!errorFilter) {
+      return failedJobs;
+    }
+
+    // Filter by matching category
+    return failedJobs.filter((job) => {
+      const category = this.categorizeError(job.error || 'Unknown error');
+      return category === errorFilter;
+    });
   }
 
   protected calculateTotalSize(jobs: QueueResponse['jobs']): number {

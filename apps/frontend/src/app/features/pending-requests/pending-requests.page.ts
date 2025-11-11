@@ -80,10 +80,11 @@ export class PendingRequestsPage implements OnInit {
   }
 
   /**
-   * Start polling for new requests every 10 seconds
+   * PERF: Start polling for new requests every 30 seconds (reduced from 10s)
+   * Pending requests are low-frequency events, 30s polling is sufficient
    */
   private startPolling(): void {
-    interval(10000)
+    interval(30000)
       .pipe(
         switchMap(() => this.nodesClient.getPendingRequests()),
         takeUntilDestroyed(this.destroyRef)
@@ -112,9 +113,9 @@ export class PendingRequestsPage implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
-      if (result) {
-        this.approveRequest(request.id, result);
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((approved) => {
+      if (approved) {
+        this.approveRequest(request.id);
       }
     });
   }

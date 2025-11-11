@@ -30,12 +30,14 @@ export class RetrySchedulerService {
   /**
    * Background job that runs every 5 minutes
    * Automatically retries eligible failed jobs
+   * PERF: Uses composite index (stage, retryCount, nextRetryAt) for optimal query performance
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async retryFailedJobs(): Promise<void> {
     try {
       const now = new Date();
 
+      // PERF: Optimized query uses composite index (stage, retryCount, nextRetryAt)
       // Find eligible failed jobs
       const eligibleJobs = await this.prisma.job.findMany({
         where: {

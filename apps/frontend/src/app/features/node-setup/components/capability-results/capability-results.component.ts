@@ -215,18 +215,18 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       }
 
       .results-header.local {
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-        border: 2px solid #10b981;
+        background: linear-gradient(135deg, #1a4d2e 0%, #2a5d3e 100%);
+        border: 2px solid #4ade80;
       }
 
       .results-header.remote {
-        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-        border: 2px solid #f59e0b;
+        background: linear-gradient(135deg, #4d3a1a 0%, #5d4a2a 100%);
+        border: 2px solid #fbbf24;
       }
 
       .results-header.unknown {
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-        border: 2px solid #6b7280;
+        background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+        border: 2px solid #666;
       }
 
       .header-badge {
@@ -243,30 +243,30 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       }
 
       .header-badge.local {
-        background-color: #10b981;
-        color: white;
+        background-color: #4ade80;
+        color: #1a1a1a;
       }
 
       .header-badge.remote {
-        background-color: #f59e0b;
-        color: white;
+        background-color: #fbbf24;
+        color: #1a1a1a;
       }
 
       .header-badge.unknown {
-        background-color: #6b7280;
-        color: white;
+        background-color: #666;
+        color: #e0e0e0;
       }
 
       .results-header h2 {
         font-size: 1.75rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
-        color: #1f2937;
+        color: #e0e0e0;
       }
 
       .results-header p {
         font-size: 0.95rem;
-        color: #4b5563;
+        color: #888;
         margin: 0;
       }
 
@@ -282,14 +282,15 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         align-items: flex-start;
         gap: 1rem;
         padding: 1.25rem;
-        background-color: white;
-        border: 1px solid #e5e7eb;
+        background-color: #252525;
+        border: 1px solid #2d2d2d;
         border-radius: 8px;
         transition: all 0.2s;
       }
 
       .capability-card:hover {
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        border-color: #3d3d3d;
       }
 
       .card-icon {
@@ -299,34 +300,34 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         align-items: center;
         justify-content: center;
         border-radius: 8px;
-        background-color: #f3f4f6;
-        color: #6b7280;
+        background-color: #2a2a2a;
+        color: #666;
         font-size: 1.5rem;
       }
 
       .card-icon.local {
-        background-color: #d1fae5;
-        color: #10b981;
+        background-color: #1a4d2e;
+        color: #4ade80;
       }
 
       .card-icon.remote {
-        background-color: #fef3c7;
-        color: #f59e0b;
+        background-color: #4d3a1a;
+        color: #fbbf24;
       }
 
       .card-icon.enabled {
-        background-color: #dbeafe;
-        color: #3b82f6;
+        background-color: #1a3a4d;
+        color: #f9be03;
       }
 
       .card-icon.low-latency {
-        background-color: #d1fae5;
-        color: #10b981;
+        background-color: #1a4d2e;
+        color: #4ade80;
       }
 
       .card-icon.private {
-        background-color: #e0e7ff;
-        color: #6366f1;
+        background-color: #1a2a4d;
+        color: #f9be03;
       }
 
       .card-content {
@@ -337,7 +338,7 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #6b7280;
+        color: #666;
         margin-bottom: 0.25rem;
         font-weight: 600;
       }
@@ -345,20 +346,20 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       .card-value {
         font-size: 1.125rem;
         font-weight: 700;
-        color: #1f2937;
+        color: #e0e0e0;
       }
 
       .card-detail {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #888;
         margin-top: 0.25rem;
         font-family: monospace;
       }
 
       .reasoning-section {
         padding: 1.5rem;
-        background-color: #f0f9ff;
-        border-left: 4px solid #3b82f6;
+        background-color: #2a2a2a;
+        border-left: 4px solid #f9be03;
         border-radius: 8px;
         margin-bottom: 2rem;
       }
@@ -369,7 +370,7 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         gap: 0.5rem;
         font-size: 0.875rem;
         font-weight: 600;
-        color: #0369a1;
+        color: #f9be03;
         margin-bottom: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -377,13 +378,13 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
 
       .reasoning-text {
         font-size: 0.95rem;
-        color: #1f2937;
+        color: #e0e0e0;
         line-height: 1.6;
       }
 
       .settings-section {
-        background-color: white;
-        border: 1px solid #e5e7eb;
+        background-color: #252525;
+        border: 1px solid #2d2d2d;
         border-radius: 8px;
         padding: 1.5rem;
         margin-bottom: 2rem;
@@ -392,13 +393,13 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       .settings-section h3 {
         font-size: 1.25rem;
         font-weight: 600;
-        color: #1f2937;
+        color: #e0e0e0;
         margin-bottom: 0.5rem;
       }
 
       .settings-subtitle {
         font-size: 0.875rem;
-        color: #6b7280;
+        color: #888;
         margin-bottom: 1.5rem;
       }
 
@@ -412,34 +413,36 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         display: block;
         font-size: 0.875rem;
         font-weight: 600;
-        color: #374151;
+        color: #e0e0e0;
         margin-bottom: 0.5rem;
       }
 
       .form-input {
         width: 100%;
         padding: 0.625rem 0.875rem;
-        border: 1px solid #d1d5db;
+        background-color: #1a1a1a;
+        border: 1px solid #3d3d3d;
         border-radius: 6px;
         font-size: 0.95rem;
+        color: #e0e0e0;
         transition: all 0.2s;
       }
 
       .form-input:focus {
         outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-color: #f9be03;
+        box-shadow: 0 0 0 3px rgba(249, 190, 3, 0.1);
       }
 
       .field-help {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #666;
         margin-top: 0.375rem;
       }
 
       .warning-box {
-        background-color: #fffbeb;
-        border: 1px solid #fde68a;
+        background-color: #4d3a1a;
+        border: 1px solid #5d4a2a;
         border-radius: 8px;
         padding: 1.5rem;
         margin-bottom: 2rem;
@@ -451,18 +454,18 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         gap: 0.5rem;
         font-size: 0.95rem;
         font-weight: 600;
-        color: #92400e;
+        color: #fbbf24;
         margin-bottom: 0.75rem;
       }
 
       .warning-header i {
         font-size: 1.25rem;
-        color: #f59e0b;
+        color: #fbbf24;
       }
 
       .warning-content {
         font-size: 0.875rem;
-        color: #78350f;
+        color: #e0e0e0;
       }
 
       .warning-content p {
@@ -479,8 +482,8 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       }
 
       .success-box {
-        background-color: #ecfdf5;
-        border: 1px solid #a7f3d0;
+        background-color: #1a4d2e;
+        border: 1px solid #2a5d3e;
         border-radius: 8px;
         padding: 1.5rem;
         margin-bottom: 2rem;
@@ -492,18 +495,18 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         gap: 0.5rem;
         font-size: 0.95rem;
         font-weight: 600;
-        color: #065f46;
+        color: #4ade80;
         margin-bottom: 0.75rem;
       }
 
       .success-header i {
         font-size: 1.25rem;
-        color: #10b981;
+        color: #4ade80;
       }
 
       .success-content {
         font-size: 0.875rem;
-        color: #064e3b;
+        color: #e0e0e0;
       }
 
       .success-content p {
@@ -515,7 +518,7 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         justify-content: space-between;
         gap: 1rem;
         padding-top: 1.5rem;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid #2d2d2d;
       }
 
       .btn {
@@ -532,22 +535,22 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       }
 
       .btn-primary {
-        background-color: #3b82f6;
-        color: white;
+        background-color: #f9be03;
+        color: #1a1a1a;
       }
 
       .btn-primary:hover {
-        background-color: #2563eb;
+        background-color: #fcd34d;
       }
 
       .btn-secondary {
-        background-color: white;
-        color: #374151;
-        border: 1px solid #d1d5db;
+        background-color: #252525;
+        color: #e0e0e0;
+        border: 1px solid #3d3d3d;
       }
 
       .btn-secondary:hover {
-        background-color: #f9fafb;
+        background-color: #2a2a2a;
       }
     `,
   ],

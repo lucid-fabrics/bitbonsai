@@ -1,7 +1,6 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
 import { ContainerType } from '../../nodes/models/registration-request.model';
 
@@ -9,15 +8,12 @@ export interface ApprovalDialogData {
   request: RegistrationRequest;
 }
 
-export interface ApprovalDialogResult {
-  maxWorkers?: number;
-  cpuLimit?: number;
-}
+// Approval dialog simply returns true when approved, null/undefined when cancelled
 
 @Component({
   selector: 'app-approval-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   styleUrls: ['./approval-dialog.component.scss'],
   template: `
     <div class="dialog-container">
@@ -87,33 +83,14 @@ export interface ApprovalDialogResult {
           <p class="message">{{ data.request.message }}</p>
         </div>
 
-        <!-- Configuration -->
-        <div class="config-section">
-          <h3>Node Configuration</h3>
-          <div class="form-group">
-            <label for="maxWorkers">Max Concurrent Jobs (1-12):</label>
-            <input
-              type="number"
-              id="maxWorkers"
-              [(ngModel)]="maxWorkers"
-              min="1"
-              max="12"
-              class="form-control"
-            />
-            <small>Number of encoding jobs this node can handle simultaneously</small>
-          </div>
-
-          <div class="form-group">
-            <label for="cpuLimit">CPU Limit (10-100%):</label>
-            <input
-              type="number"
-              id="cpuLimit"
-              [(ngModel)]="cpuLimit"
-              min="10"
-              max="100"
-              class="form-control"
-            />
-            <small>Maximum CPU usage allowed for this node</small>
+        <!-- Note about configuration -->
+        <div class="info-section note-section">
+          <div class="note-box">
+            <i class="fa fa-info-circle"></i>
+            <div>
+              <strong>Node Configuration</strong>
+              <p>After approval, the child node will configure its own settings (max concurrent jobs, CPU limits) based on its available hardware resources.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -134,16 +111,8 @@ export class ApprovalDialogComponent {
   // Expose enum to template
   readonly ContainerType = ContainerType;
 
-  // Default configuration
-  maxWorkers = 2;
-  cpuLimit = 80;
-
   approve(): void {
-    const result: ApprovalDialogResult = {
-      maxWorkers: this.maxWorkers,
-      cpuLimit: this.cpuLimit,
-    };
-    this.dialogRef.close(result);
+    this.dialogRef.close(true);
   }
 
   getContainerTypeLabel(type: ContainerType): string {

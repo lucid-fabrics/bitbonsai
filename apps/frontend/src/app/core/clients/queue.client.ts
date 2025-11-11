@@ -77,6 +77,20 @@ export class QueueClient {
     }>(`${this.apiUrl}/retry-all-cancelled`, {});
   }
 
+  retryAllFailed(errorFilter?: string): Observable<{
+    retriedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; error: string }>;
+  }> {
+    const params: Record<string, string> = {};
+    if (errorFilter) {
+      params.errorFilter = errorFilter;
+    }
+    return this.http.post<{
+      retriedCount: number;
+      jobs: Array<{ id: string; fileLabel: string; error: string }>;
+    }>(`${this.apiUrl}/retry-all-failed`, {}, { params });
+  }
+
   unblacklistJob(jobId: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${jobId}/unblacklist`, {});
   }

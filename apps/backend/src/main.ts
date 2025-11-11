@@ -59,9 +59,8 @@ async function bootstrap() {
   // Serve static frontend files from production build
   const express = require('express');
   const path = require('path');
-  // In production, frontend is at dist/frontend/browser (moved by deploy script)
-  // __dirname is dist/apps/backend, so we need ../../frontend/browser
-  const frontendPath = path.join(__dirname, '../../frontend/browser');
+  // __dirname is dist/apps/backend, so we need ../frontend
+  const frontendPath = path.join(__dirname, '../frontend');
 
   // Serve static files (JS, CSS, images)
   app.use(

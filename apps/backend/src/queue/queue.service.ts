@@ -324,6 +324,7 @@ export class QueueService {
       where.OR = [{ filePath: { contains: search } }, { fileLabel: { contains: search } }];
     }
 
+    // PERF: Optimized select to only fetch needed fields (reduces data transfer)
     const includeClause = {
       node: {
         select: {
@@ -1210,6 +1211,164 @@ export class QueueService {
       };
     } catch (error) {
       this.logger.error('Failed to retry all cancelled jobs', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Categorize an error message into a meaningful group
+   */
+  private categorizeError(error: string): string {
+    if (!error) return 'Unknown error';
+
+    const errorLower = error.toLowerCase();
+
+    // FFmpeg exit code errors
+    const ffmpegExitMatch = error.match(/ffmpeg.*exit code (\d+)/i);
+    if (ffmpegExitMatch) {
+      const exitCode = ffmpegExitMatch[1];
+      return `FFmpeg Error Code ${exitCode}`;
+    }
+
+    // Generic FFmpeg errors without exit code
+    if (errorLower.includes('ffmpeg') && errorLower.includes('error')) {
+      return 'FFmpeg Error (Other)';
+    }
+
+    // Timeout/stuck errors
+    if (
+      errorLower.includes('timeout') ||
+      errorLower.includes('timed out') ||
+      errorLower.includes('stuck') ||
+      errorLower.includes('no progress')
+    ) {
+      return 'Job Timeout/Stuck';
+    }
+
+    // File not found/missing
+    if (
+      errorLower.includes('file not found') ||
+      errorLower.includes('no such file') ||
+      errorLower.includes('enoent') ||
+      errorLower.includes('does not exist')
+    ) {
+      return 'File Not Found';
+    }
+
+    // Codec errors
+    if (
+      errorLower.includes('codec') ||
+      errorLower.includes('unsupported') ||
+      errorLower.includes('invalid codec')
+    ) {
+      return 'Codec Error';
+    }
+
+    // Network/connection errors
+    if (
+      errorLower.includes('network') ||
+      errorLower.includes('connection') ||
+      errorLower.includes('econnrefused') ||
+      errorLower.includes('econnreset')
+    ) {
+      return 'Network Error';
+    }
+
+    // Disk space errors
+    if (
+      errorLower.includes('no space') ||
+      errorLower.includes('enospc') ||
+      errorLower.includes('disk full')
+    ) {
+      return 'Disk Space Error';
+    }
+
+    // Permission errors
+    if (
+      errorLower.includes('permission') ||
+      errorLower.includes('eacces') ||
+      errorLower.includes('eperm')
+    ) {
+      return 'Permission Error';
+    }
+
+    // Memory errors
+    if (errorLower.includes('out of memory') || errorLower.includes('enomem')) {
+      return 'Memory Error';
+    }
+
+    // If no category matches, return original error
+    return error;
+  }
+
+  /**
+   * Retry all failed jobs (optionally filtered by error category)
+   *
+   * @param errorFilter - Optional error category to filter by
+   * @returns Object with count of retried jobs and job details
+   */
+  async retryAllFailed(errorFilter?: string): Promise<{
+    retriedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; error: string }>;
+  }> {
+    this.logger.log(
+      `Retrying all failed jobs${errorFilter ? ` with category: ${errorFilter}` : ''}`
+    );
+
+    try {
+      // Get all failed jobs
+      const allFailedJobs = await this.prisma.job.findMany({
+        where: {
+          stage: JobStage.FAILED,
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          error: true,
+        },
+      });
+
+      // Filter by category if provided
+      let jobsToRetry = allFailedJobs;
+      if (errorFilter) {
+        jobsToRetry = allFailedJobs.filter((job) => {
+          const category = this.categorizeError(job.error || '');
+          return category === errorFilter;
+        });
+      }
+
+      // Get IDs of jobs to retry
+      const jobIdsToRetry = jobsToRetry.map((job) => job.id);
+
+      // Update matching jobs back to queued
+      const result = await this.prisma.job.updateMany({
+        where: {
+          id: { in: jobIdsToRetry },
+        },
+        data: {
+          stage: JobStage.QUEUED,
+          progress: 0,
+          error: null,
+          completedAt: null,
+          startedAt: null,
+          failedAt: null,
+        },
+      });
+
+      this.logger.log(
+        `Retried ${result.count} failed job(s)${errorFilter ? ` with category: ${errorFilter}` : ''}`
+      );
+
+      return {
+        retriedCount: result.count,
+        jobs: jobsToRetry.map((job) => ({
+          id: job.id,
+          fileLabel: job.fileLabel,
+          error: job.error || 'Unknown error',
+        })),
+      };
+    } catch (error) {
+      this.logger.error('Failed to retry failed jobs', error);
       throw error;
     }
   }

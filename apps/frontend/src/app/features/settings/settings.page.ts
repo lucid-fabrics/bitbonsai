@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,7 +10,20 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { Observable } from 'rxjs';
+import {
+  selectCurrentNode,
+  selectIsLinkedNode,
+  selectMainNode,
+} from '../../core/+state/current-node.selectors';
+import { NodesClient } from '../../core/clients/nodes.client';
 import { SettingsClient } from '../../core/clients/settings.client';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { CpuCapacityPanelComponent } from './components/cpu-capacity-panel/cpu-capacity-panel.component';
 import type { EnvironmentInfo } from './models/environment-info.model';
 import type { ActivateLicense, License } from './models/license.model';
@@ -31,11 +45,21 @@ export class SettingsComponent implements OnInit {
   private readonly licenseService = inject(LicenseService);
   private readonly settingsService = inject(SettingsService);
   private readonly settingsClient = inject(SettingsClient);
+  private readonly nodesClient = inject(NodesClient);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly store = inject(Store);
+  private readonly dialog = inject(Dialog);
 
   // Expose enum for template
   protected readonly SettingsTab = SettingsTab;
+
+  // Node information observables
+  readonly currentNode$ = this.store.select(selectCurrentNode);
+  readonly isLinkedNode$: Observable<boolean> = this.store.select(selectIsLinkedNode);
+  readonly mainNode$ = this.store.select(selectMainNode);
 
   // State
   activeTab: SettingsTab = SettingsTab.LICENSE;
@@ -70,6 +94,50 @@ export class SettingsComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForms();
     this.loadData();
+    this.initializeTabFromRoute();
+  }
+
+  /**
+   * Initialize active tab from URL parameter
+   */
+  private initializeTabFromRoute(): void {
+    this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const tabParam = params['tab'];
+      if (tabParam) {
+        const tab = this.mapUrlParamToTab(tabParam);
+        if (tab) {
+          this.activeTab = tab;
+        }
+      }
+    });
+  }
+
+  /**
+   * Map URL parameter to SettingsTab enum
+   */
+  private mapUrlParamToTab(param: string): SettingsTab | null {
+    const mapping: Record<string, SettingsTab> = {
+      license: SettingsTab.LICENSE,
+      environment: SettingsTab.ENVIRONMENT,
+      system: SettingsTab.SYSTEM,
+      resources: SettingsTab.RESOURCES,
+      advanced: SettingsTab.ADVANCED,
+    };
+    return mapping[param.toLowerCase()] || null;
+  }
+
+  /**
+   * Map SettingsTab enum to URL parameter
+   */
+  private mapTabToUrlParam(tab: SettingsTab): string {
+    const mapping: Record<SettingsTab, string> = {
+      [SettingsTab.LICENSE]: 'license',
+      [SettingsTab.ENVIRONMENT]: 'environment',
+      [SettingsTab.SYSTEM]: 'system',
+      [SettingsTab.RESOURCES]: 'resources',
+      [SettingsTab.ADVANCED]: 'advanced',
+    };
+    return mapping[tab];
   }
 
   private initializeForms(): void {
@@ -194,6 +262,9 @@ export class SettingsComponent implements OnInit {
   setActiveTab(tab: SettingsTab): void {
     this.activeTab = tab;
     this.clearMessages();
+    // Navigate to the tab URL
+    const tabParam = this.mapTabToUrlParam(tab);
+    this.router.navigate(['/settings', tabParam]);
   }
 
   getTierBadgeClass(tier: LicenseTier): string {
@@ -473,5 +544,62 @@ export class SettingsComponent implements OnInit {
 
   get webhookUrlControl() {
     return this.settingsForm.get('webhookUrl');
+  }
+
+  /**
+   * Unregister current node from main node
+   */
+  unregisterNode(): void {
+    const dialogData: ConfirmationDialogData = {
+      title: 'Unregister Node?',
+      itemName: window.location.hostname || 'This Node',
+      itemType: 'node connection',
+      willHappen: [
+        'Disconnect from the main node',
+        'Reset this node to unconfigured state',
+        'Clear pairing information',
+        "Remove this node from main node's node list",
+      ],
+      wontHappen: [
+        'Delete any local data or files',
+        'Uninstall the BitBonsai software',
+        'Affect the main node or other child nodes',
+        'Delete encoding history',
+      ],
+      irreversible: false,
+      confirmButtonText: 'Unregister Node',
+      cancelButtonText: 'Keep Connection',
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.loading.set(true);
+        this.clearMessages();
+
+        this.nodesClient
+          .unregisterSelf()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (result) => {
+              this.loading.set(false);
+              this.successMessage = result.message;
+
+              // Redirect to node-setup after successful unregistration
+              setTimeout(() => {
+                this.router.navigate(['/node-setup']);
+              }, 2000);
+            },
+            error: (err) => {
+              this.loading.set(false);
+              this.error = err.error?.message || 'Failed to unregister node';
+            },
+          });
+      }
+    });
   }
 }

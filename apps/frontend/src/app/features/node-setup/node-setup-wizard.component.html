@@ -63,7 +63,7 @@
   @if (currentStep() === WizardStep.Welcome) {
     <div class="wizard-step step-welcome">
       <div class="welcome-icon">
-        <i class="fa-solid fa-network-wired"></i>
+        <fa-icon icon="network-wired"></fa-icon>
       </div>
       <h1>Connect to Main Node</h1>
       <p class="welcome-description">
@@ -72,20 +72,20 @@
       </p>
       <div class="welcome-features">
         <div class="feature">
-          <i class="fa-solid fa-magnifying-glass"></i>
+          <fa-icon icon="magnifying-glass"></fa-icon>
           <span>Automatic network discovery</span>
         </div>
         <div class="feature">
-          <i class="fa-solid fa-keyboard"></i>
+          <fa-icon icon="keyboard"></fa-icon>
           <span>Manual pairing code entry</span>
         </div>
         <div class="feature">
-          <i class="fa-solid fa-lock"></i>
+          <fa-icon icon="lock"></fa-icon>
           <span>Secure pairing process</span>
         </div>
       </div>
       <button class="btn btn-primary btn-large" (click)="startWizard()">
-        <i class="fa-solid fa-arrow-right"></i>
+        <fa-icon icon="arrow-right"></fa-icon>
         Get Started
       </button>
     </div>
@@ -102,7 +102,7 @@
       <div class="method-cards">
         <div class="method-card" (click)="selectPairingMethod(PairingMethod.AutoDiscovery)">
           <div class="method-icon">
-            <i class="fa-solid fa-radar"></i>
+            <fa-icon icon="radar"></fa-icon>
           </div>
           <h3>Auto-Discover</h3>
           <p>Automatically scan your local network to find the main node</p>
@@ -114,7 +114,7 @@
 
         <div class="method-card" (click)="selectPairingMethod(PairingMethod.ManualCode)">
           <div class="method-icon">
-            <i class="fa-solid fa-keyboard"></i>
+            <fa-icon icon="keyboard"></fa-icon>
           </div>
           <h3>Manual Code</h3>
           <p>Enter a 6-digit pairing code from your main node</p>
@@ -136,7 +136,7 @@
 
       @if (errorMessage()) {
         <div class="alert alert-error">
-          <i class="fa-solid fa-circle-exclamation"></i>
+          <fa-icon icon="circle-exclamation"></fa-icon>
           <span>{{ errorMessage() }}</span>
         </div>
       }
@@ -176,14 +176,14 @@
 
       <div class="step-actions">
         <button class="btn btn-secondary" (click)="goBack()">
-          <i class="fa-solid fa-arrow-left"></i>
+          <fa-icon icon="arrow-left"></fa-icon>
           Back
         </button>
         <button
           class="btn btn-link"
           (click)="switchToAutoDiscovery()"
         >
-          <i class="fa-solid fa-radar"></i>
+          <fa-icon icon="radar"></fa-icon>
           Switch to Auto-Discover
         </button>
         <button
@@ -192,7 +192,7 @@
           (click)="proceedWithManualCode()"
         >
           Continue
-          <i class="fa-solid fa-arrow-right"></i>
+          <fa-icon icon="arrow-right"></fa-icon>
         </button>
       </div>
     </div>
@@ -208,7 +208,7 @@
             <div class="radar-ping radar-ping-2"></div>
             <div class="radar-ping radar-ping-3"></div>
             <div class="radar-center">
-              <i class="fa-solid fa-tower-broadcast"></i>
+              <fa-icon icon="tower-broadcast"></fa-icon>
             </div>
           </div>
         </div>
@@ -227,27 +227,27 @@
       } @else {
         @if (errorMessage()) {
           <div class="scan-error">
-            <i class="fa-solid fa-circle-exclamation"></i>
+            <fa-icon icon="circle-exclamation"></fa-icon>
             <h2>No Nodes Found</h2>
             <p class="error-message">{{ errorMessage() }}</p>
             <div class="error-actions">
               <button class="btn btn-secondary" (click)="goBack()">
-                <i class="fa-solid fa-arrow-left"></i>
+                <fa-icon icon="arrow-left"></fa-icon>
                 Back
               </button>
               <button class="btn btn-link" (click)="switchToManualCode()">
-                <i class="fa-solid fa-keyboard"></i>
+                <fa-icon icon="keyboard"></fa-icon>
                 Try Manual Code
               </button>
               <button class="btn btn-primary" (click)="retryScan()">
-                <i class="fa-solid fa-rotate-right"></i>
+                <fa-icon icon="rotate-right"></fa-icon>
                 Retry Scan
               </button>
             </div>
           </div>
         } @else {
           <div class="scan-complete">
-            <i class="fa-solid fa-circle-check"></i>
+            <fa-icon icon="circle-check"></fa-icon>
             <h2>Scan Complete</h2>
             <p class="success-message">
               Found {{ discoveredNodes().length }}
@@ -276,7 +276,7 @@
           >
             <div class="node-header">
               <div class="node-icon">
-                <i class="fa-solid fa-server"></i>
+                <fa-icon icon="server"></fa-icon>
               </div>
               <div class="node-info">
                 <h3>{{ node.name }}</h3>
@@ -284,19 +284,19 @@
               </div>
               <div class="node-selection">
                 @if (selectedNodeId() === node.nodeId) {
-                  <i class="fa-solid fa-circle-check"></i>
+                  <fa-icon icon="circle-check"></fa-icon>
                 } @else {
-                  <i class="fa-regular fa-circle"></i>
+                  <fa-icon icon="circle"></fa-icon>
                 }
               </div>
             </div>
             <div class="node-details">
               <div class="detail">
-                <i class="fa-solid fa-server"></i>
+                <fa-icon icon="server"></fa-icon>
                 <span>{{ node.hostname }}</span>
               </div>
               <div class="detail">
-                <i class="fa-solid fa-code-branch"></i>
+                <fa-icon icon="code-branch"></fa-icon>
                 <span>v{{ node.version }}</span>
               </div>
             </div>
@@ -322,17 +322,17 @@
 
       <div class="step-actions">
         <button class="btn btn-secondary" (click)="goBack()">
-          <i class="fa-solid fa-arrow-left"></i>
+          <fa-icon icon="arrow-left"></fa-icon>
           Back
         </button>
         @if (pairingMethod() === PairingMethod.AutoDiscovery) {
           <button class="btn btn-link" (click)="switchToManualCode()">
-            <i class="fa-solid fa-keyboard"></i>
+            <fa-icon icon="keyboard"></fa-icon>
             Switch to Manual Code
           </button>
         } @else {
           <button class="btn btn-link" (click)="switchToAutoDiscovery()">
-            <i class="fa-solid fa-radar"></i>
+            <fa-icon icon="radar"></fa-icon>
             Switch to Auto-Discover
           </button>
         }
@@ -342,7 +342,7 @@
           (click)="proceedToPairing()"
         >
           Connect
-          <i class="fa-solid fa-arrow-right"></i>
+          <fa-icon icon="arrow-right"></fa-icon>
         </button>
       </div>
     </div>
@@ -353,16 +353,16 @@
     <div class="wizard-step step-pairing">
       @if (errorMessage()) {
         <div class="pairing-error">
-          <i class="fa-solid fa-circle-xmark"></i>
+          <fa-icon icon="circle-xmark"></fa-icon>
           <h2>Connection Failed</h2>
           <p class="error-message">{{ errorMessage() }}</p>
           <div class="error-actions">
             <button class="btn btn-secondary" (click)="goBack()">
-              <i class="fa-solid fa-arrow-left"></i>
+              <fa-icon icon="arrow-left"></fa-icon>
               Go Back
             </button>
             <button class="btn btn-primary" (click)="initiatePairing()">
-              <i class="fa-solid fa-rotate-right"></i>
+              <fa-icon icon="rotate-right"></fa-icon>
               Retry
             </button>
           </div>
@@ -370,7 +370,7 @@
       } @else {
         <div class="pairing-animation">
           <div class="connecting-icon">
-            <i class="fa-solid fa-link"></i>
+            <fa-icon icon="link"></fa-icon>
           </div>
         </div>
 
@@ -410,7 +410,7 @@
 
         <div class="step-actions">
           <button class="btn btn-secondary" (click)="goBack()">
-            <i class="fa-solid fa-xmark"></i>
+            <fa-icon icon="xmark"></fa-icon>
             Cancel
           </button>
         </div>
@@ -447,7 +447,7 @@
   @if (currentStep() === WizardStep.Complete) {
     <div class="wizard-step step-complete">
       <div class="success-icon">
-        <i class="fa-solid fa-circle-check"></i>
+        <fa-icon icon="circle-check"></fa-icon>
       </div>
       <h1>Connection Successful!</h1>
       <p class="success-description">
@@ -460,7 +460,7 @@
           <h3>Hardware Detection Summary</h3>
           <div class="hardware-grid">
             <div class="hardware-item">
-              <i class="fa-solid fa-microchip"></i>
+              <fa-icon icon="microchip"></fa-icon>
               <div class="hardware-info">
                 <div class="hardware-label">Acceleration</div>
                 <div class="hardware-value">
@@ -469,21 +469,21 @@
               </div>
             </div>
             <div class="hardware-item">
-              <i class="fa-solid fa-memory"></i>
+              <fa-icon icon="memory"></fa-icon>
               <div class="hardware-info">
                 <div class="hardware-label">CPU Cores</div>
                 <div class="hardware-value">{{ hardwareDetection()!.cpuCores }}</div>
               </div>
             </div>
             <div class="hardware-item">
-              <i class="fa-solid fa-server"></i>
+              <fa-icon icon="server"></fa-icon>
               <div class="hardware-info">
                 <div class="hardware-label">Memory</div>
                 <div class="hardware-value">{{ hardwareDetection()!.totalMemoryGB }} GB</div>
               </div>
             </div>
             <div class="hardware-item">
-              <i class="fa-solid fa-hard-drive"></i>
+              <fa-icon icon="hard-drive"></fa-icon>
               <div class="hardware-info">
                 <div class="hardware-label">Available Disk</div>
                 <div class="hardware-value">{{ hardwareDetection()!.availableDiskGB }} GB</div>
@@ -494,7 +494,7 @@
       }
 
       <button class="btn btn-primary btn-large" (click)="completeWizard()">
-        <i class="fa-solid fa-rocket"></i>
+        <fa-icon icon="rocket"></fa-icon>
         Start Encoding
       </button>
     </div>
