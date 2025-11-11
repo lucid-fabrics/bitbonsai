@@ -7,11 +7,18 @@ Deploy BitBonsai as an LXC container on any Proxmox server.
 ```bash
 cd deploy-lxc
 chmod +x *.sh scripts/*.sh
-./deploy-to-proxmox.sh [proxmox-host] [proxmox-ip] [container-id]
+./deploy-to-proxmox.sh [proxmox-host] [proxmox-ip] [container-id] [environment]
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# Development environment (16 cores, 32GB RAM, 500GB storage)
+./deploy-to-proxmox.sh pve-mirna 192.168.1.2 200 dev
+
+# Production environment (4 cores, 4GB RAM, 20GB storage)
+./deploy-to-proxmox.sh pve-mirna 192.168.1.2 200 prod
+
+# Default is 'dev' if not specified
 ./deploy-to-proxmox.sh pve-mirna 192.168.1.2 200
 ```
 
@@ -25,11 +32,25 @@ chmod +x *.sh scripts/*.sh
 
 ## Container Specifications
 
+### Development Environment (default)
+- **CPU:** 16 cores
+- **RAM:** 32GB
+- **Swap:** 8GB
+- **Storage:** 500GB
+- **Network:** Bridged (DHCP)
+
+**Use case:** Heavy encoding workload, multiple concurrent jobs, testing
+
+### Production Environment
 - **CPU:** 4 cores
 - **RAM:** 4GB
 - **Swap:** 2GB
-- **Storage:** 32GB
+- **Storage:** 20GB
 - **Network:** Bridged (DHCP)
+
+**Use case:** Lightweight deployment, single-node encoding
+
+> **Note:** Specs are defined in `lxc-specs.conf` and can be customized per deployment
 
 ## Post-Deployment
 
@@ -89,12 +110,32 @@ nginx -t
 
 ## Configuration
 
+### Environment Variables
 Environment variables are stored in `/opt/bitbonsai/.env` inside the container.
 
 Default settings:
 - PORT: 3000
 - DATABASE_URL: file:/opt/bitbonsai/data/bitbonsai.db
 - JWT_SECRET: Auto-generated on install
+
+### Custom Container Specs
+To customize CPU, RAM, and storage specs, edit `lxc-specs.conf`:
+
+```bash
+# Development Environment
+DEV_CORES=16       # CPU cores
+DEV_MEMORY=32768   # RAM in MB
+DEV_SWAP=8192      # Swap in MB
+DEV_STORAGE=500    # Storage in GB
+
+# Production Environment
+PROD_CORES=4
+PROD_MEMORY=4096
+PROD_SWAP=2048
+PROD_STORAGE=20
+```
+
+Changes take effect on next deployment.
 
 ## Directory Structure
 
@@ -114,7 +155,8 @@ Default settings:
 - Proxmox VE 7.x or 8.x
 - SSH access to Proxmox host
 - SSH key at ~/.ssh/pve_ai_key
-- At least 32GB free storage
+- **DEV:** At least 500GB free storage, 16 cores, 32GB RAM
+- **PROD:** At least 20GB free storage, 4 cores, 4GB RAM
 - Network bridge configured (vmbr0)
 
 ## Version

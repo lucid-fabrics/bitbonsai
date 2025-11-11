@@ -6,15 +6,13 @@ import type { AccelerationType } from '../../nodes/models/node.model';
  * Represents a BitBonsai main node found during network discovery.
  */
 export interface DiscoveredNode {
-  id: string;
+  nodeId: string;
   name: string;
   ipAddress: string;
-  port: number;
+  apiPort: number;
+  hostname: string;
   version: string;
-  acceleration: AccelerationType;
-  cpuCores: number;
-  totalMemoryGB: number;
-  platform: string;
+  discoveredAt: string;
 }
 
 /**
@@ -58,9 +56,11 @@ export enum PairingStatus {
  */
 export interface PairingResponse {
   status: PairingStatus;
+  requestId?: string;
   pairingCode?: string;
   message?: string;
   connectionToken?: string;
+  childNodeId?: string;
   mainNodeInfo?: {
     id: string;
     name: string;

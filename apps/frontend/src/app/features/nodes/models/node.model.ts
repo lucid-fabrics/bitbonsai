@@ -17,6 +17,12 @@ export enum AccelerationType {
   APPLE_M = 'APPLE_M',
 }
 
+export enum NetworkLocation {
+  LOCAL = 'LOCAL',
+  REMOTE = 'REMOTE',
+  UNKNOWN = 'UNKNOWN',
+}
+
 export interface Node {
   id: string;
   name: string;
@@ -30,6 +36,21 @@ export interface Node {
   activeJobCount?: number;
   maxWorkers: number;
   cpuLimit: number;
+
+  // Hybrid Architecture Fields
+  networkLocation?: NetworkLocation;
+  hasSharedStorage?: boolean;
+  storageBasePath?: string | null;
+  publicUrl?: string | null;
+  vpnIpAddress?: string | null;
+  maxTransferSizeMB?: number;
+
+  // Hardware Capabilities
+  cpuCores?: number | null;
+  ramGB?: number | null;
+  bandwidthMbps?: number | null;
+  latencyMs?: number | null;
+  lastSpeedTest?: string | null;
 }
 
 /**

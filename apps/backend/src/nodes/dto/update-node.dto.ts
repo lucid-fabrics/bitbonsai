@@ -21,14 +21,14 @@ export class UpdateNodeDto {
     description: 'Maximum number of concurrent encoding jobs',
     example: 2,
     minimum: 1,
-    maximum: 10,
+    maximum: 20,
     default: 1,
     required: false,
   })
   @IsOptional()
   @IsInt({ message: 'maxWorkers must be an integer' })
   @Min(1, { message: 'maxWorkers must be at least 1' })
-  @Max(10, { message: 'maxWorkers cannot exceed 10' })
+  @Max(20, { message: 'maxWorkers cannot exceed 20' })
   maxWorkers?: number;
 
   @ApiProperty({

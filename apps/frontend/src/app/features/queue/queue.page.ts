@@ -1029,6 +1029,29 @@ export class QueueComponent implements OnInit {
     return `${seconds}s`;
   }
 
+  /**
+   * Calculate encoding duration for completed jobs
+   */
+  protected getEncodingDuration(startedAt?: string, completedAt?: string): string {
+    if (!startedAt || !completedAt) return '-';
+
+    const start = new Date(startedAt).getTime();
+    const end = new Date(completedAt).getTime();
+    const durationSeconds = Math.floor((end - start) / 1000);
+
+    const hours = Math.floor(durationSeconds / 3600);
+    const minutes = Math.floor((durationSeconds % 3600) / 60);
+    const seconds = durationSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  }
+
   protected getCodecBadgeClass(codec: string | undefined): string {
     if (!codec) return 'codec-unknown';
     const codecLower = codec.toLowerCase();

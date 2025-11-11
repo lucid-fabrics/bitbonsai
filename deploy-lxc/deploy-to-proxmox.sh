@@ -4,13 +4,33 @@ set -e
 PROXMOX_HOST="${1:-pve-mirna}"
 PROXMOX_IP="${2:-192.168.1.2}"
 CONTAINER_ID="${3:-200}"
+ENVIRONMENT="${4:-dev}"  # dev or prod
 CONTAINER_HOSTNAME="bitbonsai"
+
+# Load environment-specific specs
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lxc-specs.conf"
+
+# Set specs based on environment
+if [ "$ENVIRONMENT" = "prod" ]; then
+  CORES=$PROD_CORES
+  MEMORY=$PROD_MEMORY
+  SWAP=$PROD_SWAP
+  STORAGE=$PROD_STORAGE
+else
+  CORES=$DEV_CORES
+  MEMORY=$DEV_MEMORY
+  SWAP=$DEV_SWAP
+  STORAGE=$DEV_STORAGE
+fi
 
 echo "=========================================="
 echo "BitBonsai LXC Deployment to Proxmox"
 echo "=========================================="
 echo "Target: $PROXMOX_HOST ($PROXMOX_IP)"
 echo "Container ID: $CONTAINER_ID"
+echo "Environment: $(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')"
+echo "Specs: ${CORES} cores, ${MEMORY}MB RAM, ${STORAGE}GB storage"
 echo "=========================================="
 echo ""
 
@@ -56,10 +76,14 @@ scp -i ~/.ssh/pve_ai_key -r * root@$PROXMOX_IP:/tmp/bitbonsai-deploy/
 
 # Create and configure LXC container
 echo "[3/7] Creating LXC container..."
-ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID << 'SCRIPT'
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID $CORES $MEMORY $SWAP $STORAGE << 'SCRIPT'
 set -e
 
 CONTAINER_ID=$1
+CORES=$2
+MEMORY=$3
+SWAP=$4
+STORAGE=$5
 CONTAINER_HOSTNAME="bitbonsai"
 TEMPLATE="local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 
@@ -80,11 +104,11 @@ fi
 echo "   Creating container $CONTAINER_ID..."
 pct create $CONTAINER_ID $TEMPLATE \
   --hostname $CONTAINER_HOSTNAME \
-  --cores 4 \
-  --memory 4096 \
-  --swap 2048 \
+  --cores $CORES \
+  --memory $MEMORY \
+  --swap $SWAP \
   --storage local-lvm \
-  --rootfs local-lvm:32 \
+  --rootfs local-lvm:$STORAGE \
   --net0 name=eth0,bridge=vmbr0,firewall=1,ip=dhcp \
   --features nesting=1 \
   --unprivileged 1 \

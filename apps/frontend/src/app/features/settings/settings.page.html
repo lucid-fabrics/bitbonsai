@@ -571,6 +571,37 @@
               </div>
             </div>
 
+            <!-- Auto-Heal Settings Section -->
+            <div class="info-card cache-settings">
+              <h3>
+                <i class="fa fa-heartbeat"></i>
+                Auto-Heal Settings
+              </h3>
+              <div class="cache-settings-container">
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="maxAutoHealRetries" class="setting-label">
+                      Max Auto-Heal Retry Attempts
+                    </label>
+                    <p class="setting-description">
+                      Maximum number of retry attempts before auto-heal stops trying to resurrect a failed job. Minimum: 3, Default: 15. Higher values are recommended for high-load systems where jobs may fail due to resource contention.
+                    </p>
+                  </div>
+                  <div class="setting-input">
+                    <input
+                      type="number"
+                      id="maxAutoHealRetries"
+                      class="form-control"
+                      [(ngModel)]="maxAutoHealRetries"
+                      [ngModelOptions]="{standalone: true}"
+                      min="3"
+                      (change)="saveAutoHealRetryLimit()"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="section-divider"></div>
 
             <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">

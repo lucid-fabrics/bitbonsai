@@ -54,6 +54,12 @@ enum NodeStatus {
   ERROR
 }
 
+enum NetworkLocation {
+  LOCAL         // Local network, low latency (<50ms)
+  REMOTE        // Remote network (VPN, internet)
+  UNKNOWN       // Not yet detected
+}
+
 enum SyncStatus {
   PENDING
   SYNCING
@@ -150,6 +156,7 @@ model Settings {
   allowLocalNetworkWithoutAuth Boolean  @default(false)
   defaultQueueView             String   @default("ENCODING") // Default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)
   readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
+  maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 
@@ -237,6 +244,21 @@ model Node {
   syncRetryCount Int         @default(0) // Number of sync retry attempts (max 3)
   syncError      String?     // Error message if sync failed
 
+  // Hybrid Architecture Fields (Network & Capability Detection)
+  networkLocation    NetworkLocation @default(UNKNOWN) // Network location (LOCAL, REMOTE, UNKNOWN)
+  hasSharedStorage   Boolean         @default(false) // Can access main node's file system directly
+  storageBasePath    String?         // Base path for shared storage (e.g., "/mnt/media")
+  publicUrl          String?         // Public URL for remote access (e.g., "https://node.example.com")
+  vpnIpAddress       String?         // VPN IP address if using VPN (e.g., "10.8.0.2")
+  maxTransferSizeMB  Int             @default(50000) // Maximum file size to transfer (50GB default)
+
+  // Hardware Capabilities (for smart job routing)
+  cpuCores           Int?            // Number of CPU cores
+  ramGB              Int?            // RAM in gigabytes
+  bandwidthMbps      Int?            // Network bandwidth in Mbps
+  latencyMs          Int?            // Network latency to main node in milliseconds
+  lastSpeedTest      DateTime?       // When bandwidth was last tested
+
   // Relations
   licenseId String
   license   License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
@@ -256,6 +278,8 @@ model Node {
   @@index([licenseId])
   @@index([lastHeartbeat])
   @@index([syncStatus])
+  @@index([networkLocation]) // For filtering by network location
+  @@index([hasSharedStorage]) // For quick shared storage lookup
   @@map("nodes")
 }
 

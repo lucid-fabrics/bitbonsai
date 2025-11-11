@@ -9,12 +9,19 @@ import {
 import { Interval } from '@nestjs/schedule';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import * as os from 'os';
 import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import type { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import type { NodeStatsDto } from './dto/node-stats.dto';
+import type { OptimalConfigDto } from './dto/optimal-config.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
+import { SystemInfoService } from './services/system-info.service';
+import {
+  calculateOptimalWorkers,
+  getRecommendationSummary,
+} from './utils/optimal-worker-calculator';
 
 /**
  * NodesService
@@ -26,7 +33,10 @@ import type { UpdateNodeDto } from './dto/update-node.dto';
 export class NodesService implements OnModuleInit {
   private readonly logger = new Logger(NodesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly systemInfoService: SystemInfoService
+  ) {}
 
   /**
    * Initialize MAIN node on module startup
@@ -348,6 +358,52 @@ export class NodesService implements OnModuleInit {
   }
 
   /**
+   * Get recommended optimal configuration for a node
+   *
+   * Analyzes node hardware and returns recommended maxWorkers setting
+   * based on CPU cores and hardware acceleration type.
+   *
+   * @param nodeId Node identifier
+   * @returns Optimal configuration recommendations
+   * @throws NotFoundException if node doesn't exist
+   */
+  async getRecommendedConfig(nodeId: string): Promise<OptimalConfigDto> {
+    const node = await this.prisma.node.findUnique({
+      where: { id: nodeId },
+      select: {
+        id: true,
+        maxWorkers: true,
+        acceleration: true,
+      },
+    });
+
+    if (!node) {
+      throw new NotFoundException(`Node with ID ${nodeId} not found`);
+    }
+
+    // Get hardware specs (CPU cores) from system
+    const cpuCores = os.cpus().length;
+    const ramGb = Math.round(os.totalmem() / (1024 * 1024 * 1024));
+
+    // Calculate optimal configuration
+    const optimalConfig = calculateOptimalWorkers(cpuCores, node.acceleration, ramGb);
+
+    // Generate summary comparing current vs recommended
+    const summary = getRecommendationSummary(node.maxWorkers, optimalConfig);
+
+    return {
+      recommendedMaxWorkers: optimalConfig.recommendedMaxWorkers,
+      currentMaxWorkers: node.maxWorkers,
+      cpuCoresPerJob: optimalConfig.cpuCoresPerJob,
+      estimatedLoadAverage: optimalConfig.estimatedLoadAverage,
+      reasoning: optimalConfig.reasoning,
+      summary,
+      totalCpuCores: cpuCores,
+      acceleration: node.acceleration,
+    };
+  }
+
+  /**
    * Get all nodes with basic information
    *
    * @returns List of all nodes
@@ -422,17 +478,27 @@ export class NodesService implements OnModuleInit {
       return node;
     }
 
-    // Fallback: Return the MAIN node (first registered node)
+    // Check if this is a MAIN node instance (has a MAIN node in the database)
     const mainNode = await this.prisma.node.findFirst({
       where: { role: 'MAIN' },
       orderBy: { createdAt: 'asc' },
     });
 
-    if (!mainNode) {
-      throw new NotFoundException('No MAIN node found. Please register a node first.');
+    if (mainNode) {
+      return mainNode;
     }
 
-    return mainNode;
+    // No MAIN node found - check if this is a child-only instance (has LINKED node but no MAIN)
+    const linkedNode = await this.prisma.node.findFirst({
+      where: { role: 'LINKED' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (linkedNode) {
+      return linkedNode;
+    }
+
+    throw new NotFoundException('No nodes found. Please complete setup first.');
   }
 
   /**
@@ -440,8 +506,9 @@ export class NodesService implements OnModuleInit {
    *
    * @param id Node identifier
    * @param data Update data
-   * @returns Updated node
+   * @returns Updated node with warning if maxWorkers is too high
    * @throws NotFoundException if node doesn't exist
+   * @throws BadRequestException if maxWorkers will cause resource starvation
    */
   async update(id: string, data: UpdateNodeDto): Promise<Node> {
     const node = await this.prisma.node.findUnique({
@@ -450,6 +517,30 @@ export class NodesService implements OnModuleInit {
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
+    }
+
+    // If updating maxWorkers, validate against recommended settings
+    if (data.maxWorkers !== undefined) {
+      const cpuCores = os.cpus().length;
+      const optimalConfig = calculateOptimalWorkers(cpuCores, node.acceleration);
+
+      // Warn if significantly higher than recommended (2x threshold)
+      if (data.maxWorkers > optimalConfig.recommendedMaxWorkers * 2) {
+        throw new BadRequestException(
+          `⚠️ Setting ${data.maxWorkers} workers is too high for your ${cpuCores}-core system! ` +
+            `Recommended maximum: ${optimalConfig.recommendedMaxWorkers} workers (${optimalConfig.cpuCoresPerJob} cores per job). ` +
+            `Setting too many workers will cause job failures due to resource starvation. ` +
+            `Estimated load: ${data.maxWorkers * optimalConfig.cpuCoresPerJob} (your system has ${cpuCores} cores).`
+        );
+      }
+
+      // Log warning if higher than recommended but not critically high
+      if (data.maxWorkers > optimalConfig.recommendedMaxWorkers) {
+        this.logger.warn(
+          `Node ${id}: maxWorkers (${data.maxWorkers}) is higher than recommended (${optimalConfig.recommendedMaxWorkers}). ` +
+            `This may cause resource contention and job failures.`
+        );
+      }
     }
 
     return this.prisma.node.update({

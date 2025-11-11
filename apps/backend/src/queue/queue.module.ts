@@ -9,6 +9,7 @@ import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { JobHistoryService } from './services/job-history.service';
+import { JobRouterService } from './services/job-router.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
 import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
 
@@ -32,6 +33,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     QueueService,
     JobCleanupService,
     JobHistoryService,
+    JobRouterService,
     HealthCheckWorker,
     AutoHealingService,
     RetrySchedulerService,
@@ -39,6 +41,6 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     BackupCleanupWorker,
     PrismaService,
   ],
-  exports: [QueueService, JobHistoryService],
+  exports: [QueueService, JobHistoryService, JobRouterService],
 })
 export class QueueModule {}

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NodesController } from './nodes.controller';
 import { NodesService } from './nodes.service';
+import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
 import { SystemInfoService } from './services/system-info.service';
@@ -26,7 +27,14 @@ import { SystemInfoService } from './services/system-info.service';
     NodeDiscoveryService,
     RegistrationRequestService,
     SystemInfoService,
+    NodeCapabilityDetectorService,
   ],
-  exports: [NodesService, NodeDiscoveryService, RegistrationRequestService, SystemInfoService],
+  exports: [
+    NodesService,
+    NodeDiscoveryService,
+    RegistrationRequestService,
+    SystemInfoService,
+    NodeCapabilityDetectorService,
+  ],
 })
 export class NodesModule {}

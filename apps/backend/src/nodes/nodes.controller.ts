@@ -27,6 +27,7 @@ import type { HeartbeatDto } from './dto/heartbeat.dto';
 import { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import { NodeResponseDto } from './dto/node-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
+import { OptimalConfigDto } from './dto/optimal-config.dto';
 import type { PairNodeDto } from './dto/pair-node.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
 import { ApproveRequestDto } from './dto/registration/approve-request.dto';
@@ -36,6 +37,7 @@ import { RegistrationRequestResponseDto } from './dto/registration/registration-
 import { RejectRequestDto } from './dto/registration/reject-request.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
+import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
 
@@ -46,7 +48,8 @@ export class NodesController {
   constructor(
     private readonly nodesService: NodesService,
     private readonly nodeDiscoveryService: NodeDiscoveryService,
-    private readonly registrationRequestService: RegistrationRequestService
+    private readonly registrationRequestService: RegistrationRequestService,
+    private readonly capabilityDetector: NodeCapabilityDetectorService
   ) {}
 
   /**
@@ -212,6 +215,7 @@ export class NodesController {
   /**
    * Get current node information
    */
+  @Public()
   @Get('current')
   @ApiOperation({
     summary: 'Get current node information',
@@ -348,6 +352,43 @@ export class NodesController {
   })
   async getStats(@Param('id') id: string): Promise<NodeStatsDto> {
     return this.nodesService.getNodeStats(id);
+  }
+
+  /**
+   * Get recommended optimal configuration for a node
+   */
+  @Get(':id/recommended-config')
+  @ApiOperation({
+    summary: 'Get recommended optimal configuration',
+    description:
+      'Analyzes node hardware and returns recommended maxWorkers setting.\n\n' +
+      '**Analysis Based On**:\n' +
+      '- CPU core count\n' +
+      '- Hardware acceleration type (CPU, NVIDIA, Intel QSV, etc.)\n' +
+      '- Optimal cores-per-job allocation\n\n' +
+      '**Recommendation Strategy**:\n' +
+      '- **CPU encoding**: 6-8 cores per job (CPU-intensive)\n' +
+      '- **GPU encoding**: 2 cores per job (GPU does heavy lifting)\n' +
+      '- Reserves cores for system overhead\n\n' +
+      '**Use Case**: Auto-configure nodes, troubleshoot overload issues',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Node unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Optimal configuration calculated successfully',
+    type: OptimalConfigDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Node not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while calculating optimal configuration',
+  })
+  async getRecommendedConfig(@Param('id') id: string): Promise<OptimalConfigDto> {
+    return this.nodesService.getRecommendedConfig(id);
   }
 
   /**
@@ -698,5 +739,120 @@ export class NodesController {
     @Param('token') token: string
   ): Promise<RegistrationRequestResponseDto> {
     return this.registrationRequestService.cancelRequestByToken(token) as any;
+  }
+
+  // ============================================================================
+  // NODE CAPABILITY TESTING ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Test node capabilities (run capability detection)
+   */
+  @Post(':id/test-capabilities')
+  @ApiOperation({
+    summary: 'Test node capabilities',
+    description:
+      'Runs comprehensive capability detection for a node:\n\n' +
+      '- Network location detection (LOCAL vs REMOTE)\n' +
+      '- Shared storage access test\n' +
+      '- Network latency measurement\n' +
+      '- Bandwidth test (optional)\n\n' +
+      '**Use Case**: Re-run capability tests after network changes, troubleshooting',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Node unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Capability test results',
+  })
+  @ApiNotFoundResponse({
+    description: 'Node not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error during capability test',
+  })
+  async testNodeCapabilities(@Param('id') id: string): Promise<any> {
+    const node = await this.nodesService.findOne(id);
+
+    // Get node's IP from registration request or use stored IP
+    const nodeIp = '127.0.0.1'; // TODO: Get from node record or request
+
+    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp);
+
+    // Build test results with all phases
+    const tests = {
+      networkConnection: {
+        status: 'success' as const,
+        message: `Latency: ${result.latencyMs}ms`,
+        details: { latencyMs: result.latencyMs, isPrivateIP: result.isPrivateIP },
+      },
+      sharedStorage: {
+        status: result.hasSharedStorage ? ('success' as const) : ('warning' as const),
+        message: result.hasSharedStorage
+          ? `Accessible at ${result.storageBasePath}`
+          : 'No shared storage access',
+        details: {
+          hasSharedStorage: result.hasSharedStorage,
+          storageBasePath: result.storageBasePath,
+        },
+      },
+      hardwareDetection: {
+        status: 'success' as const,
+        message: `Detected ${node.cpuCores || 'unknown'} cores, ${node.ramGB || 'unknown'}GB RAM`,
+        details: { cpuCores: node.cpuCores, ramGB: node.ramGB },
+      },
+      networkType: {
+        status: 'success' as const,
+        message: `Classified as ${result.networkLocation}`,
+        details: { networkLocation: result.networkLocation },
+      },
+    };
+
+    return {
+      nodeId: id,
+      nodeName: node.name,
+      ...result,
+      tests,
+    };
+  }
+
+  /**
+   * Get node capabilities summary
+   */
+  @Get(':id/capabilities')
+  @ApiOperation({
+    summary: 'Get node capabilities',
+    description: 'Returns current capability configuration for a node',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Node unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Node capabilities',
+  })
+  @ApiNotFoundResponse({
+    description: 'Node not found',
+  })
+  async getNodeCapabilities(@Param('id') id: string): Promise<any> {
+    const node = await this.nodesService.findOne(id);
+
+    return {
+      nodeId: node.id,
+      nodeName: node.name,
+      networkLocation: node.networkLocation,
+      hasSharedStorage: node.hasSharedStorage,
+      storageBasePath: node.storageBasePath,
+      latencyMs: node.latencyMs,
+      bandwidthMbps: node.bandwidthMbps,
+      cpuCores: node.cpuCores,
+      ramGB: node.ramGB,
+      maxTransferSizeMB: node.maxTransferSizeMB,
+      lastSpeedTest: node.lastSpeedTest,
+      reasoning: `Network: ${node.networkLocation}, Storage: ${node.hasSharedStorage ? 'Shared' : 'Transfer required'}`,
+    };
   }
 }

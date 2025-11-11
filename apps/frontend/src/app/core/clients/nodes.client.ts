@@ -42,6 +42,17 @@ export interface UpdateNodeRequest {
   cpuLimit?: number;
 }
 
+export interface OptimalConfig {
+  recommendedMaxWorkers: number;
+  currentMaxWorkers: number;
+  cpuCoresPerJob: number;
+  estimatedLoadAverage: number;
+  reasoning: string;
+  summary: string;
+  totalCpuCores: number;
+  acceleration: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -82,6 +93,13 @@ export class NodesClient {
    */
   getNodeStats(id: string): Observable<NodeStats> {
     return this.http.get<NodeStats>(`${this.apiUrl}/${id}/stats`);
+  }
+
+  /**
+   * Get recommended optimal configuration for a node
+   */
+  getRecommendedConfig(id: string): Observable<OptimalConfig> {
+    return this.http.get<OptimalConfig>(`${this.apiUrl}/${id}/recommended-config`);
   }
 
   /**
@@ -166,5 +184,23 @@ export class NodesClient {
     return this.http.delete<RegistrationRequest>(
       `${this.apiUrl}/registration-requests/token/${token}/cancel`
     );
+  }
+
+  // ============================================================================
+  // CAPABILITY TESTING METHODS
+  // ============================================================================
+
+  /**
+   * Test node capabilities (run capability detection)
+   */
+  testCapabilities(nodeId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${nodeId}/test-capabilities`, {});
+  }
+
+  /**
+   * Get node capabilities summary
+   */
+  getNodeCapabilities(nodeId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${nodeId}/capabilities`);
   }
 }

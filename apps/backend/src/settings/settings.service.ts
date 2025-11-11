@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import type { DefaultQueueViewDto } from './dto/default-queue-view.dto';
 import type { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import type { SecuritySettingsDto } from './dto/security-settings.dto';
@@ -170,6 +171,64 @@ export class SettingsService {
 
     return {
       readyFilesCacheTtlMinutes: settings.readyFilesCacheTtlMinutes,
+    };
+  }
+
+  /**
+   * Get auto-heal retry limit setting
+   *
+   * Returns the maximum retry count for auto-heal to resurrect failed jobs.
+   * Jobs exceeding this limit will not be automatically healed on backend restart.
+   */
+  async getAutoHealRetryLimit(): Promise<AutoHealRetryLimitDto> {
+    let settings = await this.prisma.settings.findFirst();
+
+    // Create default settings if they don't exist
+    if (!settings) {
+      settings = await this.prisma.settings.create({
+        data: {
+          maxAutoHealRetries: 15,
+        },
+      });
+    }
+
+    return {
+      maxAutoHealRetries: settings.maxAutoHealRetries,
+    };
+  }
+
+  /**
+   * Update auto-heal retry limit setting
+   *
+   * Updates the maximum retry count for auto-heal.
+   * Minimum value is 3 to prevent overly aggressive auto-healing.
+   */
+  async updateAutoHealRetryLimit(maxRetries: number): Promise<AutoHealRetryLimitDto> {
+    // Validate minimum retry limit
+    if (maxRetries < 3) {
+      throw new BadRequestException('Auto-heal retry limit must be at least 3');
+    }
+
+    // Get existing settings or create if doesn't exist
+    let settings = await this.prisma.settings.findFirst();
+
+    if (!settings) {
+      settings = await this.prisma.settings.create({
+        data: {
+          maxAutoHealRetries: maxRetries,
+        },
+      });
+    } else {
+      settings = await this.prisma.settings.update({
+        where: { id: settings.id },
+        data: {
+          maxAutoHealRetries: maxRetries,
+        },
+      });
+    }
+
+    return {
+      maxAutoHealRetries: settings.maxAutoHealRetries,
     };
   }
 }
