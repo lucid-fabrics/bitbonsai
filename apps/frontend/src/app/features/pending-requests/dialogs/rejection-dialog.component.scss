@@ -1,0 +1,167 @@
+@use '../../../../styles/variables' as *;
+
+.dialog-container {
+  background: $bg-secondary;
+  border-radius: 8px;
+  width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  padding: 20px;
+  border-bottom: 1px solid $border-secondary;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    color: $text-white;
+  }
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: $text-secondary;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+
+  &:hover {
+    background: $bg-tertiary;
+  }
+}
+
+.dialog-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.warning-text {
+  color: $text-primary;
+  margin-bottom: 16px;
+}
+
+.node-info {
+  background: $bg-primary;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.info-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .label {
+    font-weight: 500;
+    color: $text-secondary;
+    min-width: 100px;
+  }
+
+  .value {
+    color: $text-primary;
+  }
+}
+
+.form-group {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: $text-white;
+  }
+}
+
+.required {
+  color: $danger;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid $border-secondary;
+  border-radius: 4px;
+  background: $bg-primary;
+  color: $text-primary;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
+  }
+
+  &.error {
+    border-color: $danger;
+  }
+}
+
+.error-text {
+  display: block;
+  margin-top: 4px;
+  color: $danger;
+  font-size: 12px;
+}
+
+.info-text {
+  color: $text-secondary;
+  font-size: 13px;
+  margin: 0;
+}
+
+.dialog-footer {
+  padding: 16px 20px;
+  border-top: 1px solid $border-secondary;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: $transition-fast;
+}
+
+.btn-secondary {
+  background: $bg-tertiary;
+  color: $text-primary;
+
+  &:hover {
+    background: $border-secondary;
+  }
+}
+
+.btn-danger {
+  background: $danger;
+  color: white;
+
+  &:hover {
+    background: darken($danger, 10%);
+  }
+}

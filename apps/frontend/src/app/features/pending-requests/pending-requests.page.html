@@ -1,0 +1,138 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1>Pending Registration Requests</h1>
+    <p class="subtitle">Approve or reject nodes requesting to join your network</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading pending requests...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !isLoading" class="error-container">
+    <div class="error-icon">⚠️</div>
+    <p class="error-message">{{ error }}</p>
+    <button class="btn btn-primary" (click)="loadPendingRequests()">Retry</button>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && !error && pendingRequests.length === 0" class="empty-state">
+    <div class="empty-icon">📭</div>
+    <h2>No Pending Requests</h2>
+    <p>There are currently no nodes waiting for approval.</p>
+    <p class="help-text">
+      When a child node sends a registration request, it will appear here for you to review and approve.
+    </p>
+  </div>
+
+  <!-- Requests List -->
+  <div *ngIf="!isLoading && !error && pendingRequests.length > 0" class="requests-container">
+    <div class="requests-container__count">
+      {{ pendingRequests.length }} {{ pendingRequests.length === 1 ? 'request' : 'requests' }} pending
+    </div>
+
+    <div class="requests-container__grid">
+      <div *ngFor="let request of pendingRequests" class="request-card">
+        <!-- Card Header -->
+        <div class="request-card__header">
+          <div class="request-card__node-name">
+            <h3>{{ request.childNodeName }}</h3>
+            <span class="request-card__badge request-card__badge--pending">Pending</span>
+          </div>
+          <div class="request-card__time">
+            <span class="request-card__time-value">{{ formatTimestamp(request.requestedAt) }}</span>
+            <span class="request-card__expires">Expires in {{ getTimeRemaining(request) }}</span>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="request-card__body">
+          <!-- System Information -->
+          <div class="request-card__info-section">
+            <h4 class="request-card__info-title">System Information</h4>
+            <div class="request-card__info-grid">
+              <div class="request-card__info-item">
+                <span class="request-card__icon">🌐</span>
+                <div class="request-card__info-content">
+                  <span class="request-card__label">IP Address</span>
+                  <span class="request-card__value">{{ request.ipAddress }}</span>
+                </div>
+              </div>
+              <div class="request-card__info-item">
+                <span class="request-card__icon">🖥️</span>
+                <div class="request-card__info-content">
+                  <span class="request-card__label">Hostname</span>
+                  <span class="request-card__value">{{ request.hostname }}</span>
+                </div>
+              </div>
+              <div class="request-card__info-item">
+                <span class="request-card__icon">📦</span>
+                <div class="request-card__info-content">
+                  <span class="request-card__label">Container Type</span>
+                  <span class="request-card__value">{{ getContainerTypeLabel(request.containerType) }}</span>
+                </div>
+              </div>
+              <div class="request-card__info-item">
+                <span class="request-card__icon">⚡</span>
+                <div class="request-card__info-content">
+                  <span class="request-card__label">Acceleration</span>
+                  <span class="request-card__value">{{ request.acceleration }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hardware Specs -->
+          <div class="request-card__info-section">
+            <h4 class="request-card__info-title">Hardware Specifications</h4>
+            <div class="request-card__specs-grid">
+              <div class="request-card__spec-item">
+                <span class="request-card__spec-label">CPU</span>
+                <span class="request-card__spec-value">{{ request.hardwareSpecs.cpuCores }} cores</span>
+              </div>
+              <div class="request-card__spec-item">
+                <span class="request-card__spec-label">RAM</span>
+                <span class="request-card__spec-value">{{ request.hardwareSpecs.ramGb }} GB</span>
+              </div>
+              <div class="request-card__spec-item">
+                <span class="request-card__spec-label">Disk</span>
+                <span class="request-card__spec-value">{{ request.hardwareSpecs.diskGb }} GB</span>
+              </div>
+              <div class="request-card__spec-item" *ngIf="request.hardwareSpecs.gpuModel">
+                <span class="request-card__spec-label">GPU</span>
+                <span class="request-card__spec-value">{{ request.hardwareSpecs.gpuModel }}</span>
+              </div>
+            </div>
+            <div class="request-card__cpu-model">{{ request.hardwareSpecs.cpuModel }}</div>
+          </div>
+
+          <!-- Message (if provided) -->
+          <div class="request-card__info-section" *ngIf="request.message">
+            <h4 class="request-card__info-title">Message from Node</h4>
+            <p class="request-card__message">{{ request.message }}</p>
+          </div>
+
+          <!-- Pairing Token -->
+          <div class="request-card__info-section">
+            <h4 class="request-card__info-title">Pairing Token</h4>
+            <div class="request-card__token-display">
+              <code>{{ request.pairingToken }}</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="request-card__footer">
+          <button class="btn btn-danger" (click)="onReject(request)">
+            Reject
+          </button>
+          <button class="btn btn-primary" (click)="onApprove(request)">
+            Approve & Add Node
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
