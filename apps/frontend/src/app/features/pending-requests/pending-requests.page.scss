@@ -1,0 +1,385 @@
+@use '../../../styles/variables' as *;
+
+.page-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 32px;
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: $text-white;
+    margin: 0 0 8px 0;
+  }
+
+  .subtitle {
+    color: $text-secondary;
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+// Loading State
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid $border-secondary;
+    border-top-color: $accent-primary;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: $text-secondary;
+    margin: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Error State
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+
+  .error-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .error-message {
+    color: $danger;
+    margin-bottom: 20px;
+    font-size: 15px;
+  }
+}
+
+// Empty State
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+
+  .empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 12px 0;
+  }
+
+  p {
+    color: $text-secondary;
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    max-width: 500px;
+  }
+
+  .help-text {
+    font-size: 14px;
+  }
+}
+
+// Requests List - BEM Block
+.requests-container {
+  // Element: Count
+  &__count {
+    color: $text-secondary;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+
+  // Element: Grid
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+    gap: 20px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+// Request Card - BEM Block
+.request-card {
+  background: $bg-secondary;
+  border: 1px solid $border-secondary;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: $transition-fast;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  // Element: Header
+  &__header {
+    padding: 20px;
+    border-bottom: 1px solid $border-secondary;
+  }
+
+  // Element: Node Name
+  &__node-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+  }
+
+  // Element: Request Time
+  &__time {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  // Element: Time Value
+  &__time-value {
+    color: $text-secondary;
+  }
+
+  // Element: Expires
+  &__expires {
+    color: $warning;
+    font-weight: 500;
+  }
+
+  // Element: Badge
+  &__badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    // Modifier: Pending
+    &--pending {
+      background: rgba(255, 193, 7, 0.15);
+      color: $warning;
+    }
+  }
+
+  // Element: Body
+  &__body {
+    padding: 20px;
+  }
+
+  // Element: Info Section
+  &__info-section {
+    margin-bottom: 24px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // Element: Info Title
+  &__info-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 12px 0;
+  }
+
+  // Element: Info Grid
+  &__info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  // Element: Info Item
+  &__info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  // Element: Icon
+  &__icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  // Element: Info Content
+  &__info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  // Element: Label
+  &__label {
+    font-size: 12px;
+    color: $text-secondary;
+    font-weight: 500;
+  }
+
+  // Element: Value
+  &__value {
+    font-size: 14px;
+    color: $text-primary;
+    word-break: break-word;
+  }
+
+  // Element: Specs Grid
+  &__specs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  // Element: Spec Item
+  &__spec-item {
+    background: $bg-primary;
+    padding: 12px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  // Element: Spec Label
+  &__spec-label {
+    font-size: 12px;
+    color: $text-secondary;
+    font-weight: 500;
+  }
+
+  // Element: Spec Value
+  &__spec-value {
+    font-size: 16px;
+    color: $text-primary;
+    font-weight: 600;
+  }
+
+  // Element: CPU Model
+  &__cpu-model {
+    font-size: 13px;
+    color: $text-secondary;
+    padding: 8px 12px;
+    background: $bg-primary;
+    border-radius: 4px;
+  }
+
+  // Element: Message
+  &__message {
+    background: $bg-primary;
+    padding: 12px;
+    border-radius: 6px;
+    color: $text-primary;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  // Element: Token Display
+  &__token-display {
+    background: $bg-primary;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+
+    code {
+      font-size: 24px;
+      font-weight: 700;
+      color: $accent-primary;
+      letter-spacing: 4px;
+      font-family: 'Courier New', monospace;
+    }
+  }
+
+  // Element: Footer
+  &__footer {
+    padding: 16px 20px;
+    border-top: 1px solid $border-secondary;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: $bg-tertiary;
+  }
+}
+
+// Buttons
+.btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background: $accent-primary;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: $accent-primary-hover;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.btn-danger {
+  background: transparent;
+  color: $danger;
+  border: 1px solid $danger;
+
+  &:hover:not(:disabled) {
+    background: $danger;
+    color: white;
+  }
+}
