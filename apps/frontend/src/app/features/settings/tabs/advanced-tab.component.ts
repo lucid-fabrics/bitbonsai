@@ -119,7 +119,7 @@ import { SettingsService } from '../services/settings.service';
                 <input
                   type="checkbox"
                   [checked]="settingsForm.value.analyticsEnabled ?? true"
-                  (change)="settingsForm.patchValue({ analyticsEnabled: $any($event.target).checked })"
+                  (change)="onAnalyticsToggle($event)"
                 />
                 <span class="slider"></span>
               </label>
@@ -351,10 +351,14 @@ export class AdvancedTabComponent implements OnInit {
         error: (_err) => {
           this.loading.set(false);
           this.error = 'Failed to update security settings';
-          // Revert toggle on error
           this.localNetworkBypassEnabled = !this.localNetworkBypassEnabled;
         },
       });
+  }
+
+  onAnalyticsToggle(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.settingsForm.patchValue({ analyticsEnabled: target.checked });
   }
 
   saveReadyFilesCacheTtl(): void {
