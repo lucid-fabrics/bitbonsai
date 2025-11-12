@@ -42,15 +42,15 @@ import { LicenseService } from '../services/license.service';
               <span class="label">License Key:</span>
               <div class="value-with-action">
                 <span class="key-value">
-                  {{ licenseKeyRevealed ? license()!.licenseKey : '****-****-****-****' }}
+                  {{ licenseKeyRevealed() ? license()!.licenseKey : '****-****-****-****' }}
                 </span>
                 <button
                   type="button"
                   class="btn-icon"
                   (click)="toggleLicenseKeyVisibility()"
-                  [title]="licenseKeyRevealed ? 'Hide' : 'Reveal'"
+                  [title]="licenseKeyRevealed() ? 'Hide' : 'Reveal'"
                 >
-                  <i [class]="licenseKeyRevealed ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+                  <i [class]="licenseKeyRevealed() ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
                 </button>
               </div>
             </div>
@@ -206,9 +206,9 @@ export class LicenseTabComponent implements OnInit {
 
   license = signal<License | null>(null);
   loading = signal(false);
-  error: string | null = null;
-  successMessage: string | null = null;
-  licenseKeyRevealed = false;
+  error = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
+  licenseKeyRevealed = signal(false);
 
   licenseForm!: FormGroup<{
     licenseKey: FormControl<string | null>;
@@ -247,7 +247,7 @@ export class LicenseTabComponent implements OnInit {
           this.loading.set(false);
         },
         error: () => {
-          this.error = 'Failed to load license information';
+          this.error.set('Failed to load license information');
           this.loading.set(false);
         },
       });
@@ -256,8 +256,8 @@ export class LicenseTabComponent implements OnInit {
   activateLicense(): void {
     if (this.licenseForm.valid) {
       this.loading.set(true);
-      this.error = null;
-      this.successMessage = null;
+      this.error.set(null);
+      this.successMessage.set(null);
 
       const formValue = this.licenseForm.value;
       const request: ActivateLicense = {
@@ -272,11 +272,11 @@ export class LicenseTabComponent implements OnInit {
           next: (license) => {
             this.license.set(license);
             this.loading.set(false);
-            this.successMessage = 'License activated successfully!';
+            this.successMessage.set('License activated successfully!');
             this.licenseForm.reset();
           },
           error: () => {
-            this.error = 'Failed to activate license. Please check your key and try again.';
+            this.error.set('Failed to activate license. Please check your key and try again.');
             this.loading.set(false);
           },
         });
@@ -284,7 +284,7 @@ export class LicenseTabComponent implements OnInit {
   }
 
   toggleLicenseKeyVisibility(): void {
-    this.licenseKeyRevealed = !this.licenseKeyRevealed;
+    this.licenseKeyRevealed.set(!this.licenseKeyRevealed());
   }
 
   get licenseKeyControl() {
