@@ -203,30 +203,53 @@ export class SystemTabComponent implements OnInit {
   }
 
   resetToDefaults(): void {
-    if (
-      confirm(
-        'Are you sure you want to reset all settings to defaults? This action cannot be undone.'
-      )
-    ) {
-      this.loading.set(true);
-      this.error = null;
-      this.successMessage = null;
+    const dialogData: ConfirmationDialogData = {
+      title: 'Reset to Defaults?',
+      itemName: 'All System Settings',
+      itemType: 'configuration',
+      willHappen: [
+        'Reset all system settings to factory defaults',
+        'Clear custom configuration values',
+        'Restart with default values',
+      ],
+      wontHappen: [
+        'Delete any media files or libraries',
+        'Remove encoding history or jobs',
+        'Unregister nodes or delete connections',
+        'Delete the database',
+      ],
+      irreversible: true,
+      confirmButtonText: 'Reset to Defaults',
+      cancelButtonText: 'Keep Current Settings',
+    };
 
-      this.settingsService
-        .resetToDefaults()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (result: { message: string }) => {
-            this.loading.set(false);
-            this.successMessage = result.message;
-            this.loadSystemSettings();
-          },
-          error: (_err: Error) => {
-            this.error = 'Failed to reset settings';
-            this.loading.set(false);
-          },
-        });
-    }
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.loading.set(true);
+        this.error = null;
+        this.successMessage = null;
+
+        this.settingsService
+          .resetToDefaults()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (result: { message: string }) => {
+              this.loading.set(false);
+              this.successMessage = result.message;
+              this.loadSystemSettings();
+            },
+            error: (_err: Error) => {
+              this.error = 'Failed to reset settings';
+              this.loading.set(false);
+            },
+          });
+      }
+    });
   }
 
   unregisterNode(): void {
