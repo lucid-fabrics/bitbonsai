@@ -103,7 +103,7 @@ export interface ApprovalDialogData {
           <!-- Note about configuration -->
           <div class="info-section note-section">
             <div class="note-box">
-              <fa-icon class="note-box__icon fa fa-info-circle"></fa-icon>
+              <fa-icon [icon]="['fas', 'info-circle']" class="note-box__icon"></fa-icon>
               <div>
                 <strong class="note-box__title">Node Configuration</strong>
                 <p class="note-box__message">After approval, BitBonsai will automatically detect the node's network location and storage capabilities to optimize job routing.</p>
@@ -115,24 +115,24 @@ export interface ApprovalDialogData {
         <!-- Step 2: Approving and detecting capabilities -->
         @if (isApproving() && !capabilityResults()) {
           <div class="capability-detecting">
-            <fa-icon class="capability-detecting__spinner-icon fas fa-circle-notch fa-spin"></fa-icon>
+            <fa-icon [icon]="['fas', 'circle-notch']" class="capability-detecting__spinner-icon fa-spin"></fa-icon>
             <h3 class="capability-detecting__title">Detecting Node Capabilities</h3>
             <p class="capability-detecting__message">{{ detectingMessage() }}</p>
             <div class="detecting-phases">
               <div class="phase">
-                <fa-icon class="phase__icon fas fa-check-circle" [class.active]="detectingPhase() >= 1"></fa-icon>
+                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 1"></fa-icon>
                 <span class="phase__label">Approving node registration</span>
               </div>
               <div class="phase">
-                <fa-icon class="phase__icon fas fa-check-circle" [class.active]="detectingPhase() >= 2"></fa-icon>
+                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 2"></fa-icon>
                 <span class="phase__label">Testing network connection</span>
               </div>
               <div class="phase">
-                <fa-icon class="phase__icon fas fa-check-circle" [class.active]="detectingPhase() >= 3"></fa-icon>
+                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 3"></fa-icon>
                 <span class="phase__label">Scanning for shared storage</span>
               </div>
               <div class="phase">
-                <fa-icon class="phase__icon fas fa-check-circle" [class.active]="detectingPhase() >= 4"></fa-icon>
+                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 4"></fa-icon>
                 <span class="phase__label">Classifying network location</span>
               </div>
             </div>
@@ -144,7 +144,7 @@ export interface ApprovalDialogData {
           <div class="capability-results">
             <!-- Summary Banner -->
             <div class="results-banner" [class.optimal]="capabilityResults()!.hasSharedStorage && capabilityResults()!.networkLocation === 'LOCAL'">
-              <fa-icon class="results-banner__icon fas fa-check-circle"></fa-icon>
+              <fa-icon [icon]="['fas', 'check-circle']" class="results-banner__icon"></fa-icon>
               <div>
                 <strong class="results-banner__title">{{ getResultsSummary() }}</strong>
                 <p class="results-banner__message">{{ capabilityResults()!.reasoning }}</p>
@@ -154,7 +154,7 @@ export interface ApprovalDialogData {
             <!-- Network Location -->
             <div class="result-section">
               <h3 class="result-section__heading">
-                <fa-icon class="result-section__icon fas fa-network-wired"></fa-icon>
+                <fa-icon [icon]="['fas', 'network-wired']" class="result-section__icon"></fa-icon>
                 Network Location
               </h3>
               <div class="result-value">
@@ -170,7 +170,7 @@ export interface ApprovalDialogData {
             <!-- Shared Storage -->
             <div class="result-section">
               <h3 class="result-section__heading">
-                <fa-icon class="result-section__icon fas fa-hdd"></fa-icon>
+                <fa-icon [icon]="['fas', 'hdd']" class="result-section__icon"></fa-icon>
                 Shared Storage Access
               </h3>
               <div class="result-value">
@@ -189,7 +189,7 @@ export interface ApprovalDialogData {
             <!-- Performance Impact -->
             <div class="info-section note-section">
               <div class="note-box" [class.note-optimal]="capabilityResults()!.hasSharedStorage && capabilityResults()!.networkLocation === 'LOCAL'">
-                <fa-icon class="note-box__icon fa fa-info-circle"></fa-icon>
+                <fa-icon [icon]="['fas', 'info-circle']" class="note-box__icon"></fa-icon>
                 <div>
                   <strong class="note-box__title">{{ getPerformanceTitle() }}</strong>
                   <p class="note-box__message">{{ getPerformanceMessage() }}</p>
@@ -202,7 +202,7 @@ export interface ApprovalDialogData {
         <!-- Error State -->
         @if (errorMessage()) {
           <div class="error-section">
-            <fa-icon class="error-section__icon fas fa-exclamation-triangle"></fa-icon>
+            <fa-icon [icon]="['fas', 'exclamation-triangle']" class="error-section__icon"></fa-icon>
             <div>
               <strong class="error-section__title">Error</strong>
               <p class="error-section__message">{{ errorMessage() }}</p>
