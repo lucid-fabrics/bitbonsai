@@ -1049,9 +1049,16 @@ export class FfmpegService implements OnModuleDestroy {
             reject(error);
           }
         } else {
-          // Get detailed error message with stderr context
+          // Get detailed error message with stderr context and job progress
           const stderr = encoding?.lastStderr || '';
-          const errorMessage = this.interpretFfmpegExitCode(code as number, stderr);
+          const progress = job.progress || 0;
+          const retryCount = job.retryCount || 0;
+          const errorMessage = this.interpretFfmpegExitCode(
+            code as number,
+            stderr,
+            progress,
+            retryCount
+          );
           await this.handleEncodingFailure(job, tempOutput, errorMessage);
           reject(new Error(errorMessage));
         }
@@ -1287,7 +1294,7 @@ export class FfmpegService implements OnModuleDestroy {
   /**
    * Interpret ffmpeg exit code and return detailed error message
    *
-   * CRITICAL FIX: Detect corrupted source files (HEVC decoder errors)
+   * ENHANCED: Uses FFmpeg Error Analyzer for human-readable explanations
    *
    * Common ffmpeg exit codes:
    * - 0: Success
@@ -1297,101 +1304,25 @@ export class FfmpegService implements OnModuleDestroy {
    *
    * @param code - FFmpeg exit code
    * @param stderr - Last stderr output for context
-   * @returns Detailed error message with explanation and corruption flag
+   * @param progress - Current job progress (0-100), defaults to 0
+   * @param retryCount - Number of retry attempts, defaults to 0
+   * @returns Detailed error message with explanation and recommendations
    */
-  private interpretFfmpegExitCode(code: number, stderr: string): string {
-    let explanation = '';
-    let isSourceCorrupted = false;
+  private interpretFfmpegExitCode(
+    code: number,
+    stderr: string,
+    progress: number = 0,
+    retryCount: number = 0
+  ): string {
+    // Use new error analyzer for human-readable explanations
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const {
+      analyzeFfmpegError,
+      formatErrorForDisplay,
+    } = require('./utils/ffmpeg-error-analyzer.util');
 
-    // CRITICAL FIX: Detect corrupted source file patterns in stderr
-    if (stderr) {
-      const stderrLower = stderr.toLowerCase();
-
-      // Pattern 1: HEVC decoder errors (most common)
-      const hevcDecoderErrors = [
-        'could not find ref with poc', // HEVC reference frame error
-        'error submitting packet to decoder: invalid data found', // Decoder error
-        'corrupt decoded frame in stream', // Corrupted frame
-        'error while decoding stream', // Generic decoder error
-        'missing reference picture', // Missing reference frame
-        'illegal short term buffer state detected', // HEVC state corruption
-      ];
-
-      // Pattern 2: Container/demuxer errors
-      const containerErrors = [
-        'invalid data found when processing input', // Corrupted container
-        'moov atom not found', // Corrupted MP4
-        'invalid nal unit size', // Corrupted H.264/HEVC NAL
-      ];
-
-      // Check for corruption patterns
-      for (const pattern of [...hevcDecoderErrors, ...containerErrors]) {
-        if (stderrLower.includes(pattern)) {
-          isSourceCorrupted = true;
-          explanation = `Source file appears corrupted (decoder error: "${pattern}")`;
-          break;
-        }
-      }
-    }
-
-    // If not corrupted, use normal exit code interpretation
-    if (!isSourceCorrupted) {
-      switch (code) {
-        case 1:
-          explanation = 'Generic encoding error';
-          break;
-        case 255:
-        case -1:
-          explanation = 'Process was aborted or interrupted';
-          break;
-        case 134:
-          explanation = 'Segmentation fault (ffmpeg crashed)';
-          break;
-        case 139:
-          explanation = 'Segmentation fault (signal 11)';
-          break;
-        default:
-          explanation = code > 128 ? `Process killed by signal ${code - 128}` : 'Unknown error';
-      }
-    }
-
-    // Build detailed error message
-    let errorMessage = `FFmpeg Error (Exit Code ${code}): ${explanation}\n\n`;
-
-    // CRITICAL FIX: Add non-retriable flag for corrupted sources
-    if (isSourceCorrupted) {
-      errorMessage += '⚠️  NON-RETRIABLE ERROR: The source file appears to be corrupted.\n';
-      errorMessage += 'Retrying will not fix this. Please verify the source file integrity.\n\n';
-    }
-
-    // Add relevant stderr context
-    if (stderr) {
-      const stderrLines = stderr.trim().split('\n');
-
-      // Look for common error patterns
-      const errorLines = stderrLines.filter(
-        (line) =>
-          line.toLowerCase().includes('error') ||
-          line.toLowerCase().includes('invalid') ||
-          line.toLowerCase().includes('failed') ||
-          line.toLowerCase().includes('could not') ||
-          line.toLowerCase().includes('unable to')
-      );
-
-      if (errorLines.length > 0) {
-        errorMessage += 'Relevant errors from ffmpeg:\n';
-        errorMessage += errorLines.slice(-10).join('\n');
-        errorMessage += '\n\n';
-      }
-
-      // Add last few lines for context
-      errorMessage += 'Last output from ffmpeg:\n';
-      errorMessage += stderrLines.slice(-15).join('\n');
-    } else {
-      errorMessage += 'No output captured from ffmpeg.';
-    }
-
-    return errorMessage;
+    const analysis = analyzeFfmpegError(code, stderr, progress, retryCount);
+    return formatErrorForDisplay(analysis);
   }
 
   /**
