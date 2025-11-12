@@ -181,9 +181,7 @@ export class EnvironmentTabComponent implements OnInit {
         next: (info) => {
           this.environmentInfo = info;
         },
-        error: () => {
-          // Failed to load environment info
-        },
+        error: () => {},
       });
   }
 
