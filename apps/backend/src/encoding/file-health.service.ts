@@ -44,6 +44,7 @@ export class FileHealthService {
    * - Streams are decodable
    * - Duration and metadata are accessible
    * - No critical errors in file structure
+   * - Test decode for files with warning score (detects deep corruption)
    *
    * @param filePath - Path to file to analyze
    * @returns Health analysis result with recommendations
@@ -67,7 +68,32 @@ export class FileHealthService {
       const probeResult = await this.runFFProbe(filePath);
 
       // Analyze results
-      return this.evaluateHealth(probeResult);
+      const healthResult = this.evaluateHealth(probeResult);
+
+      // For files with WARNING status (70-89 score), perform test decode
+      // This catches deep corruption that ffprobe misses (like Men in Black)
+      if (healthResult.status === FileHealthStatus.WARNING && healthResult.score >= 70) {
+        this.logger.debug(
+          `File has WARNING status (score ${healthResult.score}), performing test decode`
+        );
+        const decodeResult = await this.testDecode(filePath);
+
+        if (!decodeResult.success) {
+          // Test decode failed - file is more corrupted than ffprobe detected
+          healthResult.status = FileHealthStatus.CORRUPTED;
+          healthResult.score = 35; // Below threshold
+          healthResult.canEncode = false;
+          healthResult.issues.push(
+            'Test decode failed - file contains corrupted frames that cannot be processed'
+          );
+          healthResult.warnings.push(`Decode error: ${decodeResult.error}`);
+          this.logger.warn(`Test decode failed for ${filePath}: ${decodeResult.error}`);
+        } else {
+          this.logger.debug(`Test decode successful for ${filePath}`);
+        }
+      }
+
+      return healthResult;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`File health analysis failed: ${errorMessage}`);
@@ -278,5 +304,89 @@ export class FileHealthService {
         audioCodec: probeResult.audioCodec,
       },
     };
+  }
+
+  /**
+   * Perform test decode of first 10 seconds to detect deep corruption
+   *
+   * This catches files that pass ffprobe but have corrupted video frames
+   * that will cause ffmpeg to fail during actual encoding (like Men in Black).
+   *
+   * @param filePath - Path to file to test
+   * @returns Success status and error message if failed
+   * @private
+   */
+  private async testDecode(filePath: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    return new Promise((resolve) => {
+      // Decode first 10 seconds to /dev/null
+      // If file has corrupted frames, ffmpeg will fail
+      const ffmpeg = spawn('ffmpeg', [
+        '-v',
+        'error', // Only show errors
+        '-t',
+        '10', // Test first 10 seconds
+        '-i',
+        filePath,
+        '-f',
+        'null', // Discard output
+        '-',
+      ]);
+
+      let stderr = '';
+
+      ffmpeg.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      ffmpeg.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true });
+        } else {
+          // Extract meaningful error from stderr
+          const stderrLower = stderr.toLowerCase();
+          let errorReason = 'Unknown decode error';
+
+          if (stderrLower.includes('invalid data found')) {
+            errorReason = 'Invalid/corrupted data in video stream';
+          } else if (stderrLower.includes('could not find ref with poc')) {
+            errorReason = 'HEVC reference frame corruption';
+          } else if (stderrLower.includes('error while decoding')) {
+            errorReason = 'Video decoder encountered corrupted frames';
+          } else if (stderrLower.includes('error submitting packet')) {
+            errorReason = 'Corrupted packet data in video stream';
+          } else if (code === 255 || code === -1) {
+            errorReason = 'FFmpeg aborted due to corrupted data (exit 255)';
+          }
+
+          resolve({
+            success: false,
+            error: `${errorReason} (exit code ${code})`,
+          });
+        }
+      });
+
+      ffmpeg.on('error', (error) => {
+        resolve({
+          success: false,
+          error: `Failed to run ffmpeg: ${error.message}`,
+        });
+      });
+
+      // Timeout after 30 seconds (shouldn't take that long for 10 seconds)
+      setTimeout(() => {
+        try {
+          ffmpeg.kill('SIGKILL');
+        } catch {
+          // Ignore errors if already dead
+        }
+        resolve({
+          success: false,
+          error: 'Test decode timed out after 30 seconds',
+        });
+      }, 30000);
+    });
   }
 }
