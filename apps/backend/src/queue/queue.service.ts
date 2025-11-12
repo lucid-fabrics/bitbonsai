@@ -1039,24 +1039,56 @@ export class QueueService {
       throw new BadRequestException('Only failed or cancelled jobs can be retried');
     }
 
+    // MANUAL RETRY: Apply same smart temp file detection as auto-heal
+    const { existsSync } = await import('fs');
+    const hasTempFile = existingJob.tempFilePath && existsSync(existingJob.tempFilePath);
+    const canResume = hasTempFile && existingJob.resumeTimestamp;
+
+    let retryMessage: string;
+    let historyMessage: string;
+
+    if (canResume) {
+      // Temp file exists - can resume from checkpoint
+      retryMessage = `will resume from ${(existingJob.progress || 0).toFixed(1)}%`;
+      historyMessage = `Manual retry: Will resume encoding from ${(existingJob.progress || 0).toFixed(1)}% (temp file preserved)`;
+      this.logger.log(
+        `✅ Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`
+      );
+    } else {
+      // Temp file missing or invalid - must start fresh
+      const reason = existingJob.tempFilePath ? 'temp file deleted' : 'no temp file';
+      retryMessage = `starting fresh (${reason})`;
+      historyMessage = `Manual retry: Temp file not available, starting encoding from scratch (was at ${(existingJob.progress || 0).toFixed(1)}%)`;
+      this.logger.log(
+        `⚠️  Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`
+      );
+    }
+
     const job = await this.prisma.job.update({
       where: { id },
       data: {
         stage: JobStage.QUEUED,
-        progress: 0,
+        progress: canResume ? existingJob.progress : 0, // Keep progress if resuming
         error: null,
         completedAt: null,
         startedAt: null,
+        retryCount: existingJob.retryCount + 1,
+        // MANUAL RETRY: Only clear resume state if temp file doesn't exist
+        resumeTimestamp: canResume ? existingJob.resumeTimestamp : null,
+        tempFilePath: canResume ? existingJob.tempFilePath : null,
       },
     });
 
-    // Record restart event in history
+    // Record restart event in history with temp file status
     await this.jobHistoryService.recordEvent({
       jobId: id,
       eventType: JobEventType.RESTARTED,
       stage: JobStage.QUEUED,
-      progress: 0,
+      progress: existingJob.progress || 0,
       triggeredBy: 'USER',
+      systemMessage: historyMessage,
+      tempFileExists: hasTempFile,
+      retryNumber: existingJob.retryCount + 1,
     });
 
     this.logger.log(`Job retried: ${id}`);
