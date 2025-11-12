@@ -101,6 +101,16 @@ export class SettingsComponent implements OnInit {
    * Initialize active tab from URL parameter
    */
   private initializeTabFromRoute(): void {
+    // Read initial tab from route snapshot (synchronous)
+    const initialTabParam = this.route.snapshot.params['tab'];
+    if (initialTabParam) {
+      const tab = this.mapUrlParamToTab(initialTabParam);
+      if (tab) {
+        this.activeTab = tab;
+      }
+    }
+
+    // Subscribe to route param changes
     this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const tabParam = params['tab'];
       if (tabParam) {
