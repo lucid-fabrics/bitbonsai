@@ -1,0 +1,6 @@
+<div class="bell-container" [class.animate]="shouldAnimate">
+  <i class="fas fa-bell bell-icon" [class.has-notifications]="pendingCount > 0"></i>
+  @if (pendingCount > 0) {
+    <span class="badge" [class.pulse]="shouldAnimate">{{ pendingCount }}</span>
+  }
+</div>
