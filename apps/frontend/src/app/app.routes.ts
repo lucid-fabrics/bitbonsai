@@ -97,14 +97,42 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/settings/settings.page').then((m) => m.SettingsComponent),
     canActivate: [setupGuard, authGuard],
-    // Settings is accessible to both MAIN and LINKED nodes (but requires setup + auth)
-  },
-  {
-    path: 'settings/:tab',
-    loadComponent: () =>
-      import('./features/settings/settings.page').then((m) => m.SettingsComponent),
-    canActivate: [setupGuard, authGuard],
-    // Settings with tab parameter (e.g., /settings/license)
+    children: [
+      { path: '', redirectTo: 'license', pathMatch: 'full' },
+      {
+        path: 'license',
+        loadComponent: () =>
+          import('./features/settings/tabs/license-tab.component').then(
+            (m) => m.LicenseTabComponent
+          ),
+      },
+      {
+        path: 'environment',
+        loadComponent: () =>
+          import('./features/settings/tabs/environment-tab.component').then(
+            (m) => m.EnvironmentTabComponent
+          ),
+      },
+      {
+        path: 'system',
+        loadComponent: () =>
+          import('./features/settings/tabs/system-tab.component').then((m) => m.SystemTabComponent),
+      },
+      {
+        path: 'resources',
+        loadComponent: () =>
+          import('./features/settings/tabs/resources-tab.component').then(
+            (m) => m.ResourcesTabComponent
+          ),
+      },
+      {
+        path: 'advanced',
+        loadComponent: () =>
+          import('./features/settings/tabs/advanced-tab.component').then(
+            (m) => m.AdvancedTabComponent
+          ),
+      },
+    ],
   },
   {
     path: '**',
