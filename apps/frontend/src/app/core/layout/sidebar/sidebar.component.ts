@@ -18,7 +18,6 @@ import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
-import { PendingRequestsBellComponent } from '../../../shared/components/pending-requests-bell/pending-requests-bell.component';
 import { CurrentNodeActions } from '../../+state/current-node.actions';
 import {
   selectCurrentNode,
@@ -38,7 +37,7 @@ interface MenuItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule, PendingRequestsBellComponent],
+  imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

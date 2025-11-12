@@ -55,28 +55,28 @@
   display: flex;
   align-items: center;
   gap: 16px;
+}
 
-  .header-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: rgba($danger, 0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.dialog-header__icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba($danger, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    i {
-      font-size: 24px;
-      color: $danger;
-    }
-  }
+.dialog-header__icon {
+  font-size: 24px;
+  color: $danger;
+}
 
-  h2 {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 600;
-    color: $text-white;
-  }
+.dialog-header__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: $text-white;
 }
 
 .dialog-body {
@@ -84,128 +84,112 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
 
-  .item-name-section {
-    .item-context {
-      margin: 0 0 8px 0;
-      font-size: 14px;
-      color: $text-secondary;
-    }
+.item-name-section__context {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: $text-secondary;
+}
 
-    .item-name {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: $text-white;
-      background: rgba($danger, 0.1);
-      padding: 12px 16px;
-      border-radius: 8px;
-      border-left: 4px solid $danger;
-    }
+.item-name-section__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: $text-white;
+  background: rgba($danger, 0.1);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid $danger;
+}
+
+.consequences-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.consequences__heading {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &.will-happen {
+    color: $danger;
   }
 
-  .consequences-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  &.wont-happen {
+    color: $success;
+  }
+}
 
-    .will-happen,
-    .wont-happen {
-      h3 {
-        margin: 0 0 12px 0;
-        font-size: 14px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+.consequences__icon {
+  font-size: 16px;
 
-        i {
-          font-size: 16px;
-        }
-      }
-
-      ul {
-        margin: 0;
-        padding-left: 28px;
-        list-style-type: none;
-
-        li {
-          font-size: 14px;
-          line-height: 1.6;
-          margin-bottom: 8px;
-          position: relative;
-
-          &:before {
-            content: '•';
-            position: absolute;
-            left: -16px;
-            font-weight: bold;
-          }
-
-          &:last-child {
-            margin-bottom: 0;
-          }
-        }
-      }
-    }
-
-    .will-happen {
-      h3 {
-        color: $danger;
-
-        i {
-          color: $danger;
-        }
-      }
-
-      ul li {
-        color: $text-secondary;
-
-        &:before {
-          color: $danger;
-        }
-      }
-    }
-
-    .wont-happen {
-      h3 {
-        color: $success;
-
-        i {
-          color: $success;
-        }
-      }
-
-      ul li {
-        color: $text-secondary;
-
-        &:before {
-          color: $success;
-        }
-      }
-    }
+  .will-happen & {
+    color: $danger;
   }
 
-  .warning-banner {
-    background: rgba($danger, 0.15);
-    border: 1px solid $danger;
-    border-radius: 8px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  .wont-happen & {
+    color: $success;
+  }
+}
 
-    i {
-      font-size: 18px;
-      color: $danger;
+.consequences-list {
+  margin: 0;
+  padding-left: 28px;
+  list-style-type: none;
+
+  li {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+    position: relative;
+    color: $text-secondary;
+
+    &:before {
+      content: '•';
+      position: absolute;
+      left: -16px;
+      font-weight: bold;
     }
 
-    span {
-      font-size: 14px;
-      font-weight: 600;
-      color: $danger;
+    &:last-child {
+      margin-bottom: 0;
     }
   }
+}
+
+.will-happen .consequences-list li:before {
+  color: $danger;
+}
+
+.wont-happen .consequences-list li:before {
+  color: $success;
+}
+
+.warning-banner {
+  background: rgba($danger, 0.15);
+  border: 1px solid $danger;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.warning-banner__icon {
+  font-size: 18px;
+  color: $danger;
+}
+
+.warning-banner__text {
+  font-size: 14px;
+  font-weight: 600;
+  color: $danger;
 }
 
 .dialog-footer {
@@ -228,10 +212,6 @@
   align-items: center;
   gap: 8px;
 
-  i {
-    font-size: 12px;
-  }
-
   &:hover {
     transform: translateY(-1px);
   }
@@ -239,6 +219,10 @@
   &:active {
     transform: translateY(0);
   }
+}
+
+.btn__icon {
+  font-size: 12px;
 }
 
 .btn-danger {

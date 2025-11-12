@@ -635,19 +635,20 @@
 // Step 4: Pairing
 // ============================================
 .step-pairing {
-  .pairing-animation {
+  &__animation {
     margin-bottom: 2rem;
+  }
 
-    .connecting-icon {
-      i {
-        font-size: 5rem;
-        color: $accent-primary;
-        animation: linkPulse 1.5s ease-in-out infinite;
-      }
+  &__connecting-icon {
+    fa-icon {
+      font-size: 5rem;
+      color: $accent-primary;
+      animation: linkPulse 1.5s ease-in-out infinite;
+      display: block;
     }
   }
 
-  .pairing-description {
+  &__description {
     font-size: 1.125rem;
     margin-bottom: 2rem;
 
@@ -656,103 +657,116 @@
     }
   }
 
-  .pairing-code-section {
+  &__code-section {
     margin: 2rem 0;
     padding: 2rem;
     background: rgba($accent-primary, 0.05);
     border-radius: $border-radius-lg;
     border: 1px solid rgba($accent-primary, 0.2);
-
-    .code-label {
-      font-size: 0.875rem;
-      color: $text-secondary;
-      margin-bottom: 0.5rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .pairing-code {
-      font-size: 3rem;
-      font-weight: $font-weight-bold;
-      color: $accent-primary;
-      font-family: monospace;
-      letter-spacing: 0.25em;
-      margin-bottom: 0.5rem;
-    }
-
-    .code-hint {
-      font-size: 0.875rem;
-      color: $text-secondary;
-      margin: 0;
-    }
   }
 
-  .waiting-approval {
+  &__code-label {
+    font-size: 0.875rem;
+    color: $text-secondary;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__code {
+    font-size: 3rem;
+    font-weight: $font-weight-bold;
+    color: $accent-primary;
+    font-family: monospace;
+    letter-spacing: 0.25em;
+    margin-bottom: 0.5rem;
+  }
+
+  &__code-hint {
+    font-size: 0.875rem;
+    color: $text-secondary;
+    margin: 0;
+  }
+
+  &__waiting {
     margin: 2rem 0;
-
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid rgba($accent-primary, 0.1);
-      border-top-color: $accent-primary;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-
-    p {
-      color: $text-secondary;
-      margin-bottom: 1.5rem;
-    }
-
-    .timeout-progress {
-      max-width: 400px;
-      margin: 0 auto;
-
-      .timeout-bar {
-        height: 6px;
-        background: $bg-secondary;
-        border-radius: 3px;
-        overflow: hidden;
-        margin-bottom: 0.5rem;
-
-        .timeout-fill {
-          height: 100%;
-          background: linear-gradient(90deg, $accent-primary, $warning);
-          transition: width 1s linear;
-          border-radius: 3px;
-        }
-      }
-
-      .timeout-text {
-        font-size: 0.875rem;
-        color: $text-tertiary;
-        margin: 0;
-      }
-    }
   }
 
-  .pairing-error {
-    i {
+  &__spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba($accent-primary, 0.1);
+    border-top-color: $accent-primary;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  &__waiting-text {
+    color: $text-secondary;
+    margin-bottom: 1.5rem;
+  }
+
+  &__timeout-progress {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  &__timeout-bar {
+    height: 6px;
+    background: $bg-secondary;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+
+  &__timeout-fill {
+    height: 100%;
+    background: linear-gradient(90deg, $accent-primary, $warning);
+    transition: width 1s linear;
+    border-radius: 3px;
+  }
+
+  &__timeout-text {
+    font-size: 0.875rem;
+    color: $text-tertiary;
+    margin: 0;
+  }
+
+  &__error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2rem;
+
+    fa-icon {
       font-size: 5rem;
       color: $danger;
       margin-bottom: 1.5rem;
     }
-
-    .error-message {
-      font-size: 1.125rem;
-      color: $text-primary;
-      margin-bottom: 2rem;
-    }
-
-    .error-actions {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-    }
   }
 
-  .step-actions {
+  &__error-title {
+    font-size: 1.75rem;
+    font-weight: $font-weight-bold;
+    color: $text-white;
+    margin: 0 0 1rem 0;
+  }
+
+  &__error-message {
+    font-size: 1.125rem;
+    color: $text-primary;
+    margin-bottom: 2rem;
+  }
+
+  &__error-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  &__actions {
     margin-top: 2rem;
   }
 }
@@ -761,18 +775,18 @@
 // Step 5: Complete
 // ============================================
 .step-complete {
-  .success-icon {
+  &__success-icon {
     font-size: 6rem;
     color: $success;
     margin-bottom: 2rem;
     animation: checkmark 0.5s ease;
 
-    i {
+    fa-icon {
       filter: drop-shadow(0 0 20px rgba($success, 0.5));
     }
   }
 
-  .success-description {
+  &__description {
     font-size: 1.25rem;
     margin-bottom: 3rem;
 
@@ -781,59 +795,59 @@
     }
   }
 
-  .hardware-summary {
+  &__hardware {
     background: $bg-secondary;
     border: 1px solid $border-primary;
     border-radius: $border-radius-lg;
     padding: 2rem;
     margin-bottom: 3rem;
     text-align: left;
+  }
 
-    h3 {
-      text-align: center;
-      margin-bottom: 2rem;
+  &__hardware-title {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: $accent-primary;
+  }
+
+  &__hardware-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+
+  &__hardware-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    fa-icon {
+      font-size: 1.5rem;
       color: $accent-primary;
-    }
-
-    .hardware-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
-
-      .hardware-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-
-        i {
-          font-size: 1.5rem;
-          color: $accent-primary;
-          width: 32px;
-          text-align: center;
-        }
-
-        .hardware-info {
-          flex: 1;
-
-          .hardware-label {
-            font-size: 0.75rem;
-            color: $text-secondary;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
-          }
-
-          .hardware-value {
-            font-size: 1rem;
-            color: $text-white;
-            font-weight: $font-weight-bold;
-          }
-        }
-      }
+      width: 32px;
+      text-align: center;
     }
   }
 
-  .btn-large {
+  &__hardware-info {
+    flex: 1;
+  }
+
+  &__hardware-label {
+    font-size: 0.75rem;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+
+  &__hardware-value {
+    font-size: 1rem;
+    color: $text-white;
+    font-weight: $font-weight-bold;
+  }
+
+  &__btn {
     padding: 1.25rem 2.5rem;
     font-size: 1.25rem;
     border-radius: $border-radius-md;

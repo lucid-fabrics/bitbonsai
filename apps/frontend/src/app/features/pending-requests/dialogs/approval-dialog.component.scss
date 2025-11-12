@@ -16,12 +16,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
 
-  h2 {
-    margin: 0;
-    font-size: 20px;
-    color: $text-white;
-  }
+.dialog-header__title {
+  margin: 0;
+  font-size: 20px;
+  color: $text-white;
 }
 
 .close-btn {
@@ -69,16 +69,16 @@
 .info-item {
   display: flex;
   gap: 8px;
+}
 
-  .label {
-    font-weight: 500;
-    color: $text-secondary;
-  }
+.info-item__label {
+  font-weight: 500;
+  color: $text-secondary;
+}
 
-  .value {
-    color: $text-primary;
-    word-break: break-word;
-  }
+.info-item__value {
+  color: $text-primary;
+  word-break: break-word;
 }
 
 .message {
@@ -102,26 +102,26 @@
   background: rgba(138, 180, 248, 0.05);
   border: 1px solid rgba(138, 180, 248, 0.2);
   border-radius: 8px;
+}
 
-  i {
-    color: #8ab4f8;
-    font-size: 20px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
+.note-box__icon {
+  color: #8ab4f8;
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
 
-  strong {
-    display: block;
-    color: $text-white;
-    margin-bottom: 4px;
-  }
+.note-box__title {
+  display: block;
+  color: $text-white;
+  margin-bottom: 4px;
+}
 
-  p {
-    margin: 0;
-    color: $text-secondary;
-    font-size: 14px;
-    line-height: 1.5;
-  }
+.note-box__message {
+  margin: 0;
+  color: $text-secondary;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .dialog-footer {
@@ -158,4 +158,215 @@
   &:hover {
     background: $accent-primary-hover;
   }
+}
+
+// Capability Detection Styles
+.capability-detecting {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.capability-detecting__spinner-icon {
+  font-size: 48px;
+  color: $accent-primary;
+  margin-bottom: 24px;
+}
+
+.capability-detecting__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: $text-white;
+  margin-bottom: 12px;
+}
+
+.capability-detecting__message {
+  color: $text-secondary;
+  margin-bottom: 32px;
+}
+
+.detecting-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.phase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: $bg-primary;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.phase__icon {
+  font-size: 20px;
+  color: $border-secondary;
+  transition: color 0.3s ease;
+
+  &.active {
+    color: $accent-primary;
+  }
+}
+
+.phase__label {
+  color: $text-secondary;
+  font-size: 14px;
+}
+
+// Capability Results Styles
+.capability-results {
+  padding: 20px 0;
+}
+
+.results-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(138, 180, 248, 0.05);
+  border: 1px solid rgba(138, 180, 248, 0.2);
+  border-radius: 8px;
+  margin-bottom: 24px;
+
+  &.optimal {
+    background: rgba(16, 185, 129, 0.05);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+}
+
+.results-banner__icon {
+  font-size: 32px;
+  color: #8ab4f8;
+  flex-shrink: 0;
+
+  .optimal & {
+    color: #10b981;
+  }
+}
+
+.results-banner__title {
+  display: block;
+  font-size: 18px;
+  color: $text-white;
+  margin-bottom: 6px;
+}
+
+.results-banner__message {
+  margin: 0;
+  color: $text-secondary;
+  line-height: 1.5;
+}
+
+.result-section {
+  margin-bottom: 24px;
+}
+
+.result-section__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-white;
+  margin-bottom: 12px;
+}
+
+.result-section__icon {
+  color: $accent-primary;
+}
+
+.result-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  &.badge-warning {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+  }
+
+  &.badge-secondary {
+    background: $bg-tertiary;
+    color: $text-secondary;
+    border: 1px solid $border-secondary;
+  }
+}
+
+.latency {
+  color: $text-secondary;
+  font-size: 14px;
+}
+
+.storage-path {
+  color: $text-primary;
+  font-family: monospace;
+  font-size: 13px;
+  background: $bg-primary;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.note {
+  color: $text-secondary;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.note-optimal {
+  background: rgba(16, 185, 129, 0.05) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.note-optimal .note-box__icon {
+  color: #10b981 !important;
+}
+
+.error-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+}
+
+.error-section__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.error-section__title {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.error-section__message {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
 }

@@ -3,16 +3,16 @@
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1>Nodes</h1>
-        <p class="subtitle">Manage and pair encoding nodes</p>
+        <h1 class="page-header__title">Nodes</h1>
+        <p class="page-header__subtitle">Manage and pair encoding nodes</p>
       </div>
       <div class="header-right">
         @if (!isLoading && hasNodes) {
           <div class="nodes-count">
-            <i class="fas fa-server"></i>
+            <fa-icon [icon]="['fas', 'server']" class="nodes-count__icon"></fa-icon>
             <span>{{ totalNodes }} {{ totalNodes === 1 ? 'Node' : 'Nodes' }}</span>
-            <span class="status-indicator online">{{ onlineNodes }} online</span>
-            <span class="status-indicator offline">{{ offlineNodes }} offline</span>
+            <span class="nodes-count__status-indicator online">{{ onlineNodes }} online</span>
+            <span class="nodes-count__status-indicator offline">{{ offlineNodes }} offline</span>
           </div>
         }
         <button
@@ -23,7 +23,7 @@
           tooltipContent="Start the pairing process to add a new encoding node to your BitBonsai cluster. Nodes can be any computer with encoding capabilities."
           tooltipWhen="You want to add another computer to help with encoding workload, or you're setting up your first encoding node."
           tooltipPlacement="bottom">
-          <i class="fas fa-plus"></i>
+          <fa-icon [icon]="['fas', 'plus']"></fa-icon>
           Register New Node
         </button>
       </div>
@@ -33,19 +33,158 @@
   <!-- Error Alert -->
   @if (error) {
     <div class="error-alert">
-      <i class="fas fa-exclamation-circle"></i>
-      <span>{{ error }}</span>
-      <button class="close-btn" (click)="error = null">
-        <i class="fas fa-times"></i>
+      <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-alert__icon"></fa-icon>
+      <span class="error-alert__message">{{ error }}</span>
+      <button class="error-alert__close-btn" (click)="error = null">
+        <fa-icon [icon]="['fas', 'times']"></fa-icon>
       </button>
+    </div>
+  }
+
+  <!-- Pending Requests Section -->
+  @if (pendingRequests.length > 0) {
+    <div class="pending-requests-section">
+      <h2>Pending Node Requests</h2>
+      <div class="pending-requests-grid">
+        @for (request of pendingRequests; track request.id) {
+          <div
+            class="pending-request-card"
+            [class.pulsing-highlight]="highlightedRequestId() === request.id"
+            [id]="'request-' + request.id"
+          >
+            <!-- Card Header -->
+            <div class="card-header pending-header">
+              <div class="header-left">
+                <h3 class="request-name">
+                  <fa-icon [icon]="['fas', 'hourglass-start']" class="pending-request-card__name-icon"></fa-icon>
+                  {{ request.childNodeName }}
+                </h3>
+                <span class="request-status">
+                  <fa-icon [icon]="['fas', 'circle']" class="pending-request-card__status-icon"></fa-icon>
+                  {{ request.status }}
+                </span>
+              </div>
+              <div class="header-right">
+                <span class="time-badge">
+                  <fa-icon [icon]="['fas', 'clock']"></fa-icon>
+                  {{ getTimeRemaining(request) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="card-body">
+              <div class="info-grid">
+                <!-- Node Name -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'server']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">Node Name</div>
+                    <div class="info-value">{{ request.childNodeName }}</div>
+                  </div>
+                </div>
+
+                <!-- IP Address -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'network-wired']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">IP Address</div>
+                    <div class="info-value">{{ request.ipAddress }}</div>
+                  </div>
+                </div>
+
+                <!-- Hostname -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'server']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">Hostname</div>
+                    <div class="info-value">{{ request.hostname }}</div>
+                  </div>
+                </div>
+
+                <!-- Container Type -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'box']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">Container Type</div>
+                    <div class="info-value">{{ getContainerTypeLabel(request.containerType) }}</div>
+                  </div>
+                </div>
+
+                <!-- CPU Cores -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'microchip']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">CPU Cores</div>
+                    <div class="info-value">{{ request.hardwareSpecs.cpuCores }}</div>
+                  </div>
+                </div>
+
+                <!-- RAM -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'memory']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">RAM</div>
+                    <div class="info-value">{{ request.hardwareSpecs.ramGb }} GB</div>
+                  </div>
+                </div>
+
+                <!-- GPU -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'thunderbolt']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">Acceleration</div>
+                    <div class="info-value">{{ request.acceleration || 'None' }}</div>
+                  </div>
+                </div>
+
+                <!-- Version -->
+                <div class="info-item">
+                  <fa-icon [icon]="['fas', 'code-branch']" class="info-item__icon"></fa-icon>
+                  <div class="info-content">
+                    <div class="info-label">Version</div>
+                    <div class="info-value">{{ request.childVersion }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="card-footer">
+              <button
+                class="btn btn-icon"
+                (click)="onApprove(request)"
+                bbTooltip
+                tooltipTitle="Approve Request"
+                tooltipContent="Accept this node registration request and add it to your BitBonsai cluster."
+                tooltipWhen="You've reviewed the node details and want to proceed with pairing."
+                tooltipPlacement="top">
+                <fa-icon [icon]="['fas', 'check']"></fa-icon>
+                Approve
+              </button>
+              <button
+                class="btn btn-icon btn-danger"
+                (click)="onReject(request)"
+                bbTooltip
+                tooltipTitle="Reject Request"
+                tooltipContent="Decline this node registration request. The node will receive notification."
+                tooltipWhen="You don't want to add this node to your cluster."
+                tooltipPlacement="top">
+                <fa-icon [icon]="['fas', 'times']"></fa-icon>
+                Reject
+              </button>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   }
 
   <!-- Loading State -->
   @if (isLoading && !hasNodes) {
     <div class="loading-state">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>Loading nodes...</p>
+      <fa-icon [icon]="['fas', 'spinner']" class="loading-state__icon fa-spin"></fa-icon>
+      <p class="loading-state__message">Loading nodes...</p>
     </div>
   }
 
@@ -53,10 +192,10 @@
   @if (!isLoading && !hasNodes) {
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-server"></i>
+        <fa-icon [icon]="['fas', 'server']" class="empty-state__icon"></fa-icon>
       </div>
-      <h2>No Nodes Yet</h2>
-      <p class="empty-description">
+      <h2 class="empty-state__title">No Nodes Yet</h2>
+      <p class="empty-state__description">
         Nodes are the workers that handle all your video encoding. They can be your local machine,
         a dedicated server, or multiple computers working together.
       </p>
@@ -72,13 +211,13 @@
           <li>Your node will appear here and start accepting encoding jobs!</li>
         </ol>
         <p class="help-tip">
-          <i class="fas fa-lightbulb"></i>
+          <fa-icon [icon]="['fas', 'lightbulb']"></fa-icon>
           <strong>Tip:</strong> Nodes with GPU acceleration (NVIDIA, AMD, Apple Silicon) encode much faster!
         </p>
       </div>
 
       <button class="btn btn-primary btn-large" (click)="onRegisterNode()">
-        <i class="fas fa-plus"></i>
+        <fa-icon [icon]="['fas', 'plus']"></fa-icon>
         Register Your First Node
       </button>
     </div>
@@ -91,9 +230,9 @@
         <div class="node-card">
       <!-- Card Header -->
       <div class="card-header">
-        <div class="header-left">
+        <div class="node-card__header-left">
           <h3 class="node-name">
-            <i class="fas fa-server"></i>
+            <fa-icon [icon]="['fas', 'server']" class="node-card__name-icon"></fa-icon>
             {{ node.name }}
           </h3>
           <span class="role-badge" [attr.data-role]="node.role">
@@ -109,7 +248,7 @@
             [tooltipContent]="NodeBo.getStatusExplanation(node)"
             tooltipWhen="Check this to understand if the node is available for encoding jobs."
             tooltipPlacement="top">
-            <i class="fas fa-circle"></i>
+            <fa-icon [icon]="['fas', 'circle']"></fa-icon>
             {{ NodeBo.getStatusText(node) }}
           </span>
         </div>
@@ -120,7 +259,7 @@
         <div class="info-grid">
           <!-- Hardware Acceleration -->
           <div class="info-item">
-            <i class="fas fa-microchip"></i>
+            <fa-icon [icon]="['fas', 'microchip']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">Hardware</div>
               <div class="info-value">{{ NodeBo.getAccelerationLabel(node.acceleration) }}</div>
@@ -129,7 +268,7 @@
 
           <!-- Version -->
           <div class="info-item">
-            <i class="fas fa-code-branch"></i>
+            <fa-icon [icon]="['fas', 'code-branch']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">Version</div>
               <div class="info-value">{{ node.version }}</div>
@@ -138,7 +277,7 @@
 
           <!-- Uptime -->
           <div class="info-item">
-            <i class="fas fa-clock"></i>
+            <fa-icon [icon]="['fas', 'clock']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">Uptime</div>
               <div class="info-value">{{ NodeBo.formatUptime(node.uptimeSeconds) }}</div>
@@ -147,7 +286,7 @@
 
           <!-- Last Heartbeat -->
           <div class="info-item">
-            <i class="fas fa-heartbeat"></i>
+            <fa-icon [icon]="['fas', 'heartbeat']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">Last Heartbeat</div>
               <div class="info-value">{{ NodeBo.formatLastHeartbeat(node.lastHeartbeat) }}</div>
@@ -156,7 +295,7 @@
 
           <!-- Active Jobs -->
           <div class="info-item">
-            <i class="fas fa-tasks"></i>
+            <fa-icon [icon]="['fas', 'tasks']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">Active Jobs</div>
               <div class="info-value">{{ node.activeJobCount || 0 }}</div>
@@ -165,7 +304,7 @@
 
           <!-- Max Workers -->
           <div class="info-item">
-            <i class="fas fa-users"></i>
+            <fa-icon [icon]="['fas', 'users']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">Max Workers</div>
               <div class="info-value">{{ node.maxWorkers }}</div>
@@ -174,7 +313,7 @@
 
           <!-- CPU Limit -->
           <div class="info-item">
-            <i class="fas fa-tachometer-alt"></i>
+            <fa-icon [icon]="['fas', 'tachometer-alt']" class="info-item__icon"></fa-icon>
             <div class="info-content">
               <div class="info-label">CPU Limit</div>
               <div class="info-value">{{ node.cpuLimit }}%</div>
@@ -193,7 +332,7 @@
           tooltipContent="Adjust worker count, CPU limits, and other node settings to optimize encoding performance."
           tooltipWhen="You want to tune the node's resource usage or change how many jobs it can handle simultaneously."
           tooltipPlacement="top">
-          <i class="fas fa-cog"></i>
+          <fa-icon [icon]="['fas', 'cog']"></fa-icon>
           Configure
         </button>
         <button
@@ -204,7 +343,7 @@
           tooltipContent="Shows detailed performance metrics, encoding history, and resource utilization for this node."
           tooltipWhen="You want to monitor node performance or troubleshoot encoding issues."
           tooltipPlacement="top">
-          <i class="fas fa-chart-bar"></i>
+          <fa-icon [icon]="['fas', 'chart-bar']"></fa-icon>
           View Stats
         </button>
         <button
@@ -216,7 +355,7 @@
           [tooltipContent]="node.role === NodeRole.MAIN ? 'MAIN nodes manage the entire BitBonsai cluster and cannot be removed. Only LINKED nodes can be unpaired.' : 'Unpairs this node from BitBonsai. The node software will continue running but won\'t receive new jobs. You can re-pair it later if needed.'"
           [tooltipWhen]="node.role === NodeRole.MAIN ? 'Never - MAIN nodes are permanent' : 'This node is being decommissioned or you want to stop it from accepting new encoding jobs.'"
           tooltipPlacement="top">
-          <i class="fas fa-trash"></i>
+          <fa-icon [icon]="['fas', 'trash']"></fa-icon>
           Remove
         </button>
       </div>

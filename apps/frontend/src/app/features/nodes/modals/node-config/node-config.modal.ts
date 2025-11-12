@@ -1,13 +1,17 @@
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { OptimalConfig } from '../../../../core/clients/nodes.client';
 import { NodesClient } from '../../../../core/clients/nodes.client';
 import type { Node } from '../../models/node.model';
@@ -16,24 +20,37 @@ export interface NodeConfigModalData {
   node: Node;
 }
 
+/**
+ * Node Configuration Modal
+ *
+ * Allows editing node settings:
+ * - Name
+ * - Max Workers (with auto-detected recommendations)
+ * - CPU Limit
+ *
+ * Also provides "Test Capabilities" button to re-run network and storage detection
+ */
 @Component({
   selector: 'app-node-config-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, FontAwesomeModule, ReactiveFormsModule],
   templateUrl: './node-config.modal.html',
   styleUrls: ['./node-config.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NodeConfigModalComponent implements OnInit {
   private readonly dialogRef = inject(DialogRef<NodeConfigModalComponent>);
+  private readonly dialog = inject(Dialog);
   private readonly fb = inject(FormBuilder);
   private readonly nodesClient = inject(NodesClient);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
   readonly data: NodeConfigModalData = inject(DIALOG_DATA);
 
   readonly form: FormGroup;
   optimalConfig: OptimalConfig | null = null;
   loadingRecommendations = false;
+  testingCapabilities = signal(false);
 
   constructor() {
     this.form = this.fb.group({
@@ -129,5 +146,55 @@ export class NodeConfigModalComponent implements OnInit {
     if (this.form.valid) {
       this.dialogRef.close(this.form.value);
     }
+  }
+
+  /**
+   * Test node capabilities
+   * Runs network location and shared storage detection
+   */
+  onTestCapabilities(): void {
+    this.testingCapabilities.set(true);
+    this.nodesClient
+      .testCapabilities(this.data.node.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (results: any) => {
+          this.testingCapabilities.set(false);
+          this.cdr.markForCheck();
+
+          // Show results in a dialog (we'll use the browser alert for now, can enhance later)
+          const summary = this.formatCapabilityResults(results);
+          alert(summary);
+        },
+        error: (err) => {
+          this.testingCapabilities.set(false);
+          this.cdr.markForCheck();
+          alert(`Failed to test capabilities: ${err?.error?.message || 'Unknown error'}`);
+        },
+      });
+  }
+
+  /**
+   * Format capability test results for display
+   */
+  private formatCapabilityResults(results: any): string {
+    const lines = [
+      'Node Capability Test Results',
+      '============================',
+      '',
+      `Network Location: ${results.networkLocation}`,
+      `Latency: ${results.latencyMs}ms`,
+      `Private IP: ${results.isPrivateIP ? 'Yes' : 'No'}`,
+      '',
+      `Shared Storage: ${results.hasSharedStorage ? 'Available' : 'Not Available'}`,
+    ];
+
+    if (results.storageBasePath) {
+      lines.push(`Storage Path: ${results.storageBasePath}`);
+    }
+
+    lines.push('', results.reasoning);
+
+    return lines.join('\n');
   }
 }

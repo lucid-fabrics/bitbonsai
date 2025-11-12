@@ -9,6 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { Public } from '../auth/guards/public.decorator';
 import { RegistrationRequestService } from '../nodes/services/registration-request.service';
+import { SystemInfoService } from '../nodes/services/system-info.service';
 import { PolicySyncService } from '../sync/policy-sync.service';
 import { CompletePairingDto } from './dto/complete-pairing.dto';
 import { DiscoveredNodeDto } from './dto/discovered-node.dto';
@@ -26,7 +27,8 @@ export class DiscoveryController {
   constructor(
     private readonly discoveryService: NodeDiscoveryService,
     private readonly syncService: PolicySyncService,
-    private readonly registrationRequestService: RegistrationRequestService
+    private readonly registrationRequestService: RegistrationRequestService,
+    private readonly systemInfoService: SystemInfoService
   ) {}
 
   /**
@@ -116,7 +118,11 @@ export class DiscoveryController {
         };
       }
 
+      // Collect system information from THIS node (CHILD node)
+      const systemInfo = await this.systemInfoService.collectSystemInfo();
+
       // Make HTTP request to MAIN node to create registration request
+      // Now includes system info from CHILD node
       const mainNodeUrl = `http://${mainNode.ipAddress}:${mainNode.apiPort}`;
       const response = await fetch(`${mainNodeUrl}/api/v1/nodes/registration-requests`, {
         method: 'POST',
@@ -124,6 +130,14 @@ export class DiscoveryController {
         body: JSON.stringify({
           mainNodeId: dto.mainNodeId,
           childNodeName: dto.childNodeName,
+          // Include system info from CHILD node
+          ipAddress: systemInfo.ipAddress,
+          hostname: systemInfo.hostname,
+          macAddress: systemInfo.macAddress,
+          subnet: systemInfo.subnet,
+          containerType: systemInfo.containerType,
+          hardwareSpecs: systemInfo.hardwareSpecs,
+          acceleration: systemInfo.acceleration,
         }),
       });
 

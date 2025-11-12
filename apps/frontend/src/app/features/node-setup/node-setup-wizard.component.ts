@@ -88,6 +88,7 @@ export class NodeSetupWizardComponent implements OnInit {
   readonly PairingStatus = PairingStatus;
   readonly PairingMethod = PairingMethod;
   readonly NodeBo = NodeBo;
+  readonly Math = Math;
 
   // Wizard state
   readonly currentStep = signal<WizardStep>(WizardStep.Welcome);

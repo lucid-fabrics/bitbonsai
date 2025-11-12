@@ -1,7 +1,7 @@
 <div class="policies-container">
   <div class="page-header">
-    <h1>Policies</h1>
-    <p class="subtitle">Create and manage encoding policy templates</p>
+    <h1 class="page-header__title">Policies</h1>
+    <p class="page-header__subtitle">Create and manage encoding policy templates</p>
   </div>
 
   <!-- Error Banner -->
@@ -15,7 +15,7 @@
   <!-- Preset Gallery -->
   <div class="presets-section">
     <div class="section-header">
-      <h2>Quick Start Templates</h2>
+      <h2 class="section-header__title">Quick Start Templates</h2>
       <button
         class="btn-secondary"
         (click)="openCreateForm()"
@@ -36,7 +36,7 @@
         @for (preset of (presets$ | async) || []; track preset.preset) {
           <div
             class="preset-card"
-            [class.recommended]="preset.recommended"
+            [class.preset-card--recommended]="preset.recommended"
             (click)="selectPreset(preset)"
             bbTooltip
             [tooltipTitle]="preset.name"
@@ -46,28 +46,28 @@
             [tooltipDelay]="300"
           >
             @if (preset.recommended) {
-              <div class="recommended-badge">
+              <div class="preset-card__recommended-badge">
                 <fa-icon [icon]="icons.star"></fa-icon>
                 Recommended
               </div>
             }
 
-            <div class="preset-icon">{{ getPresetIcon(preset.preset) }}</div>
-            <h3>{{ preset.name }}</h3>
+            <div class="preset-card__icon">{{ getPresetIcon(preset.preset) }}</div>
+            <h3 class="preset-card__title">{{ preset.name }}</h3>
 
-            <div class="preset-details">
-              <div class="detail-row">
-                <span class="label">Codec:</span>
-                <span class="value">{{ preset.codec }}</span>
+            <div class="preset-card__details">
+              <div class="preset-card__detail-row">
+                <span class="preset-card__detail-label">Codec:</span>
+                <span class="preset-card__detail-value">{{ preset.codec }}</span>
               </div>
-              <div class="detail-row">
-                <span class="label">Quality:</span>
-                <span class="value">CRF {{ preset.crf }}</span>
+              <div class="preset-card__detail-row">
+                <span class="preset-card__detail-label">Quality:</span>
+                <span class="preset-card__detail-value">CRF {{ preset.crf }}</span>
               </div>
             </div>
 
-            <p class="use-case">{{ preset.use_case }}</p>
-            <p class="description">{{ preset.description }}</p>
+            <p class="preset-card__use-case">{{ preset.use_case }}</p>
+            <p class="preset-card__description">{{ preset.description }}</p>
           </div>
         }
       </div>
@@ -77,7 +77,7 @@
   <!-- Active Policies Table -->
   <div class="policies-section">
     <div class="section-header">
-      <h2>Active Policies</h2>
+      <h2 class="section-header__title">Active Policies</h2>
     </div>
 
     @if (isLoading$ | async) {
@@ -85,7 +85,7 @@
     } @else if ((policies$ | async)?.length === 0) {
       <div class="empty-state">
         <div class="empty-icon">
-          <i class="fas fa-file-contract"></i>
+          <fa-icon icon="file-contract"></fa-icon>
         </div>
         <h2>No Policies Yet</h2>
         <p class="empty-description">
@@ -103,7 +103,7 @@
             <li>Select which devices should play your encoded files</li>
           </ol>
           <p class="help-tip">
-            <i class="fas fa-lightbulb"></i>
+            <fa-icon icon="lightbulb"></fa-icon>
             <strong>Tip:</strong> Start with "Balanced HEVC" for a great mix of quality and file size savings!
           </p>
         </div>
@@ -116,7 +116,7 @@
           tooltipContent="Policies define how your media should be encoded. Start by choosing a preset template above, or create a custom policy from scratch with your own settings."
           tooltipWhen="You're ready to set up encoding rules for your media library. Choose 'Balanced HEVC' preset for a great starting point."
           tooltipPlacement="top">
-          <i class="fas fa-plus"></i>
+          <fa-icon icon="plus"></fa-icon>
           Create Your First Policy
         </button>
       </div>
@@ -125,33 +125,33 @@
         <table class="policies-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Preset</th>
-              <th>Codec</th>
-              <th>Quality (CRF)</th>
-              <th>Library</th>
-              <th>Completed Jobs</th>
-              <th>Actions</th>
+              <th class="policies-table__header">Name</th>
+              <th class="policies-table__header">Preset</th>
+              <th class="policies-table__header">Codec</th>
+              <th class="policies-table__header">Quality (CRF)</th>
+              <th class="policies-table__header">Library</th>
+              <th class="policies-table__header">Completed Jobs</th>
+              <th class="policies-table__header">Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (policy of (policies$ | async) || []; track policy.id) {
               <tr>
-                <td class="policy-name">
-                  <span class="preset-icon-small">{{ getPresetIcon(policy.preset) }}</span>
+                <td class="policies-table__cell--policy-name">
+                  <span class="policies-table__preset-icon">{{ getPresetIcon(policy.preset) }}</span>
                   {{ policy.name }}
                 </td>
-                <td>{{ policy.preset }}</td>
-                <td>
-                  <span class="codec-badge">{{ policy.targetCodec }}</span>
+                <td class="policies-table__cell">{{ policy.preset }}</td>
+                <td class="policies-table__cell">
+                  <span class="policies-table__codec-badge">{{ policy.targetCodec }}</span>
                 </td>
-                <td>
-                  <span class="crf-value">{{ policy.targetQuality }}</span>
-                  <span class="crf-label">({{ getCRFLabel(policy.targetQuality) }})</span>
+                <td class="policies-table__cell">
+                  <span class="policies-table__crf-value">{{ policy.targetQuality }}</span>
+                  <span class="policies-table__crf-label">({{ getCRFLabel(policy.targetQuality) }})</span>
                 </td>
-                <td>{{ policy.libraryId || 'All Libraries' }}</td>
-                <td class="text-center">{{ policy.completedJobs }}</td>
-                <td class="actions-cell">
+                <td class="policies-table__cell">{{ policy.libraryId || 'All Libraries' }}</td>
+                <td class="policies-table__cell text-center">{{ policy.completedJobs }}</td>
+                <td class="policies-table__actions-cell">
                   <button
                     class="btn-icon"
                     (click)="openEditForm(policy)"
@@ -188,7 +188,7 @@
     <div class="modal-overlay" (click)="closeForm()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>{{ isEditMode ? 'Edit Policy' : 'Create Policy' }}</h2>
+          <h2 class="modal-header__title">{{ isEditMode ? 'Edit Policy' : 'Create Policy' }}</h2>
           <button class="btn-icon" (click)="closeForm()">
             <fa-icon [icon]="icons.times"></fa-icon>
           </button>
@@ -198,10 +198,11 @@
           <form (ngSubmit)="submitForm()">
             <!-- Name Input -->
             <div class="form-group">
-              <label for="name">Policy Name *</label>
+              <label for="name" class="form-group__label">Policy Name *</label>
               <input
                 id="name"
                 type="text"
+                class="form-group__input"
                 [(ngModel)]="formData.name"
                 name="name"
                 placeholder="e.g., My Custom HEVC Policy"
@@ -209,15 +210,16 @@
                 [class.error]="formErrors['name']"
               />
               @if (formErrors['name']) {
-                <span class="error-message">{{ formErrors['name'] }}</span>
+                <span class="form-group__error-message">{{ formErrors['name'] }}</span>
               }
             </div>
 
             <!-- Preset Selector -->
             <div class="form-group">
-              <label for="preset">Preset Template</label>
+              <label for="preset" class="form-group__label">Preset Template</label>
               <select
                 id="preset"
+                class="form-group__input"
                 [(ngModel)]="formData.preset"
                 name="preset"
                 [disabled]="isEditMode"
@@ -232,9 +234,10 @@
 
             <!-- Target Codec -->
             <div class="form-group">
-              <label for="codec">Target Codec *</label>
+              <label for="codec" class="form-group__label">Target Codec *</label>
               <select
                 id="codec"
+                class="form-group__input"
                 [(ngModel)]="formData.targetCodec"
                 name="codec"
               >
@@ -247,10 +250,10 @@
 
             <!-- Quality Slider -->
             <div class="form-group">
-              <label for="targetQuality">
+              <label for="targetQuality" class="form-group__label">
                 Quality (CRF) *
                 <span
-                  class="quality-indicator"
+                  class="form-group__label-quality-indicator"
                   bbTooltip
                   tooltipTitle="CRF Quality Scale"
                   tooltipContent="CRF (Constant Rate Factor) ranges from 0-51. Lower = better quality but larger files. Higher = smaller files but lower quality. Sweet spot is usually 18-23 for near-lossless quality with good compression."
@@ -260,7 +263,7 @@
                 </span>
               </label>
               <div class="field-hint">
-                <i class="fas fa-info-circle"></i>
+                <fa-icon icon="info-circle"></fa-icon>
                 CRF (Constant Rate Factor) controls video quality. <strong>Lower values = better quality + larger files.</strong> Higher values = smaller files + lower quality. Most users should use 18-23 for excellent quality with good compression.
               </div>
               <div class="slider-container">
@@ -283,30 +286,31 @@
               </div>
               <div class="crf-value-display">Current: {{ formData.targetQuality }}</div>
               @if (formErrors['targetQuality']) {
-                <span class="error-message">{{ formErrors['targetQuality'] }}</span>
+                <span class="form-group__error-message">{{ formErrors['targetQuality'] }}</span>
               }
             </div>
 
             <!-- Library Association -->
             <div class="form-group">
-              <label for="library">Library (Optional)</label>
+              <label for="library" class="form-group__label">Library (Optional)</label>
               <input
                 id="library"
                 type="text"
+                class="form-group__input"
                 [(ngModel)]="formData.libraryId"
                 name="library"
                 placeholder="Leave empty for all libraries"
               />
-              <small class="help-text">
+              <small class="form-group__help-text">
                 Specify a library ID to apply this policy only to that library
               </small>
             </div>
 
             <!-- Device Profiles -->
             <div class="form-group">
-              <label>Device Profiles *</label>
+              <label class="form-group__label">Device Profiles *</label>
               <div class="field-hint">
-                <i class="fas fa-info-circle"></i>
+                <fa-icon icon="info-circle"></fa-icon>
                 Select which devices should be able to play your encoded videos. BitBonsai will ensure compatibility with all selected devices. At least one device profile is required.
               </div>
               <div class="device-profiles">
@@ -330,13 +334,13 @@
                     <fa-icon [icon]="getDeviceIcon(profile)"></fa-icon>
                     <span>{{ getDeviceLabel(profile) }}</span>
                     @if (formData.deviceProfiles.has(profile)) {
-                      <fa-icon [icon]="icons.check" class="check-icon"></fa-icon>
+                      <fa-icon [icon]="icons.check" class="device-profile-btn__check-icon"></fa-icon>
                     }
                   </button>
                 }
               </div>
               @if (formErrors['deviceProfiles']) {
-                <span class="error-message">{{ formErrors['deviceProfiles'] }}</span>
+                <span class="form-group__error-message">{{ formErrors['deviceProfiles'] }}</span>
               }
             </div>
 
@@ -354,9 +358,10 @@
                 <div class="advanced-settings">
                   <!-- Audio Handling -->
                   <div class="form-group">
-                    <label for="audio">Audio Handling</label>
+                    <label for="audio" class="form-group__label">Audio Handling</label>
                     <select
                       id="audio"
+                      class="form-group__input"
                       [(ngModel)]="formData.audioHandling"
                       name="audio"
                     >
@@ -368,15 +373,16 @@
 
                   <!-- FFmpeg Flags -->
                   <div class="form-group">
-                    <label for="ffmpeg">Custom FFmpeg Flags</label>
+                    <label for="ffmpeg" class="form-group__label">Custom FFmpeg Flags</label>
                     <textarea
                       id="ffmpeg"
+                      class="form-group__textarea"
                       [(ngModel)]="formData.ffmpegFlags"
                       name="ffmpeg"
                       placeholder="-preset slow -tune film"
                       rows="3"
                     ></textarea>
-                    <small class="help-text">
+                    <small class="form-group__help-text">
                       Advanced: Custom FFmpeg command-line flags
                     </small>
                   </div>

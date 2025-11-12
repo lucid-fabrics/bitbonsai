@@ -11,7 +11,7 @@ import { NotificationsService } from './notifications.service';
  */
 @ApiTags('Notifications')
 @ApiBearerAuth()
-@Controller('api/v1/notifications')
+@Controller('notifications')
 export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name);
 
@@ -43,6 +43,25 @@ export class NotificationsController {
   async getNotifications(@Query('includeRead') includeRead = 'true'): Promise<NotificationDto[]> {
     const include = includeRead === 'true';
     return this.notificationsService.getNotifications(include);
+  }
+
+  /**
+   * Get unread notification count
+   */
+  @Get('count/unread')
+  @ApiOperation({
+    summary: 'Get unread notification count',
+    description: 'Returns the number of unread notifications',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Unread notification count',
+    schema: { type: 'object', properties: { count: { type: 'number' } } },
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getUnreadCount(): Promise<{ count: number }> {
+    const count = await this.notificationsService.getUnreadCount();
+    return { count };
   }
 
   /**
@@ -122,24 +141,5 @@ export class NotificationsController {
 
     // Emit event for WebSocket broadcast
     this.eventEmitter.emit('notification.dismissed', id);
-  }
-
-  /**
-   * Get unread notification count
-   */
-  @Get('count/unread')
-  @ApiOperation({
-    summary: 'Get unread notification count',
-    description: 'Returns the number of unread notifications',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Unread notification count',
-    schema: { type: 'object', properties: { count: { type: 'number' } } },
-  })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getUnreadCount(): Promise<{ count: number }> {
-    const count = await this.notificationsService.getUnreadCount();
-    return { count };
   }
 }

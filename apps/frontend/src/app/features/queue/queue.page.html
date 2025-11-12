@@ -1,11 +1,10 @@
 <div class="queue-container">
   <div class="page-header">
     <div>
-      <h1>Queue</h1>
-      <p class="subtitle">
+      <h1 class="page-header__title">Queue</h1>
+      <p class="page-header__subtitle">
         Manage job queue and encoding tasks
-        <button (click)="openAddFilesModal()" class="btn btn-primary btn-add-files">
-          <i class="fas fa-plus"></i>
+        <button (click)="openAddFilesModal()" class="btn btn-primary btn-add-files"><i class="fas fa-plus btn-primary__icon"></i>
           Add Files to Queue
         </button>
       </p>
@@ -47,14 +46,13 @@
         <!-- Detected Stage -->
         @if (queueData.stats.detected > 0) {
           <div class="pipeline-stage detected clickable" (click)="onStatusFilterChange(JobStatus.DETECTED)">
-            <div class="stage-icon">
+            <div class="pipeline-stage__icon">
               <i class="fas fa-search"></i>
             </div>
-            <div class="stage-content">
-              <div class="stage-title">Detected</div>
-              <div class="stage-count">{{ queueData.stats.detected }} files</div>
-              <div class="stage-meta">
-                <i class="fas fa-clock"></i>
+            <div class="pipeline-stage__content">
+              <div class="pipeline-stage__title">Detected</div>
+              <div class="pipeline-stage__count">{{ queueData.stats.detected }} files</div>
+              <div class="pipeline-stage__meta"><i class="fas fa-clock pipeline-stage__meta-icon"></i>
                 Awaiting health check
               </div>
             </div>
@@ -69,14 +67,13 @@
         <!-- Health Check Stage -->
         @if (queueData.stats.healthCheck > 0) {
           <div class="pipeline-stage health-check clickable" (click)="onStatusFilterChange(JobStatus.HEALTH_CHECK)">
-            <div class="stage-icon">
+            <div class="pipeline-stage__icon">
               <i class="fas fa-heartbeat fa-pulse"></i>
             </div>
-            <div class="stage-content">
-              <div class="stage-title">Health Check</div>
-              <div class="stage-count">{{ queueData.stats.healthCheck }} files</div>
-              <div class="stage-meta">
-                <i class="fas fa-stethoscope"></i>
+            <div class="pipeline-stage__content">
+              <div class="pipeline-stage__title">Health Check</div>
+              <div class="pipeline-stage__count">{{ queueData.stats.healthCheck }} files</div>
+              <div class="pipeline-stage__meta"><i class="fas fa-stethoscope pipeline-stage__meta-icon"></i>
                 Validating files
               </div>
             </div>
@@ -90,15 +87,14 @@
 
         <!-- Queued Stage -->
         <div class="pipeline-stage queued clickable" (click)="onStatusFilterChange(JobStatus.QUEUED)">
-          <div class="stage-icon">
+          <div class="pipeline-stage__icon">
             <i class="fas fa-clock"></i>
           </div>
-          <div class="stage-content">
-            <div class="stage-title">Queued</div>
-            <div class="stage-count">{{ queueData.stats.queued }} files</div>
+          <div class="pipeline-stage__content">
+            <div class="pipeline-stage__title">Queued</div>
+            <div class="pipeline-stage__count">{{ queueData.stats.queued }} files</div>
             @if (queueData.stats.queued > 0) {
-              <div class="stage-meta">
-                <i class="fas fa-hourglass-start"></i>
+              <div class="pipeline-stage__meta"><i class="fas fa-hourglass-start pipeline-stage__meta-icon"></i>
                 Ready to encode
               </div>
             }
@@ -112,7 +108,7 @@
 
         <!-- Encoding Stage -->
         <div class="pipeline-stage encoding clickable" (click)="onStatusFilterChange(JobStatus.ENCODING)">
-          <div class="stage-icon">
+          <div class="pipeline-stage__icon">
             @if (queueData.stats.encoding > 0) {
               <i class="fas fa-spinner fa-spin"></i>
             }
@@ -120,9 +116,9 @@
               <i class="fas fa-pause-circle"></i>
             }
           </div>
-          <div class="stage-content">
-            <div class="stage-title">Encoding</div>
-            <div class="stage-count">{{ queueData.stats.encoding }} files</div>
+          <div class="pipeline-stage__content">
+            <div class="pipeline-stage__title">Encoding</div>
+            <div class="pipeline-stage__count">{{ queueData.stats.encoding }} files</div>
             @if (queueData.stats.encoding > 0) {
               <div class="stage-progress">
                 <div class="encoding-indicator">
@@ -143,15 +139,14 @@
 
         <!-- Completed Stage -->
         <div class="pipeline-stage completed clickable" (click)="onStatusFilterChange(JobStatus.COMPLETED)">
-          <div class="stage-icon">
+          <div class="pipeline-stage__icon">
             <i class="fas fa-check-circle"></i>
           </div>
-          <div class="stage-content">
-            <div class="stage-title">Completed</div>
-            <div class="stage-count">{{ queueData.stats.completed }} files</div>
+          <div class="pipeline-stage__content">
+            <div class="pipeline-stage__title">Completed</div>
+            <div class="pipeline-stage__count">{{ queueData.stats.completed }} files</div>
             @if (Number.parseInt(queueData.stats.totalSavedBytes) > 0) {
-              <div class="stage-meta success">
-                <i class="fas fa-save"></i>
+              <div class="pipeline-stage__meta success"><i class="fas fa-save pipeline-stage__meta-icon"></i>
                 {{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes)) }} saved
               </div>
             }

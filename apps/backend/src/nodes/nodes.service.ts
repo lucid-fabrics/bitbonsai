@@ -138,6 +138,23 @@ export class NodesService implements OnModuleInit {
     // Determine role
     const role = license._count.nodes === 0 ? NodeRole.MAIN : NodeRole.LINKED;
 
+    // CRITICAL: Validate no duplicate MAIN nodes (data integrity check)
+    if (role === NodeRole.MAIN) {
+      // Double-check that no MAIN node exists (prevents race conditions and data corruption)
+      const existingMainNode = await this.prisma.node.findFirst({
+        where: { role: NodeRole.MAIN, licenseId: license.id },
+      });
+
+      if (existingMainNode) {
+        this.logger.error(
+          `❌ Attempted to create duplicate MAIN node! Existing MAIN: ${existingMainNode.name} (${existingMainNode.id})`
+        );
+        throw new ConflictException(
+          'A MAIN node already exists for this license. Only one MAIN node is allowed per license.'
+        );
+      }
+    }
+
     // Provide intelligent defaults for optional fields
     const nodeName =
       data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
@@ -277,12 +294,24 @@ export class NodesService implements OnModuleInit {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
     }
 
+    // Auto-detect and update IP address on every heartbeat to keep it current
+    const systemInfo = await this.systemInfoService.collectSystemInfo();
+    const currentIpAddress = systemInfo.ipAddress;
+
+    // Log IP address update if it changed
+    if (currentIpAddress && node.ipAddress !== currentIpAddress) {
+      this.logger.log(
+        `📍 Updating IP address for ${node.name}: ${node.ipAddress || 'none'} → ${currentIpAddress}`
+      );
+    }
+
     return this.prisma.node.update({
       where: { id: nodeId },
       data: {
         status: data?.status || 'ONLINE',
         lastHeartbeat: new Date(),
         uptimeSeconds: { increment: 60 }, // Assuming 60s heartbeat interval
+        ipAddress: currentIpAddress || node.ipAddress, // Update IP address or keep existing
       },
     });
   }
@@ -468,9 +497,13 @@ export class NodesService implements OnModuleInit {
   /**
    * Get the current node's information
    *
-   * Determines which node this instance is by checking NODE_ID environment variable.
-   * If NODE_ID is not set, returns the MAIN node (first registered node).
-   * This is used by the frontend to determine UI restrictions based on node role.
+   * Determines which node this instance is by using multiple strategies:
+   * 1. NODE_ID environment variable (explicit configuration)
+   * 2. IP address matching (detects correct node automatically)
+   * 3. Fallback to role-based detection (MAIN first, then LINKED)
+   *
+   * This method is critical for multi-node setups where a single database
+   * contains multiple node records but each instance needs to identify itself.
    *
    * @returns Current node information
    * @throws NotFoundException if no nodes exist or NODE_ID is invalid
@@ -478,7 +511,7 @@ export class NodesService implements OnModuleInit {
   async getCurrentNode(): Promise<Node> {
     const nodeId = process.env.NODE_ID;
 
-    // If NODE_ID is set, use it
+    // Strategy 1: If NODE_ID is explicitly set, use it (highest priority)
     if (nodeId) {
       const node = await this.prisma.node.findUnique({
         where: { id: nodeId },
@@ -491,20 +524,79 @@ export class NodesService implements OnModuleInit {
       return node;
     }
 
-    // Check if this is a MAIN node instance (has a MAIN node in the database)
-    const mainNode = await this.prisma.node.findFirst({
+    // Strategy 2: Try to match by IP address (auto-detection)
+    const systemInfo = await this.systemInfoService.collectSystemInfo();
+    const currentIpAddress = systemInfo.ipAddress;
+
+    if (currentIpAddress) {
+      // Try to find nodes matching this IP address
+      const nodesByIp = await this.prisma.node.findMany({
+        where: { ipAddress: currentIpAddress },
+        orderBy: { createdAt: 'asc' }, // Order by creation date (oldest first)
+      });
+
+      if (nodesByIp.length > 0) {
+        // Prefer MAIN node over LINKED node (fixes duplicate node bug)
+        const mainNode = nodesByIp.find((n) => n.role === 'MAIN');
+        const selectedNode = mainNode || nodesByIp[0]; // Use MAIN if exists, otherwise first node
+
+        // Warn if multiple nodes with same IP exist
+        if (nodesByIp.length > 1) {
+          this.logger.warn(
+            `⚠️  Multiple nodes detected with IP ${currentIpAddress} (${nodesByIp.length} total)`
+          );
+          this.logger.warn(
+            `   Using ${selectedNode.role} node: ${selectedNode.name} (${selectedNode.id})`
+          );
+          this.logger.warn(
+            `   Duplicates: ${nodesByIp
+              .filter((n) => n.id !== selectedNode.id)
+              .map((n) => `${n.name} (${n.role})`)
+              .join(', ')}`
+          );
+        }
+
+        this.logger.debug(
+          `✅ Detected current node by IP address: ${selectedNode.name} (${selectedNode.role}) at ${currentIpAddress}`
+        );
+        return selectedNode;
+      }
+    }
+
+    // Strategy 3: Fallback to role-based detection
+
+    // Check for MAIN node
+    const mainNodes = await this.prisma.node.findMany({
       where: { role: 'MAIN' },
       orderBy: { createdAt: 'asc' },
     });
 
-    if (mainNode) {
-      return mainNode;
+    // Warn if multiple MAIN nodes exist (data inconsistency)
+    if (mainNodes.length > 1) {
+      this.logger.warn(
+        `⚠️  Multiple MAIN nodes detected (${mainNodes.length})! This is a data inconsistency.`
+      );
+      this.logger.warn(
+        `   Using newest MAIN node: ${mainNodes[mainNodes.length - 1].name} (${mainNodes[mainNodes.length - 1].id})`
+      );
+      this.logger.warn(
+        `   Consider cleaning up old MAIN nodes: ${mainNodes
+          .slice(0, -1)
+          .map((n) => n.id)
+          .join(', ')}`
+      );
+      // Return the NEWEST main node (most likely to be correct)
+      return mainNodes[mainNodes.length - 1];
+    }
+
+    if (mainNodes.length === 1) {
+      return mainNodes[0];
     }
 
     // No MAIN node found - check if this is a child-only instance (has LINKED node but no MAIN)
     const linkedNode = await this.prisma.node.findFirst({
       where: { role: 'LINKED' },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'desc' }, // Prefer newer if multiple exist
     });
 
     if (linkedNode) {

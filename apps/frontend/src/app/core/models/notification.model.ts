@@ -3,6 +3,7 @@
  */
 export enum NotificationType {
   NODE_DISCOVERED = 'NODE_DISCOVERED',
+  NODE_REGISTRATION_REQUEST = 'NODE_REGISTRATION_REQUEST',
   NODE_APPROVED = 'NODE_APPROVED',
   NODE_REJECTED = 'NODE_REJECTED',
   ENCODING_COMPLETE = 'ENCODING_COMPLETE',
@@ -38,9 +39,10 @@ export interface Notification {
  * Node discovered notification data
  */
 export interface NodeDiscoveredData {
-  nodeId: string;
+  requestId: string; // Registration request ID
   nodeName: string;
   ipAddress: string;
   hostname: string;
   version: string;
+  acceleration: string;
 }
