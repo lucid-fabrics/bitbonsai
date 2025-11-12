@@ -11,15 +11,15 @@ export class InsightsStatsBO {
 
   static fromDto(dto: {
     totalJobsCompleted: number;
-    totalStorageSavedGB: number;
-    averageSuccessRate: number;
-    averageThroughput: number;
+    totalSavedGB: number;
+    successRate: number;
+    avgThroughput: number;
   }): InsightsStatsBO {
     return new InsightsStatsBO(
       dto.totalJobsCompleted,
-      dto.totalStorageSavedGB,
-      dto.averageSuccessRate,
-      dto.averageThroughput
+      dto.totalSavedGB,
+      dto.successRate,
+      dto.avgThroughput
     );
   }
 
