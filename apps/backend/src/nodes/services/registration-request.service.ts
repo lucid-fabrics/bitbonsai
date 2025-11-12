@@ -6,9 +6,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { type NodeRegistrationRequest, NodeRole, RegistrationRequestStatus } from '@prisma/client';
+import {
+  AccelerationType,
+  ContainerType,
+  type NodeRegistrationRequest,
+  NodeRole,
+  RegistrationRequestStatus,
+} from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
+import { NotificationsGateway } from '../../notifications/notifications.gateway';
+import { NotificationsService } from '../../notifications/notifications.service';
+import {
+  NotificationPriority,
+  NotificationType,
+} from '../../notifications/types/notification.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
 import type { SystemInfo } from './system-info.service';
@@ -18,6 +30,20 @@ export interface CreateRegistrationRequestDto {
   mainNodeId: string;
   childNodeName: string;
   message?: string;
+  // System information from CHILD node
+  ipAddress: string;
+  hostname: string;
+  macAddress?: string | null;
+  subnet?: string | null;
+  containerType: ContainerType;
+  hardwareSpecs: {
+    cpuCores: number;
+    cpuModel: string;
+    ramGb: number;
+    diskGb: number;
+    gpuModel: string | null;
+  };
+  acceleration: AccelerationType;
 }
 
 export interface ApproveRequestDto {
@@ -42,32 +68,35 @@ export class RegistrationRequestService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly systemInfoService: SystemInfoService,
-    private readonly capabilityDetector: NodeCapabilityDetectorService
+    private readonly capabilityDetector: NodeCapabilityDetectorService,
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationsGateway: NotificationsGateway
   ) {}
 
   /**
    * Create a new registration request from a CHILD node
    * If a request from the same MAC address exists, reset its TTL
+   * System information is now provided by the CHILD node in the DTO
    */
   async createRegistrationRequest(
     data: CreateRegistrationRequestDto
   ): Promise<NodeRegistrationRequest> {
-    // Collect system information
-    const systemInfo = await this.systemInfoService.collectSystemInfo();
+    // System information is now provided by the CHILD node in the DTO
+    // No longer collecting it on the MAIN node
 
     // Check if a pending request already exists from this machine
-    if (systemInfo.macAddress) {
+    if (data.macAddress) {
       const existingRequest = await this.prisma.nodeRegistrationRequest.findFirst({
         where: {
           mainNodeId: data.mainNodeId,
-          macAddress: systemInfo.macAddress,
+          macAddress: data.macAddress,
           status: RegistrationRequestStatus.PENDING,
         },
       });
 
       if (existingRequest) {
         this.logger.log(
-          `🔄 Resetting TTL for existing request from ${systemInfo.hostname} (${systemInfo.macAddress})`
+          `🔄 Resetting TTL for existing request from ${data.hostname} (${data.macAddress})`
         );
         return this.resetRequestTTL(existingRequest.id);
       }
@@ -80,19 +109,19 @@ export class RegistrationRequestService {
     // Get app version
     const childVersion = process.env.APP_VERSION || '1.0.0';
 
-    // Create new registration request
+    // Create new registration request using system info from CHILD node
     const request = await this.prisma.nodeRegistrationRequest.create({
       data: {
         mainNodeId: data.mainNodeId,
         childNodeName: data.childNodeName,
         childVersion,
-        ipAddress: systemInfo.ipAddress,
-        hostname: systemInfo.hostname,
-        containerType: systemInfo.containerType,
-        hardwareSpecs: systemInfo.hardwareSpecs,
-        acceleration: systemInfo.acceleration,
-        macAddress: systemInfo.macAddress,
-        subnet: systemInfo.subnet,
+        ipAddress: data.ipAddress,
+        hostname: data.hostname,
+        containerType: data.containerType,
+        hardwareSpecs: data.hardwareSpecs,
+        acceleration: data.acceleration,
+        macAddress: data.macAddress,
+        subnet: data.subnet,
         pairingToken,
         tokenExpiresAt,
         message: data.message,
@@ -100,8 +129,23 @@ export class RegistrationRequestService {
     });
 
     this.logger.log(
-      `📨 Registration request created: ${systemInfo.hostname} → MAIN node (Token: ${pairingToken}, Expires: ${tokenExpiresAt.toISOString()})`
+      `📨 Registration request created: ${data.hostname} (${data.ipAddress}) → MAIN node (Token: ${pairingToken}, Expires: ${tokenExpiresAt.toISOString()})`
     );
+
+    // Emit NODE_REGISTRATION_REQUEST notification
+    const notification = await this.notificationsService.createNotification({
+      type: NotificationType.NODE_REGISTRATION_REQUEST,
+      priority: NotificationPriority.HIGH,
+      title: `🔔 New Node Registration Request`,
+      message: `${data.childNodeName} (${data.ipAddress}) wants to join the cluster. Review and approve the request.`,
+      data: {
+        requestId: request.id,
+        childNodeName: data.childNodeName,
+        ipAddress: data.ipAddress,
+        hostname: data.hostname,
+      },
+    });
+    this.notificationsGateway.sendToAll(notification);
 
     return request;
   }
@@ -309,11 +353,27 @@ export class RegistrationRequestService {
       `✅ Registration request approved: ${result.request.childNodeName} (${result.request.ipAddress}) → Node ID: ${result.newNode.id}`
     );
 
-    // Return the updated request with the child node's API key included
+    // Emit NODE_APPROVED notification
+    const notification = await this.notificationsService.createNotification({
+      type: NotificationType.NODE_APPROVED,
+      priority: NotificationPriority.MEDIUM,
+      title: `💪 Node Approved!`,
+      message: `${result.request.childNodeName} is now ready to crush some encoding work! Welcome to the cluster.`,
+      data: {
+        nodeId: result.newNode.id,
+        nodeName: result.request.childNodeName,
+        ipAddress: result.request.ipAddress,
+      },
+    });
+    this.notificationsGateway.sendToAll(notification);
+
+    // Return the updated request with the child node's API key and ID included
     // This is needed for the child node to authenticate future requests
+    // and for the frontend to fetch capability results
     return {
       ...result.updatedReq,
       apiKey: result.newNode.apiKey,
+      nodeId: result.newNode.id, // Add nodeId for frontend capability detection
     } as NodeRegistrationRequest;
   }
 

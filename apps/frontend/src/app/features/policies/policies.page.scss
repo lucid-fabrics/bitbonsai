@@ -8,19 +8,19 @@
 
 .page-header {
   margin-bottom: 32px;
+}
 
-  h1 {
-    font-size: 32px;
-    font-weight: 700;
-    color: $text-white;
-    margin: 0 0 8px 0;
-  }
+.page-header__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: $text-white;
+  margin: 0 0 8px 0;
+}
 
-  .subtitle {
-    font-size: 16px;
-    color: $text-secondary;
-    margin: 0;
-  }
+.page-header__subtitle {
+  font-size: 16px;
+  color: $text-secondary;
+  margin: 0;
 }
 
 // Error Banner
@@ -57,13 +57,13 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+}
 
-  h2 {
-    font-size: 24px;
-    font-weight: 600;
-    color: $text-white;
-    margin: 0;
-  }
+.section-header__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0;
 }
 
 // Preset Gallery
@@ -87,82 +87,82 @@
     transform: translateY(-4px);
     box-shadow: $shadow-sm;
   }
+}
 
-  &.recommended {
-    border-color: $accent-primary;
+.preset-card--recommended {
+  border-color: $accent-primary;
+}
 
-    .recommended-badge {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: $accent-primary;
-      color: $text-dark;
-      font-size: 12px;
-      font-weight: 600;
-      border-radius: 20px;
+.preset-card__recommended-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: $accent-primary;
+  color: $text-dark;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
 
-      fa-icon {
-        font-size: 10px;
-      }
-    }
+  fa-icon {
+    font-size: 10px;
   }
+}
 
-  .preset-icon {
-    font-size: 48px;
-    text-align: center;
-    margin-bottom: 16px;
-  }
+.preset-card__icon {
+  font-size: 48px;
+  text-align: center;
+  margin-bottom: 16px;
+}
 
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: $text-white;
-    margin: 0 0 16px 0;
-    text-align: center;
-  }
+.preset-card__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0 0 16px 0;
+  text-align: center;
+}
 
-  .preset-details {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding: 12px;
-    background: $bg-primary;
-    border-radius: $border-radius-sm;
+.preset-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: $bg-primary;
+  border-radius: $border-radius-sm;
+}
 
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
+.preset-card__detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
 
-      .label {
-        color: $text-secondary;
-      }
+.preset-card__detail-label {
+  color: $text-secondary;
+}
 
-      .value {
-        color: $text-white;
-        font-weight: 600;
-      }
-    }
-  }
+.preset-card__detail-value {
+  color: $text-white;
+  font-weight: 600;
+}
 
-  .use-case {
-    font-size: 13px;
-    font-weight: 500;
-    color: $accent-primary;
-    margin: 0 0 8px 0;
-  }
+.preset-card__use-case {
+  font-size: 13px;
+  font-weight: 500;
+  color: $accent-primary;
+  margin: 0 0 8px 0;
+}
 
-  .description {
-    font-size: 13px;
-    color: $text-secondary;
-    margin: 0;
-    line-height: 1.5;
-  }
+.preset-card__description {
+  font-size: 13px;
+  color: $text-secondary;
+  margin: 0;
+  line-height: 1.5;
 }
 
 // Policies Table
@@ -179,17 +179,6 @@
 
   thead {
     background: $bg-tertiary;
-
-    th {
-      padding: 16px 20px;
-      text-align: left;
-      font-size: 13px;
-      font-weight: 600;
-      color: $text-secondary;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid $border-primary;
-    }
   }
 
   tbody {
@@ -204,56 +193,73 @@
       &:last-child {
         border-bottom: none;
       }
-
-      td {
-        padding: 16px 20px;
-        font-size: 14px;
-        color: $text-primary;
-
-        &.policy-name {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 500;
-
-          .preset-icon-small {
-            font-size: 20px;
-          }
-        }
-
-        &.text-center {
-          text-align: center;
-        }
-
-        .codec-badge {
-          display: inline-block;
-          padding: 4px 12px;
-          background: $accent-primary;
-          color: $text-dark;
-          font-size: 12px;
-          font-weight: 600;
-          border-radius: 12px;
-        }
-
-        .crf-value {
-          font-weight: 600;
-          color: $text-white;
-        }
-
-        .crf-label {
-          color: $text-secondary;
-          font-size: 13px;
-          margin-left: 4px;
-        }
-      }
     }
   }
+}
 
-  .actions-cell {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
+.policies-table__header {
+  padding: 16px 20px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid $border-primary;
+}
+
+.policies-table__cell {
+  padding: 16px 20px;
+  font-size: 14px;
+  color: $text-primary;
+
+  &.text-center {
+    text-align: center;
   }
+}
+
+.policies-table__cell--policy-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  padding: 16px 20px;
+  font-size: 14px;
+  color: $text-primary;
+}
+
+.policies-table__preset-icon {
+  font-size: 20px;
+}
+
+.policies-table__codec-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: $accent-primary;
+  color: $text-dark;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.policies-table__crf-value {
+  font-weight: 600;
+  color: $text-white;
+}
+
+.policies-table__crf-label {
+  color: $text-secondary;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.policies-table__actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  font-size: 14px;
+  color: $text-primary;
 }
 
 // Buttons
@@ -370,93 +376,116 @@
   align-items: center;
   padding: 24px 32px;
   border-bottom: 1px solid $border-primary;
+}
 
-  h2 {
-    font-size: 24px;
-    font-weight: 600;
-    color: $text-white;
-    margin: 0;
-  }
+.modal-header__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0;
 }
 
 .modal-body {
   padding: 32px;
+}
 
-  p {
-    color: $text-primary;
-    line-height: 1.6;
-    margin: 0;
-  }
+.modal-body__text {
+  color: $text-primary;
+  line-height: 1.6;
+  margin: 0;
 }
 
 // Form Styling
 .form-group {
   margin-bottom: 24px;
+}
 
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: $text-white;
+.form-group__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-white;
+}
 
-    .quality-indicator {
-      float: right;
-      color: $accent-primary;
-      font-weight: 600;
-    }
+.form-group__label-quality-indicator {
+  float: right;
+  color: $accent-primary;
+  font-weight: 600;
+}
+
+.form-group__input {
+  width: 100%;
+  padding: 12px 16px;
+  background: $bg-primary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-sm;
+  color: $text-white;
+  font-size: 14px;
+  transition: $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
   }
 
-  input[type='text'],
-  input[type='number'],
-  select,
-  textarea {
-    width: 100%;
-    padding: 12px 16px;
-    background: $bg-primary;
-    border: 1px solid $border-primary;
-    border-radius: $border-radius-sm;
-    color: $text-white;
-    font-size: 14px;
-    transition: $transition-fast;
-
-    &:focus {
-      outline: none;
-      border-color: $accent-primary;
-    }
-
-    &.error {
-      border-color: $danger;
-    }
-
-    &::placeholder {
-      color: $text-tertiary;
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+  &.error {
+    border-color: $danger;
   }
 
-  textarea {
-    resize: vertical;
-    font-family: $font-family;
-  }
-
-  .help-text {
-    display: block;
-    margin-top: 6px;
-    font-size: 12px;
+  &::placeholder {
     color: $text-tertiary;
   }
 
-  .error-message {
-    display: block;
-    margin-top: 6px;
-    font-size: 12px;
-    color: $danger;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
+}
+
+.form-group__textarea {
+  width: 100%;
+  padding: 12px 16px;
+  background: $bg-primary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-sm;
+  color: $text-white;
+  font-size: 14px;
+  transition: $transition-fast;
+  resize: vertical;
+  font-family: $font-family;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
+  }
+
+  &.error {
+    border-color: $danger;
+  }
+
+  &::placeholder {
+    color: $text-tertiary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.form-group__help-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: $text-tertiary;
+}
+
+.form-group__error-message {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: $danger;
 }
 
 // Quality Slider
@@ -556,15 +585,15 @@
     border-color: $accent-primary;
     background: rgba($accent-primary, 0.1);
     color: $text-white;
-
-    .check-icon {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      color: $accent-primary;
-      font-size: 16px;
-    }
   }
+}
+
+.device-profile-btn__check-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: $accent-primary;
+  font-size: 16px;
 }
 
 // Advanced Settings
@@ -673,12 +702,12 @@
     border-color: $accent-primary;
     box-shadow: 0 4px 12px rgba(249, 190, 3, 0.15);
 
-    .hw-icon {
+    .hw-selector-card__icon {
       color: $accent-primary;
       transform: scale(1.1);
     }
 
-    .hw-name {
+    .hw-selector-card__name {
       color: $accent-primary;
     }
   }
@@ -701,7 +730,7 @@
   }
 }
 
-.hw-icon {
+.hw-selector-card__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -734,14 +763,14 @@
   }
 }
 
-.hw-name {
+.hw-selector-card__name {
   font-size: 14px;
   font-weight: 600;
   color: $text-primary;
   transition: color 0.2s ease;
 }
 
-.hw-description {
+.hw-selector-card__description {
   font-size: 12px;
   color: $text-secondary;
   margin: 0;
@@ -761,9 +790,9 @@
     background: $bg-tertiary;
     color: $text-tertiary;
     border: 1px solid $border-primary;
-
-    i {
-      font-size: 11px;
-    }
   }
+}
+
+.hw-badge__icon {
+  font-size: 11px;
 }

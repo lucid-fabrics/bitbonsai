@@ -3,18 +3,18 @@
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1>Libraries</h1>
-        <p class="subtitle">Configure and manage media libraries</p>
+        <h1 class="header-left__title">Libraries</h1>
+        <p class="header-left__subtitle">Configure and manage media libraries</p>
       </div>
       <div class="header-right">
         @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
           <div class="library-count">
-            <i class="fas fa-folder-open"></i>
+            <fa-icon [icon]="['fas', 'folder-open']" class="library-count__icon"></fa-icon>
             <span>{{ libraries.length }} {{ libraries.length === 1 ? 'Library' : 'Libraries' }}</span>
           </div>
         }
         <button class="btn btn-primary" (click)="onAddLibrary()">
-          <i class="fas fa-plus"></i>
+          <fa-icon [icon]="['fas', 'plus']" class="btn__icon"></fa-icon>
           Add Library
         </button>
       </div>
@@ -24,16 +24,16 @@
   <!-- Error Alert -->
   @if (error$ | async; as error) {
     <div class="error-alert">
-      <i class="fas fa-exclamation-circle"></i>
-      <span>{{ error }}</span>
+      <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-alert__icon"></fa-icon>
+      <span class="error-alert__message">{{ error }}</span>
     </div>
   }
 
   <!-- Loading State -->
   @if (isLoading$ | async) {
     <div class="loading-state">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>Loading libraries...</p>
+      <fa-icon [icon]="['fas', 'spinner']" class="loading-state__icon fa-spin"></fa-icon>
+      <p class="loading-state__message">Loading libraries...</p>
     </div>
   }
 
@@ -41,11 +41,11 @@
   @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
     @if (libraries.length === 0) {
       <div class="empty-state">
-        <div class="empty-icon">
-          <i class="fas fa-folder-open"></i>
+        <div class="empty-state__icon-wrapper">
+          <fa-icon [icon]="['fas', 'folder-open']" class="empty-state__icon"></fa-icon>
         </div>
-        <h2>No Libraries Yet</h2>
-        <p class="empty-description">
+        <h2 class="empty-state__title">No Libraries Yet</h2>
+        <p class="empty-state__description">
           Libraries are collections of media files that BitBonsai monitors and optimizes.
           Think of them as folders containing your videos that need encoding.
         </p>
@@ -62,7 +62,7 @@
         </div>
 
         <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
-          <i class="fas fa-plus"></i>
+          <fa-icon [icon]="['fas', 'plus']" class="btn__icon"></fa-icon>
           Add Your First Library
         </button>
       </div>

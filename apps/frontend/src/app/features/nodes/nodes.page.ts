@@ -7,9 +7,12 @@ import {
   DestroyRef,
   inject,
   type OnInit,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../core/clients/nodes.client';
@@ -22,6 +25,10 @@ import {
   ApprovalDialogComponent,
   type ApprovalDialogData,
 } from '../pending-requests/dialogs/approval-dialog.component';
+import {
+  RejectionDialogComponent,
+  type RejectionDialogData,
+} from '../pending-requests/dialogs/rejection-dialog.component';
 import { NodeBo } from './bos/node.bo';
 import { TimerBo } from './bos/timer.bo';
 import { TokenEntryDialogComponent } from './dialogs/token-entry-dialog.component';
@@ -30,11 +37,12 @@ import { NodeStatsModalComponent } from './modals/node-stats/node-stats.modal';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import type { RegistrationRequest } from './models/registration-request.model';
+import { ContainerType, RegistrationRequestStatus } from './models/registration-request.model';
 
 @Component({
   selector: 'app-nodes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RichTooltipDirective],
+  imports: [CommonModule, FormsModule, FontAwesomeModule, RichTooltipDirective],
   templateUrl: './nodes.page.html',
   styleUrls: ['./nodes.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,18 +52,25 @@ export class NodesComponent implements OnInit {
   private readonly dialog = inject(Dialog);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   // Expose enums and BOs to template
   readonly NodeStatus = NodeStatus;
   readonly NodeRole = NodeRole;
   readonly AccelerationType = AccelerationType;
+  readonly ContainerType = ContainerType;
+  readonly RegistrationRequestStatus = RegistrationRequestStatus;
   readonly NodeBo = NodeBo;
   readonly TimerBo = TimerBo;
 
   // State
   nodes: Node[] = [];
+  pendingRequests: RegistrationRequest[] = [];
   isLoading = false;
   error: string | null = null;
+
+  // Highlighted request ID (for pulsing effect after notification click)
+  readonly highlightedRequestId = signal<string | null>(null);
 
   // Track initial uptime from server to calculate current uptime
   private nodeStartTimes = new Map<string, number>(); // nodeId -> timestamp when we first saw it
@@ -78,8 +93,24 @@ export class NodesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadNodes();
+    this.loadPendingRequests();
     this.startPolling();
     this.startUptimeCounter();
+
+    // Listen for highlightRequest query parameter
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const requestId = params['highlightRequest'];
+      if (requestId) {
+        this.highlightedRequestId.set(requestId);
+        // Auto-scroll to the highlighted request after a short delay
+        setTimeout(() => {
+          const element = document.getElementById(`request-${requestId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+      }
+    });
   }
 
   /**
@@ -103,6 +134,24 @@ export class NodesComponent implements OnInit {
           this.error = err.error?.message || 'Failed to load nodes';
           this.isLoading = false;
           this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /**
+   * Load pending registration requests
+   */
+  loadPendingRequests(): void {
+    this.nodesApi
+      .getPendingRequests()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (requests) => {
+          this.pendingRequests = requests;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Silently handle errors for pending requests
         },
       });
   }
@@ -137,9 +186,10 @@ export class NodesComponent implements OnInit {
   }
 
   /**
-   * Start polling for node status updates every 10 seconds
+   * Start polling for node status updates and pending requests every 10 seconds
    */
   private startPolling(): void {
+    // Poll for nodes
     interval(10000)
       .pipe(
         switchMap(() => this.nodesApi.getNodes()),
@@ -152,6 +202,22 @@ export class NodesComponent implements OnInit {
         },
         error: () => {
           // Polling error
+        },
+      });
+
+    // Poll for pending requests every 30 seconds
+    interval(30000)
+      .pipe(
+        switchMap(() => this.nodesApi.getPendingRequests()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (requests) => {
+          this.pendingRequests = requests;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Silently handle polling errors
         },
       });
   }
@@ -219,9 +285,18 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
-      if (result) {
-        this.approveRequest(request.id, result);
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
+      // Dialog now returns { approved, nodeId, capabilities } instead of boolean
+      if (result && result.approved) {
+        // Clear the highlight
+        this.highlightedRequestId.set(null);
+        // Reload nodes and pending requests to show the newly paired node
+        this.loadNodes();
+        this.loadPendingRequests();
+        this.isLoading = false;
+      } else if (result === null || result === undefined) {
+        // Dialog was cancelled
+        this.isLoading = false;
       }
     });
   }
@@ -242,6 +317,7 @@ export class NodesComponent implements OnInit {
       .subscribe({
         next: () => {
           this.loadNodes(); // Reload nodes to show the newly paired node
+          this.loadPendingRequests(); // Reload pending requests
           this.isLoading = false;
           this.cdr.markForCheck();
         },
@@ -251,6 +327,110 @@ export class NodesComponent implements OnInit {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  /**
+   * Open approval dialog for a pending request card
+   */
+  onApprove(request: RegistrationRequest): void {
+    const dialogData: ApprovalDialogData = {
+      request,
+    };
+
+    const dialogRef = this.dialog.open(ApprovalDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
+      // Dialog now returns { approved, nodeId, capabilities } instead of just true
+      if (result && result.approved) {
+        // Clear the highlight
+        this.highlightedRequestId.set(null);
+        // Reload nodes and pending requests to show the newly paired node
+        this.loadNodes();
+        this.loadPendingRequests();
+      }
+    });
+  }
+
+  /**
+   * Open rejection dialog for a registration request
+   */
+  onReject(request: RegistrationRequest): void {
+    const dialogData: RejectionDialogData = {
+      request,
+    };
+
+    const dialogRef = this.dialog.open(RejectionDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((reason) => {
+      if (reason && typeof reason === 'string') {
+        this.rejectRequest(request.id, reason);
+      }
+    });
+  }
+
+  /**
+   * Reject a registration request
+   */
+  private rejectRequest(requestId: string, reason: string): void {
+    this.isLoading = true;
+    this.cdr.markForCheck();
+
+    this.nodesApi
+      .rejectRequest(requestId, { reason })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // Clear the highlight
+          this.highlightedRequestId.set(null);
+          this.loadPendingRequests(); // Reload pending requests
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.error = err.error?.message || 'Failed to reject request';
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /**
+   * Get container type label
+   */
+  getContainerTypeLabel(type: ContainerType): string {
+    const labels: Record<ContainerType, string> = {
+      [ContainerType.BARE_METAL]: 'Bare Metal',
+      [ContainerType.DOCKER]: 'Docker',
+      [ContainerType.LXC]: 'LXC Container',
+      [ContainerType.VM]: 'Virtual Machine',
+      [ContainerType.UNKNOWN]: 'Unknown',
+    };
+    return labels[type];
+  }
+
+  /**
+   * Get time remaining until expiration
+   */
+  getTimeRemaining(request: RegistrationRequest): string {
+    const expiresAt = new Date(request.tokenExpiresAt);
+    const now = new Date();
+    const diff = expiresAt.getTime() - now.getTime();
+
+    if (diff <= 0) return 'Expired';
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
   }
 
   /**

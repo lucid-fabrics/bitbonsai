@@ -352,11 +352,11 @@
   @if (currentStep() === WizardStep.Pairing) {
     <div class="wizard-step step-pairing">
       @if (errorMessage()) {
-        <div class="pairing-error">
+        <div class="step-pairing__error">
           <fa-icon icon="circle-xmark"></fa-icon>
-          <h2>Connection Failed</h2>
-          <p class="error-message">{{ errorMessage() }}</p>
-          <div class="error-actions">
+          <h2 class="step-pairing__error-title">Connection Failed</h2>
+          <p class="step-pairing__error-message">{{ errorMessage() }}</p>
+          <div class="step-pairing__error-actions">
             <button class="btn btn-secondary" (click)="goBack()">
               <fa-icon icon="arrow-left"></fa-icon>
               Go Back
@@ -368,47 +368,47 @@
           </div>
         </div>
       } @else {
-        <div class="pairing-animation">
-          <div class="connecting-icon">
+        <div class="step-pairing__animation">
+          <div class="step-pairing__connecting-icon">
             <fa-icon icon="link"></fa-icon>
           </div>
         </div>
 
         <h2>Requesting Connection</h2>
-        <p class="pairing-description">
+        <p class="step-pairing__description">
           Sending pairing request to
           <strong>{{ selectedNode()?.name }}</strong>...
         </p>
 
         @if (pairingCode()) {
-          <div class="pairing-code-section">
-            <p class="code-label">Pairing Code:</p>
-            <div class="pairing-code">{{ pairingCode() }}</div>
-            <p class="code-hint">
+          <div class="step-pairing__code-section">
+            <p class="step-pairing__code-label">Pairing Code:</p>
+            <div class="step-pairing__code">{{ pairingCode() }}</div>
+            <p class="step-pairing__code-hint">
               Enter this code on the main node to approve the connection
             </p>
           </div>
         }
 
         @if (pairingStatus() === PairingStatus.WAITING_APPROVAL) {
-          <div class="waiting-approval">
-            <div class="spinner"></div>
-            <p>Waiting for approval from main node...</p>
-            <div class="timeout-progress">
-              <div class="timeout-bar">
+          <div class="step-pairing__waiting">
+            <div class="step-pairing__spinner"></div>
+            <p class="step-pairing__waiting-text">Waiting for approval from main node...</p>
+            <div class="step-pairing__timeout-progress">
+              <div class="step-pairing__timeout-bar">
                 <div
-                  class="timeout-fill"
+                  class="step-pairing__timeout-fill"
                   [style.width.%]="pairingTimeoutProgress()"
                 ></div>
               </div>
-              <p class="timeout-text">
-                {{ 120 - pairingElapsedSeconds() }}s remaining
+              <p class="step-pairing__timeout-text">
+                {{ Math.max(0, 120 - pairingElapsedSeconds()) }}s remaining
               </p>
             </div>
           </div>
         }
 
-        <div class="step-actions">
+        <div class="step-pairing__actions">
           <button class="btn btn-secondary" (click)="goBack()">
             <fa-icon icon="xmark"></fa-icon>
             Cancel
@@ -446,54 +446,54 @@
   <!-- Step 8: Complete -->
   @if (currentStep() === WizardStep.Complete) {
     <div class="wizard-step step-complete">
-      <div class="success-icon">
+      <div class="step-complete__success-icon">
         <fa-icon icon="circle-check"></fa-icon>
       </div>
       <h1>Connection Successful!</h1>
-      <p class="success-description">
+      <p class="step-complete__description">
         Successfully connected to
         <strong>{{ connectedMainNode()?.name || 'main node' }}</strong>
       </p>
 
       @if (hardwareDetection()) {
-        <div class="hardware-summary">
-          <h3>Hardware Detection Summary</h3>
-          <div class="hardware-grid">
-            <div class="hardware-item">
+        <div class="step-complete__hardware">
+          <h3 class="step-complete__hardware-title">Hardware Detection Summary</h3>
+          <div class="step-complete__hardware-grid">
+            <div class="step-complete__hardware-item">
               <fa-icon icon="microchip"></fa-icon>
-              <div class="hardware-info">
-                <div class="hardware-label">Acceleration</div>
-                <div class="hardware-value">
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">Acceleration</div>
+                <div class="step-complete__hardware-value">
                   {{ NodeBo.getAccelerationLabel(hardwareDetection()!.acceleration) }}
                 </div>
               </div>
             </div>
-            <div class="hardware-item">
+            <div class="step-complete__hardware-item">
               <fa-icon icon="memory"></fa-icon>
-              <div class="hardware-info">
-                <div class="hardware-label">CPU Cores</div>
-                <div class="hardware-value">{{ hardwareDetection()!.cpuCores }}</div>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">CPU Cores</div>
+                <div class="step-complete__hardware-value">{{ hardwareDetection()!.cpuCores }}</div>
               </div>
             </div>
-            <div class="hardware-item">
+            <div class="step-complete__hardware-item">
               <fa-icon icon="server"></fa-icon>
-              <div class="hardware-info">
-                <div class="hardware-label">Memory</div>
-                <div class="hardware-value">{{ hardwareDetection()!.totalMemoryGB }} GB</div>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">Memory</div>
+                <div class="step-complete__hardware-value">{{ hardwareDetection()!.totalMemoryGB }} GB</div>
               </div>
             </div>
-            <div class="hardware-item">
+            <div class="step-complete__hardware-item">
               <fa-icon icon="hard-drive"></fa-icon>
-              <div class="hardware-info">
-                <div class="hardware-label">Available Disk</div>
-                <div class="hardware-value">{{ hardwareDetection()!.availableDiskGB }} GB</div>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">Available Disk</div>
+                <div class="step-complete__hardware-value">{{ hardwareDetection()!.availableDiskGB }} GB</div>
               </div>
             </div>
           </div>
         </div>
       }
 
-      <button class="btn btn-primary btn-large" (click)="completeWizard()">
+      <button class="btn btn-primary step-complete__btn" (click)="completeWizard()">
         <fa-icon icon="rocket"></fa-icon>
         Start Encoding
       </button>

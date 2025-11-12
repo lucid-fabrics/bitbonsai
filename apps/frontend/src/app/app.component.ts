@@ -18,6 +18,7 @@ import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 import { NodeService } from './core/services/node.service';
 import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
+import { NotificationBellComponent } from './shared/components/notification-bell/notification-bell.component';
 import { NotificationContainerComponent } from './shared/components/notification-container/notification-container.component';
 
 @Component({
@@ -28,15 +29,24 @@ import { NotificationContainerComponent } from './shared/components/notification
     RouterOutlet,
     SidebarComponent,
     ApiConnectionErrorComponent,
+    NotificationBellComponent,
     NotificationContainerComponent,
   ],
   template: `
     @if (showLayout()) {
       <div class="app-layout">
         <app-sidebar />
-        <main class="main-content">
-          <router-outlet />
-        </main>
+        <div class="content-wrapper">
+          @if ((isMainNode$ | async) !== false) {
+            <header class="app-header">
+              <div class="header-spacer"></div>
+              <app-notification-bell />
+            </header>
+          }
+          <main class="main-content">
+            <router-outlet />
+          </main>
+        </div>
       </div>
     } @else {
       <router-outlet />
@@ -53,15 +63,42 @@ import { NotificationContainerComponent } from './shared/components/notification
       display: flex;
     }
 
-    .main-content {
+    .content-wrapper {
       flex: 1;
       margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+    }
+
+    .header-spacer {
+      flex: 1;
+    }
+
+    .main-content {
+      flex: 1;
       background: #1a1a1a;
     }
 
     @media (max-width: 768px) {
-      .main-content {
+      .content-wrapper {
         margin-left: 60px;
+      }
+
+      .app-header {
+        padding: 0.5rem 1rem;
       }
     }
   `,

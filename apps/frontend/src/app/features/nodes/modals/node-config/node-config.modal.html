@@ -1,9 +1,9 @@
 <div class="modal-backdrop" (click)="onCancel()">
   <div class="modal-container" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>Configure Node</h2>
-      <button class="close-btn" (click)="onCancel()" type="button">
-        <i class="fas fa-times"></i>
+      <h2 class="modal-header__title">Configure Node</h2>
+      <button class="modal-header__close-btn" (click)="onCancel()" type="button">
+        <fa-icon [icon]="['fas', 'times']"></fa-icon>
       </button>
     </div>
 
@@ -11,37 +11,46 @@
       <div class="modal-body">
         <!-- Node Name -->
         <div class="form-group">
-          <label for="name">Node Name</label>
+          <label for="name" class="form-group__label">Node Name</label>
           <input
             id="name"
             type="text"
-            class="form-control"
+            class="form-group__control"
             formControlName="name"
             placeholder="Enter node name"
           />
           @if (nameControl?.touched && nameControl?.hasError('required')) {
-            <div class="error-message">Node name is required</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              Node name is required
+            </div>
           }
           @if (nameControl?.touched && nameControl?.hasError('minlength')) {
-            <div class="error-message">Node name must be at least 1 character</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              Node name must be at least 1 character
+            </div>
           }
           @if (nameControl?.touched && nameControl?.hasError('maxlength')) {
-            <div class="error-message">Node name cannot exceed 255 characters</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              Node name cannot exceed 255 characters
+            </div>
           }
         </div>
 
         <!-- Max Workers -->
         <div class="form-group">
-          <label for="maxWorkers">
+          <label for="maxWorkers" class="form-group__label">
             Concurrent Workers
-            <span class="label-hint">(1-20)</span>
+            <span class="form-group__hint">(1-20)</span>
           </label>
 
           <!-- Recommendation Box -->
           @if (optimalConfig && !loadingRecommendations) {
             <div class="recommendation-box">
               <div class="recommendation-header">
-                <i class="fas fa-lightbulb"></i>
+                <fa-icon [icon]="['fas', 'lightbulb']" class="recommendation-header__icon"></fa-icon>
                 <strong>Auto-Detected Recommendation</strong>
               </div>
               <div class="recommendation-content">
@@ -56,7 +65,7 @@
                   class="btn btn-recommendation"
                   (click)="applyRecommended()"
                 >
-                  <i class="fas fa-magic"></i>
+                  <fa-icon [icon]="['fas', 'magic']" class="btn-recommendation__icon"></fa-icon>
                   Apply Recommended Settings
                 </button>
               </div>
@@ -66,40 +75,49 @@
           <input
             id="maxWorkers"
             type="number"
-            class="form-control"
+            class="form-group__control"
             formControlName="maxWorkers"
             min="1"
             max="20"
           />
           <div class="form-help">
-            <i class="fas fa-info-circle"></i>
+            <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
             Number of concurrent encoding jobs this node can handle
           </div>
 
           <!-- Dynamic Warning -->
           @if (showWorkerWarning) {
             <div class="warning-message worker-warning">
-              <i class="fas fa-exclamation-triangle"></i>
+              <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-message__icon"></fa-icon>
               {{ workerWarningMessage }}
             </div>
           }
 
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('required')) {
-            <div class="error-message">Max workers is required</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              Max workers is required
+            </div>
           }
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('min')) {
-            <div class="error-message">Max workers must be at least 1</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              Max workers must be at least 1
+            </div>
           }
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('max')) {
-            <div class="error-message">Max workers cannot exceed 20</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              Max workers cannot exceed 20
+            </div>
           }
         </div>
 
         <!-- CPU Limit -->
         <div class="form-group">
-          <label for="cpuLimit">
+          <label for="cpuLimit" class="form-group__label">
             CPU Limit
-            <span class="label-hint">(10-100%)</span>
+            <span class="form-group__hint">(10-100%)</span>
           </label>
           <div class="range-input-group">
             <input
@@ -113,7 +131,7 @@
             />
             <input
               type="number"
-              class="form-control range-value"
+              class="form-group__control range-value"
               formControlName="cpuLimit"
               min="10"
               max="100"
@@ -121,34 +139,58 @@
             <span class="range-suffix">%</span>
           </div>
           <div class="form-help">
-            <i class="fas fa-info-circle"></i>
+            <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
             Maximum CPU usage to reserve resources for host system
           </div>
           @if (showCpuWarning) {
             <div class="warning-message">
-              <i class="fas fa-exclamation-triangle"></i>
+              <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-message__icon"></fa-icon>
               High CPU usage may impact host system performance
             </div>
           }
           @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('required')) {
-            <div class="error-message">CPU limit is required</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              CPU limit is required
+            </div>
           }
           @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('min')) {
-            <div class="error-message">CPU limit must be at least 10%</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              CPU limit must be at least 10%
+            </div>
           }
           @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('max')) {
-            <div class="error-message">CPU limit cannot exceed 100%</div>
+            <div class="error-message">
+              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+              CPU limit cannot exceed 100%
+            </div>
           }
         </div>
       </div>
 
       <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-test-capabilities"
+          (click)="onTestCapabilities()"
+          [disabled]="testingCapabilities()"
+        >
+          @if (testingCapabilities()) {
+            <fa-icon [icon]="['fas', 'circle-notch']" class="btn__icon fa-spin"></fa-icon>
+            Testing...
+          } @else {
+            <fa-icon [icon]="['fas', 'network-wired']" class="btn__icon"></fa-icon>
+            Test Capabilities
+          }
+        </button>
+        <div class="footer-spacer"></div>
         <button type="button" class="btn btn-secondary" (click)="onCancel()">
-          <i class="fas fa-times"></i>
+          <fa-icon [icon]="['fas', 'times']" class="btn__icon"></fa-icon>
           Cancel
         </button>
         <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
-          <i class="fas fa-save"></i>
+          <fa-icon [icon]="['fas', 'save']" class="btn__icon"></fa-icon>
           Save Configuration
         </button>
       </div>

@@ -1,8 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import { AccelerationType, ContainerType } from '@prisma/client';
+import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, Length } from 'class-validator';
 
 /**
  * DTO for creating a registration request from a CHILD node
+ * Now includes system information collected by the CHILD node
  */
 export class CreateRegistrationRequestDto {
   @ApiProperty({
@@ -32,4 +34,77 @@ export class CreateRegistrationRequestDto {
   @IsOptional()
   @IsString()
   message?: string;
+
+  // System Information (collected by CHILD node)
+  @ApiProperty({
+    description: 'IP address of the child node',
+    example: '192.168.1.50',
+  })
+  @IsNotEmpty()
+  @IsString()
+  ipAddress!: string;
+
+  @ApiProperty({
+    description: 'Hostname of the child node',
+    example: 'encoding-server-1',
+  })
+  @IsNotEmpty()
+  @IsString()
+  hostname!: string;
+
+  @ApiProperty({
+    description: 'MAC address of the child node',
+    example: 'aa:bb:cc:dd:ee:ff',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  macAddress?: string | null;
+
+  @ApiProperty({
+    description: 'Subnet of the child node',
+    example: '192.168.1.0/24',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  subnet?: string | null;
+
+  @ApiProperty({
+    description: 'Container type of the child node',
+    enum: ContainerType,
+    example: ContainerType.DOCKER,
+  })
+  @IsNotEmpty()
+  @IsEnum(ContainerType)
+  containerType!: ContainerType;
+
+  @ApiProperty({
+    description: 'Hardware specifications of the child node',
+    example: {
+      cpuCores: 8,
+      cpuModel: 'Intel Core i7-9700K',
+      ramGb: 32,
+      diskGb: 500,
+      gpuModel: 'NVIDIA GeForce RTX 3080',
+    },
+  })
+  @IsNotEmpty()
+  @IsObject()
+  hardwareSpecs!: {
+    cpuCores: number;
+    cpuModel: string;
+    ramGb: number;
+    diskGb: number;
+    gpuModel: string | null;
+  };
+
+  @ApiProperty({
+    description: 'Acceleration type of the child node',
+    enum: AccelerationType,
+    example: AccelerationType.NVIDIA,
+  })
+  @IsNotEmpty()
+  @IsEnum(AccelerationType)
+  acceleration!: AccelerationType;
 }

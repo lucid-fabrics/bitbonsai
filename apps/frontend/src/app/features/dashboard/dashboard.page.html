@@ -13,7 +13,7 @@
       <div class="header-meta">
         @if (stats$ | async; as stats) {
           <div class="last-scan">
-            <strong>Last Scan:</strong> {{ stats.scanTimestampFormatted }}
+            <strong class="last-scan__value">Last Scan:</strong> {{ stats.scanTimestampFormatted }}
           </div>
         }
         <button
@@ -57,7 +57,7 @@
     <div class="content">
       <!-- Library Overview Summary -->
       <div class="summary-card">
-        <h2><fa-icon [icon]="['fas', 'chart-line']"></fa-icon> Library Overview</h2>
+        <h2 class="summary-card__heading"><fa-icon class="summary-card__icon" [icon]="['fas', 'chart-line']"></fa-icon> Library Overview</h2>
         <div class="summary-stats">
           <div class="summary-item">
             <div class="summary-number">{{ stats.totalFiles.toLocaleString() }}</div>
@@ -91,7 +91,7 @@
         @for (folder of stats.folders; track folder.path) {
           <div class="stat-card">
             <div class="stat-card-header">
-              <h3>{{ folder.name }}</h3>
+              <h3 class="stat-card-header__title">{{ folder.name }}</h3>
               <span
                 class="badge"
                 [class]="folder.badge.class"
@@ -138,7 +138,9 @@
                 </span>
               </div>
               <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="folder.percentH265"></div>
+                <div class="progress-fill" [style.width.%]="folder.percentH265">
+                  <div class="progress-fill__shine"></div>
+                </div>
               </div>
             </div>
 
@@ -161,7 +163,7 @@
             </div>
 
             <div class="sampled-note">
-              <fa-icon [icon]="['fas', 'database']"></fa-icon> Based on {{ folder.sampled }} sampled files
+              <fa-icon class="sampled-note__icon" [icon]="['fas', 'database']"></fa-icon> Based on {{ folder.sampled }} sampled files
             </div>
 
             @if (folder.codecDistribution.h264 > 0) {
@@ -184,7 +186,7 @@
 
   <!-- Footer -->
   <div class="footer">
-    <p>Powered by <a href="https://lucid-fabrics.com" target="_blank">Lucid Fabrics</a> • Professional Media Analytics</p>
+    <p>Powered by <a class="footer__link" href="https://lucid-fabrics.com" target="_blank">Lucid Fabrics</a> • Professional Media Analytics</p>
   </div>
 
   <!-- Files Dialog -->

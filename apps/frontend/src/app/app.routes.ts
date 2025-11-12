@@ -81,14 +81,6 @@ export const routes: Routes = [
     canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
-    path: 'pending-requests',
-    loadComponent: () =>
-      import('./features/pending-requests/pending-requests.page').then(
-        (m) => m.PendingRequestsPage
-      ),
-    canActivate: [setupGuard, authGuard, mainNodeGuard],
-  },
-  {
     path: 'discovery',
     loadComponent: () =>
       import('./features/discovery/discovery.page').then((m) => m.DiscoveryComponent),

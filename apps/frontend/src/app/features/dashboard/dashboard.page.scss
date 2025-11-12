@@ -55,11 +55,11 @@
   color: $text-secondary;
   font-size: 13px;
   white-space: nowrap;
+}
 
-  strong {
-    color: $text-white;
-    font-weight: 500;
-  }
+.last-scan__value {
+  color: $text-white;
+  font-weight: 500;
 }
 
 .refresh-btn {
@@ -135,23 +135,23 @@
   padding: 32px 40px;
   margin-bottom: 32px;
   border-bottom: 1px solid $border-primary;
+}
 
-  h2 {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0 0 24px 0;
-    color: $text-secondary;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.summary-card__heading {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 24px 0;
+  color: $text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-    fa-icon {
-      font-size: 16px;
-      color: $accent-primary;
-    }
-  }
+.summary-card__icon {
+  font-size: 16px;
+  color: $accent-primary;
 }
 
 .summary-stats {
@@ -205,14 +205,14 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+}
 
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: $text-white;
-    margin: 0;
-    letter-spacing: -0.2px;
-  }
+.stat-card-header__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .badge {
@@ -320,16 +320,16 @@
   background: linear-gradient(90deg, $accent-primary 0%, color.adjust($accent-primary, $lightness:  10%) 100%);
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
-  }
+.progress-fill__shine {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
 }
 
 // Info Grid
@@ -374,10 +374,10 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
 
-  fa-icon {
-    font-size: 11px;
-  }
+.sampled-note__icon {
+  font-size: 11px;
 }
 
 .view-files-btn {
@@ -418,16 +418,16 @@
   font-size: 11px;
   border-top: 1px solid $border-primary;
   background: $bg-secondary;
+}
 
-  a {
-    color: $accent-primary;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s;
+.footer__link {
+  color: $accent-primary;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
 
-    &:hover {
-      color: $accent-primary-hover;
-    }
+  &:hover {
+    color: $accent-primary-hover;
   }
 }
 

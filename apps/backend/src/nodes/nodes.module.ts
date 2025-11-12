@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { NodesController } from './nodes.controller';
 import { NodesService } from './nodes.service';
@@ -20,6 +21,7 @@ import { SystemInfoService } from './services/system-info.service';
  * - System information collection (hardware, network, container type)
  */
 @Module({
+  imports: [NotificationsModule],
   controllers: [NodesController],
   providers: [
     NodesService,

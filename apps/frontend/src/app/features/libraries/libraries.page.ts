@@ -2,6 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Store } from '@ngrx/store';
 import {
   ConfirmationDialogComponent,
@@ -23,7 +24,13 @@ import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/libra
 @Component({
   selector: 'app-libraries',
   standalone: true,
-  imports: [CommonModule, LibraryCardComponent, LibraryFormComponent, LibraryFilesModalComponent],
+  imports: [
+    CommonModule,
+    FontAwesomeModule,
+    LibraryCardComponent,
+    LibraryFormComponent,
+    LibraryFilesModalComponent,
+  ],
   templateUrl: './libraries.page.html',
   styleUrls: ['./libraries.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
