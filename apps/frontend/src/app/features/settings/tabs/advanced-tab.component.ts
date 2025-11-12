@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,6 +11,10 @@ import {
   Validators,
 } from '@angular/forms';
 import { SettingsClient } from '../../../core/clients/settings.client';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { LogLevel } from '../models/log-level.enum';
 import type { SystemSettings } from '../models/system-settings.model';
 import { SettingsService } from '../services/settings.service';
@@ -235,6 +240,7 @@ export class AdvancedTabComponent implements OnInit {
   private readonly settingsClient = inject(SettingsClient);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(Dialog);
 
   systemSettings: SystemSettings | null = null;
   loading = signal(false);
@@ -449,33 +455,55 @@ export class AdvancedTabComponent implements OnInit {
   }
 
   regenerateApiKey(): void {
-    if (
-      confirm(
-        'Are you sure you want to regenerate the API key? The old key will be invalidated immediately.'
-      )
-    ) {
-      this.loading.set(true);
-      this.error = null;
-      this.successMessage = null;
+    const dialogData: ConfirmationDialogData = {
+      title: 'Regenerate API Key?',
+      itemName: 'API Key',
+      itemType: 'system credential',
+      willHappen: [
+        'Generate a new API key immediately',
+        'Invalidate the current API key',
+        'Display the new key for copying',
+      ],
+      wontHappen: [
+        'Affect existing authenticated sessions',
+        'Delete any system data or settings',
+        'Require system restart',
+      ],
+      irreversible: true,
+      confirmButtonText: 'Regenerate Key',
+      cancelButtonText: 'Keep Current Key',
+    };
 
-      this.settingsService
-        .regenerateApiKey()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (result: { apiKey: string }) => {
-            const currentSettings = this.systemSettings;
-            if (currentSettings) {
-              this.systemSettings = { ...currentSettings, apiKey: result.apiKey };
-            }
-            this.loading.set(false);
-            this.successMessage = 'API key regenerated successfully!';
-          },
-          error: (_err: Error) => {
-            this.error = 'Failed to regenerate API key';
-            this.loading.set(false);
-          },
-        });
-    }
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.loading.set(true);
+        this.error = null;
+        this.successMessage = null;
+
+        this.settingsService
+          .regenerateApiKey()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (result: { apiKey: string }) => {
+              const currentSettings = this.systemSettings;
+              if (currentSettings) {
+                this.systemSettings = { ...currentSettings, apiKey: result.apiKey };
+              }
+              this.loading.set(false);
+              this.successMessage = 'API key regenerated successfully!';
+            },
+            error: (_err: Error) => {
+              this.error = 'Failed to regenerate API key';
+              this.loading.set(false);
+            },
+          });
+      }
+    });
   }
 
   toggleApiKeyVisibility(): void {
