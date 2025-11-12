@@ -162,14 +162,32 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckEncoding) {
-        // CAPA CRITICAL FIX: Check if FFmpeg is actively processing this job
+        // SMART DETECTION: Check if FFmpeg is actively processing this job
         const hasActiveProcess = this.ffmpegService.hasActiveProcess(job.id);
 
         if (hasActiveProcess) {
-          // CAPA CRITICAL FIX: FFmpeg process is still running but FROZEN (no progress for >10min)
-          // We need to forcefully kill it before resetting the job
+          // Check if process is TRULY stuck (no FFmpeg output at all)
+          // vs just slow (FFmpeg producing output, but slowly)
+          const isTrulyStuck = this.ffmpegService.isProcessTrulyStuck(
+            job.id,
+            this.ENCODING_TIMEOUT_MIN
+          );
+
+          if (!isTrulyStuck) {
+            // FFmpeg is still producing output (just slowly) - let it continue
+            const lastOutputTime = this.ffmpegService.getLastOutputTime(job.id);
+            const minutesSinceOutput = lastOutputTime
+              ? Math.round((now.getTime() - lastOutputTime.getTime()) / 1000 / 60)
+              : 'unknown';
+            this.logger.debug(
+              `Job ${job.fileLabel} is slow but ACTIVE (last FFmpeg output ${minutesSinceOutput}min ago, progress: ${job.progress}%). Letting it continue...`
+            );
+            continue; // Skip this job - it's not stuck, just slow
+          }
+
+          // Process is TRULY frozen (no FFmpeg output for >10min)
           this.logger.warn(
-            `Job ${job.fileLabel} has frozen FFmpeg process (progress: ${job.progress}%, stuck for >${this.ENCODING_TIMEOUT_MIN}min). Killing process...`
+            `Job ${job.fileLabel} has FROZEN FFmpeg process (no output for >${this.ENCODING_TIMEOUT_MIN}min, progress: ${job.progress}%). Killing process...`
           );
 
           const killed = await this.ffmpegService.killProcess(job.id);

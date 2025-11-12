@@ -25,6 +25,7 @@ interface ActiveEncoding {
   startTime: Date;
   lastProgress: number;
   lastStderr: string; // Last 2000 chars of stderr for error reporting
+  lastOutputTime: Date; // Last time FFmpeg produced ANY output (for stuck detection)
 }
 
 /**
@@ -982,6 +983,7 @@ export class FfmpegService implements OnModuleDestroy {
       startTime: new Date(),
       lastProgress: 0,
       lastStderr: '',
+      lastOutputTime: new Date(), // Initialize to now
     };
     this.activeEncodings.set(job.id, activeEncoding);
 
@@ -995,6 +997,9 @@ export class FfmpegService implements OnModuleDestroy {
         this.logger.debug(`[${job.id}] Received ${chunk.length} bytes from FFmpeg stderr`);
         stderrBuffer += chunk;
         fullStderr += chunk;
+
+        // Update last output time - FFmpeg is actively producing output
+        activeEncoding.lastOutputTime = new Date();
 
         // Keep last 2000 chars of stderr for error reporting
         if (fullStderr.length > 2000) {
@@ -1132,6 +1137,38 @@ export class FfmpegService implements OnModuleDestroy {
    */
   hasActiveProcess(jobId: string): boolean {
     return this.activeEncodings.has(jobId);
+  }
+
+  /**
+   * Get the last time FFmpeg produced output for a job
+   *
+   * @param jobId - Job unique identifier
+   * @returns Last output timestamp, or undefined if not encoding
+   */
+  getLastOutputTime(jobId: string): Date | undefined {
+    return this.activeEncodings.get(jobId)?.lastOutputTime;
+  }
+
+  /**
+   * Check if a job's FFmpeg process is truly stuck (no output at all)
+   *
+   * Differentiates between:
+   * - Truly stuck jobs: No FFmpeg output for X minutes (frozen, needs kill)
+   * - Slow but active jobs: FFmpeg producing output, just slowly (let it run)
+   *
+   * @param jobId - Job unique identifier
+   * @param timeoutMinutes - Minutes without output before considering stuck
+   * @returns True if job has had no FFmpeg output for specified time
+   */
+  isProcessTrulyStuck(jobId: string, timeoutMinutes: number): boolean {
+    const encoding = this.activeEncodings.get(jobId);
+    if (!encoding) {
+      return false; // No active process
+    }
+
+    const now = new Date();
+    const minutesSinceOutput = (now.getTime() - encoding.lastOutputTime.getTime()) / 1000 / 60;
+    return minutesSinceOutput >= timeoutMinutes;
   }
 
   /**
