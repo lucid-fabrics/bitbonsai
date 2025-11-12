@@ -1,6 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -52,6 +59,7 @@ export class SettingsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly store = inject(Store);
   private readonly dialog = inject(Dialog);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   // Expose enum for template
   protected readonly SettingsTab = SettingsTab;
@@ -107,6 +115,8 @@ export class SettingsComponent implements OnInit {
       const tab = this.mapUrlParamToTab(initialTabParam);
       if (tab) {
         this.activeTab = tab;
+        // Explicitly trigger change detection to ensure template updates
+        this.cdr.detectChanges();
       }
     }
 
@@ -117,6 +127,7 @@ export class SettingsComponent implements OnInit {
         const tab = this.mapUrlParamToTab(tabParam);
         if (tab) {
           this.activeTab = tab;
+          this.cdr.detectChanges();
         }
       }
     });
