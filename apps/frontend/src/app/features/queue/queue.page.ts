@@ -946,6 +946,32 @@ export class QueueComponent implements OnInit {
     return labels[status] || status;
   }
 
+  /**
+   * Check if job was auto-healed but had to start fresh (temp file was missing)
+   */
+  protected wasHealedFreshStart(job: QueueJob): boolean {
+    // Fresh start occurs when:
+    // 1. Job was auto-healed (autoHealedAt exists)
+    // 2. Job had made progress before (autoHealedProgress > 0)
+    // 3. But current progress is 0 (had to start fresh)
+    return !!job.autoHealedAt && (job.autoHealedProgress || 0) > 0 && job.progress === 0;
+  }
+
+  /**
+   * Check if job was auto-healed and successfully resumed from checkpoint
+   */
+  protected wasHealedWithResume(job: QueueJob): boolean {
+    // Resume occurs when:
+    // 1. Job was auto-healed (autoHealedAt exists)
+    // 2. Job had made progress before (autoHealedProgress > 0)
+    // 3. Current progress matches or exceeds the healed progress (resumed successfully)
+    return (
+      !!job.autoHealedAt &&
+      (job.autoHealedProgress || 0) > 0 &&
+      job.progress >= (job.autoHealedProgress || 0)
+    );
+  }
+
   protected getStatusExplanation(status: JobStatus): string {
     switch (status) {
       case JobStatus.QUEUED:

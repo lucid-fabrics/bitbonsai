@@ -307,7 +307,7 @@
                 </td>
                 <td class="col-filename" [title]="job.fileName">
                   {{ job.fileName }}
-                  @if (job.wasHealedFreshStart) {
+                  @if (wasHealedFreshStart(job)) {
                     <span class="auto-heal-badge warning"
                           bbTooltip
                           tooltipTitle="Auto-Healed (Fresh Start)"
@@ -315,7 +315,7 @@
                           tooltipPlacement="top">
                       <i class="fas fa-exclamation-triangle"></i> Restarted
                     </span>
-                  } @else if (job.wasHealedWithResume) {
+                  } @else if (wasHealedWithResume(job)) {
                     <span class="auto-heal-badge"
                           bbTooltip
                           tooltipTitle="Auto-Healed (Resumed)"
@@ -377,7 +377,7 @@
                         <div class="progress-fill-enhanced" [style.width.%]="job.progress">
                           <div class="progress-shimmer"></div>
                         </div>
-                        @if (job.wasHealedWithResume && job.autoHealedProgress !== undefined && job.autoHealedProgress !== null) {
+                        @if (wasHealedWithResume(job) && job.autoHealedProgress !== undefined && job.autoHealedProgress !== null) {
                           <div class="heal-indicator"
                                [style.left.%]="job.autoHealedProgress"
                                bbTooltip
@@ -720,7 +720,7 @@
                           }
 
                           <!-- Auto-Healed (if applicable) -->
-                          @if (job.wasHealedFreshStart) {
+                          @if (wasHealedFreshStart(job)) {
                             <div class="timeline-connector warning"></div>
                             <div class="timeline-event warning">
                               <div class="timeline-icon">
@@ -732,7 +732,7 @@
                                 <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.autoHealedAt || '') }}</div>
                               </div>
                             </div>
-                          } @else if (job.wasHealedWithResume) {
+                          } @else if (wasHealedWithResume(job)) {
                             <div class="timeline-connector auto-heal"></div>
                             <div class="timeline-event auto-heal">
                               <div class="timeline-icon">
@@ -1042,11 +1042,11 @@
               <h4 class="filename-mobile" [title]="job.fileName">
                 {{ job.fileName }}
               </h4>
-              @if (job.wasHealedFreshStart) {
+              @if (wasHealedFreshStart(job)) {
                 <span class="auto-heal-badge-mobile warning">
                   <i class="fas fa-exclamation-triangle"></i> Restarted
                 </span>
-              } @else if (job.wasHealedWithResume) {
+              } @else if (wasHealedWithResume(job)) {
                 <span class="auto-heal-badge-mobile">
                   <i class="fas fa-shield-alt"></i> Resumed
                 </span>
