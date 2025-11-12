@@ -159,7 +159,7 @@ export class AutoHealingService implements OnModuleInit {
               stage: JobStage.FAILED, // Was in FAILED before healing
               progress: job.progress || 0,
               wasAutoHealed: true,
-              tempFileExists: hasTempFile,
+              tempFileExists: hasTempFile ? true : false,
               retryNumber: job.retryCount + 1,
               triggeredBy: 'BACKEND_RESTART',
               systemMessage,
