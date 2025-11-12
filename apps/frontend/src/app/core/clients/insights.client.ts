@@ -1,13 +1,24 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import type { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 /**
  * DTOs for API responses
  */
 interface SavingsTrendDto {
   date: string;
-  savingsGB: number;
+  savedGB: number;
+  savedBytes: string;
+  jobsCompleted: number;
+}
+
+interface SavingsTrendResponseDto {
+  trend: SavingsTrendDto[];
+  totalSavedBytes: string;
+  totalSavedGB: number;
+  days: number;
+  timestamp: string;
 }
 
 interface CodecDistributionDto {
@@ -16,17 +27,38 @@ interface CodecDistributionDto {
   percentage: number;
 }
 
+interface CodecDistributionResponseDto {
+  distribution: CodecDistributionDto[];
+  totalFiles: number;
+  timestamp: string;
+}
+
 interface NodePerformanceDto {
+  nodeId: string;
   nodeName: string;
+  acceleration: string;
   jobsCompleted: number;
+  jobsFailed: number;
   successRate: number;
+  totalSavedBytes: string;
+  totalSavedGB: number;
+  avgThroughput: number;
+  status: string;
+}
+
+interface NodePerformanceResponseDto {
+  nodes: NodePerformanceDto[];
+  timestamp: string;
 }
 
 interface InsightsStatsDto {
   totalJobsCompleted: number;
-  totalStorageSavedGB: number;
-  averageSuccessRate: number;
-  averageThroughput: number;
+  totalJobsFailed: number;
+  totalSavedBytes: string;
+  totalSavedGB: number;
+  avgThroughput: number;
+  successRate: number;
+  timestamp: string;
 }
 
 /**
@@ -47,23 +79,29 @@ export class InsightsClient {
    * Fetch savings trend data for the specified number of days
    */
   getSavingsTrend(days: number): Observable<SavingsTrendDto[]> {
-    return this.http.get<SavingsTrendDto[]>(`${this.baseUrl}/savings`, {
-      params: { days: days.toString() },
-    });
+    return this.http
+      .get<SavingsTrendResponseDto>(`${this.baseUrl}/savings`, {
+        params: { days: days.toString() },
+      })
+      .pipe(map((response) => response.trend));
   }
 
   /**
    * Fetch codec distribution data
    */
   getCodecDistribution(): Observable<CodecDistributionDto[]> {
-    return this.http.get<CodecDistributionDto[]>(`${this.baseUrl}/codecs`);
+    return this.http
+      .get<CodecDistributionResponseDto>(`${this.baseUrl}/codecs`)
+      .pipe(map((response) => response.distribution));
   }
 
   /**
    * Fetch node performance data
    */
   getNodePerformance(): Observable<NodePerformanceDto[]> {
-    return this.http.get<NodePerformanceDto[]>(`${this.baseUrl}/nodes`);
+    return this.http
+      .get<NodePerformanceResponseDto>(`${this.baseUrl}/nodes`)
+      .pipe(map((response) => response.nodes));
   }
 
   /**

@@ -7,8 +7,8 @@ export class SavingsTrendBO {
     public readonly savingsGB: number
   ) {}
 
-  static fromDto(dto: { date: string; savingsGB: number }): SavingsTrendBO {
-    return new SavingsTrendBO(dto.date, dto.savingsGB);
+  static fromDto(dto: { date: string; savedGB: number }): SavingsTrendBO {
+    return new SavingsTrendBO(dto.date, dto.savedGB);
   }
 
   formatDate(): string {
