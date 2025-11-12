@@ -9,6 +9,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { LicenseBo } from '../bos/license.bo';
 import type { ActivateLicense, License } from '../models/license.model';
 import { LicenseTier } from '../models/license.model';
 import { LicenseService } from '../services/license.service';
@@ -31,8 +32,8 @@ import { LicenseService } from '../services/license.service';
         <!-- Current License Card -->
         <div class="license-card">
           <div class="license-header">
-            <span [class]="getTierBadgeClass(license()!.tier)">
-              {{ getTierDisplayName(license()!.tier) }}
+            <span [class]="LicenseBo.getTierBadgeClass(license()!.tier)">
+              {{ LicenseBo.getTierDisplayName(license()!.tier) }}
             </span>
           </div>
 
@@ -215,6 +216,7 @@ export class LicenseTabComponent implements OnInit {
   }>;
 
   LicenseTier = LicenseTier;
+  readonly LicenseBo = LicenseBo;
 
   ngOnInit(): void {
     this.initializeForm();
@@ -278,32 +280,6 @@ export class LicenseTabComponent implements OnInit {
             this.loading.set(false);
           },
         });
-    }
-  }
-
-  getTierBadgeClass(tier: LicenseTier): string {
-    switch (tier) {
-      case LicenseTier.FREE:
-        return 'tier-badge tier-free';
-      case LicenseTier.PATREON:
-        return 'tier-badge tier-patreon';
-      case LicenseTier.COMMERCIAL_PRO:
-        return 'tier-badge tier-commercial';
-      default:
-        return 'tier-badge';
-    }
-  }
-
-  getTierDisplayName(tier: LicenseTier): string {
-    switch (tier) {
-      case LicenseTier.FREE:
-        return 'Free';
-      case LicenseTier.PATREON:
-        return 'Patreon Supporter';
-      case LicenseTier.COMMERCIAL_PRO:
-        return 'Commercial Pro';
-      default:
-        return tier;
     }
   }
 
