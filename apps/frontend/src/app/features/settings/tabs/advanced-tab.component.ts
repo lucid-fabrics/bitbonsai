@@ -28,7 +28,7 @@ import { SettingsService } from '../services/settings.service';
       <h2>Advanced Settings</h2>
       <p class="tab-description">Configure security, caching, logging, and API integration settings</p>
 
-      @if (systemSettings) {
+      @if (systemSettings()) {
         <!-- Settings Grid - 2 columns -->
         <div class="advanced-grid">
           <!-- Security Toggle Card -->
@@ -45,14 +45,14 @@ import { SettingsService } from '../services/settings.service';
                 <input
                   type="checkbox"
                   id="localNetworkBypass"
-                  [(ngModel)]="localNetworkBypassEnabled"
-                  (ngModelChange)="onLocalNetworkBypassToggle()"
+                  [ngModel]="localNetworkBypassEnabled()"
+                  (ngModelChange)="localNetworkBypassEnabled.set($event); onLocalNetworkBypassToggle()"
                   [ngModelOptions]="{standalone: true}"
                 />
                 <span class="slider"></span>
               </label>
             </div>
-            @if (localNetworkBypassEnabled) {
+            @if (localNetworkBypassEnabled()) {
               <div class="setting-note warning-note">
                 <i class="fa fa-exclamation-triangle"></i>
                 Anyone on local network can access without authentication
@@ -73,7 +73,8 @@ import { SettingsService } from '../services/settings.service';
               <input
                 type="number"
                 class="form-control setting-input-inline"
-                [(ngModel)]="readyFilesCacheTtl"
+                [ngModel]="readyFilesCacheTtl()"
+                (ngModelChange)="readyFilesCacheTtl.set($event)"
                 [ngModelOptions]="{standalone: true}"
                 min="5"
                 (change)="saveReadyFilesCacheTtl()"
@@ -98,7 +99,8 @@ import { SettingsService } from '../services/settings.service';
               <input
                 type="number"
                 class="form-control setting-input-inline"
-                [(ngModel)]="maxAutoHealRetries"
+                [ngModel]="maxAutoHealRetries()"
+                (ngModelChange)="maxAutoHealRetries.set($event)"
                 [ngModelOptions]="{standalone: true}"
                 min="3"
                 (change)="saveAutoHealRetryLimit()"
@@ -211,20 +213,20 @@ import { SettingsService } from '../services/settings.service';
           </div>
           <div class="api-key-display">
             <code class="api-key-value">
-              {{ apiKeyRevealed ? systemSettings!.apiKey : '**********************' }}
+              {{ apiKeyRevealed() ? systemSettings()!.apiKey : '**********************' }}
             </code>
             <button
               type="button"
               class="btn-icon"
               (click)="toggleApiKeyVisibility()"
-              [title]="apiKeyRevealed ? 'Hide' : 'Reveal'"
+              [title]="apiKeyRevealed() ? 'Hide' : 'Reveal'"
             >
-              <i [class]="apiKeyRevealed ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+              <i [class]="apiKeyRevealed() ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
             </button>
             <button
               type="button"
               class="btn-icon"
-              (click)="copyToClipboard(systemSettings!.apiKey, 'API key')"
+              (click)="copyToClipboard(systemSettings()!.apiKey, 'API key')"
               title="Copy"
             >
               <i class="fa fa-copy"></i>
@@ -242,14 +244,14 @@ export class AdvancedTabComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(Dialog);
 
-  systemSettings: SystemSettings | null = null;
+  systemSettings = signal<SystemSettings | null>(null);
   loading = signal(false);
-  error: string | null = null;
-  successMessage: string | null = null;
-  apiKeyRevealed = false;
-  localNetworkBypassEnabled = false;
-  readyFilesCacheTtl = 5;
-  maxAutoHealRetries = 15;
+  error = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
+  apiKeyRevealed = signal(false);
+  localNetworkBypassEnabled = signal(false);
+  readyFilesCacheTtl = signal(5);
+  maxAutoHealRetries = signal(15);
 
   settingsForm!: FormGroup<{
     ffmpegPath: FormControl<string | null>;
@@ -283,7 +285,7 @@ export class AdvancedTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
-          this.systemSettings = settings;
+          this.systemSettings.set(settings);
           this.settingsForm.patchValue({
             ffmpegPath: settings.ffmpegPath,
             logLevel: settings.logLevel,
@@ -301,7 +303,7 @@ export class AdvancedTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
-          this.localNetworkBypassEnabled = settings.allowLocalNetworkWithoutAuth;
+          this.localNetworkBypassEnabled.set(settings.allowLocalNetworkWithoutAuth);
         },
         error: () => {},
       });
@@ -313,7 +315,7 @@ export class AdvancedTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
-          this.readyFilesCacheTtl = settings.readyFilesCacheTtlMinutes;
+          this.readyFilesCacheTtl.set(settings.readyFilesCacheTtlMinutes);
         },
         error: () => {},
       });
@@ -325,7 +327,7 @@ export class AdvancedTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
-          this.maxAutoHealRetries = settings.maxAutoHealRetries;
+          this.maxAutoHealRetries.set(settings.maxAutoHealRetries);
         },
         error: () => {},
       });
@@ -333,23 +335,25 @@ export class AdvancedTabComponent implements OnInit {
 
   onLocalNetworkBypassToggle(): void {
     this.loading.set(true);
-    this.error = null;
-    this.successMessage = null;
+    this.error.set(null);
+    this.successMessage.set(null);
 
     this.settingsService
       .updateSecuritySettings({
-        allowLocalNetworkWithoutAuth: this.localNetworkBypassEnabled,
+        allowLocalNetworkWithoutAuth: this.localNetworkBypassEnabled(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.loading.set(false);
-          this.successMessage = `Local network auth bypass ${this.localNetworkBypassEnabled ? 'enabled' : 'disabled'} successfully`;
+          this.successMessage.set(
+            `Local network auth bypass ${this.localNetworkBypassEnabled() ? 'enabled' : 'disabled'} successfully`
+          );
         },
         error: () => {
           this.loading.set(false);
-          this.error = 'Failed to update security settings';
-          this.localNetworkBypassEnabled = !this.localNetworkBypassEnabled;
+          this.error.set('Failed to update security settings');
+          this.localNetworkBypassEnabled.set(!this.localNetworkBypassEnabled());
         },
       });
   }
@@ -361,54 +365,54 @@ export class AdvancedTabComponent implements OnInit {
 
   saveReadyFilesCacheTtl(): void {
     // Validate minimum value
-    if (this.readyFilesCacheTtl < 5) {
-      this.error = 'Cache TTL must be at least 5 minutes';
-      this.readyFilesCacheTtl = 5;
+    if (this.readyFilesCacheTtl() < 5) {
+      this.error.set('Cache TTL must be at least 5 minutes');
+      this.readyFilesCacheTtl.set(5);
       return;
     }
 
     this.loading.set(true);
-    this.error = null;
-    this.successMessage = null;
+    this.error.set(null);
+    this.successMessage.set(null);
 
     this.settingsClient
-      .updateReadyFilesCacheTtl(this.readyFilesCacheTtl)
+      .updateReadyFilesCacheTtl(this.readyFilesCacheTtl())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.loading.set(false);
-          this.successMessage = 'Cache TTL updated successfully';
+          this.successMessage.set('Cache TTL updated successfully');
         },
         error: () => {
           this.loading.set(false);
-          this.error = 'Failed to update cache TTL';
+          this.error.set('Failed to update cache TTL');
         },
       });
   }
 
   saveAutoHealRetryLimit(): void {
     // Validate minimum value
-    if (this.maxAutoHealRetries < 3) {
-      this.error = 'Auto-heal retry limit must be at least 3';
-      this.maxAutoHealRetries = 3;
+    if (this.maxAutoHealRetries() < 3) {
+      this.error.set('Auto-heal retry limit must be at least 3');
+      this.maxAutoHealRetries.set(3);
       return;
     }
 
     this.loading.set(true);
-    this.error = null;
-    this.successMessage = null;
+    this.error.set(null);
+    this.successMessage.set(null);
 
     this.settingsClient
-      .updateAutoHealRetryLimit(this.maxAutoHealRetries)
+      .updateAutoHealRetryLimit(this.maxAutoHealRetries())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.loading.set(false);
-          this.successMessage = 'Auto-heal retry limit updated successfully';
+          this.successMessage.set('Auto-heal retry limit updated successfully');
         },
         error: () => {
           this.loading.set(false);
-          this.error = 'Failed to update auto-heal retry limit';
+          this.error.set('Failed to update auto-heal retry limit');
         },
       });
   }
@@ -416,8 +420,8 @@ export class AdvancedTabComponent implements OnInit {
   updateSystemSettings(): void {
     if (this.settingsForm.valid) {
       this.loading.set(true);
-      this.error = null;
-      this.successMessage = null;
+      this.error.set(null);
+      this.successMessage.set(null);
 
       const formValue = this.settingsForm.value;
       const updates = {
@@ -434,12 +438,12 @@ export class AdvancedTabComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (settings) => {
-            this.systemSettings = settings;
+            this.systemSettings.set(settings);
             this.loading.set(false);
-            this.successMessage = 'Settings updated successfully!';
+            this.successMessage.set('Settings updated successfully!');
           },
           error: () => {
-            this.error = 'Failed to update settings';
+            this.error.set('Failed to update settings');
             this.loading.set(false);
           },
         });
@@ -474,23 +478,23 @@ export class AdvancedTabComponent implements OnInit {
     dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
       if (confirmed === true) {
         this.loading.set(true);
-        this.error = null;
-        this.successMessage = null;
+        this.error.set(null);
+        this.successMessage.set(null);
 
         this.settingsService
           .regenerateApiKey()
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (result: { apiKey: string }) => {
-              const currentSettings = this.systemSettings;
+              const currentSettings = this.systemSettings();
               if (currentSettings) {
-                this.systemSettings = { ...currentSettings, apiKey: result.apiKey };
+                this.systemSettings.set({ ...currentSettings, apiKey: result.apiKey });
               }
               this.loading.set(false);
-              this.successMessage = 'API key regenerated successfully!';
+              this.successMessage.set('API key regenerated successfully!');
             },
             error: () => {
-              this.error = 'Failed to regenerate API key';
+              this.error.set('Failed to regenerate API key');
               this.loading.set(false);
             },
           });
@@ -499,14 +503,14 @@ export class AdvancedTabComponent implements OnInit {
   }
 
   toggleApiKeyVisibility(): void {
-    this.apiKeyRevealed = !this.apiKeyRevealed;
+    this.apiKeyRevealed.set(!this.apiKeyRevealed());
   }
 
   copyToClipboard(text: string, label: string): void {
     navigator.clipboard.writeText(text).then(() => {
-      this.successMessage = `${label} copied to clipboard`;
+      this.successMessage.set(`${label} copied to clipboard`);
       setTimeout(() => {
-        this.successMessage = null;
+        this.successMessage.set(null);
       }, 3000);
     });
   }

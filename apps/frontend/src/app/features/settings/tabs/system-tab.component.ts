@@ -22,7 +22,7 @@ import { SettingsService } from '../services/settings.service';
     <div class="tab-panel">
       <h2>System Configuration</h2>
 
-      @if (systemSettings) {
+      @if (systemSettings()) {
         <!-- System Overview Card - Compact version -->
         <div class="info-card compact-card">
           <div class="compact-grid">
@@ -33,7 +33,7 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Version</span>
-                <span class="compact-value">v{{ systemSettings!.version }}</span>
+                <span class="compact-value">v{{ systemSettings()!.version }}</span>
               </div>
             </div>
 
@@ -44,7 +44,7 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Database</span>
-                <span class="compact-value">{{ systemSettings!.databaseType }}</span>
+                <span class="compact-value">{{ systemSettings()!.databaseType }}</span>
               </div>
             </div>
 
@@ -55,7 +55,7 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Storage Used</span>
-                <span class="compact-value">{{ systemSettings!.storageInfo.usagePercent.toFixed(1) }}%</span>
+                <span class="compact-value">{{ systemSettings()!.storageInfo.usagePercent.toFixed(1) }}%</span>
               </div>
             </div>
 
@@ -66,7 +66,7 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Database Path</span>
-                <code class="compact-value path-value">{{ systemSettings!.databasePath }}</code>
+                <code class="compact-value path-value">{{ systemSettings()!.databasePath }}</code>
               </div>
             </div>
           </div>
@@ -84,19 +84,19 @@ import { SettingsService } from '../services/settings.service';
         <div class="info-card storage-card">
           <div class="storage-header">
             <h3>Storage Usage</h3>
-            <span class="storage-percentage">{{ systemSettings!.storageInfo.usagePercent.toFixed(1) }}%</span>
+            <span class="storage-percentage">{{ systemSettings()!.storageInfo.usagePercent.toFixed(1) }}%</span>
           </div>
           <div class="storage-bar-container">
             <div
               class="storage-bar-fill"
-              [style.width.%]="systemSettings!.storageInfo.usagePercent"
-              [class.storage-warning]="systemSettings!.storageInfo.usagePercent > 80"
-              [class.storage-critical]="systemSettings!.storageInfo.usagePercent > 90"
+              [style.width.%]="systemSettings()!.storageInfo.usagePercent"
+              [class.storage-warning]="systemSettings()!.storageInfo.usagePercent > 80"
+              [class.storage-critical]="systemSettings()!.storageInfo.usagePercent > 90"
             ></div>
           </div>
           <div class="storage-details">
-            <span>{{ systemSettings!.storageInfo.usedGb.toFixed(1) }} GB used</span>
-            <span>{{ systemSettings!.storageInfo.totalGb.toFixed(1) }} GB total</span>
+            <span>{{ systemSettings()!.storageInfo.usedGb.toFixed(1) }} GB used</span>
+            <span>{{ systemSettings()!.storageInfo.totalGb.toFixed(1) }} GB total</span>
           </div>
         </div>
 
@@ -159,10 +159,10 @@ export class SystemTabComponent implements OnInit {
   readonly isLinkedNode$: Observable<boolean> = this.store.select(selectIsLinkedNode);
   readonly mainNode$ = this.store.select(selectMainNode);
 
-  systemSettings: SystemSettings | null = null;
+  systemSettings = signal<SystemSettings | null>(null);
   loading = signal(false);
-  error: string | null = null;
-  successMessage: string | null = null;
+  error = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadSystemSettings();
@@ -174,7 +174,7 @@ export class SystemTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
-          this.systemSettings = settings;
+          this.systemSettings.set(settings);
         },
         error: () => {},
       });
@@ -182,8 +182,8 @@ export class SystemTabComponent implements OnInit {
 
   backupDatabase(): void {
     this.loading.set(true);
-    this.error = null;
-    this.successMessage = null;
+    this.error.set(null);
+    this.successMessage.set(null);
 
     this.settingsService
       .backupDatabase()
@@ -191,10 +191,10 @@ export class SystemTabComponent implements OnInit {
       .subscribe({
         next: (result: { backupPath: string }) => {
           this.loading.set(false);
-          this.successMessage = `Database backed up to: ${result.backupPath}`;
+          this.successMessage.set(`Database backed up to: ${result.backupPath}`);
         },
         error: () => {
-          this.error = 'Failed to backup database';
+          this.error.set('Failed to backup database');
           this.loading.set(false);
         },
       });
@@ -229,8 +229,8 @@ export class SystemTabComponent implements OnInit {
     dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
       if (confirmed === true) {
         this.loading.set(true);
-        this.error = null;
-        this.successMessage = null;
+        this.error.set(null);
+        this.successMessage.set(null);
 
         this.settingsService
           .resetToDefaults()
@@ -238,11 +238,11 @@ export class SystemTabComponent implements OnInit {
           .subscribe({
             next: (result: { message: string }) => {
               this.loading.set(false);
-              this.successMessage = result.message;
+              this.successMessage.set(result.message);
               this.loadSystemSettings();
             },
             error: () => {
-              this.error = 'Failed to reset settings';
+              this.error.set('Failed to reset settings');
               this.loading.set(false);
             },
           });
@@ -280,8 +280,8 @@ export class SystemTabComponent implements OnInit {
     dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
       if (confirmed === true) {
         this.loading.set(true);
-        this.error = null;
-        this.successMessage = null;
+        this.error.set(null);
+        this.successMessage.set(null);
 
         this.nodesClient
           .unregisterSelf()
@@ -289,7 +289,7 @@ export class SystemTabComponent implements OnInit {
           .subscribe({
             next: (result) => {
               this.loading.set(false);
-              this.successMessage = result.message;
+              this.successMessage.set(result.message);
 
               // Redirect to node-setup after successful unregistration
               setTimeout(() => {
@@ -298,7 +298,7 @@ export class SystemTabComponent implements OnInit {
             },
             error: (err) => {
               this.loading.set(false);
-              this.error = err.error?.message || 'Failed to unregister node';
+              this.error.set(err.error?.message || 'Failed to unregister node');
             },
           });
       }
