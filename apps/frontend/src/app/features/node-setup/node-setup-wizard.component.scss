@@ -1034,19 +1034,15 @@
     }
   }
 
-  .step-pairing {
-    .pairing-code-section {
-      .pairing-code {
-        font-size: 2rem;
-      }
+  .step-pairing__code-section {
+    .step-pairing__code {
+      font-size: 2rem;
     }
   }
 
-  .step-complete {
-    .hardware-summary {
-      .hardware-grid {
-        grid-template-columns: 1fr;
-      }
+  .step-complete__hardware {
+    .step-complete__hardware-grid {
+      grid-template-columns: 1fr;
     }
   }
 }
