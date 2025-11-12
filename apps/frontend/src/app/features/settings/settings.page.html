@@ -9,40 +9,50 @@
     <nav class="tab-nav">
       <a
         class="tab-button"
-        routerLink="/settings/license"
+        [routerLink]="['/settings', 'license']"
         routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
       >
         <i class="fa fa-key"></i>
         <span>License</span>
       </a>
       <a
         class="tab-button"
-        routerLink="/settings/environment"
+        [routerLink]="['/settings', 'environment']"
         routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
       >
         <i class="fa fa-server"></i>
         <span>Environment</span>
       </a>
       <a
         class="tab-button"
-        routerLink="/settings/system"
+        [routerLink]="['/settings', 'system']"
         routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
       >
         <i class="fa fa-cog"></i>
         <span>System</span>
       </a>
       <a
         class="tab-button"
-        routerLink="/settings/resources"
+        [routerLink]="['/settings', 'resources']"
         routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
       >
         <i class="fa fa-microchip"></i>
         <span>Resources</span>
       </a>
       <a
         class="tab-button"
-        routerLink="/settings/advanced"
+        [routerLink]="['/settings', 'advanced']"
         routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
       >
         <i class="fa fa-flask"></i>
         <span>Advanced</span>
