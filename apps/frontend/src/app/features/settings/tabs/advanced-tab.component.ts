@@ -291,9 +291,7 @@ export class AdvancedTabComponent implements OnInit {
             webhookUrl: settings.webhookUrl || '',
           });
         },
-        error: () => {
-          // Failed to load system settings
-        },
+        error: () => {},
       });
   }
 
@@ -305,9 +303,7 @@ export class AdvancedTabComponent implements OnInit {
         next: (settings) => {
           this.localNetworkBypassEnabled = settings.allowLocalNetworkWithoutAuth;
         },
-        error: () => {
-          // Failed to load security settings
-        },
+        error: () => {},
       });
   }
 
@@ -319,9 +315,7 @@ export class AdvancedTabComponent implements OnInit {
         next: (settings) => {
           this.readyFilesCacheTtl = settings.readyFilesCacheTtlMinutes;
         },
-        error: () => {
-          // Failed to load cache TTL
-        },
+        error: () => {},
       });
   }
 
@@ -333,9 +327,7 @@ export class AdvancedTabComponent implements OnInit {
         next: (settings) => {
           this.maxAutoHealRetries = settings.maxAutoHealRetries;
         },
-        error: () => {
-          // Failed to load auto-heal retry limit
-        },
+        error: () => {},
       });
   }
 
@@ -354,7 +346,7 @@ export class AdvancedTabComponent implements OnInit {
           this.loading.set(false);
           this.successMessage = `Local network auth bypass ${this.localNetworkBypassEnabled ? 'enabled' : 'disabled'} successfully`;
         },
-        error: (_err) => {
+        error: () => {
           this.loading.set(false);
           this.error = 'Failed to update security settings';
           this.localNetworkBypassEnabled = !this.localNetworkBypassEnabled;
@@ -387,7 +379,7 @@ export class AdvancedTabComponent implements OnInit {
           this.loading.set(false);
           this.successMessage = 'Cache TTL updated successfully';
         },
-        error: (_err) => {
+        error: () => {
           this.loading.set(false);
           this.error = 'Failed to update cache TTL';
         },
@@ -414,7 +406,7 @@ export class AdvancedTabComponent implements OnInit {
           this.loading.set(false);
           this.successMessage = 'Auto-heal retry limit updated successfully';
         },
-        error: (_err) => {
+        error: () => {
           this.loading.set(false);
           this.error = 'Failed to update auto-heal retry limit';
         },
@@ -446,7 +438,7 @@ export class AdvancedTabComponent implements OnInit {
             this.loading.set(false);
             this.successMessage = 'Settings updated successfully!';
           },
-          error: (_err) => {
+          error: () => {
             this.error = 'Failed to update settings';
             this.loading.set(false);
           },
@@ -497,7 +489,7 @@ export class AdvancedTabComponent implements OnInit {
               this.loading.set(false);
               this.successMessage = 'API key regenerated successfully!';
             },
-            error: (_err: Error) => {
+            error: () => {
               this.error = 'Failed to regenerate API key';
               this.loading.set(false);
             },

@@ -244,7 +244,7 @@ export class LicenseTabComponent implements OnInit {
           this.license.set(license);
           this.loading.set(false);
         },
-        error: (_err) => {
+        error: () => {
           this.error = 'Failed to load license information';
           this.loading.set(false);
         },
@@ -273,7 +273,7 @@ export class LicenseTabComponent implements OnInit {
             this.successMessage = 'License activated successfully!';
             this.licenseForm.reset();
           },
-          error: (_err) => {
+          error: () => {
             this.error = 'Failed to activate license. Please check your key and try again.';
             this.loading.set(false);
           },

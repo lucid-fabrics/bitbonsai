@@ -176,9 +176,7 @@ export class SystemTabComponent implements OnInit {
         next: (settings) => {
           this.systemSettings = settings;
         },
-        error: () => {
-          // Failed to load system settings
-        },
+        error: () => {},
       });
   }
 
@@ -195,7 +193,7 @@ export class SystemTabComponent implements OnInit {
           this.loading.set(false);
           this.successMessage = `Database backed up to: ${result.backupPath}`;
         },
-        error: (_err: Error) => {
+        error: () => {
           this.error = 'Failed to backup database';
           this.loading.set(false);
         },
@@ -243,7 +241,7 @@ export class SystemTabComponent implements OnInit {
               this.successMessage = result.message;
               this.loadSystemSettings();
             },
-            error: (_err: Error) => {
+            error: () => {
               this.error = 'Failed to reset settings';
               this.loading.set(false);
             },
