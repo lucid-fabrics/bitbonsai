@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { JobStage } from '@prisma/client';
+import { JobEventType, JobStage } from '@prisma/client';
+import { existsSync } from 'fs';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -86,6 +87,8 @@ export class AutoHealingService implements OnModuleInit {
           retryCount: true,
           nextRetryAt: true,
           progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
+          tempFilePath: true, // HEAL UX: needed to check if temp file exists
+          resumeTimestamp: true, // HEAL UX: needed to preserve resume state if temp file exists
         },
         // PERF: Add orderBy to help query planner use index
         orderBy: {
@@ -104,29 +107,66 @@ export class AutoHealingService implements OnModuleInit {
       let healedCount = 0;
       for (const job of eligibleJobs) {
         try {
+          // HEAL UX: Check if temp file actually exists before deciding to resume or start fresh
+          const hasTempFile = job.tempFilePath && existsSync(job.tempFilePath);
+          const canResume = hasTempFile && job.resumeTimestamp;
+
+          // Prepare healing data based on temp file availability
+          let healingMessage: string;
+          let systemMessage: string;
+
+          if (canResume) {
+            // Temp file exists - can resume from checkpoint
+            healingMessage = `will resume from ${(job.progress || 0).toFixed(1)}%`;
+            systemMessage = `Auto-healed: Will resume encoding from ${(job.progress || 0).toFixed(1)}% (temp file preserved)`;
+            this.logger.log(
+              `✅ Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`
+            );
+          } else {
+            // Temp file missing or invalid - must start fresh
+            const reason = job.tempFilePath ? 'temp file deleted' : 'no temp file';
+            healingMessage = `starting fresh (${reason})`;
+            systemMessage = `Auto-healed: Temp file not available, starting encoding from scratch (was at ${(job.progress || 0).toFixed(1)}%)`;
+            this.logger.log(
+              `⚠️  Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`
+            );
+          }
+
+          // Update job with appropriate resume state
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
               stage: JobStage.QUEUED,
-              progress: 0,
+              progress: canResume ? job.progress : 0, // Keep progress if resuming
               error: null,
               completedAt: null,
               startedAt: null,
               retryCount: job.retryCount + 1,
-              // AUTO-HEAL TRACKING: Record when job was auto-healed and where it resumed from (0% since temp file is cleared)
+              // AUTO-HEAL TRACKING: Record when job was auto-healed and where it resumed from
               autoHealedAt: new Date(),
-              autoHealedProgress: 0, // Job restarts from 0% since temp file is cleared
-              // AUDIT #3 FIX: Clear resume state to prevent using stale temp files
-              // This prevents auto-healed jobs from failing immediately due to missing/invalid temp files
-              resumeTimestamp: null,
-              tempFilePath: null,
+              autoHealedProgress: job.progress || 0, // Always record original progress for history
+              // HEAL UX: Only clear resume state if temp file doesn't exist
+              resumeTimestamp: canResume ? job.resumeTimestamp : null,
+              tempFilePath: canResume ? job.tempFilePath : null,
+            },
+          });
+
+          // AUDIT TRAIL: Create history entry to track healing decision
+          await this.prisma.jobHistory.create({
+            data: {
+              jobId: job.id,
+              eventType: JobEventType.AUTO_HEALED,
+              stage: JobStage.FAILED, // Was in FAILED before healing
+              progress: job.progress || 0,
+              wasAutoHealed: true,
+              tempFileExists: hasTempFile,
+              retryNumber: job.retryCount + 1,
+              triggeredBy: 'BACKEND_RESTART',
+              systemMessage,
             },
           });
 
           healedCount++;
-          this.logger.log(
-            `Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, was at ${(job.progress || 0).toFixed(1)}%, cleared resume state)`
-          );
         } catch (error) {
           this.logger.error(`Failed to heal job ${job.id} (${job.fileLabel})`, error);
         }

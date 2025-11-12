@@ -119,4 +119,32 @@ export class QueueJobBo {
     if (typeof value === 'string') return Number.parseInt(value, 10) || 0;
     return 0;
   }
+
+  /**
+   * Check if this job was auto-healed but had to start fresh (temp file was missing)
+   * @returns true if job was healed but started from 0% due to missing temp file
+   */
+  get wasHealedFreshStart(): boolean {
+    // Fresh start occurs when:
+    // 1. Job was auto-healed (autoHealedAt exists)
+    // 2. Job had made progress before (autoHealedProgress > 0)
+    // 3. But current progress is 0 (had to start fresh)
+    return !!this.autoHealedAt && (this.autoHealedProgress || 0) > 0 && this.progress === 0;
+  }
+
+  /**
+   * Check if this job was auto-healed and successfully resumed from checkpoint
+   * @returns true if job was healed and resumed from previous progress
+   */
+  get wasHealedWithResume(): boolean {
+    // Resume occurs when:
+    // 1. Job was auto-healed (autoHealedAt exists)
+    // 2. Job had made progress before (autoHealedProgress > 0)
+    // 3. Current progress matches or exceeds the healed progress (resumed successfully)
+    return (
+      !!this.autoHealedAt &&
+      (this.autoHealedProgress || 0) > 0 &&
+      this.progress >= (this.autoHealedProgress || 0)
+    );
+  }
 }
