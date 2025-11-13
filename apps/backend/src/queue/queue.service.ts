@@ -73,7 +73,7 @@ export class QueueService {
         throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
       }
     } catch (err) {
-      if (err.code === 'ENOENT') {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
         // File doesn't exist yet - validate parent directory
         const parent = path.dirname(resolvedFile);
         try {
@@ -84,10 +84,12 @@ export class QueueService {
             throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
           }
         } catch (parentErr) {
-          throw new BadRequestException(`Invalid file path: ${parentErr.message}`);
+          const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
+          throw new BadRequestException(`Invalid file path: ${message}`);
         }
       } else {
-        throw new BadRequestException(`Path validation error: ${err.message}`);
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        throw new BadRequestException(`Path validation error: ${message}`);
       }
     }
   }

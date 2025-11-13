@@ -876,8 +876,10 @@ export class FfmpegService implements OnModuleDestroy {
     // Enforce max cache size with LRU eviction (remove oldest entry)
     if (this.codecCache.size >= this.CODEC_CACHE_MAX_SIZE) {
       const oldestKey = this.codecCache.keys().next().value;
-      this.codecCache.delete(oldestKey);
-      this.logger.debug(`Cache full - evicted oldest entry: ${oldestKey}`);
+      if (oldestKey) {
+        this.codecCache.delete(oldestKey);
+        this.logger.debug(`Cache full - evicted oldest entry: ${oldestKey}`);
+      }
     }
 
     // Store in cache
@@ -973,7 +975,7 @@ export class FfmpegService implements OnModuleDestroy {
         throw new Error(`File path '${filePath}' is outside library boundary`);
       }
     } catch (err) {
-      if (err.code === 'ENOENT') {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
         // File doesn't exist yet - validate parent directory
         const parent = path.dirname(resolvedFile);
         try {
@@ -984,7 +986,8 @@ export class FfmpegService implements OnModuleDestroy {
             throw new Error(`File path '${filePath}' is outside library boundary`);
           }
         } catch (parentErr) {
-          throw new Error(`Invalid file path: ${parentErr.message}`);
+          const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
+          throw new Error(`Invalid file path: ${message}`);
         }
       } else {
         throw err;
