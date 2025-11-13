@@ -158,6 +158,8 @@ export class PoliciesService {
     preset: string;
     targetCodec: string;
     targetQuality: number;
+    targetContainer: string | null;
+    skipReencoding: boolean;
     deviceProfiles: Prisma.JsonValue;
     advancedSettings: Prisma.JsonValue;
     atomicReplace: boolean;
@@ -173,6 +175,8 @@ export class PoliciesService {
       preset: policy.preset as PolicyPreset,
       targetCodec: policy.targetCodec as TargetCodec,
       targetQuality: policy.targetQuality,
+      targetContainer: policy.targetContainer,
+      skipReencoding: policy.skipReencoding,
       deviceProfiles: policy.deviceProfiles as object,
       advancedSettings: policy.advancedSettings as object,
       atomicReplace: policy.atomicReplace,

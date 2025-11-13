@@ -29,6 +29,46 @@ interface ActiveEncoding {
 }
 
 /**
+ * Extended Job type with remux-specific fields
+ * Uses intersection type to add optional fields without conflicts
+ */
+type JobWithRemuxFields = Job & {
+  sourceContainer?: string;
+  targetContainer?: string;
+};
+
+/**
+ * Extended Job type with thread configuration fields
+ */
+type JobWithThreadsFields = Job & {
+  ffmpegThreads?: number;
+  resourceThrottleReason?: string;
+};
+
+/**
+ * Extended Job type with library relation
+ */
+type JobWithLibrary = Job & {
+  library?: {
+    id: string;
+    name: string;
+    path: string;
+  };
+};
+
+/**
+ * Extended Job type with resume capability fields
+ */
+type JobWithResumeFields = Job & {
+  resumeTimestamp?: string | null;
+};
+
+/**
+ * Composite Job type with all extended fields for the encode() method
+ */
+type JobWithAllFields = Job & JobWithResumeFields;
+
+/**
  * FFmpeg progress information
  */
 export interface FfmpegProgress {
@@ -375,7 +415,7 @@ export class FfmpegService implements OnModuleDestroy {
     const args: string[] = [];
 
     // Check if this is a REMUX job (container change only, no re-encoding)
-    const jobWithType = job as any;
+    const jobWithType = job as JobWithRemuxFields;
     const isRemux = jobWithType.type === 'REMUX';
 
     if (isRemux) {
@@ -420,7 +460,7 @@ export class FfmpegService implements OnModuleDestroy {
       args.push('-c:a', audioCodec);
 
       // AV1 THROTTLING: Apply thread limit if specified on job
-      const jobWithThreads = job as any;
+      const jobWithThreads = job as JobWithThreadsFields;
       if (jobWithThreads.ffmpegThreads) {
         args.push('-threads', jobWithThreads.ffmpegThreads.toString());
         this.logger.warn(
@@ -917,7 +957,9 @@ export class FfmpegService implements OnModuleDestroy {
     }
 
     if (cleaned > 0) {
-      this.logger.debug(`Cleaned up ${cleaned} expired codec cache entries (${this.codecCache.size} remaining)`);
+      this.logger.debug(
+        `Cleaned up ${cleaned} expired codec cache entries (${this.codecCache.size} remaining)`
+      );
     }
   }
 
@@ -1142,7 +1184,7 @@ export class FfmpegService implements OnModuleDestroy {
     this.logger.debug(`[${job.id}] encodeFile() called - setting up FFmpeg`);
 
     // SECURITY: Validate file path before any operations
-    const jobWithLibrary = job as any;
+    const jobWithLibrary = job as JobWithLibrary;
     if (jobWithLibrary.library?.path) {
       try {
         this.validateFilePath(job.filePath, jobWithLibrary.library.path);
@@ -1165,7 +1207,7 @@ export class FfmpegService implements OnModuleDestroy {
     );
 
     // TRUE RESUME: Check if we can resume from previous encoding attempt
-    const jobWithResume = job as any;
+    const jobWithResume = job as JobWithResumeFields;
 
     let resumeFromSeconds = 0;
     let resumeFromPercent = 0;
@@ -1205,8 +1247,8 @@ export class FfmpegService implements OnModuleDestroy {
         }
         // Clear resume state
         await this.queueService.updateProgress(job.id, {
-          tempFilePath: null as any,
-          resumeTimestamp: null as any,
+          tempFilePath: undefined,
+          resumeTimestamp: undefined,
           progress: 0,
         });
       }
@@ -1220,23 +1262,24 @@ export class FfmpegService implements OnModuleDestroy {
     this.logger.debug(`[${job.id}] Output path: ${tempOutput}`);
 
     // Build ffmpeg command (with resume timestamp if resuming)
+    const resumeTimestampValue = jobWithResume.resumeTimestamp ?? undefined;
     const args = this.buildFfmpegCommand(
       job,
       policy,
       hwaccel,
       tempOutput,
-      resumeFromSeconds > 0 ? jobWithResume.resumeTimestamp : undefined
+      resumeFromSeconds > 0 ? resumeTimestampValue : undefined
     );
 
     // Get nice value based on job priority
-    const niceValue = this.getNiceValue((job as any).priority ?? 0);
+    const niceValue = this.getNiceValue(job.priority);
 
     // Spawn ffmpeg process with nice for CPU priority
     // If priority is non-zero, wrap ffmpeg in nice command
     let ffmpegProcess: ChildProcess;
     if (niceValue !== 0) {
       this.logger.log(
-        `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${(job as any).priority ?? 0})`
+        `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${job.priority})`
       );
       ffmpegProcess = spawn('nice', ['-n', niceValue.toString(), 'ffmpeg', ...args], {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -1707,35 +1750,64 @@ export class FfmpegService implements OnModuleDestroy {
     }
 
     // Create a minimal job object for encodeFile
-    const job = {
+    const job: JobWithAllFields = {
       id: jobId,
+      type: 'ENCODE',
       filePath: options.inputPath,
       fileLabel: '',
       sourceCodec: '',
+      sourceContainer: null,
       targetCodec: options.targetCodec,
+      targetContainer: null,
       stage: 'ENCODING' as const,
       progress,
       etaSeconds: null,
+      fps: null,
       beforeSizeBytes: BigInt(0),
       afterSizeBytes: null,
       savedBytes: null,
       savedPercent: null,
       startedAt: new Date(),
       completedAt: null,
+      failedAt: null,
       error: null,
+      isBlacklisted: false,
+      retryCount: 0,
+      nextRetryAt: null,
+      autoHealedAt: null,
+      autoHealedProgress: null,
+      healthStatus: 'UNKNOWN',
+      healthScore: 0,
+      healthMessage: null,
+      healthCheckedAt: null,
+      healthCheckStartedAt: null,
+      healthCheckRetries: 0,
+      decisionRequired: false,
+      decisionIssues: null,
+      decisionMadeAt: null,
+      decisionData: null,
+      priority: 0,
+      prioritySetAt: null,
+      tempFilePath: resumeTimestamp && tempFilePath ? tempFilePath : null,
+      resumeTimestamp: resumeTimestamp || null,
+      lastProgressUpdate: null,
+      previewImagePaths: null,
+      keepOriginalRequested: false,
+      originalBackupPath: null,
+      originalSizeBytes: null,
+      replacementAction: null,
+      warning: null,
+      resourceThrottled: false,
+      resourceThrottleReason: null,
+      ffmpegThreads: null,
+      startedFromSeconds: null,
+      healingPointSeconds: null,
       nodeId: '',
       libraryId: '',
       policyId: '',
       createdAt: new Date(),
       updatedAt: new Date(),
-      // TRUE RESUME: Add resume fields if resuming
-      ...(resumeTimestamp && tempFilePath
-        ? {
-            resumeTimestamp,
-            tempFilePath,
-          }
-        : {}),
-    } as any;
+    };
 
     const policy = {
       id: '',

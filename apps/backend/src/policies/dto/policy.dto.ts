@@ -36,6 +36,20 @@ export class PolicyDto {
   })
   targetQuality!: number;
 
+  @ApiPropertyOptional({
+    description: 'Target container format (mkv, mp4, webm, or null to keep original)',
+    example: 'mkv',
+    enum: ['mkv', 'mp4', 'webm', null],
+    nullable: true,
+  })
+  targetContainer?: string | null;
+
+  @ApiProperty({
+    description: 'Smart remux enabled - skip re-encoding when source matches target codec',
+    example: true,
+  })
+  skipReencoding!: boolean;
+
   @ApiProperty({
     description: 'Device compatibility profiles',
     example: {

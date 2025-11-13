@@ -21,6 +21,7 @@ import {
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { PoliciesActions } from './+state/policies.actions';
 import { PoliciesSelectors } from './+state/policies.selectors';
+import { ContainerBo } from './bos/container.bo';
 import type { PolicyBo } from './bos/policy.bo';
 import {
   AudioHandling,
@@ -36,6 +37,8 @@ interface PolicyFormData {
   preset: PolicyPreset;
   targetCodec: TargetCodec;
   targetQuality: number;
+  targetContainer?: string | null;
+  skipReencoding?: boolean;
   libraryId: string;
   deviceProfiles: Set<DeviceProfile>;
   ffmpegFlags: string;
@@ -71,6 +74,7 @@ export class PoliciesComponent implements OnInit {
   readonly TargetCodec = TargetCodec;
   readonly DeviceProfile = DeviceProfile;
   readonly AudioHandling = AudioHandling;
+  readonly ContainerBo = ContainerBo;
 
   // NgRx State
   readonly policies$ = this.store.select(PoliciesSelectors.selectPolicies);
@@ -117,6 +121,8 @@ export class PoliciesComponent implements OnInit {
       preset: policy.preset,
       targetCodec: policy.targetCodec,
       targetQuality: policy.targetQuality,
+      targetContainer: policy.targetContainer ?? 'mkv',
+      skipReencoding: policy.skipReencoding ?? true,
       libraryId: policy.libraryId || '',
       deviceProfiles: new Set(policy.deviceProfiles),
       ffmpegFlags: policy.ffmpegFlags || '',
@@ -190,6 +196,8 @@ export class PoliciesComponent implements OnInit {
       preset: this.formData.preset,
       targetCodec: this.formData.targetCodec,
       targetQuality: this.formData.targetQuality,
+      targetContainer: this.formData.targetContainer ?? 'mkv',
+      skipReencoding: this.formData.skipReencoding ?? true,
       libraryId: this.formData.libraryId || undefined,
       deviceProfiles: {
         appleTV: this.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
@@ -294,6 +302,8 @@ export class PoliciesComponent implements OnInit {
       preset: PolicyPreset.CUSTOM,
       targetCodec: TargetCodec.HEVC,
       targetQuality: 23,
+      targetContainer: 'mkv',
+      skipReencoding: true,
       libraryId: '',
       deviceProfiles: new Set(),
       ffmpegFlags: '',
