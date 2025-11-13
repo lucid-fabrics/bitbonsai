@@ -339,9 +339,11 @@ export class FfmpegService implements OnModuleDestroy {
    * Build ffmpeg command arguments
    *
    * TRUE RESUME: Supports input seeking (-ss before -i) to skip already-encoded portion
+   * REMUX: Supports fast stream copy when job.type === 'REMUX'
    *
    * Command structure:
-   * ffmpeg [-ss HH:MM:SS.MS] [hwaccel flags] -i [input] [video codec] -crf [quality] [audio] [output]
+   * ENCODE: ffmpeg [-ss HH:MM:SS.MS] [hwaccel flags] -i [input] [video codec] -crf [quality] [audio] [output]
+   * REMUX: ffmpeg -i [input] -c:v copy -c:a copy [output]
    *
    * @param job - Job entity with file info
    * @param policy - Policy entity with encoding settings
@@ -359,48 +361,71 @@ export class FfmpegService implements OnModuleDestroy {
   ): string[] {
     const args: string[] = [];
 
-    // TRUE RESUME: Add input seeking BEFORE -i for accurate frame seeking
-    // This skips the already-encoded portion of the input file
-    if (resumeFromTimestamp) {
-      args.push('-ss', resumeFromTimestamp);
-      this.logger.log(`TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`);
-    }
+    // Check if this is a REMUX job (container change only, no re-encoding)
+    const jobWithType = job as any;
+    const isRemux = jobWithType.type === 'REMUX';
 
-    // Hardware acceleration flags (if available)
-    args.push(...hwaccel.flags);
+    if (isRemux) {
+      // REMUX MODE: Fast stream copy (no re-encoding)
+      this.logger.log(`REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`);
 
-    // Input file
-    args.push('-i', job.filePath);
+      // Input file
+      args.push('-i', job.filePath);
 
-    // Video codec and quality
-    args.push('-c:v', hwaccel.videoCodec);
-    args.push('-crf', policy.targetQuality.toString());
+      // Stream copy for video and audio (no re-encoding)
+      args.push('-c:v', 'copy');
+      args.push('-c:a', 'copy');
 
-    // Audio codec (from policy advanced settings)
-    const advancedSettings = policy.advancedSettings as Record<string, unknown>;
-    const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
-    args.push('-c:a', audioCodec);
+      // Copy all streams (subtitles, metadata, etc.)
+      args.push('-map', '0');
 
-    // AV1 THROTTLING: Apply thread limit if specified on job
-    const jobWithThreads = job as any;
-    if (jobWithThreads.ffmpegThreads) {
-      args.push('-threads', jobWithThreads.ffmpegThreads.toString());
-      this.logger.warn(
-        `[${job.id}] Using ${jobWithThreads.ffmpegThreads} threads (resource throttled: ${jobWithThreads.resourceThrottleReason || 'unknown reason'})`
-      );
-    }
+    } else {
+      // ENCODE MODE: Full transcode with quality settings
+      this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
 
-    // SECURITY: Validate and add additional ffmpeg flags from policy
-    if (advancedSettings.ffmpegFlags) {
-      const customFlags = advancedSettings.ffmpegFlags as string[];
-      try {
-        const validatedFlags = this.validateFfmpegFlags(customFlags);
-        args.push(...validatedFlags);
-      } catch (error) {
-        this.logger.error(
-          `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
+      // TRUE RESUME: Add input seeking BEFORE -i for accurate frame seeking
+      // This skips the already-encoded portion of the input file
+      if (resumeFromTimestamp) {
+        args.push('-ss', resumeFromTimestamp);
+        this.logger.log(`TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`);
+      }
+
+      // Hardware acceleration flags (if available)
+      args.push(...hwaccel.flags);
+
+      // Input file
+      args.push('-i', job.filePath);
+
+      // Video codec and quality
+      args.push('-c:v', hwaccel.videoCodec);
+      args.push('-crf', policy.targetQuality.toString());
+
+      // Audio codec (from policy advanced settings)
+      const advancedSettings = policy.advancedSettings as Record<string, unknown>;
+      const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
+      args.push('-c:a', audioCodec);
+
+      // AV1 THROTTLING: Apply thread limit if specified on job
+      const jobWithThreads = job as any;
+      if (jobWithThreads.ffmpegThreads) {
+        args.push('-threads', jobWithThreads.ffmpegThreads.toString());
+        this.logger.warn(
+          `[${job.id}] Using ${jobWithThreads.ffmpegThreads} threads (resource throttled: ${jobWithThreads.resourceThrottleReason || 'unknown reason'})`
         );
-        throw error;
+      }
+
+      // SECURITY: Validate and add additional ffmpeg flags from policy
+      if (advancedSettings.ffmpegFlags) {
+        const customFlags = advancedSettings.ffmpegFlags as string[];
+        try {
+          const validatedFlags = this.validateFfmpegFlags(customFlags);
+          args.push(...validatedFlags);
+        } catch (error) {
+          this.logger.error(
+            `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          throw error;
+        }
       }
     }
 
@@ -409,17 +434,30 @@ export class FfmpegService implements OnModuleDestroy {
     args.push('-stats', '-stats_period', '1');
 
     // Output to specified path (temp file that will be renamed atomically)
-    // Force mp4 format to ensure compatibility
-    // Use fragmented MP4 for streaming compatibility and instant readability
-    // This allows preview captures to work at any encoding progress (moov atom at start)
-    args.push(
-      '-movflags',
-      '+frag_keyframe+empty_moov+default_base_moof',
-      '-f',
-      'mp4',
-      '-y',
-      outputPath
-    );
+    // Determine output format based on job type and target container
+    const targetContainer = jobWithType.targetContainer || 'mkv';
+
+    if (targetContainer === 'mp4' || targetContainer.includes('mp4')) {
+      // MP4 format with fragmentation for streaming compatibility
+      // Use fragmented MP4 for instant readability (moov atom at start)
+      // This allows preview captures to work at any encoding progress
+      args.push(
+        '-movflags',
+        '+frag_keyframe+empty_moov+default_base_moof',
+        '-f',
+        'mp4'
+      );
+    } else if (targetContainer === 'mkv' || targetContainer.includes('matroska')) {
+      // MKV format (no special flags needed)
+      args.push('-f', 'matroska');
+    } else {
+      // Default to MKV for unknown containers
+      this.logger.warn(`Unknown target container '${targetContainer}', defaulting to MKV`);
+      args.push('-f', 'matroska');
+    }
+
+    // Overwrite output file if it exists
+    args.push('-y', outputPath);
 
     this.logger.debug(`ffmpeg command: ffmpeg ${args.join(' ')}`);
     return args;
