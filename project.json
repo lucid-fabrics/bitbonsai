@@ -9,19 +9,339 @@
       "options": {
         "commands": ["nx serve frontend", "nx serve backend"],
         "parallel": true
-      }
+      },
+      "description": "Start frontend and backend development servers in parallel"
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "biome lint ."
+      },
+      "description": "Lint code with Biome"
+    },
+    "format": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "biome format . --write"
+      },
+      "description": "Format code with Biome"
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "biome check ."
+      },
+      "description": "Check code quality with Biome"
+    },
+    "check:fix": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "biome check . --write"
+      },
+      "description": "Check and auto-fix code quality issues"
+    },
+    "test:all": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run-many --target=test --all --coverage"
+      },
+      "description": "Run all tests with coverage"
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run-many --target=test --all --coverage --coverageReporters=text-summary"
+      },
+      "description": "Run all tests with coverage summary"
+    },
+    "test:encoding:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=integration --maxWorkers=2"
+      },
+      "description": "Run encoding integration tests"
+    },
+    "test:encoding:level1": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=level-1-basic --maxWorkers=1"
+      },
+      "description": "Run Level 1 encoding tests (basic)"
+    },
+    "test:encoding:level2": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=level-2-codecs --maxWorkers=1"
+      },
+      "description": "Run Level 2 encoding tests (multi-codec)"
+    },
+    "test:encoding:level3": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=level-3-concurrent --maxWorkers=1"
+      },
+      "description": "Run Level 3 encoding tests (concurrent)"
+    },
+    "test:encoding:level4": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=level-4-edge-cases --maxWorkers=1"
+      },
+      "description": "Run Level 4 encoding tests (edge cases)"
+    },
+    "test:encoding:level5": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=auto-heal --maxWorkers=1"
+      },
+      "description": "Run Level 5 encoding tests (auto-heal)"
+    },
+    "test:encoding:level8": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx test backend --testPathPattern=level-8-quality --maxWorkers=1"
+      },
+      "description": "Run Level 8 encoding tests (quality verification)"
+    },
+    "test:encoding:all": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "nx test:encoding:level1",
+          "nx test:encoding:level2",
+          "nx test:encoding:level3",
+          "nx test:encoding:level4",
+          "nx test:encoding:level5",
+          "nx test:encoding:level8"
+        ],
+        "parallel": false
+      },
+      "description": "Run all encoding test levels sequentially"
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test"
+      },
+      "description": "Run E2E tests (headless)"
+    },
+    "test:e2e:ui": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --ui"
+      },
+      "description": "Run E2E tests in interactive UI mode"
+    },
+    "test:e2e:debug": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --debug"
+      },
+      "description": "Run E2E tests in debug mode"
+    },
+    "test:e2e:headed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --headed"
+      },
+      "description": "Run E2E tests with visible browser"
+    },
+    "test:e2e:chromium": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --project=chromium"
+      },
+      "description": "Run E2E tests on Chromium only"
+    },
+    "test:e2e:firefox": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --project=firefox"
+      },
+      "description": "Run E2E tests on Firefox only"
+    },
+    "test:e2e:webkit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --project=webkit"
+      },
+      "description": "Run E2E tests on WebKit only"
+    },
+    "test:e2e:report": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright show-report"
+      },
+      "description": "Show Playwright test report"
+    },
+    "prisma:generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma generate"
+      },
+      "description": "Generate Prisma Client"
+    },
+    "prisma:migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma migrate dev"
+      },
+      "description": "Run Prisma migrations (development)"
+    },
+    "prisma:migrate:deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma migrate deploy"
+      },
+      "description": "Run Prisma migrations (production)"
+    },
+    "prisma:studio": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma studio"
+      },
+      "description": "Open Prisma Studio database GUI"
+    },
+    "prisma:seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node prisma/seed.ts"
+      },
+      "description": "Seed database with test data"
+    },
+    "env:reset": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/reset-test-env.sh"
+      },
+      "description": "Reset test environment"
+    },
+    "env:reset:repopulate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/reset-test-env.sh --repopulate-media"
+      },
+      "description": "Reset test environment and repopulate media"
     },
     "docker:dev": {
       "executor": "nx:run-commands",
       "options": {
         "command": "docker-compose -f docker-compose.dev.yml up --build"
-      }
+      },
+      "description": "Start Docker development environment"
     },
     "docker:dev:down": {
       "executor": "nx:run-commands",
       "options": {
         "command": "docker-compose -f docker-compose.dev.yml down"
-      }
+      },
+      "description": "Stop Docker development environment"
+    },
+    "docker:build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "node scripts/update-version.js",
+          "docker build -f Dockerfile -t lucidfabrics/bitbonsai:latest -t lucidfabrics/bitbonsai:$(node -p \"require('./package.json').version\") ."
+        ],
+        "parallel": false
+      },
+      "description": "Build Docker image with version tags"
+    },
+    "docker:push": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker push lucidfabrics/bitbonsai:latest && docker push lucidfabrics/bitbonsai:$(node -p \"require('./package.json').version\")"
+      },
+      "description": "Push Docker images to Docker Hub"
+    },
+    "docker:build-push": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx docker:build", "nx docker:push"],
+        "parallel": false
+      },
+      "description": "Build and push Docker images"
+    },
+    "update:version": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/update-version.js"
+      },
+      "description": "Update version in environment files"
+    },
+    "version:patch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm version patch --no-git-tag-version"
+      },
+      "description": "Bump patch version (1.0.0 → 1.0.1)"
+    },
+    "version:minor": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm version minor --no-git-tag-version"
+      },
+      "description": "Bump minor version (1.0.0 → 1.1.0)"
+    },
+    "version:major": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm version major --no-git-tag-version"
+      },
+      "description": "Bump major version (1.0.0 → 2.0.0)"
+    },
+    "version:patch:commit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm version patch && node scripts/update-version.js && git add apps/frontend/src/environments && git commit --amend --no-edit && git push && git push --tags"
+      },
+      "description": "Bump patch version, commit, and push with tags"
+    },
+    "version:minor:commit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm version minor && node scripts/update-version.js && git add apps/frontend/src/environments && git commit --amend --no-edit && git push && git push --tags"
+      },
+      "description": "Bump minor version, commit, and push with tags"
+    },
+    "version:major:commit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm version major && node scripts/update-version.js && git add apps/frontend/src/environments && git commit --amend --no-edit && git push && git push --tags"
+      },
+      "description": "Bump major version, commit, and push with tags"
+    },
+    "unraid:release": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./generate-unraid-release.sh"
+      },
+      "description": "Generate Unraid Community Applications release package (uses version from package.json)"
+    },
+    "release:unraid": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx version:patch", "nx unraid:release"],
+        "parallel": false
+      },
+      "description": "Bump patch version and generate Unraid release package"
+    },
+    "release:unraid:minor": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx version:minor", "nx unraid:release"],
+        "parallel": false
+      },
+      "description": "Bump minor version and generate Unraid release package"
+    },
+    "release:unraid:major": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx version:major", "nx unraid:release"],
+        "parallel": false
+      },
+      "description": "Bump major version and generate Unraid release package"
     }
   }
 }
