@@ -50,6 +50,9 @@ export class QueueJobBo {
   healthMessage?: string;
   healthStatus?: FileHealthStatus;
   healthCheckedAt?: string;
+  // File Missing Badge Feature
+  stage?: string;
+  fileExists?: boolean;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -97,6 +100,9 @@ export class QueueJobBo {
     this.healthMessage = model.healthMessage;
     this.healthStatus = model.healthStatus as FileHealthStatus | undefined;
     this.healthCheckedAt = model.healthCheckedAt;
+    // File Missing Badge Feature
+    this.stage = model.stage;
+    this.fileExists = model.fileExists;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

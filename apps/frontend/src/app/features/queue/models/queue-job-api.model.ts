@@ -56,4 +56,6 @@ export interface QueueJobApiModel {
   healthMessage?: string;
   healthStatus?: string;
   healthCheckedAt?: string;
+  // File Missing Badge Feature
+  fileExists?: boolean;
 }
