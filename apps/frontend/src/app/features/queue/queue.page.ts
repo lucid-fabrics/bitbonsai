@@ -37,6 +37,8 @@ import { JobStatus } from './models/job-status.enum';
 import type { QueueFilters } from './models/queue-filters.model';
 import type { QueueJob } from './models/queue-job.model';
 import type { QueueResponse } from './models/queue-response.model';
+import { CodecBadgeClassPipe } from './pipes/codec-badge-class.pipe';
+import { StatusClassPipe } from './pipes/status-class.pipe';
 
 @Component({
   selector: 'app-queue',
@@ -50,6 +52,9 @@ import type { QueueResponse } from './models/queue-response.model';
     ErrorDetailsModalComponent,
     JobHistoryModalComponent,
     ImageCarouselComponent,
+    // PERFORMANCE: Pure pipes for better change detection performance
+    StatusClassPipe,
+    CodecBadgeClassPipe,
   ],
   templateUrl: './queue.page.html',
   styleUrls: ['./queue.page.scss'],

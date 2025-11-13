@@ -296,7 +296,7 @@
               >
                 <td class="col-status">
                   <span
-                    [class]="'status-badge ' + getStatusClass(job.status)"
+                    [class]="'status-badge ' + (job.status | statusClass)"
                     bbTooltip
                     [tooltipTitle]="job.status"
                     [tooltipContent]="getStatusExplanation(job.status)"
@@ -364,11 +364,11 @@
                 <td class="col-codec">
                   @if (job.sourceCodec && job.targetCodec) {
                     <div class="codec-conversion">
-                      <span class="codec-badge-small" [class]="getCodecBadgeClass(job.sourceCodec)">
+                      <span class="codec-badge-small" [class]="job.sourceCodec | codecBadgeClass">
                         {{ job.sourceCodec }}
                       </span>
                       <i class="fas fa-arrow-right codec-arrow-small"></i>
-                      <span class="codec-badge-small" [class]="getCodecBadgeClass(job.targetCodec)">
+                      <span class="codec-badge-small" [class]="job.targetCodec | codecBadgeClass">
                         {{ job.targetCodec }}
                       </span>
                     </div>
@@ -1056,7 +1056,7 @@
 
             <!-- Card Header: Status + Filename -->
             <div class="card-header-mobile">
-              <span class="status-badge-mobile" [class]="getStatusClass(job.status)">
+              <span class="status-badge-mobile" [class]="job.status | statusClass">
                 <i [class]="'fas ' + getStatusIcon(job.status)"></i>
                 {{ job.status }}
               </span>
