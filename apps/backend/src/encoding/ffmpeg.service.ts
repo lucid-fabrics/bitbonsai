@@ -80,8 +80,14 @@ export class FfmpegService implements OnModuleDestroy {
   private readonly PREVIEW_THROTTLE_MS = 30 * 1000; // 30 seconds
 
   // PERFORMANCE: FFprobe result caching (filePath -> video info)
-  private readonly codecCache = new Map<string, { codec: string; container: string; timestamp: Date }>();
+  private readonly codecCache = new Map<
+    string,
+    { codec: string; container: string; timestamp: Date }
+  >();
   private readonly CODEC_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+  private readonly CODEC_CACHE_MAX_SIZE = 5000; // ~500KB max
+  private readonly CODEC_CACHE_CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+  private lastCacheCleanup = 0;
 
   // Regex for parsing ffmpeg progress output
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
@@ -374,7 +380,9 @@ export class FfmpegService implements OnModuleDestroy {
 
     if (isRemux) {
       // REMUX MODE: Fast stream copy (no re-encoding)
-      this.logger.log(`REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`);
+      this.logger.log(
+        `REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`
+      );
 
       // Input file
       args.push('-i', job.filePath);
@@ -385,7 +393,6 @@ export class FfmpegService implements OnModuleDestroy {
 
       // Copy all streams (subtitles, metadata, etc.)
       args.push('-map', '0');
-
     } else {
       // ENCODE MODE: Full transcode with quality settings
       this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
@@ -448,12 +455,7 @@ export class FfmpegService implements OnModuleDestroy {
       // MP4 format with fragmentation for streaming compatibility
       // Use fragmented MP4 for instant readability (moov atom at start)
       // This allows preview captures to work at any encoding progress
-      args.push(
-        '-movflags',
-        '+frag_keyframe+empty_moov+default_base_moof',
-        '-f',
-        'mp4'
-      );
+      args.push('-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4');
     } else if (targetContainer === 'mkv' || targetContainer.includes('matroska')) {
       // MKV format (no special flags needed)
       args.push('-f', 'matroska');
@@ -871,6 +873,13 @@ export class FfmpegService implements OnModuleDestroy {
     this.logger.debug(`[CACHE MISS] Fetching codec info via FFprobe: ${filePath}`);
     const result = await this.getVideoInfo(filePath);
 
+    // Enforce max cache size with LRU eviction (remove oldest entry)
+    if (this.codecCache.size >= this.CODEC_CACHE_MAX_SIZE) {
+      const oldestKey = this.codecCache.keys().next().value;
+      this.codecCache.delete(oldestKey);
+      this.logger.debug(`Cache full - evicted oldest entry: ${oldestKey}`);
+    }
+
     // Store in cache
     this.codecCache.set(filePath, {
       codec: result.codec,
@@ -878,15 +887,19 @@ export class FfmpegService implements OnModuleDestroy {
       timestamp: new Date(),
     });
 
-    // Cleanup old cache entries (keep cache size reasonable)
-    this.cleanupCodecCache();
+    // Periodic cleanup (only every 15 minutes instead of per-write)
+    const now = Date.now();
+    if (now - this.lastCacheCleanup > this.CODEC_CACHE_CLEANUP_INTERVAL_MS) {
+      this.cleanupCodecCache();
+      this.lastCacheCleanup = now;
+    }
 
     return result;
   }
 
   /**
    * PERFORMANCE: Clean up expired codec cache entries
-   * Runs automatically after each cache write to prevent unbounded growth
+   * Runs periodically (every 15 min) to prevent unbounded growth
    * @private
    */
   private cleanupCodecCache(): void {
@@ -902,7 +915,7 @@ export class FfmpegService implements OnModuleDestroy {
     }
 
     if (cleaned > 0) {
-      this.logger.debug(`Cleaned up ${cleaned} expired codec cache entries`);
+      this.logger.debug(`Cleaned up ${cleaned} expired codec cache entries (${this.codecCache.size} remaining)`);
     }
   }
 
@@ -933,19 +946,49 @@ export class FfmpegService implements OnModuleDestroy {
    * @throws Error if path contains traversal attempts or is outside library
    */
   validateFilePath(filePath: string, libraryPath: string): void {
-    // Check for path traversal attempts
-    if (filePath.includes('..')) {
-      throw new Error('File path contains directory traversal attempt (..)');
+    const path = require('node:path');
+    const fs = require('node:fs');
+
+    // Check for obvious traversal patterns (including URL-encoded and Unicode)
+    if (
+      filePath.includes('..') ||
+      filePath.includes('%2e') ||
+      filePath.includes('%2E') ||
+      filePath.includes('\u2024')
+    ) {
+      throw new Error('File path contains directory traversal attempt');
     }
 
-    // Normalize paths for comparison (resolve symlinks, relative paths)
-    const path = require('node:path');
-    const normalizedFilePath = path.normalize(filePath);
-    const normalizedLibraryPath = path.normalize(libraryPath);
+    // Resolve to absolute paths
+    const resolvedFile = path.resolve(filePath);
+    const resolvedLibrary = path.resolve(libraryPath);
 
-    // Ensure file is within library path
-    if (!normalizedFilePath.startsWith(normalizedLibraryPath)) {
-      throw new Error(`File path '${filePath}' is outside library path '${libraryPath}'`);
+    // Follow symlinks and validate (prevents symlink attacks)
+    try {
+      const realFile = fs.realpathSync(resolvedFile);
+      const realLibrary = fs.realpathSync(resolvedLibrary);
+
+      // Must start with library path + separator (prevents /lib vs /library confusion)
+      if (!realFile.startsWith(realLibrary + path.sep)) {
+        throw new Error(`File path '${filePath}' is outside library boundary`);
+      }
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        // File doesn't exist yet - validate parent directory
+        const parent = path.dirname(resolvedFile);
+        try {
+          const realParent = fs.realpathSync(parent);
+          const realLibrary = fs.realpathSync(resolvedLibrary);
+
+          if (!realParent.startsWith(realLibrary + path.sep)) {
+            throw new Error(`File path '${filePath}' is outside library boundary`);
+          }
+        } catch (parentErr) {
+          throw new Error(`Invalid file path: ${parentErr.message}`);
+        }
+      } else {
+        throw err;
+      }
     }
   }
 

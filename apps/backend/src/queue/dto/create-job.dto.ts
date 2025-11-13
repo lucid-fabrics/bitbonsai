@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 /**
  * DTO for creating a new encoding job
@@ -112,13 +120,14 @@ export class CreateJobDto {
   type?: 'ENCODE' | 'REMUX';
 
   @ApiPropertyOptional({
-    description: 'Source container format (e.g., mkv, mp4, avi)',
+    description: 'Source container format - only tested formats allowed',
     example: 'mkv',
+    enum: ['mkv', 'mp4', 'matroska'],
   })
   @IsOptional()
   @IsString()
-  @Matches(/^(mkv|mp4|avi|mov|webm|matroska)$/, {
-    message: 'Source container must be one of: mkv, mp4, avi, mov, webm, matroska',
+  @Matches(/^(mkv|mp4|matroska)$/, {
+    message: 'Source container must be mkv, mp4, or matroska (tested formats only)',
   })
   sourceContainer?: string;
 

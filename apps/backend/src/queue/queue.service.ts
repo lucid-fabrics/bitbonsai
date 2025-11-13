@@ -46,21 +46,49 @@ export class QueueService {
    * @private
    */
   private validateFilePath(filePath: string, libraryPath: string): void {
-    // Check for path traversal attempts
-    if (filePath.includes('..')) {
-      throw new BadRequestException('File path contains directory traversal attempt (..)');
+    const path = require('node:path');
+    const fs = require('node:fs');
+
+    // Check for obvious traversal patterns (including URL-encoded and Unicode)
+    if (
+      filePath.includes('..') ||
+      filePath.includes('%2e') ||
+      filePath.includes('%2E') ||
+      filePath.includes('\u2024')
+    ) {
+      throw new BadRequestException('File path contains directory traversal attempt');
     }
 
-    // Normalize paths for comparison (resolve symlinks, relative paths)
-    const path = require('node:path');
-    const normalizedFilePath = path.normalize(filePath);
-    const normalizedLibraryPath = path.normalize(libraryPath);
+    // Resolve to absolute paths
+    const resolvedFile = path.resolve(filePath);
+    const resolvedLibrary = path.resolve(libraryPath);
 
-    // Ensure file is within library path
-    if (!normalizedFilePath.startsWith(normalizedLibraryPath)) {
-      throw new BadRequestException(
-        `File path '${filePath}' is outside library path '${libraryPath}'`
-      );
+    // Follow symlinks and validate (prevents symlink attacks)
+    try {
+      const realFile = fs.realpathSync(resolvedFile);
+      const realLibrary = fs.realpathSync(resolvedLibrary);
+
+      // Must start with library path + separator (prevents /lib vs /library confusion)
+      if (!realFile.startsWith(realLibrary + path.sep)) {
+        throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
+      }
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        // File doesn't exist yet - validate parent directory
+        const parent = path.dirname(resolvedFile);
+        try {
+          const realParent = fs.realpathSync(parent);
+          const realLibrary = fs.realpathSync(resolvedLibrary);
+
+          if (!realParent.startsWith(realLibrary + path.sep)) {
+            throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
+          }
+        } catch (parentErr) {
+          throw new BadRequestException(`Invalid file path: ${parentErr.message}`);
+        }
+      } else {
+        throw new BadRequestException(`Path validation error: ${err.message}`);
+      }
     }
   }
 
