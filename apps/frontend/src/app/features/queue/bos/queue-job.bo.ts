@@ -30,7 +30,7 @@ export class QueueJobBo {
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
-  type?: 'ENCODE' | 'REMUX';
+  type: 'ENCODE' | 'REMUX';
   retryCount?: number;
   nextRetryAt?: string;
   priority?: number;
@@ -44,6 +44,11 @@ export class QueueJobBo {
   replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
   // Encoding Preview
   previewImagePaths?: string | null;
+  // Health Check Feature
+  healthScore?: number;
+  healthMessage?: string;
+  healthStatus?: string;
+  healthCheckedAt?: string;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -86,6 +91,11 @@ export class QueueJobBo {
     this.replacementAction = model.replacementAction ?? null;
     // Encoding Preview
     this.previewImagePaths = model.previewImagePaths ?? null;
+    // Health Check Feature
+    this.healthScore = model.healthScore;
+    this.healthMessage = model.healthMessage;
+    this.healthStatus = model.healthStatus;
+    this.healthCheckedAt = model.healthCheckedAt;
   }
 
   private extractFileName(model: QueueJobApiModel): string {
