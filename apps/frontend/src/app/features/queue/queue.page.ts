@@ -28,10 +28,10 @@ import {
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
 import { JobHistoryModalComponent } from './components/job-history-modal/job-history-modal.component';
-import type { QueueJobBo } from './bos/queue-job.bo';
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
