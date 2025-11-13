@@ -26,7 +26,7 @@ import { FfmpegService } from '../../ffmpeg.service';
 describe('EncodingProcessorService - TRUE RESUME Integration', () => {
   let service: EncodingProcessorService;
   let prisma: PrismaService;
-  let ffmpegService: FfmpegService;
+  let _ffmpegService: FfmpegService;
   let moduleRef: TestingModule;
 
   // Test fixture paths
@@ -83,7 +83,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
 
     service = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
     prisma = moduleRef.get<PrismaService>(PrismaService);
-    ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
+    _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
   });
 
   afterAll(async () => {
@@ -96,7 +96,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
     // Clean up temp files
     try {
       await fs.rm(testTempFile, { force: true });
-    } catch (error) {
+    } catch (_error) {
       // Ignore if file doesn't exist
     }
 
@@ -145,10 +145,10 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
       });
 
       expect(healedJob).toBeTruthy();
-      expect(healedJob!.stage).toBe(JobStage.QUEUED);
-      expect(healedJob!.progress).toBe(50.0); // Progress preserved
-      expect(healedJob!.resumeTimestamp).toBe('00:30:00'); // 1800 seconds = 30 minutes
-      expect(healedJob!.tempFilePath).toBe(testTempFile); // Temp file path preserved
+      expect(healedJob?.stage).toBe(JobStage.QUEUED);
+      expect(healedJob?.progress).toBe(50.0); // Progress preserved
+      expect(healedJob?.resumeTimestamp).toBe('00:30:00'); // 1800 seconds = 30 minutes
+      expect(healedJob?.tempFilePath).toBe(testTempFile); // Temp file path preserved
 
       // Cleanup
       await prisma.job.delete({ where: { id: jobId } });
@@ -189,8 +189,8 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         where: { id: jobId },
       });
 
-      expect(healedJob!.resumeTimestamp).toBe('00:15:00'); // 900 seconds = 15 minutes
-      expect(healedJob!.progress).toBe(25.0);
+      expect(healedJob?.resumeTimestamp).toBe('00:15:00'); // 900 seconds = 15 minutes
+      expect(healedJob?.progress).toBe(25.0);
 
       await prisma.job.delete({ where: { id: jobId } });
     });
@@ -231,8 +231,8 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
       });
 
       // 75.5% of 3600s = 2718s = 00:45:18
-      expect(healedJob!.resumeTimestamp).toBe('00:45:18');
-      expect(healedJob!.progress).toBe(75.5);
+      expect(healedJob?.resumeTimestamp).toBe('00:45:18');
+      expect(healedJob?.progress).toBe(75.5);
 
       await prisma.job.delete({ where: { id: jobId } });
     });
@@ -275,9 +275,9 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         where: { id: jobId },
       });
 
-      expect(healedJob!.progress).toBe(45.0); // Progress PRESERVED
-      expect(healedJob!.tempFilePath).toBe(testTempFile); // Path PRESERVED
-      expect(healedJob!.resumeTimestamp).toBeTruthy(); // Timestamp SET
+      expect(healedJob?.progress).toBe(45.0); // Progress PRESERVED
+      expect(healedJob?.tempFilePath).toBe(testTempFile); // Path PRESERVED
+      expect(healedJob?.resumeTimestamp).toBeTruthy(); // Timestamp SET
 
       await prisma.job.delete({ where: { id: jobId } });
     });
@@ -317,9 +317,9 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         where: { id: jobId },
       });
 
-      expect(healedJob!.progress).toBe(0); // Progress RESET
-      expect(healedJob!.tempFilePath).toBeNull(); // Path CLEARED
-      expect(healedJob!.resumeTimestamp).toBeNull(); // Timestamp CLEARED
+      expect(healedJob?.progress).toBe(0); // Progress RESET
+      expect(healedJob?.tempFilePath).toBeNull(); // Path CLEARED
+      expect(healedJob?.resumeTimestamp).toBeNull(); // Timestamp CLEARED
 
       await prisma.job.delete({ where: { id: jobId } });
     });
@@ -362,7 +362,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
       });
 
       // 0% should NOT calculate resume position
-      expect(healedJob!.progress).toBe(0.0);
+      expect(healedJob?.progress).toBe(0.0);
       // Resume timestamp might not be set for 0% progress
 
       await prisma.job.delete({ where: { id: jobId } });
@@ -402,8 +402,8 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
       });
 
       // Should reset progress since no temp file
-      expect(healedJob!.progress).toBe(0);
-      expect(healedJob!.tempFilePath).toBeNull();
+      expect(healedJob?.progress).toBe(0);
+      expect(healedJob?.tempFilePath).toBeNull();
 
       await prisma.job.delete({ where: { id: jobId } });
     });
@@ -469,11 +469,11 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         });
 
         if (jobData.shouldPreserve) {
-          expect(healedJob!.progress).toBe(jobData.progress);
-          expect(healedJob!.tempFilePath).toBeTruthy();
+          expect(healedJob?.progress).toBe(jobData.progress);
+          expect(healedJob?.tempFilePath).toBeTruthy();
         } else {
-          expect(healedJob!.progress).toBe(0);
-          expect(healedJob!.tempFilePath).toBeNull();
+          expect(healedJob?.progress).toBe(0);
+          expect(healedJob?.tempFilePath).toBeNull();
         }
       }
 
@@ -527,8 +527,8 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
           where: { id: jobId },
         });
 
-        expect(healedJob!.resumeTimestamp).toMatch(/^\d{2}:\d{2}:\d{2}$/);
-        expect(healedJob!.resumeTimestamp).toBe(testCase.expected);
+        expect(healedJob?.resumeTimestamp).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+        expect(healedJob?.resumeTimestamp).toBe(testCase.expected);
 
         await prisma.job.delete({ where: { id: jobId } });
       }

@@ -10,7 +10,7 @@ export interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private configService: ConfigService) {
+  constructor(configService: ConfigService) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
       throw new Error('CRITICAL: JWT_SECRET environment variable is required and must be set');

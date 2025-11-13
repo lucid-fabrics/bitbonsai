@@ -1,4 +1,4 @@
-import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -40,7 +40,6 @@ export interface NodeConfigModalData {
 })
 export class NodeConfigModalComponent implements OnInit {
   private readonly dialogRef = inject(DialogRef<NodeConfigModalComponent>);
-  private readonly dialog = inject(Dialog);
   private readonly fb = inject(FormBuilder);
   private readonly nodesClient = inject(NodesClient);
   private readonly cdr = inject(ChangeDetectorRef);

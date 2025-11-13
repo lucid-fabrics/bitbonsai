@@ -408,7 +408,7 @@ export async function verifyVideoFile(
           resolution: `${stream.width}x${stream.height}`,
           duration: parseFloat(format.duration),
         });
-      } catch (err) {
+      } catch (_err) {
         resolve({ isValid: false });
       }
     });

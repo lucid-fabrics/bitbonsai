@@ -1,11 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import type {
-  AccelerationType,
-  LicenseStatus,
-  LicenseTier,
-  NodeRole,
-  NodeStatus,
-} from '@prisma/client';
+import type { LicenseStatus, LicenseTier } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -78,14 +72,5 @@ export class DatabaseInitService implements OnModuleInit {
   private generateLicenseKey(tier: string): string {
     const randomPart = Math.random().toString(36).substring(2, 15).toUpperCase();
     return `${tier}-${randomPart}`;
-  }
-
-  /**
-   * Generate a secure API key
-   */
-  private generateApiKey(): string {
-    const timestamp = Date.now().toString(36);
-    const randomPart = Math.random().toString(36).substring(2, 15);
-    return `bitbonsai_${timestamp}_${randomPart}`;
   }
 }

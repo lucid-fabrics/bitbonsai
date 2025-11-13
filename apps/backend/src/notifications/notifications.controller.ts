@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateNotificationDto, NotificationDto } from './dto/notification.dto';
@@ -13,8 +13,6 @@ import { NotificationsService } from './notifications.service';
 @ApiBearerAuth()
 @Controller('notifications')
 export class NotificationsController {
-  private readonly logger = new Logger(NotificationsController.name);
-
   constructor(
     private readonly notificationsService: NotificationsService,
     private readonly eventEmitter: EventEmitter2

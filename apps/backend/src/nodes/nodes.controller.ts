@@ -834,7 +834,7 @@ export class NodesController {
         try {
           const url = new URL(urlToUse);
           nodeIp = url.hostname;
-        } catch (error) {
+        } catch (_error) {
           // Silent fallback to localhost
         }
       }

@@ -106,7 +106,7 @@ async function bootstrap() {
       const isAllowed = allowedOrigins.some((allowedOrigin: string) => {
         // Support wildcard patterns (e.g., https://*.bitbonsai.com)
         if (allowedOrigin.includes('*')) {
-          const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
+          const regex = new RegExp(`^${allowedOrigin.replace(/\*/g, '.*')}$`);
           return regex.test(origin);
         }
         return origin === allowedOrigin;

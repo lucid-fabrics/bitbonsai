@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>BitBonsai</Name>
+  <Repository>lucidfabrics/bitbonsai:latest</Repository>
+  <Registry>https://hub.docker.com/r/lucidfabrics/bitbonsai</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/lucid-fabrics/bitbonsai/issues</Support>
+  <Project>https://github.com/lucid-fabrics/bitbonsai</Project>
+  <Overview>
+BitBonsai - Intelligent Video Encoding Platform
+
+Automatically optimize your media library with smart encoding policies:
+• Hardware acceleration (NVIDIA NVENC, Intel QSV, AMD AMF)
+• Distributed encoding across multiple nodes
+• Smart codec detection and conversion (H.264 → H.265/AV1)
+• Resume capability for interrupted jobs
+• Real-time progress tracking
+• Auto-healing for failed jobs
+• SSD cache pool support for faster encoding
+
+Perfect for Plex/Jellyfin libraries - reduce storage by 40-60% while maintaining quality!
+  </Overview>
+  <Category>MediaApp:Video MediaServer:Video</Category>
+  <WebUI>http://[IP]:[PORT:4210]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/unraid-release/bitbonsai.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/apps/frontend/src/assets/logo.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <!-- Network Ports -->
+  <Config Name="WebUI Port" Target="4200" Default="4210" Mode="tcp" Description="Web interface port (Frontend Angular app)" Type="Port" Display="always" Required="true" Mask="false">4210</Config>
+
+  <Config Name="API Port" Target="3100" Default="3100" Mode="tcp" Description="Backend API port (required for frontend communication)" Type="Port" Display="always" Required="true" Mask="false">3100</Config>
+
+  <!-- Storage Paths -->
+  <Config Name="Media Library" Target="/media" Default="/mnt/user/media" Mode="rw" Description="Your media library (movies, TV shows) - BitBonsai will scan and encode videos here" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media</Config>
+
+  <Config Name="Downloads Folder" Target="/downloads" Default="/mnt/user/Downloads" Mode="rw" Description="Downloads folder - BitBonsai can auto-process new downloads from Sonarr/Radarr" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Downloads</Config>
+
+  <Config Name="App Data" Target="/data" Default="/mnt/user/appdata/bitbonsai" Mode="rw" Description="Database and configuration storage" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/bitbonsai</Config>
+
+  <Config Name="Encoding Cache (SSD)" Target="/cache" Default="/mnt/cache/bitbonsai-temp" Mode="rw" Description="Temporary encoding workspace - STRONGLY RECOMMENDED to use cache drive (SSD) for 10-100x faster encoding performance" Type="Path" Display="always" Required="true" Mask="false">/mnt/cache/bitbonsai-temp</Config>
+
+  <!-- Environment Variables -->
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions (99 = nobody on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for file permissions (100 = users on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+
+  <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for logging and scheduling" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+
+  <Config Name="Log Level" Target="LOG_LEVEL" Default="info" Mode="" Description="Logging verbosity (debug, info, warn, error)" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
+
+  <Config Name="Max Concurrent Jobs" Target="MAX_CONCURRENT_JOBS" Default="2" Mode="" Description="Maximum number of encoding jobs to run simultaneously (adjust based on your CPU/GPU capacity)" Type="Variable" Display="advanced" Required="false" Mask="false">2</Config>
+
+  <!-- Hardware Acceleration - NVIDIA GPU -->
+  <Config Name="NVIDIA GPU (NVENC)" Target="NVIDIA_VISIBLE_DEVICES" Default="" Mode="" Description="Enable NVIDIA GPU passthrough for NVENC hardware encoding. Set to 'all' to use all GPUs, or specify GPU UUID. Requires '--runtime=nvidia' in Extra Parameters. Leave empty to disable." Type="Variable" Display="always" Required="false" Mask="false"/>
+
+  <!-- Hardware Acceleration - Intel QuickSync -->
+  <Config Name="Intel QuickSync (QSV)" Target="/dev/dri" Default="" Mode="rw" Description="Enable Intel QuickSync by passing /dev/dri device. Set to '/dev/dri' to enable. Leave empty to disable." Type="Device" Display="always" Required="false" Mask="false"/>
+
+  <!-- Hardware Acceleration - AMD GPU -->
+  <Config Name="AMD GPU (AMF)" Target="/dev/dri/renderD128" Default="" Mode="rw" Description="Enable AMD GPU by passing render device. Set to '/dev/dri/renderD128' to enable. Leave empty to disable." Type="Device" Display="always" Required="false" Mask="false"/>
+
+  <!-- Extra Parameters -->
+  <Config Name="Extra Parameters" Target="" Default="" Mode="" Description="Additional Docker parameters. For NVIDIA GPU add: --runtime=nvidia --gpus all" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

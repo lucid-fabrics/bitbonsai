@@ -254,7 +254,7 @@ export class SystemInfoService {
     try {
       const { stdout } = await execAsync("df -BG / | tail -1 | awk '{print $2}'");
       const diskGb = parseInt(stdout.replace('G', ''), 10);
-      return isNaN(diskGb) ? 0 : diskGb;
+      return Number.isNaN(diskGb) ? 0 : diskGb;
     } catch (error) {
       this.logger.warn('Failed to get disk space', error);
       return 0;
@@ -291,7 +291,7 @@ export class SystemInfoService {
       }
 
       return null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.debug('No GPU detected');
       return null;
     }

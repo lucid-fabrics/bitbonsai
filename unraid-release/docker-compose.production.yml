@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  bitbonsai:
+    image: lucidfabrics/bitbonsai:latest
+    container_name: bitbonsai
+    restart: unless-stopped
+    network_mode: host  # Required for mDNS node discovery
+    environment:
+      # Core Configuration
+      - NODE_ENV=production
+      - DATABASE_URL=file:/data/bitbonsai.db
+      - PORT=3100
+
+      # Media Paths (adjust to your setup)
+      - MEDIA_PATHS=/media,/downloads
+
+      # Performance
+      - LOG_LEVEL=info
+      - MAX_CONCURRENT_JOBS=2
+
+      # Cache Pool (SSD for faster encoding)
+      - ENCODING_TEMP_PATH=/cache
+
+      # Security
+      - ALLOWED_ORIGINS=http://localhost:4210,http://192.168.1.100:4210
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-in-production}
+
+      # Permissions (Unraid defaults)
+      - PUID=99
+      - PGID=100
+      - TZ=America/New_York
+    volumes:
+      # Media Library
+      - /mnt/user/media:/media:rw
+      - /mnt/user/Downloads:/downloads:rw
+
+      # App Data
+      - /mnt/user/appdata/bitbonsai:/data:rw
+
+      # CRITICAL: Cache pool for temp files (SSD = 10-100x faster!)
+      - /mnt/cache/bitbonsai-temp:/cache:rw
+    # Uncomment for NVIDIA GPU support:
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+
+    # Uncomment for Intel QuickSync support:
+    # devices:
+    #   - /dev/dri:/dev/dri
+
+    # Uncomment for AMD GPU support:
+    # devices:
+    #   - /dev/dri/renderD128:/dev/dri/renderD128
+    #   - /dev/dri/card0:/dev/dri/card0

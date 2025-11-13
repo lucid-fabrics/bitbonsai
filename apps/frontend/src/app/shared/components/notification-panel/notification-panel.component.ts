@@ -162,7 +162,7 @@ export class NotificationPanelComponent implements OnInit {
       case NotificationType.NODE_REGISTRATION_REQUEST:
         // Navigate to nodes page with the request ID to highlight
         this.router.navigate(['/nodes'], {
-          queryParams: { highlightRequest: notification.data?.['requestId'] },
+          queryParams: { highlightRequest: notification.data?.requestId },
         });
         break;
 
@@ -261,7 +261,7 @@ export class NotificationPanelComponent implements OnInit {
     if (notification.message.length <= maxLength) {
       return notification.message;
     }
-    return notification.message.substring(0, maxLength) + '...';
+    return `${notification.message.substring(0, maxLength)}...`;
   }
 
   /**
@@ -272,7 +272,7 @@ export class NotificationPanelComponent implements OnInit {
     if (notification.message.length <= maxLength) {
       return notification.message;
     }
-    return notification.message.substring(0, maxLength) + '...';
+    return `${notification.message.substring(0, maxLength)}...`;
   }
 
   /**

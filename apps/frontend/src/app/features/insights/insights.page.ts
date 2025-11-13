@@ -356,7 +356,7 @@ export class InsightsComponent implements OnInit {
 
   formatStorageSize(gb: number): string {
     // Handle undefined, null, or NaN values
-    if (gb === null || gb === undefined || isNaN(gb)) {
+    if (gb === null || gb === undefined || Number.isNaN(gb)) {
       return '0.00 GB';
     }
 

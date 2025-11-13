@@ -70,10 +70,10 @@ describe('JobCleanupService', () => {
 
     // Suppress logger output during tests
     // Access private logger via bracket notation
-    jest.spyOn(service['logger'], 'log').mockImplementation();
-    jest.spyOn(service['logger'], 'warn').mockImplementation();
-    jest.spyOn(service['logger'], 'debug').mockImplementation();
-    jest.spyOn(service['logger'], 'error').mockImplementation();
+    jest.spyOn(service.logger, 'log').mockImplementation();
+    jest.spyOn(service.logger, 'warn').mockImplementation();
+    jest.spyOn(service.logger, 'debug').mockImplementation();
+    jest.spyOn(service.logger, 'error').mockImplementation();
   });
 
   afterEach(() => {

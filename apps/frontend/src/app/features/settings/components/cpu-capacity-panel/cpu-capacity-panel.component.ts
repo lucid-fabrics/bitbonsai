@@ -68,7 +68,7 @@ export class CpuCapacityPanelComponent implements OnInit {
   }
 
   formatBytes(bytes: number): string {
-    return (bytes / 1024 ** 3).toFixed(1) + ' GB';
+    return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
   }
 
   getWorkerPercentage(): number {

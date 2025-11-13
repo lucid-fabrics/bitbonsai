@@ -21,7 +21,7 @@ import {
   faXmark,
 } from '@fortawesome/pro-solid-svg-icons';
 import { timer } from 'rxjs';
-import type { Notification, NotificationType } from '../../../core/models/notification.model';
+import type { Notification } from '../../../core/models/notification.model';
 
 @Component({
   selector: 'app-notification-toast',

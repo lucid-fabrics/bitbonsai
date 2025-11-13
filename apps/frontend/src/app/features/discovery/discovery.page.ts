@@ -1,4 +1,3 @@
-import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -32,7 +31,6 @@ import {
 })
 export class DiscoveryComponent implements OnInit {
   private readonly nodesClient = inject(NodesClient);
-  private readonly dialog = inject(Dialog);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);

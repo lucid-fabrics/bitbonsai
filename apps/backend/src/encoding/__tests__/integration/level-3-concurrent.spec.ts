@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -31,9 +31,9 @@ import { cleanupFixtures, generateVideo } from '../fixtures/video-generator';
 describe('Level 3: Concurrent Encoding', () => {
   let moduleRef: TestingModule;
   let prisma: PrismaService;
-  let queueService: QueueService;
+  let _queueService: QueueService;
   let encodingProcessor: EncodingProcessorService;
-  let ffmpegService: FfmpegService;
+  let _ffmpegService: FfmpegService;
 
   let testNodeId: string;
   let testLibraryId: string;
@@ -43,9 +43,9 @@ describe('Level 3: Concurrent Encoding', () => {
     moduleRef = await createTestModule();
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
-    queueService = moduleRef.get<QueueService>(QueueService);
+    _queueService = moduleRef.get<QueueService>(QueueService);
     encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
-    ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
+    _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();
 
@@ -159,11 +159,11 @@ describe('Level 3: Concurrent Encoding', () => {
 
       // ASSERT: All jobs completed
       expect(completed1).toBeTruthy();
-      expect(completed1!.stage).toBe(JobStage.COMPLETED);
+      expect(completed1?.stage).toBe(JobStage.COMPLETED);
       expect(completed2).toBeTruthy();
-      expect(completed2!.stage).toBe(JobStage.COMPLETED);
+      expect(completed2?.stage).toBe(JobStage.COMPLETED);
       expect(completed3).toBeTruthy();
-      expect(completed3!.stage).toBe(JobStage.COMPLETED);
+      expect(completed3?.stage).toBe(JobStage.COMPLETED);
 
       // Concurrent processing should be faster than sequential
       // (Total time should be less than 3x single job time)
@@ -227,8 +227,8 @@ describe('Level 3: Concurrent Encoding', () => {
       // ASSERT: All 5 jobs completed successfully
       completedJobs.forEach((completedJob, index) => {
         expect(completedJob).toBeTruthy();
-        expect(completedJob!.stage).toBe(JobStage.COMPLETED);
-        expect(completedJob!.savedBytes).toBeTruthy();
+        expect(completedJob?.stage).toBe(JobStage.COMPLETED);
+        expect(completedJob?.savedBytes).toBeTruthy();
       });
 
       // Cleanup

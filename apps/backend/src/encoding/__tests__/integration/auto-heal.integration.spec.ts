@@ -139,10 +139,10 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       });
 
       expect(healedJob).toBeTruthy();
-      expect(healedJob!.stage).toBe(JobStage.QUEUED);
-      expect(healedJob!.progress).toBe(0); // Progress reset
-      expect(healedJob!.startedAt).toBeNull(); // startedAt cleared
-      expect(healedJob!.error).toContain('Auto-recovered from backend restart');
+      expect(healedJob?.stage).toBe(JobStage.QUEUED);
+      expect(healedJob?.progress).toBe(0); // Progress reset
+      expect(healedJob?.startedAt).toBeNull(); // startedAt cleared
+      expect(healedJob?.error).toContain('Auto-recovered from backend restart');
     });
 
     it('should reset orphaned HEALTH_CHECK jobs to QUEUED (CRITICAL FIX)', async () => {
@@ -181,10 +181,10 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       });
 
       expect(healedJob).toBeTruthy();
-      expect(healedJob!.stage).toBe(JobStage.QUEUED); // CRITICAL: Must be QUEUED
-      expect(healedJob!.stage).not.toBe(JobStage.DETECTED); // CRITICAL: Must NOT be DETECTED
-      expect(healedJob!.progress).toBe(0);
-      expect(healedJob!.error).toContain('Auto-recovered from backend restart');
+      expect(healedJob?.stage).toBe(JobStage.QUEUED); // CRITICAL: Must be QUEUED
+      expect(healedJob?.stage).not.toBe(JobStage.DETECTED); // CRITICAL: Must NOT be DETECTED
+      expect(healedJob?.progress).toBe(0);
+      expect(healedJob?.error).toContain('Auto-recovered from backend restart');
     });
 
     it('should reset orphaned VERIFYING jobs to QUEUED', async () => {
@@ -221,8 +221,8 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       });
 
       expect(healedJob).toBeTruthy();
-      expect(healedJob!.stage).toBe(JobStage.QUEUED);
-      expect(healedJob!.progress).toBe(0);
+      expect(healedJob?.stage).toBe(JobStage.QUEUED);
+      expect(healedJob?.progress).toBe(0);
     });
 
     it('should reset orphaned PAUSED jobs to QUEUED', async () => {
@@ -259,9 +259,9 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       });
 
       expect(healedJob).toBeTruthy();
-      expect(healedJob!.stage).toBe(JobStage.QUEUED);
-      expect(healedJob!.progress).toBe(0);
-      expect(healedJob!.error).toContain('Paused job reset after backend restart');
+      expect(healedJob?.stage).toBe(JobStage.QUEUED);
+      expect(healedJob?.progress).toBe(0);
+      expect(healedJob?.error).toContain('Paused job reset after backend restart');
     });
 
     it('should NOT touch QUEUED jobs (already healthy)', async () => {
@@ -298,8 +298,8 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       });
 
       expect(job).toBeTruthy();
-      expect(job!.stage).toBe(JobStage.QUEUED); // Unchanged
-      expect(job!.error).toBeNull(); // No error message added
+      expect(job?.stage).toBe(JobStage.QUEUED); // Unchanged
+      expect(job?.error).toBeNull(); // No error message added
     });
 
     it('should NOT touch COMPLETED jobs', async () => {
@@ -340,7 +340,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       });
 
       expect(job).toBeTruthy();
-      expect(job!.stage).toBe(JobStage.COMPLETED); // Unchanged
+      expect(job?.stage).toBe(JobStage.COMPLETED); // Unchanged
     });
 
     it('should heal multiple orphaned jobs in one restart', async () => {
@@ -399,8 +399,8 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         });
 
         expect(healedJob).toBeTruthy();
-        expect(healedJob!.stage).toBe(JobStage.QUEUED);
-        expect(healedJob!.progress).toBe(0);
+        expect(healedJob?.stage).toBe(JobStage.QUEUED);
+        expect(healedJob?.progress).toBe(0);
       }
 
       // Clean up
@@ -449,16 +449,16 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const healedJob = await prisma.job.findUnique({
         where: { id: testJobIds.encoding },
       });
-      expect(healedJob!.stage).toBe(JobStage.QUEUED);
+      expect(healedJob?.stage).toBe(JobStage.QUEUED);
 
       // ACT 2: Worker tries to pick up job via QueueService.getNextJob
-      const pickedUpJob = await queueService.getNextJob(testNode.id);
+      const _pickedUpJob = await queueService.getNextJob(testNode.id);
 
       // ASSERT 2: Worker should be able to pick up the healed job
       // Note: In real scenario, getNextJob would return the job
       // In this test, we verify the job is in QUEUED state and can be picked up
-      expect(healedJob!.stage).toBe(JobStage.QUEUED);
-      expect(healedJob!.startedAt).toBeNull(); // Ready for fresh start
+      expect(healedJob?.stage).toBe(JobStage.QUEUED);
+      expect(healedJob?.startedAt).toBeNull(); // Ready for fresh start
     });
   });
 });

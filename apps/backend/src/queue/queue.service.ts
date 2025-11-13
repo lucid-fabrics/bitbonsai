@@ -1087,7 +1087,7 @@ export class QueueService {
       progress: existingJob.progress || 0,
       triggeredBy: 'USER',
       systemMessage: historyMessage,
-      tempFileExists: hasTempFile ? true : false,
+      tempFileExists: !!hasTempFile,
       retryNumber: existingJob.retryCount + 1,
     });
 

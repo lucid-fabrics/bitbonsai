@@ -176,7 +176,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     const os = require('os');
     const interfaces = os.networkInterfaces();
 
-    for (const [name, addrs] of Object.entries(interfaces)) {
+    for (const [_name, addrs] of Object.entries(interfaces)) {
       if (!addrs) continue;
 
       for (const addr of addrs as any[]) {

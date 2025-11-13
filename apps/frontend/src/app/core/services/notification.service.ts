@@ -1,16 +1,8 @@
 import { Injectable, inject, OnDestroy } from '@angular/core';
-import { BehaviorSubject, interval, Observable, Subject } from 'rxjs';
-import { switchMap, takeUntil, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
-import type { RegistrationRequest } from '../../features/nodes/models/registration-request.model';
-import { NodesClient } from '../clients/nodes.client';
 import { NotificationsClient } from '../clients/notifications.client';
-import type {
-  NodeDiscoveredData,
-  Notification,
-  NotificationPriority,
-  NotificationType,
-} from '../models/notification.model';
+import type { Notification } from '../models/notification.model';
 
 /**
  * NotificationService

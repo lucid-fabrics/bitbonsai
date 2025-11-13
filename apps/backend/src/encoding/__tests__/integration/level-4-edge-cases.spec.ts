@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -39,9 +39,9 @@ import {
 describe('Level 4: Edge Cases', () => {
   let moduleRef: TestingModule;
   let prisma: PrismaService;
-  let queueService: QueueService;
+  let _queueService: QueueService;
   let encodingProcessor: EncodingProcessorService;
-  let ffmpegService: FfmpegService;
+  let _ffmpegService: FfmpegService;
 
   let testNodeId: string;
   let testLibraryId: string;
@@ -51,9 +51,9 @@ describe('Level 4: Edge Cases', () => {
     moduleRef = await createTestModule();
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
-    queueService = moduleRef.get<QueueService>(QueueService);
+    _queueService = moduleRef.get<QueueService>(QueueService);
     encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
-    ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
+    _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();
 
@@ -103,9 +103,9 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT: Job failed with appropriate error
       expect(failedJob).toBeTruthy();
-      expect(failedJob!.stage).toBe(JobStage.FAILED);
-      expect(failedJob!.error).toBeTruthy();
-      expect(failedJob!.error).toContain('error'); // Should contain error details
+      expect(failedJob?.stage).toBe(JobStage.FAILED);
+      expect(failedJob?.error).toBeTruthy();
+      expect(failedJob?.error).toContain('error'); // Should contain error details
 
       // Original corrupted file should still exist (no replacement)
       expect(fs.existsSync(videoPath)).toBe(true);
@@ -135,8 +135,8 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT
       expect(failedJob).toBeTruthy();
-      expect(failedJob!.stage).toBe(JobStage.FAILED);
-      expect(failedJob!.error).toBeTruthy();
+      expect(failedJob?.stage).toBe(JobStage.FAILED);
+      expect(failedJob?.error).toBeTruthy();
 
       // Original file unchanged
       expect(fs.existsSync(videoPath)).toBe(true);
@@ -166,7 +166,7 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT
       expect(failedJob).toBeTruthy();
-      expect(failedJob!.stage).toBe(JobStage.FAILED);
+      expect(failedJob?.stage).toBe(JobStage.FAILED);
 
       // Original file unchanged
       expect(fs.existsSync(videoPath)).toBe(true);
@@ -196,8 +196,8 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT
       expect(failedJob).toBeTruthy();
-      expect(failedJob!.stage).toBe(JobStage.FAILED);
-      expect(failedJob!.error).toContain('not found');
+      expect(failedJob?.stage).toBe(JobStage.FAILED);
+      expect(failedJob?.error).toContain('not found');
     }, 60000);
 
     it('should fail when file is deleted during encoding', async () => {
@@ -289,8 +289,8 @@ describe('Level 4: Edge Cases', () => {
       // ASSERT
       if (process.platform !== 'win32') {
         expect(failedJob).toBeTruthy();
-        expect(failedJob!.stage).toBe(JobStage.FAILED);
-        expect(failedJob!.error).toBeTruthy();
+        expect(failedJob?.stage).toBe(JobStage.FAILED);
+        expect(failedJob?.error).toBeTruthy();
       }
     }, 60000);
   });
@@ -320,9 +320,9 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT: Job should be queued for retry
       expect(retriedJob).toBeTruthy();
-      expect(retriedJob!.retryCount).toBe(1);
-      expect(retriedJob!.nextRetryAt).toBeTruthy();
-      expect(retriedJob!.error).toContain('Attempt 1/3 failed');
+      expect(retriedJob?.retryCount).toBe(1);
+      expect(retriedJob?.nextRetryAt).toBeTruthy();
+      expect(retriedJob?.error).toContain('Attempt 1/3 failed');
     }, 60000);
 
     it('should permanently fail after max retries', async () => {
@@ -355,8 +355,8 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT: Job permanently failed after 3 retries
       expect(finalJob).toBeTruthy();
-      expect(finalJob!.stage).toBe(JobStage.FAILED);
-      expect(finalJob!.error).toContain('All 3 retry attempts exhausted');
+      expect(finalJob?.stage).toBe(JobStage.FAILED);
+      expect(finalJob?.error).toContain('All 3 retry attempts exhausted');
     }, 90000);
   });
 
@@ -388,7 +388,7 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT: Should complete successfully
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 90000);
 
     it('should handle video with unusual filename characters', async () => {
@@ -418,7 +418,7 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
   });
 });

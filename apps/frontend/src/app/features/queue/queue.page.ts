@@ -10,11 +10,9 @@ import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import {
   BehaviorSubject,
   catchError,
-  filter,
   fromEvent,
   interval,
   map,
-  merge,
   type Observable,
   of,
   shareReplay,
@@ -243,21 +241,21 @@ export class QueueComponent implements OnInit {
 
     // Restore filter state from query params (takes precedence over default setting)
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      if (params['status']) {
-        const status = params['status'];
+      if (params.status) {
+        const status = params.status;
         // Validate the status is a valid filter option
         if (this.statuses.includes(status as any)) {
           this.selectedStatus = status as JobStatus | 'ALL';
         }
       }
-      if (params['nodeId']) {
-        this.selectedNodeId = params['nodeId'];
+      if (params.nodeId) {
+        this.selectedNodeId = params.nodeId;
       }
-      if (params['libraryId']) {
-        this.selectedLibraryId = params['libraryId'];
+      if (params.libraryId) {
+        this.selectedLibraryId = params.libraryId;
       }
-      if (params['search']) {
-        this.searchQuery = params['search'];
+      if (params.search) {
+        this.searchQuery = params.search;
       }
     });
 
@@ -1008,7 +1006,6 @@ export class QueueComponent implements OnInit {
         return 'fas fa-exclamation-triangle';
       case FileHealthStatus.CORRUPTED:
         return 'fas fa-times-circle';
-      case FileHealthStatus.UNKNOWN:
       default:
         return 'fas fa-question-circle';
     }
@@ -1022,7 +1019,6 @@ export class QueueComponent implements OnInit {
         return 'File has Warnings';
       case FileHealthStatus.CORRUPTED:
         return 'File is Corrupted';
-      case FileHealthStatus.UNKNOWN:
       default:
         return 'Health Status Unknown';
     }
@@ -1030,7 +1026,7 @@ export class QueueComponent implements OnInit {
 
   protected formatBytes(bytes: number): string {
     // Handle invalid inputs (NaN, null, undefined)
-    if (!bytes || isNaN(bytes) || bytes < 0) return '0 B';
+    if (!bytes || Number.isNaN(bytes) || bytes < 0) return '0 B';
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -1543,7 +1539,7 @@ export class QueueComponent implements OnInit {
       // Try to extract meaningful part before common delimiters
       const meaningfulPart =
         firstLine.split(':')[0] || firstLine.split('-')[0] || firstLine.substring(0, 50);
-      return meaningfulPart.trim() + '...';
+      return `${meaningfulPart.trim()}...`;
     }
 
     return firstLine || 'Unknown error';

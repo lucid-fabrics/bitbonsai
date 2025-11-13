@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   DestroyRef,
   EventEmitter,
   Input,
@@ -16,7 +15,6 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type {
   CapabilityTestProgress,
   CapabilityTestResult,
-  TestStatus,
 } from '../../../../core/models/capability-test.model';
 import { CapabilityTestService } from '../../../../core/services/capability-test.service';
 

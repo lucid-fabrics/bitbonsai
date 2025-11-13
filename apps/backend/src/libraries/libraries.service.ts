@@ -1,5 +1,5 @@
 import { opendir } from 'node:fs/promises';
-import { normalize, resolve } from 'node:path';
+import { normalize } from 'node:path';
 import {
   BadRequestException,
   ConflictException,
@@ -530,39 +530,6 @@ export class LibrariesService {
     } catch (error) {
       this.logger.error(`Failed to scan library: ${id}`, error);
       throw error;
-    }
-  }
-
-  /**
-   * Process a video file and update stats
-   * @private
-   */
-  private async processVideoFile(
-    fileName: string,
-    fullPath: string,
-    videoExtensions: string[],
-    stats: { totalFiles: number; totalSizeBytes: bigint },
-    fs: typeof import('node:fs').promises
-  ): Promise<void> {
-    const lowerFileName = fileName.toLowerCase();
-
-    // Skip temporary files (common patterns)
-    const tempPatterns = ['.tmp', '.temp', '.part', '.download', '.crdownload', '.!ut'];
-    if (tempPatterns.some((pattern) => lowerFileName.includes(pattern))) {
-      return;
-    }
-
-    const ext = lowerFileName.slice(lowerFileName.lastIndexOf('.'));
-    if (!videoExtensions.includes(ext)) {
-      return;
-    }
-
-    try {
-      const fileStats = await fs.stat(fullPath);
-      stats.totalFiles++;
-      stats.totalSizeBytes += BigInt(fileStats.size);
-    } catch (statError) {
-      this.logger.warn(`Failed to stat file: ${fullPath}`, statError);
     }
   }
 
