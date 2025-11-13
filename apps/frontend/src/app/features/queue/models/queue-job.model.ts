@@ -1,6 +1,8 @@
 import { FileHealthStatus } from '../../libraries/models/library.model';
 import { JobStatus } from './job-status.enum';
 
+export type JobType = 'ENCODE' | 'REMUX';
+
 export interface QueueJob {
   id: string;
   fileName: string;
@@ -9,6 +11,7 @@ export interface QueueJob {
   libraryName: string;
   policyName: string;
   status: JobStatus;
+  type: JobType; // ENCODE = full transcode, REMUX = container change only
   progress: number; // 0-100
   etaSeconds?: number | null; // Estimated time remaining in seconds
   fps?: number | null; // Current encoding speed in frames per second

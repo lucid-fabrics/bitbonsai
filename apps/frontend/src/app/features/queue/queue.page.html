@@ -308,6 +308,23 @@
                 </td>
                 <td class="col-filename" [title]="job.fileName">
                   {{ job.fileName }}
+                  @if (job.type === 'REMUX') {
+                    <span class="job-type-badge remux"
+                          bbTooltip
+                          tooltipTitle="Fast Remuxing"
+                          tooltipContent="This job is using stream copy (remux) to quickly change the container format without re-encoding. Much faster than encoding!"
+                          tooltipPlacement="top">
+                      <i class="fas fa-bolt"></i> REMUXING
+                    </span>
+                  } @else if (job.type === 'ENCODE') {
+                    <span class="job-type-badge encode"
+                          bbTooltip
+                          tooltipTitle="Full Encoding"
+                          tooltipContent="This job is performing full video/audio transcoding to optimize quality and compression."
+                          tooltipPlacement="top">
+                      <i class="fas fa-cog"></i> ENCODING
+                    </span>
+                  }
                   @if (wasHealedFreshStart(job)) {
                     <span class="auto-heal-badge warning"
                           bbTooltip
@@ -1046,6 +1063,15 @@
               <h4 class="filename-mobile" [title]="job.fileName">
                 {{ job.fileName }}
               </h4>
+              @if (job.type === 'REMUX') {
+                <span class="job-type-badge-mobile remux">
+                  <i class="fas fa-bolt"></i> REMUXING
+                </span>
+              } @else if (job.type === 'ENCODE') {
+                <span class="job-type-badge-mobile encode">
+                  <i class="fas fa-cog"></i> ENCODING
+                </span>
+              }
               @if (wasHealedFreshStart(job)) {
                 <span class="auto-heal-badge-mobile warning">
                   <i class="fas fa-exclamation-triangle"></i> Restarted

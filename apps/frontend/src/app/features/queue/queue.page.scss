@@ -2856,6 +2856,59 @@
   }
 }
 
+// Job Type Badges (ENCODE vs REMUX)
+.job-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  margin-left: 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: help;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  i {
+    font-size: 9px;
+  }
+
+  &.remux {
+    background: rgba(139, 92, 246, 0.15); // Purple/blue for fast remuxing
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+
+    i {
+      color: #a78bfa;
+    }
+
+    &:hover {
+      background: rgba(139, 92, 246, 0.25);
+      border-color: rgba(139, 92, 246, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+    }
+  }
+
+  &.encode {
+    background: rgba(251, 146, 60, 0.15); // Orange for encoding
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.3);
+
+    i {
+      color: #fb923c;
+    }
+
+    &:hover {
+      background: rgba(251, 146, 60, 0.25);
+      border-color: rgba(251, 146, 60, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(251, 146, 60, 0.2);
+    }
+  }
+}
+
 // Size & Compression Display
 .size-info {
   display: flex;
@@ -3242,6 +3295,34 @@
 
     fa-icon {
       font-size: 9px;
+    }
+  }
+
+  // Job Type Badges (Mobile)
+  .job-type-badge-mobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    align-self: flex-start;
+
+    i {
+      font-size: 9px;
+    }
+
+    &.remux {
+      background: rgba(139, 92, 246, 0.15); // Purple/blue for fast remuxing
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    &.encode {
+      background: rgba(251, 146, 60, 0.15); // Orange for encoding
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.3);
     }
   }
 
