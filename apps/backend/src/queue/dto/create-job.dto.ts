@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 
 /**
  * DTO for creating a new encoding job
@@ -108,7 +108,7 @@ export class CreateJobDto {
     enum: ['ENCODE', 'REMUX'],
   })
   @IsOptional()
-  @IsString()
+  @IsEnum(['ENCODE', 'REMUX'], { message: 'Job type must be either ENCODE or REMUX' })
   type?: 'ENCODE' | 'REMUX';
 
   @ApiPropertyOptional({
@@ -117,6 +117,9 @@ export class CreateJobDto {
   })
   @IsOptional()
   @IsString()
+  @Matches(/^(mkv|mp4|avi|mov|webm|matroska)$/, {
+    message: 'Source container must be one of: mkv, mp4, avi, mov, webm, matroska',
+  })
   sourceContainer?: string;
 
   @ApiPropertyOptional({
@@ -125,5 +128,8 @@ export class CreateJobDto {
   })
   @IsOptional()
   @IsString()
+  @Matches(/^(mkv|mp4)$/, {
+    message: 'Target container must be either mkv or mp4',
+  })
   targetContainer?: string;
 }

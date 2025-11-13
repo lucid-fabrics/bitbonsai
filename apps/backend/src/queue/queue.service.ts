@@ -37,6 +37,34 @@ export class QueueService {
   ) {}
 
   /**
+   * SECURITY: Validate file path to prevent directory traversal attacks
+   * Ensures file path is within allowed library path
+   *
+   * @param filePath - File path to validate
+   * @param libraryPath - Expected library base path
+   * @throws BadRequestException if path contains traversal attempts or is outside library
+   * @private
+   */
+  private validateFilePath(filePath: string, libraryPath: string): void {
+    // Check for path traversal attempts
+    if (filePath.includes('..')) {
+      throw new BadRequestException('File path contains directory traversal attempt (..)');
+    }
+
+    // Normalize paths for comparison (resolve symlinks, relative paths)
+    const path = require('node:path');
+    const normalizedFilePath = path.normalize(filePath);
+    const normalizedLibraryPath = path.normalize(libraryPath);
+
+    // Ensure file is within library path
+    if (!normalizedFilePath.startsWith(normalizedLibraryPath)) {
+      throw new BadRequestException(
+        `File path '${filePath}' is outside library path '${libraryPath}'`
+      );
+    }
+  }
+
+  /**
    * Create a new encoding job
    *
    * @param createJobDto - Job creation data
@@ -61,6 +89,9 @@ export class QueueService {
     if (!library) {
       throw new NotFoundException(`Library with ID "${createJobDto.libraryId}" not found`);
     }
+
+    // SECURITY: Validate file path is within library path
+    this.validateFilePath(createJobDto.filePath, library.path);
 
     // Validate that policy exists
     const policy = await this.prisma.policy.findUnique({
@@ -223,8 +254,8 @@ export class QueueService {
         return;
       }
 
-      // Get detailed video info (codec + container)
-      const detailedInfo = await this.ffmpegService.getVideoInfo(payload.filePath);
+      // Get detailed video info (codec + container) - PERFORMANCE: Use cached version
+      const detailedInfo = await this.ffmpegService.getVideoInfoCached(payload.filePath);
       const sourceCodec = this.ffmpegService.normalizeCodec(detailedInfo.codec);
       const targetCodec = this.ffmpegService.normalizeCodec(library.defaultPolicy.targetCodec);
       const sourceContainer = detailedInfo.container;
