@@ -1648,8 +1648,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const originalBackupPath = `${originalPath}.original`;
 
       this.logger.log(`KEEP ORIGINAL: Renaming original to ${originalBackupPath}`);
-      fs.renameSync(originalPath, originalBackupPath);
-      fs.renameSync(tmpPath, originalPath);
+      this.crossFsSafeRenameSync(originalPath, originalBackupPath);
+      this.crossFsSafeRenameSync(tmpPath, originalPath);
 
       // Update job with backup info
       await this.queueService.update(job.id, {
@@ -1664,7 +1664,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       if (atomicReplace) {
         this.atomicReplaceFile(originalPath, tmpPath);
       } else {
-        fs.renameSync(tmpPath, originalPath);
+        this.crossFsSafeRenameSync(tmpPath, originalPath);
       }
 
       // Mark as replaced
@@ -1673,6 +1673,69 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       });
 
       this.logger.log('Original file replaced with encoded version');
+    }
+  }
+
+  /**
+   * Cross-filesystem-safe rename operation
+   *
+   * CRITICAL FIX: Handle EXDEV error when renaming across different filesystems
+   *
+   * Node.js fs.rename() uses the POSIX rename() system call which only works
+   * within the same filesystem. When source and dest are on different filesystems
+   * (e.g., /cache SSD and /unraid-media array), rename() fails with EXDEV error.
+   *
+   * This helper automatically falls back to copy+delete when rename fails with EXDEV.
+   *
+   * @param sourcePath - Source file path
+   * @param destPath - Destination file path
+   * @private
+   */
+  private crossFsSafeRenameSync(sourcePath: string, destPath: string): void {
+    try {
+      // Attempt fast rename (works if same filesystem)
+      fs.renameSync(sourcePath, destPath);
+    } catch (error) {
+      // Check if error is EXDEV (cross-device link not permitted)
+      if ((error as NodeJS.ErrnoException).code === 'EXDEV') {
+        this.logger.warn(
+          `Cross-filesystem rename detected (${sourcePath} -> ${destPath}), ` +
+            `falling back to copy+delete`
+        );
+
+        try {
+          // Fallback: Copy file to destination
+          fs.copyFileSync(sourcePath, destPath);
+
+          // Verify copy succeeded by checking file exists
+          if (!fs.existsSync(destPath)) {
+            throw new Error('Copy verification failed - destination file does not exist');
+          }
+
+          // Delete source file only after successful copy
+          fs.unlinkSync(sourcePath);
+
+          this.logger.log(
+            `Successfully moved file across filesystems: ${sourcePath} -> ${destPath}`
+          );
+        } catch (fallbackError) {
+          // Clean up partial copy if it exists
+          if (fs.existsSync(destPath)) {
+            try {
+              fs.unlinkSync(destPath);
+            } catch (cleanupError) {
+              this.logger.error(`Failed to cleanup partial copy: ${cleanupError}`);
+            }
+          }
+
+          throw new Error(
+            `Cross-filesystem move failed: ${fallbackError}. Source: ${sourcePath}, Dest: ${destPath}`
+          );
+        }
+      } else {
+        // Re-throw non-EXDEV errors
+        throw error;
+      }
     }
   }
 
@@ -1688,11 +1751,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // Step 1: Create backup of original file
-      fs.renameSync(originalPath, backupPath);
+      this.crossFsSafeRenameSync(originalPath, backupPath);
 
       // Step 2: Move temp file to original location
       try {
-        fs.renameSync(tmpPath, originalPath);
+        this.crossFsSafeRenameSync(tmpPath, originalPath);
 
         // Step 3: Delete backup on success
         try {
@@ -1713,7 +1776,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             }
 
             // Restore backup
-            fs.renameSync(backupPath, originalPath);
+            this.crossFsSafeRenameSync(backupPath, originalPath);
             this.logger.log(`Successfully rolled back to backup for ${originalPath}`);
           } else {
             this.logger.error(`Backup file missing during rollback: ${backupPath}`);
