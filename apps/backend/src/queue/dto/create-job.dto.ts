@@ -101,4 +101,29 @@ export class CreateJobDto {
   @IsOptional()
   @IsInt()
   ffmpegThreads?: number;
+
+  @ApiPropertyOptional({
+    description: 'Job type: ENCODE (full transcode) or REMUX (container change only)',
+    example: 'ENCODE',
+    enum: ['ENCODE', 'REMUX'],
+  })
+  @IsOptional()
+  @IsString()
+  type?: 'ENCODE' | 'REMUX';
+
+  @ApiPropertyOptional({
+    description: 'Source container format (e.g., mkv, mp4, avi)',
+    example: 'mkv',
+  })
+  @IsOptional()
+  @IsString()
+  sourceContainer?: string;
+
+  @ApiPropertyOptional({
+    description: 'Target container format (e.g., mkv, mp4)',
+    example: 'mp4',
+  })
+  @IsOptional()
+  @IsString()
+  targetContainer?: string;
 }

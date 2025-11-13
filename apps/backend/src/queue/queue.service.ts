@@ -136,6 +136,10 @@ export class QueueService {
           resourceThrottled: createJobDto.resourceThrottled ?? false,
           resourceThrottleReason: createJobDto.resourceThrottleReason,
           ffmpegThreads: createJobDto.ffmpegThreads,
+          // REMUX: Include job type and container fields
+          type: createJobDto.type || 'ENCODE',
+          sourceContainer: createJobDto.sourceContainer,
+          targetContainer: createJobDto.targetContainer,
         },
       });
 
@@ -219,14 +223,44 @@ export class QueueService {
         return;
       }
 
-      // Check if file needs encoding (codec doesn't match target)
-      const needsEncoding = videoInfo.codec !== library.defaultPolicy.targetCodec;
+      // Get detailed video info (codec + container)
+      const detailedInfo = await this.ffmpegService.getVideoInfo(payload.filePath);
+      const sourceCodec = this.ffmpegService.normalizeCodec(detailedInfo.codec);
+      const targetCodec = this.ffmpegService.normalizeCodec(library.defaultPolicy.targetCodec);
+      const sourceContainer = detailedInfo.container;
+      const targetContainer = library.defaultPolicy.targetContainer || 'mkv';
 
-      if (!needsEncoding) {
-        this.logger.log(
-          `File ${payload.fileName} already uses target codec ${library.defaultPolicy.targetCodec}, skipping`
-        );
-        return;
+      // Determine job type: REMUX or ENCODE
+      let jobType: 'ENCODE' | 'REMUX' = 'ENCODE';
+      let decisionReason: string;
+
+      if (sourceCodec === targetCodec) {
+        // Codecs match - check if we can remux instead of re-encoding
+        if (library.defaultPolicy.skipReencoding) {
+          // Policy allows skipping re-encoding when codec matches
+          if (sourceContainer === targetContainer) {
+            // Codec AND container match - no need to process at all
+            this.logger.log(
+              `File ${payload.fileName} already uses target codec ${targetCodec} and container ${targetContainer}, skipping`
+            );
+            return;
+          } else {
+            // Codec matches but container differs - REMUX only
+            jobType = 'REMUX';
+            decisionReason = `REMUX: ${sourceCodec} → ${targetCodec} (codec match, container: ${sourceContainer} → ${targetContainer})`;
+            this.logger.log(`${decisionReason} for ${payload.fileName}`);
+          }
+        } else {
+          // Policy requires re-encoding even when codec matches
+          jobType = 'ENCODE';
+          decisionReason = `ENCODE: Policy requires re-encoding (skipReencoding=false)`;
+          this.logger.log(`${decisionReason} for ${payload.fileName}`);
+        }
+      } else {
+        // Codecs don't match - full encode required
+        jobType = 'ENCODE';
+        decisionReason = `ENCODE: ${sourceCodec} → ${targetCodec} (codec change)`;
+        this.logger.log(`${decisionReason} for ${payload.fileName}`);
       }
 
       // AV1 THROTTLING: Detect AV1 source codec and set warning + resource limits
@@ -270,6 +304,9 @@ export class QueueService {
         resourceThrottled,
         resourceThrottleReason,
         ffmpegThreads,
+        type: jobType,
+        sourceContainer,
+        targetContainer,
       });
 
       this.logger.log(`Successfully created job for detected file: ${payload.fileName}`);
