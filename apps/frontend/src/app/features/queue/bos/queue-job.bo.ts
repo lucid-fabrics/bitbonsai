@@ -1,3 +1,4 @@
+import { FileHealthStatus } from '../../libraries/models/library.model';
 import { JobStatus } from '../models/job-status.enum';
 import type { QueueJobApiModel } from '../models/queue-job-api.model';
 
@@ -47,7 +48,7 @@ export class QueueJobBo {
   // Health Check Feature
   healthScore?: number;
   healthMessage?: string;
-  healthStatus?: string;
+  healthStatus?: FileHealthStatus;
   healthCheckedAt?: string;
 
   constructor(model: QueueJobApiModel) {
@@ -94,7 +95,7 @@ export class QueueJobBo {
     // Health Check Feature
     this.healthScore = model.healthScore;
     this.healthMessage = model.healthMessage;
-    this.healthStatus = model.healthStatus;
+    this.healthStatus = model.healthStatus as FileHealthStatus | undefined;
     this.healthCheckedAt = model.healthCheckedAt;
   }
 
