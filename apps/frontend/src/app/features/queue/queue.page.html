@@ -276,6 +276,7 @@
                 <th class="col-node">Node</th>
                 @if (selectedStatus === JobStatus.FAILED) {
                   <th class="col-failed-at">Failed At</th>
+                  <th class="col-failure-progress">Progress</th>
                   <th class="col-why">Why?</th>
                 }
                 @if (selectedStatus === JobStatus.COMPLETED) {
@@ -472,6 +473,9 @@
                 <td class="col-node">{{ job.nodeName }}</td>
                 @if (selectedStatus === JobStatus.FAILED) {
                   <td class="col-failed-at">{{ formatTimestamp(job.failedAt) }}</td>
+                  <td class="col-failure-progress">
+                    <span class="failure-progress-badge">{{ job.progress }}%</span>
+                  </td>
                   <td class="col-why">{{ getShortFailureReason(job.error) }}</td>
                 }
                 @if (selectedStatus === JobStatus.COMPLETED) {
@@ -1469,19 +1473,27 @@
         <p class="dialog-message">This job will be stopped and removed from the queue. Choose what happens next:</p>
       </div>
       <div class="dialog-footer cancel-actions">
-        <button (click)="closeCancelDialog()" class="btn btn-ghost">
+        <button (click)="closeCancelDialog()" class="btn btn-ghost" [disabled]="cancelDialogLoading">
           <i class="fas fa-arrow-left"></i>
           <span>Keep Job</span>
         </button>
-        <button (click)="confirmCancelAndRetry()" class="btn btn-cancel-retry">
-          <i class="fas fa-redo"></i>
+        <button (click)="confirmCancelAndRetry()" class="btn btn-cancel-retry" [disabled]="cancelDialogLoading">
+          @if (cancelDialogLoading) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-redo"></i>
+          }
           <div class="btn-content">
             <span class="btn-title">Cancel & Allow Retry</span>
             <span class="btn-subtitle">Can be re-queued later</span>
           </div>
         </button>
-        <button (click)="confirmCancelAndBlacklist()" class="btn btn-cancel-blacklist">
-          <i class="fas fa-ban"></i>
+        <button (click)="confirmCancelAndBlacklist()" class="btn btn-cancel-blacklist" [disabled]="cancelDialogLoading">
+          @if (cancelDialogLoading) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-ban"></i>
+          }
           <div class="btn-content">
             <span class="btn-title">Cancel & Blacklist</span>
             <span class="btn-subtitle">Never auto-encode again</span>
