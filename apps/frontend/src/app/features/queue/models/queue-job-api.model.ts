@@ -37,6 +37,7 @@ export interface QueueJobApiModel {
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
+  type?: 'ENCODE' | 'REMUX';
   retryCount?: number;
   nextRetryAt?: string;
   priority?: number;
