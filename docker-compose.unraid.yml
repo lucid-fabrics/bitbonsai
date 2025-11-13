@@ -17,6 +17,8 @@ services:
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
       - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
       - ADMIN_PASSWORD=12rIYlY8VxiooyMkHtu-1XdDgCOY-s7C
+      # PERF: Use Unraid cache pool (SSD) for encoding temp files for faster I/O
+      - ENCODING_TEMP_PATH=/cache
     volumes:
       # Source code with HMR (synced from Mac)
       - ./apps/backend:/app/apps/backend:cached
@@ -31,6 +33,8 @@ services:
       - /mnt/user/Downloads:/media:cached
       # Unraid Media directory - for existing media library
       - /mnt/user/media:/unraid-media:cached
+      # PERF: Unraid cache pool (SSD) for encoding temp files - much faster I/O
+      - /mnt/cache/bitbonsai-temp:/cache:cached
       # Database persistence
       - bitbonsai-data:/data
       # Preserve node_modules (don't mount from host)

@@ -72,6 +72,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   // Calculated optimal workers based on CPU capacity (set in constructor)
   private readonly DEFAULT_WORKERS_PER_NODE: number;
 
+  // PERF: Cache pool for temp files (SSD for faster I/O)
+  // If ENCODING_TEMP_PATH is set, use it; otherwise fall back to source directory
+  private readonly ENCODING_TEMP_PATH: string | null = process.env.ENCODING_TEMP_PATH || null;
+
   // Resource preflight thresholds
   private readonly MIN_FREE_DISK_SPACE_GB = 5; // Minimum 5GB free space
   private readonly MIN_FREE_MEMORY_PERCENT = 10; // Minimum 10% free RAM
@@ -148,6 +152,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   async onModuleInit() {
     this.logger.log('🔧 Initializing encoding processor...');
+
+    // PERF: Log cache pool configuration
+    if (this.ENCODING_TEMP_PATH) {
+      this.logger.log(
+        `⚡ Cache pool ENABLED: Using ${this.ENCODING_TEMP_PATH} for temp files (faster SSD I/O)`
+      );
+    } else {
+      this.logger.log('📂 Cache pool DISABLED: Using source directory for temp files');
+    }
 
     try {
       // HYBRID APPROACH: Initial delay + volume mount probing + file system stabilization + retry logic
@@ -1335,9 +1348,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     // Create temporary output path
     // CRITICAL: Use stable temp filename (job.id only) so TRUE RESUME works across restarts
-    const outputDir = path.dirname(job.filePath);
     const outputName = path.basename(job.filePath);
-    const tmpPath = path.join(outputDir, `.${outputName}.tmp-${job.id}`);
+
+    // PERF: Use cache pool (SSD) for temp files if available, otherwise use source directory
+    const tmpPath = this.ENCODING_TEMP_PATH
+      ? path.join(this.ENCODING_TEMP_PATH, `.${outputName}.tmp-${job.id}`)
+      : path.join(path.dirname(job.filePath), `.${outputName}.tmp-${job.id}`);
 
     try {
       const policy = job.policy;
