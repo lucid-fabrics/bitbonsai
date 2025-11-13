@@ -30,6 +30,7 @@ export class QueueJobBo {
   error?: string;
   sourceCodec?: string;
   targetCodec?: string;
+  type?: 'ENCODE' | 'REMUX';
   retryCount?: number;
   nextRetryAt?: string;
   priority?: number;
@@ -69,6 +70,7 @@ export class QueueJobBo {
     this.error = model.error;
     this.sourceCodec = model.sourceCodec;
     this.targetCodec = model.targetCodec;
+    this.type = model.type || 'ENCODE';
     this.retryCount = model.retryCount;
     this.nextRetryAt = model.nextRetryAt;
     this.priority = model.priority;
