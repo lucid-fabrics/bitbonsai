@@ -1469,9 +1469,22 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         savedPercent,
       };
     } catch (error) {
-      // Clean up temporary file on error
-      if (fs.existsSync(tmpPath)) {
-        fs.unlinkSync(tmpPath);
+      // TRUE RESUME: Only delete temp file on validation/corruption errors
+      // Keep temp file for resumable errors (interrupts, crashes, EXDEV, etc.)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isCorruptionError =
+        errorMessage.includes('verification failed') ||
+        errorMessage.includes('corrupted') ||
+        errorMessage.includes('not playable') ||
+        errorMessage.includes('invalid');
+
+      if (isCorruptionError) {
+        this.logger.warn(`Temp file corrupted or invalid, deleting for fresh restart: ${tmpPath}`);
+        if (fs.existsSync(tmpPath)) {
+          fs.unlinkSync(tmpPath);
+        }
+      } else {
+        this.logger.log(`Keeping temp file for auto-heal resume capability: ${tmpPath}`);
       }
       throw error;
     }
