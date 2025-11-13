@@ -1,10 +1,10 @@
 #!/bin/sh
 
 # Run Biome linter and auto-fix
-npm run check:fix
+npx nx check:fix
 
 # Stage any auto-fixes
 git add -u
 
 # Verify no remaining linter errors
-npm run check
+npx nx check
