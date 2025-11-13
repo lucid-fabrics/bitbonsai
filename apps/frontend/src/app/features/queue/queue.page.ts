@@ -98,6 +98,7 @@ export class QueueComponent implements OnInit {
   protected retryFailedSelectedError: string | null = null;
   protected showClearJobsDialog = false;
   protected clearJobsStages: string[] = [];
+  protected cancelDialogLoading = false;
   protected selectedJobId: string | null = null;
   protected showAddFilesModal = false;
   protected showErrorDetailsModal = false;
@@ -419,16 +420,20 @@ export class QueueComponent implements OnInit {
     const jobId = this.selectedJobId;
     if (!jobId) return;
 
+    this.cancelDialogLoading = true;
+
     this.queueApi
       .cancelJob(jobId, false) // blacklist = false
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.cancelDialogLoading = false;
           this.toastService.success('Job cancelled');
           this.closeCancelDialog();
           this.refreshQueue();
         },
         error: () => {
+          this.cancelDialogLoading = false;
           this.toastService.error('Failed to cancel job');
           this.closeCancelDialog();
         },
@@ -439,16 +444,20 @@ export class QueueComponent implements OnInit {
     const jobId = this.selectedJobId;
     if (!jobId) return;
 
+    this.cancelDialogLoading = true;
+
     this.queueApi
       .cancelJob(jobId, true) // blacklist = true
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.cancelDialogLoading = false;
           this.toastService.success('Job cancelled and blacklisted');
           this.closeCancelDialog();
           this.refreshQueue();
         },
         error: () => {
+          this.cancelDialogLoading = false;
           this.toastService.error('Failed to cancel job');
           this.closeCancelDialog();
         },

@@ -591,6 +591,7 @@
       &.col-size { width: 200px; }
       &.col-node { width: 100px; }
       &.col-failed-at { width: 130px; font-size: 11px; }
+      &.col-failure-progress { width: 100px; text-align: center; }
       &.col-why { width: 180px; color: rgba(255, 87, 87, 0.9); font-size: 12px; }
       &.col-actions { width: 120px; text-align: center; }
     }
@@ -668,6 +669,21 @@
     background: rgba(136, 136, 136, 0.2);
     color: $text-tertiary;
   }
+}
+
+// Failure Progress Badge
+.failure-progress-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba($danger, 0.15);
+  color: rgba($danger, 0.95);
+  border: 1px solid rgba($danger, 0.3);
+  min-width: 50px;
 }
 
 // Health Badge
@@ -1510,6 +1526,7 @@
 
 .cancel-dialog {
   max-width: 560px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 
   .dialog-header {
     h3 {
@@ -1517,7 +1534,7 @@
       align-items: center;
       gap: 10px;
 
-      fa-icon {
+      i {
         color: $warning;
         font-size: 20px;
       }
@@ -1540,18 +1557,33 @@
       align-items: center;
       gap: 14px;
       padding: 16px 20px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       border: 2px solid transparent;
-      transition: all 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       text-align: left;
       width: 100%;
+      position: relative;
+      overflow: hidden;
 
-      fa-icon {
+      i {
         font-size: 20px;
         flex-shrink: 0;
+        transition: transform 0.3s ease;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+        transform: none !important;
+        box-shadow: none !important;
+
+        &:hover {
+          transform: none !important;
+          box-shadow: none !important;
+        }
       }
 
       &.btn-ghost {
@@ -1561,7 +1593,7 @@
         justify-content: center;
         padding: 12px 20px;
 
-        &:hover {
+        &:not(:disabled):hover {
           background: $bg-tertiary;
           color: $text-primary;
           border-color: $border-primary;
@@ -1573,15 +1605,19 @@
         color: $text-white;
         border-color: rgba($warning, 0.3);
 
-        fa-icon {
+        i {
           color: $warning;
         }
 
-        &:hover {
+        &:not(:disabled):hover {
           background: linear-gradient(135deg, rgba($warning, 0.25), rgba($warning, 0.15));
           border-color: rgba($warning, 0.5);
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba($warning, 0.2);
+          box-shadow: 0 6px 16px rgba($warning, 0.25);
+
+          i {
+            transform: rotate(360deg);
+          }
         }
       }
 
@@ -1590,15 +1626,19 @@
         color: $text-white;
         border-color: rgba($danger, 0.3);
 
-        fa-icon {
+        i {
           color: $danger;
         }
 
-        &:hover {
+        &:not(:disabled):hover {
           background: linear-gradient(135deg, rgba($danger, 0.25), rgba($danger, 0.15));
           border-color: rgba($danger, 0.5);
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba($danger, 0.2);
+          box-shadow: 0 6px 16px rgba($danger, 0.25);
+
+          i {
+            transform: scale(1.1);
+          }
         }
       }
 
@@ -1618,6 +1658,7 @@
           font-size: 12px;
           font-weight: 400;
           color: $text-secondary;
+          opacity: 0.8;
         }
       }
     }
