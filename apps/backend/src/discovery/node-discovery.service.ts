@@ -185,7 +185,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     return new Promise((resolve, reject) => {
       try {
         // Create browser
-        this.browser = this.bonjour?.find({ type: 'bitbonsai' });
+        this.browser = this.bonjour?.find({ type: 'bitbonsai' }) ?? null;
 
         const _timeout = setTimeout(() => {
           if (this.browser) {
@@ -194,6 +194,11 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
           this.logger.log(`✅ Scan complete - found ${this.discoveredNodes.size} node(s)`);
           resolve(Array.from(this.discoveredNodes.values()));
         }, 5000); // 5 second scan
+
+        if (!this.browser) {
+          reject(new Error('Failed to create browser'));
+          return;
+        }
 
         this.browser.on('up', async (service: Service) => {
           try {
