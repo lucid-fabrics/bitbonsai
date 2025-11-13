@@ -371,6 +371,53 @@
                     </select>
                   </div>
 
+                  <!-- Container Format -->
+                  <div class="form-group">
+                    <label for="targetContainer" class="form-group__label">Container Format</label>
+                    <select
+                      id="targetContainer"
+                      class="form-group__input"
+                      [(ngModel)]="formData.targetContainer"
+                      name="targetContainer"
+                      bbTooltip
+                      tooltipTitle="Container Format Selection"
+                      tooltipContent="The container (wrapper) format for encoded files. MKV supports all features, MP4 is best for streaming, WebM is web-optimized. Choose 'Keep Original' to preserve source container."
+                      tooltipWhen="You want universal compatibility (MKV), streaming optimization (MP4), web delivery (WebM), or to preserve original format."
+                      tooltipPlacement="right"
+                    >
+                      @for (format of ContainerBo.FORMATS; track format.value) {
+                        <option [value]="format.value">{{ format.label }} - {{ format.description }}</option>
+                      }
+                    </select>
+                    <small class="form-group__help-text">
+                      Container wraps video/audio streams. Change only if needed for compatibility.
+                    </small>
+                  </div>
+
+                  <!-- Smart Remux Toggle -->
+                  <div class="form-group">
+                    <label class="form-group__checkbox-label">
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="formData.skipReencoding"
+                        name="skipReencoding"
+                        class="form-group__checkbox"
+                      />
+                      <span
+                        bbTooltip
+                        tooltipTitle="Smart Remux Mode"
+                        tooltipContent="When enabled, files already in the target codec will only have their container changed (fast remux, seconds) instead of being fully re-encoded (slow transcode, hours). This preserves original quality and saves significant time. Example: H.264 → H.264 with MP4 → MKV container change completes in seconds."
+                        tooltipWhen="You want to save time and preserve quality when source codec matches target codec. Highly recommended for most use cases."
+                        tooltipPlacement="right"
+                      >
+                        Enable Smart Remux (Skip re-encoding when codec matches)
+                      </span>
+                    </label>
+                    <small class="form-group__help-text">
+                      Recommended: When source codec = target codec, only change container (fast) instead of re-encoding (slow)
+                    </small>
+                  </div>
+
                   <!-- FFmpeg Flags -->
                   <div class="form-group">
                     <label for="ffmpeg" class="form-group__label">Custom FFmpeg Flags</label>

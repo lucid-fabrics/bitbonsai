@@ -24,6 +24,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsObject,
@@ -71,6 +72,30 @@ export class CreatePolicyDto {
   @Min(0)
   @Max(51)
   targetQuality!: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Target container format for encoded files. Supported formats: mkv (universal compatibility, Matroska), mp4 (streaming-optimized, MPEG-4), webm (web-optimized, WebM), or null to keep the original container format unchanged.',
+    example: 'mkv',
+    enum: ['mkv', 'mp4', 'webm', null],
+    default: 'mkv',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(['mkv', 'mp4', 'webm', null], {
+    message: 'Container format must be one of: mkv, mp4, webm, or null (keep original)',
+  })
+  targetContainer?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Enable smart remux mode: Skip re-encoding when source codec matches target codec. When enabled, files already in the target codec will only have their container changed (fast remux) instead of being fully re-encoded (slow transcode). This saves significant time and preserves original quality. Example: H.264 → H.264 with container change MP4 → MKV takes seconds instead of hours.',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  skipReencoding?: boolean;
 
   @ApiPropertyOptional({
     description: 'Optional library ID to associate this policy with a specific media library',

@@ -4,6 +4,8 @@ export interface PolicyModel {
   preset: PolicyPreset;
   target_codec: TargetCodec;
   crf: number;
+  target_container?: string | null;
+  skip_reencoding?: boolean;
   library_id?: string;
   device_profiles: DeviceProfiles;
   ffmpeg_flags?: string;
@@ -79,6 +81,8 @@ export interface CreatePolicyRequest {
   preset: PolicyPreset;
   targetCodec: TargetCodec;
   targetQuality: number;
+  targetContainer?: string | null;
+  skipReencoding?: boolean;
   libraryId?: string;
   deviceProfiles: DeviceProfiles;
   advancedSettings: AdvancedSettings;
@@ -88,6 +92,8 @@ export interface UpdatePolicyRequest {
   name?: string;
   targetCodec?: TargetCodec;
   targetQuality?: number;
+  targetContainer?: string | null;
+  skipReencoding?: boolean;
   libraryId?: string;
   deviceProfiles?: DeviceProfiles;
   advancedSettings?: AdvancedSettings;
