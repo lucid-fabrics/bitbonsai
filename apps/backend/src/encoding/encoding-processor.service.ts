@@ -257,7 +257,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             return;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors, will retry
       }
 

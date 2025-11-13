@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -118,7 +118,7 @@ async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMet
  * Calculate PSNR (Peak Signal-to-Noise Ratio) between original and encoded
  * Higher PSNR = better quality (>30 dB is good, >40 dB is excellent)
  */
-async function calculatePSNR(originalPath: string, encodedPath: string): Promise<number> {
+async function _calculatePSNR(originalPath: string, encodedPath: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const ffmpeg = spawn('ffmpeg', [
       '-i',
@@ -158,9 +158,9 @@ async function calculatePSNR(originalPath: string, encodedPath: string): Promise
 describe('Level 8: Video Quality Verification (CRITICAL)', () => {
   let moduleRef: TestingModule;
   let prisma: PrismaService;
-  let queueService: QueueService;
+  let _queueService: QueueService;
   let encodingProcessor: EncodingProcessorService;
-  let ffmpegService: FfmpegService;
+  let _ffmpegService: FfmpegService;
 
   let testNodeId: string;
   let testLibraryId: string;
@@ -170,9 +170,9 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
     moduleRef = await createTestModule();
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
-    queueService = moduleRef.get<QueueService>(QueueService);
+    _queueService = moduleRef.get<QueueService>(QueueService);
     encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
-    ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
+    _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();
 
@@ -221,7 +221,7 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
 
       // ASSERT: Job completed
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       // CRITICAL: Output file exists
       expect(fs.existsSync(videoPath)).toBe(true);
@@ -422,16 +422,16 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       // CRITICAL: Size reduced
-      expect(completedJob!.savedBytes).toBeTruthy();
-      expect(Number(completedJob!.savedBytes)).toBeGreaterThan(0);
+      expect(completedJob?.savedBytes).toBeTruthy();
+      expect(Number(completedJob?.savedBytes)).toBeGreaterThan(0);
 
       // CRITICAL: Saved percentage is reasonable (5-60% reduction)
-      expect(completedJob!.savedPercent).toBeGreaterThan(5);
-      expect(completedJob!.savedPercent).toBeLessThan(60);
+      expect(completedJob?.savedPercent).toBeGreaterThan(5);
+      expect(completedJob?.savedPercent).toBeLessThan(60);
 
       // Verify actual file size matches database
       const afterSize = fs.statSync(videoPath).size;
-      expect(Number(completedJob!.afterSizeBytes)).toBe(afterSize);
+      expect(Number(completedJob?.afterSizeBytes)).toBe(afterSize);
     }, 200000);
 
     it('CRITICAL: file size accuracy in database', async () => {
@@ -460,9 +460,9 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       // Verify size calculations are accurate
-      const afterSize = Number(completedJob!.afterSizeBytes!);
-      const savedBytes = Number(completedJob!.savedBytes!);
-      const savedPercent = completedJob!.savedPercent!;
+      const afterSize = Number(completedJob?.afterSizeBytes!);
+      const savedBytes = Number(completedJob?.savedBytes!);
+      const savedPercent = completedJob?.savedPercent!;
 
       expect(savedBytes).toBe(beforeSize - afterSize);
       expect(savedPercent).toBeCloseTo((savedBytes / beforeSize) * 100, 1);

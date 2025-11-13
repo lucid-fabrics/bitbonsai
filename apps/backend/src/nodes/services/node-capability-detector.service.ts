@@ -42,7 +42,7 @@ export class NodeCapabilityDetectorService {
   // Local network latency threshold
   private readonly LOCAL_LATENCY_THRESHOLD_MS = 50;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(readonly _prisma: PrismaService) {}
 
   /**
    * Detect all capabilities for a node during pairing

@@ -247,7 +247,7 @@ export class NodeSetupWizardComponent implements OnInit {
     this.discoveredNodes.set([]);
     this.scanDuration.set(0);
 
-    const startTime = Date.now();
+    const _startTime = Date.now();
 
     this.discoveryService
       .startScan()

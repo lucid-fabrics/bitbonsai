@@ -49,8 +49,6 @@ export function calculateOptimalWorkers(
       recommendedMaxWorkers = Math.min(recommendedMaxWorkers, 8);
       reasoning = `GPU acceleration detected. Each job uses ~${cpuCoresPerJob} CPU cores. GPU can handle ${recommendedMaxWorkers} concurrent streams efficiently.`;
       break;
-
-    case 'CPU':
     default:
       // CPU encoding: More CPU-intensive
       // AV1 decoding + HEVC encoding requires substantial CPU power

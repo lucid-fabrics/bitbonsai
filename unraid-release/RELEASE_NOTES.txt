@@ -1,0 +1,58 @@
+BitBonsai - Unraid Community Applications Release
+Version: 1.0.0
+Generated: Wed 12 Nov 2025 18:22:07 EST
+
+FILES INCLUDED:
+================
+1. bitbonsai.xml                    - Unraid template for Community Apps
+2. docker-compose.production.yml    - Production Docker Compose file
+3. README-UNRAID.md                 - Unraid-specific user guide
+4. CHANGELOG.md                     - Version history and changes
+5. INSTALL.md                       - Step-by-step installation guide
+6. RELEASE_NOTES.txt                - This file
+
+SUBMISSION CHECKLIST:
+=====================
+☐ Update version number in bitbonsai.xml
+☐ Upload bitbonsai.xml to GitHub: /unraid-release/bitbonsai.xml
+☐ Create GitHub release with tag: v1.0.0
+☐ Upload icons to GitHub: /apps/frontend/src/assets/
+☐ Submit template URL to Community Applications:
+   https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/unraid-release/bitbonsai.xml
+☐ Test installation on clean Unraid server
+☐ Update forum thread with release notes
+
+DOCKER IMAGE:
+=============
+Repository: lucidfabrics/bitbonsai:latest
+Tag (version): lucidfabrics/bitbonsai:1.0.0
+
+NEXT STEPS:
+===========
+1. Review all generated files in ./unraid-release/
+2. Update version numbers if needed
+3. Build and push Docker image:
+   docker build -t lucidfabrics/bitbonsai:1.0.0 .
+   docker tag lucidfabrics/bitbonsai:1.0.0 lucidfabrics/bitbonsai:latest
+   docker push lucidfabrics/bitbonsai:1.0.0
+   docker push lucidfabrics/bitbonsai:latest
+4. Create GitHub release
+5. Submit to Community Applications
+
+TESTING:
+========
+Before submission, test on Unraid:
+1. Install from template
+2. Verify all paths mount correctly
+3. Test WebUI accessibility
+4. Test GPU passthrough (if applicable)
+5. Verify cache pool performance improvement
+6. Test encoding job submission and completion
+7. Verify auto-healing and resume capabilities
+
+NOTES:
+======
+- Cache pool support is CRITICAL for performance
+- Network mode MUST be 'host' for mDNS discovery
+- API port MUST remain 3100 for frontend communication
+- Recommend SSD cache for /cache volume

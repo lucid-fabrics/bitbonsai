@@ -175,7 +175,7 @@ export class NotificationDetailModalComponent {
       case NotificationType.NODE_DISCOVERED:
       case NotificationType.NODE_REGISTRATION_REQUEST:
         this.router.navigate(['/nodes'], {
-          queryParams: { highlightRequest: this.notification.data?.['requestId'] },
+          queryParams: { highlightRequest: this.notification.data?.requestId },
         });
         break;
 

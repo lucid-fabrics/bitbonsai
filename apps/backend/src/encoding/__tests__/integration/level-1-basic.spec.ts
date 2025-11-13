@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -31,9 +31,9 @@ import { cleanupFixtures, generateVideo, REALISTIC_FILENAMES } from '../fixtures
 describe('Level 1: Basic Single Job Flow', () => {
   let moduleRef: TestingModule;
   let prisma: PrismaService;
-  let queueService: QueueService;
+  let _queueService: QueueService;
   let encodingProcessor: EncodingProcessorService;
-  let ffmpegService: FfmpegService;
+  let _ffmpegService: FfmpegService;
 
   let testNodeId: string;
   let testLibraryId: string;
@@ -44,9 +44,9 @@ describe('Level 1: Basic Single Job Flow', () => {
     moduleRef = await createTestModule();
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
-    queueService = moduleRef.get<QueueService>(QueueService);
+    _queueService = moduleRef.get<QueueService>(QueueService);
     encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
-    ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
+    _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     // Initialize in-memory database
     await prisma.$connect();
@@ -102,16 +102,16 @@ describe('Level 1: Basic Single Job Flow', () => {
       });
 
       // ACT: Process the job
-      const processedJob = await encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
+      const _processedJob = await encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
 
       // Wait for job to complete (with timeout)
       const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
 
       // ASSERT: Job completed successfully
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
-      expect(completedJob!.progress).toBe(100);
-      expect(completedJob!.error).toBeNull();
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.progress).toBe(100);
+      expect(completedJob?.error).toBeNull();
 
       // Verify file still exists (atomic replacement)
       expect(fs.existsSync(videoPath)).toBe(true);
@@ -120,22 +120,22 @@ describe('Level 1: Basic Single Job Flow', () => {
       const afterStats = fs.statSync(videoPath);
       const afterSize = afterStats.size;
 
-      expect(completedJob!.afterSizeBytes).toBeTruthy();
-      expect(Number(completedJob!.afterSizeBytes)).toBe(afterSize);
+      expect(completedJob?.afterSizeBytes).toBeTruthy();
+      expect(Number(completedJob?.afterSizeBytes)).toBe(afterSize);
 
       // Verify size reduction (HEVC should be smaller than H.264)
-      expect(completedJob!.savedBytes).toBeTruthy();
-      expect(Number(completedJob!.savedBytes)).toBeGreaterThan(0);
+      expect(completedJob?.savedBytes).toBeTruthy();
+      expect(Number(completedJob?.savedBytes)).toBeGreaterThan(0);
 
       // Verify saved percentage is reasonable (10-50% reduction)
-      expect(completedJob!.savedPercent).toBeGreaterThan(10);
-      expect(completedJob!.savedPercent).toBeLessThan(50);
+      expect(completedJob?.savedPercent).toBeGreaterThan(10);
+      expect(completedJob?.savedPercent).toBeLessThan(50);
 
       // Verify timestamps
-      expect(completedJob!.startedAt).toBeTruthy();
-      expect(completedJob!.completedAt).toBeTruthy();
-      expect(completedJob!.completedAt!.getTime()).toBeGreaterThan(
-        completedJob!.startedAt!.getTime()
+      expect(completedJob?.startedAt).toBeTruthy();
+      expect(completedJob?.completedAt).toBeTruthy();
+      expect(completedJob?.completedAt?.getTime()).toBeGreaterThan(
+        completedJob?.startedAt?.getTime()
       );
     }, 120000); // 2 minute timeout
 
@@ -170,8 +170,8 @@ describe('Level 1: Basic Single Job Flow', () => {
 
       // ASSERT
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
-      expect(completedJob!.fileLabel).toBe('The Matrix (1999)');
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.fileLabel).toBe('The Matrix (1999)');
     }, 150000);
 
     it('should track progress during encoding', async () => {
@@ -217,7 +217,7 @@ describe('Level 1: Basic Single Job Flow', () => {
 
       // ASSERT: Progress was tracked
       expect(progressUpdates.length).toBeGreaterThan(0);
-      expect(completedJob!.progress).toBe(100);
+      expect(completedJob?.progress).toBe(100);
 
       // Progress should increase monotonically (or stay same)
       for (let i = 1; i < progressUpdates.length; i++) {
@@ -238,7 +238,7 @@ describe('Level 1: Basic Single Job Flow', () => {
         targetSizeMB: 15,
       });
 
-      const beforeInode = fs.statSync(videoPath).ino;
+      const _beforeInode = fs.statSync(videoPath).ino;
 
       const job = await createTestJob(prisma, {
         filePath: videoPath,

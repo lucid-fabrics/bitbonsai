@@ -99,7 +99,7 @@ export class NodesComponent implements OnInit {
 
     // Listen for highlightRequest query parameter
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const requestId = params['highlightRequest'];
+      const requestId = params.highlightRequest;
       if (requestId) {
         this.highlightedRequestId.set(requestId);
         // Auto-scroll to the highlighted request after a short delay
@@ -287,7 +287,7 @@ export class NodesComponent implements OnInit {
 
     dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
       // Dialog now returns { approved, nodeId, capabilities } instead of boolean
-      if (result && result.approved) {
+      if (result?.approved) {
         // Clear the highlight
         this.highlightedRequestId.set(null);
         // Reload nodes and pending requests to show the newly paired node
@@ -344,7 +344,7 @@ export class NodesComponent implements OnInit {
 
     dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
       // Dialog now returns { approved, nodeId, capabilities } instead of just true
-      if (result && result.approved) {
+      if (result?.approved) {
         // Clear the highlight
         this.highlightedRequestId.set(null);
         // Reload nodes and pending requests to show the newly paired node

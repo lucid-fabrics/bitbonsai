@@ -146,7 +146,7 @@ export class HardwareDetectionService {
           driverVersion,
         };
       }
-    } catch (error) {
+    } catch (_error) {
       this.logger.debug('NVIDIA GPU not detected');
     }
 
@@ -161,11 +161,11 @@ export class HardwareDetectionService {
       // Check for /dev/dri/renderD* on Linux
       if (process.platform === 'linux') {
         const lsOutput = await this.executeCommand('ls', ['/dev/dri/']);
-        if (lsOutput && lsOutput.includes('renderD')) {
+        if (lsOutput?.includes('renderD')) {
           // Try to get more info from vainfo
           try {
             const vainfo = await this.executeCommand('vainfo', []);
-            if (vainfo && vainfo.toLowerCase().includes('intel')) {
+            if (vainfo?.toLowerCase().includes('intel')) {
               // Extract driver version from vainfo output
               const driverMatch = vainfo.match(/Driver version: (.+)/);
               const driverVersion = driverMatch ? driverMatch[1].trim() : 'unknown';
@@ -191,7 +191,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       this.logger.debug('Intel Quick Sync not detected');
     }
 
@@ -225,7 +225,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       this.logger.debug('AMD GPU not detected');
     }
 
@@ -247,14 +247,14 @@ export class HardwareDetectionService {
 
             return {
               vendor: GPUVendor.APPLE,
-              model: model + ' (VideoToolbox)',
+              model: `${model} (VideoToolbox)`,
               memory: 0, // Unified memory
               driverVersion: os.release(),
             };
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       this.logger.debug('Apple Silicon not detected');
     }
 
@@ -337,14 +337,14 @@ export class HardwareDetectionService {
     return new Promise((resolve) => {
       const child = spawn(command, args);
       let stdout = '';
-      let stderr = '';
+      let _stderr = '';
 
       child.stdout.on('data', (data) => {
         stdout += data.toString();
       });
 
       child.stderr.on('data', (data) => {
-        stderr += data.toString();
+        _stderr += data.toString();
       });
 
       child.on('error', (error) => {

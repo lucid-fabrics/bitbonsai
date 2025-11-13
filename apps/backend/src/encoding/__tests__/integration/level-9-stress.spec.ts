@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
@@ -132,7 +132,7 @@ describe('Level 9: Stress Testing', () => {
       }
 
       // Process jobs
-      for (const job of jobs) {
+      for (const _job of jobs) {
         await encodingProcessor.processNextJob();
       }
 

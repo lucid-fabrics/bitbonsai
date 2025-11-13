@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AccelerationType } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Length, Matches } from 'class-validator';
 
 /**
  * DTO for registering a new node

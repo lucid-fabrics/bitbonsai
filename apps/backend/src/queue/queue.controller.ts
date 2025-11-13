@@ -13,7 +13,6 @@ import {
   Post,
   Query,
   Res,
-  StreamableFile,
 } from '@nestjs/common';
 import { execFile } from 'child_process';
 import { Response } from 'express';
@@ -56,8 +55,8 @@ export class QueueController {
   constructor(
     private readonly queueService: QueueService,
     private readonly jobHistoryService: JobHistoryService,
-    private readonly previewService: EncodingPreviewService,
-    private readonly ffmpegService: FfmpegService
+    readonly _previewService: EncodingPreviewService,
+    readonly _ffmpegService: FfmpegService
   ) {}
 
   /**
@@ -301,7 +300,7 @@ export class QueueController {
 
     // Parse and validate preview index
     const previewIndex = parseInt(index, 10);
-    if (isNaN(previewIndex) || previewIndex < 1 || previewIndex > 9) {
+    if (Number.isNaN(previewIndex) || previewIndex < 1 || previewIndex > 9) {
       throw new NotFoundException(`Invalid preview index. Must be between 1 and 9.`);
     }
 
@@ -398,7 +397,7 @@ export class QueueController {
       );
       durationSeconds = parseFloat(stdout.trim());
 
-      if (isNaN(durationSeconds) || durationSeconds <= 0) {
+      if (Number.isNaN(durationSeconds) || durationSeconds <= 0) {
         throw new Error('Invalid duration');
       }
     } catch (error: any) {

@@ -25,7 +25,6 @@ export class EncodingPreviewService {
   private readonly logger = new Logger(EncodingPreviewService.name);
   private readonly PREVIEW_DIR = '/tmp/bitbonsai-previews';
   private readonly PREVIEW_WIDTH = 640; // Small size for fast loading
-  private readonly PREVIEW_COUNT = 9; // Number of screenshots
 
   /**
    * Generate preview screenshots from temp file

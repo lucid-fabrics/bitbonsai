@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
@@ -144,7 +144,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
       jobs.push(tvJob);
 
       // Process all jobs
-      for (const job of jobs) {
+      for (const _job of jobs) {
         await encodingProcessor.processNextJob();
       }
 

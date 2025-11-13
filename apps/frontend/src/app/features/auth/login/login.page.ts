@@ -101,7 +101,7 @@ export class LoginComponent implements OnInit {
       .login(username, password)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => {
+        next: (_response) => {
           this.successMessage.set('Login successful! Redirecting...');
           this.isLoading.set(false);
 
@@ -135,7 +135,7 @@ export class LoginComponent implements OnInit {
    */
   hasError(fieldName: string): boolean {
     const field = this.loginForm.get(fieldName);
-    return !!(field && field.invalid && field.touched);
+    return !!(field?.invalid && field.touched);
   }
 
   /**
@@ -148,7 +148,7 @@ export class LoginComponent implements OnInit {
       return '';
     }
 
-    if (field.errors['required']) {
+    if (field.errors.required) {
       return `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`;
     }
 

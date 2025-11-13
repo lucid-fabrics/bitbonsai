@@ -23,7 +23,6 @@ import {
 } from '../../notifications/types/notification.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
-import type { SystemInfo } from './system-info.service';
 import { SystemInfoService } from './system-info.service';
 
 export interface CreateRegistrationRequestDto {
@@ -62,12 +61,11 @@ export interface RejectRequestDto {
 @Injectable()
 export class RegistrationRequestService {
   private readonly logger = new Logger(RegistrationRequestService.name);
-  private readonly TOKEN_LENGTH = 6;
   private readonly TTL_HOURS = 24;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly systemInfoService: SystemInfoService,
+    readonly _systemInfoService: SystemInfoService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway

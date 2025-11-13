@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
   inject,
   type OnDestroy,
   type OnInit,
@@ -44,7 +43,6 @@ import {
 })
 export class OverviewComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
-  private readonly elementRef = inject(ElementRef);
 
   // Observables from NgRx store
   // Use distinctUntilChanged with deep comparison to prevent flashing when data values are identical
@@ -154,7 +152,7 @@ export class OverviewComponent implements OnInit, OnDestroy {
   }
 
   // TrackBy functions to prevent unnecessary re-renders
-  trackByActivityId(index: number, activity: any): string {
+  trackByActivityId(_index: number, activity: any): string {
     return activity.id;
   }
 }

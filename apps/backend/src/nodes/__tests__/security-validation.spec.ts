@@ -15,7 +15,7 @@ import { NodesService } from '../nodes.service';
 
 describe('Security Validation Tests', () => {
   let controller: NodesController;
-  let service: NodesService;
+  let _service: NodesService;
 
   const mockNode: Node = {
     id: 'test-node-1',
@@ -56,7 +56,7 @@ describe('Security Validation Tests', () => {
     }).compile();
 
     controller = module.get<NodesController>(NodesController);
-    service = module.get<NodesService>(NodesService);
+    _service = module.get<NodesService>(NodesService);
   });
 
   describe('P0-4: API Key Exclusion from Responses', () => {

@@ -27,11 +27,10 @@ export class AuthService {
 
   // Token expiration times
   private readonly ACCESS_TOKEN_EXPIRY = '1h';
-  private readonly REFRESH_TOKEN_EXPIRY = '7d';
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    readonly _configService: ConfigService,
     private readonly prisma: PrismaService
   ) {}
 
@@ -173,7 +172,7 @@ export class AuthService {
   async validateToken(token: string): Promise<{ userId: string; username: string; role: string }> {
     try {
       return this.jwtService.verify(token);
-    } catch (error) {
+    } catch (_error) {
       throw new UnauthorizedException('Invalid token');
     }
   }

@@ -3,7 +3,6 @@ import { FileHealthStatus, JobStage } from '@prisma/client';
 import { ContainerCompatibilityService } from '../encoding/container-compatibility.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
-import type { HealthCheckIssue } from './models/health-check-issue.model';
 import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
 
 /**

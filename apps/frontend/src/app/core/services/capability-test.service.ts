@@ -122,7 +122,7 @@ export class CapabilityTestService {
    * @param nodeId - Node ID
    * @returns Observable of void
    */
-  cancelTest(nodeId: string): Observable<void> {
+  cancelTest(_nodeId: string): Observable<void> {
     // No backend endpoint needed - just stop polling on frontend
     return of(void 0);
   }

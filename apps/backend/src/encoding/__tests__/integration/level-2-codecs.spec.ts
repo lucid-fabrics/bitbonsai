@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -31,9 +31,9 @@ import { cleanupFixtures, generateVideo, verifyVideoFile } from '../fixtures/vid
 describe('Level 2: Multiple Codecs', () => {
   let moduleRef: TestingModule;
   let prisma: PrismaService;
-  let queueService: QueueService;
+  let _queueService: QueueService;
   let encodingProcessor: EncodingProcessorService;
-  let ffmpegService: FfmpegService;
+  let _ffmpegService: FfmpegService;
 
   let testNodeId: string;
   let testLibraryId: string;
@@ -43,9 +43,9 @@ describe('Level 2: Multiple Codecs', () => {
     moduleRef = await createTestModule();
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
-    queueService = moduleRef.get<QueueService>(QueueService);
+    _queueService = moduleRef.get<QueueService>(QueueService);
     encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
-    ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
+    _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();
 
@@ -101,7 +101,7 @@ describe('Level 2: Multiple Codecs', () => {
 
       // ASSERT
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       // Verify output codec is HEVC
       const outputInfo = await verifyVideoFile(videoPath);
@@ -145,7 +145,7 @@ describe('Level 2: Multiple Codecs', () => {
 
       // ASSERT
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       const outputInfo = await verifyVideoFile(videoPath);
       expect(outputInfo.isValid).toBe(true);
@@ -185,10 +185,10 @@ describe('Level 2: Multiple Codecs', () => {
 
       // ASSERT
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       // MPEG-2 to HEVC should have significant size reduction (>30%)
-      expect(completedJob!.savedPercent).toBeGreaterThan(30);
+      expect(completedJob?.savedPercent).toBeGreaterThan(30);
 
       const outputInfo = await verifyVideoFile(videoPath);
       expect(outputInfo.isValid).toBe(true);
@@ -221,7 +221,7 @@ describe('Level 2: Multiple Codecs', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
 
     it('should handle MKV container', async () => {
@@ -248,7 +248,7 @@ describe('Level 2: Multiple Codecs', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
 
     it('should handle AVI container', async () => {
@@ -275,7 +275,7 @@ describe('Level 2: Multiple Codecs', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       expect(completedJob).toBeTruthy();
-      expect(completedJob!.stage).toBe(JobStage.COMPLETED);
+      expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
   });
 

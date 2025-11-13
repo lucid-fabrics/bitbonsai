@@ -224,7 +224,7 @@ export class SetupComponent {
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => {
+        next: (_response) => {
           this.isLoading.set(false);
 
           // If local network bypass is enabled, redirect to main app
@@ -267,7 +267,7 @@ export class SetupComponent {
    */
   hasError(fieldName: string): boolean {
     const field = this.adminForm.get(fieldName);
-    return !!(field && field.invalid && field.touched);
+    return !!(field?.invalid && field.touched);
   }
 
   /**
@@ -280,7 +280,7 @@ export class SetupComponent {
       return '';
     }
 
-    if (field.errors['required']) {
+    if (field.errors.required) {
       const displayName =
         fieldName === 'confirmPassword'
           ? 'Password confirmation'
@@ -288,12 +288,12 @@ export class SetupComponent {
       return `${displayName} is required`;
     }
 
-    if (field.errors['minlength']) {
-      const minLength = field.errors['minlength'].requiredLength;
+    if (field.errors.minlength) {
+      const minLength = field.errors.minlength.requiredLength;
       return `Must be at least ${minLength} characters`;
     }
 
-    if (fieldName === 'confirmPassword' && this.adminForm.errors?.['passwordMismatch']) {
+    if (fieldName === 'confirmPassword' && this.adminForm.errors?.passwordMismatch) {
       return 'Passwords do not match';
     }
 

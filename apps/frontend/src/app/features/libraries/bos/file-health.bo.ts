@@ -16,7 +16,6 @@ export class FileHealthBo {
         return 'fas fa-exclamation-triangle';
       case FileHealthStatus.CORRUPTED:
         return 'fas fa-times-circle';
-      case FileHealthStatus.UNKNOWN:
       default:
         return 'fas fa-question-circle';
     }
@@ -33,7 +32,6 @@ export class FileHealthBo {
         return 'health-warning';
       case FileHealthStatus.CORRUPTED:
         return 'health-corrupted';
-      case FileHealthStatus.UNKNOWN:
       default:
         return 'health-unknown';
     }
@@ -57,7 +55,6 @@ export class FileHealthBo {
         return 'Warning';
       case FileHealthStatus.CORRUPTED:
         return 'Corrupted';
-      case FileHealthStatus.UNKNOWN:
       default:
         return 'Unknown';
     }

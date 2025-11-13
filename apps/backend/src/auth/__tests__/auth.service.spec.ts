@@ -8,9 +8,9 @@ import { LoginDto } from '../dto/login.dto';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let jwtService: JwtService;
-  let configService: ConfigService;
-  let prisma: PrismaService;
+  let _jwtService: JwtService;
+  let _configService: ConfigService;
+  let _prisma: PrismaService;
 
   const mockJwtService = {
     sign: jest.fn(),
@@ -40,9 +40,9 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    jwtService = module.get<JwtService>(JwtService);
-    configService = module.get<ConfigService>(ConfigService);
-    prisma = module.get<PrismaService>(PrismaService);
+    _jwtService = module.get<JwtService>(JwtService);
+    _configService = module.get<ConfigService>(ConfigService);
+    _prisma = module.get<PrismaService>(PrismaService);
 
     // Reset mocks
     jest.clearAllMocks();

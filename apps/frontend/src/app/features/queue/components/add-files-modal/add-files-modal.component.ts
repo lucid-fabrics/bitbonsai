@@ -164,7 +164,7 @@ export class AddFilesModalComponent implements OnDestroy {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (previews) => {
+        next: (_previews) => {
           this.isRefreshing$.next(false);
           // Update library previews by re-emitting the stream
           this.isLoadingLibraries$.next(false);

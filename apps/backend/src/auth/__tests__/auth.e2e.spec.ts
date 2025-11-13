@@ -3,11 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from '../auth.module';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 describe('Auth E2E Tests', () => {
   let app: INestApplication;
-  let jwtToken: string;
+  let _jwtToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -50,7 +49,7 @@ describe('Auth E2E Tests', () => {
       expect(response.body.access_token.length).toBeGreaterThan(0);
 
       // Save token for protected endpoint tests
-      jwtToken = response.body.access_token;
+      _jwtToken = response.body.access_token;
     });
 
     it('should return 401 for invalid username', async () => {
