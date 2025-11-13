@@ -79,6 +79,10 @@ export class FfmpegService implements OnModuleDestroy {
   private readonly lastPreviewGeneration = new Map<string, number>();
   private readonly PREVIEW_THROTTLE_MS = 30 * 1000; // 30 seconds
 
+  // PERFORMANCE: FFprobe result caching (filePath -> video info)
+  private readonly codecCache = new Map<string, { codec: string; container: string; timestamp: Date }>();
+  private readonly CODEC_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
   // Regex for parsing ffmpeg progress output
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
   private readonly progressRegex = /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
@@ -161,51 +165,54 @@ export class FfmpegService implements OnModuleDestroy {
 
     if (activeJobIds.length === 0) {
       this.logger.log('No active FFmpeg processes to kill');
-      return;
-    }
+    } else {
+      this.logger.log(`Killing ${activeJobIds.length} active FFmpeg process(es)...`);
 
-    this.logger.log(`Killing ${activeJobIds.length} active FFmpeg process(es)...`);
+      // Kill all active processes
+      const killPromises = activeJobIds.map(async (jobId) => {
+        const encoding = this.activeEncodings.get(jobId);
+        if (!encoding) return;
 
-    // Kill all active processes
-    const killPromises = activeJobIds.map(async (jobId) => {
-      const encoding = this.activeEncodings.get(jobId);
-      if (!encoding) return;
-
-      try {
-        // Use process group kill to ensure all child processes are terminated
-        if (encoding.process.pid) {
-          // Kill entire process group (negative PID)
-          process.kill(-encoding.process.pid, 'SIGTERM');
-          this.logger.log(
-            `Killed FFmpeg process group for job ${jobId} (PID: ${encoding.process.pid})`
-          );
-        }
-
-        // Give it 2 seconds to gracefully shutdown
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Force kill if still alive
-        if (!encoding.process.killed) {
+        try {
+          // Use process group kill to ensure all child processes are terminated
           if (encoding.process.pid) {
-            process.kill(-encoding.process.pid, 'SIGKILL');
-            this.logger.log(`Force killed FFmpeg process group for job ${jobId}`);
+            // Kill entire process group (negative PID)
+            process.kill(-encoding.process.pid, 'SIGTERM');
+            this.logger.log(
+              `Killed FFmpeg process group for job ${jobId} (PID: ${encoding.process.pid})`
+            );
+          }
+
+          // Give it 2 seconds to gracefully shutdown
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          // Force kill if still alive
+          if (!encoding.process.killed) {
+            if (encoding.process.pid) {
+              process.kill(-encoding.process.pid, 'SIGKILL');
+              this.logger.log(`Force killed FFmpeg process group for job ${jobId}`);
+            }
+          }
+        } catch (error) {
+          // ESRCH error means process already dead - that's fine
+          const err = error as NodeJS.ErrnoException;
+          if (err.code !== 'ESRCH') {
+            this.logger.warn(`Failed to kill FFmpeg for job ${jobId}: ${error}`);
           }
         }
-      } catch (error) {
-        // ESRCH error means process already dead - that's fine
-        const err = error as NodeJS.ErrnoException;
-        if (err.code !== 'ESRCH') {
-          this.logger.warn(`Failed to kill FFmpeg for job ${jobId}: ${error}`);
-        }
-      }
-    });
+      });
 
-    await Promise.allSettled(killPromises);
+      await Promise.allSettled(killPromises);
 
-    // Clear all tracking maps
-    this.activeEncodings.clear();
+      // Clear all tracking maps
+      this.activeEncodings.clear();
 
-    this.logger.log('FFmpeg cleanup complete');
+      this.logger.log('FFmpeg cleanup complete');
+    }
+
+    // PERFORMANCE: Clear codec cache on shutdown
+    this.codecCache.clear();
+    this.logger.log('Codec cache cleared');
   }
 
   /**
@@ -838,6 +845,65 @@ export class FfmpegService implements OnModuleDestroy {
         reject(err);
       });
     });
+  }
+
+  /**
+   * PERFORMANCE: Get video info with caching (1-hour TTL)
+   * Reduces repeated FFprobe calls for the same file
+   *
+   * @param filePath - Path to video file
+   * @returns Object with codec name and container format
+   */
+  async getVideoInfoCached(filePath: string): Promise<{ codec: string; container: string }> {
+    // Check cache first
+    const cached = this.codecCache.get(filePath);
+    if (cached) {
+      const age = Date.now() - cached.timestamp.getTime();
+      if (age < this.CODEC_CACHE_TTL_MS) {
+        this.logger.debug(`[CACHE HIT] Using cached codec info for: ${filePath}`);
+        return { codec: cached.codec, container: cached.container };
+      }
+      // Cache expired - remove it
+      this.codecCache.delete(filePath);
+    }
+
+    // Cache miss - fetch from FFprobe
+    this.logger.debug(`[CACHE MISS] Fetching codec info via FFprobe: ${filePath}`);
+    const result = await this.getVideoInfo(filePath);
+
+    // Store in cache
+    this.codecCache.set(filePath, {
+      codec: result.codec,
+      container: result.container,
+      timestamp: new Date(),
+    });
+
+    // Cleanup old cache entries (keep cache size reasonable)
+    this.cleanupCodecCache();
+
+    return result;
+  }
+
+  /**
+   * PERFORMANCE: Clean up expired codec cache entries
+   * Runs automatically after each cache write to prevent unbounded growth
+   * @private
+   */
+  private cleanupCodecCache(): void {
+    const now = Date.now();
+    let cleaned = 0;
+
+    for (const [filePath, entry] of this.codecCache.entries()) {
+      const age = now - entry.timestamp.getTime();
+      if (age >= this.CODEC_CACHE_TTL_MS) {
+        this.codecCache.delete(filePath);
+        cleaned++;
+      }
+    }
+
+    if (cleaned > 0) {
+      this.logger.debug(`Cleaned up ${cleaned} expired codec cache entries`);
+    }
   }
 
   /**
