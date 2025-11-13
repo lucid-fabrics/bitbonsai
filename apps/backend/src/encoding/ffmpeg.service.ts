@@ -234,11 +234,25 @@ export class FfmpegService implements OnModuleDestroy {
       // (e.g., "-preset fast" -> ["-preset", "fast"])
       if (i + 1 < flags.length && !flags[i + 1].startsWith('-')) {
         const value = flags[i + 1];
-        // SECURITY: Sanitize value to prevent command injection
-        // Only allow alphanumeric, dash, underscore, colon, dot, and comma
-        if (!/^[a-zA-Z0-9\-_:.,=]+$/.test(value)) {
-          throw new Error(`FFmpeg flag value '${value}' contains invalid characters`);
+
+        // SECURITY: Special validation for -map flag to prevent file path injection
+        if (flag === '-map') {
+          // -map values must match pattern: [input_index]:[stream_type]:[stream_index]
+          // Examples: "0:v:0", "1:a:1", "0:s:0"
+          // Reject file paths like "file:/etc/passwd" or "../sensitive/file"
+          if (!/^[0-9]+:[vascdt]:[0-9]+$/.test(value) && value !== '0') {
+            throw new Error(
+              `FFmpeg -map flag value '${value}' is invalid. Must match pattern [input]:[type]:[index] (e.g., "0:v:0")`
+            );
+          }
+        } else {
+          // SECURITY: Sanitize value to prevent command injection
+          // Only allow alphanumeric, dash, underscore, colon, dot, and comma
+          if (!/^[a-zA-Z0-9\-_:.,=]+$/.test(value)) {
+            throw new Error(`FFmpeg flag value '${value}' contains invalid characters`);
+          }
         }
+
         validatedFlags.push(value);
         i++; // Skip next iteration since we already processed the value
       }
@@ -732,6 +746,106 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * Get video codec and container information using ffprobe
+   *
+   * @param filePath - Path to video file
+   * @returns Object with codec name and container format
+   */
+  async getVideoInfo(filePath: string): Promise<{ codec: string; container: string }> {
+    return new Promise((resolve, reject) => {
+      const ffprobe = spawn('ffprobe', [
+        '-v',
+        'error',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=codec_name:format=format_name',
+        '-of',
+        'json',
+        filePath,
+      ]);
+
+      let output = '';
+
+      ffprobe.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      const timeoutId = setTimeout(() => {
+        ffprobe.kill();
+        reject(new Error('FFprobe timeout'));
+      }, 10000);
+
+      ffprobe.on('close', (code) => {
+        clearTimeout(timeoutId);
+
+        if (code === 0 && output.trim()) {
+          try {
+            const data = JSON.parse(output);
+            const codec = data.streams?.[0]?.codec_name || 'unknown';
+            const container = data.format?.format_name?.split(',')[0] || 'unknown';
+
+            resolve({ codec, container });
+            return;
+          } catch {
+            reject(new Error('Failed to parse ffprobe output'));
+          }
+        }
+
+        reject(new Error(`FFprobe failed with code ${code}`));
+      });
+
+      ffprobe.on('error', (err) => {
+        clearTimeout(timeoutId);
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Normalize codec name to standard format
+   * Maps various codec names to standardized identifiers
+   */
+  normalizeCodec(codec: string): string {
+    const codecMap: Record<string, string> = {
+      hevc: 'hevc',
+      h265: 'hevc',
+      hvc1: 'hevc',
+      h264: 'h264',
+      avc: 'h264',
+      avc1: 'h264',
+      vp9: 'vp9',
+      av1: 'av1',
+    };
+    return codecMap[codec.toLowerCase()] || codec.toLowerCase();
+  }
+
+  /**
+   * SECURITY: Validate file path to prevent directory traversal attacks
+   * Ensures file path is within allowed library path
+   *
+   * @param filePath - File path to validate
+   * @param libraryPath - Expected library base path
+   * @throws Error if path contains traversal attempts or is outside library
+   */
+  validateFilePath(filePath: string, libraryPath: string): void {
+    // Check for path traversal attempts
+    if (filePath.includes('..')) {
+      throw new Error('File path contains directory traversal attempt (..)');
+    }
+
+    // Normalize paths for comparison (resolve symlinks, relative paths)
+    const path = require('node:path');
+    const normalizedFilePath = path.normalize(filePath);
+    const normalizedLibraryPath = path.normalize(libraryPath);
+
+    // Ensure file is within library path
+    if (!normalizedFilePath.startsWith(normalizedLibraryPath)) {
+      throw new Error(`File path '${filePath}' is outside library path '${libraryPath}'`);
+    }
+  }
+
+  /**
    * TRUE RESUME: Verify partial encoded file is valid (not corrupted)
    *
    * @param filePath - Path to partial temp file
@@ -795,7 +909,6 @@ export class FfmpegService implements OnModuleDestroy {
         return -10;
       case 1: // High priority
         return -5;
-      case 0: // Normal priority
       default:
         return 0;
     }
@@ -877,6 +990,18 @@ export class FfmpegService implements OnModuleDestroy {
   async encodeFile(job: Job, policy: Policy, customOutputPath?: string): Promise<void> {
     this.logger.log(`Starting encoding for job ${job.id}: ${job.fileLabel}`);
     this.logger.debug(`[${job.id}] encodeFile() called - setting up FFmpeg`);
+
+    // SECURITY: Validate file path before any operations
+    const jobWithLibrary = job as any;
+    if (jobWithLibrary.library?.path) {
+      try {
+        this.validateFilePath(job.filePath, jobWithLibrary.library.path);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`[${job.id}] File path validation failed: ${message}`);
+        throw new Error(`Security validation failed: ${message}`);
+      }
+    }
 
     // Validate file exists
     if (!existsSync(job.filePath)) {
