@@ -51,4 +51,9 @@ export interface QueueJobApiModel {
   replacementAction?: 'REPLACED' | 'KEPT_BOTH' | null;
   // Encoding Preview Feature
   previewImagePaths?: string | null; // JSON array of preview image paths
+  // Health Check Feature
+  healthScore?: number;
+  healthMessage?: string;
+  healthStatus?: string;
+  healthCheckedAt?: string;
 }

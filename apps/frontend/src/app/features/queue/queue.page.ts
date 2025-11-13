@@ -31,6 +31,7 @@ import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.direc
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
 import { JobHistoryModalComponent } from './components/job-history-modal/job-history-modal.component';
+import type { QueueJobBo } from './bos/queue-job.bo';
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
@@ -533,7 +534,7 @@ export class QueueComponent implements OnInit {
       });
   }
 
-  protected deleteJob(job: QueueJob, event: Event): void {
+  protected deleteJob(job: QueueJobBo, event: Event): void {
     event.stopPropagation();
 
     const dialogData: ConfirmationDialogData = {
@@ -876,7 +877,7 @@ export class QueueComponent implements OnInit {
     this.errorModalData = null;
   }
 
-  protected openJobHistoryModal(job: QueueJob, event: Event): void {
+  protected openJobHistoryModal(job: QueueJobBo, event: Event): void {
     event.stopPropagation();
 
     // Fetch history if not cached
