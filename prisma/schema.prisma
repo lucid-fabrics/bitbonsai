@@ -99,6 +99,11 @@ enum TargetCodec {
   H264
 }
 
+enum JobType {
+  ENCODE // Full video/audio transcode
+  REMUX  // Container change only (stream copy)
+}
+
 enum JobStage {
   DETECTED
   HEALTH_CHECK
@@ -393,6 +398,8 @@ model Policy {
   preset           PolicyPreset
   targetCodec      TargetCodec
   targetQuality    Int // CRF value (0-51, lower = better quality)
+  targetContainer  String?      @default("mkv") // Target container format (mkv, mp4, or null to keep original)
+  skipReencoding   Boolean      @default(true) // Skip re-encoding if already in target codec (fast remux instead)
   deviceProfiles   Json // { appleTv: bool, roku: bool, web: bool, chromecast: bool }
   advancedSettings Json // { ffmpegFlags: string[], hwaccel: string, etc }
   atomicReplace    Boolean      @default(true) // Replace original atomically (rename)
@@ -423,10 +430,13 @@ model Policy {
 
 model Job {
   id              String    @id @default(cuid())
+  type            JobType   @default(ENCODE) // Job type: full encode or fast remux
   filePath        String // Full path to file
   fileLabel       String // User-friendly name (e.g., "Movie Name (2024).mkv")
   sourceCodec     String // Original codec (H.264, HEVC, etc)
+  sourceContainer String? // Original container (mkv, mp4, avi, etc)
   targetCodec     String // Target codec
+  targetContainer String? // Target container (mkv, mp4, or null to keep original)
   stage           JobStage
   progress        Float     @default(0) // 0.0 to 100.0
   etaSeconds      Int? // Estimated time to completion
@@ -503,6 +513,7 @@ model Job {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([type]) // For filtering by job type (ENCODE vs REMUX)
   @@index([stage])
   @@index([nodeId])
   @@index([libraryId])
@@ -522,6 +533,7 @@ model Job {
   @@index([autoHealedAt]) // PERF: For auto-heal queries
   @@index([nextRetryAt]) // PERF: For retry scheduler queries
   @@index([stage, retryCount, nextRetryAt]) // PERF: Composite for auto-heal eligibility queries
+  @@index([type, stage]) // Composite for filtering REMUX jobs in queue
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
