@@ -42,6 +42,7 @@ import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
+import { SshKeyService } from './services/ssh-key.service';
 
 @ApiTags('nodes')
 @ApiBearerAuth('JWT-auth')
@@ -52,7 +53,8 @@ export class NodesController {
     private readonly nodeDiscoveryService: NodeDiscoveryService,
     private readonly registrationRequestService: RegistrationRequestService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
-    private readonly jobAttribution: JobAttributionService
+    private readonly jobAttribution: JobAttributionService,
+    private readonly sshKeyService: SshKeyService
   ) {}
 
   /**
@@ -1088,4 +1090,72 @@ export class NodesController {
   // ============================================================================
   // STORAGE CONFIGURATION & ENVIRONMENT DETECTION ENDPOINTS
   // ============================================================================
+
+  // ============================================================================
+  // SSH KEY MANAGEMENT ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Get this node's SSH public key
+   */
+  @Public()
+  @Get('ssh/public-key')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Get this node's SSH public key",
+    description:
+      'Returns the SSH public key for this node. Used during node registration to enable passwordless file transfers.',
+  })
+  @ApiOkResponse({
+    description: 'SSH public key retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        publicKey: {
+          type: 'string',
+          example: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... bitbonsai-cluster-node',
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'SSH public key not found or not generated yet',
+  })
+  async getSshPublicKey() {
+    const publicKey = this.sshKeyService.getPublicKey();
+    return { publicKey };
+  }
+
+  /**
+   * Add an authorized SSH key
+   */
+  @Public()
+  @Post('ssh/authorized-keys')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Add an authorized SSH key',
+    description:
+      "Adds a remote SSH public key to this node's authorized_keys file. " +
+      'Used after node approval to enable passwordless file transfers from the main node.',
+  })
+  @ApiOkResponse({
+    description: 'SSH key added successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'SSH key added to authorized_keys' },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid SSH public key format',
+  })
+  async addAuthorizedKey(@Body() body: { publicKey: string; comment?: string }) {
+    this.sshKeyService.addAuthorizedKey(body.publicKey, body.comment);
+    return {
+      success: true,
+      message: 'SSH key added to authorized_keys',
+    };
+  }
 }
