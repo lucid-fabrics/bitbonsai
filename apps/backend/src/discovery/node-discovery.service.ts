@@ -368,9 +368,55 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       }
 
       const data = await response.json();
-      this.logger.log(`✅ Pairing complete - received API key`);
+      this.logger.log(
+        `✅ Pairing complete - received API key: ${data.apiKey?.substring(0, 20)}...`
+      );
 
-      return data;
+      // BULLETPROOF UX FIX: Automatically configure node as LINKED and restart
+      // This makes pairing actually work without manual .env editing
+      const fs = require('fs');
+      const path = require('path');
+      const envPath = path.join(process.cwd(), '.env');
+
+      this.logger.log(`📝 Writing LINKED node configuration to ${envPath}...`);
+
+      // Read existing .env
+      let envContent = '';
+      if (fs.existsSync(envPath)) {
+        envContent = fs.readFileSync(envPath, 'utf-8');
+      }
+
+      // Update or add NODE_ROLE, MAIN_API_URL, and API_KEY
+      const updates = {
+        NODE_ROLE: 'LINKED',
+        MAIN_API_URL: mainNodeUrl,
+        API_KEY: data.apiKey,
+      };
+
+      for (const [key, value] of Object.entries(updates)) {
+        const regex = new RegExp(`^${key}=.*$`, 'm');
+        if (regex.test(envContent)) {
+          envContent = envContent.replace(regex, `${key}=${value}`);
+        } else {
+          envContent += `\n${key}=${value}`;
+        }
+      }
+
+      // Write updated .env
+      fs.writeFileSync(envPath, envContent);
+      this.logger.log(`✅ Configuration written successfully`);
+
+      // Return success response and trigger restart after 2 seconds
+      setTimeout(() => {
+        this.logger.log(`🔄 Restarting application to apply LINKED node configuration...`);
+        process.exit(0); // PM2/systemd will automatically restart
+      }, 2000);
+
+      return {
+        ...data,
+        message: 'Pairing successful! Node will restart in 2 seconds to apply configuration.',
+        willRestart: true,
+      };
     } catch (error) {
       this.logger.error('Failed to complete pairing:', error);
       throw error;

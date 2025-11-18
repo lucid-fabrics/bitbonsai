@@ -40,7 +40,7 @@ export class ContainerBo {
     {
       value: null,
       label: 'Keep Original',
-      description: 'Preserve the source file\'s original container format',
+      description: "Preserve the source file's original container format",
       icon: 'lock-closed',
       extension: '',
     },
@@ -50,49 +50,49 @@ export class ContainerBo {
    * Get format by value
    */
   static getFormat(value: string | null): ContainerFormat | undefined {
-    return this.FORMATS.find((format) => format.value === value);
+    return ContainerBo.FORMATS.find((format) => format.value === value);
   }
 
   /**
    * Get format label
    */
   static getLabel(value: string | null): string {
-    return this.getFormat(value)?.label ?? 'Unknown';
+    return ContainerBo.getFormat(value)?.label ?? 'Unknown';
   }
 
   /**
    * Get format description
    */
   static getDescription(value: string | null): string {
-    return this.getFormat(value)?.description ?? '';
+    return ContainerBo.getFormat(value)?.description ?? '';
   }
 
   /**
    * Get format icon
    */
   static getIcon(value: string | null): string {
-    return this.getFormat(value)?.icon ?? 'help-circle';
+    return ContainerBo.getFormat(value)?.icon ?? 'help-circle';
   }
 
   /**
    * Check if format is valid
    */
   static isValid(value: string | null): boolean {
-    return this.FORMATS.some((format) => format.value === value);
+    return ContainerBo.FORMATS.some((format) => format.value === value);
   }
 
   /**
    * Get all format values for validation
    */
   static getValidValues(): Array<string | null> {
-    return this.FORMATS.map((format) => format.value);
+    return ContainerBo.FORMATS.map((format) => format.value);
   }
 
   /**
    * Get format for UI dropdown display
    */
   static getFormatOptions(): Array<{ value: string | null; label: string; description: string }> {
-    return this.FORMATS.map((format) => ({
+    return ContainerBo.FORMATS.map((format) => ({
       value: format.value,
       label: format.label,
       description: format.description,
@@ -112,8 +112,8 @@ export class ContainerBo {
     }
 
     // Normalize container names (mkv = matroska)
-    const normalizedSource = this.normalizeContainer(sourceContainer);
-    const normalizedTarget = this.normalizeContainer(targetContainer);
+    const normalizedSource = ContainerBo.normalizeContainer(sourceContainer);
+    const normalizedTarget = ContainerBo.normalizeContainer(targetContainer);
 
     return normalizedSource !== normalizedTarget;
   }
@@ -142,11 +142,11 @@ export class ContainerBo {
     targetContainer: string | null
   ): string {
     const codecMatch = sourceCodec.toLowerCase() === targetCodec.toLowerCase();
-    const containerChange = this.needsContainerChange(sourceContainer, targetContainer);
+    const containerChange = ContainerBo.needsContainerChange(sourceContainer, targetContainer);
 
     if (codecMatch && containerChange) {
-      const sourceLabel = this.getLabel(sourceContainer);
-      const targetLabel = this.getLabel(targetContainer);
+      const sourceLabel = ContainerBo.getLabel(sourceContainer);
+      const targetLabel = ContainerBo.getLabel(targetContainer);
       return `Fast remux: ${sourceLabel} → ${targetLabel} (seconds, no re-encoding)`;
     }
 

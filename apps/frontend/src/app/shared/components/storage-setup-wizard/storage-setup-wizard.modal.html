@@ -1,0 +1,353 @@
+<div class="storage-wizard">
+  <!-- Header -->
+  <div class="wizard-header">
+    <h2>Storage Configuration Wizard</h2>
+    <button class="close-btn" (click)="close()">
+      <fa-icon [icon]="['fas', 'xmark']"></fa-icon>
+    </button>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="wizard-progress">
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="progressPercentage"></div>
+    </div>
+    <div class="progress-steps">
+      <div
+        *ngFor="let step of steps; let i = index"
+        class="progress-step"
+        [class.active]="i === currentStep"
+        [class.completed]="step.completed">
+        <div class="step-circle">
+          <fa-icon
+            *ngIf="step.completed"
+            [icon]="['fas', 'check']"></fa-icon>
+          <span *ngIf="!step.completed">{{ i + 1 }}</span>
+        </div>
+        <span class="step-label">{{ step.title }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step Content -->
+  <div class="wizard-content">
+    <!-- Step 1: Environment Check -->
+    <div *ngIf="currentStepData.id === 'environment'" class="step-content">
+      <h3>
+        <fa-icon [icon]="['fas', 'server']" class="me-2"></fa-icon>
+        Environment Detection
+      </h3>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-label">Source Node</div>
+          <div class="info-value">{{ sourceNodeName }}</div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-label">Target Node</div>
+          <div class="info-value">{{ targetNodeName }}</div>
+        </div>
+
+        <div class="info-card" *ngIf="targetEnvironment">
+          <div class="info-label">Container Type</div>
+          <div class="info-value">
+            <span class="badge badge-secondary">
+              {{ targetEnvironment.containerType }}
+            </span>
+          </div>
+        </div>
+
+        <div class="info-card" *ngIf="targetEnvironment">
+          <div class="info-label">Can Mount NFS</div>
+          <div class="info-value">
+            <fa-icon
+              [icon]="['fas', canMountNFS ? 'check-circle' : 'times-circle']"
+              [class.text-success]="canMountNFS"
+              [class.text-danger]="!canMountNFS"
+              class="me-2"></fa-icon>
+            {{ canMountNFS ? 'Yes' : 'No' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="recommendation-box">
+        <fa-icon [icon]="['fas', 'lightbulb']" class="recommendation-icon"></fa-icon>
+        <div>
+          <strong>Recommended Method: {{ recommendation.recommended }}</strong>
+          <p>{{ recommendation.reason }}</p>
+        </div>
+      </div>
+
+      <div class="warning-box" *ngIf="recommendation.warning">
+        <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-icon"></fa-icon>
+        <div>
+          <strong>Warning</strong>
+          <p>{{ recommendation.warning }}</p>
+        </div>
+      </div>
+
+      <div class="action-box" *ngIf="needsPrivilegedMode">
+        <fa-icon [icon]="['fas', 'info-circle']" class="action-icon"></fa-icon>
+        <div>
+          <strong>LXC Container Detected</strong>
+          <p>
+            Your child node is running in an LXC container without privileged mode.
+            You have three options:
+          </p>
+          <ul>
+            <li><strong>Option 1:</strong> Enable privileged mode on the LXC container</li>
+            <li><strong>Option 2:</strong> Mount NFS on the Proxmox host and bind-mount into container</li>
+            <li><strong>Option 3:</strong> Use rsync file transfer (automatic, no setup needed)</li>
+          </ul>
+          <p>
+            See <a href="/docs/unraid#lxc-container-configuration" target="_blank">LXC Configuration Guide</a>
+            for detailed instructions.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: NFS Configuration -->
+    <div *ngIf="currentStepData.id === 'nfs-config'" class="step-content">
+      <h3>
+        <fa-icon [icon]="['fas', 'network-wired']" class="me-2"></fa-icon>
+        NFS Configuration
+      </h3>
+
+      <div class="instruction-section">
+        <h4>Step 1: Enable NFS on Main Node</h4>
+        <div class="code-block">
+          <p>On Unraid (Main Node):</p>
+          <ol>
+            <li>Go to <strong>Settings</strong> → <strong>NFS</strong></li>
+            <li>Enable <strong>NFS Server</strong>: Yes</li>
+            <li>Add media shares to exports</li>
+            <li>Click <strong>Apply</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="instruction-section">
+        <h4>Step 2: Verify NFS Exports</h4>
+        <div class="code-block">
+          <code>showmount -e 192.168.1.100</code>
+          <p class="code-output">
+            Expected output:<br>
+            /mnt/user/media *<br>
+            /mnt/user/Downloads *
+          </p>
+        </div>
+      </div>
+
+      <div class="instruction-section" *ngIf="isLXCContainer && !isPrivileged">
+        <h4>Step 3: Enable LXC Privileged Mode</h4>
+        <div class="code-block">
+          <code># Stop container</code><br>
+          <code>pct stop &lt;container-id&gt;</code><br>
+          <br>
+          <code># Edit config</code><br>
+          <code>nano /etc/pve/lxc/&lt;container-id&gt;.conf</code><br>
+          <br>
+          <code># Add this line:</code><br>
+          <code>unprivileged: 0</code><br>
+          <br>
+          <code># Save and start</code><br>
+          <code>pct start &lt;container-id&gt;</code>
+        </div>
+        <div class="alert alert-warning">
+          <fa-icon [icon]="['fas', 'shield-alt']"></fa-icon>
+          <strong>Security Note:</strong> Privileged mode gives the container root access.
+          Only use for trusted encoding nodes on isolated networks.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Mount Shares -->
+    <div *ngIf="currentStepData.id === 'mount-shares'" class="step-content">
+      <h3>
+        <fa-icon [icon]="['fas', 'folder-open']" class="me-2"></fa-icon>
+        Mount NFS Shares
+      </h3>
+
+      <div class="instruction-section">
+        <h4>Create Storage Shares</h4>
+        <p>BitBonsai will create and mount NFS shares automatically.</p>
+        <div class="action-buttons">
+          <button class="btn btn-primary btn-lg">
+            <fa-icon [icon]="['fas', 'plus']" class="me-2"></fa-icon>
+            Auto-Create Shares
+          </button>
+        </div>
+      </div>
+
+      <div class="instruction-section">
+        <h4>Manual Configuration</h4>
+        <p>Or configure shares manually:</p>
+        <ol>
+          <li>Go to <strong>Nodes</strong> page</li>
+          <li>Click on <strong>{{ targetNodeName }}</strong></li>
+          <li>Click <strong>Storage</strong> tab</li>
+          <li>Click <strong>Auto-Detect Shares</strong></li>
+          <li>Click <strong>Mount</strong> on each detected share</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Step 4: rsync Configuration -->
+    <div *ngIf="currentStepData.id === 'rsync-config'" class="step-content">
+      <h3>
+        <fa-icon [icon]="['fas', 'sync-alt']" class="me-2"></fa-icon>
+        rsync File Transfer
+      </h3>
+
+      <div class="info-banner success">
+        <fa-icon [icon]="['fas', 'check-circle']" class="me-2"></fa-icon>
+        Good news! rsync file transfer requires no configuration.
+      </div>
+
+      <div class="instruction-section">
+        <h4>How It Works</h4>
+        <ol>
+          <li>
+            <strong>Job Assigned:</strong> When a job is assigned to {{ targetNodeName }}
+          </li>
+          <li>
+            <strong>File Transfer:</strong> Source file is transferred via rsync (~1-2 min for 10GB)
+          </li>
+          <li>
+            <strong>Encoding:</strong> FFmpeg processes the file locally on {{ targetNodeName }}
+          </li>
+          <li>
+            <strong>Result Transfer:</strong> Encoded file is transferred back to {{ sourceNodeName }}
+          </li>
+          <li>
+            <strong>Cleanup:</strong> Temp files are automatically removed
+          </li>
+        </ol>
+      </div>
+
+      <div class="instruction-section">
+        <h4>Performance</h4>
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-label">5GB File</div>
+            <div class="info-value">~45 seconds</div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">10GB File</div>
+            <div class="info-value">~90 seconds</div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">Total Overhead</div>
+            <div class="info-value">3-5%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="instruction-section">
+        <h4>Enable rsync Mode</h4>
+        <p>Set the target node to use file transfers:</p>
+        <div class="action-buttons">
+          <button class="btn btn-primary btn-lg">
+            <fa-icon [icon]="['fas', 'toggle-on']" class="me-2"></fa-icon>
+            Enable File Transfer Mode
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Verify & Test -->
+    <div *ngIf="currentStepData.id === 'verify'" class="step-content">
+      <h3>
+        <fa-icon [icon]="['fas', 'check-circle']" class="me-2"></fa-icon>
+        Verify Configuration
+      </h3>
+
+      <div class="instruction-section">
+        <h4>Test Storage Access</h4>
+        <div class="test-grid">
+          <div class="test-card">
+            <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+            <div class="test-info">
+              <strong>Checking Environment</strong>
+              <p>Detecting container type and capabilities...</p>
+            </div>
+            <button class="btn btn-sm btn-outline">Test</button>
+          </div>
+
+          <div class="test-card" *ngIf="recommendation.recommended === StorageMethod.NFS">
+            <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+            <div class="test-info">
+              <strong>Testing NFS Mounts</strong>
+              <p>Verifying file access on {{ targetNodeName }}...</p>
+            </div>
+            <button class="btn btn-sm btn-outline">Test</button>
+          </div>
+
+          <div class="test-card" *ngIf="recommendation.recommended === StorageMethod.RSYNC">
+            <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+            <div class="test-info">
+              <strong>Testing rsync Transfer</strong>
+              <p>Verifying SSH access and file transfer...</p>
+            </div>
+            <button class="btn btn-sm btn-outline">Test</button>
+          </div>
+
+          <div class="test-card">
+            <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+            <div class="test-info">
+              <strong>Test Encoding Job</strong>
+              <p>Run a small test job on {{ targetNodeName }}...</p>
+            </div>
+            <button class="btn btn-sm btn-outline">Test</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="success-banner">
+        <fa-icon [icon]="['fas', 'check-circle']" class="success-icon"></fa-icon>
+        <div>
+          <strong>Configuration Complete!</strong>
+          <p>
+            Storage is configured for {{ recommendation.recommended }} mode.
+            You can now assign encoding jobs to {{ targetNodeName }}.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Actions -->
+  <div class="wizard-footer">
+    <button
+      class="btn btn-outline-secondary"
+      (click)="previousStep()"
+      [disabled]="isFirstStep">
+      <fa-icon [icon]="['fas', 'arrow-left']" class="me-2"></fa-icon>
+      Previous
+    </button>
+
+    <button
+      class="btn btn-secondary"
+      (click)="close()">
+      Cancel
+    </button>
+
+    <button
+      *ngIf="!isLastStep"
+      class="btn btn-primary"
+      (click)="nextStep()">
+      Next
+      <fa-icon [icon]="['fas', 'arrow-right']" class="ms-2"></fa-icon>
+    </button>
+
+    <button
+      *ngIf="isLastStep"
+      class="btn btn-success"
+      (click)="complete()">
+      <fa-icon [icon]="['fas', 'check']" class="me-2"></fa-icon>
+      Complete Setup
+    </button>
+  </div>
+</div>

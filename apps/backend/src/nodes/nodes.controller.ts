@@ -38,6 +38,7 @@ import { RegistrationRequestResponseDto } from './dto/registration/registration-
 import { RejectRequestDto } from './dto/registration/reject-request.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
+import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
@@ -50,7 +51,8 @@ export class NodesController {
     private readonly nodesService: NodesService,
     private readonly nodeDiscoveryService: NodeDiscoveryService,
     private readonly registrationRequestService: RegistrationRequestService,
-    private readonly capabilityDetector: NodeCapabilityDetectorService
+    private readonly capabilityDetector: NodeCapabilityDetectorService,
+    private readonly jobAttribution: JobAttributionService
   ) {}
 
   /**
@@ -257,6 +259,7 @@ export class NodesController {
       status: node.status,
       version: node.version,
       acceleration: node.acceleration,
+      mainNodeUrl: node.mainNodeUrl,
     };
   }
 
@@ -290,6 +293,138 @@ export class NodesController {
       const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
       return safeNode;
     });
+  }
+
+  /**
+   * Get node scores for job attribution
+   * IMPORTANT: This route must come BEFORE @Get(':id') to avoid routing conflicts
+   */
+  @Get('scores')
+  @ApiOperation({
+    summary: 'Get node scores',
+    description:
+      'Returns weighted scores for all online nodes used in job attribution algorithm.\n\n' +
+      '**Score Breakdown** (100 points total):\n' +
+      '- **Schedule Availability**: Binary gate (0 = outside schedule, proceed otherwise)\n' +
+      '- **Load Score** (40 pts): Based on active jobs vs maxWorkers\n' +
+      '- **Hardware Score** (30 pts): GPU presence + CPU cores\n' +
+      '- **Performance Score** (30 pts): Average encoding speed (FPS)\n\n' +
+      '**Use Case**: Visualization of node capacity, debugging job distribution',
+  })
+  @ApiOkResponse({
+    description: 'Node scores retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          nodeId: { type: 'string' },
+          nodeName: { type: 'string' },
+          totalScore: { type: 'number' },
+          breakdown: {
+            type: 'object',
+            properties: {
+              scheduleAvailable: { type: 'boolean' },
+              loadScore: { type: 'number' },
+              hardwareScore: { type: 'number' },
+              performanceScore: { type: 'number' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while calculating scores',
+  })
+  async getNodeScores() {
+    return this.jobAttribution.getAllNodeScores();
+  }
+
+  /**
+   * Detect environment information for current node
+   * IMPORTANT: This route must come BEFORE @Get(':id') to avoid routing conflicts
+   */
+  @Get('environment')
+  @ApiOperation({
+    summary: 'Detect current node environment',
+    description:
+      'Detects container type, privileges, and NFS mounting capabilities for the current node.\n\n' +
+      '**Returns**: Environment info including container type, privilege level, and storage recommendations',
+  })
+  @ApiOkResponse({
+    description: 'Environment information',
+    schema: {
+      type: 'object',
+      properties: {
+        containerType: {
+          type: 'string',
+          enum: ['BARE_METAL', 'LXC', 'DOCKER', 'KUBERNETES', 'UNKNOWN'],
+        },
+        isPrivileged: { type: 'boolean' },
+        canMountNFS: { type: 'boolean' },
+        networkSubnet: { type: 'string', nullable: true },
+        hostname: { type: 'string' },
+      },
+    },
+  })
+  async detectEnvironment() {
+    const { EnvironmentDetectorService } = await import(
+      '../core/services/environment-detector.service'
+    );
+    const detector = new EnvironmentDetectorService();
+    return detector.detectEnvironment();
+  }
+
+  /**
+   * Get storage method recommendation between two nodes
+   * IMPORTANT: This route must come BEFORE @Get(':id') to avoid routing conflicts
+   */
+  @Post('storage-recommendation')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get storage method recommendation',
+    description:
+      'Analyzes two nodes and recommends optimal storage sharing method (NFS or rsync).\n\n' +
+      '**Factors**: Network location, container type, mount capabilities, privileges.\n\n' +
+      '**Returns**: Recommendation with reasoning and any warnings/actions required.',
+  })
+  @ApiOkResponse({
+    description: 'Storage method recommendation',
+    schema: {
+      type: 'object',
+      properties: {
+        recommended: { type: 'string', enum: ['NFS', 'RSYNC', 'EITHER'] },
+        reason: { type: 'string' },
+        warning: { type: 'string' },
+        actionRequired: { type: 'string' },
+      },
+    },
+  })
+  async getStorageRecommendation(@Body() body: { sourceNodeId: string; targetNodeId: string }) {
+    const { EnvironmentDetectorService } = await import(
+      '../core/services/environment-detector.service'
+    );
+    const detector = new EnvironmentDetectorService();
+
+    // Get node info
+    const sourceNode = await this.nodesService.findOne(body.sourceNodeId);
+    const targetNode = await this.nodesService.findOne(body.targetNodeId);
+
+    // Build node info for recommendation
+    const sourceInfo = {
+      subnet: sourceNode.networkLocation || null,
+      containerType: (sourceNode.containerType as any) || 'UNKNOWN',
+      canMountNFS: sourceNode.canMountNFS || false,
+    };
+
+    const targetInfo = {
+      subnet: targetNode.networkLocation || null,
+      containerType: (targetNode.containerType as any) || 'UNKNOWN',
+      canMountNFS: targetNode.canMountNFS || false,
+    };
+
+    return detector.recommendStorageMethod(sourceInfo, targetInfo);
   }
 
   /**
@@ -916,4 +1051,41 @@ export class NodesController {
       reasoning: `Network: ${node.networkLocation}, Storage: ${node.hasSharedStorage ? 'Shared' : 'Transfer required'}`,
     };
   }
+
+  // ============================================================================
+  // JOB ATTRIBUTION & SCHEDULING ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Clear node score cache
+   */
+  @Post('scores/clear-cache')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Clear node score cache',
+    description:
+      'Clears the node score cache to force recalculation on next request.\n\n' +
+      '**Use Case**: After node configuration changes (maxWorkers, schedule, etc.)',
+  })
+  @ApiOkResponse({
+    description: 'Cache cleared successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Score cache cleared' },
+      },
+    },
+  })
+  async clearScoreCache() {
+    this.jobAttribution.clearCache();
+    return {
+      success: true,
+      message: 'Score cache cleared',
+    };
+  }
+
+  // ============================================================================
+  // STORAGE CONFIGURATION & ENVIRONMENT DETECTION ENDPOINTS
+  // ============================================================================
 }

@@ -1,5 +1,6 @@
 import type { WinstonModuleOptions } from 'nest-winston';
 import * as winston from 'winston';
+import { version as APP_VERSION } from '../../../../../package.json';
 
 /**
  * Winston logger configuration for BitBonsai
@@ -54,7 +55,7 @@ export const winstonConfig: WinstonModuleOptions = {
   defaultMeta: {
     service: 'bitbonsai-api',
     environment: process.env.NODE_ENV || 'development',
-    version: process.env.APP_VERSION || '0.1.0',
+    version: APP_VERSION, // Read from package.json
   },
   transports: [
     // Console transport (always enabled)

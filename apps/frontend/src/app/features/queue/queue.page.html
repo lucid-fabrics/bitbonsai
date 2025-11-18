@@ -39,6 +39,9 @@
     </div>
   </div>
 
+  <!-- Disk Space Warning Banner -->
+  <app-disk-space-warning-banner></app-disk-space-warning-banner>
+
   <!-- Progress Dashboard -->
   @if (queueData$ | async; as queueData) {
     <div class="progress-dashboard">
@@ -203,20 +206,22 @@
         </div>
       </div>
 
-      <div class="filter-group">
-        <label for="node-filter">Node:</label>
-        <select
-          id="node-filter"
-          [value]="selectedNodeId"
-          (change)="onNodeFilterChange($any($event.target).value)"
-          class="filter-select"
-        >
-          <option value="">All Nodes</option>
-          @for (node of availableNodes | keyvalue; track node.key) {
-            <option [value]="node.key">{{ node.value }}</option>
-          }
-        </select>
-      </div>
+      @if (isMainNode$ | async) {
+        <div class="filter-group">
+          <label for="node-filter">Node:</label>
+          <select
+            id="node-filter"
+            [value]="selectedNodeId"
+            (change)="onNodeFilterChange($any($event.target).value)"
+            class="filter-select"
+          >
+            <option value="">All Nodes</option>
+            @for (node of availableNodes | keyvalue; track node.key) {
+              <option [value]="node.key">{{ node.value }}</option>
+            }
+          </select>
+        </div>
+      }
 
       @if (availableLibraries$ | async; as availableLibraries) {
         <div class="filter-group">
@@ -433,6 +438,29 @@
                         </span>
                       </div>
                     </div>
+                  } @else if (job.status === 'TRANSFERRING') {
+                    <div class="progress-details">
+                      <div class="progress-bar-enhanced transfer">
+                        <div class="progress-fill-enhanced transfer" [style.width.%]="job.transferProgress || 0">
+                          <div class="progress-shimmer"></div>
+                        </div>
+                        <span class="progress-percentage">
+                          {{ (job.transferProgress || 0) | number: '1.0-0' }}%
+                        </span>
+                      </div>
+                      <div class="progress-meta">
+                        <span class="meta-item">
+                          <i class="fas fa-exchange-alt"></i>
+                          Transferring to {{ job.nodeName }}
+                        </span>
+                        @if (job.transferSpeedMBps) {
+                          <span class="meta-item transfer-speed">
+                            <i class="fas fa-tachometer-alt"></i>
+                            {{ job.transferSpeedMBps | number: '1.1-1' }} MB/s
+                          </span>
+                        }
+                      </div>
+                    </div>
                   } @else if (job.status === 'QUEUED') {
                     <div class="queue-position">
                       <i class="fas fa-hourglass-start"></i>
@@ -487,7 +515,29 @@
                     <span class="size-original">{{ formatBytes(job.originalSize) }}</span>
                   }
                 </td>
-                <td class="col-node">{{ job.nodeName }}</td>
+                <td class="col-node">
+                  <div class="node-assignment">
+                    <span class="node-name">{{ job.nodeName }}</span>
+                    @if (job.manualAssignment) {
+                      <span class="assignment-badge manual"
+                            bbTooltip
+                            tooltipTitle="Manually Assigned"
+                            tooltipContent="This job was manually assigned to this node by a user."
+                            tooltipPlacement="top">
+                        <i class="fas fa-hand-pointer"></i> Manual
+                      </span>
+                    }
+                    @if (job.originalNodeId && job.originalNodeId !== job.nodeId) {
+                      <span class="assignment-badge delegated"
+                            bbTooltip
+                            tooltipTitle="Delegated Job"
+                            tooltipContent="This job was delegated from another node."
+                            tooltipPlacement="top">
+                        <i class="fas fa-share"></i> Delegated
+                      </span>
+                    }
+                  </div>
+                </td>
                 @if (selectedStatus === JobStatus.FAILED) {
                   <td class="col-failed-at">{{ formatTimestamp(job.failedAt) }}</td>
                   <td class="col-failure-progress">
@@ -604,6 +654,16 @@
                       </div>
                     }
                     @if (job.status === 'QUEUED' || job.status === 'ENCODING') {
+                      <button
+                        (click)="openDelegationDialog(job, $event)"
+                        class="action-btn delegate-btn"
+                        bbTooltip
+                        tooltipTitle="Send to Node"
+                        tooltipContent="Manually assign this job to a specific node. This overrides the automatic node selection algorithm."
+                        tooltipWhen="You want to choose which node should process this job."
+                        tooltipPlacement="top">
+                        <i class="fas fa-share"></i>
+                      </button>
                       <button
                         (click)="openCancelDialog(job.id, $event)"
                         class="action-btn cancel-btn"

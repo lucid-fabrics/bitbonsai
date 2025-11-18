@@ -133,6 +133,19 @@ export class QueueClient {
   }
 
   /**
+   * Delegate job to specific node
+   *
+   * Manually assigns a job to a specific node, bypassing automatic node selection.
+   *
+   * @param jobId - ID of the job to delegate
+   * @param targetNodeId - ID of the node to delegate the job to
+   * @returns Observable of updated job
+   */
+  delegateJob(jobId: string, targetNodeId: string): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/delegate`, { targetNodeId });
+  }
+
+  /**
    * Get job failure/event history timeline
    *
    * Fetches the complete history of all failure, cancellation, restart, and auto-heal events for a job.
@@ -156,5 +169,42 @@ export class QueueClient {
    */
   capturePreview(jobId: string): Observable<QueueJobApiModel> {
     return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/preview/capture`, {});
+  }
+
+  /**
+   * Get all jobs currently in TRANSFERRING stage
+   *
+   * @returns Observable of array of jobs being transferred
+   */
+  getActiveTransfers(): Observable<QueueJobApiModel[]> {
+    return this.http.get<QueueJobApiModel[]>(`${this.apiUrl}/transfers/active`);
+  }
+
+  /**
+   * Get transfer progress for a specific job
+   *
+   * @param jobId - ID of the job to get transfer progress for
+   * @returns Observable with transfer progress data
+   */
+  getTransferProgress(jobId: string): Observable<{
+    progress: number;
+    speedMBps: number;
+    etaSeconds: number;
+  }> {
+    return this.http.get<{
+      progress: number;
+      speedMBps: number;
+      etaSeconds: number;
+    }>(`${this.apiUrl}/${jobId}/transfer/progress`);
+  }
+
+  /**
+   * Cancel an active file transfer
+   *
+   * @param jobId - ID of the job to cancel transfer for
+   * @returns Observable that completes when transfer is cancelled
+   */
+  cancelTransfer(jobId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/transfer/cancel`, {});
   }
 }

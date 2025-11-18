@@ -3,7 +3,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { type Job, JobStage, type Policy } from '@prisma/client';
+import { DataAccessService } from '../core/services/data-access.service';
 import { LibrariesService } from '../libraries/libraries.service';
+import { NodesService } from '../nodes/nodes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
@@ -92,8 +94,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
+    readonly _dataAccessService: DataAccessService,
     private readonly ffmpegService: FfmpegService,
-    private readonly librariesService: LibrariesService
+    private readonly librariesService: LibrariesService,
+    private readonly nodesService: NodesService
   ) {
     // Calculate optimal workers based on CPU capacity
     this.DEFAULT_WORKERS_PER_NODE = this.calculateOptimalWorkers();
@@ -178,35 +182,22 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // STEP 4: Auto-heal orphaned jobs from previous crash/reboot
       await this.autoHealOrphanedJobs();
 
-      // STEP 2: Get all online nodes with their maxWorkers setting
-      const onlineNodes = await this.prisma.node.findMany({
-        where: { status: 'ONLINE' },
-        select: { id: true, name: true, maxWorkers: true },
-      });
+      // CRITICAL FIX: Only start workers for the CURRENT node, not all online nodes
+      // This prevents MAIN nodes from starting workers for LINKED nodes, which causes
+      // the error "getNextJob should not be called directly on MAIN nodes"
+      const currentNode = await this.nodesService.getCurrentNode();
 
-      if (onlineNodes.length === 0) {
-        this.logger.warn('No online nodes found - no workers started');
+      if (!currentNode) {
+        this.logger.warn('Current node not found - no workers started');
         return;
       }
 
-      // STEP 3: Start worker pool for each online node using their configured maxWorkers
-      let totalWorkersStarted = 0;
-      for (const node of onlineNodes) {
-        try {
-          // Use node's maxWorkers if set, otherwise fall back to DEFAULT_WORKERS_PER_NODE
-          const maxWorkers = node.maxWorkers || this.DEFAULT_WORKERS_PER_NODE;
-          const workersStarted = await this.startWorkerPool(node.id, maxWorkers);
-          totalWorkersStarted += workersStarted;
-          this.logger.log(
-            `✓ Started ${workersStarted} worker(s) for node: ${node.name} (max: ${maxWorkers})`
-          );
-        } catch (error) {
-          this.logger.error(`Failed to start workers for node ${node.name}:`, error);
-        }
-      }
+      // STEP 3: Start worker pool for the current node using its configured maxWorkers
+      const maxWorkers = currentNode.maxWorkers || this.DEFAULT_WORKERS_PER_NODE;
+      const workersStarted = await this.startWorkerPool(currentNode.id, maxWorkers);
 
       this.logger.log(
-        `✅ Auto-started ${totalWorkersStarted} worker(s) across ${onlineNodes.length} node(s)`
+        `✅ Started ${workersStarted} worker(s) for current node: ${currentNode.name} (max: ${maxWorkers})`
       );
 
       // STEP 4: Start background watchdog to detect stuck jobs
@@ -1063,6 +1054,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // Get next job from queue (respects concurrent limits)
+      // CRITICAL FIX: Use QueueService directly since we only start workers for the current node
+      // DataAccessService is only for LINKED nodes calling MAIN node's API
       const job = await this.queueService.getNextJob(nodeId);
 
       if (!job) {
@@ -1125,7 +1118,20 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         worker.currentJobId = null;
       }
     } catch (error) {
-      this.logger.error(`[${workerId}] Error processing job:`, error);
+      // BULLETPROOF FIX: Log full error details including stack trace
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error(
+        `[${workerId}] Error processing job: ${errorMessage}`,
+        errorStack || 'No stack trace available'
+      );
+
+      // Log additional error context if available
+      if (error && typeof error === 'object') {
+        this.logger.error(`[${workerId}] Error details:`, JSON.stringify(error, null, 2));
+      }
+
       return null;
     }
   }
@@ -1367,6 +1373,31 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         where: { id: job.id },
         data: { tempFilePath: tmpPath },
       });
+
+      // BULLETPROOF FIX: Validate temp file state BEFORE attempting resume
+      // If tempFilePath is set but file doesn't exist, clear resume state and start fresh
+      if (job.tempFilePath && !fs.existsSync(job.tempFilePath)) {
+        this.logger.warn(
+          `⚠️  TEMP FILE LOST: Job ${job.id} has tempFilePath="${job.tempFilePath}" but file doesn't exist. Clearing resume state and starting fresh.`
+        );
+
+        // Reset job to fresh QUEUED state
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            tempFilePath: tmpPath, // Set new temp path
+            resumeTimestamp: null,
+            progress: 0,
+            autoHealedAt: null,
+            autoHealedProgress: null,
+          },
+        });
+
+        // Reload job with cleared state
+        job.tempFilePath = tmpPath;
+        job.resumeTimestamp = null;
+        job.progress = 0;
+      }
 
       // TRUE RESUME: Check if job has resume state from auto-heal
       let startedFromSeconds: number | undefined;

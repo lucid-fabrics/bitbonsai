@@ -17,6 +17,7 @@ import { AuthService } from './core/auth/auth.service';
 import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
 import { NodeService } from './core/services/node.service';
+import { NodeConfigService } from './core/services/node-config.service';
 import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
 import { NotificationBellComponent } from './shared/components/notification-bell/notification-bell.component';
 import { NotificationContainerComponent } from './shared/components/notification-container/notification-container.component';
@@ -111,6 +112,7 @@ export class AppComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly nodeService = inject(NodeService);
+  private readonly nodeConfigService = inject(NodeConfigService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly store = inject(Store);
 
@@ -158,6 +160,13 @@ export class AppComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
+        next: (node) => {
+          // Set main API URL in config service for LINKED nodes
+          // This allows the API interceptor to route requests to the MAIN node
+          if (node.mainNodeUrl) {
+            this.nodeConfigService.setMainApiUrl(node.mainNodeUrl);
+          }
+        },
         error: (err) => {
           console.error('Failed to fetch current node information:', err);
           // If no nodes are registered, the app will still work

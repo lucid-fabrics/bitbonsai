@@ -5,6 +5,7 @@ PROXMOX_HOST="${1:-pve-mirna}"
 PROXMOX_IP="${2:-192.168.1.2}"
 CONTAINER_ID="${3:-200}"
 ENVIRONMENT="${4:-dev}"  # dev or prod
+STATIC_IP="${5:-}"  # Optional: Static IP in CIDR format (e.g., 192.168.1.162/24)
 CONTAINER_HOSTNAME="bitbonsai"
 
 # Load environment-specific specs
@@ -31,6 +32,11 @@ echo "Target: $PROXMOX_HOST ($PROXMOX_IP)"
 echo "Container ID: $CONTAINER_ID"
 echo "Environment: $(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')"
 echo "Specs: ${CORES} cores, ${MEMORY}MB RAM, ${STORAGE}GB storage"
+if [ -n "$STATIC_IP" ]; then
+  echo "Network: Static IP ($STATIC_IP)"
+else
+  echo "Network: DHCP"
+fi
 echo "=========================================="
 echo ""
 
@@ -76,7 +82,7 @@ scp -i ~/.ssh/pve_ai_key -r * root@$PROXMOX_IP:/tmp/bitbonsai-deploy/
 
 # Create and configure LXC container
 echo "[3/7] Creating LXC container..."
-ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID $CORES $MEMORY $SWAP $STORAGE << 'SCRIPT'
+ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP bash -s $CONTAINER_ID $CORES $MEMORY $SWAP $STORAGE "$STATIC_IP" << 'SCRIPT'
 set -e
 
 CONTAINER_ID=$1
@@ -84,6 +90,7 @@ CORES=$2
 MEMORY=$3
 SWAP=$4
 STORAGE=$5
+STATIC_IP=$6
 CONTAINER_HOSTNAME="bitbonsai"
 TEMPLATE="local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 
@@ -102,6 +109,20 @@ fi
 
 # Create new container
 echo "   Creating container $CONTAINER_ID..."
+
+# Determine network configuration
+if [ -n "$STATIC_IP" ]; then
+  # Static IP configuration
+  NET_CONFIG="name=eth0,bridge=vmbr0,firewall=1,ip=$STATIC_IP,gw=192.168.1.1"
+  DNS_CONFIG="--nameserver 8.8.8.8 --nameserver 8.8.4.4"
+  echo "   Using static IP: $STATIC_IP"
+else
+  # DHCP configuration
+  NET_CONFIG="name=eth0,bridge=vmbr0,firewall=1,ip=dhcp"
+  DNS_CONFIG=""
+  echo "   Using DHCP"
+fi
+
 pct create $CONTAINER_ID $TEMPLATE \
   --hostname $CONTAINER_HOSTNAME \
   --cores $CORES \
@@ -109,7 +130,8 @@ pct create $CONTAINER_ID $TEMPLATE \
   --swap $SWAP \
   --storage local-lvm \
   --rootfs local-lvm:$STORAGE \
-  --net0 name=eth0,bridge=vmbr0,firewall=1,ip=dhcp \
+  --net0 $NET_CONFIG \
+  $DNS_CONFIG \
   --features nesting=1 \
   --unprivileged 1 \
   --start 1 \
@@ -185,7 +207,14 @@ SCRIPT
 
 # Get container IP
 echo "[7/7] Getting container information..."
-CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I" | awk '{print $1}')
+if [ -n "$STATIC_IP" ]; then
+  # Extract IP from CIDR notation (e.g., 192.168.1.162/24 -> 192.168.1.162)
+  CONTAINER_IP=$(echo "$STATIC_IP" | cut -d'/' -f1)
+  echo "Using configured static IP: $CONTAINER_IP"
+else
+  CONTAINER_IP=$(ssh -i ~/.ssh/pve_ai_key root@$PROXMOX_IP "pct exec $CONTAINER_ID -- hostname -I" | awk '{print $1}')
+  echo "Detected DHCP IP: $CONTAINER_IP"
+fi
 
 # Health Check
 echo ""

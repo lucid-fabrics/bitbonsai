@@ -46,4 +46,11 @@ export class CurrentNodeDto {
     example: 'NVIDIA',
   })
   acceleration!: AccelerationType;
+
+  @ApiProperty({
+    description: 'Main node API URL (only for LINKED nodes)',
+    example: 'http://192.168.1.100:3100/api/v1',
+    required: false,
+  })
+  mainNodeUrl?: string | null;
 }

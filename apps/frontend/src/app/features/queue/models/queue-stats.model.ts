@@ -2,6 +2,7 @@ export interface QueueStats {
   detected: number;
   healthCheck: number;
   queued: number;
+  transferring: number;
   encoding: number;
   verifying: number;
   completed: number;

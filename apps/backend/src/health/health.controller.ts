@@ -1,8 +1,10 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { version as APP_VERSION } from '../../../../package.json';
 import { Public } from '../auth/guards/public.decorator';
 import type { BasicHealthDto } from './dto/basic-health.dto';
 import type { DetailedHealthDto } from './dto/detailed-health.dto';
+import type { DiskSpaceMonitoringDto } from './dto/disk-space-monitoring.dto';
 import type { LivenessDto } from './dto/liveness.dto';
 import type { ReadinessDto } from './dto/readiness.dto';
 import { HealthService } from './health.service';
@@ -27,7 +29,7 @@ export class HealthController {
         status: 'ok',
         timestamp: '2025-10-01T12:00:00Z',
         uptime: 3600,
-        version: '0.1.0',
+        version: APP_VERSION, // Read from package.json
       },
     },
   })
@@ -39,7 +41,7 @@ export class HealthController {
         status: 'error',
         timestamp: '2025-10-01T12:00:00Z',
         uptime: 3600,
-        version: '0.1.0',
+        version: APP_VERSION, // Read from package.json
       },
     },
   })
@@ -124,6 +126,84 @@ export class HealthController {
     return this.healthService.getDetailedHealth();
   }
 
+  @Get('disk-space')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Disk space monitoring',
+    description:
+      'Monitor disk space across all libraries with predictive warnings for queued jobs. ' +
+      'Provides per-library breakdown, cross-filesystem awareness, and estimates space needed for queue.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Disk space monitoring data for all libraries',
+    schema: {
+      example: {
+        overallStatus: 'ok',
+        timestamp: '2025-10-01T12:00:00Z',
+        libraries: [
+          {
+            libraryId: 'lib-123',
+            libraryName: 'Movies',
+            path: '/mnt/user/movies',
+            status: 'ok',
+            totalBytes: '1000000000000',
+            availableBytes: '500000000000',
+            usedBytes: '500000000000',
+            usedPercent: 50,
+            availableFormatted: '500 GB',
+            totalFormatted: '1 TB',
+            queuedJobsCount: 10,
+            estimatedSpaceNeededBytes: '100000000000',
+            hasEnoughSpaceForQueue: true,
+            warningMessage: null,
+          },
+        ],
+        globalWarnings: [],
+        totalQueuedJobs: 10,
+        totalEstimatedSpaceNeeded: '100000000000',
+        canAccommodateQueue: true,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Disk space warning detected',
+    schema: {
+      example: {
+        overallStatus: 'warning',
+        timestamp: '2025-10-01T12:00:00Z',
+        libraries: [
+          {
+            libraryId: 'lib-123',
+            libraryName: 'Movies',
+            path: '/mnt/user/movies',
+            status: 'warning',
+            totalBytes: '1000000000000',
+            availableBytes: '100000000000',
+            usedBytes: '900000000000',
+            usedPercent: 90,
+            availableFormatted: '100 GB',
+            totalFormatted: '1 TB',
+            queuedJobsCount: 20,
+            estimatedSpaceNeededBytes: '150000000000',
+            hasEnoughSpaceForQueue: false,
+            warningMessage: 'Insufficient space: need 50.0 GB more to complete 20 queued jobs',
+          },
+        ],
+        globalWarnings: [
+          'Library "Movies": Insufficient space: need 50.0 GB more to complete 20 queued jobs',
+        ],
+        totalQueuedJobs: 20,
+        totalEstimatedSpaceNeeded: '150000000000',
+        canAccommodateQueue: false,
+      },
+    },
+  })
+  async getDiskSpaceMonitoring(): Promise<DiskSpaceMonitoringDto> {
+    return this.healthService.monitorLibraryDiskSpace();
+  }
+
   @Get('ready')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -192,5 +272,27 @@ export class HealthController {
     }
 
     return result;
+  }
+
+  @Get('ping')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Simple ping endpoint',
+    description: 'Ultra-simple health check that returns "Ok" as text/plain for monitoring tools',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Server is responding',
+    content: {
+      'text/plain': {
+        schema: {
+          type: 'string',
+          example: 'Ok',
+        },
+      },
+    },
+  })
+  async ping(): Promise<string> {
+    return 'Ok';
   }
 }

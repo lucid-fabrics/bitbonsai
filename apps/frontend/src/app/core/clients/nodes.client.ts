@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { Node } from '../../features/nodes/models/node.model';
+import type { CurrentNode, Node } from '../../features/nodes/models/node.model';
+import type { NodeScore } from '../../features/nodes/models/node-score.model';
 import type {
   ApproveRequestDto,
   CreateRegistrationRequestDto,
@@ -65,6 +66,13 @@ export class NodesClient {
    */
   getNodes(): Observable<Node[]> {
     return this.http.get<Node[]>(this.apiUrl);
+  }
+
+  /**
+   * Get the current node information
+   */
+  getCurrentNode(): Observable<CurrentNode> {
+    return this.http.get<CurrentNode>(`${this.apiUrl}/current`);
   }
 
   /**
@@ -213,5 +221,16 @@ export class NodesClient {
    */
   getNodeCapabilities(nodeId: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${nodeId}/capabilities`);
+  }
+
+  // ============================================================================
+  // JOB ATTRIBUTION & SCHEDULING METHODS
+  // ============================================================================
+
+  /**
+   * Get node scores for job attribution algorithm
+   */
+  getNodeScores(): Observable<NodeScore[]> {
+    return this.http.get<NodeScore[]>(`${this.apiUrl}/scores`);
   }
 }

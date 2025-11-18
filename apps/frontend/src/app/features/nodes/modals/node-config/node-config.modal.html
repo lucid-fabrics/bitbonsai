@@ -167,6 +167,39 @@
             </div>
           }
         </div>
+
+        <!-- Schedule Configuration -->
+        <div class="form-group">
+          <label class="form-group__label">Encoding Schedule</label>
+          <div class="form-help">
+            <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
+            Define time windows when this node is allowed to encode (24/7 if disabled)
+          </div>
+
+          <!-- Schedule Enable Toggle -->
+          <div class="schedule-toggle">
+            <label class="toggle-switch">
+              <input
+                type="checkbox"
+                formControlName="scheduleEnabled"
+                class="toggle-switch__input"
+              />
+              <span class="toggle-switch__slider"></span>
+            </label>
+            <span class="toggle-switch__label">
+              Enable Time-Based Scheduling
+            </span>
+          </div>
+
+          <!-- Schedule Editor (shown when enabled) -->
+          @if (form.get('scheduleEnabled')?.value) {
+            <div class="schedule-editor-wrapper">
+              <app-node-schedule-editor
+                formControlName="scheduleWindows"
+              ></app-node-schedule-editor>
+            </div>
+          }
+        </div>
       </div>
 
       <div class="modal-footer">

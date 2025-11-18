@@ -460,9 +460,9 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       // Verify size calculations are accurate
-      const afterSize = Number(completedJob?.afterSizeBytes!);
-      const savedBytes = Number(completedJob?.savedBytes!);
-      const savedPercent = completedJob?.savedPercent!;
+      const afterSize = Number(completedJob?.afterSizeBytes ?? 0);
+      const savedBytes = Number(completedJob?.savedBytes ?? 0);
+      const savedPercent = completedJob?.savedPercent ?? 0;
 
       expect(savedBytes).toBe(beforeSize - afterSize);
       expect(savedPercent).toBeCloseTo((savedBytes / beforeSize) * 100, 1);

@@ -41,6 +41,18 @@
     </div>
   }
 
+  <!-- Storage Recommendation Banner -->
+  @if (showStorageRecommendation && storageRecommendation && storageSourceNode && storageTargetNode) {
+    <app-storage-recommendation-banner
+      [recommendation]="storageRecommendation"
+      [sourceNodeName]="storageSourceNode.name"
+      [targetNodeName]="storageTargetNode.name"
+      [containerType]="storageTargetNode.containerType"
+      (configure)="onConfigureStorage()"
+      (dismiss)="onDismissStorageRecommendation()">
+    </app-storage-recommendation-banner>
+  }
+
   <!-- Pending Requests Section -->
   @if (pendingRequests.length > 0) {
     <div class="pending-requests-section">
@@ -320,6 +332,75 @@
             </div>
           </div>
         </div>
+
+        <!-- Node Score Section -->
+        @if (getNodeScore(node.id); as score) {
+          <div class="node-score-section">
+            <h4 class="score-section-title">
+              <fa-icon [icon]="['fas', 'award']"></fa-icon>
+              Job Attribution Score
+            </h4>
+
+            <div class="score-summary">
+              <div class="total-score">
+                <span class="score-label">Total Score:</span>
+                <span class="score-value">{{ score.totalScore.toFixed(1) }}/100</span>
+              </div>
+              @if (!score.breakdown.scheduleAvailable) {
+                <div class="schedule-warning">
+                  <fa-icon [icon]="['fas', 'clock']"></fa-icon>
+                  Outside schedule window
+                </div>
+              }
+            </div>
+
+            @if (score.breakdown.scheduleAvailable) {
+              <div class="score-breakdown">
+                <!-- Load Score -->
+                <div class="score-item">
+                  <div class="score-item-header">
+                    <span class="score-item-label">
+                      <fa-icon [icon]="['fas', 'tasks']"></fa-icon>
+                      Load
+                    </span>
+                    <span class="score-item-value">{{ score.breakdown.loadScore.toFixed(1) }}/40</span>
+                  </div>
+                  <div class="score-progress-bar">
+                    <div class="score-progress-fill" [style.width.%]="(score.breakdown.loadScore / 40) * 100"></div>
+                  </div>
+                </div>
+
+                <!-- Hardware Score -->
+                <div class="score-item">
+                  <div class="score-item-header">
+                    <span class="score-item-label">
+                      <fa-icon [icon]="['fas', 'microchip']"></fa-icon>
+                      Hardware
+                    </span>
+                    <span class="score-item-value">{{ score.breakdown.hardwareScore.toFixed(1) }}/30</span>
+                  </div>
+                  <div class="score-progress-bar">
+                    <div class="score-progress-fill" [style.width.%]="(score.breakdown.hardwareScore / 30) * 100"></div>
+                  </div>
+                </div>
+
+                <!-- Performance Score -->
+                <div class="score-item">
+                  <div class="score-item-header">
+                    <span class="score-item-label">
+                      <fa-icon [icon]="['fas', 'bolt']"></fa-icon>
+                      Performance
+                    </span>
+                    <span class="score-item-value">{{ score.breakdown.performanceScore.toFixed(1) }}/30</span>
+                  </div>
+                  <div class="score-progress-bar">
+                    <div class="score-progress-fill" [style.width.%]="(score.breakdown.performanceScore / 30) * 100"></div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
 
       <!-- Card Footer -->
@@ -347,16 +428,27 @@
           View Stats
         </button>
         <button
+          class="btn btn-icon"
+          (click)="onManageStorage(node)"
+          bbTooltip
+          tooltipTitle="Manage Storage Shares"
+          tooltipContent="Configure NFS/SMB network storage shares for this node. Shared storage eliminates the need for file transfers between nodes."
+          tooltipWhen="You want to mount network storage or make this node's files accessible to other nodes."
+          tooltipPlacement="top">
+          <fa-icon [icon]="['fas', 'folder-open']"></fa-icon>
+          Storage
+        </button>
+        <button
           class="btn btn-icon btn-danger"
           (click)="onRemoveNode(node)"
-          [disabled]="node.role === NodeRole.MAIN"
+          [disabled]="node.role === NodeRole.MAIN || deletingNodeId === node.id"
           bbTooltip
-          [tooltipTitle]="node.role === NodeRole.MAIN ? 'Cannot Remove MAIN Node' : 'Remove Node'"
+          [tooltipTitle]="deletingNodeId === node.id ? 'Removing Node...' : (node.role === NodeRole.MAIN ? 'Cannot Remove MAIN Node' : 'Remove Node')"
           [tooltipContent]="node.role === NodeRole.MAIN ? 'MAIN nodes manage the entire BitBonsai cluster and cannot be removed. Only LINKED nodes can be unpaired.' : 'Unpairs this node from BitBonsai. The node software will continue running but won\'t receive new jobs. You can re-pair it later if needed.'"
           [tooltipWhen]="node.role === NodeRole.MAIN ? 'Never - MAIN nodes are permanent' : 'This node is being decommissioned or you want to stop it from accepting new encoding jobs.'"
           tooltipPlacement="top">
-          <fa-icon [icon]="['fas', 'trash']"></fa-icon>
-          Remove
+          <fa-icon [icon]="deletingNodeId === node.id ? ['fas', 'spinner'] : ['fas', 'trash']" [animation]="deletingNodeId === node.id ? 'spin' : undefined"></fa-icon>
+          {{ deletingNodeId === node.id ? 'Removing...' : 'Remove' }}
         </button>
       </div>
         </div>

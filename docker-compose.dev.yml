@@ -26,8 +26,16 @@ services:
       - ./test-media:/media:cached
       # Database persistence
       - bitbonsai-data:/data
+      # Shared storage mount point for NFS/SMB mounts
+      - bitbonsai-shared:/mnt/shared
       # Preserve node_modules (don't mount from host)
       - /app/node_modules
+    # Capabilities required for mounting NFS/SMB shares
+    cap_add:
+      - SYS_ADMIN         # Required for mount operations
+      - DAC_READ_SEARCH   # Allows reading all files regardless of permissions
+    security_opt:
+      - apparmor:unconfined  # Required for mount operations
     command: npx nx serve backend --host 0.0.0.0
     restart: unless-stopped
     networks:
@@ -97,6 +105,12 @@ services:
 volumes:
   bitbonsai-data:
     driver: local
+  bitbonsai-shared:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/shared
   # postgres-data:
   #   driver: local
   # redis-data:

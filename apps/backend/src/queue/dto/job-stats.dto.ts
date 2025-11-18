@@ -23,6 +23,12 @@ export class JobStatsDto {
   queued!: number;
 
   @ApiProperty({
+    description: 'Number of jobs being transferred to nodes',
+    example: 2,
+  })
+  transferring!: number;
+
+  @ApiProperty({
     description: 'Number of currently encoding jobs',
     example: 3,
   })

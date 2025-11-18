@@ -5,7 +5,7 @@ describe('ContainerBo', () => {
     it('should define all container formats', () => {
       expect(ContainerBo.FORMATS).toHaveLength(4);
 
-      const values = ContainerBo.FORMATS.map(f => f.value);
+      const values = ContainerBo.FORMATS.map((f) => f.value);
       expect(values).toContain('mkv');
       expect(values).toContain('mp4');
       expect(values).toContain('webm');
@@ -13,7 +13,7 @@ describe('ContainerBo', () => {
     });
 
     it('should have complete metadata for each format', () => {
-      ContainerBo.FORMATS.forEach(format => {
+      ContainerBo.FORMATS.forEach((format) => {
         expect(format.value).toBeDefined();
         expect(format.label).toBeDefined();
         expect(format.description).toBeDefined();
@@ -122,7 +122,7 @@ describe('ContainerBo', () => {
       const options = ContainerBo.getFormatOptions();
       expect(options).toHaveLength(4);
 
-      options.forEach(option => {
+      options.forEach((option) => {
         expect(option).toHaveProperty('value');
         expect(option).toHaveProperty('label');
         expect(option).toHaveProperty('description');

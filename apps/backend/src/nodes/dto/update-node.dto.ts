@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUrl, Length, Max, Min } from 'class-validator';
 
 /**
  * DTO for updating node configuration
@@ -44,4 +44,22 @@ export class UpdateNodeDto {
   @Min(10, { message: 'cpuLimit must be at least 10%' })
   @Max(100, { message: 'cpuLimit cannot exceed 100%' })
   cpuLimit?: number;
+
+  @ApiProperty({
+    description: 'Public URL for accessing this node (required for LINKED nodes)',
+    example: 'http://192.168.1.121:3100',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl({}, { message: 'publicUrl must be a valid URL' })
+  publicUrl?: string;
+
+  @ApiProperty({
+    description: 'Main node API URL (for LINKED nodes only)',
+    example: 'http://192.168.1.100:3100/api/v1',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'mainNodeUrl must be a string' })
+  mainNodeUrl?: string;
 }

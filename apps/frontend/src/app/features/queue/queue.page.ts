@@ -7,6 +7,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CarouselImage, ImageCarouselComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
+import { Store } from '@ngrx/store';
 import {
   BehaviorSubject,
   catchError,
@@ -19,6 +20,8 @@ import {
   startWith,
   switchMap,
 } from 'rxjs';
+import { selectCurrentNode } from '../../core/+state/current-node.selectors';
+import { NodesClient } from '../../core/clients/nodes.client';
 import { QueueClient } from '../../core/clients/queue.client';
 import { SettingsClient } from '../../core/clients/settings.client';
 import { ToastService } from '../../core/services/toast.service';
@@ -27,10 +30,15 @@ import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-space-warning-banner/disk-space-warning-banner.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
+import {
+  JobDelegationDialogComponent,
+  type JobDelegationDialogData,
+} from './components/job-delegation-dialog/job-delegation-dialog.component';
 import { JobHistoryModalComponent } from './components/job-history-modal/job-history-modal.component';
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
@@ -48,6 +56,7 @@ import { StatusClassPipe } from './pipes/status-class.pipe';
     CommonModule,
     FormsModule,
     FontAwesomeModule,
+    DiskSpaceWarningBannerComponent,
     RichTooltipDirective,
     AddFilesModalComponent,
     ErrorDetailsModalComponent,
@@ -63,12 +72,14 @@ import { StatusClassPipe } from './pipes/status-class.pipe';
 })
 export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
+  private readonly nodesApi = inject(NodesClient);
   private readonly settingsApi = inject(SettingsClient);
   private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(Dialog);
+  private readonly store = inject(Store);
 
   // Expose Number for template
   protected readonly Number = Number;
@@ -91,6 +102,7 @@ export class QueueComponent implements OnInit {
   protected readonly availableLibraries$: Observable<
     Map<string, { name: string; nodeName: string }>
   >;
+  protected readonly isMainNode$: Observable<boolean>;
 
   // State
   protected expandedJobId: string | null = null;
@@ -156,6 +168,7 @@ export class QueueComponent implements OnInit {
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
     'ALL',
     JobStatus.QUEUED,
+    JobStatus.TRANSFERRING,
     JobStatus.ENCODING,
     JobStatus.PAUSED,
     JobStatus.COMPLETED,
@@ -192,18 +205,16 @@ export class QueueComponent implements OnInit {
     // Use the loading subject as the loading observable
     this.isLoading$ = this.loadingSubject$.asObservable();
 
-    // Extract available nodes from queue data (Map of nodeId -> nodeName)
-    this.availableNodes$ = this.queueData$.pipe(
-      map((data) => {
-        const jobs = data?.jobs || [];
+    // Fetch all available nodes from the API (not just nodes with jobs)
+    this.availableNodes$ = this.nodesApi.getNodes().pipe(
+      map((nodes) => {
         const nodeMap = new Map<string, string>();
-        for (const job of jobs) {
-          if (job.nodeId && job.nodeName) {
-            nodeMap.set(job.nodeId, job.nodeName);
-          }
+        for (const node of nodes) {
+          nodeMap.set(node.id, node.name);
         }
         return nodeMap;
-      })
+      }),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
 
     // Extract available libraries from queue data (Map of libraryId -> { name, nodeName })
@@ -222,9 +233,29 @@ export class QueueComponent implements OnInit {
         return libraryMap;
       })
     );
+
+    // Check if current node is MAIN (to show/hide node filter)
+    this.isMainNode$ = this.store.select(selectCurrentNode).pipe(
+      map((node) => node?.role === 'MAIN'),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
   }
 
   ngOnInit(): void {
+    // Auto-select current node ONLY for LINKED nodes (child nodes show only their own jobs)
+    // MAIN nodes show all nodes by default (empty filter = "All Nodes")
+    this.store
+      .select(selectCurrentNode)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((currentNode) => {
+        if (currentNode && !this.selectedNodeId && currentNode.role === 'LINKED') {
+          // For LINKED nodes: auto-select current node to show only their jobs
+          this.selectedNodeId = currentNode.id;
+          // Trigger refresh to load jobs for the selected node
+          this.onNodeFilterChange(currentNode.id);
+        }
+      });
+
     // Load default queue view from settings
     this.settingsApi
       .getDefaultQueueView()
@@ -925,6 +956,8 @@ export class QueueComponent implements OnInit {
     switch (status) {
       case JobStatus.QUEUED:
         return 'fa-clock';
+      case JobStatus.TRANSFERRING:
+        return 'fa-exchange-alt';
       case JobStatus.ENCODING:
         return 'fa-spinner fa-spin';
       case JobStatus.PAUSED:
@@ -948,6 +981,7 @@ export class QueueComponent implements OnInit {
       [JobStatus.HEALTH_CHECK]: 'Health Check',
       [JobStatus.NEEDS_DECISION]: 'Needs Decision',
       [JobStatus.QUEUED]: 'Queued',
+      [JobStatus.TRANSFERRING]: 'Transferring',
       [JobStatus.ENCODING]: 'Encoding',
       [JobStatus.PAUSED]: 'Paused',
       [JobStatus.VERIFYING]: 'Verifying',
@@ -989,6 +1023,8 @@ export class QueueComponent implements OnInit {
     switch (status) {
       case JobStatus.QUEUED:
         return 'This job is waiting in the queue for an available encoding node. It will start automatically when a node becomes free.';
+      case JobStatus.TRANSFERRING:
+        return 'This file is being transferred to the encoding node. Transfer speed and progress are shown. Once complete, encoding will begin automatically.';
       case JobStatus.ENCODING:
         return 'This job is currently being encoded by a node. Progress is shown as a percentage. Encoding time depends on file size, quality settings, and node hardware.';
       case JobStatus.PAUSED:
@@ -1644,5 +1680,29 @@ export class QueueComponent implements OnInit {
 
   protected previousPage(): void {
     this.goToPage(this.currentPage - 1);
+  }
+
+  /**
+   * Open delegation dialog to assign job to specific node
+   */
+  protected openDelegationDialog(job: QueueJobBo, event: Event): void {
+    event.stopPropagation();
+
+    const dialogData: JobDelegationDialogData = {
+      job: job,
+    };
+
+    const dialogRef = this.dialog.open(JobDelegationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+      width: '600px',
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result === true) {
+        this.toastService.success('Job delegated successfully');
+        this.refreshQueue();
+      }
+    });
   }
 }

@@ -16,10 +16,16 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../core/clients/nodes.client';
+import { EnvironmentDetectionService } from '../../core/services/environment-detection.service';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { StorageRecommendationBannerComponent } from '../../shared/components/storage-recommendation-banner/storage-recommendation-banner.component';
+import {
+  type StorageSetupWizardData,
+  StorageSetupWizardModal,
+} from '../../shared/components/storage-setup-wizard/storage-setup-wizard.modal';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import {
   ApprovalDialogComponent,
@@ -34,21 +40,31 @@ import { TimerBo } from './bos/timer.bo';
 import { TokenEntryDialogComponent } from './dialogs/token-entry-dialog.component';
 import { NodeConfigModalComponent } from './modals/node-config/node-config.modal';
 import { NodeStatsModalComponent } from './modals/node-stats/node-stats.modal';
+import { StorageSharesModal } from './modals/storage-shares/storage-shares.modal';
 import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
+import type { NodeScore } from './models/node-score.model';
 import type { RegistrationRequest } from './models/registration-request.model';
 import { ContainerType, RegistrationRequestStatus } from './models/registration-request.model';
+import type { EnvironmentInfo, StorageRecommendation } from './models/storage-recommendation.model';
 
 @Component({
   selector: 'app-nodes',
   standalone: true,
-  imports: [CommonModule, FormsModule, FontAwesomeModule, RichTooltipDirective],
+  imports: [
+    CommonModule,
+    FormsModule,
+    FontAwesomeModule,
+    RichTooltipDirective,
+    StorageRecommendationBannerComponent,
+  ],
   templateUrl: './nodes.page.html',
   styleUrls: ['./nodes.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NodesComponent implements OnInit {
   private readonly nodesApi = inject(NodesClient);
+  private readonly environmentService = inject(EnvironmentDetectionService);
   private readonly dialog = inject(Dialog);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
@@ -66,8 +82,17 @@ export class NodesComponent implements OnInit {
   // State
   nodes: Node[] = [];
   pendingRequests: RegistrationRequest[] = [];
+  nodeScores: NodeScore[] = [];
   isLoading = false;
+  deletingNodeId: string | null = null;
   error: string | null = null;
+
+  // Storage configuration state
+  storageRecommendation: StorageRecommendation | null = null;
+  storageSourceNode: Node | null = null;
+  storageTargetNode: Node | null = null;
+  showStorageRecommendation = false;
+  dismissedStorageRecommendations = new Set<string>(); // Track dismissed recommendations by node pair
 
   // Highlighted request ID (for pulsing effect after notification click)
   readonly highlightedRequestId = signal<string | null>(null);
@@ -91,11 +116,20 @@ export class NodesComponent implements OnInit {
     return this.nodes.length > 0;
   }
 
+  /**
+   * Get node score for a specific node
+   */
+  getNodeScore(nodeId: string): NodeScore | undefined {
+    return this.nodeScores.find((score) => score.nodeId === nodeId);
+  }
+
   ngOnInit(): void {
     this.loadNodes();
     this.loadPendingRequests();
+    this.loadNodeScores();
     this.startPolling();
     this.startUptimeCounter();
+    this.checkStorageConfiguration();
 
     // Listen for highlightRequest query parameter
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -152,6 +186,24 @@ export class NodesComponent implements OnInit {
         },
         error: () => {
           // Silently handle errors for pending requests
+        },
+      });
+  }
+
+  /**
+   * Load node scores for job attribution
+   */
+  loadNodeScores(): void {
+    this.nodesApi
+      .getNodeScores()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (scores) => {
+          this.nodeScores = scores;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Silently handle errors for node scores
         },
       });
   }
@@ -214,6 +266,22 @@ export class NodesComponent implements OnInit {
       .subscribe({
         next: (requests) => {
           this.pendingRequests = requests;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Silently handle polling errors
+        },
+      });
+
+    // Poll for node scores every 30 seconds
+    interval(30000)
+      .pipe(
+        switchMap(() => this.nodesApi.getNodeScores()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (scores) => {
+          this.nodeScores = scores;
           this.cdr.markForCheck();
         },
         error: () => {
@@ -511,6 +579,16 @@ export class NodesComponent implements OnInit {
   }
 
   /**
+   * Manage storage shares for a node
+   */
+  onManageStorage(node: Node): void {
+    this.dialog.open(StorageSharesModal, {
+      data: { node },
+      disableClose: false,
+    });
+  }
+
+  /**
    * Initiate node deletion
    */
   onRemoveNode(node: Node): void {
@@ -549,20 +627,135 @@ export class NodesComponent implements OnInit {
 
     dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result === true) {
+        // Set loading state to prevent double-delete
+        this.deletingNodeId = node.id;
+        this.cdr.markForCheck();
+
         this.nodesApi
           .deleteNode(node.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: () => {
               this.nodes = this.nodes.filter((n) => n.id !== node.id);
+              this.deletingNodeId = null;
               this.cdr.markForCheck();
             },
             error: (err) => {
               this.error = err.error?.message || 'Failed to delete node';
+              this.deletingNodeId = null;
               this.cdr.markForCheck();
             },
           });
       }
     });
+  }
+
+  /**
+   * Check storage configuration for node pairs
+   * Shows recommendation banner if MAIN and LINKED nodes need configuration
+   */
+  private checkStorageConfiguration(): void {
+    // Wait for nodes to load
+    if (this.nodes.length < 2) return;
+
+    // Find MAIN and first LINKED node
+    const mainNode = this.nodes.find((n) => n.role === NodeRole.MAIN);
+    const linkedNode = this.nodes.find((n) => n.role === NodeRole.LINKED);
+
+    if (!mainNode || !linkedNode) return;
+
+    // Check if we've already dismissed this recommendation
+    const recommendationKey = `${mainNode.id}-${linkedNode.id}`;
+    if (this.dismissedStorageRecommendations.has(recommendationKey)) return;
+
+    // Get storage recommendation
+    this.environmentService
+      .getStorageRecommendation(mainNode.id, linkedNode.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (recommendation) => {
+          // Only show if there's a warning or action required
+          if (recommendation.warning || recommendation.actionRequired) {
+            this.storageRecommendation = recommendation;
+            this.storageSourceNode = mainNode;
+            this.storageTargetNode = linkedNode;
+            this.showStorageRecommendation = true;
+            this.cdr.markForCheck();
+          }
+        },
+        error: () => {
+          // Silently handle errors
+        },
+      });
+  }
+
+  /**
+   * Open storage setup wizard modal
+   */
+  onConfigureStorage(): void {
+    if (!this.storageSourceNode || !this.storageTargetNode || !this.storageRecommendation) {
+      return;
+    }
+
+    // Detect target node environment first
+    this.environmentService
+      .detectEnvironment()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (targetEnvironment) => {
+          this.openStorageWizard(targetEnvironment);
+        },
+        error: () => {
+          // Open wizard without environment info
+          this.openStorageWizard(undefined);
+        },
+      });
+  }
+
+  private openStorageWizard(targetEnvironment?: EnvironmentInfo): void {
+    if (!this.storageSourceNode || !this.storageTargetNode || !this.storageRecommendation) {
+      return;
+    }
+
+    const dialogData: StorageSetupWizardData = {
+      sourceNodeId: this.storageSourceNode.id,
+      sourceNodeName: this.storageSourceNode.name,
+      targetNodeId: this.storageTargetNode.id,
+      targetNodeName: this.storageTargetNode.name,
+      recommendation: this.storageRecommendation,
+      targetEnvironment,
+    };
+
+    const dialogRef = this.dialog.open(StorageSetupWizardModal, {
+      data: dialogData,
+      disableClose: false,
+      panelClass: 'storage-wizard-dialog',
+      width: '90vw',
+      maxWidth: '900px',
+      height: '90vh',
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result && typeof result === 'object' && 'configured' in result && result.configured) {
+        // Hide the recommendation banner after successful configuration
+        this.showStorageRecommendation = false;
+        this.cdr.markForCheck();
+
+        // Reload nodes to get updated storage configuration
+        this.loadNodes();
+      }
+    });
+  }
+
+  /**
+   * Dismiss storage recommendation banner
+   */
+  onDismissStorageRecommendation(): void {
+    if (this.storageSourceNode && this.storageTargetNode) {
+      const recommendationKey = `${this.storageSourceNode.id}-${this.storageTargetNode.id}`;
+      this.dismissedStorageRecommendations.add(recommendationKey);
+    }
+    this.showStorageRecommendation = false;
+    this.cdr.markForCheck();
   }
 }

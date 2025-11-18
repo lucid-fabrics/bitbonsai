@@ -7,6 +7,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommonModule } from './common/common.module';
+import { CoreModule } from './core/core.module';
 import { DatabaseInitService } from './database/database-init.service';
 import { DiscoveryModule } from './discovery/discovery.module';
 import { EncodingModule } from './encoding/encoding.module';
@@ -46,6 +47,7 @@ import { SystemModule } from './system/system.module';
     ScheduleModule.forRoot(),
     PrismaModule,
     CommonModule,
+    CoreModule,
     AuthModule,
     DiscoveryModule,
     HealthModule,
