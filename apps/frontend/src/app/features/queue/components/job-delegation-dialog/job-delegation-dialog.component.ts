@@ -54,8 +54,8 @@ export class JobDelegationDialogComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (nodes) => {
-          // Filter to online nodes only
-          this.nodes = nodes.filter((n) => n.status === 'ONLINE');
+          // Filter to online nodes only, excluding the current node (can't delegate to itself)
+          this.nodes = nodes.filter((n) => n.status === 'ONLINE' && n.id !== this.data.job.nodeId);
           this.isLoading = false;
         },
         error: (err) => {
