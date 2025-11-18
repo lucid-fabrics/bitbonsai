@@ -233,4 +233,28 @@ export class NodesClient {
   getNodeScores(): Observable<NodeScore[]> {
     return this.http.get<NodeScore[]>(`${this.apiUrl}/scores`);
   }
+
+  // ============================================================================
+  // SSH KEY MANAGEMENT METHODS
+  // ============================================================================
+
+  /**
+   * Get this node's SSH public key
+   */
+  getSshPublicKey(): Observable<{ publicKey: string }> {
+    return this.http.get<{ publicKey: string }>(`${this.apiUrl}/ssh/public-key`);
+  }
+
+  /**
+   * Add an authorized SSH key
+   */
+  addAuthorizedKey(
+    publicKey: string,
+    comment?: string
+  ): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}/ssh/authorized-keys`,
+      { publicKey, comment }
+    );
+  }
 }

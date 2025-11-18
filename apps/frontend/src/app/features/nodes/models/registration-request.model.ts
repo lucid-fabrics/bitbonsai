@@ -39,6 +39,10 @@ export interface RegistrationRequest {
   message?: string;
   rejectionReason?: string;
   childNodeId?: string;
+  sshPublicKey?: string; // Child node's SSH public key for passwordless file transfers
+  mainNodePublicKey?: string; // Main node's SSH public key (returned after approval)
+  apiKey?: string; // API key for child node (returned after approval)
+  nodeId?: string; // Node ID (returned after approval)
 }
 
 export interface DiscoveredMainNode {
@@ -54,6 +58,7 @@ export interface DiscoveredMainNode {
 export interface CreateRegistrationRequestDto {
   mainNodeId: string;
   message?: string;
+  sshPublicKey?: string; // Child node's SSH public key for passwordless file transfers
 }
 
 export interface ApproveRequestDto {

@@ -108,24 +108,74 @@ export class DiscoveryComponent implements OnInit {
   private startPolling(): void {
     interval(5000)
       .pipe(
-        switchMap(() => this.nodesClient.getPendingRequests()),
+        switchMap(() => {
+          // If we have a current request, poll its specific status
+          if (this.currentRequest) {
+            return this.nodesClient.getRegistrationRequest(this.currentRequest.id);
+          }
+          // Otherwise, check for any pending requests
+          return this.nodesClient
+            .getPendingRequests()
+            .pipe(
+              switchMap((requests) =>
+                requests.length > 0
+                  ? this.nodesClient.getRegistrationRequest(requests[0].id)
+                  : Promise.resolve(null)
+              )
+            );
+        }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (requests) => {
-          const previousStatus = this.currentRequest?.status;
-          this.currentRequest =
-            requests.find((r) => r.status === RegistrationRequestStatus.PENDING) || null;
+        next: (request) => {
+          if (!request) {
+            this.currentRequest = null;
+            this.cdr.markForCheck();
+            return;
+          }
 
-          // If request was approved, redirect to dashboard
-          if (previousStatus === RegistrationRequestStatus.PENDING && !this.currentRequest) {
-            this.router.navigate(['/overview']);
+          const previousStatus = this.currentRequest?.status;
+          this.currentRequest = request;
+
+          // If request was just approved, setup SSH keys
+          if (
+            previousStatus === RegistrationRequestStatus.PENDING &&
+            request.status === RegistrationRequestStatus.APPROVED &&
+            request.mainNodePublicKey
+          ) {
+            this.handleApproval(request);
           }
 
           this.cdr.markForCheck();
         },
         error: () => {
           // Ignore polling errors
+        },
+      });
+  }
+
+  /**
+   * Handle request approval - add main node's SSH key to authorized_keys
+   */
+  private handleApproval(request: RegistrationRequest): void {
+    if (!request.mainNodePublicKey) return;
+
+    // Add main node's SSH public key to this node's authorized_keys
+    this.nodesClient
+      .addAuthorizedKey(request.mainNodePublicKey, 'bitbonsai-main-node')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // SSH key setup complete, redirect to dashboard
+          setTimeout(() => {
+            this.router.navigate(['/overview'], {
+              queryParams: { registrationComplete: true },
+            });
+          }, 2000);
+        },
+        error: (err) => {
+          this.error = err.error?.message || 'Failed to setup SSH keys';
+          this.cdr.markForCheck();
         },
       });
   }
@@ -138,9 +188,19 @@ export class DiscoveryComponent implements OnInit {
     this.error = null;
     this.cdr.markForCheck();
 
+    // First, get this node's SSH public key
     this.nodesClient
-      .createRegistrationRequest({ mainNodeId: mainNode.nodeId })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .getSshPublicKey()
+      .pipe(
+        switchMap((keyResponse) => {
+          // Then create registration request with SSH public key
+          return this.nodesClient.createRegistrationRequest({
+            mainNodeId: mainNode.nodeId,
+            sshPublicKey: keyResponse.publicKey,
+          });
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe({
         next: (request) => {
           this.currentRequest = request;
