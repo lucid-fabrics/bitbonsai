@@ -2,7 +2,18 @@
 FROM node:20-alpine AS base
 
 # Install system dependencies
-RUN apk add --no-cache curl xz
+# NFS and SMB clients for shared storage support
+# Docker CLI for volume auto-detection
+# SSH and rsync for remote file transfer to child nodes
+RUN apk add --no-cache \
+    curl \
+    xz \
+    nfs-utils \
+    cifs-utils \
+    util-linux \
+    docker-cli \
+    openssh-client \
+    rsync
 
 # Download and install John Van Sickle's static FFmpeg build (latest version ~7.1+)
 # These are trusted, well-maintained static builds that work on any Linux distribution

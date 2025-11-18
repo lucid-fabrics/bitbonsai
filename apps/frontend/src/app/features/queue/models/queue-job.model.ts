@@ -53,4 +53,14 @@ export interface QueueJob {
   // File Missing Badge Feature
   stage?: string; // Job stage from backend (FAILED, QUEUED, etc.)
   fileExists?: boolean; // Does the source file still exist on disk? (for FAILED jobs)
+  // Transfer Feature (Phase 4)
+  transferRequired?: boolean; // Does this job need file transfer before encoding?
+  transferProgress?: number; // 0-100 percent of transfer completion
+  transferSpeedMBps?: number; // Current transfer speed in MB/s
+  transferStartedAt?: string; // ISO timestamp when transfer started
+  transferCompletedAt?: string; // ISO timestamp when transfer completed
+  transferError?: string; // Error message if transfer failed
+  remoteTempPath?: string; // Path on remote node where file is being transferred
+  transferRetryCount?: number; // Number of transfer retry attempts
+  originalNodeId?: string | null; // ID of the node where the file originally exists (for delegated jobs)
 }

@@ -29,6 +29,8 @@ export interface QueueJobApiModel {
   node?: { id: string; name: string };
   nodeId?: string;
   nodeName?: string;
+  originalNodeId?: string | null;
+  manualAssignment?: boolean;
   createdAt: string;
   updatedAt?: string;
   startedAt?: string;
@@ -58,4 +60,13 @@ export interface QueueJobApiModel {
   healthCheckedAt?: string;
   // File Missing Badge Feature
   fileExists?: boolean;
+  // Transfer Feature (Phase 4)
+  transferRequired?: boolean;
+  transferProgress?: number;
+  transferSpeedMBps?: number;
+  transferStartedAt?: string;
+  transferCompletedAt?: string;
+  transferError?: string;
+  remoteTempPath?: string;
+  transferRetryCount?: number;
 }

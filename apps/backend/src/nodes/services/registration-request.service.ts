@@ -23,6 +23,7 @@ import {
 } from '../../notifications/types/notification.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
+import { SshKeyService } from './ssh-key.service';
 import { SystemInfoService } from './system-info.service';
 
 export interface CreateRegistrationRequestDto {
@@ -68,7 +69,8 @@ export class RegistrationRequestService {
     readonly _systemInfoService: SystemInfoService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
     private readonly notificationsService: NotificationsService,
-    private readonly notificationsGateway: NotificationsGateway
+    private readonly notificationsGateway: NotificationsGateway,
+    private readonly sshKeyService: SshKeyService
   ) {}
 
   /**
@@ -351,6 +353,28 @@ export class RegistrationRequestService {
       `✅ Registration request approved: ${result.request.childNodeName} (${result.request.ipAddress}) → Node ID: ${result.newNode.id}`
     );
 
+    // SSH KEY EXCHANGE: Setup passwordless authentication for file transfers
+    let mainNodePublicKey: string | undefined;
+    if (result.request.sshPublicKey) {
+      try {
+        this.logger.log('🔑 Setting up SSH keys for passwordless file transfers...');
+
+        // Add CHILD's public key to MAIN's authorized_keys
+        this.sshKeyService.addAuthorizedKey(
+          result.request.sshPublicKey,
+          `bitbonsai-child-${result.newNode.id}`
+        );
+
+        // Get MAIN's public key to send to CHILD
+        mainNodePublicKey = this.sshKeyService.getPublicKey();
+
+        this.logger.log('✅ SSH keys exchanged successfully');
+      } catch (error) {
+        this.logger.error('Failed to setup SSH keys:', error);
+        // Don't fail the approval if SSH setup fails - it can be done manually
+      }
+    }
+
     // Emit NODE_APPROVED notification
     const notification = await this.notificationsService.createNotification({
       type: NotificationType.NODE_APPROVED,
@@ -372,6 +396,7 @@ export class RegistrationRequestService {
       ...result.updatedReq,
       apiKey: result.newNode.apiKey,
       nodeId: result.newNode.id, // Add nodeId for frontend capability detection
+      mainNodePublicKey, // SSH public key for CHILD to add to its authorized_keys
     } as NodeRegistrationRequest;
   }
 

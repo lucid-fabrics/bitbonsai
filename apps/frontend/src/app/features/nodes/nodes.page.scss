@@ -526,7 +526,8 @@
   border-top: 1px solid $border-primary;
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .btn-icon {
@@ -978,4 +979,117 @@
     font-size: 24px;
     letter-spacing: 4px;
   }
+}
+
+// Node Score Section
+.node-score-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid $border-primary;
+}
+
+.score-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  fa-icon {
+    color: $accent-primary;
+  }
+}
+
+.score-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.total-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+
+  .score-label {
+    color: $text-secondary;
+    font-weight: 500;
+  }
+
+  .score-value {
+    color: $accent-primary;
+    font-weight: 700;
+    font-size: 18px;
+  }
+}
+
+.schedule-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(245, 158, 11, 0.15);
+  border-radius: 12px;
+  color: #f59e0b;
+  font-size: 12px;
+  font-weight: 500;
+
+  fa-icon {
+    font-size: 10px;
+  }
+}
+
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.score-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.score-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.score-item-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: $text-secondary;
+  font-weight: 500;
+
+  fa-icon {
+    font-size: 11px;
+    color: $accent-primary;
+  }
+}
+
+.score-item-value {
+  color: $text-white;
+  font-weight: 600;
+}
+
+.score-progress-bar {
+  height: 6px;
+  background: $bg-tertiary;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, $accent-primary, lighten($accent-primary, 10%));
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }

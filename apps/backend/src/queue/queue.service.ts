@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
   forwardRef,
@@ -8,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { FileHealthStatus, type Job, JobEventType, JobStage, Prisma } from '@prisma/client';
+import { firstValueFrom } from 'rxjs';
+import { NodeConfigService } from '../core/services/node-config.service';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,7 +18,9 @@ import type { CompleteJobDto } from './dto/complete-job.dto';
 import type { CreateJobDto } from './dto/create-job.dto';
 import type { JobStatsDto } from './dto/job-stats.dto';
 import type { UpdateJobDto } from './dto/update-job.dto';
+import { FileTransferService } from './services/file-transfer.service';
 import { JobHistoryService } from './services/job-history.service';
+import { JobRouterService } from './services/job-router.service';
 
 /**
  * QueueService
@@ -33,7 +38,11 @@ export class QueueService {
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => FfmpegService))
     private ffmpegService: FfmpegService,
-    private jobHistoryService: JobHistoryService
+    private jobHistoryService: JobHistoryService,
+    private jobRouterService: JobRouterService,
+    private fileTransferService: FileTransferService,
+    private nodeConfig: NodeConfigService,
+    private httpService: HttpService
   ) {}
 
   /**
@@ -351,14 +360,45 @@ export class QueueService {
         );
       }
 
+      // PHASE 1 FIX: Use JobRouterService to find optimal node
+      // Instead of always assigning to library.nodeId, find the best node based on:
+      // - Network location (LOCAL with shared storage > LOCAL > REMOTE)
+      // - Node load (active jobs vs maxWorkers)
+      // - File size vs transfer limits
+      const optimalNodeId = await this.jobRouterService.findBestNodeForJob(
+        `pending-${payload.fileName}`, // Temporary job ID for logging
+        BigInt(videoInfo.sizeBytes)
+      );
+
+      // Fall back to library.nodeId if router can't find a suitable node
+      const assignedNodeId = optimalNodeId || library.nodeId;
+
+      if (!optimalNodeId) {
+        this.logger.warn(
+          `JobRouter could not find optimal node for ${payload.fileName}, falling back to library node`
+        );
+      }
+
+      // PHASE 3 FIX: Check if file transfer is required (target node has no shared storage)
+      const targetNode = await this.prisma.node.findUnique({
+        where: { id: assignedNodeId },
+      });
+
+      const sourceNode = await this.prisma.node.findUnique({
+        where: { id: library.nodeId },
+      });
+
+      const transferRequired =
+        targetNode && sourceNode && !targetNode.hasSharedStorage && targetNode.id !== sourceNode.id;
+
       // Create job (with AV1 throttling fields if applicable)
-      await this.create({
+      const job = await this.create({
         filePath: payload.filePath,
         fileLabel: payload.fileName,
         sourceCodec: videoInfo.codec,
         targetCodec: library.defaultPolicy.targetCodec,
         beforeSizeBytes: videoInfo.sizeBytes.toString(),
-        nodeId: library.nodeId,
+        nodeId: assignedNodeId,
         libraryId: library.id,
         policyId: library.defaultPolicyId,
         warning,
@@ -369,6 +409,20 @@ export class QueueService {
         sourceContainer,
         targetContainer,
       });
+
+      // PHASE 3 FIX: Initiate file transfer if required (async, don't block job creation)
+      if (transferRequired && targetNode && sourceNode) {
+        this.logger.log(
+          `Transfer required for job ${job.id}: ${sourceNode.name} -> ${targetNode.name}`
+        );
+
+        // Initiate transfer in background (don't await)
+        this.fileTransferService
+          .transferFile(job.id, payload.filePath, sourceNode, targetNode)
+          .catch((error) => {
+            this.logger.error(`Background file transfer failed for job ${job.id}:`, error);
+          });
+      }
 
       this.logger.log(`Successfully created job for detected file: ${payload.fileName}`);
     } catch (error) {
@@ -421,6 +475,9 @@ export class QueueService {
       // SQLite LIKE operator is case-insensitive by default for ASCII characters
       where.OR = [{ filePath: { contains: search } }, { fileLabel: { contains: search } }];
     }
+
+    // PHASE 1 FIX: Show all jobs including those from child nodes
+    // Removed filter: where.originalNodeId = null;
 
     // PERF: Optimized select to only fetch needed fields (reduces data transfer)
     const includeClause = {
@@ -529,7 +586,8 @@ export class QueueService {
    * 1. Checks if node exists
    * 2. Verifies node hasn't exceeded concurrent job limit
    * 3. Finds the oldest QUEUED job for the node
-   * 4. Updates job to ENCODING stage and sets startedAt timestamp
+   * 4. Checks if file transfer is required before encoding
+   * 5. Updates job to ENCODING stage or TRANSFERRING stage as needed
    *
    * @param nodeId - Node unique identifier
    * @returns Next job to process, or null if none available or node at capacity
@@ -538,6 +596,22 @@ export class QueueService {
   async getNextJob(nodeId: string): Promise<Job | null> {
     this.logger.log(`Getting next job for node: ${nodeId}`);
 
+    // LINKED nodes should get jobs from MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      this.logger.debug(`Proxying getNextJob request to main node: ${mainApiUrl}`);
+      try {
+        const response = await firstValueFrom(
+          this.httpService.get(`${mainApiUrl}/queue/next/${nodeId}`)
+        );
+        return response.data;
+      } catch (error) {
+        this.logger.error('Failed to proxy getNextJob request to main node', error);
+        // Fall through to local database query as fallback
+      }
+    }
+
+    // MAIN nodes query their own database
     // Get node with license info and current active job count
     const node = await this.prisma.node.findUnique({
       where: { id: nodeId },
@@ -587,10 +661,64 @@ export class QueueService {
           { healthScore: 'desc' }, // Healthy files first (90-100 score) within same priority
           { createdAt: 'asc' }, // Then FIFO within same priority+health tier
         ],
+        include: {
+          library: {
+            select: {
+              nodeId: true,
+            },
+          },
+        },
       });
 
       if (!job) {
         return null;
+      }
+
+      // FILE TRANSFER FIX: Check if file transfer is required
+      // Transfer is required if:
+      // 1. Node doesn't have shared storage (hasSharedStorage = false)
+      // 2. Job originated from a different node (job.library.nodeId !== job.nodeId)
+      // 3. Transfer hasn't been marked as completed (transferRequired !== explicitly false OR transferProgress < 100)
+      const sourceNodeId = job.library.nodeId;
+      const needsTransfer =
+        !node.hasSharedStorage &&
+        sourceNodeId !== nodeId &&
+        (job.transferRequired !== false || (job.transferProgress || 0) < 100);
+
+      if (needsTransfer) {
+        // Job needs file transfer before encoding
+        this.logger.log(
+          `Job ${job.id} requires file transfer before encoding (node has no shared storage)`
+        );
+
+        // Update job to mark transfer as required and return null
+        // (transfer will be initiated by a background worker)
+        await tx.job.update({
+          where: { id: job.id },
+          data: {
+            transferRequired: true,
+            stage: JobStage.DETECTED, // Reset to DETECTED so transfer worker picks it up
+          },
+        });
+
+        // Initiate file transfer in background (don't block job claiming)
+        // Get source and target nodes for transfer
+        const sourceNode = await tx.node.findUnique({
+          where: { id: sourceNodeId },
+        });
+
+        if (sourceNode) {
+          // Trigger transfer asynchronously (outside transaction)
+          setImmediate(() => {
+            this.fileTransferService
+              .transferFile(job.id, job.filePath, sourceNode, node)
+              .catch((error) => {
+                this.logger.error(`Background file transfer failed for job ${job.id}:`, error);
+              });
+          });
+        }
+
+        return null; // Don't claim this job, let transfer complete first
       }
 
       // CRITICAL FIX: Use updateMany with WHERE clause to atomically claim the job
@@ -1576,6 +1704,7 @@ export class QueueService {
       detected,
       healthCheck,
       queued,
+      transferring,
       encoding,
       verifying,
       completed,
@@ -1591,6 +1720,9 @@ export class QueueService {
       }),
       this.prisma.job.count({
         where: { ...where, stage: JobStage.QUEUED },
+      }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.TRANSFERRING },
       }),
       this.prisma.job.count({
         where: { ...where, stage: JobStage.ENCODING },
@@ -1617,6 +1749,7 @@ export class QueueService {
       detected,
       healthCheck,
       queued,
+      transferring,
       encoding,
       verifying,
       completed,
@@ -2149,6 +2282,32 @@ export class QueueService {
         },
       });
 
+      // Update node's average encoding speed for job attribution algorithm
+      if (job.fps && job.fps > 0) {
+        const currentNode = await prisma.node.findUnique({
+          where: { id: job.nodeId },
+          select: { avgEncodingSpeed: true },
+        });
+
+        if (currentNode) {
+          // Calculate new average using exponential moving average (EMA)
+          // Alpha = 0.3 gives more weight to recent jobs while maintaining stability
+          const alpha = 0.3;
+          const newSpeed = currentNode.avgEncodingSpeed
+            ? currentNode.avgEncodingSpeed * (1 - alpha) + job.fps * alpha
+            : job.fps;
+
+          await prisma.node.update({
+            where: { id: job.nodeId },
+            data: { avgEncodingSpeed: newSpeed },
+          });
+
+          this.logger.debug(
+            `Updated node ${job.nodeId} avgEncodingSpeed: ${currentNode.avgEncodingSpeed?.toFixed(2)} → ${newSpeed.toFixed(2)} FPS`
+          );
+        }
+      }
+
       this.logger.log(`Metrics updated for job: ${job.id}`);
     } catch (error) {
       this.logger.error(`Failed to update metrics for job: ${job.id}`, error);
@@ -2158,5 +2317,118 @@ export class QueueService {
         throw error;
       }
     }
+  }
+
+  /**
+   * Manually delegate a job to a specific node
+   */
+  async delegateJob(jobId: string, targetNodeId: string): Promise<Job> {
+    return await this.prisma.$transaction(async (tx) => {
+      // Verify job exists
+      const job = await tx.job.findUnique({
+        where: { id: jobId },
+        include: {
+          library: {
+            select: {
+              nodeId: true,
+            },
+          },
+        },
+      });
+
+      if (!job) {
+        throw new NotFoundException(`Job ${jobId} not found`);
+      }
+
+      // Only allow delegation of QUEUED or PAUSED jobs
+      if (job.stage !== 'QUEUED' && job.stage !== 'PAUSED') {
+        throw new BadRequestException(
+          `Cannot delegate job in ${job.stage} stage. Only QUEUED or PAUSED jobs can be delegated.`
+        );
+      }
+
+      // Verify target node exists and is online
+      const targetNode = await tx.node.findUnique({
+        where: { id: targetNodeId },
+      });
+
+      if (!targetNode) {
+        throw new NotFoundException(`Target node ${targetNodeId} not found`);
+      }
+
+      if (targetNode.status !== 'ONLINE') {
+        throw new BadRequestException('Selected node is not available for job assignment');
+      }
+
+      this.logger.log(
+        `Manually delegating job ${jobId} from node ${job.nodeId} to node ${targetNodeId}`
+      );
+
+      // FILE TRANSFER FIX: Check if file transfer is required for the new node
+      // Transfer is required if:
+      // 1. Target node doesn't have shared storage (hasSharedStorage = false)
+      // 2. Job originated from a different node (job.library.nodeId !== targetNodeId)
+      const sourceNodeId = job.library.nodeId;
+      const needsTransfer = !targetNode.hasSharedStorage && sourceNodeId !== targetNodeId;
+
+      // Atomic update with stage check to prevent race conditions
+      const updateResult = await tx.job.updateMany({
+        where: {
+          id: jobId,
+          stage: { in: ['QUEUED', 'PAUSED'] },
+        },
+        data: {
+          nodeId: targetNodeId,
+          manualAssignment: true,
+          // Track original node if not already set
+          originalNodeId: job.originalNodeId || job.nodeId,
+          // FILE TRANSFER FIX: Set transferRequired if needed
+          transferRequired: needsTransfer,
+          // Reset transfer progress if delegating to a new node
+          transferProgress: needsTransfer ? 0 : job.transferProgress,
+          transferError: null,
+        },
+      });
+
+      // Check if update succeeded (job may have changed stage during transaction)
+      if (updateResult.count === 0) {
+        throw new BadRequestException(
+          'Job stage changed during delegation. Please retry the operation.'
+        );
+      }
+
+      // FILE TRANSFER FIX: Initiate file transfer if required
+      if (needsTransfer) {
+        const sourceNode = await tx.node.findUnique({
+          where: { id: sourceNodeId },
+        });
+
+        if (sourceNode) {
+          this.logger.log(
+            `Job ${jobId} requires file transfer: ${sourceNode.name} -> ${targetNode.name}`
+          );
+
+          // Trigger transfer asynchronously (outside transaction)
+          setImmediate(() => {
+            this.fileTransferService
+              .transferFile(jobId, job.filePath, sourceNode, targetNode)
+              .catch((error) => {
+                this.logger.error(`Background file transfer failed for job ${jobId}:`, error);
+              });
+          });
+        }
+      }
+
+      // Fetch updated job to return
+      const updatedJob = await tx.job.findUnique({
+        where: { id: jobId },
+      });
+
+      this.logger.log(
+        `Job ${jobId} successfully delegated to node ${targetNodeId}${needsTransfer ? ' (file transfer initiated)' : ''}`
+      );
+
+      return updatedJob!;
+    });
   }
 }

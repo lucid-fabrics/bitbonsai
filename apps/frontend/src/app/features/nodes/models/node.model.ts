@@ -45,12 +45,35 @@ export interface Node {
   vpnIpAddress?: string | null;
   maxTransferSizeMB?: number;
 
+  // Container & Environment Detection (for storage configuration)
+  containerType?: string | null;
+  isPrivileged?: boolean;
+  canMountNFS?: boolean;
+  environmentDetectedAt?: string | null;
+
   // Hardware Capabilities
   cpuCores?: number | null;
   ramGB?: number | null;
   bandwidthMbps?: number | null;
   latencyMs?: number | null;
   lastSpeedTest?: string | null;
+  hasGpu?: boolean;
+  avgEncodingSpeed?: number | null;
+
+  // Scheduling Fields
+  scheduleEnabled?: boolean;
+  scheduleWindows?: TimeWindow[] | null;
+}
+
+/**
+ * Time window for node scheduling
+ */
+export interface TimeWindow {
+  dayOfWeek: number; // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startHour: number; // 0-23
+  endHour: number; // 0-23
+  startMinute?: number; // 0-59
+  endMinute?: number; // 0-59
 }
 
 /**
@@ -66,4 +89,5 @@ export interface CurrentNode {
   status: NodeStatus;
   version: string;
   acceleration: AccelerationType;
+  mainNodeUrl?: string | null;
 }

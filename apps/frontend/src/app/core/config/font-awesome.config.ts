@@ -3,12 +3,13 @@ import type { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 // Regular icons (1 icon)
 import { faCompactDisc } from '@fortawesome/pro-regular-svg-icons';
 
-// Solid icons (86 icons)
+// Solid icons (92 icons)
 import {
   faArrowDown,
   faArrowLeft,
   faArrowRight,
   faArrowUp,
+  faAward,
   faBan,
   faBolt,
   faBug,
@@ -31,6 +32,7 @@ import {
   faCrown,
   faDatabase,
   faEdit,
+  faEject,
   faExclamationCircle,
   faExclamationTriangle,
   faEye,
@@ -65,13 +67,16 @@ import {
   faMicrochip,
   faNetworkWired,
   faNotesMedical,
+  faPaperPlane,
   faPauseCircle,
   faPlay,
+  faPlug,
   faPlus,
   faPlusCircle,
   faPowerOff,
   faRadar,
   faRedo,
+  faRobot,
   faRocket,
   faRotateRight,
   faSave,
@@ -98,12 +103,13 @@ import {
 } from '@fortawesome/pro-solid-svg-icons';
 
 export function configureFontAwesome(library: FaIconLibrary): void {
-  // Add solid icons (86 icons)
+  // Add solid icons (92 icons)
   library.addIcons(
     faArrowDown,
     faArrowLeft,
     faArrowRight,
     faArrowUp,
+    faAward,
     faBan,
     faBolt,
     faBug,
@@ -126,6 +132,7 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faCrown,
     faDatabase,
     faEdit,
+    faEject,
     faExclamationCircle,
     faExclamationTriangle,
     faEye,
@@ -160,13 +167,16 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faMicrochip,
     faNetworkWired,
     faNotesMedical,
+    faPaperPlane,
     faPauseCircle,
     faPlay,
+    faPlug,
     faPlus,
     faPlusCircle,
     faPowerOff,
     faRadar,
     faRedo,
+    faRobot,
     faRocket,
     faRotateRight,
     faSave,

@@ -1,4 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { CoreModule } from '../core/core.module';
 import { EncodingModule } from '../encoding/encoding.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +8,7 @@ import { HealthCheckWorker } from './health-check.worker';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
+import { FileTransferService } from './services/file-transfer.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { JobHistoryService } from './services/job-history.service';
 import { JobRouterService } from './services/job-router.service';
@@ -27,13 +29,14 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Cleans up orphaned .backup files via BackupCleanupWorker (LOW PRIORITY FIX #17).
  */
 @Module({
-  imports: [forwardRef(() => EncodingModule), forwardRef(() => LibrariesModule)],
+  imports: [CoreModule, forwardRef(() => EncodingModule), forwardRef(() => LibrariesModule)],
   controllers: [QueueController],
   providers: [
     QueueService,
     JobCleanupService,
     JobHistoryService,
     JobRouterService,
+    FileTransferService,
     HealthCheckWorker,
     AutoHealingService,
     RetrySchedulerService,
@@ -41,6 +44,6 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     BackupCleanupWorker,
     PrismaService,
   ],
-  exports: [QueueService, JobHistoryService, JobRouterService],
+  exports: [QueueService, JobHistoryService, JobRouterService, FileTransferService],
 })
 export class QueueModule {}

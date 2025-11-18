@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { version as APP_VERSION } from '../../../../package.json';
 import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
@@ -48,7 +49,7 @@ export class SettingsController {
   })
   async getSystemSettings(): Promise<SystemSettingsDto> {
     return {
-      version: process.env.APP_VERSION || '1.0.0',
+      version: APP_VERSION, // Read from package.json
       databaseType: DatabaseType.SQLITE,
       databasePath: '/config/bitbonsai.db',
       storageInfo: {
@@ -83,7 +84,7 @@ export class SettingsController {
     @Body() updateDto: UpdateSystemSettingsDto
   ): Promise<SystemSettingsDto> {
     return {
-      version: process.env.APP_VERSION || '1.0.0',
+      version: APP_VERSION, // Read from package.json
       databaseType: DatabaseType.SQLITE,
       databasePath: '/config/bitbonsai.db',
       storageInfo: {

@@ -47,6 +47,9 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
 
+# FILE TRANSFER: Install SSH and rsync for remote file transfer to child nodes
+RUN apk add --no-cache openssh-client rsync
+
 # Install production dependencies only
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force

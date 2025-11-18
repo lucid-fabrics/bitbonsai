@@ -10,6 +10,8 @@ import { Interval } from '@nestjs/schedule';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
+import { version as APP_VERSION } from '../../../../package.json';
+import { DataAccessService } from '../core/services/data-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import type { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
@@ -35,43 +37,54 @@ export class NodesService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly dataAccessService: DataAccessService,
     private readonly systemInfoService: SystemInfoService
   ) {}
 
   /**
-   * Initialize MAIN node on module startup
+   * Initialize node on module startup
    */
   async onModuleInit() {
     this.logger.log('🔧 Initializing nodes service...');
-    this.logger.log('💓 MAIN node auto-heartbeat started (every 30s)');
+    this.logger.log('💓 Auto-heartbeat started (every 30s)');
 
     // Send initial heartbeat immediately
-    this.sendMainNodeHeartbeat();
+    this.sendAutoHeartbeat();
   }
 
   /**
-   * Auto-heartbeat for the MAIN node
+   * Auto-heartbeat for current node (works for both MAIN and LINKED)
    * Uses @Interval decorator for resilience to hot reloads
    * Sends heartbeat every 30 seconds to keep status updated
+   *
+   * - MAIN nodes: Updates local database
+   * - LINKED nodes: Sends heartbeat to MAIN node via API
    */
   @Interval(30000)
-  private async sendMainNodeHeartbeat(): Promise<void> {
+  private async sendAutoHeartbeat(): Promise<void> {
     try {
-      const mainNode = await this.prisma.node.findFirst({
-        where: { role: NodeRole.MAIN },
-      });
+      // Get the current node from local database (MAIN or LINKED)
+      const currentNode = await this.prisma.node.findFirst();
 
-      if (!mainNode) {
-        this.logger.warn('⚠️  MAIN node not found - skipping heartbeat');
+      if (!currentNode) {
+        this.logger.warn('⚠️  No node found in local database - skipping heartbeat');
         return;
       }
 
-      await this.heartbeat(mainNode.id);
-      this.logger.debug(`💓 Heartbeat sent for ${mainNode.name}`);
+      // Send heartbeat based on node role
+      if (currentNode.role === NodeRole.MAIN) {
+        // MAIN node: Update local database
+        await this.heartbeat(currentNode.id);
+        this.logger.debug(`💓 [MAIN] Heartbeat sent for ${currentNode.name}`);
+      } else {
+        // LINKED node: Send heartbeat to MAIN node via API
+        await this.dataAccessService.sendHeartbeat(currentNode.id);
+        this.logger.debug(`💓 [LINKED] Heartbeat sent for ${currentNode.name} to MAIN API`);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`❌ Failed to send MAIN node heartbeat: ${errorMessage}`);
+      this.logger.error(`❌ Failed to send auto-heartbeat: ${errorMessage}`);
       if (errorStack) {
         this.logger.error(errorStack);
       }
@@ -158,7 +171,7 @@ export class NodesService implements OnModuleInit {
     // Provide intelligent defaults for optional fields
     const nodeName =
       data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
-    const nodeVersion = data.version || process.env.APP_VERSION || '1.0.0';
+    const nodeVersion = data.version || APP_VERSION; // Read from package.json
     const nodeAcceleration = data.acceleration || 'CPU'; // Default to CPU (every node has a CPU)
 
     // Create node
@@ -654,6 +667,8 @@ export class NodesService implements OnModuleInit {
         ...(data.name && { name: data.name }),
         ...(data.maxWorkers !== undefined && { maxWorkers: data.maxWorkers }),
         ...(data.cpuLimit !== undefined && { cpuLimit: data.cpuLimit }),
+        ...(data.publicUrl !== undefined && { publicUrl: data.publicUrl }),
+        ...(data.mainNodeUrl !== undefined && { mainNodeUrl: data.mainNodeUrl }),
       },
     });
   }

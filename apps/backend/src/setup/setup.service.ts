@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { version } from '../../../../package.json';
 import { PrismaService } from '../prisma/prisma.service';
 import { InitializeSetupDto, NodeType } from './dto/initialize-setup.dto';
 import type { SetupStatusDto } from './dto/setup-status.dto';
@@ -166,7 +167,7 @@ export class SetupService {
           name: `Child Node (${hostname})`,
           role: 'LINKED',
           status: 'ONLINE',
-          version: '0.1.0',
+          version, // Read from package.json
           acceleration: 'CPU', // Will be updated after hardware detection
           apiKey: this.generateRandomString(32),
           lastHeartbeat: new Date(),

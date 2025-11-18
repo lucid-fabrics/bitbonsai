@@ -14,6 +14,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { OptimalConfig } from '../../../../core/clients/nodes.client';
 import { NodesClient } from '../../../../core/clients/nodes.client';
+import { NodeScheduleEditorComponent } from '../../../../shared/components/node-schedule-editor/node-schedule-editor.component';
 import type { Node } from '../../models/node.model';
 
 export interface NodeConfigModalData {
@@ -33,7 +34,7 @@ export interface NodeConfigModalData {
 @Component({
   selector: 'app-node-config-modal',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, ReactiveFormsModule],
+  imports: [CommonModule, FontAwesomeModule, ReactiveFormsModule, NodeScheduleEditorComponent],
   templateUrl: './node-config.modal.html',
   styleUrls: ['./node-config.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -65,6 +66,8 @@ export class NodeConfigModalComponent implements OnInit {
         this.data.node.cpuLimit,
         [Validators.required, Validators.min(10), Validators.max(100)],
       ],
+      scheduleEnabled: [this.data.node.scheduleEnabled ?? false],
+      scheduleWindows: [this.data.node.scheduleWindows ?? []],
     });
   }
 

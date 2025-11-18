@@ -53,6 +53,18 @@ export class QueueJobBo {
   // File Missing Badge Feature
   stage?: string;
   fileExists?: boolean;
+  // Job Delegation & Scheduling
+  originalNodeId?: string | null;
+  manualAssignment?: boolean;
+  // Transfer Feature (Phase 4)
+  transferRequired?: boolean;
+  transferProgress?: number;
+  transferSpeedMBps?: number;
+  transferStartedAt?: string;
+  transferCompletedAt?: string;
+  transferError?: string;
+  remoteTempPath?: string;
+  transferRetryCount?: number;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -103,6 +115,18 @@ export class QueueJobBo {
     // File Missing Badge Feature
     this.stage = model.stage;
     this.fileExists = model.fileExists;
+    // Job Delegation & Scheduling
+    this.originalNodeId = model.originalNodeId ?? null;
+    this.manualAssignment = model.manualAssignment ?? false;
+    // Transfer Feature (Phase 4)
+    this.transferRequired = model.transferRequired;
+    this.transferProgress = model.transferProgress;
+    this.transferSpeedMBps = model.transferSpeedMBps;
+    this.transferStartedAt = model.transferStartedAt;
+    this.transferCompletedAt = model.transferCompletedAt;
+    this.transferError = model.transferError;
+    this.remoteTempPath = model.remoteTempPath;
+    this.transferRetryCount = model.transferRetryCount;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

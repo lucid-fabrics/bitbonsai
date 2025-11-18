@@ -20,6 +20,14 @@ services:
     volumes:
       - ${MEDIA_PATH:-./media}:/media:ro
       - bitbonsai-data:/data
+      # Shared storage mount point for NFS/SMB mounts
+      - bitbonsai-shared:/mnt/shared
+    # Capabilities required for mounting NFS/SMB shares
+    cap_add:
+      - SYS_ADMIN         # Required for mount operations
+      - DAC_READ_SEARCH   # Allows reading all files regardless of permissions
+    security_opt:
+      - apparmor:unconfined  # Required for mount operations
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
@@ -174,6 +182,12 @@ services:
 volumes:
   bitbonsai-data:
     driver: local
+  bitbonsai-shared:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/shared
   # postgres-data:
   #   driver: local
   # redis-data:

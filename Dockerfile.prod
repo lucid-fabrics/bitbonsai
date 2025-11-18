@@ -44,11 +44,15 @@ RUN npx nx build backend --configuration=production
 FROM node:20-alpine AS backend
 
 # Install runtime dependencies only
+# NFS and SMB clients for shared storage support
 RUN apk add --no-cache \
     ffmpeg \
     ffprobe \
     curl \
-    tini
+    tini \
+    nfs-utils \
+    cifs-utils \
+    util-linux
 
 WORKDIR /app
 

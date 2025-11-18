@@ -1,11 +1,18 @@
 import { Module } from '@nestjs/common';
+import { CoreModule } from '../core/core.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageSharesController } from './controllers/storage-shares.controller';
 import { NodesController } from './nodes.controller';
 import { NodesService } from './nodes.service';
+import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
+import { ScheduleEnforcementService } from './services/schedule-enforcement.service';
+import { SshKeyService } from './services/ssh-key.service';
+import { StorageMountService } from './services/storage-mount.service';
+import { StorageShareService } from './services/storage-share.service';
 import { SystemInfoService } from './services/system-info.service';
 
 /**
@@ -21,8 +28,8 @@ import { SystemInfoService } from './services/system-info.service';
  * - System information collection (hardware, network, container type)
  */
 @Module({
-  imports: [NotificationsModule],
-  controllers: [NodesController],
+  imports: [CoreModule, NotificationsModule],
+  controllers: [NodesController, StorageSharesController],
   providers: [
     NodesService,
     PrismaService,
@@ -30,6 +37,11 @@ import { SystemInfoService } from './services/system-info.service';
     RegistrationRequestService,
     SystemInfoService,
     NodeCapabilityDetectorService,
+    JobAttributionService,
+    ScheduleEnforcementService,
+    StorageShareService,
+    StorageMountService,
+    SshKeyService,
   ],
   exports: [
     NodesService,
@@ -37,6 +49,11 @@ import { SystemInfoService } from './services/system-info.service';
     RegistrationRequestService,
     SystemInfoService,
     NodeCapabilityDetectorService,
+    JobAttributionService,
+    ScheduleEnforcementService,
+    StorageShareService,
+    StorageMountService,
+    SshKeyService,
   ],
 })
 export class NodesModule {}

@@ -1,0 +1,62 @@
+<div class="storage-banner" [class]="'banner-' + bannerClass" *ngIf="recommendation">
+  <div class="banner-icon">
+    <fa-icon [icon]="['fas', icon]" size="2x"></fa-icon>
+  </div>
+
+  <div class="banner-content">
+    <div class="banner-header">
+      <h3>Storage Configuration</h3>
+      <span class="method-badge" [class]="methodBadgeClass">
+        {{ recommendation.recommended }}
+      </span>
+    </div>
+
+    <div class="banner-body">
+      <p class="recommendation-reason">
+        <strong>{{ recommendation.reason }}</strong>
+      </p>
+      <p class="method-description">
+        {{ methodDescription }}
+      </p>
+
+      <div class="node-info" *ngIf="sourceNodeName && targetNodeName">
+        <span class="node-label">Nodes:</span>
+        <span class="node-name">{{ sourceNodeName }}</span>
+        <fa-icon [icon]="['fas', 'arrow-right']" class="mx-2"></fa-icon>
+        <span class="node-name">{{ targetNodeName }}</span>
+        <span class="container-badge" *ngIf="containerType">
+          {{ containerType }}
+        </span>
+      </div>
+
+      <div class="warning-section" *ngIf="recommendation.warning">
+        <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-icon"></fa-icon>
+        <span class="warning-text">{{ recommendation.warning }}</span>
+      </div>
+
+      <div class="action-section" *ngIf="recommendation.actionRequired">
+        <div class="action-box">
+          <fa-icon [icon]="['fas', 'lightbulb']" class="action-icon"></fa-icon>
+          <div class="action-content">
+            <strong>Action Required:</strong>
+            <p>{{ recommendation.actionRequired }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="banner-actions">
+      <button
+        class="btn btn-primary"
+        (click)="onConfigure()">
+        <fa-icon [icon]="['fas', 'cog']" class="me-2"></fa-icon>
+        Configure Storage
+      </button>
+      <button
+        class="btn btn-outline-secondary"
+        (click)="onDismiss()">
+        Dismiss
+      </button>
+    </div>
+  </div>
+</div>

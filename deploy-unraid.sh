@@ -14,6 +14,31 @@ UNRAID_SSH="${UNRAID_USER}@${UNRAID_HOST}"
 echo "🚀 Deploying BitBonsai to Unraid..."
 echo ""
 
+# Pre-flight: Check Unraid NFS configuration
+echo "🔍 Pre-flight: Checking Unraid NFS configuration..."
+NFS_EXPORTS=$(ssh $UNRAID_SSH 'showmount -e localhost 2>&1' || echo "NFS_ERROR")
+if echo "$NFS_EXPORTS" | grep -q "/mnt/user/media\|/mnt/user/Downloads"; then
+    echo "✅ Unraid NFS exports detected:"
+    echo "$NFS_EXPORTS" | grep -E "/mnt/user/(media|Downloads)" || true
+else
+    echo "⚠️  WARNING: Unraid NFS exports not configured!"
+    echo ""
+    echo "For multi-node setup, enable NFS in Unraid:"
+    echo "  1. Go to Settings → NFS"
+    echo "  2. Enable NFS Server"
+    echo "  3. Add exports for /mnt/user/media and /mnt/user/Downloads"
+    echo "  4. Apply changes"
+    echo ""
+    echo "See unraid/README.md for detailed instructions."
+    echo ""
+    read -p "Continue anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+echo ""
+
 # Step 1: Sync code files and config
 echo "📦 Step 1/6: Syncing application code and configuration..."
 rsync -az --delete \

@@ -1,0 +1,54 @@
+<div class="schedule-editor">
+  <div class="schedule-editor__header">
+    <div class="schedule-editor__info">
+      <h3 class="schedule-editor__title">
+        <fa-icon [icon]="['fas', 'calendar-check']"></fa-icon>
+        Encoding Schedule
+      </h3>
+      <p class="schedule-editor__subtitle">
+        Click and drag on the calendar to create time windows. The node will only encode during these times.
+      </p>
+      <p class="schedule-editor__summary">{{ getSummary() }}</p>
+    </div>
+    <button
+      type="button"
+      class="schedule-editor__clear-btn"
+      (click)="clearAll()"
+      [disabled]="disabled || windows().length === 0"
+    >
+      <fa-icon [icon]="['fas', 'trash-alt']"></fa-icon>
+      Clear All
+    </button>
+  </div>
+
+  <div class="schedule-editor__calendar">
+    <full-calendar
+      #calendar
+      [options]="calendarOptions()"
+    ></full-calendar>
+  </div>
+
+  <div class="schedule-editor__instructions">
+    <h4 class="schedule-editor__instructions-title">
+      <fa-icon [icon]="['fas', 'lightbulb']"></fa-icon>
+      Quick Guide
+    </h4>
+    <ul class="schedule-editor__instructions-list">
+      <li>
+        <strong>Add time:</strong> Click and drag on the calendar to create a window
+      </li>
+      <li>
+        <strong>Resize:</strong> Drag the edges of a window to adjust start/end times
+      </li>
+      <li>
+        <strong>Move:</strong> Drag a window to change its day or time
+      </li>
+      <li>
+        <strong>Remove:</strong> Click any window to delete it
+      </li>
+      <li>
+        <strong>Always on:</strong> Leave empty for 24/7 encoding (no restrictions)
+      </li>
+    </ul>
+  </div>
+</div>

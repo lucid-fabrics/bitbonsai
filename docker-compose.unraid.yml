@@ -37,8 +37,18 @@ services:
       - /mnt/cache/bitbonsai-temp:/cache:cached
       # Database persistence
       - bitbonsai-data:/data
+      # Shared storage mount point for NFS/SMB mounts
+      - bitbonsai-shared:/mnt/shared
+      # Docker socket for volume auto-detection
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       # Preserve node_modules (don't mount from host)
       - /app/node_modules
+    # Capabilities required for mounting NFS/SMB shares
+    cap_add:
+      - SYS_ADMIN         # Required for mount operations
+      - DAC_READ_SEARCH   # Allows reading all files regardless of permissions
+    security_opt:
+      - apparmor:unconfined  # Required for mount operations
     # Use startup script from Dockerfile that auto-regenerates Prisma
     # command: /app/scripts/backend-startup.sh  # Inherited from Dockerfile
     restart: unless-stopped
@@ -76,6 +86,12 @@ services:
 volumes:
   bitbonsai-data:
     driver: local
+  bitbonsai-shared:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/shared
 
 networks:
   bitbonsai-network:

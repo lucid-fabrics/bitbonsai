@@ -1,6 +1,8 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CoreModule } from '../core/core.module';
 import { LibrariesModule } from '../libraries/libraries.module';
+import { NodesModule } from '../nodes/nodes.module';
 import { QueueModule } from '../queue/queue.module';
 import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
@@ -19,7 +21,13 @@ import { FileHealthService } from './file-health.service';
  * Includes EncodingPreviewService for live encoding preview generation.
  */
 @Module({
-  imports: [EventEmitterModule.forRoot(), forwardRef(() => QueueModule), LibrariesModule],
+  imports: [
+    EventEmitterModule.forRoot(),
+    CoreModule,
+    forwardRef(() => QueueModule),
+    LibrariesModule,
+    NodesModule,
+  ],
   controllers: [EncodingController],
   providers: [
     EncodingProcessorService,

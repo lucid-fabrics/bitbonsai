@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
   Body,
@@ -13,11 +14,13 @@ import {
   Post,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { execFile } from 'child_process';
 import { Response } from 'express';
 import { createReadStream, existsSync } from 'fs';
 import * as fs from 'fs/promises';
+import { firstValueFrom } from 'rxjs';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
@@ -33,18 +36,23 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { type Job, JobStage } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { NodeConfigService } from '../core/services/node-config.service';
 import { EncodingPreviewService } from '../encoding/encoding-preview.service';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { CancelJobDto } from './dto/cancel-job.dto';
 import { CompleteJobDto } from './dto/complete-job.dto';
 import { CreateJobDto } from './dto/create-job.dto';
+import { DelegateJobDto } from './dto/delegate-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
 import { JobStatsDto } from './dto/job-stats.dto';
 import { ResolveDecisionDto } from './dto/resolve-decision.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdatePriorityDto } from './dto/update-priority.dto';
 import { QueueService } from './queue.service';
+import { FileTransferService } from './services/file-transfer.service';
 import { JobHistoryService } from './services/job-history.service';
 
 @ApiTags('queue')
@@ -55,6 +63,9 @@ export class QueueController {
   constructor(
     private readonly queueService: QueueService,
     private readonly jobHistoryService: JobHistoryService,
+    private readonly fileTransferService: FileTransferService,
+    private readonly nodeConfig: NodeConfigService,
+    private readonly httpService: HttpService,
     readonly _previewService: EncodingPreviewService,
     readonly _ffmpegService: FfmpegService
   ) {}
@@ -168,7 +179,32 @@ export class QueueController {
     @Query('page') page?: number,
     @Query('limit') limit?: number
   ): Promise<{ jobs: Job[]; total: number; page: number; limit: number; totalPages: number }> {
-    // Convert string query params to numbers if present
+    // LINKED nodes should proxy queue data from MAIN node
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      this.logger.debug(`Proxying queue request to main node: ${mainApiUrl}`);
+
+      // Build query params
+      const params: Record<string, string> = {};
+      if (stage) params.stage = stage;
+      if (nodeId) params.nodeId = nodeId;
+      if (search) params.search = search;
+      if (libraryId) params.libraryId = libraryId;
+      if (page) params.page = page.toString();
+      if (limit) params.limit = limit.toString();
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.get(`${mainApiUrl}/queue`, { params })
+        );
+        return response.data;
+      } catch (error) {
+        this.logger.error('Failed to proxy queue request to main node', error);
+        throw new BadRequestException('Failed to fetch queue data from main node');
+      }
+    }
+
+    // MAIN nodes query their own database
     const pageNum = page ? Number(page) : undefined;
     const limitNum = limit ? Number(limit) : undefined;
     return this.queueService.findAll(stage, nodeId, search, libraryId, pageNum, limitNum);
@@ -248,6 +284,110 @@ export class QueueController {
   })
   async getNextJob(@Param('nodeId') nodeId: string): Promise<Job | null> {
     return this.queueService.getNextJob(nodeId);
+  }
+
+  /**
+   * Get next job for a node (query parameter variant for LINKED nodes)
+   */
+  @Get('next-job')
+  @ApiOperation({
+    summary: 'Get next available job for a node (LINKED node variant)',
+    description:
+      'Returns the next job in the queue for a specific node to process.\n\n' +
+      'This endpoint is identical to GET /queue/next/:nodeId but uses a query parameter\n' +
+      'instead of a path parameter for easier consumption by LINKED nodes.\n\n' +
+      '**Use Case**: LINKED nodes call this via DataAccessService to fetch work from MAIN node',
+  })
+  @ApiQuery({
+    name: 'nodeId',
+    description: 'Node unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Next job retrieved and started, or null if none available',
+    type: CreateJobDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Node not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while fetching next job',
+  })
+  async getNextJobByQuery(@Query('nodeId') nodeId: string): Promise<Job | null> {
+    return this.queueService.getNextJob(nodeId);
+  }
+
+  /**
+   * Update job progress (for LINKED nodes)
+   */
+  @Patch(':id/progress')
+  @ApiOperation({
+    summary: 'Update job progress (for LINKED nodes)',
+    description:
+      'Updates the progress of an encoding job. Used by LINKED nodes to report encoding progress.\n\n' +
+      '**Updatable Fields**:\n' +
+      '- **progress**: Current completion percentage (0.0 to 100.0)\n' +
+      '- **etaSeconds**: Estimated time to completion in seconds\n\n' +
+      '**Use Case**: LINKED nodes send progress updates every few seconds during encoding',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job progress updated successfully',
+    type: UpdateJobDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid progress data provided',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while updating job',
+  })
+  async updateJobProgress(
+    @Param('id') id: string,
+    @Body() body: { progress: number; etaSeconds: number }
+  ): Promise<Job> {
+    return this.queueService.updateProgress(id, {
+      progress: body.progress,
+      etaSeconds: body.etaSeconds,
+    });
+  }
+
+  /**
+   * Update job stage (for LINKED nodes)
+   */
+  @Patch(':id/stage')
+  @ApiOperation({
+    summary: 'Update job stage (for LINKED nodes)',
+    description:
+      'Updates the stage of an encoding job. Used by LINKED nodes to report stage changes.\n\n' +
+      '**Use Case**: LINKED nodes call this to move jobs between stages (ENCODING, VERIFYING, etc.)',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0003qh8x9z8x0003',
+  })
+  @ApiOkResponse({
+    description: 'Job stage updated successfully',
+    type: UpdateJobDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid stage data provided',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while updating job',
+  })
+  async updateJobStage(@Param('id') id: string, @Body() body: any): Promise<Job> {
+    return this.queueService.updateProgress(id, body);
   }
 
   /**
@@ -1482,5 +1622,129 @@ export class QueueController {
 
     const deleted = await this.queueService.clearJobs(stages);
     return { deleted };
+  }
+
+  /**
+   * Manually delegate a job to a specific node
+   */
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Post(':id/delegate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delegate job to specific node',
+    description:
+      'Manually assigns a job to a specific node, bypassing the automatic job attribution algorithm.\n\n' +
+      '**Use Cases**:\n' +
+      '- Override automatic node selection\n' +
+      '- Move job to node with specific hardware (GPU, faster CPU)\n' +
+      '- Balance load manually across nodes\n\n' +
+      '**Behavior**:\n' +
+      '- Sets manualAssignment=true to prevent auto-reassignment\n' +
+      '- Updates originalNodeId if not already set\n' +
+      '- Job can be in any stage (QUEUED, PAUSED, ENCODING)',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Job successfully delegated to target node',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job or target node not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid target node (offline, not available, etc.)',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while delegating job',
+  })
+  async delegateJob(@Param('id') id: string, @Body() delegateDto: DelegateJobDto): Promise<Job> {
+    return this.queueService.delegateJob(id, delegateDto.targetNodeId);
+  }
+
+  /**
+   * Get active file transfers (jobs in TRANSFERRING stage)
+   */
+  @Get('transfers/active')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get active file transfers',
+    description:
+      'Returns all jobs currently transferring files to LINKED nodes without shared storage.\n\n' +
+      '**Use Cases**:\n' +
+      '- Monitor active file transfers in overview page\n' +
+      '- Display transfer progress and speed\n' +
+      '- Show ETA for transfers',
+  })
+  @ApiOkResponse({
+    description: 'List of jobs in TRANSFERRING stage (paginated)',
+  })
+  async getActiveTransfers() {
+    return this.queueService.findAll('TRANSFERRING');
+  }
+
+  /**
+   * Get transfer progress for a specific job
+   */
+  @Get(':id/transfer/progress')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get transfer progress for a job',
+    description:
+      'Returns detailed transfer progress including speed, bytes transferred, and ETA.\n\n' +
+      '**Response Fields**:\n' +
+      '- progress: 0-100%\n' +
+      '- speedMBps: Current transfer speed in MB/s\n' +
+      '- bytesTransferred: Bytes transferred so far\n' +
+      '- totalBytes: Total file size\n' +
+      '- eta: Estimated time to completion (seconds)\n' +
+      '- status: PENDING, TRANSFERRING, COMPLETED, FAILED',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Transfer progress details',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+  })
+  async getTransferProgress(@Param('id') id: string) {
+    return this.fileTransferService.getTransferProgress(id);
+  }
+
+  /**
+   * Cancel ongoing file transfer
+   */
+  @Post(':id/transfer/cancel')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Cancel ongoing file transfer',
+    description:
+      'Cancels an active file transfer and marks the job as CANCELLED.\n\n' +
+      '**Behavior**:\n' +
+      '- Aborts rsync process\n' +
+      '- Sets job stage to CANCELLED\n' +
+      '- Cleans up partial transfer files',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job unique identifier (CUID)',
+    example: 'clq8x9z8x0000qh8x9z8x0000',
+  })
+  @ApiOkResponse({
+    description: 'Transfer cancelled successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found or no active transfer',
+  })
+  async cancelTransfer(@Param('id') id: string): Promise<void> {
+    return this.fileTransferService.cancelTransfer(id);
   }
 }

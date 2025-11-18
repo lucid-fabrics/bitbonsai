@@ -107,4 +107,13 @@ export class CreateRegistrationRequestDto {
   @IsNotEmpty()
   @IsEnum(AccelerationType)
   acceleration!: AccelerationType;
+
+  @ApiProperty({
+    description: 'SSH public key for passwordless authentication (for file transfers)',
+    example: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... bitbonsai-cluster-node',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  sshPublicKey?: string;
 }
