@@ -2321,6 +2321,8 @@ export class QueueService {
 
   /**
    * Manually delegate a job to a specific node
+   * Supports QUEUED, PAUSED, FAILED, and ENCODING stages
+   * ENCODING jobs are automatically paused before delegation
    */
   async delegateJob(jobId: string, targetNodeId: string): Promise<Job> {
     return await this.prisma.$transaction(async (tx) => {
@@ -2340,11 +2342,25 @@ export class QueueService {
         throw new NotFoundException(`Job ${jobId} not found`);
       }
 
-      // Only allow delegation of QUEUED or PAUSED jobs
-      if (job.stage !== 'QUEUED' && job.stage !== 'PAUSED') {
+      // Prevent delegating to the same node
+      if (job.nodeId === targetNodeId) {
         throw new BadRequestException(
-          `Cannot delegate job in ${job.stage} stage. Only QUEUED or PAUSED jobs can be delegated.`
+          `Job is already assigned to this node. Please select a different node.`
         );
+      }
+
+      // Only allow delegation of QUEUED, PAUSED, FAILED, or ENCODING jobs
+      const allowedStages = ['QUEUED', 'PAUSED', 'FAILED', 'ENCODING'];
+      if (!allowedStages.includes(job.stage)) {
+        throw new BadRequestException(
+          `Cannot delegate job in ${job.stage} stage. Only QUEUED, PAUSED, FAILED, or ENCODING jobs can be delegated.`
+        );
+      }
+
+      // For ENCODING jobs, we need to pause them first
+      if (job.stage === 'ENCODING') {
+        this.logger.log(`Pausing ENCODING job ${jobId} before delegation to node ${targetNodeId}`);
+        // Pause will be handled by setting stage to PAUSED below
       }
 
       // Verify target node exists and is online
@@ -2371,14 +2387,25 @@ export class QueueService {
       const sourceNodeId = job.library.nodeId;
       const needsTransfer = !targetNode.hasSharedStorage && sourceNodeId !== targetNodeId;
 
+      // Determine target stage based on current stage
+      let targetStage: JobStage = job.stage;
+      if (job.stage === 'FAILED') {
+        // FAILED jobs go back to QUEUED for retry
+        targetStage = 'QUEUED';
+      } else if (job.stage === 'ENCODING') {
+        // ENCODING jobs are paused before delegation
+        targetStage = 'PAUSED';
+      }
+
       // Atomic update with stage check to prevent race conditions
       const updateResult = await tx.job.updateMany({
         where: {
           id: jobId,
-          stage: { in: ['QUEUED', 'PAUSED'] },
+          stage: { in: ['QUEUED', 'PAUSED', 'FAILED', 'ENCODING'] },
         },
         data: {
           nodeId: targetNodeId,
+          stage: targetStage,
           manualAssignment: true,
           // Track original node if not already set
           originalNodeId: job.originalNodeId || job.nodeId,
@@ -2387,6 +2414,9 @@ export class QueueService {
           // Reset transfer progress if delegating to a new node
           transferProgress: needsTransfer ? 0 : job.transferProgress,
           transferError: null,
+          // Clear error for FAILED jobs
+          errorMessage: job.stage === 'FAILED' ? null : job.errorMessage,
+          retryCount: job.stage === 'FAILED' ? 0 : job.retryCount,
         },
       });
 

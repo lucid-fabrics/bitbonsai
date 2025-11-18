@@ -653,13 +653,13 @@
                         </div>
                       </div>
                     }
-                    @if (job.status === 'QUEUED' || job.status === 'ENCODING') {
+                    @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'FAILED') {
                       <button
                         (click)="openDelegationDialog(job, $event)"
                         class="action-btn delegate-btn"
                         bbTooltip
                         tooltipTitle="Send to Node"
-                        tooltipContent="Manually assign this job to a specific node. This overrides the automatic node selection algorithm."
+                        [tooltipContent]="job.status === 'ENCODING' ? 'Pauses encoding and transfers this job to a different node. The job will be queued on the selected node.' : job.status === 'FAILED' ? 'Sends this failed job to a different node for retry. The error will be cleared and retryCount reset.' : 'Manually assign this job to a specific node. This overrides the automatic node selection algorithm.'"
                         tooltipWhen="You want to choose which node should process this job."
                         tooltipPlacement="top">
                         <i class="fas fa-share"></i>
