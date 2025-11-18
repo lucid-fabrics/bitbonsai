@@ -353,6 +353,225 @@ docker run -d \
 
 ---
 
+## Automatic SSH Key Exchange for File Transfers
+
+BitBonsai automatically configures **passwordless SSH authentication** during node registration, enabling secure rsync file transfers between nodes without any manual terminal configuration.
+
+### The Problem We Solve
+
+Traditional multi-node encoding systems require manual SSH setup:
+```bash
+# Old way - manual SSH configuration (error-prone)
+ssh child-node
+ssh-keygen -t rsa -b 4096
+cat ~/.ssh/id_rsa.pub  # Copy this manually
+ssh main-node
+echo "ssh-rsa AAAAB3..." >> ~/.ssh/authorized_keys  # Paste child's key
+exit
+ssh main-node
+cat ~/.ssh/id_rsa.pub  # Copy main's key
+ssh child-node
+echo "ssh-rsa AAAAB3..." >> ~/.ssh/authorized_keys  # Paste main's key
+```
+
+**BitBonsai's Solution**: Zero-configuration SSH setup - just like Proxmox cluster join.
+
+### How It Works
+
+#### 1. Automatic Key Generation (On Container Startup)
+
+When any BitBonsai node starts, it automatically:
+- Generates a 4096-bit RSA keypair (`~/.ssh/id_rsa`, `~/.ssh/id_rsa.pub`)
+- Sets proper permissions (600 for private key, 644 for public key)
+- Stores keys in persistent volume (survives container restarts)
+- Skips generation if keys already exist
+
+**No manual intervention required** - happens automatically on first startup.
+
+#### 2. Child Node Registration (Automatic Key Exchange)
+
+When a child node joins the cluster:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ CHILD NODE                                                  │
+│                                                             │
+│ 1. User clicks "Register with Main Node"                   │
+│ 2. Frontend fetches child's SSH public key                 │
+│ 3. Registration request sent with SSH key included          │
+│                                                             │
+│    POST /api/v1/registration-requests                      │
+│    {                                                        │
+│      "mainNodeId": "abc123",                               │
+│      "sshPublicKey": "ssh-rsa AAAAB3..."  ← Child's key   │
+│    }                                                        │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ MAIN NODE                                                   │
+│                                                             │
+│ 1. Admin approves registration request                     │
+│ 2. Backend adds child's key to ~/.ssh/authorized_keys      │
+│ 3. Backend fetches main's SSH public key                   │
+│ 4. Response includes main's SSH key                         │
+│                                                             │
+│    Response:                                                │
+│    {                                                        │
+│      "status": "APPROVED",                                  │
+│      "mainNodePublicKey": "ssh-rsa AAAAB3..."  ← Main's key│
+│      "apiKey": "bb_abc123..."                              │
+│    }                                                        │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ CHILD NODE (Automatic SSH Setup)                           │
+│                                                             │
+│ 1. Frontend detects approval (polling every 5 seconds)     │
+│ 2. Frontend adds main's key to child's authorized_keys     │
+│ 3. Bidirectional SSH authentication now configured         │
+│ 4. Child redirects to dashboard - ready for file transfers │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Total user interaction**: 2 clicks (register + approve)
+
+**SSH configuration time**: 0 seconds (fully automatic)
+
+### 3. File Transfer Detection
+
+When a child node doesn't have shared storage access (NFS/SMB), BitBonsai automatically:
+
+1. **Detects transfer requirement** - Checks `hasSharedStorage` flag on child node
+2. **Initiates rsync transfer** - Uses passwordless SSH for secure file transfer
+3. **Monitors progress** - Tracks transfer percentage and speed
+4. **Starts encoding** - Begins encoding only after transfer completes
+
+**Example workflow:**
+```
+Job: "The Matrix (1999).mkv" on MAIN node
+↓
+Assigned to CHILD node (no shared storage)
+↓
+BitBonsai detects: transferRequired = true
+↓
+rsync -avz --progress root@192.168.1.100:/media/Movies/Matrix.mkv /tmp/
+↓
+Transfer: 100% (5.2 GB transferred)
+↓
+Encoding starts on CHILD node
+↓
+Encoded file transferred back to MAIN node
+↓
+Job completed ✓
+```
+
+### Security Features
+
+**🔒 Strong Encryption**
+- 4096-bit RSA keys (industry standard)
+- Secure key generation using `ssh-keygen`
+- Keys never exposed in UI or logs
+
+**🛡️ Automatic Key Management**
+- Keys stored in persistent Docker volumes
+- Proper UNIX permissions enforced (600/644/700)
+- Automatic deduplication prevents duplicate keys
+
+**🔐 Bidirectional Authentication**
+- Both MAIN and CHILD nodes authenticate each other
+- Prevents man-in-the-middle attacks
+- Uses SSH's built-in security (same as GitHub, AWS, etc.)
+
+### File Transfer Methods: NFS vs Rsync
+
+BitBonsai intelligently chooses the optimal file transfer method:
+
+| Storage Type | Transfer Method | Use Case |
+|--------------|-----------------|----------|
+| **Shared Storage (NFS/SMB)** | Direct access | Child mounts same network share as MAIN |
+| **No Shared Storage** | Rsync over SSH | Files transferred before encoding |
+
+**Automatic Detection**:
+- During node registration, BitBonsai tests for shared storage access
+- Sets `hasSharedStorage` flag on child node
+- Job assignment logic automatically triggers rsync when needed
+
+**Benefits of Rsync over SSH**:
+- ✅ Works across any network topology (local, VPN, internet)
+- ✅ Resume interrupted transfers (built-in)
+- ✅ Bandwidth throttling (prevents network saturation)
+- ✅ Compression (reduces transfer time)
+- ✅ Secure (encrypted via SSH tunnel)
+
+### Manual SSH Key Management (Optional)
+
+While BitBonsai handles everything automatically, you can manually manage SSH keys if needed:
+
+**View this node's public key:**
+```bash
+curl http://localhost:3000/api/v1/nodes/ssh/public-key
+```
+
+**Add a remote node's public key:**
+```bash
+curl -X POST http://localhost:3000/api/v1/nodes/ssh/authorized-keys \
+  -H "Content-Type: application/json" \
+  -d '{"publicKey": "ssh-rsa AAAAB3...", "comment": "custom-node"}'
+```
+
+**Test SSH connection:**
+```bash
+# From child node
+ssh root@192.168.1.100 echo "SSH OK"
+```
+
+### Troubleshooting
+
+**Issue**: File transfer fails with "Permission denied (publickey)"
+
+**Solution**:
+1. Check SSH keys are generated:
+   ```bash
+   docker exec bitbonsai-backend ls -la ~/.ssh/
+   ```
+2. Verify authorized_keys contains remote key:
+   ```bash
+   docker exec bitbonsai-backend cat ~/.ssh/authorized_keys
+   ```
+3. Test SSH manually:
+   ```bash
+   docker exec bitbonsai-backend ssh -o StrictHostKeyChecking=no root@REMOTE_IP echo "test"
+   ```
+
+**Issue**: Child node can't access main node via SSH
+
+**Solutions**:
+- Ensure main node's backend container port 22 is accessible (or use custom SSH port)
+- Check firewall rules allow SSH traffic between nodes
+- Verify IP addresses are correct in node configuration
+
+**Issue**: SSH keys not persistent after container restart
+
+**Solution**: Ensure `~/.ssh` directory is mapped to a persistent volume:
+```yaml
+volumes:
+  - /mnt/user/appdata/bitbonsai:/root/.ssh  # Persists SSH keys
+```
+
+### Benefits Over Manual Configuration
+
+| Traditional SSH Setup | BitBonsai Automatic |
+|----------------------|---------------------|
+| 15-30 minutes manual work | 2 clicks, instant |
+| Requires SSH expertise | Zero technical knowledge |
+| Error-prone (typos, permissions) | Automated, reliable |
+| Per-node configuration | One-time setup |
+| Manual testing required | Auto-verified |
+
+**User Experience**: Like Proxmox cluster join - professional-grade automation for home users.
+
+---
+
 ## How It Works
 
 ### 1. Scan Your Library
@@ -788,6 +1007,9 @@ A: mDNS auto-discovery requires `--network=host` on your MAIN node Docker contai
 
 **Q: Can I use both auto-discovery and manual pairing?**
 A: Yes! The MAIN node supports both methods simultaneously. Child nodes can choose their preferred method during setup. Auto-discovery is easier for home networks, while manual pairing works across VLANs, VPNs, and complex network topologies.
+
+**Q: How does SSH key exchange work?**
+A: BitBonsai automatically configures passwordless SSH authentication during node registration. When a child node joins the cluster, both nodes exchange SSH public keys, enabling secure rsync file transfers without manual configuration. See [Automatic SSH Key Exchange](#automatic-ssh-key-exchange-for-file-transfers) for details.
 
 ---
 
