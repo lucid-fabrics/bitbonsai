@@ -98,6 +98,7 @@ async function bootstrap() {
         'http://localhost:3000', // LXC frontend on port 3000
         `http://*:${port}`, // Allow any IP on same port (for LXC deployments)
         'http://*:3000', // Allow any IP on port 3000 (LXC frontend)
+        'http://*:4210', // Allow any IP on port 4210 (standard frontend port for all nodes)
         process.env.FRONTEND_URL,
         ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
       ].filter(Boolean) as string[];
@@ -135,8 +136,8 @@ async function bootstrap() {
   // biome-ignore lint/correctness/useHookAtTopLevel: NestJS method, not a React hook
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip properties that don't have decorators
-      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
+      whitelist: false, // MULTI-NODE: Allow extra properties for job proxying
+      forbidNonWhitelisted: false, // MULTI-NODE: Don't reject unknown properties
       transform: true, // Automatically transform payloads to DTO instances
       transformOptions: {
         enableImplicitConversion: true, // Convert primitive types automatically

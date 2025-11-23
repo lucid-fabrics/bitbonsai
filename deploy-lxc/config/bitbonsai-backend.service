@@ -4,7 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-User=bitbonsai
+# IMPORTANT: Must run as root to enable automatic NFS mounting for distributed encoding
+# The backend service auto-mounts NFS shares from the main node to access media libraries
+User=root
+Group=root
 WorkingDirectory=/opt/bitbonsai
 Environment="NODE_ENV=production"
 Environment="PORT=3100"

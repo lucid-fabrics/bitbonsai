@@ -190,4 +190,29 @@ export class QueueJobBo {
       this.progress >= (this.autoHealedProgress || 0)
     );
   }
+
+  /**
+   * Check if this job can be delegated to another node
+   *
+   * ARCHITECTURE DECISION:
+   * - Only jobs with progress = 0 can be delegated (not partially-encoded)
+   * - Partially-encoded jobs have temp files stored on local node storage (e.g., /cache)
+   * - Even with shared NFS media storage, temp files are on local SSD for performance
+   * - Moving partially-encoded jobs would fail because target node can't access temp files
+   *
+   * @returns true if job can be safely delegated to another node
+   */
+  get canBeDelegated(): boolean {
+    // Only delegate jobs that:
+    // 1. Haven't started encoding yet (progress === 0)
+    // 2. Are in QUEUED or FAILED status (ready to start fresh on target node)
+    //
+    // DO NOT delegate jobs that:
+    // - Are actively ENCODING (have temp files on current node's local storage)
+    // - Are PAUSED mid-encoding (temp files exist only on original node)
+    // - Have progress > 0 (partial encoding means local temp files exist)
+    return (
+      this.progress === 0 && (this.status === JobStatus.QUEUED || this.status === JobStatus.FAILED)
+    );
+  }
 }

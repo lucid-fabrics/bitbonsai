@@ -607,6 +607,7 @@ model Job {
 
   // File Transfer Fields (PHASE 2: for LINKED nodes without shared storage)
   transferRequired     Boolean   @default(false) // Does file need to be transferred to target node?
+  originalFilePath     String?   // CRITICAL: Original file path before any transfers (preserves source location)
   transferProgress     Float     @default(0) // Transfer progress 0-100%
   transferSpeedMBps    Float?    // Current transfer speed (MB/s)
   transferStartedAt    DateTime? // When transfer started

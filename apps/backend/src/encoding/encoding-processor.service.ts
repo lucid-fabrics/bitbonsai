@@ -192,13 +192,35 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
+      // MULTI-NODE AUDIT: Enhanced logging to debug LINKED node encoding issues
+      this.logger.log(`🔍 MULTI-NODE: Current node configuration:`);
+      this.logger.log(`   - Node ID: ${currentNode.id}`);
+      this.logger.log(`   - Node Name: ${currentNode.name}`);
+      this.logger.log(`   - Node Role: ${currentNode.role}`);
+      this.logger.log(`   - Main Node URL: ${currentNode.mainNodeUrl || 'N/A (this is MAIN)'}`);
+      this.logger.log(`   - Has Shared Storage: ${currentNode.hasSharedStorage}`);
+      this.logger.log(
+        `   - Max Workers: ${currentNode.maxWorkers || this.DEFAULT_WORKERS_PER_NODE}`
+      );
+
       // STEP 3: Start worker pool for the current node using its configured maxWorkers
       const maxWorkers = currentNode.maxWorkers || this.DEFAULT_WORKERS_PER_NODE;
-      const workersStarted = await this.startWorkerPool(currentNode.id, maxWorkers);
 
       this.logger.log(
-        `✅ Started ${workersStarted} worker(s) for current node: ${currentNode.name} (max: ${maxWorkers})`
+        `🚀 MULTI-NODE: Starting ${maxWorkers} worker(s) for ${currentNode.role} node: ${currentNode.name}`
       );
+
+      const workersStarted = await this.startWorkerPool(currentNode.id, maxWorkers);
+
+      if (workersStarted > 0) {
+        this.logger.log(
+          `✅ MULTI-NODE: Successfully started ${workersStarted} worker(s) for ${currentNode.role} node: ${currentNode.name} (max: ${maxWorkers})`
+        );
+      } else {
+        this.logger.error(
+          `❌ MULTI-NODE: FAILED to start workers for ${currentNode.role} node: ${currentNode.name}`
+        );
+      }
 
       // STEP 4: Start background watchdog to detect stuck jobs
       this.startStuckJobWatchdog();
@@ -418,32 +440,30 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             }
           }
 
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
-              // TRUE RESUME: DON'T reset progress if temp file exists
-              ...(tempFileExists ? {} : { progress: 0 }),
-              etaSeconds: null,
-              error: errorMessage,
-              startedAt: null, // Clear startedAt to allow fresh start
-              // AUTO-HEAL TRACKING: ONLY set when temp file exists (successful resume)
-              // Green dot indicator should only show when auto-heal actually worked
-              ...(tempFileExists
-                ? {
-                    autoHealedAt: new Date(),
-                    autoHealedProgress: job.progress,
-                  }
-                : {}),
-              retryCount: job.retryCount + 1,
-              // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
-              ...(tempFileExists
-                ? { resumeTimestamp: recalculatedResumeTimestamp }
-                : {
-                    tempFilePath: null,
-                    resumeTimestamp: null,
-                  }),
-            },
+          // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+          await this.queueService.update(job.id, {
+            stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
+            // TRUE RESUME: DON'T reset progress if temp file exists
+            ...(tempFileExists ? {} : { progress: 0 }),
+            etaSeconds: null,
+            error: errorMessage,
+            startedAt: null, // Clear startedAt to allow fresh start
+            // AUTO-HEAL TRACKING: ONLY set when temp file exists (successful resume)
+            // Green dot indicator should only show when auto-heal actually worked
+            ...(tempFileExists
+              ? {
+                  autoHealedAt: new Date(),
+                  autoHealedProgress: job.progress,
+                }
+              : {}),
+            retryCount: job.retryCount + 1,
+            // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
+            ...(tempFileExists
+              ? { resumeTimestamp: recalculatedResumeTimestamp }
+              : {
+                  tempFilePath: null,
+                  resumeTimestamp: null,
+                }),
           });
 
           this.logger.log(
@@ -678,12 +698,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // Pause each job
       for (const job of jobsToAutoPause) {
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: 'PAUSED_LOAD',
-            error: `Auto-paused due to ${loadLevel} system load (${loadAvg.toFixed(1)}). Will auto-resume when load drops.`,
-          },
+        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+        await this.queueService.update(job.id, {
+          stage: 'PAUSED_LOAD',
+          error: `Auto-paused due to ${loadLevel} system load (${loadAvg.toFixed(1)}). Will auto-resume when load drops.`,
         });
 
         this.logger.log(
@@ -713,12 +731,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // Resume each job
       for (const job of jobsToAutoResume) {
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: 'QUEUED',
-            error: `Auto-resumed after load dropped to ${loadLevel} level (${loadAvg.toFixed(1)})`,
-          },
+        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+        await this.queueService.update(job.id, {
+          stage: 'QUEUED',
+          error: `Auto-resumed after load dropped to ${loadLevel} level (${loadAvg.toFixed(1)})`,
         });
 
         this.logger.log(
@@ -1056,13 +1072,18 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Get next job from queue (respects concurrent limits)
       // CRITICAL FIX: Use QueueService directly since we only start workers for the current node
       // DataAccessService is only for LINKED nodes calling MAIN node's API
+      this.logger.debug(`[${workerId}] 🔍 MULTI-NODE: Polling for next job (nodeId: ${nodeId})`);
+
       const job = await this.queueService.getNextJob(nodeId);
 
       if (!job) {
+        this.logger.debug(`[${workerId}] 🔍 MULTI-NODE: No job available for nodeId: ${nodeId}`);
         return null;
       }
 
-      this.logger.log(`[${workerId}] Processing job ${job.id}`);
+      this.logger.log(
+        `[${workerId}] ✅ MULTI-NODE: Got job ${job.id} (${job.fileLabel}) assigned to nodeId: ${nodeId}`
+      );
 
       // AV1 THROTTLING: Log throttling status if job is resource-throttled
       const jobWithThrottle = job as any;
@@ -1218,15 +1239,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         );
 
         // Update job with retry information
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: 'QUEUED',
-            progress: 0,
-            retryCount: nextAttempt,
-            nextRetryAt,
-            error: `Attempt ${totalAttempts}/${this.MAX_RETRIES} failed: ${errorMessage}. Retrying in ${delayMinutes}min...`,
-          },
+        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+        await this.queueService.update(job.id, {
+          stage: 'QUEUED',
+          progress: 0,
+          retryCount: nextAttempt,
+          nextRetryAt,
+          error: `Attempt ${totalAttempts}/${this.MAX_RETRIES} failed: ${errorMessage}. Retrying in ${delayMinutes}min...`,
         });
       } else {
         // Mark job as failed
@@ -1369,10 +1388,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // TRUE RESUME: Save temp file path to database BEFORE encoding starts
       // This allows auto-heal to find the temp file after restart
-      await this.prisma.job.update({
-        where: { id: job.id },
-        data: { tempFilePath: tmpPath },
-      });
+      // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+      await this.queueService.update(job.id, { tempFilePath: tmpPath });
 
       // BULLETPROOF FIX: Validate temp file state BEFORE attempting resume
       // If tempFilePath is set but file doesn't exist, clear resume state and start fresh
@@ -1382,15 +1399,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         );
 
         // Reset job to fresh QUEUED state
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            tempFilePath: tmpPath, // Set new temp path
-            resumeTimestamp: null,
-            progress: 0,
-            autoHealedAt: null,
-            autoHealedProgress: null,
-          },
+        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+        await this.queueService.update(job.id, {
+          tempFilePath: tmpPath, // Set new temp path
+          resumeTimestamp: null,
+          progress: 0,
+          autoHealedAt: null,
+          autoHealedProgress: null,
         });
 
         // Reload job with cleared state
@@ -1449,10 +1464,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             const resumeTimestamp = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
             // Update database with resume position (using existing resumeTimestamp field)
-            await this.prisma.job.update({
-              where: { id: job.id },
-              data: { resumeTimestamp },
-            });
+            // MULTI-NODE: Use QueueService proxy to support LINKED nodes
+            await this.queueService.update(job.id, { resumeTimestamp });
 
             this.logger.log(
               `  ✅ TRUE RESUME: Calculated resumeTimestamp: ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`

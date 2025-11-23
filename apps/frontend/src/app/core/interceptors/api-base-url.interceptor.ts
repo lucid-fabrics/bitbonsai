@@ -59,12 +59,27 @@ export const apiBaseUrlInterceptor: HttpInterceptorFn = (
     // Inject NodeConfigService
     const nodeConfigService = inject(NodeConfigService);
 
-    // Get base URL at runtime (checks config service, meta tag, then environment)
-    const baseUrl = getApiBaseUrl(nodeConfigService);
+    // Endpoints that should ALWAYS use the local backend (never proxied to main node)
+    const localOnlyEndpoints = [
+      '/api/v1/setup', // Setup and initialization must be done locally on each node
+      '/api/v1/nodes/unregister-self',
+      '/api/v1/nodes/register',
+      '/api/v1/nodes/environment',
+      '/api/v1/settings/security',
+      '/api/v1/storage-shares/node',
+    ];
 
-    // Remove /api/v1 from the request URL and append to baseUrl
-    const apiPath = req.url.replace('/api/v1', '');
-    const absoluteUrl = `${baseUrl}${apiPath}`;
+    // Check if this request should always go to local backend
+    const isLocalOnly = localOnlyEndpoints.some((endpoint) => req.url.startsWith(endpoint));
+
+    // Get base URL - use environment.apiUrl for local-only endpoints
+    const baseUrl = isLocalOnly ? environment.apiUrl : getApiBaseUrl(nodeConfigService);
+
+    // Construct absolute URL
+    // If baseUrl already includes /api/v1, don't duplicate it
+    const absoluteUrl = baseUrl.endsWith('/api/v1')
+      ? `${baseUrl}${req.url.replace('/api/v1', '')}`
+      : `${baseUrl}${req.url}`;
 
     // Clone request with absolute URL
     const modifiedReq = req.clone({

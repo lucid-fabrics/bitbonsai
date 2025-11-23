@@ -952,6 +952,19 @@
     border-color: #93c5fd;
   }
 
+  &.disabled,
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+
+    &:hover {
+      background: $bg-tertiary;
+      color: $text-primary;
+      border-color: $border-secondary;
+    }
+  }
+
   &.create-job-btn {
     background: rgba(74, 222, 128, 0.1);
     color: $success;
@@ -2938,6 +2951,59 @@
       border-color: rgba(251, 146, 60, 0.5);
       transform: translateY(-1px);
       box-shadow: 0 2px 4px rgba(251, 146, 60, 0.2);
+    }
+  }
+}
+
+// File Access Badges (NFS vs Copied)
+.access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  margin-left: 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: help;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  i {
+    font-size: 9px;
+  }
+
+  &.nfs {
+    background: rgba(59, 130, 246, 0.15); // Blue for network/NFS
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+
+    i {
+      color: #60a5fa;
+    }
+
+    &:hover {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: rgba(59, 130, 246, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+  }
+
+  &.copied {
+    background: rgba(34, 197, 94, 0.15); // Green for successful transfer
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+
+    i {
+      color: #4ade80;
+    }
+
+    &:hover {
+      background: rgba(34, 197, 94, 0.25);
+      border-color: rgba(34, 197, 94, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
     }
   }
 }

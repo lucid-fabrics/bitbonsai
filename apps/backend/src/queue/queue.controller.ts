@@ -195,7 +195,7 @@ export class QueueController {
 
       try {
         const response = await firstValueFrom(
-          this.httpService.get(`${mainApiUrl}/queue`, { params })
+          this.httpService.get(`${mainApiUrl}/api/v1/queue`, { params })
         );
         return response.data;
       } catch (error) {
@@ -283,7 +283,18 @@ export class QueueController {
     description: 'Internal server error occurred while fetching next job',
   })
   async getNextJob(@Param('nodeId') nodeId: string): Promise<Job | null> {
-    return this.queueService.getNextJob(nodeId);
+    this.logger.log(`🔍 MULTI-NODE: Received getNextJob request for nodeId: ${nodeId}`);
+    const job = await this.queueService.getNextJob(nodeId);
+
+    if (job) {
+      this.logger.log(
+        `✅ MULTI-NODE: Returning job ${job.id} (${job.fileLabel}) to node ${nodeId}`
+      );
+    } else {
+      this.logger.debug(`🔍 MULTI-NODE: No jobs available for node ${nodeId}`);
+    }
+
+    return job;
   }
 
   /**
@@ -768,7 +779,8 @@ export class QueueController {
     description: 'Internal server error occurred while updating job',
   })
   async update(@Param('id') id: string, @Body() updateJobDto: UpdateJobDto): Promise<Job> {
-    return this.queueService.updateProgress(id, updateJobDto);
+    // MULTI-NODE: Use the generic update() method which supports all fields
+    return this.queueService.update(id, updateJobDto as Partial<Job>);
   }
 
   /**

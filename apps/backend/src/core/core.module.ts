@@ -1,5 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DataAccessService } from './services/data-access.service';
 import { DockerVolumeDetectorService } from './services/docker-volume-detector.service';
@@ -26,6 +26,11 @@ import { StorageInitService } from './services/storage-init.service';
       maxRedirects: 5,
     }),
     PrismaModule,
+    // Use forwardRef to break circular dependency with NodesModule
+    forwardRef(() => {
+      const { NodesModule } = require('../nodes/nodes.module');
+      return NodesModule;
+    }),
   ],
   providers: [
     NodeConfigService,

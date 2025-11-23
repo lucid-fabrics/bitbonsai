@@ -19,6 +19,7 @@ import type { NodeStatsDto } from './dto/node-stats.dto';
 import type { OptimalConfigDto } from './dto/optimal-config.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
+import { StorageShareService } from './services/storage-share.service';
 import { SystemInfoService } from './services/system-info.service';
 import {
   calculateOptimalWorkers,
@@ -38,7 +39,8 @@ export class NodesService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dataAccessService: DataAccessService,
-    private readonly systemInfoService: SystemInfoService
+    private readonly systemInfoService: SystemInfoService,
+    private readonly storageShareService: StorageShareService
   ) {}
 
   /**
@@ -232,13 +234,41 @@ export class NodesService implements OnModuleInit {
     }
 
     // Clear pairing token (pairing complete)
-    return this.prisma.node.update({
+    const pairedNode = await this.prisma.node.update({
       where: { id: node.id },
       data: {
         pairingToken: null,
         pairingExpiresAt: null,
       },
     });
+
+    // CRITICAL FIX: Auto-detect and mount storage shares for LINKED nodes
+    // This was missing - child nodes were paired but never got storage access!
+    if (pairedNode.role === 'LINKED') {
+      this.logger.log(
+        `🗂️  Pairing complete - auto-mounting storage shares for ${pairedNode.name}...`
+      );
+
+      // Run auto-mount asynchronously (don't block pairing response)
+      this.storageShareService
+        .autoDetectAndMount(pairedNode.id)
+        .then((result) => {
+          this.logger.log(
+            `✅ Storage auto-mount complete for ${pairedNode.name}: ${result.detected} detected, ${result.created} created, ${result.mounted} mounted`
+          );
+          if (result.errors.length > 0) {
+            this.logger.warn(`⚠️  Mount errors: ${result.errors.join(', ')}`);
+          }
+        })
+        .catch((error) => {
+          this.logger.error(
+            `❌ Failed to auto-mount storage shares for ${pairedNode.name}:`,
+            error instanceof Error ? error.stack : error
+          );
+        });
+    }
+
+    return pairedNode;
   }
 
   /**
@@ -292,9 +322,10 @@ export class NodesService implements OnModuleInit {
    * 2. Increment uptimeSeconds (assumes 60s heartbeat interval)
    * 3. Update status if provided
    * 4. Update CPU/memory usage if provided
+   * 5. Update IP address if provided in payload (for LINKED nodes) or auto-detect (for MAIN node)
    *
    * @param nodeId Node identifier
-   * @param data Optional status and metrics
+   * @param data Optional status, metrics, and IP address
    * @returns Updated node
    * @throws NotFoundException if node doesn't exist
    */
@@ -307,14 +338,26 @@ export class NodesService implements OnModuleInit {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
     }
 
-    // Auto-detect and update IP address on every heartbeat to keep it current
-    const systemInfo = await this.systemInfoService.collectSystemInfo();
-    const currentIpAddress = systemInfo.ipAddress;
+    // Determine which IP address to use:
+    // - If IP provided in payload (from LINKED node), use it (fixes IP overwriting bug)
+    // - Otherwise, auto-detect local IP (for MAIN node heartbeats)
+    let ipAddressToUpdate: string | undefined;
+
+    if (data?.ipAddress) {
+      // LINKED node sent its IP address - use it directly
+      ipAddressToUpdate = data.ipAddress;
+      this.logger.debug(`📍 Using IP from heartbeat payload for ${node.name}: ${data.ipAddress}`);
+    } else if (node.role === NodeRole.MAIN) {
+      // MAIN node heartbeat - auto-detect IP
+      const systemInfo = await this.systemInfoService.collectSystemInfo();
+      ipAddressToUpdate = systemInfo.ipAddress;
+      this.logger.debug(`📍 Auto-detected IP for MAIN node ${node.name}: ${systemInfo.ipAddress}`);
+    }
 
     // Log IP address update if it changed
-    if (currentIpAddress && node.ipAddress !== currentIpAddress) {
+    if (ipAddressToUpdate && node.ipAddress !== ipAddressToUpdate) {
       this.logger.log(
-        `📍 Updating IP address for ${node.name}: ${node.ipAddress || 'none'} → ${currentIpAddress}`
+        `📍 Updating IP address for ${node.name}: ${node.ipAddress || 'none'} → ${ipAddressToUpdate}`
       );
     }
 
@@ -324,7 +367,7 @@ export class NodesService implements OnModuleInit {
         status: data?.status || 'ONLINE',
         lastHeartbeat: new Date(),
         uptimeSeconds: { increment: 60 }, // Assuming 60s heartbeat interval
-        ipAddress: currentIpAddress || node.ipAddress, // Update IP address or keep existing
+        ...(ipAddressToUpdate && { ipAddress: ipAddressToUpdate }), // Only update if we have a valid IP
       },
     });
   }
@@ -749,7 +792,13 @@ export class NodesService implements OnModuleInit {
                 `⚠️ Timeout notifying child node ${node.name} (>5s) - proceeding with deletion`
               );
             } else {
-              throw fetchError; // Re-throw non-timeout errors
+              // FIX: Don't re-throw errors - child may be self-unregistering (circular call)
+              // Just log a warning and continue with deletion
+              const errorMessage =
+                fetchError instanceof Error ? fetchError.message : 'Unknown error';
+              this.logger.warn(
+                `⚠️ Failed to notify child node ${node.name}: ${errorMessage} - proceeding with deletion`
+              );
             }
           }
         } catch (error) {

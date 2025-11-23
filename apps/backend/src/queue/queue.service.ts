@@ -594,20 +594,41 @@ export class QueueService {
    * @throws NotFoundException if node does not exist
    */
   async getNextJob(nodeId: string): Promise<Job | null> {
-    this.logger.log(`Getting next job for node: ${nodeId}`);
+    this.logger.log(`🔍 MULTI-NODE: Getting next job for node: ${nodeId}`);
 
     // LINKED nodes should get jobs from MAIN node's API
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
-      this.logger.debug(`Proxying getNextJob request to main node: ${mainApiUrl}`);
+      const url = `${mainApiUrl}/api/v1/queue/next/${nodeId}`;
+      this.logger.log(`🔍 MULTI-NODE: LINKED node detected - proxying getNextJob to MAIN`);
+      this.logger.log(`🔍 MULTI-NODE: Calling ${url}`);
+
       try {
         const response = await firstValueFrom(
-          this.httpService.get(`${mainApiUrl}/queue/next/${nodeId}`)
+          this.httpService.get(url, {
+            timeout: 30000,
+          })
         );
+
+        if (response.data) {
+          this.logger.log(
+            `✅ MULTI-NODE: Received job from MAIN: ${response.data.id} (${response.data.fileLabel})`
+          );
+        } else {
+          this.logger.debug(`🔍 MULTI-NODE: MAIN node returned null (no jobs available)`);
+        }
+
         return response.data;
       } catch (error) {
-        this.logger.error('Failed to proxy getNextJob request to main node', error);
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy getNextJob to MAIN node:`, error);
+        if (error instanceof Error) {
+          this.logger.error(`❌ MULTI-NODE: Error message: ${error.message}`);
+          this.logger.error(`❌ MULTI-NODE: Error stack: ${error.stack}`);
+        }
         // Fall through to local database query as fallback
+        this.logger.warn(
+          `⚠️ MULTI-NODE: Falling back to local database query (this may not work on LINKED nodes)`
+        );
       }
     }
 
@@ -644,114 +665,135 @@ export class QueueService {
     // CRITICAL FIX: ATOMIC JOB CLAIMING WITH RACE CONDITION PREVENTION
     // Use transaction + updateMany + count check to ensure only ONE worker claims a job
     // This prevents race conditions where multiple workers grab the same job
-    const claimedJob = await this.prisma.$transaction(async (tx) => {
-      // Find next queued job (prioritize by: priority DESC, healthScore DESC, createdAt ASC)
-      // Exclude jobs with future nextRetryAt (exponential backoff)
-      const job = await tx.job.findFirst({
-        where: {
-          nodeId,
-          stage: JobStage.QUEUED,
-          OR: [
-            { nextRetryAt: null }, // Jobs that have never failed
-            { nextRetryAt: { lte: new Date() } }, // Jobs whose retry delay has passed
-          ],
-        },
-        orderBy: [
-          { priority: 'desc' }, // Top priority (2) first, then high (1), then normal (0)
-          { healthScore: 'desc' }, // Healthy files first (90-100 score) within same priority
-          { createdAt: 'asc' }, // Then FIFO within same priority+health tier
-        ],
-        include: {
-          library: {
-            select: {
-              nodeId: true,
+    const claimedJob = await this.prisma.$transaction(
+      async (tx) => {
+        // RACE CONDITION FIX: Retry loop to handle concurrent job claiming
+        // If we fail to claim a job (another worker got it first), immediately try the next one
+        const maxAttempts = 5; // Try up to 5 jobs before giving up
+        let attempt = 0;
+
+        while (attempt < maxAttempts) {
+          attempt++;
+
+          // Find next queued job (prioritize by: priority DESC, healthScore DESC, createdAt ASC)
+          // Exclude jobs with future nextRetryAt (exponential backoff)
+          const job = await tx.job.findFirst({
+            where: {
+              nodeId,
+              stage: JobStage.QUEUED,
+              OR: [
+                { nextRetryAt: null }, // Jobs that have never failed
+                { nextRetryAt: { lte: new Date() } }, // Jobs whose retry delay has passed
+              ],
             },
-          },
-        },
-      });
+            orderBy: [
+              { priority: 'desc' }, // Top priority (2) first, then high (1), then normal (0)
+              { healthScore: 'desc' }, // Healthy files first (90-100 score) within same priority
+              { createdAt: 'asc' }, // Then FIFO within same priority+health tier
+            ],
+            include: {
+              library: {
+                select: {
+                  nodeId: true,
+                },
+              },
+            },
+          });
 
-      if (!job) {
-        return null;
-      }
+          if (!job) {
+            return null; // No queued jobs available
+          }
 
-      // FILE TRANSFER FIX: Check if file transfer is required
-      // Transfer is required if:
-      // 1. Node doesn't have shared storage (hasSharedStorage = false)
-      // 2. Job originated from a different node (job.library.nodeId !== job.nodeId)
-      // 3. Transfer hasn't been marked as completed (transferRequired !== explicitly false OR transferProgress < 100)
-      const sourceNodeId = job.library.nodeId;
-      const needsTransfer =
-        !node.hasSharedStorage &&
-        sourceNodeId !== nodeId &&
-        (job.transferRequired !== false || (job.transferProgress || 0) < 100);
+          // FILE TRANSFER FIX: Check if file transfer is required
+          // Transfer is required if:
+          // 1. Node doesn't have shared storage (hasSharedStorage = false)
+          // 2. Job originated from a different node (job.library.nodeId !== job.nodeId)
+          // 3. Transfer hasn't been marked as completed (transferRequired !== explicitly false OR transferProgress < 100)
+          const sourceNodeId = job.library.nodeId;
+          const needsTransfer =
+            !node.hasSharedStorage &&
+            sourceNodeId !== nodeId &&
+            (job.transferRequired !== false || (job.transferProgress || 0) < 100);
 
-      if (needsTransfer) {
-        // Job needs file transfer before encoding
-        this.logger.log(
-          `Job ${job.id} requires file transfer before encoding (node has no shared storage)`
-        );
+          if (needsTransfer) {
+            // Job needs file transfer before encoding
+            this.logger.log(
+              `Job ${job.id} requires file transfer before encoding (node has no shared storage)`
+            );
 
-        // Update job to mark transfer as required and return null
-        // (transfer will be initiated by a background worker)
-        await tx.job.update({
-          where: { id: job.id },
-          data: {
-            transferRequired: true,
-            stage: JobStage.DETECTED, // Reset to DETECTED so transfer worker picks it up
-          },
-        });
+            // Update job to mark transfer as required and continue to next job
+            // (transfer will be initiated by a background worker)
+            await tx.job.update({
+              where: { id: job.id },
+              data: {
+                transferRequired: true,
+                stage: JobStage.DETECTED, // Reset to DETECTED so transfer worker picks it up
+              },
+            });
 
-        // Initiate file transfer in background (don't block job claiming)
-        // Get source and target nodes for transfer
-        const sourceNode = await tx.node.findUnique({
-          where: { id: sourceNodeId },
-        });
+            // Initiate file transfer in background (don't block job claiming)
+            // Get source and target nodes for transfer
+            const sourceNode = await tx.node.findUnique({
+              where: { id: sourceNodeId },
+            });
 
-        if (sourceNode) {
-          // Trigger transfer asynchronously (outside transaction)
-          setImmediate(() => {
-            this.fileTransferService
-              .transferFile(job.id, job.filePath, sourceNode, node)
-              .catch((error) => {
-                this.logger.error(`Background file transfer failed for job ${job.id}:`, error);
+            if (sourceNode) {
+              // Trigger transfer asynchronously (outside transaction)
+              setImmediate(() => {
+                this.fileTransferService
+                  .transferFile(job.id, job.filePath, sourceNode, node)
+                  .catch((error) => {
+                    this.logger.error(`Background file transfer failed for job ${job.id}:`, error);
+                  });
               });
+            }
+
+            continue; // Try next job instead of returning null
+          }
+
+          // CRITICAL FIX: Use updateMany with WHERE clause to atomically claim the job
+          // This ensures only ONE worker can successfully claim the job
+          // If another worker already claimed it between findFirst and update,
+          // the WHERE stage=QUEUED condition will fail and count will be 0
+          const updateResult = await tx.job.updateMany({
+            where: {
+              id: job.id,
+              stage: JobStage.QUEUED, // CRITICAL: Ensure it's still QUEUED (prevents double-claiming)
+            },
+            data: {
+              stage: JobStage.ENCODING,
+              startedAt: new Date(),
+            },
+          });
+
+          // Check if update was successful (count === 1 means we claimed it)
+          if (updateResult.count === 0) {
+            // Another worker claimed this job between our findFirst and updateMany
+            this.logger.debug(
+              `Job ${job.id} was claimed by another worker (attempt ${attempt}/${maxAttempts}), trying next job`
+            );
+            continue; // Try next available job
+          }
+
+          // We successfully claimed the job - now fetch it with relations
+          return await tx.job.findUnique({
+            where: { id: job.id },
+            include: {
+              policy: true,
+              library: true,
+            },
           });
         }
 
-        return null; // Don't claim this job, let transfer complete first
-      }
-
-      // CRITICAL FIX: Use updateMany with WHERE clause to atomically claim the job
-      // This ensures only ONE worker can successfully claim the job
-      // If another worker already claimed it between findFirst and update,
-      // the WHERE stage=QUEUED condition will fail and count will be 0
-      const updateResult = await tx.job.updateMany({
-        where: {
-          id: job.id,
-          stage: JobStage.QUEUED, // CRITICAL: Ensure it's still QUEUED (prevents double-claiming)
-        },
-        data: {
-          stage: JobStage.ENCODING,
-          startedAt: new Date(),
-        },
-      });
-
-      // Check if update was successful (count === 1 means we claimed it)
-      if (updateResult.count === 0) {
-        // Another worker claimed this job between our findFirst and updateMany
-        this.logger.debug(`Job ${job.id} was claimed by another worker, trying next job`);
+        // Exhausted all retry attempts
+        this.logger.debug(`Failed to claim job after ${maxAttempts} attempts (high concurrency)`);
         return null;
+      },
+      {
+        maxWait: 5000, // Maximum time to wait for transaction to start (5s)
+        timeout: 10000, // Maximum time for transaction to complete (10s)
       }
-
-      // We successfully claimed the job - now fetch it with relations
-      return await tx.job.findUnique({
-        where: { id: job.id },
-        include: {
-          policy: true,
-          library: true,
-        },
-      });
-    });
+    );
 
     if (claimedJob) {
       this.logger.log(`Assigned job ${claimedJob.id} to node ${nodeId}`);
@@ -780,7 +822,31 @@ export class QueueService {
   ): Promise<Job> {
     this.logger.debug(`Updating progress for job: ${id}`);
 
-    // Check if job exists
+    // MULTI-NODE: LINKED nodes should proxy progress updates to MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying progress update to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.patch(url, updateJobDto, {
+            timeout: 30000,
+          })
+        );
+
+        this.logger.debug(`✅ MULTI-NODE: Progress update successful for ${id}`);
+        return response.data;
+      } catch (error) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy progress update to MAIN:`, error);
+        if (error instanceof Error) {
+          this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
+        }
+        throw error;
+      }
+    }
+
+    // Check if job exists (MAIN nodes only)
     const existingJob = await this.prisma.job.findUnique({
       where: { id },
     });
@@ -2220,6 +2286,31 @@ export class QueueService {
    * @private
    */
   async update(id: string, data: Partial<Job>): Promise<Job> {
+    // MULTI-NODE: LINKED nodes should proxy updates to MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}`;
+      this.logger.log(`🔍 MULTI-NODE: LINKED node proxying job update to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.patch(url, data, {
+            timeout: 30000,
+          })
+        );
+
+        this.logger.log(`✅ MULTI-NODE: Job update successful for ${id}`);
+        return response.data;
+      } catch (error) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job update to MAIN:`, error);
+        if (error instanceof Error) {
+          this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
+        }
+        throw error;
+      }
+    }
+
+    // MAIN nodes update their own database
     return this.prisma.job.update({
       where: { id },
       data,
@@ -2382,10 +2473,14 @@ export class QueueService {
 
       // FILE TRANSFER FIX: Check if file transfer is required for the new node
       // Transfer is required if:
-      // 1. Target node doesn't have shared storage (hasSharedStorage = false)
-      // 2. Job originated from a different node (job.library.nodeId !== targetNodeId)
+      // 1. Target node doesn't have shared storage (hasSharedStorage = false), OR
+      // 2. Target node has shared storage but different base path than source
+      // 3. Job originated from a different node (job.library.nodeId !== targetNodeId)
       const sourceNodeId = job.library.nodeId;
-      const needsTransfer = !targetNode.hasSharedStorage && sourceNodeId !== targetNodeId;
+
+      // FIX: Always require transfer if nodes are different and target doesn't have shared storage
+      // OR if they have different storage base paths
+      const needsTransfer = sourceNodeId !== targetNodeId && !targetNode.hasSharedStorage;
 
       // Determine target stage based on current stage
       let targetStage: JobStage = job.stage;
@@ -2415,7 +2510,7 @@ export class QueueService {
           transferProgress: needsTransfer ? 0 : job.transferProgress,
           transferError: null,
           // Clear error for FAILED jobs
-          errorMessage: job.stage === 'FAILED' ? null : job.errorMessage,
+          error: job.stage === 'FAILED' ? null : job.error,
           retryCount: job.stage === 'FAILED' ? 0 : job.retryCount,
         },
       });

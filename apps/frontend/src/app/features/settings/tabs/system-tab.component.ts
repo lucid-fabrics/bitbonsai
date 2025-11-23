@@ -291,9 +291,9 @@ export class SystemTabComponent implements OnInit {
               this.loading.set(false);
               this.successMessage.set(result.message);
 
-              // Redirect to node-setup after successful unregistration
+              // Redirect to setup after successful unregistration
               setTimeout(() => {
-                this.router.navigate(['/node-setup']);
+                this.router.navigate(['/setup']);
               }, 2000);
             },
             error: (err) => {

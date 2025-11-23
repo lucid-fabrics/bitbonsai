@@ -298,6 +298,40 @@ export class RegistrationRequestService {
         );
       }
 
+      // DUPLICATE PREVENTION: Check if a node with this IP or MAC address already exists
+      const duplicateNode = await tx.node.findFirst({
+        where: {
+          role: NodeRole.LINKED,
+          OR: [
+            { ipAddress: request.ipAddress },
+            ...(request.macAddress
+              ? [
+                  {
+                    id: {
+                      in: await tx.nodeRegistrationRequest
+                        .findMany({
+                          where: {
+                            macAddress: request.macAddress,
+                            status: RegistrationRequestStatus.APPROVED,
+                            childNodeId: { not: null },
+                          },
+                          select: { childNodeId: true },
+                        })
+                        .then((reqs) => reqs.map((r) => r.childNodeId).filter(Boolean) as string[]),
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      });
+
+      if (duplicateNode) {
+        throw new ConflictException(
+          `A child node with IP address ${request.ipAddress} already exists (Node: "${duplicateNode.name}", ID: ${duplicateNode.id}). Please remove the existing node first or use a different child node.`
+        );
+      }
+
       // Detect node capabilities before creating the node
       this.logger.log('🔍 Detecting node capabilities...');
       const capabilities = await this.capabilityDetector.detectCapabilities(
