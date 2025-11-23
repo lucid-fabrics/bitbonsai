@@ -1,4 +1,10 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { StorageProtocol, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
@@ -29,7 +35,10 @@ export interface ShareConnectivityTest {
 export class StorageMountService {
   private readonly logger = new Logger(StorageMountService.name);
 
-  constructor(private readonly storageShareService: StorageShareService) {}
+  constructor(
+    @Inject(forwardRef(() => StorageShareService))
+    private readonly storageShareService: StorageShareService
+  ) {}
 
   /**
    * Mount a storage share

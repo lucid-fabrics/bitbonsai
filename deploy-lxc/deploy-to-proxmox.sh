@@ -132,7 +132,7 @@ pct create $CONTAINER_ID $TEMPLATE \
   --rootfs local-lvm:$STORAGE \
   --net0 $NET_CONFIG \
   $DNS_CONFIG \
-  --features nesting=1 \
+  --features nesting=1,fuse=1,mount=nfs \
   --unprivileged 1 \
   --start 1 \
   --onboot 1

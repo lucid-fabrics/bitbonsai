@@ -39,4 +39,11 @@ export class HeartbeatDto {
     required: false,
   })
   activeJobs?: number;
+
+  @ApiProperty({
+    description: 'IP address of the node sending the heartbeat (for LINKED nodes)',
+    example: '192.168.1.170',
+    required: false,
+  })
+  ipAddress?: string;
 }

@@ -69,6 +69,7 @@ export class FileTransferService {
           transferStartedAt: new Date(),
           transferProgress: 0,
           transferError: null,
+          originalFilePath: sourceFilePath, // CRITICAL: Preserve original path before transfer changes filePath
         },
       });
 

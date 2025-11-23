@@ -536,6 +536,23 @@
                         <i class="fas fa-share"></i> Delegated
                       </span>
                     }
+                    @if (job.transferRequired) {
+                      <span class="access-badge copied"
+                            bbTooltip
+                            tooltipTitle="File Copied"
+                            tooltipContent="File was copied to node's local storage before encoding. Provides faster encoding speeds."
+                            tooltipPlacement="top">
+                        <i class="fas fa-download"></i> Copied
+                      </span>
+                    } @else {
+                      <span class="access-badge nfs"
+                            bbTooltip
+                            tooltipTitle="NFS Mount"
+                            tooltipContent="File accessed directly via NFS network mount. No file transfer required."
+                            tooltipPlacement="top">
+                        <i class="fas fa-network-wired"></i> NFS
+                      </span>
+                    }
                   </div>
                 </td>
                 @if (selectedStatus === JobStatus.FAILED) {
@@ -653,17 +670,31 @@
                         </div>
                       </div>
                     }
-                    @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'FAILED') {
+                    @if (job.canBeDelegated) {
                       <button
                         (click)="openDelegationDialog(job, $event)"
                         class="action-btn delegate-btn"
                         bbTooltip
                         tooltipTitle="Send to Node"
-                        [tooltipContent]="job.status === 'ENCODING' ? 'Pauses encoding and transfers this job to a different node. The job will be queued on the selected node.' : job.status === 'FAILED' ? 'Sends this failed job to a different node for retry. The error will be cleared and retryCount reset.' : 'Manually assign this job to a specific node. This overrides the automatic node selection algorithm.'"
+                        [tooltipContent]="job.status === 'FAILED' ? 'Sends this failed job to a different node for retry. The error will be cleared and retryCount reset.' : 'Manually assign this job to a specific node. This overrides the automatic node selection algorithm.'"
                         tooltipWhen="You want to choose which node should process this job."
                         tooltipPlacement="top">
                         <i class="fas fa-share"></i>
                       </button>
+                    }
+                    @if (!job.canBeDelegated && (job.status === 'ENCODING' || job.status === 'PAUSED')) {
+                      <button
+                        class="action-btn delegate-btn disabled"
+                        disabled
+                        bbTooltip
+                        tooltipTitle="Cannot Delegate"
+                        tooltipContent="This job cannot be delegated because it has already started encoding ({{ job.progress }}% complete). Partially-encoded jobs have temp files stored on the current node's local storage that cannot be transferred. Only jobs that haven't started (0% progress) can be delegated."
+                        tooltipWhen="You want to understand why this job cannot be moved to another node."
+                        tooltipPlacement="top">
+                        <i class="fas fa-share"></i>
+                      </button>
+                    }
+                    @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'FAILED') {
                       <button
                         (click)="openCancelDialog(job.id, $event)"
                         class="action-btn cancel-btn"

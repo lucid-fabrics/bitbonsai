@@ -179,10 +179,9 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       this.error.set(null);
       this.autoDetectMessage.set(null);
 
-      const detected = await this.storageClient.autoDetectShares(this.node.id).toPromise();
-      this.availableShares.set(detected || []);
+      const result = await this.storageClient.autoDetectAndMount(this.node.id).toPromise();
 
-      if (!detected || detected.length === 0) {
+      if (!result || result.detected === 0) {
         this.autoDetectMessage.set(
           `No storage shares were automatically detected from the main node. ` +
             `This could mean:\n\n` +
@@ -192,10 +191,18 @@ export class StorageSharesModal implements OnInit, OnDestroy {
             `You can add a share manually using the "Add Share Manually" button above.`
         );
       } else {
-        this.autoDetectMessage.set(
-          `Successfully detected ${detected.length} share(s) from the main node!`
-        );
-        await this.loadShares(); // Reload to show newly detected shares
+        const messages = [
+          `✅ Successfully detected ${result.detected} share(s) from the main node`,
+          `✅ Created ${result.created} share configuration(s)`,
+          `✅ Mounted ${result.mounted} share(s)`,
+        ];
+
+        if (result.errors.length > 0) {
+          messages.push(`\n⚠️ Errors:\n${result.errors.join('\n')}`);
+        }
+
+        this.autoDetectMessage.set(messages.join('\n'));
+        await this.loadShares(); // Reload to show newly created shares
       }
     } catch (error: any) {
       this.error.set(error?.error?.message || 'Failed to auto-detect shares');

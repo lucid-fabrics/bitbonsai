@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { StorageShareService } from '../../nodes/services/storage-share.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NFSAutoExportService } from './nfs-auto-export.service';
 
@@ -6,12 +7,11 @@ import { NFSAutoExportService } from './nfs-auto-export.service';
  * Storage Initialization Service
  *
  * Automatically initializes storage sharing on application startup:
- * - Detects if running as MAIN node
- * - Auto-exports Docker volumes as NFS shares
- * - Enables zero-config storage sharing for child nodes
+ * - MAIN nodes: Auto-exports Docker volumes as NFS shares
+ * - LINKED nodes: Auto-detects and mounts shares from main node
+ * - Enables zero-config storage sharing for all nodes
  *
- * This runs once on startup to ensure Docker volumes are immediately
- * available for sharing with child nodes.
+ * This runs once on startup to ensure storage is immediately available.
  */
 @Injectable()
 export class StorageInitService implements OnModuleInit {
@@ -19,7 +19,8 @@ export class StorageInitService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly nfsAutoExport: NFSAutoExportService
+    private readonly nfsAutoExport: NFSAutoExportService,
+    private readonly storageShareService: StorageShareService
   ) {}
 
   async onModuleInit() {
@@ -28,26 +29,45 @@ export class StorageInitService implements OnModuleInit {
   }
 
   /**
-   * Initialize storage sharing if this is the main node
+   * Initialize storage sharing based on node role
    */
   private async initializeStorage(): Promise<void> {
     try {
-      // Check if this is a MAIN node
-      const mainNode = await this.prisma.node.findFirst({
-        where: { role: 'MAIN' },
-      });
+      // Get the current node from database
+      const currentNode = await this.prisma.node.findFirst();
 
-      if (!mainNode) {
-        this.logger.debug('Not a main node - skipping storage auto-export');
+      if (!currentNode) {
+        this.logger.debug('No node found in database - skipping storage initialization');
         return;
       }
 
-      this.logger.log('🗂️  Detected MAIN node - initiating Docker volume auto-export...');
+      if (currentNode.role === 'MAIN') {
+        // MAIN node: Auto-export Docker volumes as NFS shares
+        this.logger.log('🗂️  Detected MAIN node - initiating Docker volume auto-export...');
+        await this.nfsAutoExport.autoExportDockerVolumes();
+        this.logger.log('✅ MAIN node storage initialization complete');
+      } else if (currentNode.role === 'LINKED') {
+        // LINKED node: Auto-detect and mount shares from main node
+        this.logger.log('🗂️  Detected LINKED node - initiating storage auto-mount...');
 
-      // Auto-export Docker volumes
-      await this.nfsAutoExport.autoExportDockerVolumes();
+        // Only auto-mount if mainNodeUrl is configured
+        if (!currentNode.mainNodeUrl) {
+          this.logger.warn(
+            '⚠️  No mainNodeUrl configured - skipping auto-mount (will mount after pairing)'
+          );
+          return;
+        }
 
-      this.logger.log('✅ Storage initialization complete');
+        const result = await this.storageShareService.autoDetectAndMount(currentNode.id);
+
+        this.logger.log(
+          `✅ LINKED node storage initialization complete: ${result.detected} detected, ${result.created} created, ${result.mounted} mounted`
+        );
+
+        if (result.errors.length > 0) {
+          this.logger.warn(`⚠️  Mount errors: ${result.errors.join(', ')}`);
+        }
+      }
     } catch (error) {
       this.logger.error(
         '❌ Failed to initialize storage:',

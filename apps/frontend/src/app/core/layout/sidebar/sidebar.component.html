@@ -5,6 +5,7 @@
       <span class="logo-text">BitBonsai</span>
     </div>
     @if (currentNode$ | async; as currentNode) {
+      <div class="node-name">{{ currentNode.name }}</div>
       <div
         class="node-role-badge"
         [class.main-node]="isMainNode$ | async"

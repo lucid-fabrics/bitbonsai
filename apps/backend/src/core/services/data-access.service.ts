@@ -205,10 +205,17 @@ export class DataAccessService {
     try {
       this.logger.debug(`[LINKED] Sending heartbeat for node ${nodeId} to MAIN API`);
 
+      // Detect this node's IP address to send to main node
+      // This ensures the main node updates the correct IP for this child node
+      const systemInfo = await this.detectLocalSystemInfo();
+      const ipAddress = systemInfo?.ipAddress;
+
       await firstValueFrom(
         this.httpService.post(
           `${this.mainApiUrl}/api/v1/nodes/${nodeId}/heartbeat`,
-          {},
+          {
+            ipAddress, // Send this node's IP address so main node can update it correctly
+          },
           {
             timeout: 5000, // 5 second timeout
           }
@@ -221,6 +228,35 @@ export class DataAccessService {
         `[LINKED] Failed to send heartbeat to MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       // Don't throw - heartbeat failures are not critical
+    }
+  }
+
+  /**
+   * Detect local system info (IP address, etc.) for this node
+   * Used by LINKED nodes to send their IP to the main node
+   */
+  private async detectLocalSystemInfo(): Promise<{ ipAddress: string } | null> {
+    try {
+      const os = await import('os');
+      const interfaces = os.networkInterfaces();
+
+      // Find first non-internal IPv4 address
+      for (const [name, addrs] of Object.entries(interfaces)) {
+        if (!addrs) continue;
+
+        for (const addr of addrs) {
+          if (addr.family === 'IPv4' && !addr.internal) {
+            this.logger.debug(`[LINKED] Detected local IP address: ${addr.address} on ${name}`);
+            return { ipAddress: addr.address };
+          }
+        }
+      }
+
+      this.logger.warn('[LINKED] No external IP found');
+      return null;
+    } catch (error) {
+      this.logger.error('[LINKED] Failed to detect local IP', error);
+      return null;
     }
   }
 

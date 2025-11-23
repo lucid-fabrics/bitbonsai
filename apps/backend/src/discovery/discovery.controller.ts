@@ -13,6 +13,7 @@ import { SystemInfoService } from '../nodes/services/system-info.service';
 import { PolicySyncService } from '../sync/policy-sync.service';
 import { CompletePairingDto } from './dto/complete-pairing.dto';
 import { DiscoveredNodeDto } from './dto/discovered-node.dto';
+import { HardwareDetectionDto } from './dto/hardware-detection.dto';
 import { PairRequestDto } from './dto/pair-request.dto';
 import { PairingStatus, PairResponseDto } from './dto/pair-response.dto';
 import { PairingTokenResponseDto } from './dto/pairing-token-response.dto';
@@ -430,6 +431,48 @@ export class DiscoveryController {
     return {
       message: 'Node rejected successfully',
       nodeId,
+    };
+  }
+
+  /**
+   * Get hardware detection information
+   *
+   * Returns hardware capabilities of the current node.
+   * Used by the node setup wizard to display hardware information after pairing.
+   */
+  @Public()
+  @Get('hardware')
+  @ApiOperation({
+    summary: 'Get hardware detection information',
+    description:
+      'Returns hardware capabilities detected on the current node.\n\n' +
+      '**Use Case**: Node setup wizard displays hardware info after successful pairing\n\n' +
+      '**Response Includes**:\n' +
+      '- Acceleration type (NVIDIA, Intel QSV, AMD, Apple M-Series, CPU)\n' +
+      '- CPU cores count\n' +
+      '- Total memory in GB\n' +
+      '- Available disk space in GB\n' +
+      '- Operating system platform\n' +
+      '- Node.js version\n\n' +
+      '**Note**: This endpoint is public to support initial node setup',
+  })
+  @ApiOkResponse({
+    description: 'Hardware information retrieved successfully',
+    type: HardwareDetectionDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to detect hardware',
+  })
+  async getHardwareDetection(): Promise<HardwareDetectionDto> {
+    const systemInfo = await this.systemInfoService.collectSystemInfo();
+
+    return {
+      acceleration: systemInfo.acceleration,
+      cpuCores: systemInfo.hardwareSpecs.cpuCores,
+      totalMemoryGB: systemInfo.hardwareSpecs.ramGb,
+      availableDiskGB: systemInfo.hardwareSpecs.diskGb,
+      platform: process.platform,
+      nodeVersion: process.version,
     };
   }
 }

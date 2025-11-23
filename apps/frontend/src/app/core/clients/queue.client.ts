@@ -24,6 +24,10 @@ export class QueueClient {
     if (filters?.page) params.page = filters.page.toString();
     if (filters?.limit) params.limit = filters.limit.toString();
 
+    // Prepare stats params (nodeId only - stats don't need pagination or search filters)
+    const statsParams: Record<string, string> = {};
+    if (filters?.nodeId) statsParams.nodeId = filters.nodeId;
+
     return combineLatest([
       this.http.get<{
         jobs: QueueJobApiModel[];
@@ -32,7 +36,7 @@ export class QueueClient {
         limit: number;
         totalPages: number;
       }>(this.apiUrl, { params }),
-      this.http.get<QueueStats>(`${this.apiUrl}/stats`),
+      this.http.get<QueueStats>(`${this.apiUrl}/stats`, { params: statsParams }),
     ]).pipe(
       map(([response, stats]) => ({
         jobs: response.jobs.map((job) => new QueueJobBo(job)),

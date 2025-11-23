@@ -14,13 +14,16 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        // SECURITY: Validate JWT secret exists in production
+        // SECURITY: JWT_SECRET is REQUIRED in all environments
         const secret = configService.get<string>('JWT_SECRET');
-        if (!secret && process.env.NODE_ENV === 'production') {
-          throw new Error('JWT_SECRET must be set in production environment');
+        if (!secret) {
+          throw new Error(
+            'JWT_SECRET environment variable is required. ' +
+              'Generate a strong secret with: openssl rand -base64 32'
+          );
         }
         return {
-          secret: secret || 'default-secret-change-in-production',
+          secret, // No fallback - fail fast if not configured
           signOptions: {
             expiresIn: '1h', // SECURITY: Short-lived access tokens
             algorithm: 'HS256',

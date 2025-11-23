@@ -483,9 +483,11 @@ export class FfmpegService implements OnModuleDestroy {
       }
     }
 
-    // Progress reporting (use stats format which outputs one-line progress)
-    // -stats forces output even in non-interactive mode (pipes)
-    args.push('-stats', '-stats_period', '1');
+    // Progress reporting - FFmpeg progress format to stderr
+    // Uses -progress pipe:2 to write structured progress data (frame=X, fps=Y, out_time=HH:MM:SS)
+    // This format is much easier to parse than -stats and works in all environments (including LXC)
+    args.push('-progress', 'pipe:2'); // Structured progress output to stderr
+    args.push('-nostdin'); // Disable interactive input
 
     // Output to specified path (temp file that will be renamed atomically)
     // Determine output format based on job type and target container
@@ -510,6 +512,43 @@ export class FfmpegService implements OnModuleDestroy {
 
     this.logger.debug(`ffmpeg command: ffmpeg ${args.join(' ')}`);
     return args;
+  }
+
+  /**
+   * Retry helper with exponential backoff
+   *
+   * Retries an async function up to maxAttempts times with exponential backoff.
+   * Used for transient database lock errors during high-frequency progress updates.
+   *
+   * @param fn - Async function to retry
+   * @param maxAttempts - Maximum number of attempts (default: 3)
+   * @param baseDelayMs - Base delay in milliseconds (default: 100ms)
+   * @returns Promise that resolves when operation succeeds or all retries exhausted
+   */
+  private async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxAttempts = 3,
+    baseDelayMs = 100
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (attempt < maxAttempts) {
+          const delayMs = baseDelayMs * 2 ** (attempt - 1); // Exponential backoff
+          this.logger.debug(
+            `Retry attempt ${attempt}/${maxAttempts} failed, waiting ${delayMs}ms: ${lastError.message}`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   /**
@@ -618,12 +657,15 @@ export class FfmpegService implements OnModuleDestroy {
 
     // TRUE RESUME: Save resume state every 0.1% for crash recovery
     // Stores: progress, timestamp (for -ss seek), temp file path
-    if (adjustedProgress - activeEncoding.lastProgress >= 0.1) {
+    // CRITICAL FIX: Also update on first progress event to handle out_time=N/A at encoding start
+    const isFirstProgressEvent = activeEncoding.lastProgress === 0 && progressData.frame > 0;
+    if (adjustedProgress - activeEncoding.lastProgress >= 0.1 || isFirstProgressEvent) {
       this.logger.debug(
-        `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)`
+        `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)${isFirstProgressEvent ? ' [FIRST]' : ''}`
       );
-      this.queueService
-        .updateProgress(job.id, {
+      // CRITICAL: Retry progress updates with exponential backoff to handle transient database locks
+      this.retryWithBackoff(() =>
+        this.queueService.updateProgress(job.id, {
           progress: Math.round(adjustedProgress * 100) / 100, // Round to 2 decimal places
           etaSeconds: eta,
           fps: progressData.fps,
@@ -631,9 +673,9 @@ export class FfmpegService implements OnModuleDestroy {
           resumeTimestamp: progressData.currentTime,
           tempFilePath: tempOutput,
         })
-        .catch((error) => {
-          this.logger.error(`Failed to update job progress: ${error.message}`);
-        });
+      ).catch((error) => {
+        this.logger.error(`Failed to update job progress after 3 retry attempts: ${error.message}`);
+      });
       activeEncoding.lastProgress = adjustedProgress;
 
       // ENCODING PREVIEW: Generate preview screenshots (throttled to 30 seconds)
@@ -1281,12 +1323,20 @@ export class FfmpegService implements OnModuleDestroy {
       this.logger.log(
         `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${job.priority})`
       );
-      ffmpegProcess = spawn('nice', ['-n', niceValue.toString(), 'ffmpeg', ...args], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
+      // Use stdbuf to force unbuffered stderr for real-time progress in LXC containers
+      ffmpegProcess = spawn(
+        'stdbuf',
+        ['-o0', '-e0', 'nice', '-n', niceValue.toString(), 'ffmpeg', ...args],
+        {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          detached: true, // CRITICAL: Prevent process leak - allows child to run independently
+        }
+      );
     } else {
-      ffmpegProcess = spawn('ffmpeg', args, {
+      // Use stdbuf to force unbuffered stderr for real-time progress in LXC containers
+      ffmpegProcess = spawn('stdbuf', ['-o0', '-e0', 'ffmpeg', ...args], {
         stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true, // CRITICAL: Prevent process leak - allows child to run independently
       });
     }
 
@@ -1309,15 +1359,16 @@ export class FfmpegService implements OnModuleDestroy {
       let stderrBuffer = '';
       let fullStderr = '';
 
-      // Parse stderr for progress
+      // Parse FFmpeg -progress pipe:2 output from stderr
+      // Accumulate progress data from key=value pairs
+      let currentFrame = 0;
+      let currentFps = 0;
+      let currentTime = '00:00:00.00';
+
       ffmpegProcess.stderr?.on('data', (data: Buffer) => {
         const chunk = data.toString();
-        this.logger.debug(`[${job.id}] Received ${chunk.length} bytes from FFmpeg stderr`);
         stderrBuffer += chunk;
         fullStderr += chunk;
-
-        // Update last output time - FFmpeg is actively producing output
-        activeEncoding.lastOutputTime = new Date();
 
         // Keep last 2000 chars of stderr for error reporting
         if (fullStderr.length > 2000) {
@@ -1325,28 +1376,44 @@ export class FfmpegService implements OnModuleDestroy {
         }
         activeEncoding.lastStderr = fullStderr;
 
-        // Split on both newline and carriage return (FFmpeg stats uses \r)
-        const lines = stderrBuffer.split(/[\r\n]+/).filter((line) => line.trim());
-        stderrBuffer = ''; // Clear buffer after processing
+        // Split on newlines to process each line
+        const lines = stderrBuffer.split('\n');
+        // Keep the last incomplete line in the buffer
+        stderrBuffer = lines.pop() || '';
 
         for (const line of lines) {
-          // Log all lines for debugging
-          if (line.includes('frame=')) {
-            this.logger.debug(`[${job.id}] FFmpeg stats line: ${line.substring(0, 150)}`);
-          }
-          const progressData = this.parseProgress(line);
-          if (progressData) {
-            this.logger.debug(
-              `[${job.id}] Progress parsed: frame=${progressData.frame}, fps=${progressData.fps}, time=${progressData.currentTime}`
-            );
-            this.handleProgressUpdate(
-              progressData,
-              job,
-              activeEncoding,
-              estimatedDurationSeconds,
-              tempOutput,
-              resumeFromPercent
-            );
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          // Parse -progress pipe:2 format (key=value)
+          if (trimmed.includes('=')) {
+            const [key, value] = trimmed.split('=');
+            switch (key) {
+              case 'frame':
+                currentFrame = Number.parseInt(value, 10) || 0;
+                break;
+              case 'fps':
+                currentFps = Number.parseFloat(value) || 0;
+                break;
+              case 'out_time':
+                currentTime = value;
+                break;
+              case 'progress':
+                // When we see 'progress=continue' or 'progress=end', we have a complete update
+                if (currentFrame > 0 && currentFps >= 0) {
+                  activeEncoding.lastOutputTime = new Date();
+
+                  this.handleProgressUpdate(
+                    { frame: currentFrame, fps: currentFps, currentTime },
+                    job,
+                    activeEncoding,
+                    estimatedDurationSeconds,
+                    tempOutput,
+                    resumeFromPercent
+                  );
+                }
+                break;
+            }
           }
         }
       });
@@ -1808,6 +1875,7 @@ export class FfmpegService implements OnModuleDestroy {
       originalNodeId: null,
       manualAssignment: false,
       transferRequired: false,
+      originalFilePath: null,
       transferProgress: 0,
       transferSpeedMBps: null,
       transferStartedAt: null,

@@ -233,6 +233,18 @@ export class StorageSharesClient {
   }
 
   /**
+   * Auto-detect and auto-mount storage shares
+   */
+  autoDetectAndMount(
+    nodeId: string
+  ): Observable<{ detected: number; created: number; mounted: number; errors: string[] }> {
+    return this.http.post<{ detected: number; created: number; mounted: number; errors: string[] }>(
+      `${this.apiUrl}/node/${nodeId}/auto-detect-and-mount`,
+      {}
+    );
+  }
+
+  /**
    * Get disk usage for a share
    */
   getDiskUsage(id: string): Observable<DiskUsage> {

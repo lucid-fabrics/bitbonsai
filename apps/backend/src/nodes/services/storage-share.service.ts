@@ -1,6 +1,14 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageMountService } from './storage-mount.service';
 
 export interface CreateStorageShareDto {
   nodeId: string;
@@ -59,7 +67,11 @@ export interface StorageShareStats {
 export class StorageShareService {
   private readonly logger = new Logger(StorageShareService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StorageMountService))
+    private readonly mountService: StorageMountService
+  ) {}
 
   /**
    * Create a new storage share configuration
@@ -319,23 +331,62 @@ export class StorageShareService {
       throw new NotFoundException(`Node ${nodeId} not found`);
     }
 
-    // Get main node if this is a LINKED node
-    let mainNodeId = currentNode.role === 'MAIN' ? nodeId : null;
-    if (!mainNodeId && currentNode.mainNodeUrl) {
-      // Find main node by URL
-      const mainNode = await this.prisma.node.findFirst({
-        where: { role: 'MAIN' },
-      });
-      mainNodeId = mainNode?.id || null;
-    }
+    let sharedByMain: StorageShare[] = [];
 
-    if (!mainNodeId) {
-      this.logger.warn(`No main node found for share detection`);
+    // For LINKED nodes, fetch shares from the main node via HTTP
+    if (currentNode.role === 'LINKED' && currentNode.mainNodeUrl) {
+      try {
+        this.logger.log(`Fetching storage shares from main node: ${currentNode.mainNodeUrl}`);
+
+        // Get main node ID first
+        const mainNodesResponse = await fetch(`${currentNode.mainNodeUrl}/api/v1/nodes`);
+        if (!mainNodesResponse.ok) {
+          this.logger.error(
+            `Failed to fetch nodes from main node: ${mainNodesResponse.statusText}`
+          );
+          return [];
+        }
+
+        const mainNodes = await mainNodesResponse.json();
+        const mainNode = mainNodes.find((n: any) => n.role === 'MAIN');
+
+        if (!mainNode) {
+          this.logger.warn('No MAIN node found in main node response');
+          return [];
+        }
+
+        // Fetch storage shares from main node
+        const sharesResponse = await fetch(
+          `${currentNode.mainNodeUrl}/api/v1/storage-shares/node/${mainNode.id}`
+        );
+
+        if (!sharesResponse.ok) {
+          this.logger.error(
+            `Failed to fetch storage shares from main node: ${sharesResponse.statusText}`
+          );
+          return [];
+        }
+
+        const allMainShares = await sharesResponse.json();
+
+        // Filter to only shares owned by the main node (exported shares)
+        sharedByMain = allMainShares.filter(
+          (share: StorageShare) => share.ownerNodeId === mainNode.id
+        );
+
+        this.logger.log(`Found ${sharedByMain.length} shares from main node`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Error fetching shares from main node: ${errorMessage}`);
+        return [];
+      }
+    } else if (currentNode.role === 'MAIN') {
+      // For MAIN nodes, get shares from local database
+      sharedByMain = await this.findSharedByNode(nodeId);
+    } else {
+      this.logger.warn(`No main node URL configured for linked node ${nodeId}`);
       return [];
     }
-
-    // Get shares advertised by the main node
-    const sharedByMain = await this.findSharedByNode(mainNodeId);
 
     // Filter out shares that are already configured on this node
     const existingMountPoints = await this.prisma.storageShare.findMany({
@@ -387,23 +438,43 @@ export class StorageShareService {
         return result;
       }
 
-      // Get main node
-      const mainNode = await this.prisma.node.findFirst({
-        where: { role: 'MAIN' },
-      });
-
-      if (!mainNode) {
-        this.logger.warn('No main node found - skipping auto-mount');
+      // Get available shares from main node via HTTP
+      if (!currentNode.mainNodeUrl) {
+        this.logger.warn('No main node URL configured - skipping auto-mount');
         return result;
       }
 
-      // Get auto-managed shares from main node
-      const autoManagedShares = await this.prisma.storageShare.findMany({
-        where: {
-          ownerNodeId: mainNode.id,
-          autoManaged: true,
-        },
-      });
+      // Get main node ID via HTTP
+      const mainNodesResponse = await fetch(`${currentNode.mainNodeUrl}/api/v1/nodes`);
+      if (!mainNodesResponse.ok) {
+        this.logger.error('Failed to fetch nodes from main node');
+        return result;
+      }
+
+      const mainNodes = await mainNodesResponse.json();
+      const mainNode = mainNodes.find((n: any) => n.role === 'MAIN');
+
+      if (!mainNode) {
+        this.logger.warn('No MAIN node found in response');
+        return result;
+      }
+
+      // Fetch storage shares from main node via HTTP
+      const sharesResponse = await fetch(
+        `${currentNode.mainNodeUrl}/api/v1/storage-shares/node/${mainNode.id}`
+      );
+
+      if (!sharesResponse.ok) {
+        this.logger.error('Failed to fetch storage shares from main node');
+        return result;
+      }
+
+      const allMainShares = await sharesResponse.json();
+
+      // Filter to only auto-managed shares owned by the main node
+      const autoManagedShares = allMainShares.filter(
+        (share: any) => share.ownerNodeId === mainNode.id && share.autoManaged === true
+      );
 
       result.detected = autoManagedShares.length;
 
@@ -431,7 +502,7 @@ export class StorageShareService {
           }
 
           // Create local StorageShare record
-          const _localShare = await this.create({
+          const localShare = await this.create({
             nodeId,
             name: mainShare.name,
             protocol: mainShare.protocol,
@@ -449,6 +520,23 @@ export class StorageShareService {
           result.created++;
 
           this.logger.log(`✓ Created local share record for ${mainShare.name}`);
+
+          // CRITICAL FIX: Actually mount the share after creating the record
+          // This was missing - shares were being created but never mounted!
+          if (mainShare.autoMount || mainShare.mountOnDetection) {
+            this.logger.log(`Mounting ${mainShare.name} at ${mainShare.mountPoint}...`);
+
+            const mountResult = await this.mountService.mount(localShare.id);
+
+            if (mountResult.success) {
+              result.mounted++;
+              this.logger.log(`✓ Successfully mounted ${mainShare.name}`);
+            } else {
+              const mountError = `Failed to mount ${mainShare.name}: ${mountResult.error}`;
+              this.logger.error(mountError);
+              result.errors.push(mountError);
+            }
+          }
         } catch (error) {
           const errorMsg = `Failed to auto-mount ${mainShare.name}: ${
             error instanceof Error ? error.message : 'unknown error'
