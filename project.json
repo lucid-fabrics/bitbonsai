@@ -312,67 +312,103 @@
       },
       "description": "Bump major version, commit, and push with tags"
     },
+    "release": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/release/release.sh patch"
+      },
+      "description": "Unified release (patch) for both Unraid and Proxmox - RECOMMENDED"
+    },
+    "release:minor": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/release/release.sh minor"
+      },
+      "description": "Unified release (minor) for both Unraid and Proxmox"
+    },
+    "release:major": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/release/release.sh major"
+      },
+      "description": "Unified release (major) for both Unraid and Proxmox"
+    },
+    "release:dry-run": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/release/release.sh patch true"
+      },
+      "description": "Preview release without committing changes"
+    },
+    "release:reset": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/release/reset-version.sh"
+      },
+      "description": "Reset version to specific value (manual recovery)"
+    },
+    "release:rollback": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash scripts/release/rollback-version.sh"
+      },
+      "description": "Rollback to previous version from backup"
+    },
     "unraid:release": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "./generate-unraid-release.sh"
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && ./generate-unraid-release.sh"
       },
-      "description": "Generate Unraid Community Applications release package (uses version from package.json)"
+      "description": "⚠️ DEPRECATED - Use 'nx release' instead"
     },
     "release:unraid": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx version:patch", "nx unraid:release"],
-        "parallel": false
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && exit 1"
       },
-      "description": "Bump patch version and generate Unraid release package"
+      "description": "⚠️ DEPRECATED - Use 'nx release' instead"
     },
     "release:unraid:minor": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx version:minor", "nx unraid:release"],
-        "parallel": false
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release:minor instead (unified Unraid + Proxmox)' && exit 1"
       },
-      "description": "Bump minor version and generate Unraid release package"
+      "description": "⚠️ DEPRECATED - Use 'nx release:minor' instead"
     },
     "release:unraid:major": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx version:major", "nx unraid:release"],
-        "parallel": false
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release:major instead (unified Unraid + Proxmox)' && exit 1"
       },
-      "description": "Bump major version and generate Unraid release package"
+      "description": "⚠️ DEPRECATED - Use 'nx release:major' instead"
     },
     "proxmox:release": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "./generate-proxmox-release.sh"
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && ./generate-proxmox-release.sh"
       },
-      "description": "Generate Proxmox VE Community Scripts release package (uses version from package.json)"
+      "description": "⚠️ DEPRECATED - Use 'nx release' instead"
     },
     "release:proxmox": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx version:patch", "nx proxmox:release"],
-        "parallel": false
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && exit 1"
       },
-      "description": "Bump patch version and generate Proxmox release package"
+      "description": "⚠️ DEPRECATED - Use 'nx release' instead"
     },
     "release:proxmox:minor": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx version:minor", "nx proxmox:release"],
-        "parallel": false
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release:minor instead (unified Unraid + Proxmox)' && exit 1"
       },
-      "description": "Bump minor version and generate Proxmox release package"
+      "description": "⚠️ DEPRECATED - Use 'nx release:minor' instead"
     },
     "release:proxmox:major": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx version:major", "nx proxmox:release"],
-        "parallel": false
+        "command": "echo '⚠️  DEPRECATED: Use npx nx release:major instead (unified Unraid + Proxmox)' && exit 1"
       },
-      "description": "Bump major version and generate Proxmox release package"
+      "description": "⚠️ DEPRECATED - Use 'nx release:major' instead"
     }
   }
 }

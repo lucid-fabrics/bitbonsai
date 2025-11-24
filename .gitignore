@@ -85,6 +85,9 @@ PRISMA_SCHEMA_COMPLETE.md
 *.db-journal
 .env
 
+# Release scripts (version backup for rollback)
+scripts/release/.version-backup
+
 .angular
 
 # Claude Code CLI (local only)
