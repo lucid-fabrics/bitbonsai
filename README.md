@@ -809,6 +809,36 @@ npx nx docker:push
 
 **See [UNRAID-DEPLOYMENT.md](./UNRAID-DEPLOYMENT.md) for complete deployment guide.**
 
+### Proxmox VE Community Scripts Deployment
+
+BitBonsai includes automated release tooling for Proxmox VE Community Scripts repository:
+
+```bash
+# Generate Proxmox release package (uses current version)
+npx nx proxmox:release
+
+# Bump patch version and generate release (1.0.0 → 1.0.1)
+npx nx release:proxmox
+
+# Bump minor version and generate release (1.0.0 → 1.1.0)
+npx nx release:proxmox:minor
+
+# Bump major version and generate release (1.0.0 → 2.0.0)
+npx nx release:proxmox:major
+
+# Complete release workflow:
+# 1. Version bump and release package
+npx nx release:proxmox
+
+# 2. Test installation script
+bash proxmox-release/bitbonsai-install.sh
+
+# 3. Submit to Community Scripts
+# See PROXMOX-DEPLOYMENT.md for submission guide
+```
+
+**See [PROXMOX-DEPLOYMENT.md](./PROXMOX-DEPLOYMENT.md) for complete deployment guide.**
+
 ### Testing
 
 ```bash
