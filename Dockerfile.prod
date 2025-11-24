@@ -110,7 +110,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
 
-# Stage 5: All-in-one production image (optional)
+# Stage 5: All-in-one production image (Unraid Community App)
 FROM node:20-alpine AS production
 
 # Install runtime dependencies
@@ -119,7 +119,9 @@ RUN apk add --no-cache \
     ffprobe \
     nginx \
     curl \
-    tini
+    tini \
+    nfs-utils \
+    cifs-utils
 
 WORKDIR /app
 
@@ -127,6 +129,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production --legacy-peer-deps && \
     npm cache clean --force
+
+# Copy Prisma schema and generate client
+COPY prisma ./prisma
+RUN npx prisma generate
 
 # Copy built backend
 COPY --from=backend-builder /app/dist/apps/backend ./dist/apps/backend
@@ -137,20 +143,21 @@ COPY --from=frontend-builder /app/dist/apps/frontend /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.all-in-one.conf /etc/nginx/http.d/default.conf
 
+# Copy startup script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Create necessary directories
-RUN mkdir -p /data /media /run/nginx && \
-    chown -R node:node /app /data /media && \
+RUN mkdir -p /data /media /cache /run/nginx && \
+    chown -R node:node /app /data /media /cache && \
     chown -R nginx:nginx /usr/share/nginx/html /run/nginx
 
-# Expose ports
-EXPOSE 80 3000
+# Expose only port 80 (nginx serves frontend + proxies /api to backend)
+EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost/ && node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD curl -f http://localhost/ || exit 1
 
 # Use tini for proper signal handling
-ENTRYPOINT ["/sbin/tini", "--"]
-
-# Start both nginx and backend
-CMD ["sh", "-c", "nginx && node dist/apps/backend/main.js"]
+ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint.sh"]
