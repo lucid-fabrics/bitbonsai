@@ -342,6 +342,37 @@
         "parallel": false
       },
       "description": "Bump major version and generate Unraid release package"
+    },
+    "proxmox:release": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./generate-proxmox-release.sh"
+      },
+      "description": "Generate Proxmox VE Community Scripts release package (uses version from package.json)"
+    },
+    "release:proxmox": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx version:patch", "nx proxmox:release"],
+        "parallel": false
+      },
+      "description": "Bump patch version and generate Proxmox release package"
+    },
+    "release:proxmox:minor": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx version:minor", "nx proxmox:release"],
+        "parallel": false
+      },
+      "description": "Bump minor version and generate Proxmox release package"
+    },
+    "release:proxmox:major": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx version:major", "nx proxmox:release"],
+        "parallel": false
+      },
+      "description": "Bump major version and generate Proxmox release package"
     }
   }
 }
