@@ -779,65 +779,59 @@ npm run docker:build
 npm run docker:build-push
 ```
 
-### Unraid Community App Deployment
+### Unified Release Deployment (Unraid + Proxmox)
 
-BitBonsai includes automated release tooling for Unraid Community Applications:
-
-```bash
-# Generate Unraid release package (uses current version)
-npx nx unraid:release
-
-# Bump patch version and generate release (1.0.0 → 1.0.1)
-npx nx release:unraid
-
-# Bump minor version and generate release (1.0.0 → 1.1.0)
-npx nx release:unraid:minor
-
-# Bump major version and generate release (1.0.0 → 2.0.0)
-npx nx release:unraid:major
-
-# Complete release workflow:
-# 1. Version bump and release package
-npx nx release:unraid
-
-# 2. Build Docker image with version tags
-npx nx docker:build
-
-# 3. Push to Docker Hub
-npx nx docker:push
-```
-
-**See [UNRAID-DEPLOYMENT.md](./UNRAID-DEPLOYMENT.md) for complete deployment guide.**
-
-### Proxmox VE Community Scripts Deployment
-
-BitBonsai includes automated release tooling for Proxmox VE Community Scripts repository:
+BitBonsai uses a **unified release system** that creates consistent releases for both platforms:
 
 ```bash
-# Generate Proxmox release package (uses current version)
-npx nx proxmox:release
+# PRIMARY COMMANDS (Recommended)
+# Bump patch version and generate releases (1.0.0 → 1.0.1)
+npx nx release
 
-# Bump patch version and generate release (1.0.0 → 1.0.1)
-npx nx release:proxmox
+# Bump minor version and generate releases (1.0.0 → 1.1.0)
+npx nx release:minor
 
-# Bump minor version and generate release (1.0.0 → 1.1.0)
-npx nx release:proxmox:minor
+# Bump major version and generate releases (1.0.0 → 2.0.0)
+npx nx release:major
 
-# Bump major version and generate release (1.0.0 → 2.0.0)
-npx nx release:proxmox:major
+# Preview release without committing (dry run)
+npx nx release:dry-run
+
+# UTILITY COMMANDS
+# Reset version manually (recovery)
+npx nx release:reset 1.0.0
+
+# Rollback to previous version
+npx nx release:rollback
 
 # Complete release workflow:
-# 1. Version bump and release package
-npx nx release:proxmox
+# 1. Create unified release (Unraid + Proxmox)
+npx nx release
 
-# 2. Test installation script
-bash proxmox-release/bitbonsai-install.sh
+# 2. Review changes
+git show
 
-# 3. Submit to Community Scripts
-# See PROXMOX-DEPLOYMENT.md for submission guide
+# 3. Push to remote
+git push && git push --tags
+
+# 4. Build and push Docker images
+npx nx docker:build-push
+
+# 5. Submit to community repositories
+# - Unraid: See UNRAID-DEPLOYMENT.md
+# - Proxmox: See PROXMOX-DEPLOYMENT.md
 ```
 
-**See [PROXMOX-DEPLOYMENT.md](./PROXMOX-DEPLOYMENT.md) for complete deployment guide.**
+**Features:**
+- ✅ Atomic releases (all platforms or none)
+- ✅ Auto-rollback on failure
+- ✅ Version consistency guaranteed
+- ✅ Dry-run mode for testing
+- ✅ Manual recovery tools
+
+**See deployment guides:**
+- [UNRAID-DEPLOYMENT.md](./UNRAID-DEPLOYMENT.md) - Unraid Community Applications
+- [PROXMOX-DEPLOYMENT.md](./PROXMOX-DEPLOYMENT.md) - Proxmox VE Community Scripts
 
 ### Testing
 
