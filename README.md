@@ -779,6 +779,36 @@ npm run docker:build
 npm run docker:build-push
 ```
 
+### Unraid Community App Deployment
+
+BitBonsai includes automated release tooling for Unraid Community Applications:
+
+```bash
+# Generate Unraid release package (uses current version)
+npx nx unraid:release
+
+# Bump patch version and generate release (1.0.0 → 1.0.1)
+npx nx release:unraid
+
+# Bump minor version and generate release (1.0.0 → 1.1.0)
+npx nx release:unraid:minor
+
+# Bump major version and generate release (1.0.0 → 2.0.0)
+npx nx release:unraid:major
+
+# Complete release workflow:
+# 1. Version bump and release package
+npx nx release:unraid
+
+# 2. Build Docker image with version tags
+npx nx docker:build
+
+# 3. Push to Docker Hub
+npx nx docker:push
+```
+
+**See [UNRAID-DEPLOYMENT.md](./UNRAID-DEPLOYMENT.md) for complete deployment guide.**
+
 ### Testing
 
 ```bash
