@@ -4,10 +4,10 @@ This guide explains how to build and publish BitBonsai as a single-container app
 
 ## Architecture
 
-**Single Container** (Port 80):
+**Single Container** (Port 8108):
 ```
 Container
-├── nginx (port 80) - Serves frontend + proxies /api
+├── nginx (port 8108) - Serves frontend + proxies /api
 │   ├── / → Static Angular app
 │   └── /api → proxy_pass to localhost:3000
 └── Node.js backend (port 3000, internal only)
@@ -31,7 +31,7 @@ docker tag lucidfabrics/bitbonsai:latest lucidfabrics/bitbonsai:1.0.0
 # Run the container
 docker run -d \
   --name bitbonsai-test \
-  -p 4210:80 \
+  -p 8108:8108 \
   -v ./data:/data \
   -v /mnt/user/media:/media \
   -v /mnt/cache/bitbonsai-temp:/cache \
@@ -43,7 +43,7 @@ docker run -d \
 docker logs -f bitbonsai-test
 
 # Test web UI
-open http://localhost:4210
+open http://localhost:8108
 
 # Cleanup
 docker stop bitbonsai-test && docker rm bitbonsai-test
@@ -101,7 +101,7 @@ Submit a PR to [Squidly271/docker-templates](https://github.com/Squidly271/docke
 The `bitbonsai.xml` template includes:
 
 ### Basic Configuration
-- ✅ Single port (80) for web UI
+- ✅ Single port (8108) for web UI
 - ✅ Media library path mapping
 - ✅ Downloads folder for *arr integration
 - ✅ App data persistence
@@ -136,7 +136,7 @@ The `bitbonsai.xml` template includes:
 Before publishing, verify:
 
 - [ ] Container starts successfully
-- [ ] Web UI loads at http://[IP]:4210
+- [ ] Web UI loads at http://[IP]:8108
 - [ ] Can login with admin credentials
 - [ ] Can detect and encode test video
 - [ ] Hardware acceleration works (if GPU available)
@@ -174,7 +174,7 @@ docker logs bitbonsai
 Common issues:
 - Missing `ADMIN_PASSWORD` or `JWT_SECRET`
 - Invalid path mappings
-- Port 80 already in use
+- Port 8108 already in use
 
 ### FFmpeg Not Found
 

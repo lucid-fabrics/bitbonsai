@@ -38,7 +38,7 @@ BitBonsai - Intelligent Video Encoding Platform with Multi-Node Distribution
 • Multi-node homelab setups
   </Overview>
   <Category>MediaApp:Video MediaServer:Video Tools:</Category>
-  <WebUI>http://[IP]:[PORT:80]/</WebUI>
+  <WebUI>http://[IP]:[PORT:8108]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/wassimmehanna/bitbonsai/main/unraid-release/bitbonsai.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/wassimmehanna/bitbonsai/main/apps/frontend/src/assets/logo.png</Icon>
   <ExtraParams/>
@@ -53,7 +53,7 @@ BitBonsai - Intelligent Video Encoding Platform with Multi-Node Distribution
   <!-- NETWORK CONFIGURATION -->
   <!-- ============================================ -->
 
-  <Config Name="Web UI Port" Target="80" Default="4210" Mode="tcp" Description="Web interface port - Access BitBonsai UI at http://[IP]:4210. Single port serves both frontend and backend API." Type="Port" Display="always" Required="true" Mask="false">4210</Config>
+  <Config Name="Web UI Port" Target="8108" Default="8108" Mode="tcp" Description="Web interface port - Access BitBonsai UI at http://[IP]:8108. Single port serves both frontend and backend API. Port 8108 chosen for zen/bonsai aesthetic." Type="Port" Display="always" Required="true" Mask="false">8108</Config>
 
   <!-- ============================================ -->
   <!-- STORAGE PATHS -->

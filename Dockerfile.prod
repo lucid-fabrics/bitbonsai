@@ -152,12 +152,12 @@ RUN mkdir -p /data /media /cache /run/nginx && \
     chown -R node:node /app /data /media /cache && \
     chown -R nginx:nginx /usr/share/nginx/html /run/nginx
 
-# Expose only port 80 (nginx serves frontend + proxies /api to backend)
-EXPOSE 80
+# Expose only port 8108 (nginx serves frontend + proxies /api to backend)
+EXPOSE 8108
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+    CMD curl -f http://localhost:8108/ || exit 1
 
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint.sh"]
