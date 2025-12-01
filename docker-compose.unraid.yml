@@ -32,7 +32,7 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://bitbonsai:bitbonsai_db_password_2024@192.168.1.100:5432/bitbonsai?schema=public
       - PORT=3100  # Backend API port (direct access with host networking)
-      - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr,/unraid-media
+      - MEDIA_PATHS=/media/movies,/media/tv,/media/adult
       - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
       - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
@@ -50,10 +50,10 @@ services:
       - ./nx.json:/app/nx.json:ro
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./package.json:/app/package.json:ro
-      # Unraid Downloads directory - maps to your encoding pipeline
-      - /mnt/user/Downloads:/media:cached
-      # Unraid Media directory - for existing media library
-      - /mnt/user/media:/unraid-media:cached
+      # Unraid Media directory - main media library with movies, tv shows, etc.
+      - /mnt/user/media:/media:cached
+      # Unraid Downloads directory - for download monitoring (optional)
+      - /mnt/user/Downloads:/downloads:cached
       # PERF: Unraid cache pool (SSD) for encoding temp files - much faster I/O
       - /mnt/cache/bitbonsai-temp:/cache:cached
       # Database persistence
