@@ -880,6 +880,30 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected rebalanceJobs(): void {
+    this.queueApi
+      .rebalanceJobs()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const count = result.jobsRebalanced;
+          if (count > 0) {
+            this.toastService.success(
+              count === 1
+                ? '1 job redistributed across nodes'
+                : `${count} jobs redistributed across nodes`
+            );
+          } else {
+            this.toastService.info('No rebalancing needed - jobs are already well distributed');
+          }
+          this.refreshQueue();
+        },
+        error: () => {
+          this.toastService.error('Failed to rebalance jobs');
+        },
+      });
+  }
+
   protected openAddFilesModal(): void {
     this.showAddFilesModal = true;
   }

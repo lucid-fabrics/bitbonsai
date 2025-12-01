@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database (Centralized database for multi-node architecture)
+  bitbonsai-postgres:
+    image: postgres:16-alpine
+    container_name: bitbonsai-postgres
+    environment:
+      - POSTGRES_DB=bitbonsai
+      - POSTGRES_USER=bitbonsai
+      - POSTGRES_PASSWORD=bitbonsai_db_password_2024
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - bitbonsai-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Expose for child nodes to connect
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bitbonsai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   bitbonsai-backend:
     build:
       context: .
@@ -10,13 +30,14 @@ services:
     network_mode: host  # Required for mDNS auto-discovery
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=file:/data/bitbonsai.db
+      - DATABASE_URL=postgresql://bitbonsai:bitbonsai_db_password_2024@192.168.1.100:5432/bitbonsai?schema=public
       - PORT=3100  # Backend API port (direct access with host networking)
       - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr,/unraid-media
       - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
       - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
       - ADMIN_PASSWORD=12rIYlY8VxiooyMkHtu-1XdDgCOY-s7C
+      - ENCRYPTION_KEY=VXwrVvc2qvR4OEvuHy7aGxcJzIgcPY53M0FOY4PaquI=
       # PERF: Use Unraid cache pool (SSD) for encoding temp files for faster I/O
       - ENCODING_TEMP_PATH=/cache
     volumes:
@@ -84,6 +105,8 @@ services:
       - bitbonsai-backend
 
 volumes:
+  bitbonsai-postgres-data:
+    driver: local
   bitbonsai-data:
     driver: local
   bitbonsai-shared:

@@ -1759,4 +1759,56 @@ export class QueueController {
   async cancelTransfer(@Param('id') id: string): Promise<void> {
     return this.fileTransferService.cancelTransfer(id);
   }
+
+  /**
+   * Redistribute queued jobs across nodes
+   */
+  @Post('rebalance')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Redistribute queued jobs across nodes',
+    description:
+      'Rebalances QUEUED jobs across online nodes to ensure optimal load distribution.\n\n' +
+      '**When to use**:\n' +
+      '- After adding a new node with shared storage\n' +
+      '- When one node has many queued jobs but another is idle\n' +
+      '- After changing node configurations (hasSharedStorage, maxWorkers)\n\n' +
+      '**How it works**:\n' +
+      '- Identifies overloaded nodes (>80% capacity)\n' +
+      '- Identifies underutilized nodes (<50% capacity)\n' +
+      '- Moves up to 5 QUEUED jobs from each overloaded node to underutilized nodes\n' +
+      '- Only rebalances LOCAL nodes (not REMOTE)\n\n' +
+      '**Returns**: Number of jobs redistributed',
+  })
+  @ApiOkResponse({
+    description: 'Jobs redistributed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        jobsRebalanced: {
+          type: 'number',
+          example: 7,
+          description: 'Number of jobs that were moved to different nodes',
+        },
+        message: {
+          type: 'string',
+          example: 'Redistributed 7 job(s) across nodes',
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred during rebalancing',
+  })
+  async rebalanceJobs() {
+    const jobsRebalanced = await this.queueService.rebalanceJobs();
+
+    return {
+      jobsRebalanced,
+      message:
+        jobsRebalanced > 0
+          ? `Redistributed ${jobsRebalanced} job(s) across nodes`
+          : 'No rebalancing needed - jobs are already well distributed',
+    };
+  }
 }

@@ -187,11 +187,11 @@ export class NodeCapabilityDetectorService {
         }
 
         const lowerSmbShare = smbShare.toLowerCase();
-        if (
-          mediaPath.includes(lowerSmbShare) ||
-          lowerSmbShare.includes('media') ||
-          lowerSmbShare.includes('video')
-        ) {
+        const lowerMediaPath = mediaPath.toLowerCase();
+
+        // Strict matching: only accept if media path contains the share name
+        // Prevents false positives from fuzzy matching like "media" or "video"
+        if (lowerMediaPath.includes(lowerSmbShare)) {
           this.logger.log(`✅ Media path ${mediaPath} may be accessible via SMB share ${smbShare}`);
           return {
             hasSharedStorage: true,

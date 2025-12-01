@@ -20,11 +20,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { NFSAutoExportService } from '../../core/services/nfs-auto-export.service';
+import { CreateStorageShareDto } from '../dto/create-storage-share.dto';
+import { TestConnectivityDto } from '../dto/test-connectivity.dto';
+import { UnmountShareDto } from '../dto/unmount-share.dto';
+import { UpdateStorageShareDto } from '../dto/update-storage-share.dto';
 import { StorageMountService } from '../services/storage-mount.service';
 import { StorageShareService } from '../services/storage-share.service';
-
-// TODO: Create DTOs for request/response types
-// For now using basic types
 
 @ApiTags('storage-shares')
 @ApiBearerAuth('JWT-auth')
@@ -46,7 +47,7 @@ export class StorageSharesController {
   })
   @ApiCreatedResponse({ description: 'Storage share created successfully' })
   @ApiBadRequestResponse({ description: 'Invalid configuration or duplicate mount point' })
-  async create(@Body() createDto: any) {
+  async create(@Body() createDto: CreateStorageShareDto) {
     return this.storageShareService.create(createDto);
   }
 
@@ -104,7 +105,7 @@ export class StorageSharesController {
   @ApiParam({ name: 'id', description: 'Storage share ID' })
   @ApiOkResponse({ description: 'Storage share updated successfully' })
   @ApiNotFoundResponse({ description: 'Storage share not found' })
-  async update(@Param('id') id: string, @Body() updateDto: any) {
+  async update(@Param('id') id: string, @Body() updateDto: UpdateStorageShareDto) {
     return this.storageShareService.update(id, updateDto);
   }
 
@@ -151,7 +152,7 @@ export class StorageSharesController {
   @ApiParam({ name: 'id', description: 'Storage share ID' })
   @ApiOkResponse({ description: 'Storage share unmounted successfully' })
   @ApiNotFoundResponse({ description: 'Storage share not found' })
-  async unmount(@Param('id') id: string, @Body() body?: { force?: boolean }) {
+  async unmount(@Param('id') id: string, @Body() body?: UnmountShareDto) {
     return this.storageMountService.unmount(id, body?.force ?? false);
   }
 
@@ -179,8 +180,8 @@ export class StorageSharesController {
     description: 'Test if a storage server is reachable and supports NFS/SMB',
   })
   @ApiOkResponse({ description: 'Connectivity test completed' })
-  async testConnectivity(@Body() body: { serverAddress: string; protocol?: 'NFS' | 'SMB' }) {
-    return this.storageMountService.testConnectivity(body.serverAddress, body.protocol as any);
+  async testConnectivity(@Body() body: TestConnectivityDto) {
+    return this.storageMountService.testConnectivity(body.serverAddress, body.protocol);
   }
 
   /**
@@ -238,6 +239,21 @@ export class StorageSharesController {
   async autoExportDockerVolumes() {
     await this.nfsAutoExportService.autoExportDockerVolumes();
     return { success: true, message: 'Docker volumes auto-export completed' };
+  }
+
+  /**
+   * Manually create storage shares for a node's libraries
+   */
+  @Post('node/:nodeId/create-library-shares')
+  @ApiOperation({
+    summary: 'Create storage shares for node libraries',
+    description:
+      'Automatically creates NFS storage shares for all enabled libraries on the specified node.',
+  })
+  @ApiParam({ name: 'nodeId', description: 'Node ID (typically the MAIN node)' })
+  @ApiOkResponse({ description: 'Storage shares created successfully' })
+  async createLibraryShares(@Param('nodeId') nodeId: string) {
+    return this.storageShareService.autoCreateSharesForLibraries(nodeId);
   }
 
   /**

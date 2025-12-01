@@ -5,14 +5,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageSharesController } from './controllers/storage-shares.controller';
 import { NodesController } from './nodes.controller';
 import { NodesService } from './nodes.service';
+import { StorageShareRepository } from './repositories/storage-share.repository';
 import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
 import { ScheduleEnforcementService } from './services/schedule-enforcement.service';
+import { SharedStorageVerifierService } from './services/shared-storage-verifier.service';
 import { SshKeyService } from './services/ssh-key.service';
 import { StorageMountService } from './services/storage-mount.service';
 import { StorageShareService } from './services/storage-share.service';
+import { MountStrategyFactory } from './services/strategies/mount-strategy.factory';
+import { NFSMountStrategy } from './services/strategies/nfs-mount.strategy';
+import { SMBMountStrategy } from './services/strategies/smb-mount.strategy';
 import { SystemInfoService } from './services/system-info.service';
 
 /**
@@ -33,6 +38,10 @@ import { SystemInfoService } from './services/system-info.service';
   providers: [
     NodesService,
     PrismaService,
+    {
+      provide: 'IStorageShareRepository',
+      useClass: StorageShareRepository,
+    },
     NodeDiscoveryService,
     RegistrationRequestService,
     SystemInfoService,
@@ -42,6 +51,11 @@ import { SystemInfoService } from './services/system-info.service';
     StorageShareService,
     StorageMountService,
     SshKeyService,
+    SharedStorageVerifierService,
+    // Mount strategies
+    NFSMountStrategy,
+    SMBMountStrategy,
+    MountStrategyFactory,
   ],
   exports: [
     NodesService,
@@ -54,6 +68,7 @@ import { SystemInfoService } from './services/system-info.service';
     StorageShareService,
     StorageMountService,
     SshKeyService,
+    SharedStorageVerifierService,
   ],
 })
 export class NodesModule {}

@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, IsUrl, Length, Max, Min } from 'class-validator';
+import { NetworkLocation } from '@prisma/client';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Length,
+  Max,
+  Min,
+} from 'class-validator';
 
 /**
  * DTO for updating node configuration
@@ -16,6 +27,15 @@ export class UpdateNodeDto {
   @IsString({ message: 'Node name must be a string' })
   @Length(1, 255, { message: 'Node name must be between 1 and 255 characters' })
   name?: string;
+
+  @ApiProperty({
+    description: 'Whether this node has access to shared storage (NFS/SMB)',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'hasSharedStorage must be a boolean' })
+  hasSharedStorage?: boolean;
 
   @ApiProperty({
     description: 'Maximum number of concurrent encoding jobs',
@@ -62,4 +82,14 @@ export class UpdateNodeDto {
   @IsOptional()
   @IsString({ message: 'mainNodeUrl must be a string' })
   mainNodeUrl?: string;
+
+  @ApiProperty({
+    description: 'Network location of the node (LOCAL, REMOTE, or UNKNOWN)',
+    enum: NetworkLocation,
+    example: NetworkLocation.LOCAL,
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(NetworkLocation, { message: 'networkLocation must be LOCAL, REMOTE, or UNKNOWN' })
+  networkLocation?: NetworkLocation;
 }

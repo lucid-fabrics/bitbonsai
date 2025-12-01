@@ -1323,18 +1323,14 @@ export class FfmpegService implements OnModuleDestroy {
       this.logger.log(
         `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${job.priority})`
       );
-      // Use stdbuf to force unbuffered stderr for real-time progress in LXC containers
-      ffmpegProcess = spawn(
-        'stdbuf',
-        ['-o0', '-e0', 'nice', '-n', niceValue.toString(), 'ffmpeg', ...args],
-        {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          detached: true, // CRITICAL: Prevent process leak - allows child to run independently
-        }
-      );
+      // Spawn with nice for CPU priority control
+      ffmpegProcess = spawn('nice', ['-n', niceValue.toString(), 'ffmpeg', ...args], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true, // CRITICAL: Prevent process leak - allows child to run independently
+      });
     } else {
-      // Use stdbuf to force unbuffered stderr for real-time progress in LXC containers
-      ffmpegProcess = spawn('stdbuf', ['-o0', '-e0', 'ffmpeg', ...args], {
+      // Spawn ffmpeg directly (no priority adjustment needed)
+      ffmpegProcess = spawn('ffmpeg', args, {
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true, // CRITICAL: Prevent process leak - allows child to run independently
       });

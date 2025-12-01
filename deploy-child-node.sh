@@ -22,6 +22,10 @@ rsync -avz --delete \
 echo "🔨 Building and restarting..."
 ssh $CHILD_USER@$CHILD_IP "cd $APP_DIR && \
   npm install --production --legacy-peer-deps --ignore-scripts && \
+  echo '📦 Rebuilding backend...' && \
+  rm -rf dist/ && \
+  npx nx build backend --skip-nx-cache && \
+  echo '🗄️ Regenerating Prisma Client...' && \
   npx prisma generate && \
   npx prisma migrate deploy && \
   systemctl restart bitbonsai-backend && \

@@ -67,6 +67,13 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    */
   async onModuleDestroy(): Promise<void> {
     this.logger.log('Stopping all file watchers...');
+
+    // Clear all pending debounce timers to prevent memory leak
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.debounceTimers.clear();
+
     await this.stopAllWatchers();
   }
 

@@ -29,7 +29,15 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Cleans up orphaned .backup files via BackupCleanupWorker (LOW PRIORITY FIX #17).
  */
 @Module({
-  imports: [CoreModule, forwardRef(() => EncodingModule), forwardRef(() => LibrariesModule)],
+  imports: [
+    CoreModule,
+    forwardRef(() => EncodingModule),
+    forwardRef(() => LibrariesModule),
+    forwardRef(() => {
+      const { NodesModule } = require('../nodes/nodes.module');
+      return NodesModule;
+    }),
+  ],
   controllers: [QueueController],
   providers: [
     QueueService,

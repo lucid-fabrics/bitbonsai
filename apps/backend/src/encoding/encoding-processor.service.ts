@@ -1531,6 +1531,23 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Keeping temp file for auto-heal resume capability: ${tmpPath}`);
       }
       throw error;
+    } finally {
+      // MEMORY LEAK FIX: Always clean up temp files that aren't needed for resume
+      // Only skip cleanup if this is a resumable error AND temp file should be preserved
+      // This prevents disk space leaks from failed encodings
+      if (tmpPath && fs.existsSync(tmpPath)) {
+        // Check if temp file should be preserved for resume (only for encoding failures)
+        const shouldPreserve = job.tempFilePath === tmpPath && job.progress > 0;
+
+        if (!shouldPreserve) {
+          try {
+            fs.unlinkSync(tmpPath);
+            this.logger.debug(`Cleaned up temp file: ${tmpPath}`);
+          } catch (cleanupError) {
+            this.logger.warn(`Failed to clean temp file ${tmpPath}:`, cleanupError);
+          }
+        }
+      }
     }
   }
 
