@@ -32,7 +32,7 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://bitbonsai:bitbonsai_db_password_2024@192.168.1.100:5432/bitbonsai?schema=public
       - PORT=3100  # Backend API port (direct access with host networking)
-      - MEDIA_PATHS=/media/movies,/media/tv,/media/adult
+      - MEDIA_PATHS=/media/Movies,/media/TV,/media/whisparr,/media/Anime,/media/Anime Movies
       - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://192.168.1.100:4210
       - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
