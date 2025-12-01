@@ -5,11 +5,12 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { StorageProtocol, StorageShareStatus } from '@prisma/client';
+import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import { promisify } from 'util';
 import { StorageShareService } from './storage-share.service';
+import { MountStrategyFactory } from './strategies/mount-strategy.factory';
 
 const execAsync = promisify(exec);
 
@@ -36,6 +37,7 @@ export class StorageMountService {
   private readonly logger = new Logger(StorageMountService.name);
 
   constructor(
+    private readonly strategyFactory: MountStrategyFactory,
     @Inject(forwardRef(() => StorageShareService))
     private readonly storageShareService: StorageShareService
   ) {}
@@ -60,11 +62,11 @@ export class StorageMountService {
       // Ensure mount point directory exists
       await this.ensureMountPoint(share.mountPoint);
 
-      // Build mount command based on protocol
-      const mountCommand =
-        share.protocol === StorageProtocol.NFS
-          ? this.buildNFSMountCommand(share)
-          : this.buildSMBMountCommand(share);
+      // Get appropriate strategy for protocol
+      const strategy = this.strategyFactory.getStrategy(share.protocol);
+
+      // Build mount command using strategy
+      const mountCommand = await strategy.buildMountCommand(share);
 
       this.logger.debug(`Executing mount command: ${mountCommand}`);
 
@@ -221,27 +223,14 @@ export class StorageMountService {
 
       // Test NFS if protocol not specified or is NFS
       if (!protocol || protocol === StorageProtocol.NFS) {
-        try {
-          const { stdout: nfsOutput } = await execAsync(`showmount -e ${serverAddress} 2>&1`);
-          result.supportsNFS = !nfsOutput.includes('RPC') && !nfsOutput.includes('error');
-        } catch (error) {
-          this.logger.debug(
-            `NFS test failed: ${error instanceof Error ? error.message : 'unknown error'}`
-          );
-        }
+        const nfsStrategy = this.strategyFactory.getStrategy(StorageProtocol.NFS);
+        result.supportsNFS = await nfsStrategy.testConnectivity(serverAddress);
       }
 
       // Test SMB if protocol not specified or is SMB
       if (!protocol || protocol === StorageProtocol.SMB) {
-        try {
-          // Use smbclient to list shares
-          const { stdout: smbOutput } = await execAsync(`smbclient -L ${serverAddress} -N 2>&1`);
-          result.supportsSMB = !smbOutput.includes('Connection') && !smbOutput.includes('error');
-        } catch (error) {
-          this.logger.debug(
-            `SMB test failed: ${error instanceof Error ? error.message : 'unknown error'}`
-          );
-        }
+        const smbStrategy = this.strategyFactory.getStrategy(StorageProtocol.SMB);
+        result.supportsSMB = await smbStrategy.testConnectivity(serverAddress);
       }
 
       return result;
@@ -313,56 +302,6 @@ export class StorageMountService {
   }
 
   /**
-   * Build NFS mount command
-   */
-  private buildNFSMountCommand(share: any): string {
-    const options = share.mountOptions || 'ro,nolock,soft';
-    const exportPath = `${share.serverAddress}:${share.sharePath}`;
-
-    return `mount -t nfs -o ${options} ${exportPath} ${share.mountPoint}`;
-  }
-
-  /**
-   * Build SMB/CIFS mount command
-   */
-  private buildSMBMountCommand(share: any): string {
-    const options: string[] = [];
-
-    // Add credentials
-    if (share.smbUsername) {
-      options.push(`username=${share.smbUsername}`);
-    }
-    if (share.smbPassword) {
-      options.push(`password=${share.smbPassword}`);
-    }
-    if (share.smbDomain) {
-      options.push(`domain=${share.smbDomain}`);
-    }
-
-    // Add SMB version
-    if (share.smbVersion) {
-      options.push(`vers=${share.smbVersion}`);
-    }
-
-    // Add read-only if configured
-    if (share.readOnly) {
-      options.push('ro');
-    } else {
-      options.push('rw');
-    }
-
-    // Add custom mount options
-    if (share.mountOptions) {
-      options.push(share.mountOptions);
-    }
-
-    const optionsStr = options.join(',');
-    const uncPath = `//${share.serverAddress}/${share.sharePath}`;
-
-    return `mount -t cifs -o ${optionsStr} ${uncPath} ${share.mountPoint}`;
-  }
-
-  /**
    * Add mount entry to /etc/fstab for persistence
    */
   private async addToFstab(share: any): Promise<void> {
@@ -376,11 +315,9 @@ export class StorageMountService {
         return;
       }
 
-      // Build fstab entry
-      const fstabEntry =
-        share.protocol === StorageProtocol.NFS
-          ? this.buildNFSFstabEntry(share)
-          : this.buildSMBFstabEntry(share);
+      // Get appropriate strategy and build fstab entry
+      const strategy = this.strategyFactory.getStrategy(share.protocol);
+      const fstabEntry = await strategy.buildFstabEntry(share);
 
       // Append to fstab
       await fs.appendFile(fstabPath, `\n${fstabEntry}\n`);
@@ -416,48 +353,5 @@ export class StorageMountService {
         `Failed to remove from fstab: ${error instanceof Error ? error.message : 'unknown error'}`
       );
     }
-  }
-
-  /**
-   * Build NFS fstab entry
-   */
-  private buildNFSFstabEntry(share: any): string {
-    const exportPath = `${share.serverAddress}:${share.sharePath}`;
-    const options = share.mountOptions || 'ro,nolock,soft';
-
-    return `${exportPath} ${share.mountPoint} nfs ${options} 0 0`;
-  }
-
-  /**
-   * Build SMB/CIFS fstab entry
-   */
-  private buildSMBFstabEntry(share: any): string {
-    const uncPath = `//${share.serverAddress}/${share.sharePath}`;
-    const options: string[] = [];
-
-    // For fstab, use credentials file instead of inline password
-    if (share.smbUsername) {
-      const credsFile = `/etc/bitbonsai/smb-credentials-${share.id}`;
-      options.push(`credentials=${credsFile}`);
-      // Note: Credentials file creation should be handled separately
-    }
-
-    if (share.smbVersion) {
-      options.push(`vers=${share.smbVersion}`);
-    }
-
-    if (share.readOnly) {
-      options.push('ro');
-    } else {
-      options.push('rw');
-    }
-
-    if (share.mountOptions) {
-      options.push(share.mountOptions);
-    }
-
-    const optionsStr = options.join(',');
-
-    return `${uncPath} ${share.mountPoint} cifs ${optionsStr} 0 0`;
   }
 }

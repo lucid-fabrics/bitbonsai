@@ -116,6 +116,13 @@ export class QueueClient {
     return this.http.post<{ deleted: number }>(`${this.apiUrl}/clear`, {}, options);
   }
 
+  rebalanceJobs(): Observable<{ jobsRebalanced: number; message: string }> {
+    return this.http.post<{ jobsRebalanced: number; message: string }>(
+      `${this.apiUrl}/rebalance`,
+      {}
+    );
+  }
+
   updateJobPriority(jobId: string, priority: number): Observable<QueueJobApiModel> {
     return this.http.patch<QueueJobApiModel>(`${this.apiUrl}/${jobId}/priority`, { priority });
   }

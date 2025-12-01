@@ -96,31 +96,32 @@ export class NFSAutoExportService {
     networkSubnet: string
   ): Promise<void> {
     try {
-      // Check if already exported
+      // Check if already exported (check by HOST source path, not container destination)
       const existing = await this.prisma.storageShare.findFirst({
         where: {
           ownerNodeId: mainNodeId,
-          sharePath: volume.destination,
+          sharePath: volume.source,
           autoManaged: true,
         },
       });
 
       if (existing) {
-        this.logger.debug(`Volume ${volume.destination} already exported`);
+        this.logger.debug(`Volume ${volume.source} already exported`);
         return;
       }
 
-      // Generate share name from destination path
+      // Generate share name from destination path (container mount point)
       const shareName = this.volumeDetector.getSuggestedShareName(volume.destination);
 
-      // Add NFS export to /etc/exports
-      await this.addNFSExport(volume.destination, networkSubnet, volume.readOnly);
+      // Add NFS export to /etc/exports using HOST path (source), not container path (destination)
+      await this.addNFSExport(volume.source, networkSubnet, volume.readOnly);
 
       // Get main node's IP address
       const serverAddress = await this.getMainNodeIP();
 
       // Create StorageShare record
-      const exportPath = `${serverAddress}:${volume.destination}`;
+      // Use HOST path (source) for NFS export, not container path (destination)
+      const exportPath = `${serverAddress}:${volume.source}`;
 
       await this.prisma.storageShare.create({
         data: {
@@ -130,9 +131,9 @@ export class NFSAutoExportService {
           protocol: StorageProtocol.NFS,
           status: StorageShareStatus.AVAILABLE,
           serverAddress,
-          sharePath: volume.destination,
+          sharePath: volume.source, // HOST path (e.g., /mnt/user/media), not container path
           exportPath,
-          mountPoint: volume.destination, // Same path for child nodes
+          mountPoint: volume.destination, // Container mount point for child nodes
           readOnly: volume.readOnly,
           mountOptions: volume.readOnly ? 'ro,nolock,soft' : 'rw,nolock,soft',
           autoMount: true,

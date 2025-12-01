@@ -35,6 +35,31 @@ export class FileTransferService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * SECURITY: Validate rsync file path to prevent command injection
+   * @private
+   */
+  private validateRsyncPath(path: string): void {
+    if (!/^[a-zA-Z0-9/_\-. ()]+$/.test(path)) {
+      throw new Error('Invalid path characters detected');
+    }
+    if (path.includes('..') || path.includes('//')) {
+      throw new Error('Path traversal attempt detected');
+    }
+  }
+
+  /**
+   * SECURITY: Validate IP address format
+   * @private
+   */
+  private validateIpAddress(ip: string): void {
+    const ipRegex =
+      /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(ip)) {
+      throw new Error('Invalid IP address format');
+    }
+  }
+
+  /**
    * Transfer file from source node to target node
    *
    * @param jobId - Job ID
@@ -59,6 +84,13 @@ export class FileTransferService {
         this.logger.warn(`Target node ${targetNode.name} has shared storage, transfer not needed`);
         return;
       }
+
+      // SECURITY: Validate inputs before rsync to prevent command injection
+      this.validateRsyncPath(sourceFilePath);
+      if (!targetNode.ipAddress) {
+        throw new Error(`Target node ${targetNode.name} has no IP address`);
+      }
+      this.validateIpAddress(targetNode.ipAddress);
 
       // Update job to TRANSFERRING stage
       await this.prisma.job.update({
@@ -171,7 +203,7 @@ export class FileTransferService {
         '--partial', // Resume support
         '--info=progress2', // Progress reporting
         '-e',
-        'ssh -o StrictHostKeyChecking=no', // SSH command (disable host key checking for automation)
+        'ssh -o StrictHostKeyChecking=accept-new', // SSH command (accept new keys, reject changed keys for security)
         sourcePath,
         `root@${targetNode.ipAddress}:${remotePath}`,
       ];
@@ -183,6 +215,8 @@ export class FileTransferService {
       });
 
       let lastProgress = 0;
+      let consecutiveUpdateFailures = 0;
+      const MAX_CONSECUTIVE_FAILURES = 3;
 
       rsync.stdout.on('data', (data) => {
         const output = data.toString();
@@ -215,7 +249,7 @@ export class FileTransferService {
               }
             }
 
-            // Update job progress
+            // Update job progress (non-blocking to avoid slowing transfer)
             this.prisma.job
               .update({
                 where: { id: jobId },
@@ -224,8 +258,24 @@ export class FileTransferService {
                   transferSpeedMBps: speedMBps,
                 },
               })
+              .then(() => {
+                // Reset failure counter on success
+                consecutiveUpdateFailures = 0;
+              })
               .catch((err) => {
-                this.logger.error(`Failed to update transfer progress for job ${jobId}:`, err);
+                consecutiveUpdateFailures++;
+                this.logger.error(
+                  `Failed to update transfer progress for job ${jobId} (${consecutiveUpdateFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
+                  err
+                );
+
+                // If too many consecutive failures, abort transfer
+                if (consecutiveUpdateFailures >= MAX_CONSECUTIVE_FAILURES) {
+                  this.logger.error(
+                    `Aborting transfer for job ${jobId}: ${MAX_CONSECUTIVE_FAILURES} consecutive progress update failures`
+                  );
+                  abortController.abort();
+                }
               });
           }
         }
@@ -259,15 +309,45 @@ export class FileTransferService {
    *
    * @param targetNode - Target node
    * @param command - Command to execute
+   * @param timeoutMs - Timeout in milliseconds (default: 30000ms / 30 seconds)
    */
-  private async executeRemoteCommand(targetNode: Node, command: string): Promise<string> {
+  private async executeRemoteCommand(
+    targetNode: Node,
+    command: string,
+    timeoutMs: number = 30000
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const sshArgs = ['-o', 'StrictHostKeyChecking=no', `root@${targetNode.ipAddress}`, command];
+      const sshArgs = [
+        '-o',
+        'StrictHostKeyChecking=accept-new',
+        `root@${targetNode.ipAddress}`,
+        command,
+      ];
 
       const ssh = spawn('ssh', sshArgs);
 
       let stdout = '';
       let stderr = '';
+      let timedOut = false;
+
+      // Set timeout to kill the SSH process if it hangs
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        ssh.kill('SIGTERM');
+
+        // Force kill if SIGTERM doesn't work
+        setTimeout(() => {
+          if (!ssh.killed) {
+            ssh.kill('SIGKILL');
+          }
+        }, 5000);
+
+        reject(
+          new Error(
+            `SSH command timed out after ${timeoutMs}ms on ${targetNode.name} (${targetNode.ipAddress})`
+          )
+        );
+      }, timeoutMs);
 
       ssh.stdout.on('data', (data) => {
         stdout += data.toString();
@@ -278,6 +358,12 @@ export class FileTransferService {
       });
 
       ssh.on('close', (code) => {
+        clearTimeout(timeout);
+
+        if (timedOut) {
+          return; // Already rejected with timeout error
+        }
+
         if (code === 0) {
           resolve(stdout);
         } else {
@@ -286,6 +372,12 @@ export class FileTransferService {
       });
 
       ssh.on('error', (error) => {
+        clearTimeout(timeout);
+
+        if (timedOut) {
+          return; // Already rejected with timeout error
+        }
+
         reject(error);
       });
     });

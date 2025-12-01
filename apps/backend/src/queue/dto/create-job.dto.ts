@@ -19,6 +19,10 @@ export class CreateJobDto {
   })
   @IsNotEmpty()
   @IsString()
+  @Matches(/^\/(?!.*\.\.)(?!.*\/\/)(?!.*%)[a-zA-Z0-9/_\-. ()]+$/, {
+    message:
+      'Path must be absolute without path traversal (..),  double slashes (//), or encoded characters (%)',
+  })
   filePath!: string;
 
   @ApiProperty({

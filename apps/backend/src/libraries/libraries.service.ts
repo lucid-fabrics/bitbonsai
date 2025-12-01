@@ -798,43 +798,59 @@ export class LibrariesService {
 
     const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
 
-    // Probe each file to get accurate codec info before creating job
+    // PERFORMANCE OPTIMIZATION: Parallelize job creation with batching
+    // Process 100 files at a time to avoid overwhelming the database
     const jobs: any[] = [];
+    const batchSize = 100;
 
-    for (const filePath of filesToEncode) {
-      try {
-        // Skip blacklisted files
-        if (blacklistedPaths.has(filePath)) {
-          this.logger.log(`Skipping blacklisted file: ${filePath}`);
-          continue;
-        }
+    for (let i = 0; i < filesToEncode.length; i += batchSize) {
+      const batch = filesToEncode.slice(i, i + batchSize);
 
-        const videoInfo = await this.mediaAnalysis.probeVideoFile(filePath);
+      const results = await Promise.allSettled(
+        batch.map(async (filePath) => {
+          // Skip blacklisted files
+          if (blacklistedPaths.has(filePath)) {
+            this.logger.log(`Skipping blacklisted file: ${filePath}`);
+            return null;
+          }
 
-        if (!videoInfo) {
-          this.logger.warn(`Skipping ${filePath} - failed to probe`);
-          continue;
-        }
+          const videoInfo = await this.mediaAnalysis.probeVideoFile(filePath);
 
-        // Extract file label (filename without path)
-        const fileLabel = filePath.split('/').pop() || filePath;
+          if (!videoInfo) {
+            this.logger.warn(`Skipping ${filePath} - failed to probe`);
+            return null;
+          }
 
-        // Create job using queue service
-        const job = await this.queueService.create({
-          filePath,
-          fileLabel,
-          sourceCodec: videoInfo.codec,
-          targetCodec: policy.targetCodec,
-          beforeSizeBytes: videoInfo.sizeBytes.toString(),
-          nodeId: library.nodeId,
-          libraryId: library.id,
-          policyId: policy.id,
-        });
+          // Extract file label (filename without path)
+          const fileLabel = filePath.split('/').pop() || filePath;
 
-        jobs.push(job);
-      } catch (error) {
-        this.logger.error(`Failed to create job for ${filePath}`, error);
-      }
+          // Create job using queue service
+          return await this.queueService.create({
+            filePath,
+            fileLabel,
+            sourceCodec: videoInfo.codec,
+            targetCodec: policy.targetCodec,
+            beforeSizeBytes: videoInfo.sizeBytes.toString(),
+            nodeId: library.nodeId,
+            libraryId: library.id,
+            policyId: policy.id,
+          });
+        })
+      );
+
+      // Collect successful job creations
+      const successful = results.filter(
+        (r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null
+      );
+
+      jobs.push(...successful.map((r) => r.value));
+
+      // Log batch progress
+      const batchNum = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(filesToEncode.length / batchSize);
+      this.logger.log(
+        `Batch ${batchNum}/${totalBatches}: Created ${successful.length}/${batch.length} jobs`
+      );
     }
 
     this.logger.log(`Created ${jobs.length} encoding jobs`);

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { NodeStatus } from '@prisma/client';
+import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 /**
  * DTO for node heartbeat updates
@@ -21,6 +22,9 @@ export class HeartbeatDto {
     maximum: 100,
     required: false,
   })
+  @IsOptional()
+  @Min(0)
+  @Max(100)
   cpuUsage?: number;
 
   @ApiProperty({
@@ -30,6 +34,9 @@ export class HeartbeatDto {
     maximum: 100,
     required: false,
   })
+  @IsOptional()
+  @Min(0)
+  @Max(100)
   memoryUsage?: number;
 
   @ApiProperty({
@@ -38,6 +45,9 @@ export class HeartbeatDto {
     minimum: 0,
     required: false,
   })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   activeJobs?: number;
 
   @ApiProperty({
@@ -45,5 +55,12 @@ export class HeartbeatDto {
     example: '192.168.1.170',
     required: false,
   })
+  @IsOptional()
+  @Matches(
+    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
+    {
+      message: 'IP address must be a valid IPv4 address',
+    }
+  )
   ipAddress?: string;
 }

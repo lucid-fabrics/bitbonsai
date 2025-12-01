@@ -156,22 +156,26 @@ export class ScheduleEnforcementService {
         }
       }
 
-      // OPTIMIZATION: Batch update using raw SQL with CASE statement
-      // This executes as a SINGLE query instead of N individual updates
+      // OPTIMIZATION: Batch update using Prisma's updateMany in transaction
+      // Use individual updates for safety - batch raw SQL was vulnerable to SQL injection
       if (jobUpdates.length > 0) {
-        const jobIds = jobUpdates.map((u) => u.id);
-        const whenClauses = jobUpdates.map((u) => `WHEN '${u.id}' THEN '${u.nodeId}'`).join(' ');
-        const whenOriginalClauses = jobUpdates
-          .map((u) => `WHEN '${u.id}' THEN ${u.originalNodeId ? `'${u.originalNodeId}'` : 'NULL'}`)
-          .join(' ');
+        // Process in batches of 50 to avoid transaction timeout
+        const batchSize = 50;
+        for (let i = 0; i < jobUpdates.length; i += batchSize) {
+          const batch = jobUpdates.slice(i, i + batchSize);
 
-        await this.prisma.$executeRawUnsafe(`
-          UPDATE jobs
-          SET
-            nodeId = CASE id ${whenClauses} END,
-            originalNodeId = CASE id ${whenOriginalClauses} END
-          WHERE id IN (${jobIds.map((id) => `'${id}'`).join(',')})
-        `);
+          await this.prisma.$transaction(
+            batch.map((update) =>
+              this.prisma.job.update({
+                where: { id: update.id },
+                data: {
+                  nodeId: update.nodeId,
+                  originalNodeId: update.originalNodeId,
+                },
+              })
+            )
+          );
+        }
 
         this.logger.log(
           `Auto-assigned ${queuedJobs.length} job(s), moved ${jobUpdates.length} to optimal nodes`

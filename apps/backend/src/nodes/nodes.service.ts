@@ -712,6 +712,8 @@ export class NodesService implements OnModuleInit {
         ...(data.cpuLimit !== undefined && { cpuLimit: data.cpuLimit }),
         ...(data.publicUrl !== undefined && { publicUrl: data.publicUrl }),
         ...(data.mainNodeUrl !== undefined && { mainNodeUrl: data.mainNodeUrl }),
+        ...(data.hasSharedStorage !== undefined && { hasSharedStorage: data.hasSharedStorage }),
+        ...(data.networkLocation !== undefined && { networkLocation: data.networkLocation }),
       },
     });
   }

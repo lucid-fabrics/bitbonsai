@@ -3,6 +3,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DataAccessService } from './services/data-access.service';
 import { DockerVolumeDetectorService } from './services/docker-volume-detector.service';
+import { EncryptionService } from './services/encryption.service';
 import { EnvironmentDetectorService } from './services/environment-detector.service';
 import { NFSAutoExportService } from './services/nfs-auto-export.service';
 import { NodeConfigService } from './services/node-config.service';
@@ -18,6 +19,7 @@ import { StorageInitService } from './services/storage-init.service';
  * - DockerVolumeDetectorService for detecting Docker volume mounts
  * - NFSAutoExportService for auto-exporting Docker volumes as NFS shares
  * - StorageInitService for initializing storage on app startup
+ * - EncryptionService for encrypting sensitive data (passwords, API keys)
  */
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { StorageInitService } from './services/storage-init.service';
     NodeConfigService,
     DataAccessService,
     DockerVolumeDetectorService,
+    EncryptionService,
     NFSAutoExportService,
     StorageInitService,
     EnvironmentDetectorService,
@@ -44,6 +47,7 @@ import { StorageInitService } from './services/storage-init.service';
     NodeConfigService,
     DataAccessService,
     DockerVolumeDetectorService,
+    EncryptionService,
     NFSAutoExportService,
     StorageInitService,
     EnvironmentDetectorService,

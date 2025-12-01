@@ -27,6 +27,10 @@
           <i class="fas fa-times-circle"></i>
           Cancel All Queued ({{ (queueData$ | async)!.stats!.queued }})
         </button>
+        <button (click)="rebalanceJobs()" class="btn btn-info" title="Redistribute queued jobs across available nodes">
+          <i class="fas fa-balance-scale"></i>
+          Rebalance Jobs
+        </button>
       }
       <button (click)="openClearJobsDialog(selectedStatus !== 'ALL' ? [selectedStatus] : undefined)" class="btn btn-warning btn-clear-jobs">
         <i class="fas fa-trash-alt"></i>

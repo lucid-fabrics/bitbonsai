@@ -133,33 +133,65 @@ export class SetupService {
       });
     }
 
+    // Find or create a license
+    let license = await this.prisma.license.findFirst();
+
+    if (!license) {
+      // Create a FREE license if none exists
+      license = await this.prisma.license.create({
+        data: {
+          key: `FREE-${this.generateRandomString(10)}`,
+          tier: 'FREE',
+          status: 'ACTIVE',
+          email:
+            nodeType === NodeType.Main
+              ? dto.username
+                ? `${dto.username}@local.bitbonsai`
+                : 'admin@bitbonsai.local'
+              : 'child-node@bitbonsai.local',
+          maxNodes: 1,
+          maxConcurrentJobs: 2,
+          features: {
+            multiNode: false,
+            advancedPresets: false,
+            api: false,
+            priorityQueue: false,
+            cloudStorage: false,
+            webhooks: false,
+          },
+        },
+      });
+    }
+
+    // Create node entry for both MAIN and CHILD nodes
+    if (nodeType === NodeType.Main) {
+      // Create a MAIN node entry
+      const hostname = process.env.HOSTNAME || 'main-node';
+      const apiKey = `bb_${this.generateRandomString(64)}`;
+      const pairingToken = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit token
+
+      await this.prisma.node.create({
+        data: {
+          name: `Main Node (${hostname})`,
+          role: 'MAIN',
+          status: 'ONLINE',
+          version, // Read from package.json
+          acceleration: 'CPU', // Will be updated after hardware detection
+          apiKey,
+          pairingToken,
+          pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
+          lastHeartbeat: new Date(),
+          licenseId: license.id,
+        },
+      });
+
+      return {
+        message: 'Setup completed successfully',
+      };
+    }
+
     // For child nodes, create a LINKED node entry to mark this as a child node instance
     if (nodeType === NodeType.Child) {
-      // Find or create a license for this child node
-      let license = await this.prisma.license.findFirst();
-
-      if (!license) {
-        // Create a FREE license if none exists
-        license = await this.prisma.license.create({
-          data: {
-            key: `FREE-${this.generateRandomString(10)}`,
-            tier: 'FREE',
-            status: 'ACTIVE',
-            email: 'child-node@bitbonsai.local',
-            maxNodes: 1,
-            maxConcurrentJobs: 2,
-            features: {
-              multiNode: false,
-              advancedPresets: false,
-              api: false,
-              priorityQueue: false,
-              cloudStorage: false,
-              webhooks: false,
-            },
-          },
-        });
-      }
-
       // Create a LINKED node entry (represents this child node)
       const hostname = process.env.HOSTNAME || 'child-node';
       await this.prisma.node.create({

@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -24,6 +26,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
 import { SshKeyService } from './ssh-key.service';
+import { StorageShareService } from './storage-share.service';
 import { SystemInfoService } from './system-info.service';
 
 export interface CreateRegistrationRequestDto {
@@ -70,7 +73,9 @@ export class RegistrationRequestService {
     private readonly capabilityDetector: NodeCapabilityDetectorService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway,
-    private readonly sshKeyService: SshKeyService
+    private readonly sshKeyService: SshKeyService,
+    @Inject(forwardRef(() => StorageShareService))
+    private readonly storageShareService: StorageShareService
   ) {}
 
   /**
@@ -407,6 +412,41 @@ export class RegistrationRequestService {
         this.logger.error('Failed to setup SSH keys:', error);
         // Don't fail the approval if SSH setup fails - it can be done manually
       }
+    }
+
+    // AUTOMATIC STORAGE SETUP: Create storage shares for main node's libraries
+    // so child nodes can auto-detect and mount them
+    try {
+      this.logger.log('🗄️  Setting up automatic storage sharing for new child node...');
+
+      // Get the main node ID
+      const mainNode = await this.prisma.node.findFirst({
+        where: { role: NodeRole.MAIN },
+      });
+
+      if (mainNode) {
+        // Create storage shares for all main node libraries
+        const shares = await this.storageShareService.autoCreateSharesForLibraries(mainNode.id);
+
+        if (shares.length > 0) {
+          this.logger.log(`✅ Created ${shares.length} storage shares for child node to access`);
+
+          // Update child node's hasSharedStorage flag if shares were created
+          await this.prisma.node.update({
+            where: { id: result.newNode.id },
+            data: { hasSharedStorage: true },
+          });
+
+          this.logger.log(`✅ Child node marked as having shared storage access`);
+        } else {
+          this.logger.warn(
+            'No storage shares created - main node may not have any libraries configured yet'
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error('Failed to setup automatic storage:', error);
+      // Don't fail the approval if storage setup fails - it can be done manually
     }
 
     // Emit NODE_APPROVED notification
