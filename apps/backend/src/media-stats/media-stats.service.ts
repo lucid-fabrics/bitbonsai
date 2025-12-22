@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { spawnSync } from 'child_process';
 import { readdirSync, statSync } from 'fs';
 import { basename, join } from 'path';
+import { LibrariesService } from '../libraries/libraries.service';
 import type { FileInfoDto, FolderFilesDto } from './dto/file-info.dto';
 import type { FolderStatsDto, MediaStatsDto } from './dto/media-stats.dto';
 
@@ -17,6 +18,8 @@ export class MediaStatsService {
   private readonly VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv'];
   private statsCache: MediaStatsDto | null = null;
 
+  constructor(private readonly librariesService: LibrariesService) {}
+
   async getMediaStats(): Promise<MediaStatsDto> {
     if (!this.statsCache) {
       this.logger.log('No cached stats, triggering initial scan');
@@ -31,7 +34,7 @@ export class MediaStatsService {
   async triggerScan(): Promise<void> {
     this.logger.log('Starting media scan...');
 
-    const mediaPaths = this.getMediaPaths();
+    const mediaPaths = await this.getMediaPaths();
     const allStats = {
       totalFiles: 0,
       hevcCount: 0,
@@ -284,9 +287,14 @@ export class MediaStatsService {
     }
   }
 
-  private getMediaPaths(): string[] {
-    const pathsEnv = process.env.MEDIA_PATHS || '/media';
-    return pathsEnv.split(',').map((p) => p.trim());
+  /**
+   * Get media paths from libraries in database
+   * UX PHILOSOPHY: Eliminates MEDIA_PATHS env var - single source of truth
+   */
+  private async getMediaPaths(): Promise<string[]> {
+    const paths = await this.librariesService.getAllLibraryPaths();
+    // Fallback to /media if no libraries configured
+    return paths.length > 0 ? paths : ['/media'];
   }
 
   private getRandomSample<T>(array: T[], size: number): T[] {
@@ -297,7 +305,7 @@ export class MediaStatsService {
   async getFolderFiles(folderName: string, codec?: string): Promise<FolderFilesDto> {
     this.logger.log(`Getting files for folder: ${folderName}, codec: ${codec || 'all'}`);
 
-    const mediaPaths = this.getMediaPaths();
+    const mediaPaths = await this.getMediaPaths();
     const folderPath = mediaPaths.find(
       (p) =>
         p.endsWith(`/${folderName}`) ||

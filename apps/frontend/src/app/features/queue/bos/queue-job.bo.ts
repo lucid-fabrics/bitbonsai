@@ -65,6 +65,9 @@ export class QueueJobBo {
   transferError?: string;
   remoteTempPath?: string;
   transferRetryCount?: number;
+  // Decision Feature (Phase 3)
+  decisionRequired?: boolean;
+  decisionIssues?: string | null; // JSON string of HealthCheckIssue[]
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -127,6 +130,9 @@ export class QueueJobBo {
     this.transferError = model.transferError;
     this.remoteTempPath = model.remoteTempPath;
     this.transferRetryCount = model.transferRetryCount;
+    // Decision Feature (Phase 3)
+    this.decisionRequired = model.decisionRequired ?? false;
+    this.decisionIssues = model.decisionIssues ?? null;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

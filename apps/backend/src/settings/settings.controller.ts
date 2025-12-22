@@ -5,8 +5,10 @@ import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
 import { EnvironmentService } from '../common/environment.service';
+import { JellyfinIntegrationService } from '../integrations/jellyfin.service';
 import { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import { DefaultQueueViewDto } from './dto/default-queue-view.dto';
+import { JellyfinSettingsDto, JellyfinTestResultDto } from './dto/jellyfin-settings.dto';
 import { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import { SecuritySettingsDto } from './dto/security-settings.dto';
 import { SystemSettingsDto } from './dto/system-settings.dto';
@@ -18,7 +20,8 @@ import { SettingsService } from './settings.service';
 export class SettingsController {
   constructor(
     private readonly environmentService: EnvironmentService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    private readonly jellyfinService: JellyfinIntegrationService
   ) {}
 
   @Get('environment')
@@ -312,5 +315,93 @@ export class SettingsController {
     @Body() updateDto: AutoHealRetryLimitDto
   ): Promise<AutoHealRetryLimitDto> {
     return this.settingsService.updateAutoHealRetryLimit(updateDto.maxAutoHealRetries);
+  }
+
+  // ============================================================================
+  // JELLYFIN INTEGRATION
+  // ============================================================================
+
+  @Get('jellyfin')
+  @ApiOperation({
+    summary: 'Get Jellyfin integration settings',
+    description: 'Retrieve Jellyfin server URL and configuration. API key is masked for security.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Jellyfin settings retrieved successfully',
+    type: JellyfinSettingsDto,
+  })
+  async getJellyfinSettings(): Promise<JellyfinSettingsDto> {
+    const settings = await this.settingsService.getJellyfinSettings();
+    return {
+      jellyfinUrl: settings.jellyfinUrl || undefined,
+      jellyfinApiKey: settings.jellyfinApiKey || undefined,
+      jellyfinRefreshOnComplete: settings.jellyfinRefreshOnComplete,
+    };
+  }
+
+  @Patch('jellyfin')
+  @ApiOperation({
+    summary: 'Update Jellyfin integration settings',
+    description:
+      'Update Jellyfin server URL, API key, or library refresh setting. Leave API key undefined to keep existing value.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Jellyfin settings updated successfully',
+    type: JellyfinSettingsDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid settings provided',
+  })
+  async updateJellyfinSettings(
+    @Body() updateDto: JellyfinSettingsDto
+  ): Promise<JellyfinSettingsDto> {
+    const settings = await this.settingsService.updateJellyfinSettings(updateDto);
+    return {
+      jellyfinUrl: settings.jellyfinUrl || undefined,
+      jellyfinApiKey: settings.jellyfinApiKey || undefined,
+      jellyfinRefreshOnComplete: settings.jellyfinRefreshOnComplete,
+    };
+  }
+
+  @Post('jellyfin/test')
+  @ApiOperation({
+    summary: 'Test Jellyfin connection',
+    description:
+      'Test connectivity to Jellyfin server using provided or stored credentials. Returns server name and version if successful.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Connection test completed',
+    type: JellyfinTestResultDto,
+  })
+  async testJellyfinConnection(
+    @Body() testDto: JellyfinSettingsDto
+  ): Promise<JellyfinTestResultDto> {
+    // Use provided credentials or fall back to stored ones
+    let url = testDto.jellyfinUrl;
+    let apiKey = testDto.jellyfinApiKey;
+
+    if (!url || !apiKey) {
+      const stored = await this.settingsService.getJellyfinSettings();
+      url = url || stored.jellyfinUrl || undefined;
+      // For test, we need the actual API key, not masked
+      if (!apiKey && stored.jellyfinApiKey) {
+        // Get unmasked API key from database directly
+        const settings = await this.settingsService['prisma'].settings.findFirst();
+        apiKey = (settings as any)?.jellyfinApiKey;
+      }
+    }
+
+    if (!url || !apiKey) {
+      return {
+        success: false,
+        error: 'Jellyfin URL and API key are required',
+      };
+    }
+
+    return this.jellyfinService.testConnection(url, apiKey);
   }
 }

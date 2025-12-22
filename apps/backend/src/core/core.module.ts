@@ -1,10 +1,12 @@
 import { HttpModule } from '@nestjs/axios';
 import { forwardRef, Module } from '@nestjs/common';
+import { IntegrationsModule } from '../integrations/integrations.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DataAccessService } from './services/data-access.service';
 import { DockerVolumeDetectorService } from './services/docker-volume-detector.service';
 import { EncryptionService } from './services/encryption.service';
 import { EnvironmentDetectorService } from './services/environment-detector.service';
+import { FileRelocatorService } from './services/file-relocator.service';
 import { NFSAutoExportService } from './services/nfs-auto-export.service';
 import { NodeConfigService } from './services/node-config.service';
 import { StorageInitService } from './services/storage-init.service';
@@ -28,6 +30,7 @@ import { StorageInitService } from './services/storage-init.service';
       maxRedirects: 5,
     }),
     PrismaModule,
+    IntegrationsModule,
     // Use forwardRef to break circular dependency with NodesModule
     forwardRef(() => {
       const { NodesModule } = require('../nodes/nodes.module');
@@ -39,6 +42,7 @@ import { StorageInitService } from './services/storage-init.service';
     DataAccessService,
     DockerVolumeDetectorService,
     EncryptionService,
+    FileRelocatorService,
     NFSAutoExportService,
     StorageInitService,
     EnvironmentDetectorService,
@@ -48,6 +52,7 @@ import { StorageInitService } from './services/storage-init.service';
     DataAccessService,
     DockerVolumeDetectorService,
     EncryptionService,
+    FileRelocatorService,
     NFSAutoExportService,
     StorageInitService,
     EnvironmentDetectorService,

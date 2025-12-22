@@ -17,6 +17,19 @@ export class JobStatsDto {
   healthCheck!: number;
 
   @ApiProperty({
+    description: 'Number of jobs requiring user attention/decision before proceeding',
+    example: 3,
+  })
+  needsDecision!: number;
+
+  @ApiProperty({
+    description:
+      'Number of jobs in NEEDS_DECISION where codec already matches target (can be bulk skipped)',
+    example: 10,
+  })
+  codecMatchCount!: number;
+
+  @ApiProperty({
     description: 'Number of queued jobs waiting to be processed',
     example: 42,
   })

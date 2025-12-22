@@ -143,6 +143,30 @@ export class QueueClient {
     return this.http.delete<void>(`${this.apiUrl}/${jobId}`);
   }
 
+  resolveDecision(jobId: string, actionConfig: Record<string, any>): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/resolve-decision`, {
+      decisionData: { actionConfig },
+    });
+  }
+
+  /**
+   * Skip all jobs where codec already matches target
+   *
+   * Bulk skip encoding for all NEEDS_DECISION jobs where the source codec matches the target codec.
+   * Jobs are marked as COMPLETED without any encoding performed.
+   *
+   * @returns Observable with count of skipped jobs and list of job details
+   */
+  skipAllCodecMatch(): Observable<{
+    skippedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+  }> {
+    return this.http.post<{
+      skippedCount: number;
+      jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    }>(`${this.apiUrl}/skip-codec-match`, {});
+  }
+
   /**
    * Delegate job to specific node
    *

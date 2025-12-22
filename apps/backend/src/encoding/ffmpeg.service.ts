@@ -315,6 +315,60 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * Select the appropriate FFmpeg codec based on policy target and available hardware
+   *
+   * Maps policy codec preferences (HEVC, AV1, VP9, H264) to hardware-accelerated
+   * variants when available, falling back to software encoding if needed.
+   *
+   * @param targetCodec - Target codec from encoding policy (HEVC, AV1, VP9, H264)
+   * @param hwType - Hardware acceleration type (NVIDIA, INTEL_QSV, AMD, APPLE_M, CPU)
+   * @returns FFmpeg codec name (e.g., hevc_nvenc, libx265, av1_nvenc, etc.)
+   */
+  private selectCodecForPolicy(targetCodec: string, hwType: string): string {
+    // Codec mapping: policy codec -> hardware type -> FFmpeg codec name
+    const codecMap: Record<string, Record<string, string>> = {
+      HEVC: {
+        NVIDIA: 'hevc_nvenc',
+        INTEL_QSV: 'hevc_qsv',
+        AMD: 'hevc_vaapi',
+        APPLE_M: 'hevc_videotoolbox',
+        CPU: 'libx265',
+      },
+      AV1: {
+        NVIDIA: 'av1_nvenc', // Available on RTX 40 series and newer
+        INTEL_QSV: 'av1_qsv', // Available on Arc and 12th gen Intel
+        AMD: 'av1_vaapi', // Limited hardware support
+        APPLE_M: 'libaom-av1', // No native AV1 hardware encoder, use CPU
+        CPU: 'libaom-av1',
+      },
+      VP9: {
+        NVIDIA: 'libvpx-vp9', // No hardware support, use CPU
+        INTEL_QSV: 'vp9_qsv', // Limited QSV support
+        AMD: 'libvpx-vp9', // No hardware support, use CPU
+        APPLE_M: 'libvpx-vp9', // No hardware support, use CPU
+        CPU: 'libvpx-vp9',
+      },
+      H264: {
+        NVIDIA: 'h264_nvenc',
+        INTEL_QSV: 'h264_qsv',
+        AMD: 'h264_vaapi',
+        APPLE_M: 'h264_videotoolbox',
+        CPU: 'libx264',
+      },
+    };
+
+    // Get the codec for this combination, with fallbacks
+    const selectedCodec =
+      codecMap[targetCodec]?.[hwType] || codecMap[targetCodec]?.['CPU'] || 'libx265';
+
+    this.logger.log(
+      `Codec selection: ${targetCodec} (policy) + ${hwType} (hardware) = ${selectedCodec}`
+    );
+
+    return selectedCodec;
+  }
+
+  /**
    * Detect available hardware acceleration
    *
    * Detection order:
@@ -451,13 +505,44 @@ export class FfmpegService implements OnModuleDestroy {
       args.push('-i', job.filePath);
 
       // Video codec and quality
-      args.push('-c:v', hwaccel.videoCodec);
+      // Select codec based on policy target and available hardware acceleration
+      const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
+      args.push('-c:v', selectedCodec);
       args.push('-crf', policy.targetQuality.toString());
 
-      // Audio codec (from policy advanced settings)
+      // Audio codec (from decision config or policy advanced settings)
+      // DECISION FIX: Check if decisionData has audio config overrides
+      let audioCodec = 'copy';
+      let audioBitrate: string | undefined;
+
+      if (job.decisionData) {
+        try {
+          const decisionData = JSON.parse(job.decisionData as string);
+          if (decisionData?.actionConfig?.audioCodec) {
+            audioCodec = decisionData.actionConfig.audioCodec;
+            this.logger.log(`Using audio codec from decision: ${audioCodec}`);
+          }
+          if (decisionData?.actionConfig?.audioBitrate) {
+            audioBitrate = decisionData.actionConfig.audioBitrate;
+            this.logger.log(`Using audio bitrate from decision: ${audioBitrate}`);
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+      }
+
+      // Fall back to policy settings if not overridden by decision
       const advancedSettings = policy.advancedSettings as Record<string, unknown>;
-      const audioCodec = (advancedSettings.audioCodec as string) || 'copy';
+      if (audioCodec === 'copy' && advancedSettings.audioCodec) {
+        audioCodec = advancedSettings.audioCodec as string;
+      }
+
       args.push('-c:a', audioCodec);
+
+      // Apply audio bitrate if specified
+      if (audioBitrate) {
+        args.push('-b:a', audioBitrate);
+      }
 
       // AV1 THROTTLING: Apply thread limit if specified on job
       const jobWithThreads = job as JobWithThreadsFields;
@@ -479,6 +564,21 @@ export class FfmpegService implements OnModuleDestroy {
             `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
           throw error;
+        }
+      }
+
+      // DECISION FIX: Apply additional FFmpeg flags from decision config
+      if (job.decisionData) {
+        try {
+          const decisionData = JSON.parse(job.decisionData as string);
+          if (decisionData?.actionConfig?.ffmpegFlags) {
+            const decisionFlags = decisionData.actionConfig.ffmpegFlags as string[];
+            const validatedFlags = this.validateFfmpegFlags(decisionFlags);
+            args.push(...validatedFlags);
+            this.logger.log(`Applied decision FFmpeg flags: ${validatedFlags.join(' ')}`);
+          }
+        } catch {
+          // Ignore JSON parse errors
         }
       }
     }
@@ -586,9 +686,21 @@ export class FfmpegService implements OnModuleDestroy {
    * @returns Progress percentage (0-100)
    */
   private calculateProgressPercentage(currentTime: string, totalDurationSeconds: number): number {
+    // Handle N/A or invalid time - FFmpeg outputs N/A during initial decoding phase
+    if (!currentTime || currentTime === 'N/A' || currentTime === 'n/a') {
+      return 0;
+    }
+
     // Parse HH:MM:SS.MS format
     const parts = currentTime.split(':');
     if (parts.length !== 3) {
+      // Try parsing as microseconds (out_time_us format)
+      const microseconds = Number.parseInt(currentTime, 10);
+      if (!Number.isNaN(microseconds) && microseconds > 0) {
+        const currentSeconds = microseconds / 1_000_000;
+        const percentage = (currentSeconds / totalDurationSeconds) * 100;
+        return Math.min(100, Math.max(0, percentage));
+      }
       return 0;
     }
 
@@ -625,10 +737,27 @@ export class FfmpegService implements OnModuleDestroy {
     resumeFromPercent = 0
   ): void {
     // Calculate current progress based on time position
-    const currentProgress = this.calculateProgressPercentage(
+    let currentProgress = this.calculateProgressPercentage(
       progressData.currentTime,
       estimatedDurationSeconds
     );
+
+    // FALLBACK: Use frame-based progress when time-based returns 0 but frames ARE being encoded
+    // This handles the case where out_time=N/A during FFmpeg's initial buffering/seeking phase
+    // For large 4K files (80-90GB), FFmpeg can output frames before reporting valid out_time
+    if (currentProgress === 0 && progressData.frame > 0 && estimatedDurationSeconds > 0) {
+      // Estimate total frames using standard movie FPS (most are 23.976, 24, 25, or 29.97)
+      // Using 24fps as conservative estimate - slightly overestimates progress which is acceptable
+      const assumedSourceFps = 24;
+      const estimatedTotalFrames = estimatedDurationSeconds * assumedSourceFps;
+
+      if (estimatedTotalFrames > 0) {
+        currentProgress = Math.min(100, (progressData.frame / estimatedTotalFrames) * 100);
+        this.logger.debug(
+          `[${job.id}] Frame-based progress fallback: ${currentProgress.toFixed(2)}% (${progressData.frame}/${Math.round(estimatedTotalFrames)} frames, out_time=${progressData.currentTime})`
+        );
+      }
+    }
 
     // TRUE RESUME: Adjust progress to account for already-encoded portion
     // If we resumed from 60%, and current position is 70%, actual progress is 70% (not 10%)
@@ -1394,6 +1523,20 @@ export class FfmpegService implements OnModuleDestroy {
               case 'out_time':
                 currentTime = value;
                 break;
+              case 'out_time_us':
+                // Fallback: use microseconds if out_time is N/A
+                if (!currentTime || currentTime === 'N/A') {
+                  const us = Number.parseInt(value, 10);
+                  if (!Number.isNaN(us) && us > 0) {
+                    // Convert to HH:MM:SS.ms format for consistency
+                    const totalSeconds = us / 1_000_000;
+                    const hours = Math.floor(totalSeconds / 3600);
+                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                    const seconds = totalSeconds % 60;
+                    currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(6).padStart(9, '0')}`;
+                  }
+                }
+                break;
               case 'progress':
                 // When we see 'progress=continue' or 'progress=end', we have a complete update
                 if (currentFrame > 0 && currentFps >= 0) {
@@ -1518,6 +1661,233 @@ export class FfmpegService implements OnModuleDestroy {
    */
   hasActiveProcess(jobId: string): boolean {
     return this.activeEncodings.has(jobId);
+  }
+
+  /**
+   * Get detailed info about all tracked active encodings (for debug UI)
+   */
+  getActiveEncodingsDetails(): Array<{
+    jobId: string;
+    pid: number | undefined;
+    startTime: Date;
+    lastProgress: number;
+    lastOutputTime: Date;
+    runtimeSeconds: number;
+  }> {
+    const result: Array<{
+      jobId: string;
+      pid: number | undefined;
+      startTime: Date;
+      lastProgress: number;
+      lastOutputTime: Date;
+      runtimeSeconds: number;
+    }> = [];
+
+    for (const [jobId, encoding] of this.activeEncodings) {
+      result.push({
+        jobId,
+        pid: encoding.process.pid,
+        startTime: encoding.startTime,
+        lastProgress: encoding.lastProgress,
+        lastOutputTime: encoding.lastOutputTime,
+        runtimeSeconds: Math.floor((Date.now() - encoding.startTime.getTime()) / 1000),
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Find system FFmpeg processes using ps command
+   * Returns list of FFmpeg processes running on the system
+   */
+  async findSystemFfmpegProcesses(): Promise<
+    Array<{
+      pid: number;
+      command: string;
+      cpuPercent: number;
+      memPercent: number;
+      runtimeSeconds: number;
+    }>
+  > {
+    const { execSync } = await import('node:child_process');
+
+    try {
+      // Use ps to find all ffmpeg processes with their PIDs, CPU%, MEM%, and command
+      // Format: PID %CPU %MEM ETIME COMMAND
+      const psOutput = execSync(
+        "ps -eo pid,%cpu,%mem,etime,args 2>/dev/null | grep -E '[f]fmpeg' || true",
+        { encoding: 'utf-8', timeout: 5000 }
+      );
+
+      const processes: Array<{
+        pid: number;
+        command: string;
+        cpuPercent: number;
+        memPercent: number;
+        runtimeSeconds: number;
+      }> = [];
+
+      for (const line of psOutput.split('\n').filter(Boolean)) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 5) {
+          const pid = parseInt(parts[0], 10);
+          const cpuPercent = parseFloat(parts[1]) || 0;
+          const memPercent = parseFloat(parts[2]) || 0;
+          const etime = parts[3]; // Format: [[DD-]HH:]MM:SS
+          const command = parts.slice(4).join(' ');
+
+          // Parse elapsed time to seconds
+          let runtimeSeconds = 0;
+          const timeParts = etime.split(/[-:]/).reverse();
+          if (timeParts.length >= 1) runtimeSeconds += parseInt(timeParts[0], 10) || 0; // seconds
+          if (timeParts.length >= 2) runtimeSeconds += (parseInt(timeParts[1], 10) || 0) * 60; // minutes
+          if (timeParts.length >= 3) runtimeSeconds += (parseInt(timeParts[2], 10) || 0) * 3600; // hours
+          if (timeParts.length >= 4) runtimeSeconds += (parseInt(timeParts[3], 10) || 0) * 86400; // days
+
+          processes.push({
+            pid,
+            command: command.length > 200 ? command.substring(0, 200) + '...' : command,
+            cpuPercent,
+            memPercent,
+            runtimeSeconds,
+          });
+        }
+      }
+
+      return processes;
+    } catch (error) {
+      this.logger.warn(`Failed to find system FFmpeg processes: ${error}`);
+      return [];
+    }
+  }
+
+  /**
+   * Detect zombie FFmpeg processes
+   *
+   * A zombie FFmpeg process is one that:
+   * - Is running on the system
+   * - Is NOT tracked by our activeEncodings map
+   *
+   * These typically occur when:
+   * - Backend was restarted but FFmpeg processes weren't killed
+   * - A crash left orphaned processes
+   */
+  async detectZombieFfmpegProcesses(): Promise<
+    Array<{
+      pid: number;
+      command: string;
+      cpuPercent: number;
+      memPercent: number;
+      runtimeSeconds: number;
+      isZombie: boolean;
+      trackedJobId: string | null;
+    }>
+  > {
+    const systemProcesses = await this.findSystemFfmpegProcesses();
+    const trackedPids = new Set<number>();
+
+    // Build set of PIDs we're tracking
+    for (const encoding of this.activeEncodings.values()) {
+      if (encoding.process.pid) {
+        trackedPids.add(encoding.process.pid);
+      }
+    }
+
+    // Map PIDs to job IDs
+    const pidToJobId = new Map<number, string>();
+    for (const [jobId, encoding] of this.activeEncodings) {
+      if (encoding.process.pid) {
+        pidToJobId.set(encoding.process.pid, jobId);
+      }
+    }
+
+    // Mark each system process as zombie or tracked
+    return systemProcesses.map((proc) => ({
+      ...proc,
+      isZombie: !trackedPids.has(proc.pid),
+      trackedJobId: pidToJobId.get(proc.pid) || null,
+    }));
+  }
+
+  /**
+   * Kill a specific FFmpeg process by PID
+   *
+   * Used to clean up zombie/orphaned FFmpeg processes
+   *
+   * @param pid - Process ID to kill
+   * @returns True if killed successfully, false otherwise
+   */
+  async killFfmpegByPid(pid: number): Promise<{ success: boolean; message: string }> {
+    const { execSync } = await import('node:child_process');
+
+    // Safety check: don't kill tracked processes this way
+    for (const encoding of this.activeEncodings.values()) {
+      if (encoding.process.pid === pid) {
+        return {
+          success: false,
+          message: `PID ${pid} is tracked by job ${Array.from(this.activeEncodings.entries()).find(([_, e]) => e.process.pid === pid)?.[0]}. Use cancel endpoint instead.`,
+        };
+      }
+    }
+
+    try {
+      // First try SIGTERM for graceful shutdown
+      this.logger.log(`Killing zombie FFmpeg process PID ${pid} with SIGTERM`);
+      execSync(`kill -TERM ${pid} 2>/dev/null || true`, { timeout: 2000 });
+
+      // Wait a moment
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Check if process still exists
+      try {
+        execSync(`kill -0 ${pid} 2>/dev/null`, { timeout: 1000 });
+        // Process still alive, use SIGKILL
+        this.logger.log(`Process PID ${pid} still alive, using SIGKILL`);
+        execSync(`kill -KILL ${pid} 2>/dev/null || true`, { timeout: 2000 });
+      } catch (_checkError) {
+        // Process already dead (good)
+      }
+
+      return { success: true, message: `Successfully killed FFmpeg process PID ${pid}` };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to kill FFmpeg process PID ${pid}: ${errorMessage}`);
+      return { success: false, message: `Failed to kill PID ${pid}: ${errorMessage}` };
+    }
+  }
+
+  /**
+   * Kill all zombie FFmpeg processes
+   *
+   * Finds and kills all FFmpeg processes that aren't tracked by activeEncodings
+   *
+   * @returns Summary of killed processes
+   */
+  async killAllZombieFfmpegProcesses(): Promise<{
+    killed: number;
+    failed: number;
+    details: Array<{ pid: number; success: boolean; message: string }>;
+  }> {
+    const zombies = await this.detectZombieFfmpegProcesses();
+    const zombieProcesses = zombies.filter((p) => p.isZombie);
+
+    const details: Array<{ pid: number; success: boolean; message: string }> = [];
+    let killed = 0;
+    let failed = 0;
+
+    for (const zombie of zombieProcesses) {
+      const result = await this.killFfmpegByPid(zombie.pid);
+      details.push({ pid: zombie.pid, ...result });
+      if (result.success) {
+        killed++;
+      } else {
+        failed++;
+      }
+    }
+
+    this.logger.log(`Zombie cleanup complete: ${killed} killed, ${failed} failed`);
+    return { killed, failed, details };
   }
 
   /**
@@ -1729,11 +2099,11 @@ export class FfmpegService implements OnModuleDestroy {
   private interpretFfmpegExitCode(
     code: number,
     stderr: string,
-    progress: number = 0,
-    retryCount: number = 0
+    progress = 0,
+    retryCount = 0
   ): string {
     // Use new error analyzer for human-readable explanations
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+
     const {
       analyzeFfmpegError,
       formatErrorForDisplay,
@@ -1879,6 +2249,15 @@ export class FfmpegService implements OnModuleDestroy {
       transferError: null,
       remoteTempPath: null,
       transferRetryCount: 0,
+      // Distribution v2 fields
+      assignedAt: null,
+      stickyUntil: null,
+      migrationCount: 0,
+      estimatedDuration: null,
+      estimatedStartAt: null,
+      estimatedCompleteAt: null,
+      lastScoreBreakdown: null,
+      assignmentReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1977,8 +2356,8 @@ export class FfmpegService implements OnModuleDestroy {
    */
   private async waitForFileExists(
     filePath: string,
-    maxRetries: number = 10,
-    delayMs: number = 2000
+    maxRetries = 10,
+    delayMs = 2000
   ): Promise<boolean> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -2020,9 +2399,9 @@ export class FfmpegService implements OnModuleDestroy {
    */
   private async verifyFileWithRetries(
     filePath: string,
-    maxRetries: number = 10
+    maxRetries = 10
   ): Promise<{ isValid: boolean; error?: string; attempts: number }> {
-    let lastError: string = '';
+    let lastError = '';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {

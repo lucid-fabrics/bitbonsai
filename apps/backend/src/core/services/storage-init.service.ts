@@ -1,17 +1,21 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { StorageShareService } from '../../nodes/services/storage-share.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NFSAutoExportService } from './nfs-auto-export.service';
+
+const execAsync = promisify(exec);
 
 /**
  * Storage Initialization Service
  *
  * Automatically initializes storage sharing on application startup:
- * - MAIN nodes: Auto-exports Docker volumes as NFS shares
- * - LINKED nodes: Auto-detects and mounts shares from main node
- * - Enables zero-config storage sharing for all nodes
+ * - MAIN nodes: Detects Docker volumes and creates StorageShare records
+ * - LINKED nodes: Verifies NFS mounts and sets hasSharedStorage accordingly
  *
- * This runs once on startup to ensure storage is immediately available.
+ * NOTE: NFS exports must be configured on the HOST (e.g., Unraid Settings → NFS).
+ * This service does NOT create NFS exports - it only detects and verifies them.
  */
 @Injectable()
 export class StorageInitService implements OnModuleInit {
@@ -42,30 +46,68 @@ export class StorageInitService implements OnModuleInit {
       }
 
       if (currentNode.role === 'MAIN') {
-        // MAIN node: Auto-export Docker volumes as NFS shares
-        this.logger.log('🗂️  Detected MAIN node - initiating Docker volume auto-export...');
+        // MAIN node: Detect Docker volumes and create StorageShare records
+        this.logger.log('🗂️  Detected MAIN node - detecting Docker volumes...');
         await this.nfsAutoExport.autoExportDockerVolumes();
         this.logger.log('✅ MAIN node storage initialization complete');
       } else if (currentNode.role === 'LINKED') {
-        // LINKED node: Auto-detect and mount shares from main node
-        this.logger.log('🗂️  Detected LINKED node - initiating storage auto-mount...');
+        // LINKED node: Verify NFS mounts and set hasSharedStorage
+        this.logger.log('🗂️  Detected LINKED node - verifying shared storage...');
 
-        // Only auto-mount if mainNodeUrl is configured
-        if (!currentNode.mainNodeUrl) {
-          this.logger.warn(
-            '⚠️  No mainNodeUrl configured - skipping auto-mount (will mount after pairing)'
-          );
-          return;
-        }
+        // Check for NFS mounts FIRST (from deploy script or manual setup)
+        const hasNFSMounts = await this.verifyNFSMounts();
 
-        const result = await this.storageShareService.autoDetectAndMount(currentNode.id);
+        if (hasNFSMounts) {
+          this.logger.log('✅ NFS mounts detected - enabling shared storage mode');
 
-        this.logger.log(
-          `✅ LINKED node storage initialization complete: ${result.detected} detected, ${result.created} created, ${result.mounted} mounted`
-        );
+          // Update node to enable shared storage
+          await this.prisma.node.update({
+            where: { id: currentNode.id },
+            data: {
+              hasSharedStorage: true,
+              networkLocation: 'LOCAL',
+            },
+          });
 
-        if (result.errors.length > 0) {
-          this.logger.warn(`⚠️  Mount errors: ${result.errors.join(', ')}`);
+          this.logger.log('✅ LINKED node: Zero-copy shared storage ENABLED');
+        } else {
+          this.logger.warn('⚠️  No NFS mounts detected - will use file transfer mode');
+
+          // Ensure hasSharedStorage is false
+          await this.prisma.node.update({
+            where: { id: currentNode.id },
+            data: {
+              hasSharedStorage: false,
+            },
+          });
+
+          // Try to auto-detect and mount shares from main node
+          if (currentNode.mainNodeUrl) {
+            this.logger.log('Attempting to fetch share info from main node...');
+            const result = await this.storageShareService.autoDetectAndMount(currentNode.id);
+
+            this.logger.log(
+              `Auto-detect result: ${result.detected} detected, ${result.mounted} mounted`
+            );
+
+            if (result.mounted > 0) {
+              // Re-verify mounts after auto-mount attempt
+              const mountsNow = await this.verifyNFSMounts();
+              if (mountsNow) {
+                await this.prisma.node.update({
+                  where: { id: currentNode.id },
+                  data: { hasSharedStorage: true, networkLocation: 'LOCAL' },
+                });
+                this.logger.log('✅ NFS mounts now working - shared storage enabled');
+              }
+            }
+
+            if (result.errors.length > 0) {
+              this.logger.warn(`Mount errors: ${result.errors.join(', ')}`);
+            }
+          } else {
+            this.logger.warn('No mainNodeUrl configured - cannot fetch share info');
+          }
         }
       }
     } catch (error) {
@@ -74,6 +116,35 @@ export class StorageInitService implements OnModuleInit {
         error instanceof Error ? error.stack : error
       );
       // Don't throw - allow app to continue even if storage init fails
+    }
+  }
+
+  /**
+   * Check if any NFS mounts exist on this system
+   * Returns true if at least one NFS mount is found
+   */
+  private async verifyNFSMounts(): Promise<boolean> {
+    try {
+      const { stdout } = await execAsync('mount -t nfs,nfs4 2>/dev/null || true');
+      const nfsMounts = stdout
+        .trim()
+        .split('\n')
+        .filter((line) => line.includes(' on '));
+
+      if (nfsMounts.length > 0) {
+        this.logger.debug(`Found ${nfsMounts.length} NFS mount(s):`);
+        for (const mount of nfsMounts) {
+          const match = mount.match(/(\S+) on (\S+)/);
+          if (match) {
+            this.logger.debug(`  - ${match[1]} → ${match[2]}`);
+          }
+        }
+        return true;
+      }
+
+      return false;
+    } catch {
+      return false;
     }
   }
 }

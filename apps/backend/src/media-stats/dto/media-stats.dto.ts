@@ -122,7 +122,7 @@ export class MediaStatsDto {
   codec_distribution!: CodecDistributionDto;
 
   @ApiProperty({
-    description: 'Detailed statistics for each media folder configured in MEDIA_PATHS',
+    description: 'Detailed statistics for each configured library folder',
     type: [FolderStatsDto],
     example: [
       {

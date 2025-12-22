@@ -1,0 +1,159 @@
+import { Injectable } from '@nestjs/common';
+import {
+  StorageShareStatus as Status,
+  type StorageShare,
+  type StorageShareStatus,
+} from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { type IStorageShareRepository } from './storage-share.repository.interface';
+
+/**
+ * Prisma implementation of StorageShare repository
+ * Encapsulates all database operations for StorageShare entity
+ */
+@Injectable()
+export class StorageShareRepository implements IStorageShareRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(data: Partial<StorageShare>): Promise<StorageShare> {
+    return this.prisma.storageShare.create({
+      data: data as any,
+    });
+  }
+
+  async findById(id: string): Promise<StorageShare | null> {
+    return this.prisma.storageShare.findUnique({
+      where: { id },
+    });
+  }
+
+  async findByMountPoint(nodeId: string, mountPoint: string): Promise<StorageShare | null> {
+    return this.prisma.storageShare.findFirst({
+      where: {
+        nodeId,
+        mountPoint,
+      },
+    });
+  }
+
+  async findByNodeId(nodeId: string): Promise<StorageShare[]> {
+    return this.prisma.storageShare.findMany({
+      where: { nodeId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findAll(): Promise<StorageShare[]> {
+    return this.prisma.storageShare.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findByStatus(status: StorageShareStatus): Promise<StorageShare[]> {
+    return this.prisma.storageShare.findMany({
+      where: { status },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findAutoManagedByNodeId(nodeId: string): Promise<StorageShare[]> {
+    return this.prisma.storageShare.findMany({
+      where: {
+        nodeId,
+        autoManaged: true,
+      },
+    });
+  }
+
+  async update(id: string, data: Partial<StorageShare>): Promise<StorageShare> {
+    return this.prisma.storageShare.update({
+      where: { id },
+      data: data as any,
+    });
+  }
+
+  async updateStatus(
+    id: string,
+    status: StorageShareStatus,
+    errorMessage?: string
+  ): Promise<StorageShare> {
+    return this.prisma.storageShare.update({
+      where: { id },
+      data: {
+        status,
+        isMounted: status === Status.MOUNTED,
+        lastError: errorMessage || null,
+      },
+    });
+  }
+
+  async delete(id: string): Promise<StorageShare> {
+    return this.prisma.storageShare.delete({
+      where: { id },
+    });
+  }
+
+  async deleteAutoManagedByNodeId(nodeId: string): Promise<number> {
+    const result = await this.prisma.storageShare.deleteMany({
+      where: {
+        nodeId,
+        autoManaged: true,
+      },
+    });
+    return result.count;
+  }
+
+  async countByStatus(): Promise<{
+    total: number;
+    mounted: number;
+    unmounted: number;
+    error: number;
+  }> {
+    const [total, mounted, unmounted, error] = await Promise.all([
+      this.prisma.storageShare.count(),
+      this.prisma.storageShare.count({ where: { status: Status.MOUNTED } }),
+      this.prisma.storageShare.count({ where: { status: Status.UNMOUNTED } }),
+      this.prisma.storageShare.count({ where: { status: Status.ERROR } }),
+    ]);
+
+    return {
+      total,
+      mounted,
+      unmounted,
+      error,
+    };
+  }
+
+  async findMountedByNodeId(nodeId: string): Promise<StorageShare[]> {
+    return this.prisma.storageShare.findMany({
+      where: {
+        nodeId,
+        isMounted: true,
+      },
+      orderBy: { lastMountAt: 'desc' },
+    });
+  }
+
+  async findByOwnerNodeId(ownerNodeId: string): Promise<StorageShare[]> {
+    return this.prisma.storageShare.findMany({
+      where: { ownerNodeId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findMountPointsByNodeId(nodeId: string): Promise<Array<{ mountPoint: string }>> {
+    return this.prisma.storageShare.findMany({
+      where: { nodeId },
+      select: { mountPoint: true },
+    });
+  }
+
+  async findBySharePath(nodeId: string, sharePath: string): Promise<StorageShare | null> {
+    return this.prisma.storageShare.findFirst({
+      where: {
+        nodeId,
+        sharePath,
+      },
+    });
+  }
+}

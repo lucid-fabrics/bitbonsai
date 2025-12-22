@@ -132,6 +132,18 @@ export const routes: Routes = [
             (m) => m.AdvancedTabComponent
           ),
       },
+      {
+        path: 'integrations',
+        loadComponent: () =>
+          import('./features/settings/tabs/integrations-tab.component').then(
+            (m) => m.IntegrationsTabComponent
+          ),
+      },
+      {
+        path: 'debug',
+        loadComponent: () =>
+          import('./features/settings/tabs/debug-tab.component').then((m) => m.DebugTabComponent),
+      },
     ],
   },
   {

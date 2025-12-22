@@ -195,6 +195,12 @@ export class StorageShareService {
 
   /**
    * Update share status (called by StorageMountService)
+   *
+   * Status and isMounted are kept in sync:
+   * - MOUNTED → isMounted = true, errorCount = 0
+   * - UNMOUNTED → isMounted = false
+   * - ERROR → isMounted = false, errorCount increments
+   * - AVAILABLE → no change to isMounted/errorCount
    */
   async updateStatus(
     id: string,
@@ -203,22 +209,41 @@ export class StorageShareService {
   ): Promise<StorageShare> {
     const updateData: any = {
       status,
-      errorCount: error ? { increment: 1 } : 0,
     };
 
-    if (error) {
-      updateData.lastError = error;
-    }
-
+    // Handle each status appropriately
     if (status === StorageShareStatus.MOUNTED) {
       updateData.isMounted = true;
       updateData.lastMountAt = new Date();
       updateData.errorCount = 0;
       updateData.lastError = null;
+
+      // AUTO-FIX: Set hasSharedStorage=true on node when NFS mounts successfully
+      // This enables zero-copy job execution via shared storage
+      const share = await this.repository.findById(id);
+      if (share) {
+        await this.prisma.node.update({
+          where: { id: share.nodeId },
+          data: {
+            hasSharedStorage: true,
+            networkLocation: 'LOCAL',
+          },
+        });
+        this.logger.log(
+          `✅ Auto-set hasSharedStorage=true for node ${share.nodeId} after mounting ${share.name}`
+        );
+      }
     } else if (status === StorageShareStatus.UNMOUNTED) {
       updateData.isMounted = false;
       updateData.lastUnmountAt = new Date();
+    } else if (status === StorageShareStatus.ERROR) {
+      updateData.isMounted = false;
+      updateData.errorCount = { increment: 1 };
+      if (error) {
+        updateData.lastError = error;
+      }
     }
+    // For AVAILABLE status, don't modify isMounted or errorCount
 
     return this.repository.update(id, updateData);
   }
@@ -473,14 +498,6 @@ export class StorageShareService {
       // Create and mount each share on this node
       for (const mainShare of autoManagedShares) {
         try {
-          // Check if already exists
-          const existing = await this.repository.findByMountPoint(nodeId, mainShare.mountPoint);
-
-          if (existing) {
-            this.logger.debug(`Share ${mainShare.name} already exists on this node`);
-            continue;
-          }
-
           // Validate mount point is appropriate for this node
           // Note: Auto-managed shares use Docker container paths (e.g., /media)
           // This assumes all nodes use consistent containerization with same mount points
@@ -493,29 +510,53 @@ export class StorageShareService {
             );
           }
 
-          // Create local StorageShare record
-          const localShare = await this.create({
-            nodeId,
-            name: mainShare.name,
-            protocol: mainShare.protocol,
-            serverAddress: mainShare.serverAddress,
-            sharePath: mainShare.sharePath,
-            mountPoint, // Use validated mount point
-            readOnly: mainShare.readOnly,
-            mountOptions: mainShare.mountOptions || undefined,
-            autoMount: true,
-            addToFstab: true,
-            mountOnDetection: true,
-            ownerNodeId: mainNode.id,
-          });
+          // Check if already exists - if so, use existing record for mounting
+          let localShare = await this.repository.findByMountPoint(nodeId, mainShare.mountPoint);
 
-          result.created++;
+          if (localShare) {
+            this.logger.debug(
+              `Share ${mainShare.name} already exists on this node, using existing record`
+            );
+          } else {
+            // Create local StorageShare record
+            // Uses unique constraint (nodeId, mountPoint) to prevent race condition duplicates
+            try {
+              localShare = await this.create({
+                nodeId,
+                name: mainShare.name,
+                protocol: mainShare.protocol,
+                serverAddress: mainShare.serverAddress,
+                sharePath: mainShare.sharePath,
+                mountPoint, // Use validated mount point
+                readOnly: mainShare.readOnly,
+                mountOptions: mainShare.mountOptions || undefined,
+                autoMount: true,
+                addToFstab: true,
+                mountOnDetection: true,
+                ownerNodeId: mainNode.id,
+              });
 
-          this.logger.log(`✓ Created local share record for ${mainShare.name}`);
+              result.created++;
+              this.logger.log(`✓ Created local share record for ${mainShare.name}`);
+            } catch (createError: any) {
+              // Handle race condition: unique constraint violation (P2002)
+              // Another request may have created the record between our check and create
+              if (createError?.code === 'P2002') {
+                this.logger.debug(
+                  `Share ${mainShare.name} was created by concurrent request, fetching existing record`
+                );
+                localShare = await this.repository.findByMountPoint(nodeId, mainShare.mountPoint);
+                if (!localShare) {
+                  throw new Error('Race condition: record exists but cannot be found');
+                }
+              } else {
+                throw createError;
+              }
+            }
+          }
 
-          // CRITICAL FIX: Actually mount the share after creating the record
-          // This was missing - shares were being created but never mounted!
-          if (mainShare.autoMount || mainShare.mountOnDetection) {
+          // Mount the share if not already mounted
+          if (!localShare.isMounted && (mainShare.autoMount || mainShare.mountOnDetection)) {
             this.logger.log(`Mounting ${mainShare.name} at ${mainShare.mountPoint}...`);
 
             const mountResult = await this.mountService.mount(localShare.id);
@@ -528,6 +569,9 @@ export class StorageShareService {
               this.logger.error(mountError);
               result.errors.push(mountError);
             }
+          } else if (localShare.isMounted) {
+            this.logger.debug(`Share ${mainShare.name} is already mounted`);
+            result.mounted++; // Count as mounted since it's already working
           }
         } catch (error) {
           const errorMsg = `Failed to auto-mount ${mainShare.name}: ${
@@ -553,13 +597,29 @@ export class StorageShareService {
 
   /**
    * Automatically create storage shares for all libraries owned by a node
-   * This is called when pairing a new child node to enable shared storage
+   *
+   * ⚠️  DEPRECATED: This method uses container paths for NFS shares which will NOT work
+   * when running inside Docker. The library path (e.g., /media/Movies) is a container
+   * path, but NFS exports need HOST paths (e.g., /mnt/user/media/Movies).
+   *
+   * USE INSTEAD: NFSAutoExportService.autoExportDockerVolumes() which correctly:
+   * - Detects Docker volume mounts
+   * - Uses HOST paths for sharePath (NFS export)
+   * - Uses container paths for mountPoint (child node mount)
+   *
+   * This method is kept for backward compatibility but will log warnings and
+   * return existing auto-managed shares instead of creating broken ones.
    *
    * @param mainNodeId - ID of the main node whose libraries should be shared
-   * @returns Array of created storage shares
+   * @returns Array of existing auto-managed storage shares (does NOT create new ones)
    */
   async autoCreateSharesForLibraries(mainNodeId: string): Promise<StorageShare[]> {
-    this.logger.log(`Auto-creating storage shares for libraries on node ${mainNodeId}...`);
+    this.logger.warn(
+      `⚠️  autoCreateSharesForLibraries is DEPRECATED. Use NFSAutoExportService.autoExportDockerVolumes() instead.`
+    );
+    this.logger.warn(
+      `This method uses container paths which don't work for NFS exports inside Docker.`
+    );
 
     try {
       // Get the main node
@@ -576,60 +636,25 @@ export class StorageShareService {
         throw new NotFoundException(`Node ${mainNodeId} not found`);
       }
 
-      if (!mainNode.ipAddress) {
-        this.logger.warn(`Node ${mainNodeId} has no IP address - cannot create shares`);
-        return [];
+      // Instead of creating broken shares, return existing auto-managed shares
+      // These should have been created by NFSAutoExportService with correct paths
+      const existingShares = await this.repository.findAutoManagedByNodeId(mainNodeId);
+
+      if (existingShares.length > 0) {
+        this.logger.log(
+          `Returning ${existingShares.length} existing auto-managed shares (created by NFSAutoExportService)`
+        );
+        return existingShares;
       }
 
-      if (mainNode.libraries.length === 0) {
-        this.logger.log(`Node ${mainNodeId} has no enabled libraries - nothing to share`);
-        return [];
-      }
+      // If no auto-managed shares exist, warn user to use the correct method
+      this.logger.warn(
+        `No auto-managed shares found. Please use POST /storage-shares/auto-export-docker-volumes ` +
+          `to create NFS shares with correct HOST paths.`
+      );
 
-      const createdShares: StorageShare[] = [];
-
-      // Create a storage share for each library
-      for (const library of mainNode.libraries) {
-        try {
-          // Check if a share already exists for this library path
-          const existing = await this.repository.findBySharePath(mainNodeId, library.path);
-
-          if (existing) {
-            this.logger.log(`Share already exists for library ${library.name} at ${library.path}`);
-            createdShares.push(existing);
-            continue;
-          }
-
-          // Create the share
-          const share = await this.create({
-            nodeId: mainNodeId,
-            name: `Library: ${library.name}`,
-            protocol: StorageProtocol.NFS,
-            serverAddress: mainNode.ipAddress,
-            sharePath: library.path,
-            mountPoint: library.path, // Use same path on child nodes
-            readOnly: false, // Allow child nodes to write (for encoding output)
-            autoMount: true,
-            addToFstab: true,
-            mountOnDetection: true,
-            autoManaged: true, // Mark as system-managed for auto-detection
-            ownerNodeId: mainNodeId,
-          });
-
-          this.logger.log(
-            `✅ Created storage share for library ${library.name}: ${mainNode.ipAddress}:${library.path}`
-          );
-          createdShares.push(share);
-        } catch (error) {
-          this.logger.error(
-            `Failed to create share for library ${library.name}:`,
-            error instanceof Error ? error.message : 'unknown error'
-          );
-        }
-      }
-
-      this.logger.log(`Created ${createdShares.length} storage shares for node ${mainNodeId}`);
-      return createdShares;
+      // Return empty array instead of creating broken shares
+      return [];
     } catch (error) {
       this.logger.error(
         `Auto-create shares failed:`,

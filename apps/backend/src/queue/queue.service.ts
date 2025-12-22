@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  type OnModuleInit,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { FileHealthStatus, type Job, JobEventType, JobStage, Prisma } from '@prisma/client';
@@ -30,7 +31,7 @@ import { JobRouterService } from './services/job-router.service';
  * Based on the Prisma integration example (lines 239-446).
  */
 @Injectable()
-export class QueueService {
+export class QueueService implements OnModuleInit {
   private readonly logger = new Logger(QueueService.name);
 
   constructor(
@@ -46,6 +47,138 @@ export class QueueService {
     private httpService: HttpService,
     private sharedStorageVerifier: SharedStorageVerifierService
   ) {}
+
+  /**
+   * SELF-HEALING: Scan and heal orphaned jobs on startup
+   *
+   * Runs when the service initializes to fix jobs with:
+   * - Missing policies (policy was deleted)
+   * - Mismatched targetCodec (job codec doesn't match policy codec)
+   *
+   * UX Philosophy: Silent auto-heal on startup - zero user intervention required
+   */
+  async onModuleInit(): Promise<void> {
+    // Only run on MAIN node to avoid duplicate healing
+    if (this.nodeConfig.getMainApiUrl()) {
+      this.logger.debug('POLICY HEAL: Skipping startup scan (LINKED node)');
+      return;
+    }
+
+    this.logger.log('POLICY HEAL: Starting orphaned job scan...');
+
+    try {
+      await this.healOrphanedJobs();
+    } catch (error) {
+      this.logger.error('POLICY HEAL: Failed to complete startup scan', error);
+    }
+  }
+
+  /**
+   * SELF-HEALING: Find and fix all jobs with orphaned or mismatched policies
+   *
+   * Scans for:
+   * 1. Jobs where policyId is null
+   * 2. Jobs where policy no longer exists in database
+   * 3. Jobs where targetCodec doesn't match their policy's targetCodec
+   *
+   * Resolution priority:
+   * 1. Library's default policy
+   * 2. Any policy assigned to the library
+   * 3. First available policy in system
+   */
+  private async healOrphanedJobs(): Promise<void> {
+    // Get all policies for quick lookup
+    const allPolicies = await this.prisma.policy.findMany();
+    const policyMap = new Map(allPolicies.map((p) => [p.id, p]));
+
+    if (allPolicies.length === 0) {
+      this.logger.warn('POLICY HEAL: No policies exist - cannot heal orphaned jobs');
+      return;
+    }
+
+    // Find jobs that need healing (non-terminal stages only)
+    const jobsToCheck = await this.prisma.job.findMany({
+      where: {
+        stage: {
+          in: [JobStage.QUEUED, JobStage.DETECTED, JobStage.PAUSED_LOAD],
+        },
+      },
+      include: {
+        library: {
+          include: {
+            defaultPolicy: true,
+            policies: true,
+          },
+        },
+      },
+    });
+
+    let healedCount = 0;
+    let errorCount = 0;
+
+    for (const job of jobsToCheck) {
+      try {
+        const currentPolicy = job.policyId ? policyMap.get(job.policyId) : null;
+
+        // Case 1: Policy exists and codec matches - skip
+        if (currentPolicy && job.targetCodec === currentPolicy.targetCodec) {
+          continue;
+        }
+
+        // Case 2: Policy exists but codec mismatches - update codec
+        if (currentPolicy && job.targetCodec !== currentPolicy.targetCodec) {
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: { targetCodec: currentPolicy.targetCodec },
+          });
+          this.logger.log(
+            `POLICY HEAL: Fixed codec mismatch for job ${job.id} (${job.targetCodec} → ${currentPolicy.targetCodec})`
+          );
+          healedCount++;
+          continue;
+        }
+
+        // Case 3: Policy is missing - find replacement
+        let newPolicy = null;
+
+        // Priority 1: Library's default policy
+        if (job.library?.defaultPolicy && policyMap.has(job.library.defaultPolicy.id)) {
+          newPolicy = job.library.defaultPolicy;
+        }
+        // Priority 2: Any policy assigned to the library
+        else if (job.library?.policies?.length) {
+          newPolicy = job.library.policies.find((p) => policyMap.has(p.id));
+        }
+        // Priority 3: First available policy
+        if (!newPolicy) {
+          newPolicy = allPolicies[0];
+        }
+
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            policyId: newPolicy.id,
+            targetCodec: newPolicy.targetCodec,
+          },
+        });
+        this.logger.log(
+          `POLICY HEAL: Assigned policy "${newPolicy.name}" to orphaned job ${job.id}`
+        );
+        healedCount++;
+      } catch (error) {
+        this.logger.error(`POLICY HEAL: Failed to heal job ${job.id}`, error);
+        errorCount++;
+      }
+    }
+
+    if (healedCount > 0 || errorCount > 0) {
+      this.logger.log(
+        `POLICY HEAL: Startup scan complete - healed: ${healedCount}, errors: ${errorCount}`
+      );
+    } else {
+      this.logger.debug('POLICY HEAL: No orphaned jobs found');
+    }
+  }
 
   /**
    * SECURITY: Validate file path to prevent directory traversal attacks
@@ -114,6 +247,24 @@ export class QueueService {
    */
   async create(createJobDto: CreateJobDto): Promise<Job> {
     this.logger.log(`Creating job for: ${createJobDto.fileLabel}`);
+
+    // MULTI-NODE: LINKED nodes should proxy job creation to MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job creation to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(url, createJobDto, { timeout: 30000 })
+        );
+        this.logger.debug(`✅ MULTI-NODE: Job creation successful`);
+        return response.data;
+      } catch (error) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job creation to MAIN:`, error);
+        throw error;
+      }
+    }
 
     // PERFORMANCE OPTIMIZATION: Parallelize validation queries (60ms → 20ms)
     const [node, library, policy] = await Promise.all([
@@ -770,6 +921,10 @@ export class QueueService {
             this.logger.debug(
               `Job ${job.id} was claimed by another worker (attempt ${attempt}/${maxAttempts}), trying next job`
             );
+            // RACE CONDITION FIX: Add random jitter delay (10-50ms) to prevent hot retry loops
+            // This reduces contention when multiple workers compete for the same jobs
+            const jitterMs = 10 + Math.random() * 40;
+            await new Promise((resolve) => setTimeout(resolve, jitterMs));
             continue; // Try next available job
           }
 
@@ -943,9 +1098,46 @@ export class QueueService {
   async completeJob(id: string, completeJobDto: CompleteJobDto): Promise<Job> {
     this.logger.log(`Completing job: ${id}`);
 
+    // MULTI-NODE: LINKED nodes should proxy job completion to MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}/complete`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job completion to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(url, completeJobDto, { timeout: 30000 })
+        );
+        this.logger.debug(`✅ MULTI-NODE: Job completion successful for ${id}`);
+        return response.data;
+      } catch (error) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job completion to MAIN:`, error);
+        throw error;
+      }
+    }
+
     // CRITICAL FIX #1: Use transaction to ensure atomic completion + metrics update
     // This prevents race conditions where job shows COMPLETED via API but disappears after restart
     const job = await this.prisma.$transaction(async (tx) => {
+      // RACE CONDITION FIX: Check job isn't already completed to prevent double metrics
+      const existingJob = await tx.job.findUnique({
+        where: { id },
+        select: { stage: true },
+      });
+
+      if (!existingJob) {
+        throw new NotFoundException(`Job with ID "${id}" not found`);
+      }
+
+      if (existingJob.stage === JobStage.COMPLETED) {
+        this.logger.warn(`Job ${id} already completed - skipping to prevent double metrics`);
+        // Return the existing completed job
+        return tx.job.findUnique({
+          where: { id },
+          include: { node: { include: { license: true } } },
+        }) as Promise<Job & { node: { licenseId: string } }>;
+      }
+
       // Step 1: Update job to COMPLETED
       const completedJob = await tx.job.update({
         where: { id },
@@ -983,11 +1175,30 @@ export class QueueService {
    *
    * @param id - Job unique identifier
    * @param error - Error message
+   * @param errorDetails - Additional error context (e.g., FFmpeg stderr)
    * @returns Failed job
    * @throws NotFoundException if job does not exist
    */
   async failJob(id: string, error: string): Promise<Job> {
     this.logger.log(`Failing job: ${id}`);
+
+    // MULTI-NODE: LINKED nodes should proxy job failure to MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}/fail`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job failure to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(url, { error }, { timeout: 30000 })
+        );
+        this.logger.debug(`✅ MULTI-NODE: Job failure recorded for ${id}`);
+        return response.data;
+      } catch (err) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job failure to MAIN:`, err);
+        throw err;
+      }
+    }
 
     // Fetch job data before updating to capture current state
     const existingJob = await this.prisma.job.findUnique({
@@ -1011,6 +1222,7 @@ export class QueueService {
         completedAt: new Date(),
         failedAt: new Date(),
         error,
+        // errorDetails, // TODO: Re-enable after Prisma migration applied
         priority: 0, // Auto-reset priority to normal on failure
         prioritySetAt: null, // Clear priority timestamp
       },
@@ -1045,6 +1257,24 @@ export class QueueService {
   async cancelJob(id: string, blacklist = false): Promise<Job> {
     this.logger.log(`Cancelling job: ${id} (blacklist: ${blacklist})`);
 
+    // MULTI-NODE: LINKED nodes should proxy job cancellation to MAIN node's API
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}/cancel`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job cancellation to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(url, { blacklist }, { timeout: 30000 })
+        );
+        this.logger.debug(`✅ MULTI-NODE: Job cancellation successful for ${id}`);
+        return response.data;
+      } catch (error) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job cancellation to MAIN:`, error);
+        throw error;
+      }
+    }
+
     const existingJob = await this.prisma.job.findUnique({
       where: { id },
     });
@@ -1072,6 +1302,29 @@ export class QueueService {
       } catch (error) {
         this.logger.warn(`Failed to kill FFmpeg for job ${id}: ${error}`);
         // Continue with cancellation even if kill fails
+      }
+    }
+
+    // TRANSFER CLEANUP: If job is transferring, cancel the transfer and cleanup
+    if (existingJob.stage === 'TRANSFERRING') {
+      this.logger.log(`Job ${id} is transferring - cancelling transfer`);
+      try {
+        await this.fileTransferService.cancelTransfer(id);
+        this.logger.log(`Successfully cancelled transfer for job ${id}`);
+      } catch (error) {
+        this.logger.warn(`Failed to cancel transfer for job ${id}: ${error}`);
+        // Continue with cancellation even if cancel fails
+      }
+
+      // Cleanup remote temp file if it was created
+      if (existingJob.remoteTempPath) {
+        try {
+          await this.fileTransferService.cleanupRemoteTempFile(id);
+          this.logger.log(`Cleaned up remote temp file for job ${id}`);
+        } catch (error) {
+          this.logger.warn(`Failed to cleanup remote temp file for job ${id}: ${error}`);
+          // Non-critical, continue with cancellation
+        }
       }
     }
 
@@ -1696,6 +1949,99 @@ export class QueueService {
   }
 
   /**
+   * Skip all jobs where codec already matches target
+   *
+   * Bulk skip encoding for NEEDS_DECISION jobs that have the CODEC_ALREADY_MATCHES_TARGET issue.
+   * Jobs are marked as COMPLETED without any encoding performed.
+   *
+   * @returns Count of skipped jobs and list of job details
+   */
+  async skipAllCodecMatch(): Promise<{
+    skippedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+  }> {
+    this.logger.log('Skipping all jobs where codec already matches target');
+
+    try {
+      // Find all NEEDS_DECISION jobs
+      const allNeedsDecisionJobs = await this.prisma.job.findMany({
+        where: {
+          stage: JobStage.NEEDS_DECISION,
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          sourceCodec: true,
+          targetCodec: true,
+          beforeSizeBytes: true,
+          decisionIssues: true,
+        },
+      });
+
+      // Filter to those where source codec matches target codec (normalized comparison)
+      const jobsToSkip = allNeedsDecisionJobs.filter((job) => {
+        const normalizedSource = this.ffmpegService.normalizeCodec(job.sourceCodec);
+        const normalizedTarget = this.ffmpegService.normalizeCodec(job.targetCodec);
+        return normalizedSource === normalizedTarget;
+      });
+
+      if (jobsToSkip.length === 0) {
+        this.logger.log('No codec-match jobs found to skip');
+        return { skippedCount: 0, jobs: [] };
+      }
+
+      // Bulk update all matching jobs to COMPLETED
+      const now = new Date();
+      const result = await this.prisma.job.updateMany({
+        where: {
+          id: { in: jobsToSkip.map((j) => j.id) },
+        },
+        data: {
+          stage: JobStage.COMPLETED,
+          decisionRequired: false,
+          decisionIssues: null,
+          decisionMadeAt: now,
+          decisionData: JSON.stringify({
+            actionConfig: {
+              action: 'skip',
+              reason: 'codec_already_matches',
+              bulkAction: true,
+            },
+          }),
+          completedAt: now,
+          progress: 100,
+          healthMessage: '✅ Skipped - file already in target codec (bulk action)',
+        },
+      });
+
+      // Also update afterSizeBytes for each job individually (same as beforeSizeBytes)
+      await Promise.all(
+        jobsToSkip.map((job) =>
+          this.prisma.job.update({
+            where: { id: job.id },
+            data: { afterSizeBytes: job.beforeSizeBytes },
+          })
+        )
+      );
+
+      this.logger.log(`Skipped ${result.count} codec-match job(s)`);
+
+      return {
+        skippedCount: result.count,
+        jobs: jobsToSkip.map((job) => ({
+          id: job.id,
+          fileLabel: job.fileLabel,
+          sourceCodec: job.sourceCodec,
+          targetCodec: job.targetCodec,
+        })),
+      };
+    } catch (error) {
+      this.logger.error('Failed to skip codec-match jobs', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a job
    *
    * @param id - Job unique identifier
@@ -1767,6 +2113,8 @@ export class QueueService {
     const [
       detected,
       healthCheck,
+      needsDecision,
+      needsDecisionJobs,
       queued,
       transferring,
       encoding,
@@ -1781,6 +2129,22 @@ export class QueueService {
       }),
       this.prisma.job.count({
         where: { ...where, stage: JobStage.HEALTH_CHECK },
+      }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.NEEDS_DECISION },
+      }),
+      // Count of NEEDS_DECISION jobs where codec already matches target
+      // We fetch all NEEDS_DECISION jobs and filter client-side since Prisma doesn't support
+      // computed field comparisons. This is acceptable since NEEDS_DECISION count is typically low.
+      this.prisma.job.findMany({
+        where: {
+          ...where,
+          stage: JobStage.NEEDS_DECISION,
+        },
+        select: {
+          sourceCodec: true,
+          targetCodec: true,
+        },
       }),
       this.prisma.job.count({
         where: { ...where, stage: JobStage.QUEUED },
@@ -1809,9 +2173,18 @@ export class QueueService {
       }),
     ]);
 
+    // Calculate codec match count by comparing normalized source/target codecs
+    const codecMatchCount = needsDecisionJobs.filter((job) => {
+      const normalizedSource = this.ffmpegService.normalizeCodec(job.sourceCodec);
+      const normalizedTarget = this.ffmpegService.normalizeCodec(job.targetCodec);
+      return normalizedSource === normalizedTarget;
+    }).length;
+
     return {
       detected,
       healthCheck,
+      needsDecision,
+      codecMatchCount,
       queued,
       transferring,
       encoding,
@@ -2257,19 +2630,95 @@ export class QueueService {
       );
     }
 
+    // Handle special actions from decisionData
+    if (decisionData?.actionConfig) {
+      const config = decisionData.actionConfig;
+
+      // Handle skip action (codec already matches)
+      if (config.action === 'skip') {
+        const job = await this.prisma.job.update({
+          where: { id },
+          data: {
+            stage: JobStage.COMPLETED,
+            decisionRequired: false,
+            decisionIssues: null,
+            decisionMadeAt: new Date(),
+            decisionData: JSON.stringify(decisionData),
+            completedAt: new Date(),
+            afterSizeBytes: existingJob.beforeSizeBytes, // Size unchanged
+            progress: 100,
+            healthMessage: '✅ Skipped - file already in target codec',
+          },
+        });
+        this.logger.log(`Decision resolved for job ${id} - SKIPPED (codec already matches target)`);
+        return job;
+      }
+
+      // Handle cancel action
+      if (config.action === 'cancel') {
+        const job = await this.prisma.job.update({
+          where: { id },
+          data: {
+            stage: JobStage.CANCELLED,
+            decisionRequired: false,
+            decisionIssues: null,
+            decisionMadeAt: new Date(),
+            decisionData: JSON.stringify(decisionData),
+          },
+        });
+        this.logger.log(
+          `Decision resolved for job ${id} - CANCELLED by user (reason: ${config.reason || 'user_requested'})`
+        );
+        return job;
+      }
+    }
+
+    // Apply action configuration from decisionData (default behavior: move to QUEUED)
+    const updateData: any = {
+      stage: JobStage.QUEUED,
+      decisionRequired: false,
+      decisionIssues: null,
+      decisionMadeAt: new Date(),
+      decisionData: decisionData ? JSON.stringify(decisionData) : null,
+    };
+
+    // If action config provided, apply it to job settings
+    if (decisionData?.actionConfig) {
+      const config = decisionData.actionConfig;
+
+      // Apply target container from config
+      if (config.targetContainer) {
+        updateData.targetContainer = config.targetContainer;
+        this.logger.log(`Applying target container: ${config.targetContainer}`);
+      }
+
+      // Determine job type based on audio action
+      if (config.audioAction === 'copy') {
+        // Audio copy = fast remux (no re-encoding)
+        updateData.type = 'REMUX';
+        this.logger.log(`Setting job type to REMUX (audio copy)`);
+      } else if (config.audioAction === 'transcode_aac') {
+        // Audio transcode = full encode
+        updateData.type = 'ENCODE';
+        this.logger.log(`Setting job type to ENCODE (audio transcode)`);
+      }
+
+      // Handle force re-encode action (same codec re-encoding)
+      if (config.action === 'force_encode') {
+        updateData.type = 'ENCODE';
+        this.logger.log(`Setting job type to ENCODE (force re-encode same codec)`);
+      }
+    }
+
     // Move job to QUEUED and clear decision fields
     const job = await this.prisma.job.update({
       where: { id },
-      data: {
-        stage: JobStage.QUEUED,
-        decisionRequired: false,
-        decisionIssues: null,
-        decisionMadeAt: new Date(),
-        decisionData: decisionData ? JSON.stringify(decisionData) : null,
-      },
+      data: updateData,
     });
 
-    this.logger.log(`Decision resolved for job ${id} - moved to QUEUED stage`);
+    this.logger.log(
+      `Decision resolved for job ${id} - moved to QUEUED stage (container: ${job.targetContainer}, type: ${job.type})`
+    );
     return job;
   }
 
@@ -2283,7 +2732,7 @@ export class QueueService {
    * @returns Updated job
    * @private
    */
-  async update(id: string, data: Partial<Job>): Promise<Job> {
+  async update(id: string, data: Prisma.JobUpdateInput): Promise<Job> {
     // MULTI-NODE: LINKED nodes should proxy updates to MAIN node's API
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
@@ -2610,5 +3059,71 @@ export class QueueService {
    */
   async rebalanceJobs(): Promise<number> {
     return this.jobRouterService.rebalanceJobs();
+  }
+
+  /**
+   * Fix stuck transfers
+   *
+   * Resets jobs that are stuck in TRANSFERRING stage with 0% progress
+   * back to QUEUED so they can be picked up again.
+   *
+   * @returns Number of jobs fixed
+   */
+  async fixStuckTransfers(): Promise<number> {
+    this.logger.log('🔧 Fixing stuck transfers...');
+
+    // Find jobs stuck in TRANSFERRING with 0% progress for more than 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    const stuckJobs = await this.prisma.job.findMany({
+      where: {
+        stage: 'TRANSFERRING',
+        transferProgress: 0,
+        OR: [{ transferStartedAt: { lt: fiveMinutesAgo } }, { transferStartedAt: null }],
+      },
+      select: {
+        id: true,
+        fileLabel: true,
+        nodeId: true,
+        node: {
+          select: {
+            name: true,
+            hasSharedStorage: true,
+          },
+        },
+      },
+    });
+
+    if (stuckJobs.length === 0) {
+      this.logger.log('No stuck transfers found');
+      return 0;
+    }
+
+    this.logger.log(`Found ${stuckJobs.length} stuck transfer(s)`);
+
+    // Reset each stuck job
+    for (const job of stuckJobs) {
+      this.logger.log(
+        `Resetting stuck transfer: ${job.fileLabel} (node: ${job.node?.name}, hasSharedStorage: ${job.node?.hasSharedStorage})`
+      );
+
+      await this.prisma.job.update({
+        where: { id: job.id },
+        data: {
+          stage: 'QUEUED',
+          transferProgress: 0,
+          transferError: null,
+          transferStartedAt: null,
+          transferCompletedAt: null,
+          transferSpeedMBps: null,
+          // If node has shared storage, transfer is not required
+          transferRequired: job.node?.hasSharedStorage ? false : true,
+        },
+      });
+    }
+
+    this.logger.log(`✅ Fixed ${stuckJobs.length} stuck transfer(s)`);
+
+    return stuckJobs.length;
   }
 }

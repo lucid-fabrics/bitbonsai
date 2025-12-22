@@ -11,6 +11,7 @@ import { Store } from '@ngrx/store';
 import {
   BehaviorSubject,
   catchError,
+  firstValueFrom,
   fromEvent,
   interval,
   map,
@@ -21,6 +22,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { selectCurrentNode } from '../../core/+state/current-node.selectors';
+import { DistributionClient, type NodeCapacity } from '../../core/clients/distribution.client';
 import { NodesClient } from '../../core/clients/nodes.client';
 import { QueueClient } from '../../core/clients/queue.client';
 import { SettingsClient } from '../../core/clients/settings.client';
@@ -34,12 +36,17 @@ import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-sp
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
+import { DecisionIssueCardComponent } from './components/decision-issue-card/decision-issue-card.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
 import {
   JobDelegationDialogComponent,
   type JobDelegationDialogData,
 } from './components/job-delegation-dialog/job-delegation-dialog.component';
 import { JobHistoryModalComponent } from './components/job-history-modal/job-history-modal.component';
+import type {
+  HealthCheckIssue,
+  HealthCheckSuggestedAction,
+} from './models/health-check-issue.model';
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
@@ -62,6 +69,7 @@ import { StatusClassPipe } from './pipes/status-class.pipe';
     ErrorDetailsModalComponent,
     JobHistoryModalComponent,
     ImageCarouselComponent,
+    DecisionIssueCardComponent,
     // PERFORMANCE: Pure pipes for better change detection performance
     StatusClassPipe,
     CodecBadgeClassPipe,
@@ -74,6 +82,7 @@ export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
   private readonly nodesApi = inject(NodesClient);
   private readonly settingsApi = inject(SettingsClient);
+  private readonly distributionApi = inject(DistributionClient);
   private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -103,6 +112,7 @@ export class QueueComponent implements OnInit {
     Map<string, { name: string; nodeName: string }>
   >;
   protected readonly isMainNode$: Observable<boolean>;
+  protected readonly nodeCapacity$: Observable<NodeCapacity[]>;
 
   // State
   protected expandedJobId: string | null = null;
@@ -112,6 +122,7 @@ export class QueueComponent implements OnInit {
   protected showRetryAllDialog = false;
   protected showRetryFailedDialog = false;
   protected retryFailedSelectedError: string | null = null;
+  protected showSkipCodecMatchDialog = false;
   protected showClearJobsDialog = false;
   protected clearJobsStages: string[] = [];
   protected cancelDialogLoading = false;
@@ -167,6 +178,7 @@ export class QueueComponent implements OnInit {
   // Available statuses for filter (exclude transient statuses that jobs pass through quickly)
   protected readonly statuses: Array<JobStatus | 'ALL'> = [
     'ALL',
+    JobStatus.NEEDS_DECISION,
     JobStatus.QUEUED,
     JobStatus.TRANSFERRING,
     JobStatus.ENCODING,
@@ -237,6 +249,28 @@ export class QueueComponent implements OnInit {
     // Check if current node is MAIN (to show/hide node filter)
     this.isMainNode$ = this.store.select(selectCurrentNode).pipe(
       map((node) => node?.role === 'MAIN'),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+
+    // Fetch node capacity (load, workers) - refresh every 10 seconds
+    // Sort nodes consistently: MAIN first, then LINKED alphabetically by name
+    this.nodeCapacity$ = interval(10000).pipe(
+      startWith(0),
+      switchMap(() =>
+        this.distributionApi.getCapacity().pipe(
+          map((response) => {
+            // Sort nodes: MAIN role first, then LINKED nodes alphabetically by name
+            return [...response.nodes].sort((a, b) => {
+              // MAIN node always first
+              if (a.role === 'MAIN') return -1;
+              if (b.role === 'MAIN') return 1;
+              // Then sort LINKED nodes by name
+              return a.nodeName.localeCompare(b.nodeName);
+            });
+          }),
+          catchError(() => of([]))
+        )
+      ),
       shareReplay({ bufferSize: 1, refCount: true })
     );
   }
@@ -792,6 +826,40 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected openSkipCodecMatchDialog(): void {
+    this.showSkipCodecMatchDialog = true;
+  }
+
+  protected closeSkipCodecMatchDialog(): void {
+    this.showSkipCodecMatchDialog = false;
+  }
+
+  protected confirmSkipCodecMatch(): void {
+    this.queueApi
+      .skipAllCodecMatch()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const count = result.skippedCount;
+          if (count === 0) {
+            this.toastService.info('No codec-match jobs found to skip');
+          } else {
+            this.toastService.success(
+              count === 1
+                ? '1 job marked as completed (codec already matches)'
+                : `${count} jobs marked as completed (codec already matches)`
+            );
+          }
+          this.closeSkipCodecMatchDialog();
+          this.refreshQueue();
+        },
+        error: () => {
+          this.toastService.error('Failed to skip codec-match jobs');
+          this.closeSkipCodecMatchDialog();
+        },
+      });
+  }
+
   protected openRetryAllDialog(): void {
     this.showRetryAllDialog = true;
   }
@@ -978,6 +1046,8 @@ export class QueueComponent implements OnInit {
 
   protected getStatusIcon(status: JobStatus): string {
     switch (status) {
+      case JobStatus.NEEDS_DECISION:
+        return 'fa-exclamation-triangle';
       case JobStatus.QUEUED:
         return 'fa-clock';
       case JobStatus.TRANSFERRING:
@@ -1003,7 +1073,7 @@ export class QueueComponent implements OnInit {
     const labels: Record<JobStatus, string> = {
       [JobStatus.DETECTED]: 'Detected',
       [JobStatus.HEALTH_CHECK]: 'Health Check',
-      [JobStatus.NEEDS_DECISION]: 'Needs Decision',
+      [JobStatus.NEEDS_DECISION]: '⚠️ Needs Attention',
       [JobStatus.QUEUED]: 'Queued',
       [JobStatus.TRANSFERRING]: 'Transferring',
       [JobStatus.ENCODING]: 'Encoding',
@@ -1045,6 +1115,8 @@ export class QueueComponent implements OnInit {
 
   protected getStatusExplanation(status: JobStatus): string {
     switch (status) {
+      case JobStatus.NEEDS_DECISION:
+        return 'This job requires your attention before it can proceed. The issue and suggested fixes are displayed below. Common issues include incompatible audio codecs or container formats that need to be adjusted.';
       case JobStatus.QUEUED:
         return 'This job is waiting in the queue for an available encoding node. It will start automatically when a node becomes free.';
       case JobStatus.TRANSFERRING:
@@ -1087,6 +1159,56 @@ export class QueueComponent implements OnInit {
         return 'File is Corrupted';
       default:
         return 'Health Status Unknown';
+    }
+  }
+
+  /**
+   * Parse decision issues JSON string into HealthCheckIssue array
+   */
+  protected parseDecisionIssues(decisionIssuesJson: string | null | undefined): HealthCheckIssue[] {
+    if (!decisionIssuesJson) {
+      return [];
+    }
+
+    try {
+      const issues = JSON.parse(decisionIssuesJson);
+      return Array.isArray(issues) ? issues : [];
+    } catch (error) {
+      console.error('Failed to parse decision issues:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Handle action selection from decision issue card
+   */
+  protected async onDecisionActionSelected(event: {
+    issue: HealthCheckIssue;
+    action: HealthCheckSuggestedAction;
+  }): Promise<void> {
+    // Find the job ID from the currently expanded job
+    const jobId = this.expandedJobId;
+    if (!jobId) {
+      this.toastService.error('No job selected');
+      return;
+    }
+
+    // Show loading toast
+    this.toastService.info(`Applying fix: ${event.action.label}...`);
+
+    try {
+      // Call API to resolve decision with selected action config
+      await firstValueFrom(this.queueApi.resolveDecision(jobId, event.action.config || {}));
+
+      // Show success message
+      this.toastService.success(`${event.action.label} applied successfully. Job moved to queue.`);
+
+      // Refresh the queue to show updated job status
+      this.refreshQueue();
+    } catch (error) {
+      console.error('Failed to resolve decision:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.toastService.error(`Failed to apply fix: ${errorMessage}`);
     }
   }
 
@@ -1181,6 +1303,97 @@ export class QueueComponent implements OnInit {
       return `${minutes}m ${seconds}s`;
     }
     return `${seconds}s`;
+  }
+
+  // ============================================================================
+  // NODE STATUS BAR - UX-friendly status indicators
+  // Per UX philosophy: hide technical details, show meaningful status
+  // ============================================================================
+
+  /**
+   * Get CSS class for node status card based on workload
+   */
+  protected getNodeStatusClass(node: NodeCapacity): string {
+    if (node.isOverloaded) return 'node-status overloaded';
+    if (node.activeJobs >= node.maxWorkers) return 'node-status at-capacity';
+    if (node.activeJobs > 0) return 'node-status working';
+    return 'node-status idle';
+  }
+
+  /**
+   * Get icon class based on node status
+   */
+  protected getNodeStatusIcon(node: NodeCapacity): string {
+    if (node.isOverloaded) return 'fas fa-exclamation-triangle';
+    if (node.activeJobs >= node.maxWorkers) return 'fas fa-fire';
+    if (node.activeJobs > 0) return 'fas fa-cog fa-spin';
+    return 'fas fa-check-circle';
+  }
+
+  /**
+   * Get human-readable status label
+   */
+  protected getNodeStatusLabel(node: NodeCapacity): string {
+    if (node.isOverloaded) return 'Overloaded';
+    if (node.activeJobs >= node.maxWorkers) return 'At Capacity';
+    if (node.activeJobs > node.maxWorkers * 0.5) return 'Busy';
+    if (node.activeJobs > 0) return 'Working';
+    return 'Ready';
+  }
+
+  /**
+   * Build tooltip content with technical details for power users
+   */
+  protected getNodeTooltipContent(node: NodeCapacity): string {
+    const lines: string[] = [];
+
+    // Workers info
+    lines.push(`Workers: ${node.activeJobs} active / ${node.maxWorkers} max`);
+    lines.push(`Available slots: ${node.availableSlots}`);
+
+    // Load average (if available)
+    if (node.loadAvg1m !== undefined && node.cpuCount !== undefined) {
+      const loadPercent = ((node.loadAvg1m / node.cpuCount) * 100).toFixed(0);
+      lines.push(
+        `CPU Load: ${node.loadAvg1m.toFixed(1)} / ${node.cpuCount} cores (${loadPercent}%)`
+      );
+    }
+
+    // Memory (if available)
+    if (node.freeMemoryGB !== undefined && node.totalMemoryGB !== undefined) {
+      const usedMemory = node.totalMemoryGB - node.freeMemoryGB;
+      const memPercent = ((usedMemory / node.totalMemoryGB) * 100).toFixed(0);
+      lines.push(
+        `Memory: ${usedMemory.toFixed(1)}GB / ${node.totalMemoryGB.toFixed(1)}GB (${memPercent}% used)`
+      );
+    } else if (node.freeMemoryGB !== undefined) {
+      lines.push(`Free Memory: ${node.freeMemoryGB.toFixed(1)}GB`);
+    }
+
+    // Overload reason
+    if (node.isOverloaded && node.overloadReason) {
+      lines.push(`⚠️ ${node.overloadReason}`);
+    }
+
+    // Estimated free time (only show if reasonable - under 4 hours)
+    if (node.estimatedFreeAt) {
+      const freeAt = new Date(node.estimatedFreeAt);
+      const now = new Date();
+      const diffMs = freeAt.getTime() - now.getTime();
+      const diffMins = Math.ceil(diffMs / 60000);
+      // Only show if positive and under 4 hours (240 mins) - longer estimates are unreliable
+      if (diffMins > 0 && diffMins < 240) {
+        if (diffMins >= 60) {
+          const hours = Math.floor(diffMins / 60);
+          const mins = diffMins % 60;
+          lines.push(`Next slot available: ~${hours}h ${mins}m`);
+        } else {
+          lines.push(`Next slot available: ~${diffMins} min`);
+        }
+      }
+    }
+
+    return lines.join('\n');
   }
 
   protected getCodecBadgeClass(codec: string | undefined): string {

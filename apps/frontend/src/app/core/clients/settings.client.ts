@@ -14,6 +14,19 @@ export interface AutoHealRetryLimitSettings {
   maxAutoHealRetries: number;
 }
 
+export interface JellyfinSettings {
+  jellyfinUrl?: string;
+  jellyfinApiKey?: string;
+  jellyfinRefreshOnComplete?: boolean;
+}
+
+export interface JellyfinTestResult {
+  success: boolean;
+  serverName?: string;
+  version?: string;
+  error?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -49,5 +62,18 @@ export class SettingsClient {
     return this.http.patch<AutoHealRetryLimitSettings>(`${this.apiUrl}/auto-heal-retry-limit`, {
       maxAutoHealRetries: maxRetries,
     });
+  }
+
+  // Jellyfin integration
+  getJellyfinSettings(): Observable<JellyfinSettings> {
+    return this.http.get<JellyfinSettings>(`${this.apiUrl}/jellyfin`);
+  }
+
+  updateJellyfinSettings(settings: JellyfinSettings): Observable<JellyfinSettings> {
+    return this.http.patch<JellyfinSettings>(`${this.apiUrl}/jellyfin`, settings);
+  }
+
+  testJellyfinConnection(settings: JellyfinSettings): Observable<JellyfinTestResult> {
+    return this.http.post<JellyfinTestResult>(`${this.apiUrl}/jellyfin/test`, settings);
   }
 }

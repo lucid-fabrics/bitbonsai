@@ -57,6 +57,26 @@
         <i class="fa fa-flask"></i>
         <span>Advanced</span>
       </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'integrations']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-plug"></i>
+        <span>Integrations</span>
+      </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'debug']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-bug"></i>
+        <span>Debug</span>
+      </a>
     </nav>
 
     <!-- Tab Content -->

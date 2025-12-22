@@ -11,8 +11,9 @@ export enum HealthCheckIssueCategory {
   VIDEO = 'VIDEO', // Video quality concerns
   INTEGRITY = 'INTEGRITY', // File integrity issues (corruption, errors)
   RESOURCE = 'RESOURCE', // Resource/performance warnings
-  POLICY = 'POLICY', // Policy optimization suggestions
+  POLICY = 'POLICY', // Policy optimization suggestions (codec already matches, etc.)
   SUBTITLE = 'SUBTITLE', // Subtitle/caption issues
+  CODEC = 'CODEC', // Codec-related issues (already in target codec, etc.)
 }
 
 export enum HealthCheckIssueSeverity {

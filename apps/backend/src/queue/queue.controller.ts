@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -37,7 +38,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { type Job, JobStage } from '@prisma/client';
+import { type Job, JobStage, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NodeConfigService } from '../core/services/node-config.service';
 import { EncodingPreviewService } from '../encoding/encoding-preview.service';
@@ -446,6 +447,46 @@ export class QueueController {
     @Param('index') index: string,
     @Res({ passthrough: false }) res: Response
   ): Promise<void> {
+    // MULTI-NODE: LINKED nodes should proxy preview requests to MAIN node
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}/preview/${index}`;
+      this.logger.debug(`🔍 MULTI-NODE: Proxying preview request to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.get(url, {
+            responseType: 'arraybuffer',
+            timeout: 30000,
+          })
+        );
+
+        // If no content (204), return same
+        if (response.status === 204) {
+          res.status(204).send();
+          return;
+        }
+
+        // Forward the image
+        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.send(Buffer.from(response.data));
+        return;
+      } catch (error) {
+        // Handle 204 No Content from MAIN
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { status?: number } };
+          if (axiosError.response?.status === 204) {
+            res.status(204).send();
+            return;
+          }
+        }
+        this.logger.debug(`Preview not available from MAIN for job ${id}`);
+        res.status(204).send();
+        return;
+      }
+    }
+
     // Verify job exists
     const job = await this.queueService.findOne(id);
 
@@ -779,8 +820,34 @@ export class QueueController {
     description: 'Internal server error occurred while updating job',
   })
   async update(@Param('id') id: string, @Body() updateJobDto: UpdateJobDto): Promise<Job> {
+    // MULTI-NODE SECURITY: Validate that the requesting node owns the job
+    // This prevents cross-node status pollution (e.g., zombie FFmpeg from Node B
+    // sending PATCH requests that mark Node A's jobs as FAILED)
+    const currentNodeId = this.nodeConfig.getNodeId();
+    const isMainNode = this.nodeConfig.isMainNode();
+
+    // Get the job to check ownership
+    const job = await this.queueService.findOne(id);
+    if (!job) {
+      throw new NotFoundException(`Job ${id} not found`);
+    }
+
+    // Allow updates if:
+    // 1. This is the MAIN node (can update any job for admin purposes)
+    // 2. Job has no nodeId assigned yet (in DETECTED, QUEUED stages before assignment)
+    // 3. The current node owns the job
+    const isJobOwner = !job.nodeId || job.nodeId === currentNodeId;
+    if (!isMainNode && !isJobOwner) {
+      this.logger.warn(
+        `⚠️ Cross-node update rejected: Node ${currentNodeId} attempted to update job ${id} owned by node ${job.nodeId}`
+      );
+      throw new ForbiddenException(
+        `Node ${currentNodeId} cannot update job ${id} - job is assigned to node ${job.nodeId}`
+      );
+    }
+
     // MULTI-NODE: Use the generic update() method which supports all fields
-    return this.queueService.update(id, updateJobDto as Partial<Job>);
+    return this.queueService.update(id, updateJobDto as Prisma.JobUpdateInput);
   }
 
   /**
@@ -1553,6 +1620,52 @@ export class QueueController {
   }
 
   /**
+   * Skip all jobs where codec already matches target
+   */
+  @Post('skip-codec-match')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Skip all jobs where codec already matches target',
+    description:
+      'Bulk skip encoding for all NEEDS_DECISION jobs where the source codec matches the target codec.\n\n' +
+      'This is useful when:\n' +
+      "- A policy's target codec was changed after jobs were created\n" +
+      '- Files were already optimized but re-added to the queue\n\n' +
+      '**What happens**:\n' +
+      '- Jobs with CODEC_ALREADY_MATCHES_TARGET issue are marked as COMPLETED\n' +
+      '- No encoding is performed, original files remain unchanged\n' +
+      '- Progress is set to 100%, file size stays the same\n\n' +
+      '**Returns**:\n' +
+      '- Count of skipped jobs\n' +
+      '- List of skipped jobs with their file labels',
+  })
+  @ApiOkResponse({
+    description: 'Jobs have been skipped successfully',
+    schema: {
+      example: {
+        skippedCount: 5,
+        jobs: [
+          {
+            id: 'job-123',
+            fileLabel: 'movie.mkv',
+            sourceCodec: 'hevc',
+            targetCodec: 'hevc',
+          },
+        ],
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while skipping jobs',
+  })
+  async skipAllCodecMatch(): Promise<{
+    skippedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+  }> {
+    return this.queueService.skipAllCodecMatch();
+  }
+
+  /**
    * Delete a job
    */
   @Delete(':id')
@@ -1809,6 +1922,51 @@ export class QueueController {
         jobsRebalanced > 0
           ? `Redistributed ${jobsRebalanced} job(s) across nodes`
           : 'No rebalancing needed - jobs are already well distributed',
+    };
+  }
+
+  /**
+   * Fix stuck transfers - reset TRANSFERRING jobs back to QUEUED
+   */
+  @Post('fix-stuck-transfers')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Fix stuck transfers',
+    description:
+      'Resets jobs stuck in TRANSFERRING stage back to QUEUED.\n\n' +
+      '**When to use**:\n' +
+      '- When jobs are stuck in TRANSFERRING with 0% progress\n' +
+      '- After a system crash or restart\n' +
+      '- When transfers failed but didnt update stage properly\n\n' +
+      '**How it works**:\n' +
+      '- Finds all jobs in TRANSFERRING stage with 0% progress for more than 5 minutes\n' +
+      '- Resets them back to QUEUED stage\n' +
+      '- Clears transfer error and progress fields',
+  })
+  @ApiOkResponse({
+    description: 'Stuck transfers fixed',
+    schema: {
+      type: 'object',
+      properties: {
+        fixed: {
+          type: 'number',
+          example: 5,
+          description: 'Number of stuck transfers that were reset',
+        },
+        message: {
+          type: 'string',
+          example: 'Reset 5 stuck transfer(s) back to QUEUED',
+        },
+      },
+    },
+  })
+  async fixStuckTransfers() {
+    const fixed = await this.queueService.fixStuckTransfers();
+
+    return {
+      fixed,
+      message:
+        fixed > 0 ? `Reset ${fixed} stuck transfer(s) back to QUEUED` : 'No stuck transfers found',
     };
   }
 }

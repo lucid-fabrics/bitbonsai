@@ -176,6 +176,92 @@ model Settings {
   defaultQueueView             String   @default("ENCODING") // Default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)
   readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
   maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
+
+  // ============ Notification Settings ============
+  // Discord webhook
+  discordWebhookUrl            String?  // Discord webhook URL for notifications
+  discordNotifyOnComplete      Boolean  @default(true) // Notify on job completion
+  discordNotifyOnFail          Boolean  @default(true) // Notify on job failure
+  discordNotifyOnBatch         Boolean  @default(false) // Notify on batch completion
+
+  // Slack webhook
+  slackWebhookUrl              String?  // Slack webhook URL for notifications
+  slackNotifyOnComplete        Boolean  @default(true) // Notify on job completion
+  slackNotifyOnFail            Boolean  @default(true) // Notify on job failure
+  slackNotifyOnBatch           Boolean  @default(false) // Notify on batch completion
+
+  // Generic webhook (custom integrations)
+  webhookUrl                   String?  // Generic webhook URL
+  webhookSecret                String?  // Webhook secret for signature verification
+
+  // SMTP Email
+  smtpHost                     String?  // SMTP server host
+  smtpPort                     Int?     // SMTP server port (default: 587)
+  smtpSecure                   Boolean  @default(false) // Use TLS
+  smtpUser                     String?  // SMTP username
+  smtpPass                     String?  // SMTP password (encrypted)
+  emailFrom                    String?  // From email address
+  emailTo                      String?  // Recipient email address
+  emailDigestEnabled           Boolean  @default(false) // Send daily digest
+  emailDigestTime              String?  @default("08:00") // Time to send digest (HH:MM)
+
+  // ============ Integration Settings ============
+  // Plex
+  plexUrl                      String?  // Plex server URL (e.g., "http://192.168.1.100:32400")
+  plexToken                    String?  // Plex authentication token
+  plexPauseDuringPlayback      Boolean  @default(true) // Pause encoding during active playback
+  plexRefreshOnComplete        Boolean  @default(true) // Refresh library after encoding
+
+  // Jellyfin
+  jellyfinUrl                  String?  // Jellyfin server URL
+  jellyfinApiKey               String?  // Jellyfin API key
+  jellyfinRefreshOnComplete    Boolean  @default(true) // Refresh library after encoding
+
+  // Torrent client
+  torrentClient                String?  // Torrent client type (qbittorrent, transmission, deluge)
+  torrentUrl                   String?  // Torrent client URL
+  torrentUsername              String?  // Torrent client username
+  torrentPassword              String?  // Torrent client password (encrypted)
+  skipSeeding                  Boolean  @default(true) // Skip files being seeded
+
+  // Radarr
+  radarrUrl                    String?  // Radarr URL (e.g., "http://192.168.1.100:7878")
+  radarrApiKey                 String?  // Radarr API key
+  radarrRescanOnComplete       Boolean  @default(true) // Trigger rescan after encoding
+  radarrSkipQualityMet         Boolean  @default(false) // Skip if already HEVC/AV1
+
+  // Sonarr
+  sonarrUrl                    String?  // Sonarr URL (e.g., "http://192.168.1.100:8989")
+  sonarrApiKey                 String?  // Sonarr API key
+  sonarrRescanOnComplete       Boolean  @default(true) // Trigger rescan after encoding
+  sonarrSkipQualityMet         Boolean  @default(false) // Skip if already HEVC/AV1
+
+  // Whisparr
+  whisparrUrl                  String?  // Whisparr URL
+  whisparrApiKey               String?  // Whisparr API key
+  whisparrRescanOnComplete     Boolean  @default(true) // Trigger rescan after encoding
+  whisparrSkipQualityMet       Boolean  @default(false) // Skip if already HEVC/AV1
+
+  // ============ Operational Settings (UX: eliminates env vars) ============
+  // Job cleanup & stuck detection
+  jobStuckThresholdMinutes     Int      @default(5)      // Minutes before job is considered stuck
+  jobEncodingTimeoutHours      Int      @default(2)      // Hours before encoding job times out
+
+  // Stuck job recovery worker
+  recoveryIntervalMs           Int      @default(120000) // Recovery check interval (2 min default)
+  healthCheckTimeoutMin        Int      @default(5)      // Health check stage timeout
+  encodingTimeoutMin           Int      @default(10)     // Encoding stage timeout for recovery
+  verifyingTimeoutMin          Int      @default(30)     // Verifying stage timeout
+
+  // Health check worker
+  healthCheckConcurrency       Int      @default(10)     // Concurrent health checks
+  healthCheckIntervalMs        Int      @default(2000)   // Interval between health checks
+  maxRetryAttempts             Int      @default(3)      // Max retry attempts for health checks
+
+  // Backup cleanup worker
+  backupCleanupIntervalMs      Int      @default(3600000) // Backup cleanup interval (1 hour)
+  backupRetentionHours         Int      @default(24)      // Hours to retain backup files
+
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 
@@ -288,9 +374,33 @@ model Node {
   canMountNFS        Boolean         @default(true) // Whether node can mount NFS shares (false for non-privileged LXC/Docker)
   environmentDetectedAt DateTime?    // When environment was last detected
 
+  // Per-node encoding cache configuration (UX: eliminates ENCODING_TEMP_PATH env var)
+  encodingTempPath   String?         // Fast SSD path for temp encoding files (e.g., "/cache")
+
   // Scheduling Fields (per-node encoding time windows)
   scheduleEnabled    Boolean         @default(false) // Enable time-based scheduling for this node
   scheduleWindows    Json?           // Array of TimeWindow objects: [{dayOfWeek: 0-6, startHour: 0-23, endHour: 0-23}]
+
+  // Load Throttling Settings (per-node)
+  // LOAD_THRESHOLD_MULTIPLIER: Max load = CPU cores * multiplier
+  // Higher values = more tolerant of high load (useful for NAS systems with high I/O wait)
+  // Default: 3.0 (good for NAS, use 1.5 for dedicated servers)
+  loadThresholdMultiplier Float @default(3.0)
+
+  // ============ Distribution v2 Fields ============
+  // Real-time load monitoring (updated via heartbeat)
+  currentSystemLoad   Float?    // Current 1-min load average from heartbeat
+  currentMemoryFreeGB Float?    // Current free memory in GB from heartbeat
+  lastHeartbeatLoad   Json?     // Full load data: {load1m, load5m, load15m, memFreeGB, memTotalGB}
+
+  // ETA & capacity tracking
+  estimatedFreeAt     DateTime? // Estimated time when node will have capacity
+  queuedJobCount      Int       @default(0) // Cached count of queued jobs (updated on assignment)
+
+  // Reliability tracking
+  recentFailureCount  Int       @default(0) // Failures in last 24h (updated by reliability tracker)
+  lastFailureAt       DateTime? // When last job failure occurred on this node
+  failureRate24h      Float?    // Failure rate percentage over last 24h
 
   // Relations
   licenseId String
@@ -305,6 +415,9 @@ model Node {
 
   // Storage shares configured on this node
   storageShares StorageShare[]
+
+  // Distribution v2: Failure logs for reliability tracking
+  failureLogs NodeFailureLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -616,6 +729,21 @@ model Job {
   remoteTempPath       String?   // Temporary path on child node during transfer
   transferRetryCount   Int       @default(0) // Number of transfer retry attempts (max 3)
 
+  // ============ Distribution v2 Fields ============
+  // Job stickiness (prevent unnecessary migrations)
+  assignedAt       DateTime? // When job was assigned to current node
+  stickyUntil      DateTime? // Don't migrate before this time (default: assignedAt + 5 min)
+  migrationCount   Int       @default(0) // Number of times job was migrated between nodes
+
+  // Duration estimation (for ETA-based distribution)
+  estimatedDuration   Int?     // Estimated encoding time in seconds (based on file size, codec, resolution)
+  estimatedStartAt    DateTime? // When job is estimated to start encoding
+  estimatedCompleteAt DateTime? // When job is estimated to complete
+
+  // Distribution scoring (for debugging/visibility)
+  lastScoreBreakdown  Json?    // Last scoring breakdown when assigned: {load: 24, hw: 25, ...}
+  assignmentReason    String?  // Why job was assigned to this node (human-readable)
+
   // Relations
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
@@ -658,6 +786,11 @@ model Job {
   @@index([stage, originalNodeId]) // Composite for node-specific queue views
   @@index([transferRequired]) // PHASE 2: For filtering jobs that need file transfer
   @@index([stage, transferRequired]) // PHASE 2: Composite for transfer queue queries
+  @@index([assignedAt]) // Distribution v2: For stickiness queries
+  @@index([stickyUntil]) // Distribution v2: For migration eligibility
+  @@index([migrationCount]) // Distribution v2: For tracking job migrations
+  @@index([estimatedDuration]) // Distribution v2: For file size distribution
+  @@index([stage, stickyUntil]) // Distribution v2: Composite for migration queries
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
@@ -737,4 +870,79 @@ model Metric {
   @@index([licenseId])
   @@index([date, nodeId]) // For time-series node queries
   @@map("metrics")
+}
+
+// ============================================================================
+// NODE FAILURE LOG MODEL (Distribution v2 - Reliability Tracking)
+// ============================================================================
+
+model NodeFailureLog {
+  id String @id @default(cuid())
+
+  // Failure details
+  reason      String   // Human-readable failure reason
+  errorCode   String?  // Error code if available
+  stage       JobStage // What stage the job was in when it failed
+  progress    Float?   // Progress when failed (0-100)
+
+  // Context
+  jobId       String?  // Related job ID (null if node-level failure)
+  filePath    String?  // File path for job failures
+  fileSize    BigInt?  // File size for analysis
+
+  // Relations
+  nodeId String
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([nodeId])
+  @@index([createdAt])
+  @@index([nodeId, createdAt]) // For 24h window queries
+  @@index([reason]) // For failure pattern analysis
+  @@map("node_failure_logs")
+}
+
+// ============================================================================
+// DISTRIBUTION CONFIG MODEL (Distribution v2 - Tunable Weights)
+// ============================================================================
+
+model DistributionConfig {
+  id String @id @default(cuid())
+
+  // Scoring Weights (multipliers, default 1.0)
+  weightRealTimeLoad    Float @default(1.0) // Weight for real-time load factor (0-30 pts)
+  weightQueueDepth      Float @default(1.0) // Weight for queue depth factor (0-20 pts)
+  weightHardware        Float @default(1.0) // Weight for hardware capability (0-25 pts)
+  weightPerformance     Float @default(1.0) // Weight for historical performance (0-25 pts)
+  weightStickiness      Float @default(1.0) // Weight for job stickiness penalty (-20 pts)
+  weightTransferCost    Float @default(1.0) // Weight for transfer penalty (-25 pts)
+  weightCodecMatch      Float @default(1.0) // Weight for codec/HW acceleration match (0-20 pts)
+  weightLibraryAffinity Float @default(1.0) // Weight for library affinity bonus (0-10 pts)
+  weightReliability     Float @default(1.0) // Weight for reliability penalty (-15 pts)
+  weightETABalance      Float @default(1.0) // Weight for ETA balancing (0-15 pts)
+  weightFileSizeSpread  Float @default(1.0) // Weight for file size distribution (0-15 pts)
+
+  // Behavior Settings
+  stickinessMinutes     Int     @default(5)    // Minimum time before job can migrate
+  failureWindow24h      Boolean @default(true) // Use 24h window for failure tracking
+  enableETABalancing    Boolean @default(true) // Enable ETA-based distribution
+  enableFileSizeSpread  Boolean @default(true) // Enable file size spreading
+  enableLibraryAffinity Boolean @default(true) // Enable library affinity bonus
+
+  // Thresholds
+  migrationScoreThreshold Float @default(20.0) // Minimum score improvement needed to migrate
+  maxMigrationsPerJob     Int   @default(3)    // Maximum migrations allowed per job
+  highLoadThreshold       Float @default(0.8)  // Load ratio above which node is considered high load
+
+  // Cache Settings
+  scoreCacheTtlSeconds Int @default(60) // How long to cache node scores
+
+  // Singleton - only one config row
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("distribution_config")
 }

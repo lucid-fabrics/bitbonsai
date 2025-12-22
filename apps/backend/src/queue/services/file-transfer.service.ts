@@ -314,7 +314,7 @@ export class FileTransferService {
   private async executeRemoteCommand(
     targetNode: Node,
     command: string,
-    timeoutMs: number = 30000
+    timeoutMs = 30000
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const sshArgs = [

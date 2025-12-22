@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
@@ -92,4 +93,30 @@ export class UpdateNodeDto {
   @IsOptional()
   @IsEnum(NetworkLocation, { message: 'networkLocation must be LOCAL, REMOTE, or UNKNOWN' })
   networkLocation?: NetworkLocation;
+
+  @ApiProperty({
+    description:
+      'Load threshold multiplier. Max load = CPU cores * multiplier. ' +
+      'Higher values = more tolerant of high load (useful for NAS systems with high I/O wait). ' +
+      'Recommended: 1.5 for dedicated servers, 3.0 for NAS systems, 5.0+ for high-performance systems.',
+    example: 3.0,
+    minimum: 1.0,
+    maximum: 10.0,
+    default: 3.0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'loadThresholdMultiplier must be a number' })
+  @Min(1.0, { message: 'loadThresholdMultiplier must be at least 1.0' })
+  @Max(10.0, { message: 'loadThresholdMultiplier cannot exceed 10.0' })
+  loadThresholdMultiplier?: number;
+
+  @ApiProperty({
+    description: 'IP address of the node (for node identification)',
+    example: '192.168.1.100',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'ipAddress must be a string' })
+  ipAddress?: string;
 }

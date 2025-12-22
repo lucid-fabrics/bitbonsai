@@ -4,16 +4,19 @@ import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommonModule } from './common/common.module';
 import { CoreModule } from './core/core.module';
 import { DatabaseInitService } from './database/database-init.service';
 import { DiscoveryModule } from './discovery/discovery.module';
+import { DistributionModule } from './distribution/distribution.module';
 import { EncodingModule } from './encoding/encoding.module';
 import { FilesystemModule } from './filesystem/filesystem.module';
 import { HealthModule } from './health/health.module';
 import { InsightsModule } from './insights/insights.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 import { LibrariesModule } from './libraries/libraries.module';
 import { LicenseModule } from './license/license.module';
 import { LicensesModule } from './licenses/licenses.module';
@@ -35,12 +38,15 @@ import { SystemModule } from './system/system.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
-    // SECURITY: Global rate limiting - 100 requests per minute per IP
+    // SECURITY: Global rate limiting - 1000 requests per minute per IP
+    // Note: Higher limit to accommodate multi-node setups where LINKED nodes
+    // make frequent API calls to MAIN (getNextJob, progress updates, etc.)
+    // 5 workers × frequent updates can easily exceed 100/min
     ThrottlerModule.forRoot([
       {
         name: 'default',
         ttl: 60000, // 1 minute window
-        limit: 100, // 100 requests per minute
+        limit: 1000, // 1000 requests per minute (multi-node friendly)
       },
     ]),
     EventEmitterModule.forRoot({ global: true }),
@@ -67,6 +73,9 @@ import { SystemModule } from './system/system.module';
     SyncModule,
     EncodingModule,
     SystemModule,
+    AnalyticsModule,
+    IntegrationsModule,
+    DistributionModule,
   ],
   controllers: [],
   providers: [
