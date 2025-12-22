@@ -4,15 +4,18 @@ import { EncodingModule } from '../encoding/encoding.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
+import { BatchController } from './batch.controller';
 import { HealthCheckWorker } from './health-check.worker';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
+import { BatchOperationsService } from './services/batch-operations.service';
 import { FileTransferService } from './services/file-transfer.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { JobHistoryService } from './services/job-history.service';
 import { JobRouterService } from './services/job-router.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
+import { WebhookNotificationService } from './services/webhook-notification.service';
 import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
 
 /**
@@ -27,6 +30,8 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Background retry scheduler retries eligible failed jobs every 5 minutes.
  * Monitors and recovers orphaned jobs via StuckJobRecoveryWorker (defense-in-depth).
  * Cleans up orphaned .backup files via BackupCleanupWorker (LOW PRIORITY FIX #17).
+ * Batch operations for bulk pause/resume/cancel via BatchOperationsService.
+ * Webhook notifications for job events via WebhookNotificationService.
  */
 @Module({
   imports: [
@@ -38,7 +43,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
       return NodesModule;
     }),
   ],
-  controllers: [QueueController],
+  controllers: [QueueController, BatchController],
   providers: [
     QueueService,
     JobCleanupService,
@@ -50,8 +55,17 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     RetrySchedulerService,
     StuckJobRecoveryWorker,
     BackupCleanupWorker,
+    BatchOperationsService,
+    WebhookNotificationService,
     PrismaService,
   ],
-  exports: [QueueService, JobHistoryService, JobRouterService, FileTransferService],
+  exports: [
+    QueueService,
+    JobHistoryService,
+    JobRouterService,
+    FileTransferService,
+    BatchOperationsService,
+    WebhookNotificationService,
+  ],
 })
 export class QueueModule {}

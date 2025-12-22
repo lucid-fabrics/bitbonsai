@@ -20,7 +20,7 @@ const execAsync = promisify(exec);
 export class DockerVolumeDetectorService {
   private readonly logger = new Logger(DockerVolumeDetectorService.name);
   private cachedVolumes: DockerVolumeMount[] | null = null;
-  private lastDetection: number = 0;
+  private lastDetection = 0;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   /**

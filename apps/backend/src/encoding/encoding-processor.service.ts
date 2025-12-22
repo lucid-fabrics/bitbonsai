@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { type Job, JobStage, type Policy } from '@prisma/client';
 import { DataAccessService } from '../core/services/data-access.service';
+import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { NodesService } from '../nodes/nodes.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -75,21 +76,38 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly DEFAULT_WORKERS_PER_NODE: number;
 
   // PERF: Cache pool for temp files (SSD for faster I/O)
-  // If ENCODING_TEMP_PATH is set, use it; otherwise fall back to source directory
-  private readonly ENCODING_TEMP_PATH: string | null = process.env.ENCODING_TEMP_PATH || null;
+  // Priority: 1. Database setting (per-node), 2. ENV var, 3. Source directory (no cache)
+  // UX Philosophy: Per-node configuration eliminates ENCODING_TEMP_PATH env var
+  private encodingTempPath: string | null = process.env.ENCODING_TEMP_PATH || null;
 
   // Resource preflight thresholds
   private readonly MIN_FREE_DISK_SPACE_GB = 5; // Minimum 5GB free space
   private readonly MIN_FREE_MEMORY_PERCENT = 10; // Minimum 10% free RAM
   private readonly DISK_SPACE_BUFFER_PERCENT = 20; // 20% buffer for encoding overhead
 
+  // Load-based throttling thresholds
+  // LOAD_THRESHOLD_MULTIPLIER: Max load = CPU cores * multiplier
+  // Higher values = more tolerant of high load (useful for NAS systems with high I/O wait)
+  // Default: 5.0 - generous default so nodes "just work" without manual tuning
+  // UX Philosophy: Smart defaults over configuration - users shouldn't need to adjust this
+  // Priority: 1. Database setting (per-node), 2. ENV var, 3. Default
+  private readonly DEFAULT_LOAD_THRESHOLD_MULTIPLIER = parseFloat(
+    process.env.LOAD_THRESHOLD_MULTIPLIER || '5.0'
+  );
+  // Cached load threshold from database (updated on init and via reload method)
+  private loadThresholdMultiplier: number = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
+  private readonly MIN_FREE_MEMORY_GB = 4; // Minimum 4GB free RAM per new job
+  private readonly THROTTLE_CHECK_INTERVAL_MS = 10000; // Check every 10 seconds when throttled
+  private readonly THROTTLE_LOG_INTERVAL_MS = 60000; // Log throttle warnings every 60 seconds
+  private lastThrottleLogTime = 0; // Track last throttle log to avoid spam
+
   // Auto-heal timing constants (Code Convention: no magic numbers)
   private readonly AUTO_HEAL_INITIAL_DELAY_MS = 2000; // 2 seconds
   private readonly AUTO_HEAL_STABILIZATION_DELAY_MS = 3000; // 3 seconds
   private readonly VOLUME_MOUNT_PROBE_DELAY_MS = 1000; // 1 second
   private readonly VOLUME_MOUNT_MAX_RETRIES = 10;
-  private readonly TEMP_FILE_CHECK_DELAY_MS = 1000; // 1 second
-  private readonly TEMP_FILE_MAX_RETRIES = 5;
+  private readonly TEMP_FILE_CHECK_DELAY_MS = 2000; // 2 seconds (increased for NFS recovery)
+  private readonly TEMP_FILE_MAX_RETRIES = 10; // 10 retries = 20 seconds total (for slow NFS mounts)
 
   constructor(
     private readonly prisma: PrismaService,
@@ -97,7 +115,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     readonly _dataAccessService: DataAccessService,
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService,
-    private readonly nodesService: NodesService
+    private readonly nodesService: NodesService,
+    private readonly fileRelocatorService: FileRelocatorService
   ) {
     // Calculate optimal workers based on CPU capacity
     this.DEFAULT_WORKERS_PER_NODE = this.calculateOptimalWorkers();
@@ -157,14 +176,17 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     this.logger.log('🔧 Initializing encoding processor...');
 
-    // PERF: Log cache pool configuration
-    if (this.ENCODING_TEMP_PATH) {
+    // PERF: Log cache pool configuration (loaded from DB via reloadNodeSettings)
+    if (this.encodingTempPath) {
       this.logger.log(
-        `⚡ Cache pool ENABLED: Using ${this.ENCODING_TEMP_PATH} for temp files (faster SSD I/O)`
+        `⚡ Cache pool ENABLED: Using ${this.encodingTempPath} for temp files (faster SSD I/O)`
       );
     } else {
       this.logger.log('📂 Cache pool DISABLED: Using source directory for temp files');
     }
+
+    // Load load threshold from database
+    await this.reloadLoadThreshold();
 
     try {
       // HYBRID APPROACH: Initial delay + volume mount probing + file system stabilization + retry logic
@@ -179,18 +201,19 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('⏳ Waiting for file system to stabilize...');
       await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_STABILIZATION_DELAY_MS));
 
-      // STEP 4: Auto-heal orphaned jobs from previous crash/reboot
-      await this.autoHealOrphanedJobs();
-
       // CRITICAL FIX: Only start workers for the CURRENT node, not all online nodes
       // This prevents MAIN nodes from starting workers for LINKED nodes, which causes
       // the error "getNextJob should not be called directly on MAIN nodes"
       const currentNode = await this.nodesService.getCurrentNode();
 
       if (!currentNode) {
-        this.logger.warn('Current node not found - no workers started');
+        this.logger.warn('Current node not found - skipping auto-heal and worker startup');
         return;
       }
+
+      // STEP 4: Auto-heal orphaned jobs from previous crash/reboot
+      // CRITICAL FIX: Only heal jobs belonging to THIS node to prevent cross-node interference
+      await this.autoHealOrphanedJobs(currentNode.id);
 
       // MULTI-NODE AUDIT: Enhanced logging to debug LINKED node encoding issues
       this.logger.log(`🔍 MULTI-NODE: Current node configuration:`);
@@ -253,9 +276,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @private
    */
   private async waitForVolumeMounts(): Promise<void> {
-    const mediaPaths = (process.env.MEDIA_PATHS || '').split(',').filter(Boolean);
+    // UX PHILOSOPHY: Derive media paths from libraries in database
+    // Eliminates need for MEDIA_PATHS env var - single source of truth
+    const mediaPaths = await this.librariesService.getAllLibraryPaths();
     if (mediaPaths.length === 0) {
-      this.logger.warn('No MEDIA_PATHS configured, skipping volume mount check');
+      this.logger.warn('No libraries configured, skipping volume mount check');
       return;
     }
 
@@ -345,24 +370,37 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * - HEALTH_CHECK jobs already passed validation, no need to re-validate
    * - ENCODING, VERIFYING, PAUSED jobs obviously need to restart
    * - getNextJob() only fetches QUEUED jobs, so DETECTED jobs would be stuck
+   *
+   * @param nodeId - Only heal jobs belonging to this node (prevents cross-node interference)
    */
-  private async autoHealOrphanedJobs(): Promise<void> {
-    this.logger.log('🏥 Auto-heal: Checking for orphaned jobs in all active states...');
+  private async autoHealOrphanedJobs(nodeId: string): Promise<void> {
+    this.logger.log(`🏥 Auto-heal: Checking for orphaned jobs on this node (${nodeId})...`);
 
     try {
-      // On backend startup, ALL jobs in active processing states are orphaned
-      // since we have no active workers/processes running yet
+      // On backend startup, jobs in active processing states need recovery
+      // CRITICAL FIX: Only process jobs belonging to THIS node to prevent cross-node interference
+      // Without this filter, CHILD node restart would reset MAIN node's actively encoding jobs
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
-          stage: {
-            in: [
-              JobStage.HEALTH_CHECK,
-              JobStage.ENCODING,
-              JobStage.VERIFYING,
-              JobStage.PAUSED,
-              JobStage.PAUSED_LOAD, // CRITICAL FIX: Include load-paused jobs in auto-heal
-            ],
-          },
+          nodeId, // CRITICAL: Only this node's jobs
+          OR: [
+            // Active processing stages - always recover
+            {
+              stage: {
+                in: [
+                  JobStage.HEALTH_CHECK,
+                  JobStage.ENCODING,
+                  JobStage.VERIFYING,
+                  JobStage.PAUSED_LOAD, // System load-based pause - recover
+                ],
+              },
+            },
+            // PAUSED jobs - only recover if paused by schedule (has specific error message)
+            {
+              stage: JobStage.PAUSED,
+              error: { contains: 'Outside scheduled encoding window' },
+            },
+          ],
         },
         select: {
           id: true,
@@ -372,16 +410,35 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           updatedAt: true,
           tempFilePath: true, // TRUE RESUME: needed to check if temp file exists
           retryCount: true, // AUTO-HEAL TRACKING: needed to increment retry count
+          error: true, // Needed to check pause reason
         },
       });
 
+      // Also log manually paused jobs that are being preserved (only for this node)
+      const manuallyPausedJobs = await this.prisma.job.findMany({
+        where: {
+          nodeId, // Only this node's jobs
+          stage: JobStage.PAUSED,
+          OR: [
+            { error: null },
+            { error: { not: { contains: 'Outside scheduled encoding window' } } },
+          ],
+        },
+        select: { id: true, fileLabel: true },
+      });
+      if (manuallyPausedJobs.length > 0) {
+        this.logger.log(
+          `ℹ️ Preserving ${manuallyPausedJobs.length} manually paused job(s) on this node - will NOT auto-resume`
+        );
+      }
+
       if (orphanedJobs.length === 0) {
-        this.logger.log('✅ No orphaned jobs found - system is healthy');
+        this.logger.log('✅ No orphaned jobs found on this node - system is healthy');
         return;
       }
 
       this.logger.warn(
-        `🔧 Found ${orphanedJobs.length} orphaned job(s) from backend restart - recovering...`
+        `🔧 Found ${orphanedJobs.length} orphaned job(s) on this node from backend restart - recovering...`
       );
 
       // Reset each orphaned job to QUEUED
@@ -505,6 +562,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // AUDIT #2 ISSUE #24 FIX: Store interval ID for cleanup
     this.watchdogIntervalId = setInterval(async () => {
       try {
+        // UX PHILOSOPHY: Auto-cleanup zombie FFmpeg processes (self-healing)
+        // This eliminates the need for manual "Kill Zombies" button in debug UI
+        await this.autoCleanupZombieProcesses();
+
         // CRITICAL FIX: Intelligent load management FIRST (before stuck job detection)
         await this.manageLoadBasedPausing();
 
@@ -601,6 +662,36 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * UX PHILOSOPHY: Auto-cleanup zombie FFmpeg processes
+   *
+   * Self-healing system that automatically cleans up orphaned FFmpeg processes.
+   * This eliminates the need for users to manually click "Kill Zombies" in the debug UI.
+   *
+   * Zombies typically occur when:
+   * - Backend was restarted but FFmpeg processes weren't killed
+   * - A crash left orphaned processes
+   *
+   * Runs every 60 seconds via the watchdog loop.
+   * @private
+   */
+  private async autoCleanupZombieProcesses(): Promise<void> {
+    try {
+      const result = await this.ffmpegService.killAllZombieFfmpegProcesses();
+
+      // Only log if zombies were found (avoid log spam)
+      if (result.killed > 0 || result.failed > 0) {
+        this.logger.log(
+          `🧹 Auto-cleanup: Killed ${result.killed} zombie FFmpeg process(es)` +
+            (result.failed > 0 ? ` (${result.failed} failed)` : '')
+        );
+      }
+    } catch (error) {
+      // Silently handle errors - don't let zombie cleanup crash the watchdog
+      this.logger.debug(`Zombie cleanup error (non-fatal): ${error}`);
+    }
+  }
+
+  /**
    * Attempt to kill a stuck FFmpeg process
    *
    * @param jobId - Job ID
@@ -646,30 +737,39 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const loadAvg = os.loadavg()[0];
     const cpuCount = os.cpus().length;
 
-    // Count currently encoding jobs
+    // Get current node to filter jobs
+    const currentNode = await this.nodesService.getCurrentNode();
+    if (!currentNode) {
+      return; // Can't manage load without knowing current node
+    }
+
+    // Count only THIS node's encoding jobs (not other nodes)
     const encodingJobs = await this.prisma.job.count({
-      where: { stage: 'ENCODING' },
+      where: { stage: 'ENCODING', nodeId: currentNode.id },
     });
 
-    // Determine target worker limit based on load
+    // Determine target worker limit based on load ratio (load per CPU)
+    // Use node's configured maxWorkers, not the calculated default
+    const nodeMaxWorkers = currentNode.maxWorkers || this.DEFAULT_WORKERS_PER_NODE;
     let targetWorkers: number;
     let loadLevel: string;
+    const loadRatio = loadAvg / cpuCount;
 
-    if (loadAvg < 50) {
-      // Normal operation - all workers
-      targetWorkers = this.DEFAULT_WORKERS_PER_NODE;
+    if (loadRatio < 2.0) {
+      // Normal operation - all workers (load < 2x CPU count)
+      targetWorkers = nodeMaxWorkers;
       loadLevel = 'normal';
-    } else if (loadAvg < 100) {
-      // Moderate load - 80% workers
-      targetWorkers = Math.ceil(this.DEFAULT_WORKERS_PER_NODE * 0.8);
+    } else if (loadRatio < 4.0) {
+      // Moderate load - 80% workers (load 2-4x CPU count)
+      targetWorkers = Math.ceil(nodeMaxWorkers * 0.8);
       loadLevel = 'moderate';
-    } else if (loadAvg < 200) {
-      // High load - 50% workers
-      targetWorkers = Math.ceil(this.DEFAULT_WORKERS_PER_NODE * 0.5);
+    } else if (loadRatio < 6.0) {
+      // High load - 50% workers (load 4-6x CPU count)
+      targetWorkers = Math.ceil(nodeMaxWorkers * 0.5);
       loadLevel = 'high';
     } else {
-      // Emergency - 30% workers (minimum 2)
-      targetWorkers = Math.max(2, Math.ceil(this.DEFAULT_WORKERS_PER_NODE * 0.3));
+      // Emergency - 30% workers (minimum 2, load > 6x CPU count)
+      targetWorkers = Math.max(2, Math.ceil(nodeMaxWorkers * 0.3));
       loadLevel = 'critical';
     }
 
@@ -682,7 +782,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // SCENARIO 1: Load is high, need to pause jobs
     if (jobsToPause > 0 && encodingJobs > targetWorkers) {
       this.logger.warn(
-        `🔥 High system load detected: ${loadAvg.toFixed(1)} (${loadLevel} level, ${cpuCount} CPUs)`
+        `🔥 High system load detected: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`
       );
       this.logger.warn(
         `   Pausing ${jobsToPause} job(s) to reduce load from ${encodingJobs} to ${targetWorkers} workers`
@@ -715,7 +815,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const jobsToResume = Math.min(pausedJobs, targetWorkers - encodingJobs);
 
       this.logger.log(
-        `✅ System load acceptable: ${loadAvg.toFixed(1)} (${loadLevel} level, ${cpuCount} CPUs)`
+        `✅ System load acceptable: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`
       );
       this.logger.log(
         `   Resuming ${jobsToResume} paused job(s) (${pausedJobs} paused, ${targetWorkers} target workers)`
@@ -1085,6 +1185,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         `[${workerId}] ✅ MULTI-NODE: Got job ${job.id} (${job.fileLabel}) assigned to nodeId: ${nodeId}`
       );
 
+      // SELF-HEALING: Validate and heal job's policy before processing
+      // Handles deleted policies and codec mismatches silently
+      const healedJob = await this.validateAndHealJobPolicy(job as JobWithPolicy);
+      // Update local reference if job was healed
+      Object.assign(job, healedJob);
+
       // AV1 THROTTLING: Log throttling status if job is resource-throttled
       const jobWithThrottle = job as any;
       if (jobWithThrottle.resourceThrottled) {
@@ -1100,24 +1206,56 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       worker.currentJobId = job.id;
 
       try {
-        // Verify source file exists
+        // Verify source file exists - with auto-relocation for renamed files
         if (!fs.existsSync(job.filePath)) {
           const dirExists = fs.existsSync(path.dirname(job.filePath));
-          let errorMessage = `Source file not found: ${job.filePath}`;
 
-          if (!dirExists) {
-            errorMessage += `\n\nThe parent directory does not exist. This could indicate:`;
-            errorMessage += `\n- The library path was unmounted or removed`;
-            errorMessage += `\n- Network share disconnected`;
-            errorMessage += `\n- Directory permissions changed`;
+          // SELF-HEALING: Try to relocate file if it was moved/renamed by media server
+          this.logger.warn(`[${workerId}] Source file not found, attempting auto-relocation...`);
+          const relocationResult = await this.fileRelocatorService.relocateFile(
+            job.filePath,
+            job.beforeSizeBytes
+          );
+
+          if (relocationResult.found && relocationResult.newPath) {
+            // File was relocated - update job and continue
+            this.logger.log(
+              `[${workerId}] ✅ AUTO-RELOCATED: File found at new location (${relocationResult.matchType}, ${relocationResult.confidence}% confidence)`
+            );
+            this.logger.log(`[${workerId}]    Old path: ${job.filePath}`);
+            this.logger.log(`[${workerId}]    New path: ${relocationResult.newPath}`);
+
+            // Update job path in database
+            await this.prisma.job.update({
+              where: { id: job.id },
+              data: {
+                filePath: relocationResult.newPath,
+                fileLabel: path.basename(relocationResult.newPath),
+              },
+            });
+
+            // Update local job object for this encoding session
+            job.filePath = relocationResult.newPath;
+            job.fileLabel = path.basename(relocationResult.newPath);
           } else {
-            errorMessage += `\n\nThe file may have been:`;
-            errorMessage += `\n- Moved or renamed by another process`;
-            errorMessage += `\n- Deleted before encoding could start`;
-            errorMessage += `\n- Located on a network share that disconnected`;
-          }
+            // Could not relocate - fail with detailed error
+            let errorMessage = `Source file not found: ${job.filePath}`;
 
-          throw new Error(errorMessage);
+            if (!dirExists) {
+              errorMessage += `\n\nThe parent directory does not exist. This could indicate:`;
+              errorMessage += `\n- The library path was unmounted or removed`;
+              errorMessage += `\n- Network share disconnected`;
+              errorMessage += `\n- Directory permissions changed`;
+            } else {
+              errorMessage += `\n\nThe file may have been:`;
+              errorMessage += `\n- Moved or renamed by another process`;
+              errorMessage += `\n- Deleted before encoding could start`;
+              errorMessage += `\n- Located on a network share that disconnected`;
+              errorMessage += `\n\n(Auto-relocation searched ${relocationResult.searchedPaths} files but could not find a match)`;
+            }
+
+            throw new Error(errorMessage);
+          }
         }
 
         // Perform resource preflight checks
@@ -1268,6 +1406,108 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * SELF-HEALING: Validate and heal job's policy assignment
+   *
+   * Handles cases where:
+   * - Policy was deleted after job was queued
+   * - targetCodec doesn't match policy's targetCodec (orphaned setting)
+   *
+   * Resolution priority:
+   * 1. Library's default policy
+   * 2. Any policy assigned to the library
+   * 3. First available policy in the system
+   *
+   * UX Philosophy: Auto-heal silently - user shouldn't need to know or intervene
+   *
+   * @param job - Job to validate and potentially heal
+   * @returns Updated job with valid policy, or original if no changes needed
+   */
+  private async validateAndHealJobPolicy(job: JobWithPolicy): Promise<JobWithPolicy> {
+    // Fetch current policy from database
+    const currentPolicy = job.policyId
+      ? await this.prisma.policy.findUnique({ where: { id: job.policyId } })
+      : null;
+
+    // Case 1: Policy exists and codec matches - no healing needed
+    if (currentPolicy && job.targetCodec === currentPolicy.targetCodec) {
+      return job;
+    }
+
+    // Case 2: Policy exists but codec mismatches - update job's codec
+    if (currentPolicy && job.targetCodec !== currentPolicy.targetCodec) {
+      this.logger.warn(
+        `[${job.id}] POLICY HEAL: targetCodec mismatch (job: ${job.targetCodec}, policy: ${currentPolicy.targetCodec}) - updating job`
+      );
+
+      const updatedJob = await this.prisma.job.update({
+        where: { id: job.id },
+        data: {
+          targetCodec: currentPolicy.targetCodec,
+        },
+        include: { policy: true },
+      });
+
+      return updatedJob as JobWithPolicy;
+    }
+
+    // Case 3: Policy is missing - need to find alternative
+    this.logger.warn(
+      `[${job.id}] POLICY HEAL: Policy ${job.policyId} not found - finding alternative`
+    );
+
+    // Get library for this job to find appropriate policy
+    const library = await this.prisma.library.findUnique({
+      where: { id: job.libraryId },
+      include: { defaultPolicy: true, policies: true },
+    });
+
+    // Find replacement policy in priority order
+    let newPolicy = null;
+
+    // Priority 1: Library's default policy
+    if (library?.defaultPolicy) {
+      newPolicy = library.defaultPolicy;
+      this.logger.log(`[${job.id}] POLICY HEAL: Using library default policy: ${newPolicy.name}`);
+    }
+    // Priority 2: Any policy assigned to this library
+    else if (library?.policies && library.policies.length > 0) {
+      newPolicy = library.policies[0];
+      this.logger.log(`[${job.id}] POLICY HEAL: Using library's first policy: ${newPolicy.name}`);
+    }
+    // Priority 3: First available policy in system
+    else {
+      newPolicy = await this.prisma.policy.findFirst();
+      if (newPolicy) {
+        this.logger.log(`[${job.id}] POLICY HEAL: Using system's first policy: ${newPolicy.name}`);
+      }
+    }
+
+    // If no policy found anywhere, this is a critical configuration issue
+    if (!newPolicy) {
+      throw new Error(
+        `No policies available to assign to job ${job.id}. ` +
+          `Please create at least one encoding policy.`
+      );
+    }
+
+    // Update job with new policy and matching targetCodec
+    const updatedJob = await this.prisma.job.update({
+      where: { id: job.id },
+      data: {
+        policyId: newPolicy.id,
+        targetCodec: newPolicy.targetCodec,
+      },
+      include: { policy: true },
+    });
+
+    this.logger.log(
+      `[${job.id}] POLICY HEAL: Job updated - policy: ${newPolicy.name}, codec: ${newPolicy.targetCodec}`
+    );
+
+    return updatedJob as JobWithPolicy;
+  }
+
+  /**
    * Perform resource preflight checks before starting encoding
    *
    * Verifies system has sufficient resources to complete the encoding job:
@@ -1362,6 +1602,177 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Check if system is overloaded and should throttle new jobs
+   *
+   * Prevents system overload by checking:
+   * - Load average vs CPU cores (threshold: cores * loadThresholdMultiplier, default 5.0)
+   * - Available memory (minimum 4GB free)
+   *
+   * UX Philosophy: Generous defaults so nodes work without manual tuning
+   *
+   * @returns Object with isOverloaded flag and reason
+   * @private
+   */
+  private checkSystemLoad(): { isOverloaded: boolean; reason: string; details: string } {
+    const cpuCount = os.cpus().length;
+    const loadAvg = os.loadavg()[0]; // 1-minute load average
+    const loadThreshold = cpuCount * this.loadThresholdMultiplier;
+
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const freeMemoryGB = freeMemory / 1024 ** 3;
+
+    const details =
+      `Load: ${loadAvg.toFixed(2)}/${loadThreshold.toFixed(0)} (${cpuCount} cores), ` +
+      `Memory: ${freeMemoryGB.toFixed(1)}GB free`;
+
+    // Check load average
+    if (loadAvg > loadThreshold) {
+      return {
+        isOverloaded: true,
+        reason: `High system load (${loadAvg.toFixed(2)} > ${loadThreshold.toFixed(0)})`,
+        details,
+      };
+    }
+
+    // Check memory
+    if (freeMemoryGB < this.MIN_FREE_MEMORY_GB) {
+      return {
+        isOverloaded: true,
+        reason: `Low memory (${freeMemoryGB.toFixed(1)}GB < ${this.MIN_FREE_MEMORY_GB}GB)`,
+        details,
+      };
+    }
+
+    return { isOverloaded: false, reason: '', details };
+  }
+
+  /**
+   * Reload load threshold from database
+   *
+   * Called on startup and when settings change via API.
+   * Falls back to env var or default if no database value.
+   */
+  async reloadLoadThreshold(): Promise<void> {
+    try {
+      const currentNode = await this.nodesService.getCurrentNode();
+      // Type assertion: fields may be added in migration but Prisma client may not be regenerated yet
+      const nodeWithSettings = currentNode as typeof currentNode & {
+        loadThresholdMultiplier?: number;
+        encodingTempPath?: string | null;
+      };
+
+      // Load loadThresholdMultiplier
+      if (nodeWithSettings?.loadThresholdMultiplier) {
+        this.loadThresholdMultiplier = nodeWithSettings.loadThresholdMultiplier;
+        this.logger.log(
+          `📊 Load threshold loaded from database: ${this.loadThresholdMultiplier}x (${os.cpus().length} cores = max load ${(os.cpus().length * this.loadThresholdMultiplier).toFixed(0)})`
+        );
+      } else {
+        this.loadThresholdMultiplier = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
+        this.logger.log(
+          `📊 Load threshold using default: ${this.loadThresholdMultiplier}x (${os.cpus().length} cores = max load ${(os.cpus().length * this.loadThresholdMultiplier).toFixed(0)})`
+        );
+      }
+
+      // Load encodingTempPath (Priority: DB -> ENV -> null)
+      if (nodeWithSettings?.encodingTempPath) {
+        this.encodingTempPath = nodeWithSettings.encodingTempPath;
+        this.logger.log(`⚡ Encoding temp path loaded from database: ${this.encodingTempPath}`);
+      } else if (process.env.ENCODING_TEMP_PATH) {
+        this.encodingTempPath = process.env.ENCODING_TEMP_PATH;
+        this.logger.log(`⚡ Encoding temp path from ENV: ${this.encodingTempPath}`);
+      } else {
+        this.encodingTempPath = null;
+        this.logger.debug('📂 No encoding temp path configured, using source directory');
+      }
+    } catch (error) {
+      this.loadThresholdMultiplier = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
+      this.encodingTempPath = process.env.ENCODING_TEMP_PATH || null;
+      this.logger.warn(`Failed to load settings from database, using defaults`, error);
+    }
+  }
+
+  /**
+   * Get current load threshold multiplier (for API exposure)
+   */
+  getLoadThresholdMultiplier(): number {
+    return this.loadThresholdMultiplier;
+  }
+
+  /**
+   * Get current encoding temp path (for API exposure)
+   */
+  getEncodingTempPath(): string | null {
+    return this.encodingTempPath;
+  }
+
+  /**
+   * Get current system load info (for debug API)
+   */
+  getSystemLoadInfo(): {
+    loadAvg1m: number;
+    loadAvg5m: number;
+    loadAvg15m: number;
+    cpuCount: number;
+    loadThreshold: number;
+    loadThresholdMultiplier: number;
+    freeMemoryGB: number;
+    totalMemoryGB: number;
+    isOverloaded: boolean;
+    reason: string;
+  } {
+    const loadAvg = os.loadavg();
+    const cpuCount = os.cpus().length;
+    const loadThreshold = cpuCount * this.loadThresholdMultiplier;
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const check = this.checkSystemLoad();
+
+    return {
+      loadAvg1m: loadAvg[0],
+      loadAvg5m: loadAvg[1],
+      loadAvg15m: loadAvg[2],
+      cpuCount,
+      loadThreshold,
+      loadThresholdMultiplier: this.loadThresholdMultiplier,
+      freeMemoryGB: freeMemory / 1024 ** 3,
+      totalMemoryGB: totalMemory / 1024 ** 3,
+      isOverloaded: check.isOverloaded,
+      reason: check.reason,
+    };
+  }
+
+  /**
+   * Wait for system load to decrease before starting new job
+   *
+   * Called by worker loop before attempting to pick up a new job.
+   * Logs warnings periodically to avoid log spam.
+   *
+   * @returns Promise that resolves when system is ready
+   * @private
+   */
+  private async waitForSystemLoad(): Promise<void> {
+    let check = this.checkSystemLoad();
+
+    while (check.isOverloaded) {
+      const now = Date.now();
+
+      // Log throttle warning (but not too frequently)
+      if (now - this.lastThrottleLogTime > this.THROTTLE_LOG_INTERVAL_MS) {
+        this.logger.warn(`⚠️ THROTTLING: ${check.reason}`);
+        this.logger.warn(`   ${check.details}`);
+        this.logger.warn(`   Waiting for system to stabilize before starting new jobs...`);
+        this.lastThrottleLogTime = now;
+      }
+
+      // Wait before checking again
+      await this.sleep(this.THROTTLE_CHECK_INTERVAL_MS);
+      check = this.checkSystemLoad();
+    }
+  }
+
+  /**
    * Encode a file using FFmpeg with atomic replacement
    *
    * @param job - Job to encode
@@ -1376,8 +1787,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const outputName = path.basename(job.filePath);
 
     // PERF: Use cache pool (SSD) for temp files if available, otherwise use source directory
-    const tmpPath = this.ENCODING_TEMP_PATH
-      ? path.join(this.ENCODING_TEMP_PATH, `.${outputName}.tmp-${job.id}`)
+    const tmpPath = this.encodingTempPath
+      ? path.join(this.encodingTempPath, `.${outputName}.tmp-${job.id}`)
       : path.join(path.dirname(job.filePath), `.${outputName}.tmp-${job.id}`);
 
     try {
@@ -1924,6 +2335,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     while (worker.isRunning) {
       try {
+        // LOAD-BASED THROTTLING: Wait if system is overloaded before picking up new job
+        await this.waitForSystemLoad();
+
+        // Check if worker was stopped while waiting
+        if (!worker.isRunning) break;
+
         const job = await this.processNextJob(workerId);
 
         if (!job) {

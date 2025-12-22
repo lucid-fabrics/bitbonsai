@@ -567,6 +567,30 @@ export class NodesService implements OnModuleInit {
   async getCurrentNode(): Promise<Node> {
     const nodeId = process.env.NODE_ID;
 
+    // Collect system info once for all strategies
+    const systemInfo = await this.systemInfoService.collectSystemInfo();
+    const currentIpAddress = systemInfo.ipAddress;
+
+    // Helper to auto-update node IP if it differs from detected IP
+    // This ensures database always has current IP, preventing future mismatches
+    const autoUpdateIpIfNeeded = async (node: Node): Promise<Node> => {
+      if (
+        currentIpAddress &&
+        node.ipAddress !== currentIpAddress &&
+        currentIpAddress !== '127.0.0.1'
+      ) {
+        this.logger.warn(
+          `🔄 AUTO-IP-UPDATE: Node "${node.name}" IP changed from ${node.ipAddress} to ${currentIpAddress}`
+        );
+        const updatedNode = await this.prisma.node.update({
+          where: { id: node.id },
+          data: { ipAddress: currentIpAddress },
+        });
+        return updatedNode;
+      }
+      return node;
+    };
+
     // Strategy 1: If NODE_ID is explicitly set, use it (highest priority)
     if (nodeId) {
       const node = await this.prisma.node.findUnique({
@@ -577,12 +601,10 @@ export class NodesService implements OnModuleInit {
         throw new NotFoundException(`Node with ID ${nodeId} (from NODE_ID env) not found`);
       }
 
-      return node;
+      return autoUpdateIpIfNeeded(node);
     }
 
     // Strategy 2: Try to match by IP address (auto-detection)
-    const systemInfo = await this.systemInfoService.collectSystemInfo();
-    const currentIpAddress = systemInfo.ipAddress;
 
     if (currentIpAddress) {
       // Try to find nodes matching this IP address
@@ -615,11 +637,12 @@ export class NodesService implements OnModuleInit {
         this.logger.debug(
           `✅ Detected current node by IP address: ${selectedNode.name} (${selectedNode.role}) at ${currentIpAddress}`
         );
-        return selectedNode;
+        return selectedNode; // IP already matches, no update needed
       }
     }
 
     // Strategy 3: Fallback to role-based detection
+    // IMPORTANT: When using role-based fallback, auto-update the IP so future restarts use Strategy 2
 
     // Check for MAIN node
     const mainNodes = await this.prisma.node.findMany({
@@ -641,12 +664,12 @@ export class NodesService implements OnModuleInit {
           .map((n) => n.id)
           .join(', ')}`
       );
-      // Return the NEWEST main node (most likely to be correct)
-      return mainNodes[mainNodes.length - 1];
+      // Return the NEWEST main node (most likely to be correct) and auto-update its IP
+      return autoUpdateIpIfNeeded(mainNodes[mainNodes.length - 1]);
     }
 
     if (mainNodes.length === 1) {
-      return mainNodes[0];
+      return autoUpdateIpIfNeeded(mainNodes[0]);
     }
 
     // No MAIN node found - check if this is a child-only instance (has LINKED node but no MAIN)
@@ -656,7 +679,7 @@ export class NodesService implements OnModuleInit {
     });
 
     if (linkedNode) {
-      return linkedNode;
+      return autoUpdateIpIfNeeded(linkedNode);
     }
 
     throw new NotFoundException('No nodes found. Please complete setup first.');
@@ -714,6 +737,10 @@ export class NodesService implements OnModuleInit {
         ...(data.mainNodeUrl !== undefined && { mainNodeUrl: data.mainNodeUrl }),
         ...(data.hasSharedStorage !== undefined && { hasSharedStorage: data.hasSharedStorage }),
         ...(data.networkLocation !== undefined && { networkLocation: data.networkLocation }),
+        ...(data.loadThresholdMultiplier !== undefined && {
+          loadThresholdMultiplier: data.loadThresholdMultiplier,
+        }),
+        ...(data.ipAddress && { ipAddress: data.ipAddress }),
       },
     });
   }

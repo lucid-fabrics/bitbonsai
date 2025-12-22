@@ -9,6 +9,7 @@ import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import { promisify } from 'util';
+import { escapeShellArg, sanitizePath, sanitizeServerAddress } from '../utils/input-sanitizer';
 import { StorageShareService } from './storage-share.service';
 import { MountStrategyFactory } from './strategies/mount-strategy.factory';
 
@@ -116,7 +117,7 @@ export class StorageMountService {
   /**
    * Unmount a storage share
    */
-  async unmount(shareId: string, force: boolean = false): Promise<MountResult> {
+  async unmount(shareId: string, force = false): Promise<MountResult> {
     this.logger.log(`Unmounting storage share: ${shareId}`);
 
     const share = await this.storageShareService.findOne(shareId);
@@ -130,8 +131,11 @@ export class StorageMountService {
     }
 
     try {
+      // Sanitize mount point to prevent command injection
+      const safeMountPoint = escapeShellArg(sanitizePath(share.mountPoint));
+
       // Build unmount command
-      const unmountCommand = force ? `umount -f ${share.mountPoint}` : `umount ${share.mountPoint}`;
+      const unmountCommand = force ? `umount -f ${safeMountPoint}` : `umount ${safeMountPoint}`;
 
       this.logger.debug(`Executing unmount command: ${unmountCommand}`);
 
@@ -208,9 +212,12 @@ export class StorageMountService {
     };
 
     try {
+      // Sanitize server address to prevent command injection
+      const safeServerAddress = sanitizeServerAddress(serverAddress);
+
       // Test basic reachability with ping
       const startTime = Date.now();
-      const { stdout } = await execAsync(`ping -c 1 -W 2 ${serverAddress}`);
+      const { stdout } = await execAsync(`ping -c 1 -W 2 ${escapeShellArg(safeServerAddress)}`);
       const endTime = Date.now();
 
       result.isReachable = stdout.includes('1 received') || stdout.includes('1 packets received');
@@ -249,7 +256,9 @@ export class StorageMountService {
     usedPercent: number;
   }> {
     try {
-      const { stdout } = await execAsync(`df -B1 ${mountPoint}`);
+      // Sanitize mount point to prevent command injection
+      const safeMountPoint = escapeShellArg(sanitizePath(mountPoint));
+      const { stdout } = await execAsync(`df -B1 ${safeMountPoint}`);
       const lines = stdout.trim().split('\n');
 
       if (lines.length < 2) {
@@ -281,8 +290,12 @@ export class StorageMountService {
    */
   private async verifyMount(mountPoint: string): Promise<boolean> {
     try {
-      const { stdout } = await execAsync(`mount | grep ${mountPoint}`);
-      return stdout.includes(mountPoint);
+      // Sanitize mount point to prevent command injection
+      const safeMountPoint = sanitizePath(mountPoint);
+
+      // Use grep with fixed-string mode (-F) to prevent regex injection
+      const { stdout } = await execAsync(`mount | grep -F ${escapeShellArg(safeMountPoint)}`);
+      return stdout.includes(safeMountPoint);
     } catch (_error) {
       return false;
     }
@@ -307,12 +320,38 @@ export class StorageMountService {
   private async addToFstab(share: any): Promise<void> {
     try {
       const fstabPath = '/etc/fstab';
-      const fstabContent = await fs.readFile(fstabPath, 'utf-8');
+      const fstabBackupPath = '/etc/fstab.backup';
 
-      // Check if entry already exists
-      if (fstabContent.includes(share.mountPoint)) {
-        this.logger.debug(`Mount point ${share.mountPoint} already in fstab`);
+      let fstabContent = '';
+      try {
+        fstabContent = await fs.readFile(fstabPath, 'utf-8');
+      } catch (_error) {
+        // fstab doesn't exist, will create it
+        this.logger.debug('/etc/fstab does not exist, will create it');
+      }
+
+      // Sanitize mount point for comparison
+      const safeMountPoint = sanitizePath(share.mountPoint);
+
+      // Check if entry already exists using proper line matching
+      // Match lines where the second field (mount point) equals our mount point
+      const lines = fstabContent.split('\n');
+      const alreadyExists = lines.some((line) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#') || !trimmed) return false;
+        const fields = trimmed.split(/\s+/);
+        return fields.length >= 2 && fields[1] === safeMountPoint;
+      });
+
+      if (alreadyExists) {
+        this.logger.debug(`Mount point ${safeMountPoint} already in fstab`);
         return;
+      }
+
+      // Create backup before modifying
+      if (fstabContent) {
+        await fs.writeFile(fstabBackupPath, fstabContent);
+        this.logger.debug('Created fstab backup at /etc/fstab.backup');
       }
 
       // Get appropriate strategy and build fstab entry
@@ -337,13 +376,27 @@ export class StorageMountService {
   private async removeFromFstab(share: any): Promise<void> {
     try {
       const fstabPath = '/etc/fstab';
+      const fstabBackupPath = '/etc/fstab.backup';
       const fstabContent = await fs.readFile(fstabPath, 'utf-8');
 
-      // Filter out lines containing this mount point
+      // Sanitize mount point for comparison
+      const safeMountPoint = sanitizePath(share.mountPoint);
+
+      // Create backup before modifying
+      await fs.writeFile(fstabBackupPath, fstabContent);
+      this.logger.debug('Created fstab backup at /etc/fstab.backup');
+
+      // Filter out lines where the second field (mount point) matches exactly
+      // This prevents accidentally removing unrelated lines that happen to contain the path string
       const lines = fstabContent.split('\n');
-      const filteredLines = lines.filter(
-        (line) => !line.includes(share.mountPoint) || line.trim().startsWith('#')
-      );
+      const filteredLines = lines.filter((line) => {
+        const trimmed = line.trim();
+        // Keep comments and empty lines
+        if (trimmed.startsWith('#') || !trimmed) return true;
+        // Parse fields and check if mount point (field 2) matches
+        const fields = trimmed.split(/\s+/);
+        return fields.length < 2 || fields[1] !== safeMountPoint;
+      });
 
       await fs.writeFile(fstabPath, filteredLines.join('\n'));
 

@@ -165,7 +165,7 @@ export class SshKeyService implements OnModuleInit {
    * @param port - SSH port (default: 22)
    * @returns Promise that resolves if connection successful
    */
-  async testConnection(host: string, port: number = 22): Promise<boolean> {
+  async testConnection(host: string, port = 22): Promise<boolean> {
     return new Promise((resolve) => {
       const ssh = spawn('ssh', [
         '-o',
@@ -210,7 +210,7 @@ export class SshKeyService implements OnModuleInit {
    * @param publicKey - Public key to copy
    * @param port - SSH port (default: 22)
    */
-  async copyKeyToRemote(host: string, publicKey: string, port: number = 22): Promise<void> {
+  async copyKeyToRemote(host: string, publicKey: string, port = 22): Promise<void> {
     return new Promise((resolve, reject) => {
       // Use ssh to append the key to remote authorized_keys
       const command = `mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo "${publicKey}" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`;

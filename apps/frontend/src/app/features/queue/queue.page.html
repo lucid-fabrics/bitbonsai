@@ -10,6 +10,12 @@
       </p>
     </div>
     <div class="header-actions">
+      @if ((queueData$ | async)?.stats?.codecMatchCount && (queueData$ | async)!.stats!.codecMatchCount > 0) {
+        <button (click)="openSkipCodecMatchDialog()" class="btn btn-info" title="Skip encoding for files already in target codec">
+          <i class="fas fa-forward"></i>
+          Skip Codec Match ({{ (queueData$ | async)!.stats!.codecMatchCount }})
+        </button>
+      }
       @if ((queueData$ | async)?.stats?.cancelled && (queueData$ | async)!.stats!.cancelled > 0) {
         <button (click)="openRetryAllDialog()" class="btn btn-success">
           <i class="fas fa-redo"></i>
@@ -46,130 +52,101 @@
   <!-- Disk Space Warning Banner -->
   <app-disk-space-warning-banner></app-disk-space-warning-banner>
 
-  <!-- Progress Dashboard -->
-  @if (queueData$ | async; as queueData) {
-    <div class="progress-dashboard">
-      <div class="pipeline-container">
-        <!-- Detected Stage -->
-        @if (queueData.stats.detected > 0) {
-          <div class="pipeline-stage detected clickable" (click)="onStatusFilterChange(JobStatus.DETECTED)">
-            <div class="pipeline-stage__icon">
-              <i class="fas fa-search"></i>
+  <!-- Node Status Bar (Simplified UX) -->
+  @if (nodeCapacity$ | async; as nodes) {
+    @if (nodes.length > 0) {
+      <div class="node-status-bar">
+        @for (node of nodes; track node.nodeId) {
+          <div class="node-status" [class]="getNodeStatusClass(node)"
+               bbTooltip
+               [tooltipTitle]="node.nodeName + ' Details'"
+               [tooltipContent]="getNodeTooltipContent(node)"
+               tooltipPlacement="bottom">
+            <div class="node-status__indicator">
+              <i [class]="getNodeStatusIcon(node)"></i>
             </div>
-            <div class="pipeline-stage__content">
-              <div class="pipeline-stage__title">Detected</div>
-              <div class="pipeline-stage__count">{{ queueData.stats.detected }} files</div>
-              <div class="pipeline-stage__meta"><i class="fas fa-clock pipeline-stage__meta-icon"></i>
-                Awaiting health check
-              </div>
+            <div class="node-status__info">
+              <span class="node-status__name">{{ node.nodeName }}</span>
+              <span class="node-status__label">{{ getNodeStatusLabel(node) }}</span>
             </div>
-          </div>
-
-          <!-- Arrow -->
-          <div class="pipeline-arrow">
-            <i class="fas fa-arrow-right"></i>
+            <div class="node-status__workers">
+              <span class="workers-count">{{ node.activeJobs }}</span>
+              <span class="workers-max">/ {{ node.maxWorkers }}</span>
+            </div>
           </div>
         }
+      </div>
+    }
+  }
 
-        <!-- Health Check Stage -->
+  <!-- Compact Progress Dashboard -->
+  @if (queueData$ | async; as queueData) {
+    <div class="progress-dashboard compact">
+      <div class="pipeline-container">
+        <!-- Detected Stage (only show if > 0) -->
+        @if (queueData.stats.detected > 0) {
+          <div class="pipeline-stage detected clickable" (click)="onStatusFilterChange(JobStatus.DETECTED)">
+            <i class="fas fa-search"></i>
+            <span class="count">{{ queueData.stats.detected }}</span>
+            <span class="label">Detected</span>
+          </div>
+          <i class="fas fa-chevron-right arrow"></i>
+        }
+
+        <!-- Health Check Stage (only show if > 0) -->
         @if (queueData.stats.healthCheck > 0) {
           <div class="pipeline-stage health-check clickable" (click)="onStatusFilterChange(JobStatus.HEALTH_CHECK)">
-            <div class="pipeline-stage__icon">
-              <i class="fas fa-heartbeat fa-pulse"></i>
-            </div>
-            <div class="pipeline-stage__content">
-              <div class="pipeline-stage__title">Health Check</div>
-              <div class="pipeline-stage__count">{{ queueData.stats.healthCheck }} files</div>
-              <div class="pipeline-stage__meta"><i class="fas fa-stethoscope pipeline-stage__meta-icon"></i>
-                Validating files
-              </div>
-            </div>
+            <i class="fas fa-heartbeat fa-pulse"></i>
+            <span class="count">{{ queueData.stats.healthCheck }}</span>
+            <span class="label">Health</span>
           </div>
-
-          <!-- Arrow -->
-          <div class="pipeline-arrow">
-            <i class="fas fa-arrow-right"></i>
-          </div>
+          <i class="fas fa-chevron-right arrow"></i>
         }
 
         <!-- Queued Stage -->
         <div class="pipeline-stage queued clickable" (click)="onStatusFilterChange(JobStatus.QUEUED)">
-          <div class="pipeline-stage__icon">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="pipeline-stage__content">
-            <div class="pipeline-stage__title">Queued</div>
-            <div class="pipeline-stage__count">{{ queueData.stats.queued }} files</div>
-            @if (queueData.stats.queued > 0) {
-              <div class="pipeline-stage__meta"><i class="fas fa-hourglass-start pipeline-stage__meta-icon"></i>
-                Ready to encode
-              </div>
-            }
-          </div>
+          <i class="fas fa-clock"></i>
+          <span class="count">{{ queueData.stats.queued }}</span>
+          <span class="label">Queued</span>
         </div>
-
-        <!-- Arrow -->
-        <div class="pipeline-arrow">
-          <i class="fas fa-arrow-right"></i>
-        </div>
+        <i class="fas fa-chevron-right arrow"></i>
 
         <!-- Encoding Stage -->
-        <div class="pipeline-stage encoding clickable" (click)="onStatusFilterChange(JobStatus.ENCODING)">
-          <div class="pipeline-stage__icon">
-            @if (queueData.stats.encoding > 0) {
-              <i class="fas fa-spinner fa-spin"></i>
-            }
-            @if (queueData.stats.encoding === 0) {
-              <i class="fas fa-pause-circle"></i>
-            }
-          </div>
-          <div class="pipeline-stage__content">
-            <div class="pipeline-stage__title">Encoding</div>
-            <div class="pipeline-stage__count">{{ queueData.stats.encoding }} files</div>
-            @if (queueData.stats.encoding > 0) {
-              <div class="stage-progress">
-                <div class="encoding-indicator">
-                  <div class="progress-bar-mini">
-                    <div class="progress-fill-mini"></div>
-                  </div>
-                  <span class="encoding-text">Active</span>
-                </div>
-              </div>
-            }
-          </div>
+        <div class="pipeline-stage encoding clickable" [class.active]="queueData.stats.encoding > 0" (click)="onStatusFilterChange(JobStatus.ENCODING)">
+          @if (queueData.stats.encoding > 0) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-pause-circle"></i>
+          }
+          <span class="count">{{ queueData.stats.encoding }}</span>
+          <span class="label">Encoding</span>
         </div>
-
-        <!-- Arrow -->
-        <div class="pipeline-arrow">
-          <i class="fas fa-arrow-right"></i>
-        </div>
+        <i class="fas fa-chevron-right arrow"></i>
 
         <!-- Completed Stage -->
         <div class="pipeline-stage completed clickable" (click)="onStatusFilterChange(JobStatus.COMPLETED)">
-          <div class="pipeline-stage__icon">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div class="pipeline-stage__content">
-            <div class="pipeline-stage__title">Completed</div>
-            <div class="pipeline-stage__count">{{ queueData.stats.completed }} files</div>
-            @if (Number.parseInt(queueData.stats.totalSavedBytes) > 0) {
-              <div class="pipeline-stage__meta success"><i class="fas fa-save pipeline-stage__meta-icon"></i>
-                {{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes)) }} saved
-              </div>
-            }
-          </div>
+          <i class="fas fa-check-circle"></i>
+          <span class="count">{{ queueData.stats.completed }}</span>
+          <span class="label">Done</span>
+          @if (Number.parseInt(queueData.stats.totalSavedBytes) > 0) {
+            <span class="saved">{{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes)) }}</span>
+          }
         </div>
 
-        <!-- Failed Jobs Alert (if any) -->
+        <!-- Alerts -->
+        @if (queueData.stats.needsDecision > 0) {
+          <div class="pipeline-alert needs-decision clickable" (click)="onStatusFilterChange(JobStatus.NEEDS_DECISION)">
+            <i class="fas fa-hand-paper"></i>
+            <span class="count">{{ queueData.stats.needsDecision }}</span>
+            <span class="label">Needs Input</span>
+          </div>
+        }
+
         @if (queueData.stats.failed > 0) {
-          <div class="pipeline-alert clickable" (click)="onStatusFilterChange(JobStatus.FAILED)">
-            <div class="alert-icon">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div class="alert-content">
-              <div class="alert-title">Needs Attention</div>
-              <div class="alert-count">{{ queueData.stats.failed }} Failed Jobs</div>
-            </div>
+          <div class="pipeline-alert failed clickable" (click)="onStatusFilterChange(JobStatus.FAILED)">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span class="count">{{ queueData.stats.failed }}</span>
+            <span class="label">Failed</span>
           </div>
         }
       </div>
@@ -1104,6 +1081,18 @@
                         </div>
                       }
 
+                      <!-- Decision Issues (NEEDS_DECISION status) -->
+                      @if (job.decisionRequired && job.decisionIssues) {
+                        <div class="decision-issues-section">
+                          <h4><i class="fas fa-exclamation-triangle"></i> Action Required</h4>
+                          @for (issue of parseDecisionIssues(job.decisionIssues); track issue.code) {
+                            <app-decision-issue-card
+                              [issue]="issue"
+                              (actionSelected)="onDecisionActionSelected($event)">
+                            </app-decision-issue-card>
+                          }
+                        </div>
+                      }
 
                       <!-- File Information -->
                       <div class="file-info-section">
@@ -1619,6 +1608,64 @@
             <span class="btn-title">Cancel & Blacklist</span>
             <span class="btn-subtitle">Never auto-encode again</span>
           </div>
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Skip Codec Match Confirmation Dialog -->
+@if (showSkipCodecMatchDialog) {
+  <div class="dialog-overlay" (click)="closeSkipCodecMatchDialog()">
+    <div class="dialog-content skip-codec-match-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-forward"></i> Skip Codec Match Jobs</h3>
+        <button (click)="closeSkipCodecMatchDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon" style="color: var(--info-color)">
+                <i class="fas fa-check-double"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ data.stats.codecMatchCount }}</div>
+                <div class="summary-label">Jobs to Skip</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box" style="border-color: var(--info-color)">
+            <i class="fas fa-info-circle" style="color: var(--info-color)"></i>
+            <div class="info-content">
+              <strong>Why are these jobs flagged?</strong>
+              <p>These files are already encoded in the target codec specified by the policy. This typically happens when:</p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>The policy's target codec was changed after jobs were created</li>
+                <li>Files were already optimized and re-added to the queue</li>
+              </ul>
+              <p style="margin-top: 0.5rem;"><strong>What happens when you skip?</strong></p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>Jobs will be marked as COMPLETED</li>
+                <li>No encoding will be performed</li>
+                <li>Original files remain unchanged</li>
+                <li>No disk space will be saved (files are already optimal)</li>
+              </ul>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeSkipCodecMatchDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button (click)="confirmSkipCodecMatch()" class="btn btn-info">
+          <i class="fas fa-forward"></i>
+          Skip All Codec Match Jobs
         </button>
       </div>
     </div>

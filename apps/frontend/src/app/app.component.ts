@@ -91,6 +91,12 @@ import { NotificationContainerComponent } from './shared/components/notification
     .main-content {
       flex: 1;
       background: #1a1a1a;
+      padding-top: 56px; /* Account for sticky app-header height */
+    }
+
+    /* When app-header is not shown (non-main nodes), remove padding */
+    .content-wrapper:not(:has(.app-header)) .main-content {
+      padding-top: 0;
     }
 
     @media (max-width: 768px) {

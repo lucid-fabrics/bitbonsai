@@ -12,6 +12,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Library } from '@prisma/client';
 import { JobStage } from '@prisma/client';
+import { DistributionOrchestratorService } from '../distribution/services/distribution-orchestrator.service';
 import { FileWatcherService } from '../file-watcher/file-watcher.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
@@ -50,7 +51,9 @@ export class LibrariesService {
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => QueueService))
     private queueService: QueueService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    @Inject(forwardRef(() => DistributionOrchestratorService))
+    private distributionOrchestrator: DistributionOrchestratorService
   ) {}
 
   /**
@@ -302,6 +305,28 @@ export class LibrariesService {
         },
       },
     });
+  }
+
+  /**
+   * Get all unique library paths from the database
+   *
+   * UX PHILOSOPHY: Eliminates need for MEDIA_PATHS env var
+   * Paths are derived from library configuration in database,
+   * providing a single source of truth.
+   *
+   * @param nodeId - Optional: filter by node ID (for per-node paths)
+   * @returns Array of unique library paths
+   */
+  async getAllLibraryPaths(nodeId?: string): Promise<string[]> {
+    const libraries = await this.prisma.library.findMany({
+      where: nodeId ? { nodeId } : undefined,
+      select: { path: true },
+    });
+
+    // Return unique paths
+    const paths = [...new Set(libraries.map((lib) => lib.path))];
+    this.logger.debug(`Retrieved ${paths.length} library path(s) from database`);
+    return paths;
   }
 
   /**
@@ -574,7 +599,7 @@ export class LibrariesService {
     const library = await this.prisma.library.findUnique({
       where: { id },
       include: {
-        policies: true, // Get all policies associated with library
+        defaultPolicy: true, // Get the library's default policy
       },
     });
 
@@ -582,15 +607,14 @@ export class LibrariesService {
       throw new NotFoundException(`Library with ID "${id}" not found`);
     }
 
-    if (!library.policies || library.policies.length === 0) {
+    if (!library.defaultPolicy) {
       throw new BadRequestException(
         'Library has no encoding policy. Please assign a policy first.'
       );
     }
 
-    // Use library's default policy, or first policy if no default is set
-    const policy =
-      library.policies.find((p) => p.id === library.defaultPolicyId) || library.policies[0];
+    // Use library's default policy
+    const policy = library.defaultPolicy;
 
     // Collect all video file paths using streaming scan
     const videoFiles: string[] = [];
@@ -700,11 +724,15 @@ export class LibrariesService {
       policyId: policy.id,
       policyName: policy.name,
       targetCodec: policy.targetCodec,
-      availablePolicies: library.policies.map((p) => ({
-        id: p.id,
-        name: p.name,
-        preset: p.preset,
-      })),
+      availablePolicies: library.defaultPolicy
+        ? [
+            {
+              id: library.defaultPolicy.id,
+              name: library.defaultPolicy.name,
+              preset: library.defaultPolicy.preset,
+            },
+          ]
+        : [],
       totalFiles: analysis.totalFiles - blacklistedPaths.size,
       totalSizeBytes: analysis.totalSizeBytes.toString(),
       needsEncodingCount: canAddCount, // Files that can be added to queue
@@ -824,6 +852,11 @@ export class LibrariesService {
           // Extract file label (filename without path)
           const fileLabel = filePath.split('/').pop() || filePath;
 
+          // Find the best node for this job (distributes across available nodes)
+          const targetNodeId = await this.distributionOrchestrator.findBestNodeForNewJob(
+            library.nodeId
+          );
+
           // Create job using queue service
           return await this.queueService.create({
             filePath,
@@ -831,7 +864,7 @@ export class LibrariesService {
             sourceCodec: videoInfo.codec,
             targetCodec: policy.targetCodec,
             beforeSizeBytes: videoInfo.sizeBytes.toString(),
-            nodeId: library.nodeId,
+            nodeId: targetNodeId,
             libraryId: library.id,
             policyId: policy.id,
           });
@@ -943,12 +976,12 @@ export class LibrariesService {
         enabled: true,
       },
       include: {
-        policies: true, // Get all policies to check if library has any
+        defaultPolicy: true, // Get the library's default policy
       },
     });
 
-    // Filter libraries that have policies
-    const librariesWithPolicies = libraries.filter((lib) => lib.policies.length > 0);
+    // Filter libraries that have a default policy
+    const librariesWithPolicies = libraries.filter((lib) => lib.defaultPolicy !== null);
 
     if (librariesWithPolicies.length === 0) {
       this.logger.log('No libraries with policies found');
@@ -1123,8 +1156,11 @@ export class LibrariesService {
         // No codec filtering - allow re-encoding files already in target codec
         // This supports use cases like H.265 → H.265 with different quality/preset settings
 
-        // Create job
+        // Create job with distribution to best available node
         const fileLabel = filePath.split('/').pop() || filePath;
+        const targetNodeId = await this.distributionOrchestrator.findBestNodeForNewJob(
+          library.nodeId
+        );
 
         await this.queueService.create({
           filePath,
@@ -1132,7 +1168,7 @@ export class LibrariesService {
           sourceCodec: videoInfo.codec,
           targetCodec: policy.targetCodec,
           beforeSizeBytes: videoInfo.sizeBytes.toString(),
-          nodeId: library.nodeId,
+          nodeId: targetNodeId,
           libraryId: library.id,
           policyId: policy.id,
         });

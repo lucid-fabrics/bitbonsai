@@ -6,6 +6,29 @@ import type { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import type { SecuritySettingsDto } from './dto/security-settings.dto';
 
 /**
+ * Operational Settings Interface
+ * Contains all timeout and worker configuration settings
+ * UX Philosophy: Eliminates env vars, single source of truth in database
+ */
+export interface OperationalSettings {
+  // Job cleanup
+  jobStuckThresholdMinutes: number;
+  jobEncodingTimeoutHours: number;
+  // Stuck job recovery
+  recoveryIntervalMs: number;
+  healthCheckTimeoutMin: number;
+  encodingTimeoutMin: number;
+  verifyingTimeoutMin: number;
+  // Health check worker
+  healthCheckConcurrency: number;
+  healthCheckIntervalMs: number;
+  maxRetryAttempts: number;
+  // Backup cleanup
+  backupCleanupIntervalMs: number;
+  backupRetentionHours: number;
+}
+
+/**
  * Settings Service
  *
  * Handles system-wide settings including security configuration and user preferences.
@@ -269,6 +292,135 @@ export class SettingsService {
 
     return {
       maxAutoHealRetries: settings.maxAutoHealRetries,
+    };
+  }
+
+  // ============================================================================
+  // JELLYFIN INTEGRATION SETTINGS
+  // ============================================================================
+
+  /**
+   * Get Jellyfin integration settings
+   */
+  async getJellyfinSettings(): Promise<{
+    jellyfinUrl: string | null;
+    jellyfinApiKey: string | null;
+    jellyfinRefreshOnComplete: boolean;
+  }> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+
+      if (!s) {
+        s = await tx.settings.create({
+          data: {},
+        });
+      }
+
+      return s;
+    });
+
+    const s = settings as any;
+
+    return {
+      jellyfinUrl: s.jellyfinUrl || null,
+      jellyfinApiKey: s.jellyfinApiKey ? '••••••••' : null, // Mask API key
+      jellyfinRefreshOnComplete: s.jellyfinRefreshOnComplete ?? true,
+    };
+  }
+
+  /**
+   * Update Jellyfin integration settings
+   */
+  async updateJellyfinSettings(dto: {
+    jellyfinUrl?: string;
+    jellyfinApiKey?: string;
+    jellyfinRefreshOnComplete?: boolean;
+  }): Promise<{
+    jellyfinUrl: string | null;
+    jellyfinApiKey: string | null;
+    jellyfinRefreshOnComplete: boolean;
+  }> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+
+      const updateData: any = {};
+      if (dto.jellyfinUrl !== undefined) {
+        updateData.jellyfinUrl = dto.jellyfinUrl || null;
+      }
+      if (dto.jellyfinApiKey !== undefined) {
+        updateData.jellyfinApiKey = dto.jellyfinApiKey || null;
+      }
+      if (dto.jellyfinRefreshOnComplete !== undefined) {
+        updateData.jellyfinRefreshOnComplete = dto.jellyfinRefreshOnComplete;
+      }
+
+      if (!s) {
+        s = await tx.settings.create({
+          data: updateData,
+        });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: updateData,
+        });
+      }
+
+      return s;
+    });
+
+    const s = settings as any;
+
+    return {
+      jellyfinUrl: s.jellyfinUrl || null,
+      jellyfinApiKey: s.jellyfinApiKey ? '••••••••' : null,
+      jellyfinRefreshOnComplete: s.jellyfinRefreshOnComplete ?? true,
+    };
+  }
+
+  // ============================================================================
+  // OPERATIONAL SETTINGS (eliminates env vars)
+  // ============================================================================
+
+  /**
+   * Get operational settings
+   *
+   * Returns timeout and worker configuration settings.
+   * Falls back to defaults if settings don't exist.
+   * Priority: DB value -> Default (no env var fallback for simplicity)
+   */
+  async getOperationalSettings(): Promise<OperationalSettings> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+
+      // Create default settings if they don't exist
+      if (!s) {
+        s = await tx.settings.create({
+          data: {},
+        });
+      }
+
+      return s;
+    });
+
+    // Type assertion for new fields that may not be in Prisma client yet
+    const s = settings as typeof settings & Partial<OperationalSettings>;
+
+    return {
+      // Job cleanup (with fallbacks to defaults)
+      jobStuckThresholdMinutes: s.jobStuckThresholdMinutes ?? 5,
+      jobEncodingTimeoutHours: s.jobEncodingTimeoutHours ?? 2,
+      // Stuck job recovery
+      recoveryIntervalMs: s.recoveryIntervalMs ?? 120000,
+      healthCheckTimeoutMin: s.healthCheckTimeoutMin ?? 5,
+      encodingTimeoutMin: s.encodingTimeoutMin ?? 10,
+      verifyingTimeoutMin: s.verifyingTimeoutMin ?? 30,
+      // Health check worker
+      healthCheckConcurrency: s.healthCheckConcurrency ?? 10,
+      healthCheckIntervalMs: s.healthCheckIntervalMs ?? 2000,
+      maxRetryAttempts: s.maxRetryAttempts ?? 3,
+      // Backup cleanup
+      backupCleanupIntervalMs: s.backupCleanupIntervalMs ?? 3600000,
+      backupRetentionHours: s.backupRetentionHours ?? 24,
     };
   }
 }

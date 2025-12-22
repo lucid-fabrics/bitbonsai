@@ -129,8 +129,14 @@ export class NotificationService implements OnDestroy {
     const host = window.location.hostname;
     const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
 
-    // For development, use port 3100 (backend port)
-    const wsPort = port === '4200' ? '3100' : port;
+    // Map frontend ports to backend ports
+    // 4200 = local dev frontend -> 3100 backend
+    // 4210 = Unraid frontend -> 3100 backend
+    const frontendToBackendPorts: Record<string, string> = {
+      '4200': '3100',
+      '4210': '3100',
+    };
+    const wsPort = frontendToBackendPorts[port] || port;
 
     return `${protocol}//${host}:${wsPort}/notifications`;
   }

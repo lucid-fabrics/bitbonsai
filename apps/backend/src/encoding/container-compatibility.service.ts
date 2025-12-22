@@ -31,10 +31,7 @@ export class ContainerCompatibilityService {
    * @param targetContainer - Target container format (e.g., 'mp4', 'mkv')
    * @returns Array of detected issues requiring user decision
    */
-  async checkCompatibility(
-    filePath: string,
-    targetContainer: string = 'mp4'
-  ): Promise<HealthCheckIssue[]> {
+  async checkCompatibility(filePath: string, targetContainer = 'mp4'): Promise<HealthCheckIssue[]> {
     this.logger.debug(`Checking compatibility: ${filePath} → .${targetContainer}`);
 
     try {

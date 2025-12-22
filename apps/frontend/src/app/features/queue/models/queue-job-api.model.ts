@@ -69,4 +69,7 @@ export interface QueueJobApiModel {
   transferError?: string;
   remoteTempPath?: string;
   transferRetryCount?: number;
+  // Decision Feature (Phase 3)
+  decisionRequired?: boolean;
+  decisionIssues?: string | null; // JSON string of HealthCheckIssue[]
 }

@@ -1,5 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { CoreModule } from '../core/core.module';
+import { DistributionModule } from '../distribution/distribution.module';
+import { LibrariesModule } from '../libraries/libraries.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageSharesController } from './controllers/storage-shares.controller';
@@ -33,7 +35,12 @@ import { SystemInfoService } from './services/system-info.service';
  * - System information collection (hardware, network, container type)
  */
 @Module({
-  imports: [CoreModule, NotificationsModule],
+  imports: [
+    CoreModule,
+    NotificationsModule,
+    forwardRef(() => DistributionModule),
+    forwardRef(() => LibrariesModule),
+  ],
   controllers: [NodesController, StorageSharesController],
   providers: [
     NodesService,

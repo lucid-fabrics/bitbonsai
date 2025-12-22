@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { StorageProtocol, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
-import * as fs from 'fs/promises';
 import { promisify } from 'util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { DockerVolumeMount } from '../interfaces/file-transport.interface';
@@ -10,24 +9,27 @@ import { DockerVolumeDetectorService } from './docker-volume-detector.service';
 const execAsync = promisify(exec);
 
 /**
- * Automatically exports Docker volumes as NFS shares
+ * NFS Auto-Export Service
  *
- * This service enables the revolutionary zero-config storage sharing:
- * 1. Detects Docker volume mounts on the main node
- * 2. Auto-exports them as NFS shares
- * 3. Child nodes can auto-detect and auto-mount
+ * Detects Docker volume mounts and creates StorageShare records for child node discovery.
  *
- * Example flow:
- * - Main node has Docker volume: /mnt/user/media:/media
- * - This service creates NFS export: /media → 192.168.1.0/24
- * - Child nodes discover and mount at same path: /media
- * - FFmpeg reads directly from NFS without file transfers!
+ * IMPORTANT: This service does NOT create NFS exports itself!
+ * NFS exports must be configured on the HOST (e.g., Unraid Settings → NFS).
+ *
+ * Flow:
+ * 1. Unraid user configures NFS exports in Unraid UI (one-time setup)
+ * 2. This service detects Docker volumes: /mnt/user/media:/media
+ * 3. Creates StorageShare records: sharePath=/mnt/user/media, mountPoint=/media
+ * 4. Child nodes fetch share info and mount via NFS
+ *
+ * Why we don't write /etc/exports:
+ * - BitBonsai runs inside Docker, /etc/exports would be container's not host's
+ * - Unraid already has NFS management in its UI
+ * - Manual host-level NFS config is more reliable than container manipulation
  */
 @Injectable()
 export class NFSAutoExportService {
   private readonly logger = new Logger(NFSAutoExportService.name);
-  private readonly EXPORTS_FILE = '/etc/exports';
-  private readonly AUTO_EXPORT_MARKER = '# BitBonsai Auto-Managed Export';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -35,17 +37,19 @@ export class NFSAutoExportService {
   ) {}
 
   /**
-   * Auto-export all detected Docker volumes as NFS shares
-   * Called on main node startup or when requested
+   * Detect Docker volumes and create StorageShare records for child node discovery.
+   *
+   * IMPORTANT: This does NOT create NFS exports on the host!
+   * NFS exports must be pre-configured on the host (e.g., Unraid Settings → NFS).
    */
   async autoExportDockerVolumes(): Promise<void> {
-    this.logger.log('Starting auto-export of Docker volumes...');
+    this.logger.log('🔍 Detecting Docker volumes for shared storage...');
 
     try {
       // Get the main node
       const mainNode = await this.getMainNode();
       if (!mainNode) {
-        this.logger.warn('No main node found - skipping auto-export');
+        this.logger.warn('No main node found - skipping storage detection');
         return;
       }
 
@@ -61,42 +65,120 @@ export class NFSAutoExportService {
       const volumes = await this.volumeDetector.detectVolumes();
 
       if (volumes.length === 0) {
-        this.logger.log('No Docker volumes detected - nothing to export');
+        this.logger.log('No Docker volumes detected');
         return;
       }
 
-      this.logger.log(`Detected ${volumes.length} Docker volumes for export`);
+      this.logger.log(`Detected ${volumes.length} Docker volume(s)`);
 
-      // Get network subnet for NFS exports (e.g., 192.168.1.0/24)
-      const networkSubnet = await this.detectNetworkSubnet();
+      // Check which HOST paths are actually NFS-exported
+      const exportedPaths = await this.getHostNFSExports();
 
       // Process each volume
+      let createdCount = 0;
+      let missingExportCount = 0;
+
       for (const volume of volumes) {
-        await this.exportVolume(volume, mainNode.id, networkSubnet);
+        const isExported = exportedPaths.some(
+          (exp) => volume.source.startsWith(exp) || exp.startsWith(volume.source)
+        );
+
+        if (!isExported) {
+          this.logger.warn(
+            `⚠️  Volume ${volume.source} is NOT exported via NFS on host. ` +
+              `Child nodes won't be able to mount it.`
+          );
+          missingExportCount++;
+        }
+
+        await this.createShareRecord(volume, mainNode.id, isExported);
+        createdCount++;
       }
 
-      // Restart NFS server to apply changes
-      await this.restartNFSServer();
+      // Summary logging with user guidance
+      this.logger.log(`✓ Created ${createdCount} StorageShare record(s)`);
 
-      this.logger.log('✓ Auto-export completed successfully');
+      if (missingExportCount > 0) {
+        this.logger.warn('');
+        this.logger.warn('═══════════════════════════════════════════════════════════════');
+        this.logger.warn('  NFS SETUP REQUIRED FOR MULTI-NODE OPERATION');
+        this.logger.warn('═══════════════════════════════════════════════════════════════');
+        this.logger.warn('');
+        this.logger.warn('  Some Docker volumes are not exported via NFS on the host.');
+        this.logger.warn('  Child nodes will fall back to slower file transfers (rsync).');
+        this.logger.warn('');
+        this.logger.warn('  To enable zero-copy shared storage:');
+        this.logger.warn('');
+        this.logger.warn('  UNRAID:');
+        this.logger.warn('    1. Go to Settings → NFS');
+        this.logger.warn('    2. Set "Enable NFS" to Yes');
+        this.logger.warn('    3. Add export rules for /mnt/user/media, /mnt/user/Downloads');
+        this.logger.warn('    4. Apply and restart NFS');
+        this.logger.warn('');
+        this.logger.warn('  OTHER LINUX:');
+        this.logger.warn('    1. Edit /etc/exports on HOST (not in Docker)');
+        this.logger.warn('    2. Add: /path/to/media 192.168.1.0/24(rw,sync,no_subtree_check)');
+        this.logger.warn('    3. Run: exportfs -ra');
+        this.logger.warn('');
+        this.logger.warn('═══════════════════════════════════════════════════════════════');
+        this.logger.warn('');
+      }
     } catch (error) {
       this.logger.error(
-        'Failed to auto-export Docker volumes',
+        'Failed to detect Docker volumes',
         error instanceof Error ? error.stack : error
       );
     }
   }
 
   /**
-   * Export a single Docker volume as NFS share
+   * Query the HOST's NFS exports by checking what's visible from localhost
    */
-  private async exportVolume(
+  private async getHostNFSExports(): Promise<string[]> {
+    try {
+      // Try to get exports from the host via showmount
+      // This works if we can reach the host (usually via gateway IP or host.docker.internal)
+      const hostAddresses = ['host.docker.internal', '172.17.0.1', 'localhost'];
+
+      for (const host of hostAddresses) {
+        try {
+          const { stdout } = await execAsync(`showmount -e ${host} 2>/dev/null`, {
+            timeout: 5000,
+          });
+
+          // Parse showmount output: "/path/to/export 192.168.1.0/24"
+          const exports = stdout
+            .split('\n')
+            .slice(1) // Skip header
+            .map((line) => line.trim().split(/\s+/)[0])
+            .filter((path) => path && path.startsWith('/'));
+
+          if (exports.length > 0) {
+            this.logger.debug(`Found ${exports.length} NFS exports on host (${host})`);
+            return exports;
+          }
+        } catch {
+          // This host address didn't work, try next
+        }
+      }
+
+      this.logger.debug('Could not query host NFS exports - assuming none configured');
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Create a StorageShare record for a Docker volume (without manipulating /etc/exports)
+   */
+  private async createShareRecord(
     volume: DockerVolumeMount,
     mainNodeId: string,
-    networkSubnet: string
+    isExportedOnHost: boolean
   ): Promise<void> {
     try {
-      // Check if already exported (check by HOST source path, not container destination)
+      // Check if already exists
       const existing = await this.prisma.storageShare.findFirst({
         where: {
           ownerNodeId: mainNodeId,
@@ -106,220 +188,74 @@ export class NFSAutoExportService {
       });
 
       if (existing) {
-        this.logger.debug(`Volume ${volume.source} already exported`);
+        this.logger.debug(`Volume ${volume.source} already has StorageShare record`);
         return;
       }
 
       // Generate share name from destination path (container mount point)
       const shareName = this.volumeDetector.getSuggestedShareName(volume.destination);
 
-      // Add NFS export to /etc/exports using HOST path (source), not container path (destination)
-      await this.addNFSExport(volume.source, networkSubnet, volume.readOnly);
-
       // Get main node's IP address
       const serverAddress = await this.getMainNodeIP();
 
       // Create StorageShare record
-      // Use HOST path (source) for NFS export, not container path (destination)
       const exportPath = `${serverAddress}:${volume.source}`;
+
+      // Status depends on whether HOST has NFS export configured
+      const status = isExportedOnHost ? StorageShareStatus.AVAILABLE : StorageShareStatus.ERROR;
 
       await this.prisma.storageShare.create({
         data: {
-          nodeId: mainNodeId, // Owned by main node
-          ownerNodeId: mainNodeId, // Main node is sharing it
+          nodeId: mainNodeId,
+          ownerNodeId: mainNodeId,
           name: `${shareName} (Auto)`,
           protocol: StorageProtocol.NFS,
-          status: StorageShareStatus.AVAILABLE,
+          status,
           serverAddress,
-          sharePath: volume.source, // HOST path (e.g., /mnt/user/media), not container path
+          sharePath: volume.source, // HOST path for NFS export
           exportPath,
-          mountPoint: volume.destination, // Container mount point for child nodes
+          mountPoint: volume.destination, // Container path for child nodes
           readOnly: volume.readOnly,
           mountOptions: volume.readOnly ? 'ro,nolock,soft' : 'rw,nolock,soft',
           autoMount: true,
           addToFstab: true,
           mountOnDetection: true,
-          autoManaged: true, // Mark as auto-managed
-          isMounted: true, // Already accessible locally
+          autoManaged: true,
+          isMounted: true, // Main node has direct access via Docker volume
+          lastError: isExportedOnHost
+            ? null
+            : 'NFS export not configured on host - child nodes will use file transfer',
         },
       });
 
-      this.logger.log(`✓ Exported volume: ${volume.destination} as "${shareName}"`);
+      const statusIcon = isExportedOnHost ? '✓' : '⚠️';
+      this.logger.log(
+        `${statusIcon} Created share record: ${volume.destination} → ${volume.source}`
+      );
     } catch (error) {
       this.logger.error(
-        `Failed to export volume ${volume.destination}`,
+        `Failed to create share record for ${volume.destination}`,
         error instanceof Error ? error.stack : error
       );
     }
   }
 
   /**
-   * Add NFS export entry to /etc/exports
-   */
-  private async addNFSExport(
-    path: string,
-    networkSubnet: string,
-    readOnly: boolean
-  ): Promise<void> {
-    try {
-      // Check if /etc/exports exists
-      let exportsContent = '';
-      try {
-        exportsContent = await fs.readFile(this.EXPORTS_FILE, 'utf-8');
-      } catch (_error) {
-        // File doesn't exist, will be created
-        this.logger.debug('/etc/exports does not exist, will create it');
-      }
-
-      // Check if this path is already exported
-      if (exportsContent.includes(`${path} `)) {
-        this.logger.debug(`Path ${path} already in /etc/exports`);
-        return;
-      }
-
-      // Build NFS export options
-      const options = readOnly
-        ? 'ro,sync,no_subtree_check,no_root_squash'
-        : 'rw,sync,no_subtree_check,no_root_squash';
-
-      // Build export entry
-      const exportEntry = `${path} ${networkSubnet}(${options})`;
-
-      // Append to /etc/exports with auto-managed marker
-      const newContent = `${exportsContent}\n${this.AUTO_EXPORT_MARKER}\n${exportEntry}\n`;
-
-      await fs.writeFile(this.EXPORTS_FILE, newContent);
-
-      this.logger.debug(`Added NFS export: ${exportEntry}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to add NFS export for ${path}`,
-        error instanceof Error ? error.stack : error
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Remove all auto-managed NFS exports
+   * Remove all auto-managed StorageShare records
+   * (No longer manipulates /etc/exports since we don't write to it)
    */
   async removeAutoManagedExports(): Promise<void> {
     try {
-      const exportsContent = await fs.readFile(this.EXPORTS_FILE, 'utf-8');
-      const lines = exportsContent.split('\n');
-
-      // Filter out auto-managed exports
-      const filteredLines: string[] = [];
-      let skipNext = false;
-
-      for (const line of lines) {
-        if (line.includes(this.AUTO_EXPORT_MARKER)) {
-          skipNext = true; // Skip the marker line
-          continue;
-        }
-
-        if (skipNext) {
-          skipNext = false; // Skip the export line after marker
-          continue;
-        }
-
-        filteredLines.push(line);
-      }
-
-      await fs.writeFile(this.EXPORTS_FILE, filteredLines.join('\n'));
-
-      // Remove auto-managed StorageShare records
-      await this.prisma.storageShare.deleteMany({
+      const deleted = await this.prisma.storageShare.deleteMany({
         where: { autoManaged: true },
       });
 
-      // Restart NFS server
-      await this.restartNFSServer();
-
-      this.logger.log('✓ Removed all auto-managed exports');
+      this.logger.log(`✓ Removed ${deleted.count} auto-managed StorageShare record(s)`);
     } catch (error) {
       this.logger.error(
-        'Failed to remove auto-managed exports',
+        'Failed to remove auto-managed shares',
         error instanceof Error ? error.stack : error
       );
-    }
-  }
-
-  /**
-   * Restart NFS server to apply export changes
-   */
-  private async restartNFSServer(): Promise<void> {
-    try {
-      // Try systemd first (most common on modern Linux)
-      try {
-        await execAsync('systemctl restart nfs-server 2>/dev/null');
-        this.logger.log('✓ NFS server restarted (systemd)');
-        return;
-      } catch {
-        // systemd failed, try alternative commands
-      }
-
-      // Try traditional init script
-      try {
-        await execAsync('/etc/init.d/nfs-kernel-server restart 2>/dev/null');
-        this.logger.log('✓ NFS server restarted (init.d)');
-        return;
-      } catch {
-        // init.d failed too
-      }
-
-      // Try exportfs -ra (reload exports without restart)
-      try {
-        await execAsync('exportfs -ra');
-        this.logger.log('✓ NFS exports reloaded (exportfs)');
-        return;
-      } catch {
-        // exportfs failed
-      }
-
-      this.logger.warn('Could not restart NFS server - exports may not be active');
-    } catch (error) {
-      this.logger.error(
-        'Error restarting NFS server',
-        error instanceof Error ? error.stack : error
-      );
-    }
-  }
-
-  /**
-   * Detect network subnet for NFS exports
-   */
-  private async detectNetworkSubnet(): Promise<string> {
-    try {
-      // Get primary network interface IP
-      const { stdout } = await execAsync(
-        "ip -4 addr show | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}'"
-      );
-
-      const cidr = stdout.trim();
-
-      if (!cidr) {
-        this.logger.warn('Could not detect network subnet, using 192.168.0.0/16');
-        return '192.168.0.0/16';
-      }
-
-      // Extract subnet (e.g., 192.168.1.100/24 → 192.168.1.0/24)
-      const [ip, mask] = cidr.split('/');
-      const octets = ip.split('.');
-
-      // For /24 networks, zero out the last octet
-      // For /16 networks, zero out the last two octets
-      const maskNum = parseInt(mask, 10);
-      if (maskNum >= 24) {
-        return `${octets[0]}.${octets[1]}.${octets[2]}.0/24`;
-      } else if (maskNum >= 16) {
-        return `${octets[0]}.${octets[1]}.0.0/16`;
-      }
-
-      return cidr; // Use as-is for other masks
-    } catch (_error) {
-      this.logger.warn('Failed to detect network subnet, using default 192.168.0.0/16');
-      return '192.168.0.0/16';
     }
   }
 

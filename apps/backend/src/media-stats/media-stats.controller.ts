@@ -29,7 +29,7 @@ export class MediaStatsController {
       '- **Average Bitrate**: Mean bitrate across all media files\n' +
       '- **Folder Statistics**: Per-folder breakdown of size, file count, and codec usage\n' +
       '- **Potential Savings**: Estimated space savings from H.265 re-encoding\n\n' +
-      '**Configuration**: Set `MEDIA_PATHS` environment variable to specify directories to scan.',
+      '**Note**: Paths are automatically derived from configured libraries in the database.',
   })
   @ApiResponse({
     status: 200,
@@ -49,11 +49,11 @@ export class MediaStatsController {
     summary: 'Trigger media library scan',
     description:
       'Initiates a scan of all configured media directories. The scan process:\n' +
-      '1. **Discovers** all video files in `MEDIA_PATHS` directories\n' +
+      '1. **Discovers** all video files in library directories\n' +
       '2. **Analyzes** files using ffprobe to detect codec, bitrate, and size\n' +
       '3. **Calculates** total storage, file counts, and codec distribution\n' +
       '4. **Updates** the statistics cache for the GET `/media-stats` endpoint\n\n' +
-      '**Response**: Returns `202 Accepted` immediately while the scan runs synchronously.',
+      '**Note**: Paths are automatically derived from configured libraries in the database.',
   })
   @ApiResponse({
     status: 202,
@@ -95,7 +95,7 @@ export class MediaStatsController {
     type: FolderFilesDto,
   })
   @ApiNotFoundResponse({
-    description: 'Folder not found or not configured in MEDIA_PATHS',
+    description: 'Folder not found in configured libraries',
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while retrieving file list',

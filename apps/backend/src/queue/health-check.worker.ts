@@ -1,9 +1,18 @@
+import * as path from 'node:path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { FileHealthStatus, JobStage } from '@prisma/client';
+import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { ContainerCompatibilityService } from '../encoding/container-compatibility.service';
+import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
+import {
+  HealthCheckIssue,
+  HealthCheckIssueCategory,
+  HealthCheckIssueSeverity,
+  HealthCheckSuggestedAction,
+} from './models/health-check-issue.model';
 
 /**
  * HealthCheckWorker
@@ -43,7 +52,9 @@ export class HealthCheckWorker implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileHealthService: FileHealthService,
-    private readonly containerCompatibilityService: ContainerCompatibilityService
+    private readonly containerCompatibilityService: ContainerCompatibilityService,
+    private readonly ffmpegService: FfmpegService,
+    private readonly fileRelocatorService: FileRelocatorService
   ) {}
 
   /**
@@ -52,6 +63,75 @@ export class HealthCheckWorker implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     this.logger.log(`Starting HealthCheckWorker with concurrency=${this.CONCURRENCY}`);
     this.start();
+  }
+
+  /**
+   * Auto-requeue CORRUPTED jobs for re-validation
+   *
+   * UX Philosophy: Self-healing system - users shouldn't need to manually reset jobs
+   *
+   * Runs hourly to find jobs marked CORRUPTED (often false positives from NFS hiccups)
+   * and resets them to DETECTED so they get re-checked automatically.
+   *
+   * This prevents permanent job blockage from transient file system issues.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async autoRequeueCorruptedJobs(): Promise<void> {
+    try {
+      // Find CORRUPTED jobs that are stuck (not actively being processed)
+      const corruptedJobs = await this.prisma.job.findMany({
+        where: {
+          healthStatus: FileHealthStatus.CORRUPTED,
+          stage: {
+            in: [JobStage.QUEUED, JobStage.FAILED, JobStage.DETECTED],
+          },
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          healthMessage: true,
+          healthCheckedAt: true,
+        },
+      });
+
+      if (corruptedJobs.length === 0) {
+        this.logger.debug('Auto-requeue: No CORRUPTED jobs found');
+        return;
+      }
+
+      this.logger.log(
+        `🔄 Auto-requeue: Found ${corruptedJobs.length} CORRUPTED job(s) - resetting for re-validation`
+      );
+
+      // Reset jobs to DETECTED with UNKNOWN health status for re-check
+      // Note: healthScore, healthMessage, healthCheckedAt will be updated by health check worker
+      const result = await this.prisma.job.updateMany({
+        where: {
+          id: { in: corruptedJobs.map((j) => j.id) },
+        },
+        data: {
+          stage: JobStage.DETECTED,
+          healthStatus: FileHealthStatus.UNKNOWN,
+          error:
+            'Auto-requeued for re-validation (previous health check may have been a false positive)',
+        },
+      });
+
+      this.logger.log(
+        `✅ Auto-requeue: Reset ${result.count} job(s) to DETECTED for re-validation`
+      );
+
+      // Log sample of affected files for debugging
+      const sampleFiles = corruptedJobs.slice(0, 5).map((j) => j.fileLabel);
+      if (sampleFiles.length > 0) {
+        this.logger.debug(
+          `Auto-requeue sample: ${sampleFiles.join(', ')}${corruptedJobs.length > 5 ? '...' : ''}`
+        );
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Auto-requeue failed: ${errorMessage}`);
+    }
   }
 
   /**
@@ -73,6 +153,8 @@ export class HealthCheckWorker implements OnModuleInit {
   private async runWorkerLoop(): Promise<void> {
     while (this.isRunning) {
       try {
+        // CRITICAL FIX: Timeout watchdog for stuck health checks (10 min max)
+        await this.timeoutStuckHealthChecks();
         await this.processHealthChecks();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -81,6 +163,72 @@ export class HealthCheckWorker implements OnModuleInit {
 
       // Wait before next iteration
       await this.sleep(this.INTERVAL_MS);
+    }
+  }
+
+  /**
+   * CRITICAL FIX: Fail health checks that have been running for more than 10 minutes
+   * This prevents jobs from being stuck indefinitely in HEALTH_CHECK stage
+   */
+  private async timeoutStuckHealthChecks(): Promise<void> {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+    const stuckJobs = await this.prisma.job.findMany({
+      where: {
+        stage: JobStage.HEALTH_CHECK,
+        healthCheckStartedAt: {
+          lt: tenMinutesAgo,
+        },
+      },
+      select: {
+        id: true,
+        fileLabel: true,
+        healthCheckStartedAt: true,
+        retryCount: true,
+      },
+    });
+
+    for (const job of stuckJobs) {
+      const stuckMinutes = job.healthCheckStartedAt
+        ? Math.round((Date.now() - job.healthCheckStartedAt.getTime()) / 60000)
+        : 10;
+
+      // If retries exhausted, fail the job
+      if (job.retryCount >= this.MAX_RETRY_ATTEMPTS) {
+        this.logger.warn(
+          `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min, max retries (${this.MAX_RETRY_ATTEMPTS}) exhausted - marking FAILED`
+        );
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            stage: JobStage.FAILED,
+            failedAt: new Date(),
+            error: `Health check timed out after ${stuckMinutes} minutes (${this.MAX_RETRY_ATTEMPTS} retries exhausted)`,
+            healthStatus: FileHealthStatus.CORRUPTED,
+          },
+        });
+      } else {
+        // Retry by resetting to DETECTED with exponential backoff
+        const backoffMs = Math.min(30000 * 2 ** job.retryCount, 300000); // 30s, 60s, 120s, max 5min
+        const nextRetryAt = new Date(Date.now() + backoffMs);
+
+        this.logger.warn(
+          `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min - resetting to DETECTED (retry ${job.retryCount + 1}/${this.MAX_RETRY_ATTEMPTS}, next retry in ${backoffMs / 1000}s)`
+        );
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            stage: JobStage.DETECTED,
+            retryCount: job.retryCount + 1,
+            healthCheckStartedAt: null,
+            error: `Health check timed out after ${stuckMinutes} minutes, retrying...`,
+            nextRetryAt,
+          },
+        });
+      }
+
+      // Remove from currentlyChecking if present
+      this.currentlyChecking.delete(job.id);
     }
   }
 
@@ -179,26 +327,71 @@ export class HealthCheckWorker implements OnModuleInit {
 
       // AUDIT #3 FIX: Validate file exists before attempting health analysis
       // This provides better error context when source files are deleted
+      // FIX: Add retry logic for NFS mount recovery (prevents false CORRUPTED status)
       const fs = await import('fs/promises');
-      try {
-        await fs.access(job.filePath);
-      } catch {
-        // File missing - provide contextual error message
-        await this.prisma.job.update({
-          where: { id: jobId },
-          data: {
-            stage: JobStage.FAILED,
-            healthStatus: FileHealthStatus.CORRUPTED,
-            healthScore: 0,
-            healthMessage: '❌ Source file was deleted before health check could run',
-            healthCheckedAt: new Date(),
-            error: `File not found at expected path: ${job.filePath}\n\nThe file may have been moved or deleted after the job was created.`,
-          },
-        });
-        this.logger.error(
-          `✗ ${job.fileLabel} - FILE MISSING (deleted before health check) → FAILED`
+      const FILE_ACCESS_MAX_RETRIES = 5;
+      const FILE_ACCESS_RETRY_DELAY_MS = 2000;
+      let fileAccessible = false;
+
+      for (let attempt = 1; attempt <= FILE_ACCESS_MAX_RETRIES; attempt++) {
+        try {
+          await fs.access(job.filePath);
+          fileAccessible = true;
+          break;
+        } catch {
+          if (attempt < FILE_ACCESS_MAX_RETRIES) {
+            this.logger.debug(
+              `File access attempt ${attempt}/${FILE_ACCESS_MAX_RETRIES} failed for ${job.fileLabel}, retrying in ${FILE_ACCESS_RETRY_DELAY_MS}ms...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, FILE_ACCESS_RETRY_DELAY_MS));
+          }
+        }
+      }
+
+      if (!fileAccessible) {
+        // SELF-HEALING: Try to relocate file if it was moved/renamed by media server
+        this.logger.warn(`File not accessible for ${job.fileLabel}, attempting auto-relocation...`);
+        const relocationResult = await this.fileRelocatorService.relocateFile(
+          job.filePath,
+          job.beforeSizeBytes
         );
-        return;
+
+        if (relocationResult.found && relocationResult.newPath) {
+          // File was relocated - update job and continue with health check
+          this.logger.log(
+            `✅ AUTO-RELOCATED: ${job.fileLabel} found at new location (${relocationResult.matchType}, ${relocationResult.confidence}% confidence)`
+          );
+
+          // Update job path in database
+          await this.prisma.job.update({
+            where: { id: jobId },
+            data: {
+              filePath: relocationResult.newPath,
+              fileLabel: path.basename(relocationResult.newPath),
+            },
+          });
+
+          // Update local job object for the rest of this health check
+          job.filePath = relocationResult.newPath;
+          job.fileLabel = path.basename(relocationResult.newPath);
+        } else {
+          // Could not relocate - mark as FAILED
+          await this.prisma.job.update({
+            where: { id: jobId },
+            data: {
+              stage: JobStage.FAILED,
+              healthStatus: FileHealthStatus.CORRUPTED,
+              healthScore: 0,
+              healthMessage: '❌ Source file was deleted before health check could run',
+              healthCheckedAt: new Date(),
+              error: `File not found at expected path: ${job.filePath}\n\nThe file may have been moved or deleted after the job was created. (Checked ${FILE_ACCESS_MAX_RETRIES} times over ${(FILE_ACCESS_MAX_RETRIES * FILE_ACCESS_RETRY_DELAY_MS) / 1000}s)\n\n(Auto-relocation searched ${relocationResult.searchedPaths} files but could not find a match)`,
+            },
+          });
+          this.logger.error(
+            `✗ ${job.fileLabel} - FILE MISSING after ${FILE_ACCESS_MAX_RETRIES} retries and auto-relocation → FAILED`
+          );
+          return;
+        }
       }
 
       // Update stage to HEALTH_CHECK (visible in UI)
@@ -221,6 +414,12 @@ export class HealthCheckWorker implements OnModuleInit {
         job.filePath,
         'mp4' // TODO: Get target container from policy
       );
+
+      // Check for codec match (file already in target codec)
+      const codecMatchIssue = this.checkCodecMatch(job.sourceCodec, job.targetCodec);
+      if (codecMatchIssue) {
+        compatibilityIssues.push(codecMatchIssue);
+      }
 
       // Determine next stage based on health result and compatibility
       let nextStage: JobStage;
@@ -324,6 +523,104 @@ export class HealthCheckWorker implements OnModuleInit {
       // Remove from in-progress set
       this.currentlyChecking.delete(jobId);
     }
+  }
+
+  /**
+   * Check if the source codec already matches the target codec
+   *
+   * When a file is already encoded in the target codec, encoding it again would be wasteful.
+   * This can happen when:
+   * - User changed the policy's target codec after jobs were created
+   * - File was manually renamed and re-added to queue
+   * - Policy was originally set incorrectly
+   *
+   * @param sourceCodec - The file's current codec
+   * @param targetCodec - The job's target codec
+   * @returns A BLOCKER issue if codecs match, null otherwise
+   */
+  private checkCodecMatch(sourceCodec: string, targetCodec: string): HealthCheckIssue | null {
+    const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
+    const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
+
+    if (normalizedSource === normalizedTarget) {
+      const codecDisplayName = this.getCodecDisplayName(normalizedSource);
+
+      const suggestedActions: HealthCheckSuggestedAction[] = [
+        {
+          id: 'skip_encoding',
+          label: 'Skip Encoding',
+          description: `Mark this job as completed without encoding - the file is already in ${codecDisplayName} format`,
+          impact: 'Job will be marked as COMPLETED with no changes to the file',
+          recommended: true,
+          config: {
+            action: 'skip',
+            reason: 'codec_already_matches',
+          },
+        },
+        {
+          id: 'force_reencode',
+          label: 'Force Re-encode Anyway',
+          description: `Re-encode the file from ${codecDisplayName} to ${codecDisplayName} (same codec)`,
+          impact:
+            'File will be re-encoded, potentially resulting in quality loss with no size benefit',
+          recommended: false,
+          config: {
+            action: 'force_encode',
+            reason: 'user_requested',
+          },
+        },
+        {
+          id: 'cancel_job',
+          label: 'Cancel Job',
+          description: 'Remove this job from the queue entirely',
+          impact: 'Job will be cancelled and the file left unchanged',
+          recommended: false,
+          config: {
+            action: 'cancel',
+            reason: 'codec_already_matches',
+          },
+        },
+      ];
+
+      return {
+        category: HealthCheckIssueCategory.CODEC,
+        severity: HealthCheckIssueSeverity.BLOCKER,
+        code: 'CODEC_ALREADY_MATCHES_TARGET',
+        message: `This file is already encoded in ${codecDisplayName} format`,
+        technicalDetails: `
+Source codec: ${sourceCodec} (normalized: ${normalizedSource})
+Target codec: ${targetCodec} (normalized: ${normalizedTarget})
+
+The file's current codec matches the target codec for this job. This typically happens when:
+• The encoding policy was changed after the job was created
+• The file was already optimized and re-added to the queue
+• The policy's target codec was set incorrectly
+
+Re-encoding a file to the same codec offers no benefit and may actually increase file size or reduce quality.
+`.trim(),
+        suggestedActions,
+        metadata: {
+          sourceCodec: normalizedSource,
+          targetCodec: normalizedTarget,
+          codecMatch: true,
+        },
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get user-friendly display name for a codec
+   */
+  private getCodecDisplayName(codec: string): string {
+    const displayNames: Record<string, string> = {
+      hevc: 'HEVC (H.265)',
+      h264: 'H.264 (AVC)',
+      av1: 'AV1',
+      vp9: 'VP9',
+    };
+    return displayNames[codec.toLowerCase()] || codec.toUpperCase();
   }
 
   /**

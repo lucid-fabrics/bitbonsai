@@ -3,6 +3,7 @@ import { NetworkLocation } from '@prisma/client';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import { promisify } from 'util';
+import { LibrariesService } from '../../libraries/libraries.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const execAsync = promisify(exec);
@@ -42,7 +43,10 @@ export class NodeCapabilityDetectorService {
   // Local network latency threshold
   private readonly LOCAL_LATENCY_THRESHOLD_MS = 50;
 
-  constructor(readonly _prisma: PrismaService) {}
+  constructor(
+    readonly _prisma: PrismaService,
+    private readonly librariesService: LibrariesService
+  ) {}
 
   /**
    * Detect all capabilities for a node during pairing
@@ -131,20 +135,12 @@ export class NodeCapabilityDetectorService {
       `📂 Testing shared storage access for node ${nodeId} (IP: ${nodeIp || 'unknown'})`
     );
 
-    // NULL SAFETY: Get media paths from main node's environment
-    const mediaPathsEnv = process.env.MEDIA_PATHS;
-    if (!mediaPathsEnv) {
-      this.logger.warn('No MEDIA_PATHS configured, cannot test shared storage');
-      return { hasSharedStorage: false, storageBasePath: null };
-    }
-
-    const mediaPaths = mediaPathsEnv
-      .split(',')
-      .filter(Boolean)
-      .filter((p) => p.trim().length > 0);
+    // UX PHILOSOPHY: Get media paths from libraries in database
+    // Eliminates need for MEDIA_PATHS env var - single source of truth
+    const mediaPaths = await this.librariesService.getAllLibraryPaths();
 
     if (mediaPaths.length === 0) {
-      this.logger.warn('MEDIA_PATHS is empty after filtering, cannot test shared storage');
+      this.logger.warn('No libraries configured, cannot test shared storage');
       return { hasSharedStorage: false, storageBasePath: null };
     }
 
