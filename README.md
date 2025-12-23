@@ -116,9 +116,14 @@ BitBonsai is **free to use** with generous limits. Support the project to unlock
 
 <div align="center">
 
-| Queue | Analytics | Multi-Node |
-|-------|-----------|------------|
-| ![Queue](https://via.placeholder.com/300x200?text=Queue) | ![Analytics](https://via.placeholder.com/300x200?text=Analytics) | ![Nodes](https://via.placeholder.com/300x200?text=Nodes) |
+### Encoding Queue
+![Queue](screenshots/queue.png)
+
+### Overview & Analytics
+![Overview](screenshots/overview.png)
+
+### Multi-Node Management
+![Nodes](screenshots/nodes.png)
 
 </div>
 
