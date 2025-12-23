@@ -1,6 +1,7 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { WinstonModule } from 'nest-winston';
 import { AppModule } from './app.module';
@@ -67,7 +68,7 @@ async function bootstrap() {
     express.static(frontendPath, {
       index: false, // Don't auto-serve index.html for directories
       maxAge: '1y', // Cache static assets for 1 year
-      setHeaders: (res: any, filePath: string) => {
+      setHeaders: (res: Response, filePath: string) => {
         // Don't cache index.html
         if (filePath.endsWith('index.html')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -187,7 +188,7 @@ async function bootstrap() {
 
   // Catch-all route to serve index.html for Angular routing
   // Must be AFTER all API routes and Swagger setup
-  app.use((req: any, res: any, next: any) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     // Skip if this is an API or Swagger route
     if (req.originalUrl.startsWith('/api')) {
       next();
@@ -199,12 +200,14 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
-  console.log(`🚀 BitBonsai API running on: http://0.0.0.0:${port}/api/v1`);
-  console.log(`📚 Swagger API Docs available at: http://0.0.0.0:${port}/api/docs`);
-  console.log(`🌐 Frontend available at: http://0.0.0.0:${port}/`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`🚀 BitBonsai API running on: http://0.0.0.0:${port}/api/v1`);
+  logger.log(`📚 Swagger API Docs available at: http://0.0.0.0:${port}/api/docs`);
+  logger.log(`🌐 Frontend available at: http://0.0.0.0:${port}/`);
 }
 
+const logger = new Logger('Bootstrap');
 bootstrap().catch((err) => {
-  console.error('Failed to start application:', err);
+  logger.error('Failed to start application:', err);
   process.exit(1);
 });

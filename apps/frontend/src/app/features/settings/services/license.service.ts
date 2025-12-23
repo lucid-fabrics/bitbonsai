@@ -2,7 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import type { ActivateLicense, License } from '../models/license.model';
+import type {
+  ActivateLicense,
+  License,
+  LicenseCapabilities,
+  LicenseTierInfo,
+  PatreonStatus,
+  StripeCheckoutResponse,
+  StripePlan,
+  StripeStatus,
+} from '../models/license.model';
 
 @Injectable({
   providedIn: 'root',
@@ -10,12 +19,52 @@ import type { ActivateLicense, License } from '../models/license.model';
 export class LicenseService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/licenses`;
+  private readonly patreonUrl = `${environment.apiUrl}/patreon`;
+  private readonly stripeUrl = `${environment.apiUrl}/stripe`;
 
+  // License endpoints
   getCurrentLicense(): Observable<License> {
     return this.http.get<License>(`${this.apiUrl}/current`);
   }
 
+  getCapabilities(): Observable<LicenseCapabilities> {
+    return this.http.get<LicenseCapabilities>(`${this.apiUrl}/capabilities`);
+  }
+
+  getAvailableTiers(): Observable<{ tiers: LicenseTierInfo[] }> {
+    return this.http.get<{ tiers: LicenseTierInfo[] }>(`${this.apiUrl}/tiers`);
+  }
+
   activateLicense(activateDto: ActivateLicense): Observable<License> {
     return this.http.post<License>(`${this.apiUrl}/activate`, activateDto);
+  }
+
+  // Patreon endpoints
+  getPatreonStatus(): Observable<PatreonStatus> {
+    return this.http.get<PatreonStatus>(`${this.patreonUrl}/status`);
+  }
+
+  getPatreonAuthUrl(): Observable<{ url: string }> {
+    return this.http.get<{ url: string }>(`${this.patreonUrl}/auth`);
+  }
+
+  // Stripe endpoints
+  getStripeStatus(): Observable<StripeStatus> {
+    return this.http.get<StripeStatus>(`${this.stripeUrl}/status`);
+  }
+
+  getStripePlans(): Observable<{ plans: StripePlan[]; configured: boolean }> {
+    return this.http.get<{ plans: StripePlan[]; configured: boolean }>(`${this.stripeUrl}/plans`);
+  }
+
+  createStripeCheckout(email: string, priceId: string): Observable<StripeCheckoutResponse> {
+    return this.http.post<StripeCheckoutResponse>(`${this.stripeUrl}/checkout`, {
+      email,
+      priceId,
+    });
+  }
+
+  getStripePortalUrl(customerId: string): Observable<{ url: string }> {
+    return this.http.post<{ url: string }>(`${this.stripeUrl}/portal`, { customerId });
   }
 }

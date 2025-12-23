@@ -398,7 +398,7 @@ export class QueueController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while updating job',
   })
-  async updateJobStage(@Param('id') id: string, @Body() body: any): Promise<Job> {
+  async updateJobStage(@Param('id') id: string, @Body() body: UpdateJobDto): Promise<Job> {
     return this.queueService.updateProgress(id, body);
   }
 
@@ -509,6 +509,16 @@ export class QueueController {
       this.logger.debug(
         `Preview image ${previewIndex} not available for job ${id} (path: ${previewPath || 'undefined'})`
       );
+
+      // BUGFIX: Clear stale preview paths from DB if ALL files are missing
+      // This happens when /tmp is cleared on container restart
+      if (previewPaths.length > 0 && previewPaths.every((path) => !existsSync(path))) {
+        this.logger.debug(`Clearing stale preview paths for job ${id} (files deleted from /tmp)`);
+        this.queueService.updateJobPreview(id, []).catch((err) => {
+          this.logger.warn(`Failed to clear stale preview paths for job ${id}:`, err);
+        });
+      }
+
       res.status(204).send();
       return;
     }
@@ -592,11 +602,12 @@ export class QueueController {
       if (Number.isNaN(durationSeconds) || durationSeconds <= 0) {
         throw new Error('Invalid duration');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Failed to get file duration', {
         jobId: job.id,
         filePath: job.filePath,
-        error: error?.message,
+        error: errorMessage,
       });
       throw new BadRequestException('Failed to get file duration for preview capture');
     }
@@ -650,8 +661,10 @@ export class QueueController {
       this.logger.log(
         `Preview captured successfully for job ${job.id} at ${timestampSeconds.toFixed(1)}s (${job.progress}%)`
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log full error details for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const execError = error as { stderr?: string; stdout?: string; code?: number };
       this.logger.error('Failed to capture preview frame', {
         jobId: job.id,
         sourceFilePath: job.filePath,
@@ -659,16 +672,14 @@ export class QueueController {
         progress: job.progress,
         duration: durationSeconds,
         manualPreviewPath,
-        errorMessage: error?.message,
-        errorStderr: error?.stderr,
-        errorStdout: error?.stdout,
-        errorCode: error?.code,
+        errorMessage,
+        errorStderr: execError.stderr,
+        errorStdout: execError.stdout,
+        errorCode: execError.code,
         fullError: error,
       });
 
-      throw new BadRequestException(
-        `Failed to capture preview: ${error?.message || 'Unknown error'}`
-      );
+      throw new BadRequestException(`Failed to capture preview: ${errorMessage}`);
     }
 
     // Update job with new preview path

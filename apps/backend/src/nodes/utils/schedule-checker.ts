@@ -7,7 +7,10 @@
  * @module schedule-checker
  */
 
+import { Logger } from '@nestjs/common';
 import type { Node } from '@prisma/client';
+
+const logger = new Logger('ScheduleChecker');
 
 /**
  * Represents a time window for encoding operations.
@@ -79,7 +82,7 @@ export function isNodeInAllowedWindow(
       : (JSON.parse(node.scheduleWindows as unknown as string) as TimeWindow[]);
   } catch (error) {
     // Invalid JSON = treat as 24/7 (fail open for availability)
-    console.warn('Failed to parse scheduleWindows JSON, defaulting to 24/7:', error);
+    logger.warn('Failed to parse scheduleWindows JSON, defaulting to 24/7', error);
     return true;
   }
 

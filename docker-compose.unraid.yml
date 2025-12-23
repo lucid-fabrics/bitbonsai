@@ -56,6 +56,8 @@ services:
       - /mnt/user/Downloads:/downloads:cached
       # PERF: Unraid cache pool (SSD) for encoding temp files - much faster I/O
       - /mnt/cache/bitbonsai-temp:/cache:cached
+      # MULTI-NODE: Shared preview storage (writable NFS share)
+      - /mnt/user/bitbonsai-previews:/previews:cached
       # Database persistence
       - bitbonsai-data:/data
       # Shared storage mount point for NFS/SMB mounts

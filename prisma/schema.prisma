@@ -31,7 +31,11 @@ enum UserRole {
 
 enum LicenseTier {
   FREE
-  PATREON
+  PATREON              // Legacy - maps to PATREON_SUPPORTER
+  PATREON_SUPPORTER    // $3/mo - 2 nodes, 3 concurrent
+  PATREON_PLUS         // $5/mo - 3 nodes, 5 concurrent
+  PATREON_PRO          // $10/mo - 5 nodes, 10 concurrent
+  PATREON_ULTIMATE     // $20/mo - 10 nodes, 20 concurrent
   COMMERCIAL_STARTER
   COMMERCIAL_PRO
   COMMERCIAL_ENTERPRISE
@@ -308,6 +312,8 @@ model License {
   maxConcurrentJobs    Int
   features             Json // Feature flags: { multiNode: true, advancedPresets: true, api: true }
   validUntil           DateTime? // Null = perpetual/lifetime
+  // Payment integrations
+  patreonId            String?   @unique  // Patreon user ID for OAuth
   stripeCustomerId     String?
   stripeSubscriptionId String?
   createdAt            DateTime      @default(now())
@@ -321,6 +327,7 @@ model License {
   @@index([tier])
   @@index([email])
   @@index([validUntil])
+  @@index([patreonId])
   @@map("licenses")
 }
 

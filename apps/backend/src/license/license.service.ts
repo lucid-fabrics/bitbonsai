@@ -96,22 +96,34 @@ export class LicenseService {
    */
   async createLicense(data: CreateLicenseDto) {
     const tierConfig = {
+      // Free tier - single node, limited concurrency
       [LicenseTier.FREE]: { maxNodes: 1, maxConcurrentJobs: 2 },
-      [LicenseTier.PATREON]: { maxNodes: 2, maxConcurrentJobs: 5 },
-      [LicenseTier.COMMERCIAL_STARTER]: { maxNodes: 5, maxConcurrentJobs: 10 },
-      [LicenseTier.COMMERCIAL_PRO]: { maxNodes: 20, maxConcurrentJobs: 50 },
+      // Patreon tiers - individual supporters
+      [LicenseTier.PATREON]: { maxNodes: 2, maxConcurrentJobs: 3 }, // Legacy
+      [LicenseTier.PATREON_SUPPORTER]: { maxNodes: 2, maxConcurrentJobs: 3 }, // $3/mo
+      [LicenseTier.PATREON_PLUS]: { maxNodes: 3, maxConcurrentJobs: 5 }, // $5/mo
+      [LicenseTier.PATREON_PRO]: { maxNodes: 5, maxConcurrentJobs: 10 }, // $10/mo
+      [LicenseTier.PATREON_ULTIMATE]: { maxNodes: 10, maxConcurrentJobs: 20 }, // $20/mo
+      // Commercial tiers - businesses
+      [LicenseTier.COMMERCIAL_STARTER]: { maxNodes: 15, maxConcurrentJobs: 30 },
+      [LicenseTier.COMMERCIAL_PRO]: { maxNodes: 50, maxConcurrentJobs: 100 },
       [LicenseTier.COMMERCIAL_ENTERPRISE]: { maxNodes: 999, maxConcurrentJobs: 999 },
     };
 
     const config = tierConfig[data.tier];
 
+    const isPatreon = data.tier.startsWith('PATREON');
+    const isCommercial = data.tier.startsWith('COMMERCIAL');
+    const isPatreonProOrHigher =
+      data.tier === LicenseTier.PATREON_PRO || data.tier === LicenseTier.PATREON_ULTIMATE;
+
     const features: LicenseFeatures = {
       multiNode: data.tier !== LicenseTier.FREE,
       advancedPresets: data.tier !== LicenseTier.FREE,
-      api: data.tier !== LicenseTier.FREE,
-      priorityQueue: data.tier.startsWith('COMMERCIAL'),
-      cloudStorage: data.tier.startsWith('COMMERCIAL'),
-      webhooks: data.tier.startsWith('COMMERCIAL'),
+      api: isPatreonProOrHigher || isCommercial,
+      priorityQueue: isPatreonProOrHigher || isCommercial,
+      cloudStorage: isCommercial,
+      webhooks: isPatreonProOrHigher || isCommercial,
     };
 
     return this.prisma.license.create({

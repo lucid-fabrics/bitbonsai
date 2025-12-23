@@ -2,12 +2,14 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JellyfinIntegrationService } from './jellyfin.service';
+import { PatreonModule } from './patreon/patreon.module';
 import { PlexIntegrationService } from './plex.service';
 import { RadarrSonarrIntegrationService } from './radarr-sonarr.service';
+import { StripeModule } from './stripe/stripe.module';
 import { TorrentIntegrationService } from './torrent.service';
 
 @Module({
-  imports: [PrismaModule, HttpModule],
+  imports: [PrismaModule, HttpModule, PatreonModule, StripeModule],
   providers: [
     JellyfinIntegrationService,
     PlexIntegrationService,
@@ -19,6 +21,8 @@ import { TorrentIntegrationService } from './torrent.service';
     PlexIntegrationService,
     TorrentIntegrationService,
     RadarrSonarrIntegrationService,
+    PatreonModule,
+    StripeModule,
   ],
 })
 export class IntegrationsModule {}
