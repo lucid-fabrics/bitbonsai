@@ -15,8 +15,10 @@ APP_DIR="/opt/bitbonsai"
 # NFS Configuration - Update these to match your Unraid setup
 UNRAID_IP="192.168.1.100"
 NFS_EXPORTS=(
-  "/mnt/user/media:/media"           # HOST_PATH:MOUNT_POINT
-  "/mnt/user/Downloads:/downloads"   # Add more as needed
+  "/mnt/user/media:/media"                      # HOST_PATH:MOUNT_POINT
+  "/mnt/user/Downloads:/downloads"              # Downloads
+  "/mnt/cache/bitbonsai-temp:/cache"            # Shared cache for encoding temp files
+  "/mnt/user/bitbonsai-previews:/previews"      # Shared preview storage (writable)
 )
 
 echo "🚀 Deploying BitBonsai to LXC Child Node..."

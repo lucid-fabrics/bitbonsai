@@ -335,7 +335,8 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       }
 
       const data = await response.json();
-      this.logger.log(`✅ Pairing token received: ${data.pairingToken}`);
+      // SECURITY: Don't log sensitive tokens
+      this.logger.log(`✅ Pairing token received successfully`);
 
       return data.pairingToken;
     } catch (error) {
@@ -351,8 +352,12 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    * @param pairingToken 6-digit pairing token
    * @returns Node details with API key
    */
-  async completePairing(mainNodeUrl: string, pairingToken: string): Promise<any> {
-    this.logger.log(`🔐 Completing pairing with token: ${pairingToken}`);
+  async completePairing(
+    mainNodeUrl: string,
+    pairingToken: string
+  ): Promise<{ nodeId: string; apiKey: string; name: string }> {
+    // SECURITY: Don't log sensitive tokens - only log masked version
+    this.logger.log(`🔐 Completing pairing with token: ${pairingToken.substring(0, 2)}****`);
 
     try {
       const response = await fetch(`${mainNodeUrl}/api/v1/nodes/pair`, {

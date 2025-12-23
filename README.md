@@ -7,6 +7,7 @@
 ![Beta](https://img.shields.io/badge/Status-BETA-orange?style=flat-square)
 [![Docker Pulls](https://img.shields.io/docker/pulls/lucidfabrics/bitbonsai?style=flat-square)](https://hub.docker.com/r/lucidfabrics/bitbonsai)
 [![Docker Image](https://img.shields.io/badge/Docker-lucidfabrics%2Fbitbonsai-2496ED?style=flat-square&logo=docker)](https://hub.docker.com/r/lucidfabrics/bitbonsai)
+[![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/lucidfabrics)
 
 **Transform your media library with automated, intelligent video encoding.**
 

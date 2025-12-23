@@ -1710,15 +1710,15 @@ export class FfmpegService implements OnModuleDestroy {
       runtimeSeconds: number;
     }>
   > {
-    const { execSync } = await import('node:child_process');
+    const { execFileSync } = await import('node:child_process');
 
     try {
-      // Use ps to find all ffmpeg processes with their PIDs, CPU%, MEM%, and command
-      // Format: PID %CPU %MEM ETIME COMMAND
-      const psOutput = execSync(
-        "ps -eo pid,%cpu,%mem,etime,args 2>/dev/null | grep -E '[f]fmpeg' || true",
-        { encoding: 'utf-8', timeout: 5000 }
-      );
+      // SECURITY: Use execFileSync to avoid shell injection
+      // Get all processes first, then filter for ffmpeg in code
+      const psOutput = execFileSync('ps', ['-eo', 'pid,%cpu,%mem,etime,args'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+      });
 
       const processes: Array<{
         pid: number;
@@ -1729,6 +1729,9 @@ export class FfmpegService implements OnModuleDestroy {
       }> = [];
 
       for (const line of psOutput.split('\n').filter(Boolean)) {
+        // Filter for ffmpeg processes in code instead of grep
+        if (!line.toLowerCase().includes('ffmpeg')) continue;
+
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 5) {
           const pid = parseInt(parts[0], 10);
@@ -1819,7 +1822,12 @@ export class FfmpegService implements OnModuleDestroy {
    * @returns True if killed successfully, false otherwise
    */
   async killFfmpegByPid(pid: number): Promise<{ success: boolean; message: string }> {
-    const { execSync } = await import('node:child_process');
+    const { execFileSync } = await import('node:child_process');
+
+    // SECURITY: Validate PID is a positive integer
+    if (!Number.isInteger(pid) || pid <= 0 || pid > 4194304) {
+      return { success: false, message: `Invalid PID: ${pid}` };
+    }
 
     // Safety check: don't kill tracked processes this way
     for (const encoding of this.activeEncodings.values()) {
@@ -1832,20 +1840,25 @@ export class FfmpegService implements OnModuleDestroy {
     }
 
     try {
+      // SECURITY: Use execFileSync with array args to prevent shell injection
       // First try SIGTERM for graceful shutdown
       this.logger.log(`Killing zombie FFmpeg process PID ${pid} with SIGTERM`);
-      execSync(`kill -TERM ${pid} 2>/dev/null || true`, { timeout: 2000 });
+      try {
+        execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
+      } catch {
+        // Process may not exist - continue
+      }
 
       // Wait a moment
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Check if process still exists
       try {
-        execSync(`kill -0 ${pid} 2>/dev/null`, { timeout: 1000 });
+        execFileSync('kill', ['-0', pid.toString()], { timeout: 1000 });
         // Process still alive, use SIGKILL
         this.logger.log(`Process PID ${pid} still alive, using SIGKILL`);
-        execSync(`kill -KILL ${pid} 2>/dev/null || true`, { timeout: 2000 });
-      } catch (_checkError) {
+        execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
+      } catch {
         // Process already dead (good)
       }
 

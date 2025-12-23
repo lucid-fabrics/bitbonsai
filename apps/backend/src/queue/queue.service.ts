@@ -966,13 +966,7 @@ export class QueueService implements OnModuleInit {
    * @throws NotFoundException if job does not exist
    * @throws BadRequestException if attempting to manually set HEALTH_CHECK stage
    */
-  async updateProgress(
-    id: string,
-    updateJobDto: UpdateJobDto & {
-      resumeTimestamp?: string;
-      tempFilePath?: string;
-    }
-  ): Promise<Job> {
+  async updateProgress(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
     this.logger.debug(`Updating progress for job: ${id}`);
 
     // MULTI-NODE: LINKED nodes should proxy progress updates to MAIN node's API

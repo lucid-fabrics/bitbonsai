@@ -19,8 +19,9 @@ export class LicenseDto {
   @ApiProperty({
     description: 'License holder email',
     example: 'user@example.com',
+    nullable: true,
   })
-  email!: string;
+  email!: string | null;
 
   @ApiProperty({
     description: 'License valid until date (ISO 8601) or "Lifetime"',

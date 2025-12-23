@@ -17,13 +17,15 @@ const execFileAsync = promisify(execFile);
  * - Extract 9 frames at 10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90%
  * - Use FFmpeg's fast seeking to avoid decoding entire file
  * - Run extraction asynchronously in separate process
- * - Store in `/tmp/bitbonsai-previews/{jobId}/`
+ * - Store in `/cache/bitbonsai-previews/{jobId}/` (shared NFS storage)
  * - Clean up automatically when job completes/fails
  */
 @Injectable()
 export class EncodingPreviewService {
   private readonly logger = new Logger(EncodingPreviewService.name);
-  private readonly PREVIEW_DIR = '/tmp/bitbonsai-previews';
+  // MULTI-NODE FIX: Use dedicated NFS share for previews
+  // Mounted at /previews on all nodes (Unraid share: bitbonsai-previews)
+  private readonly PREVIEW_DIR = process.env.PREVIEW_DIR || '/previews';
   private readonly PREVIEW_WIDTH = 640; // Small size for fast loading
 
   /**

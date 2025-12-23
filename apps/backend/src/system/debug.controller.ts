@@ -1,7 +1,19 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
-import { Body, Controller, Delete, Get, Logger, Param, ParseIntPipe, Post } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -16,6 +28,8 @@ import { PrismaService } from '../prisma/prisma.service';
  * - Load threshold management
  */
 @ApiTags('Debug')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('debug')
 export class DebugController {
   private readonly logger = new Logger(DebugController.name);
@@ -231,10 +245,12 @@ export class DebugController {
     }>
   > {
     try {
-      const psOutput = execSync(
-        "ps -eo pid,%cpu,%mem,etime,args 2>/dev/null | grep -E '[f]fmpeg' || true",
-        { encoding: 'utf-8', timeout: 5000 }
-      );
+      // SECURITY: Use execFileSync to avoid shell injection
+      // Get all processes first, then filter for ffmpeg in code
+      const psOutput = execFileSync('ps', ['-eo', 'pid,%cpu,%mem,etime,args'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+      });
 
       const processes: Array<{
         pid: number;
@@ -245,6 +261,9 @@ export class DebugController {
       }> = [];
 
       for (const line of psOutput.split('\n').filter(Boolean)) {
+        // Filter for ffmpeg processes in code instead of grep
+        if (!line.toLowerCase().includes('ffmpeg')) continue;
+
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 5) {
           const pid = parseInt(parts[0], 10);
@@ -277,18 +296,38 @@ export class DebugController {
     }
   }
 
+  /**
+   * Validate PID is a positive integer to prevent command injection
+   */
+  private validatePid(pid: number): void {
+    if (!Number.isInteger(pid) || pid <= 0 || pid > 4194304) {
+      throw new BadRequestException(`Invalid PID: ${pid}`);
+    }
+  }
+
   private async killProcessByPid(pid: number): Promise<{ success: boolean; message: string }> {
+    // SECURITY: Validate PID before using in process operations
+    this.validatePid(pid);
+
     try {
       this.logger.log(`Killing FFmpeg process PID ${pid}`);
-      execSync(`kill -TERM ${pid} 2>/dev/null || true`, { timeout: 2000 });
+
+      // SECURITY: Use execFileSync with array args to prevent shell injection
+      try {
+        execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
+      } catch {
+        // Process may not exist or already dead - continue
+      }
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
+      // Check if process still exists and force kill if needed
       try {
-        execSync(`kill -0 ${pid} 2>/dev/null`, { timeout: 1000 });
-        execSync(`kill -KILL ${pid} 2>/dev/null || true`, { timeout: 2000 });
+        execFileSync('kill', ['-0', pid.toString()], { timeout: 1000 });
+        // Process still exists, force kill
+        execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
       } catch {
-        // Process already dead
+        // Process already dead - this is expected
       }
 
       return { success: true, message: `Killed FFmpeg process PID ${pid}` };
