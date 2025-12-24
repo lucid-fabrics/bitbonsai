@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import type { SystemSettings } from '../common/interfaces/system-settings.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import type { DefaultQueueViewDto } from './dto/default-queue-view.dto';
@@ -319,7 +320,7 @@ export class SettingsService {
       return s;
     });
 
-    const s = settings as any;
+    const s = settings as SystemSettings;
 
     return {
       jellyfinUrl: s.jellyfinUrl || null,
@@ -333,7 +334,7 @@ export class SettingsService {
    */
   async getUnmaskedJellyfinApiKey(): Promise<string | null> {
     const settings = await this.prisma.settings.findFirst();
-    return (settings as any)?.jellyfinApiKey || null;
+    return (settings as SystemSettings | null)?.jellyfinApiKey || null;
   }
 
   /**
@@ -376,7 +377,7 @@ export class SettingsService {
       return s;
     });
 
-    const s = settings as any;
+    const s = settings as SystemSettings;
 
     return {
       jellyfinUrl: s.jellyfinUrl || null,

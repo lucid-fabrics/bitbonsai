@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import type { SystemSettings } from '../common/interfaces/system-settings.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -264,7 +265,7 @@ export class PlexIntegrationService {
   } | null> {
     try {
       const settings = await this.prisma.settings.findFirst();
-      const s = settings as any;
+      const s = settings as SystemSettings | null;
 
       if (!s?.plexUrl || !s?.plexToken) {
         return null;

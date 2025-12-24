@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Transporter } from 'nodemailer';
 import * as nodemailer from 'nodemailer';
+import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -267,7 +268,7 @@ export class EmailNotificationService {
   private async getEmailConfig(): Promise<EmailConfig | null> {
     try {
       const settings = await this.prisma.settings.findFirst();
-      const s = settings as any;
+      const s = settings as SystemSettings | null;
 
       if (!s?.smtpHost || !s?.smtpUser || !s?.emailTo) {
         return null;
