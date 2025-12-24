@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type Prisma,
   StorageShareStatus as Status,
   type StorageShare,
   type StorageShareStatus,
@@ -17,7 +18,7 @@ export class StorageShareRepository implements IStorageShareRepository {
 
   async create(data: Partial<StorageShare>): Promise<StorageShare> {
     return this.prisma.storageShare.create({
-      data: data as any,
+      data: data as Prisma.StorageShareCreateInput,
     });
   }
 
@@ -68,7 +69,7 @@ export class StorageShareRepository implements IStorageShareRepository {
   async update(id: string, data: Partial<StorageShare>): Promise<StorageShare> {
     return this.prisma.storageShare.update({
       where: { id },
-      data: data as any,
+      data: data as Prisma.StorageShareUpdateInput,
     });
   }
 

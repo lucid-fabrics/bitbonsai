@@ -38,6 +38,13 @@ interface JobResult {
   savedPercent: number;
 }
 
+interface LockPromise extends Promise<void> {
+  release?: () => void;
+}
+
+// Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
+// on Job instances for encoding resume functionality
+
 /**
  * EncodingProcessorService
  *
@@ -906,10 +913,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Store lock and return release function through closure
-    this.poolLocks.set(nodeId, lockPromise);
-
-    // Store release function on the promise for later
-    (lockPromise as any).release = releaseLock;
+    const lockWithRelease = lockPromise as LockPromise;
+    lockWithRelease.release = releaseLock;
+    this.poolLocks.set(nodeId, lockWithRelease);
   }
 
   /**
@@ -919,7 +925,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @private
    */
   private releasePoolLock(nodeId: string): void {
-    const lockPromise = this.poolLocks.get(nodeId) as any;
+    const lockPromise = this.poolLocks.get(nodeId) as LockPromise | undefined;
     if (lockPromise?.release) {
       lockPromise.release();
     }
@@ -1192,15 +1198,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       Object.assign(job, healedJob);
 
       // AV1 THROTTLING: Log throttling status if job is resource-throttled
-      const jobWithThrottle = job as any;
-      if (jobWithThrottle.resourceThrottled) {
-        this.logger.warn(`[${job.id}] RESOURCE THROTTLED JOB STARTING`);
-        this.logger.warn(`[${job.id}] Reason: ${jobWithThrottle.resourceThrottleReason}`);
-        this.logger.warn(`[${job.id}] FFmpeg threads: ${jobWithThrottle.ffmpegThreads}`);
-        if (jobWithThrottle.warning) {
-          this.logger.warn(`[${job.id}] Warning: ${jobWithThrottle.warning}`);
-        }
-      }
+      // Note: skipNodeThrottleCheck was removed - throttling is now automatic based on system load
 
       // Update worker state
       worker.currentJobId = job.id;
@@ -1827,16 +1825,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // TRUE RESUME: Check if job has resume state from auto-heal
       let startedFromSeconds: number | undefined;
-      const jobWithResume = job as any;
 
-      if (job.progress > 0 && fs.existsSync(tmpPath) && jobWithResume.resumeTimestamp) {
+      if (job.progress > 0 && fs.existsSync(tmpPath) && job.resumeTimestamp) {
         this.logger.log(
-          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress and resumeTimestamp=${jobWithResume.resumeTimestamp}`
+          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress and resumeTimestamp=${job.resumeTimestamp}`
         );
 
         try {
           // Parse the HH:MM:SS format resumeTimestamp to seconds
-          const parts = jobWithResume.resumeTimestamp.split(':');
+          const parts = job.resumeTimestamp.split(':');
           if (parts.length === 3) {
             const hours = Number.parseInt(parts[0], 10);
             const minutes = Number.parseInt(parts[1], 10);
@@ -1844,18 +1841,18 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             startedFromSeconds = Math.floor(hours * 3600 + minutes * 60 + seconds);
 
             this.logger.log(
-              `  ✅ TRUE RESUME: Using resumeTimestamp from auto-heal: ${jobWithResume.resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}%)`
+              `  ✅ TRUE RESUME: Using resumeTimestamp from auto-heal: ${job.resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}%)`
             );
           } else {
             this.logger.warn(
-              `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${jobWithResume.resumeTimestamp}`
+              `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${job.resumeTimestamp}`
             );
           }
         } catch (error) {
           this.logger.warn(`  ⚠️  TRUE RESUME: Error parsing resumeTimestamp:`, error);
           // Continue without resume - will restart from 0%
         }
-      } else if (job.progress > 0 && fs.existsSync(tmpPath) && !jobWithResume.resumeTimestamp) {
+      } else if (job.progress > 0 && fs.existsSync(tmpPath) && !job.resumeTimestamp) {
         // Fallback: Calculate resume position if temp file exists but no resumeTimestamp
         this.logger.log(
           `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress but no resumeTimestamp, calculating...`
@@ -2124,11 +2121,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     tmpPath: string,
     atomicReplace: boolean
   ): Promise<void> {
-    const jobData = job as any; // Access keepOriginalRequested field
+    
     const originalPath = job.filePath;
 
     // KEEP ORIGINAL FEATURE: Check if user requested to keep the original file
-    if (jobData.keepOriginalRequested) {
+    if (job.keepOriginalRequested) {
       // User clicked "Keep Original" - rename original to .original and keep both files
       const originalBackupPath = `${originalPath}.original`;
 
