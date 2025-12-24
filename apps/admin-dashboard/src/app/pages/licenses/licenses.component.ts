@@ -1,7 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { License, LicenseApiService } from '../../services/license-api.service';
+import { Store } from '@ngrx/store';
+import * as LicensesActions from './+state/licenses.actions';
+import {
+  selectCurrentPage,
+  selectError,
+  selectFilterTier,
+  selectLicenses,
+  selectLoading,
+  selectPageSize,
+  selectSearchEmail,
+  selectShowCreateDialog,
+  selectTotal,
+} from './+state/licenses.selectors';
+import { LicensesBo } from './licenses.bo';
 
 @Component({
   selector: 'bb-licenses',
@@ -11,7 +24,7 @@ import { License, LicenseApiService } from '../../services/license-api.service';
     <div class="bb-licenses">
       <div class="bb-page-header">
         <h1 class="bb-page-title">License Management</h1>
-        <button class="bb-btn bb-btn--primary" (click)="showCreateDialog = true">
+        <button class="bb-btn bb-btn--primary" (click)="openCreateDialog()">
           Create License
         </button>
       </div>
@@ -19,12 +32,13 @@ import { License, LicenseApiService } from '../../services/license-api.service';
       <div class="bb-filters">
         <input
           type="text"
-          [(ngModel)]="searchEmail"
+          [ngModel]="searchEmail$ | async"
+          (ngModelChange)="updateSearchEmail($event)"
           placeholder="Search by email..."
           class="bb-input"
           (keyup.enter)="search()"
         />
-        <select [(ngModel)]="filterTier" class="bb-select" (change)="loadLicenses()">
+        <select [ngModel]="filterTier$ | async" (ngModelChange)="updateTierFilter($event)" class="bb-select">
           <option value="">All Tiers</option>
           <option value="FREE">FREE</option>
           <option value="PATREON_SUPPORTER">PATREON_SUPPORTER</option>
@@ -38,9 +52,9 @@ import { License, LicenseApiService } from '../../services/license-api.service';
         <button class="bb-btn bb-btn--outline" (click)="resetFilters()">Reset</button>
       </div>
 
-      @if (loading) {
+      @if (loading$ | async) {
         <div class="bb-loading">Loading licenses...</div>
-      } @else if (licenses.length > 0) {
+      } @else if ((licenses$ | async)?.length ?? 0 > 0) {
         <div class="bb-table-container">
           <table class="bb-table">
             <thead>
@@ -56,7 +70,7 @@ import { License, LicenseApiService } from '../../services/license-api.service';
               </tr>
             </thead>
             <tbody>
-              @for (license of licenses; track license.id) {
+              @for (license of licenses$ | async; track license.id) {
                 <tr>
                   <td>{{ license.email }}</td>
                   <td><code>{{ license.key }}</code></td>
@@ -86,17 +100,17 @@ import { License, LicenseApiService } from '../../services/license-api.service';
         <div class="bb-pagination">
           <button
             class="bb-btn bb-btn--outline"
-            [disabled]="currentPage === 0"
+            [disabled]="!LicensesBo.canGoPrevious(currentPage$ | async ?? 0)"
             (click)="previousPage()"
           >
             Previous
           </button>
           <span class="bb-pagination__info">
-            Page {{ currentPage + 1 }} - Showing {{ licenses.length }} of {{ total }} licenses
+            {{ LicensesBo.getPageInfo(currentPage$ | async ?? 0, (licenses$ | async)?.length ?? 0, total$ | async ?? 0) }}
           </span>
           <button
             class="bb-btn bb-btn--outline"
-            [disabled]="(currentPage + 1) * pageSize >= total"
+            [disabled]="!LicensesBo.canGoNext(currentPage$ | async ?? 0, pageSize$ | async ?? 20, total$ | async ?? 0)"
             (click)="nextPage()"
           >
             Next
@@ -106,8 +120,12 @@ import { License, LicenseApiService } from '../../services/license-api.service';
         <div class="bb-empty">No licenses found</div>
       }
 
-      @if (showCreateDialog) {
-        <div class="bb-dialog-overlay" (click)="showCreateDialog = false">
+      @if (error$ | async; as error) {
+        <div class="bb-error">{{ error }}</div>
+      }
+
+      @if (showCreateDialog$ | async) {
+        <div class="bb-dialog-overlay" (click)="closeCreateDialog()">
           <div class="bb-dialog" (click)="$event.stopPropagation()">
             <h2>Create New License</h2>
             <div class="bb-form">
@@ -143,7 +161,7 @@ import { License, LicenseApiService } from '../../services/license-api.service';
               </div>
             </div>
             <div class="bb-dialog-actions">
-              <button class="bb-btn bb-btn--outline" (click)="showCreateDialog = false">
+              <button class="bb-btn bb-btn--outline" (click)="closeCreateDialog()">
                 Cancel
               </button>
               <button class="bb-btn bb-btn--primary" (click)="createLicense()">Create</button>
@@ -156,18 +174,29 @@ import { License, LicenseApiService } from '../../services/license-api.service';
   styleUrls: ['./licenses.component.scss'],
 })
 export class LicensesComponent implements OnInit {
-  private readonly licenseApi = inject(LicenseApiService);
+  private readonly store = inject(Store);
 
-  licenses: License[] = [];
-  total = 0;
-  currentPage = 0;
-  pageSize = 20;
-  loading = false;
+  // Expose BO to template (convention requirement)
+  readonly LicensesBo = LicensesBo;
 
-  searchEmail = '';
-  filterTier = '';
+  // Selectors (NgRx state)
+  licenses$ = this.store.select(selectLicenses);
+  total$ = this.store.select(selectTotal);
+  currentPage$ = this.store.select(selectCurrentPage);
+  pageSize$ = this.store.select(selectPageSize);
+  loading$ = this.store.select(selectLoading);
+  error$ = this.store.select(selectError);
+  searchEmail$ = this.store.select(selectSearchEmail);
+  filterTier$ = this.store.select(selectFilterTier);
+  showCreateDialog$ = this.store.select(selectShowCreateDialog);
 
-  showCreateDialog = false;
+  // Local component state for pagination (tracked from selectors)
+  private currentPage = 0;
+  private pageSize = 20;
+  private filterTier = '';
+  private searchEmail = '';
+
+  // Local component state for form
   newLicense = {
     email: '',
     tier: 'FREE',
@@ -175,105 +204,156 @@ export class LicensesComponent implements OnInit {
     notes: '',
   };
 
-  ngOnInit() {
+  /**
+   * Component initialization
+   * Delegates to NgRx effect (NO logic in component!)
+   */
+  ngOnInit(): void {
+    // Subscribe to state changes
+    this.currentPage$.subscribe(page => this.currentPage = page);
+    this.pageSize$.subscribe(size => this.pageSize = size);
+    this.filterTier$.subscribe(tier => this.filterTier = tier);
+    this.searchEmail$.subscribe(email => this.searchEmail = email);
+
     this.loadLicenses();
   }
 
-  loadLicenses() {
-    this.loading = true;
-    this.licenseApi
-      .listLicenses({
+  /**
+   * Dispatch load licenses action
+   */
+  loadLicenses(): void {
+    this.store.dispatch(
+      LicensesActions.loadLicenses({
         skip: this.currentPage * this.pageSize,
         take: this.pageSize,
         tier: this.filterTier || undefined,
       })
-      .subscribe({
-        next: (response) => {
-          this.licenses = response.data;
-          this.total = response.total;
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Failed to load licenses:', error);
-          this.loading = false;
-        },
-      });
+    );
   }
 
-  search() {
-    if (!this.searchEmail.trim()) {
+  /**
+   * Dispatch search action
+   */
+  search(): void {
+    if (!LicensesBo.hasValidSearchQuery(this.searchEmail)) {
       this.loadLicenses();
       return;
     }
 
-    this.loading = true;
-    this.licenseApi.getLicensesByEmail(this.searchEmail.trim()).subscribe({
-      next: (licenses) => {
-        this.licenses = licenses;
-        this.total = licenses.length;
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Failed to search licenses:', error);
-        this.loading = false;
-      },
-    });
+    this.store.dispatch(LicensesActions.searchLicenses({ email: this.searchEmail.trim() }));
   }
 
-  resetFilters() {
-    this.searchEmail = '';
-    this.filterTier = '';
-    this.currentPage = 0;
+  /**
+   * Reset filters and reload
+   */
+  resetFilters(): void {
+    this.store.dispatch(LicensesActions.resetFilters());
     this.loadLicenses();
   }
 
-  previousPage() {
-    if (this.currentPage > 0) {
-      this.currentPage--;
-      this.loadLicenses();
-    }
+  /**
+   * Go to previous page
+   */
+  previousPage(): void {
+    const newPage = this.currentPage - 1;
+    this.store.dispatch(LicensesActions.setPage({ page: newPage }));
+    this.store.dispatch(
+      LicensesActions.loadLicenses({
+        skip: newPage * this.pageSize,
+        take: this.pageSize,
+        tier: this.filterTier || undefined,
+      })
+    );
   }
 
-  nextPage() {
-    if ((this.currentPage + 1) * this.pageSize < this.total) {
-      this.currentPage++;
-      this.loadLicenses();
-    }
+  /**
+   * Go to next page
+   */
+  nextPage(): void {
+    const newPage = this.currentPage + 1;
+    this.store.dispatch(LicensesActions.setPage({ page: newPage }));
+    this.store.dispatch(
+      LicensesActions.loadLicenses({
+        skip: newPage * this.pageSize,
+        take: this.pageSize,
+        tier: this.filterTier || undefined,
+      })
+    );
   }
 
-  createLicense() {
-    if (!this.newLicense.email || !this.newLicense.tier) {
+  /**
+   * Create new license
+   */
+  createLicense(): void {
+    if (!LicensesBo.isValidLicenseForm(this.newLicense.email, this.newLicense.tier)) {
       alert('Email and tier are required');
       return;
     }
 
-    this.licenseApi.createLicense(this.newLicense).subscribe({
-      next: () => {
-        this.showCreateDialog = false;
-        this.newLicense = { email: '', tier: 'FREE', expiresAt: '', notes: '' };
-        this.loadLicenses();
-      },
-      error: (error) => {
-        console.error('Failed to create license:', error);
-        alert(`Failed to create license: ${error.message}`);
-      },
-    });
+    this.store.dispatch(
+      LicensesActions.createLicense({
+        email: this.newLicense.email,
+        tier: this.newLicense.tier,
+        expiresAt: this.newLicense.expiresAt || undefined,
+        notes: this.newLicense.notes || undefined,
+      })
+    );
+
+    // Reset form
+    this.newLicense = { email: '', tier: 'FREE', expiresAt: '', notes: '' };
+
+    // Reload licenses after creation
+    setTimeout(() => this.loadLicenses(), 500);
   }
 
-  revokeLicense(license: License) {
-    if (!confirm(`Revoke license for ${license.email}?`)) return;
+  /**
+   * Revoke license
+   */
+  revokeLicense(license: { id: number; email: string }): void {
+    if (!confirm(LicensesBo.getRevokeConfirmationMessage(license as { id: number; email: string })))
+      return;
 
     const reason = prompt('Reason for revoking:');
     if (!reason) return;
 
-    this.licenseApi.revokeLicense(license.id, reason).subscribe({
-      next: () => {
-        this.loadLicenses();
-      },
-      error: (error) => {
-        console.error('Failed to revoke license:', error);
-        alert(`Failed to revoke license: ${error.message}`);
-      },
-    });
+    this.store.dispatch(LicensesActions.revokeLicense({ licenseId: license.id, reason }));
+
+    // Reload licenses after revocation
+    setTimeout(() => this.loadLicenses(), 500);
+  }
+
+  /**
+   * Update search email
+   */
+  updateSearchEmail(email: string): void {
+    this.store.dispatch(LicensesActions.setSearchEmail({ email }));
+  }
+
+  /**
+   * Update tier filter
+   */
+  updateTierFilter(tier: string): void {
+    this.store.dispatch(LicensesActions.setTierFilter({ tier }));
+    this.store.dispatch(
+      LicensesActions.loadLicenses({
+        skip: 0,
+        take: this.pageSize,
+        tier: tier || undefined,
+      })
+    );
+  }
+
+  /**
+   * Open create dialog
+   */
+  openCreateDialog(): void {
+    this.store.dispatch(LicensesActions.toggleCreateDialog({ show: true }));
+  }
+
+  /**
+   * Close create dialog
+   */
+  closeCreateDialog(): void {
+    this.store.dispatch(LicensesActions.toggleCreateDialog({ show: false }));
   }
 }
