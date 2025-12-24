@@ -107,7 +107,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   /**
    * Start broadcasting mDNS service (MAIN node only)
    */
-  private async startBroadcast(node: any): Promise<void> {
+  private async startBroadcast(node: { id: string; name: string; version: string }): Promise<void> {
     if (!this.bonjour) {
       throw new Error('Bonjour not initialized');
     }

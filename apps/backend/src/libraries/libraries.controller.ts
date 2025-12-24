@@ -26,6 +26,7 @@ import { CacheMetadataDto } from './dto/cache-metadata.dto';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { LibraryFilesDto } from './dto/library-files.dto';
 import { LibraryStatsDto } from './dto/library-stats.dto';
+import { ScanJobsResponseDto } from './dto/scan-jobs-response.dto';
 import {
   BulkJobCreationResultDto,
   CreateAllJobsDto,
@@ -446,7 +447,7 @@ export class LibrariesController {
   async createJobsFromScan(
     @Param('id') id: string,
     @Body() dto: CreateJobsFromScanDto
-  ): Promise<{ jobsCreated: number; jobs: any[] }> {
+  ): Promise<ScanJobsResponseDto> {
     return this.librariesService.createJobsFromScan(id, dto.policyId, dto.filePaths);
   }
 

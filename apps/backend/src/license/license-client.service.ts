@@ -33,26 +33,25 @@ export class LicenseClientService {
   }
 
   async getLicenseKey(): Promise<string | null> {
-    const settings = await this.prisma.settings.findFirst();
-    return settings?.licenseKey || null;
+    const license = await this.prisma.license.findFirst();
+    return license?.key || null;
   }
 
   async setLicenseKey(key: string): Promise<void> {
-    const settings = await this.prisma.settings.findFirst();
+    const existingLicense = await this.prisma.license.findUnique({
+      where: { key },
+    });
 
-    if (settings) {
-      await this.prisma.settings.update({
-        where: { id: settings.id },
-        data: { licenseKey: key },
+    if (existingLicense) {
+      // License already exists, just update it
+      await this.prisma.license.update({
+        where: { key },
+        data: { updatedAt: new Date() },
       });
     } else {
-      await this.prisma.settings.create({
-        data: { licenseKey: key },
-      });
+      // This should not happen - license creation happens via API
+      throw new Error('License must be validated via API before use');
     }
-
-    // Immediately verify new license
-    await this.verifyLicense();
   }
 
   async verifyLicense(): Promise<LicenseInfo> {
@@ -102,31 +101,28 @@ export class LicenseClientService {
         )
       );
 
-      this.cachedLicense = response.data;
-      this.lastVerification = now;
-
-      // Update last verified timestamp in DB
-      const settings = await this.prisma.settings.findFirst();
-      if (settings) {
-        await this.prisma.settings.update({
-          where: { id: settings.id },
-          data: { licenseLastVerified: now },
-        });
+      const verifiedLicense = response.data;
+      if (!verifiedLicense) {
+        throw new Error('License API returned empty response');
       }
 
+      this.cachedLicense = verifiedLicense;
+      this.lastVerification = now;
+
       this.logger.log(
-        `License verified: ${this.cachedLicense.tier} (${this.cachedLicense.maxNodes} nodes, ${this.cachedLicense.maxConcurrentJobs} jobs)`
+        `License verified: ${verifiedLicense.tier} (${verifiedLicense.maxNodes} nodes, ${verifiedLicense.maxConcurrentJobs} jobs)`
       );
 
-      return this.cachedLicense;
-    } catch (error) {
+      return verifiedLicense;
+    } catch (error: unknown) {
       // Graceful degradation: use cached license if API unreachable
       if (this.cachedLicense) {
         this.logger.warn('License API unreachable, using cached license');
         return this.cachedLicense;
       }
 
-      this.logger.error('License verification failed and no cache available', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('License verification failed and no cache available', errorMessage);
       throw new UnauthorizedException('License verification failed');
     }
   }
@@ -144,8 +140,9 @@ export class LicenseClientService {
     this.logger.log('Running daily license verification...');
     try {
       await this.verifyLicense();
-    } catch (error) {
-      this.logger.error('Daily license verification failed', error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('Daily license verification failed', errorMessage);
     }
   }
 

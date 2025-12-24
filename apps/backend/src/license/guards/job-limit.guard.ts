@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { JobStage } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LicenseClientService } from '../license-client.service';
 
@@ -14,7 +15,7 @@ export class JobLimitGuard implements CanActivate {
 
     const currentEncodingJobCount = await this.prisma.job.count({
       where: {
-        status: 'ENCODING',
+        stage: JobStage.ENCODING,
       },
     });
 

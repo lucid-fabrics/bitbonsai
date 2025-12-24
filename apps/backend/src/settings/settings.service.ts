@@ -343,7 +343,7 @@ export class SettingsService {
     const settings = await this.prisma.$transaction(async (tx) => {
       let s = await tx.settings.findFirst();
 
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (dto.jellyfinUrl !== undefined) {
         updateData.jellyfinUrl = dto.jellyfinUrl || null;
       }

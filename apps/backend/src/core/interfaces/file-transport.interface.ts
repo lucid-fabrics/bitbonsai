@@ -20,7 +20,7 @@ export enum FileTransportType {
 
 export interface FileTransportConfig {
   type: FileTransportType;
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 /**

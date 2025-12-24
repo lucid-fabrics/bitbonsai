@@ -125,7 +125,8 @@ export class AnalyticsService {
         ${dateFilter ? this.prisma.$queryRaw`AND completed_at >= ${dateFilter.gte} AND completed_at <= ${dateFilter.lte}` : this.prisma.$queryRaw``}
     `;
 
-    const totalProcessingMs = (avgProcessingResult[0]?.avg_duration_ms || 0) * (timingStats._count.id || 0);
+    const totalProcessingMs =
+      (avgProcessingResult[0]?.avg_duration_ms || 0) * (timingStats._count.id || 0);
 
     // Success rate
     const failedJobs = await this.prisma.job.count({
@@ -183,12 +184,14 @@ export class AnalyticsService {
     const groupByFormat = this.getGroupByFormat(period);
 
     // Use raw SQL aggregation with GROUP BY instead of loading all rows
-    const groupedResults = await this.prisma.$queryRaw<Array<{
-      date_group: Date;
-      total_saved_bytes: bigint;
-      avg_saved_percent: number;
-      job_count: number;
-    }>>`
+    const groupedResults = await this.prisma.$queryRaw<
+      Array<{
+        date_group: Date;
+        total_saved_bytes: bigint;
+        avg_saved_percent: number;
+        job_count: number;
+      }>
+    >`
       SELECT
         DATE_TRUNC(${groupByFormat}, completed_at) as date_group,
         SUM(saved_bytes)::bigint as total_saved_bytes,
@@ -208,7 +211,7 @@ export class AnalyticsService {
       grouped.set(dateKey, {
         savedBytes: row.total_saved_bytes,
         savedPercent: row.avg_saved_percent,
-        count: row.job_count
+        count: row.job_count,
       });
     }
 
@@ -517,7 +520,7 @@ export class AnalyticsService {
   /**
    * Get date filter for period
    */
-  private getDateFilter(period: TimePeriod): { gte: Date } | undefined {
+  private getDateFilter(period: TimePeriod): { gte: Date; lte?: Date } | undefined {
     if (period === 'all') return undefined;
 
     const now = new Date();
@@ -528,7 +531,7 @@ export class AnalyticsService {
       '90d': 90 * 24 * 60 * 60 * 1000,
     };
 
-    return { gte: new Date(now.getTime() - (ms[period] || 0)) };
+    return { gte: new Date(now.getTime() - (ms[period] || 0)), lte: now };
   }
 
   /**

@@ -1025,7 +1025,7 @@ export class QueueService implements OnModuleInit {
 
     try {
       // TRUE RESUME: Save resume state for crash recovery
-      const updateData: any = { ...updateJobDto };
+      const updateData: Record<string, unknown> = { ...updateJobDto };
 
       // If resume state is provided, save it along with progress
       if (updateJobDto.resumeTimestamp) {
@@ -2668,7 +2668,7 @@ export class QueueService implements OnModuleInit {
     }
 
     // Apply action configuration from decisionData (default behavior: move to QUEUED)
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       stage: JobStage.QUEUED,
       decisionRequired: false,
       decisionIssues: null,
@@ -2966,7 +2966,7 @@ export class QueueService implements OnModuleInit {
       }
 
       // Build update data with path translation if needed
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         nodeId: targetNodeId,
         stage: targetStage,
         manualAssignment: true,

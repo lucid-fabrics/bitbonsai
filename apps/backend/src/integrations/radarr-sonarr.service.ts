@@ -13,6 +13,39 @@ export enum MediaServerType {
 }
 
 /**
+ * API response types for *arr services
+ */
+interface RadarrMovieResponse {
+  id: number;
+  title: string;
+  path: string;
+  sizeOnDisk: number;
+  hasFile: boolean;
+  monitored: boolean;
+  qualityProfileId: number;
+}
+
+interface SonarrSeriesResponse {
+  id: number;
+  title: string;
+  path: string;
+  sizeOnDisk: number;
+  statistics?: { episodeFileCount: number };
+  monitored: boolean;
+  qualityProfileId: number;
+}
+
+interface QualityProfileResponse {
+  id: number;
+  name: string;
+}
+
+interface NotificationResponse {
+  id: number;
+  name: string;
+}
+
+/**
  * Movie/Series information from *arr
  */
 export interface MediaInfo {
@@ -83,7 +116,7 @@ export class RadarrSonarrIntegrationService {
         })
       );
 
-      return (response.data || []).map((m: any) => ({
+      return ((response.data as RadarrMovieResponse[]) || []).map((m) => ({
         id: m.id,
         title: m.title,
         path: m.path,
@@ -113,12 +146,12 @@ export class RadarrSonarrIntegrationService {
         })
       );
 
-      return (response.data || []).map((s: any) => ({
+      return ((response.data as SonarrSeriesResponse[]) || []).map((s) => ({
         id: s.id,
         title: s.title,
         path: s.path,
         sizeOnDisk: s.sizeOnDisk,
-        hasFile: s.statistics?.episodeFileCount > 0,
+        hasFile: (s.statistics?.episodeFileCount ?? 0) > 0,
         monitored: s.monitored,
         qualityProfileId: s.qualityProfileId,
       }));
@@ -297,7 +330,7 @@ export class RadarrSonarrIntegrationService {
         })
       );
 
-      return (response.data || []).map((p: any) => ({
+      return ((response.data as QualityProfileResponse[]) || []).map((p) => ({
         id: p.id,
         name: p.name,
       }));
@@ -321,7 +354,7 @@ export class RadarrSonarrIntegrationService {
         })
       );
 
-      return (response.data || []).map((p: any) => ({
+      return ((response.data as QualityProfileResponse[]) || []).map((p) => ({
         id: p.id,
         name: p.name,
       }));
@@ -368,27 +401,30 @@ export class RadarrSonarrIntegrationService {
   } | null> {
     try {
       const settings = await this.prisma.settings.findFirst();
-      const s = settings as any;
 
-      let url: string | undefined;
-      let apiKey: string | undefined;
-      let skipQualityMet: boolean | undefined;
+      if (!settings) {
+        return null;
+      }
+
+      let url: string | null | undefined;
+      let apiKey: string | null | undefined;
+      let skipQualityMet: boolean | null | undefined;
 
       switch (type) {
         case MediaServerType.RADARR:
-          url = s?.radarrUrl;
-          apiKey = s?.radarrApiKey;
-          skipQualityMet = s?.radarrSkipQualityMet;
+          url = settings.radarrUrl;
+          apiKey = settings.radarrApiKey;
+          skipQualityMet = settings.radarrSkipQualityMet;
           break;
         case MediaServerType.SONARR:
-          url = s?.sonarrUrl;
-          apiKey = s?.sonarrApiKey;
-          skipQualityMet = s?.sonarrSkipQualityMet;
+          url = settings.sonarrUrl;
+          apiKey = settings.sonarrApiKey;
+          skipQualityMet = settings.sonarrSkipQualityMet;
           break;
         case MediaServerType.WHISPARR:
-          url = s?.whisparrUrl;
-          apiKey = s?.whisparrApiKey;
-          skipQualityMet = s?.whisparrSkipQualityMet;
+          url = settings.whisparrUrl;
+          apiKey = settings.whisparrApiKey;
+          skipQualityMet = settings.whisparrSkipQualityMet;
           break;
       }
 
@@ -399,7 +435,7 @@ export class RadarrSonarrIntegrationService {
       return {
         url: url.replace(/\/$/, ''),
         apiKey,
-        skipQualityMet,
+        skipQualityMet: skipQualityMet ?? undefined,
       };
     } catch {
       return null;
@@ -427,7 +463,9 @@ export class RadarrSonarrIntegrationService {
         })
       );
 
-      const existing = (listResponse.data || []).find((n: any) => n.name === 'BitBonsai');
+      const existing = ((listResponse.data as NotificationResponse[]) || []).find(
+        (n) => n.name === 'BitBonsai'
+      );
 
       const webhookConfig = {
         name: 'BitBonsai',

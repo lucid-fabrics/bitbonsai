@@ -227,7 +227,11 @@ export class SetupService {
    */
   private generatePairingToken(): string {
     // Generate a random 8-character token
-    const randomPart = require('crypto').randomBytes(6).toString('hex').substring(0, 8).toUpperCase();
+    const randomPart = require('crypto')
+      .randomBytes(6)
+      .toString('hex')
+      .substring(0, 8)
+      .toUpperCase();
     return `BITBONSAI-${randomPart}`;
   }
 
@@ -239,7 +243,10 @@ export class SetupService {
    */
   private generateRandomString(length: number): string {
     // Use crypto.randomBytes for cryptographically secure random strings
-    return require('crypto').randomBytes(Math.ceil(length * 3 / 4)).toString('base64').slice(0, length);
+    return require('crypto')
+      .randomBytes(Math.ceil((length * 3) / 4))
+      .toString('base64')
+      .slice(0, length);
   }
 
   /**

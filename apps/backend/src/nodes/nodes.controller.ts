@@ -25,6 +25,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/guards/public.decorator';
 import { CurrentNodeDto } from './dto/current-node.dto';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
+import { NodeCapabilitiesDto } from './dto/node-capabilities.dto';
 import { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import { NodeResponseDto } from './dto/node-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';
@@ -958,7 +959,7 @@ export class NodesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during capability test',
   })
-  async testNodeCapabilities(@Param('id') id: string): Promise<any> {
+  async testNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
     const node = await this.nodesService.findOne(id);
 
     // Get IP address: prefer stored ipAddress, then extract from URLs, fallback to localhost
@@ -1035,7 +1036,7 @@ export class NodesController {
   @ApiNotFoundResponse({
     description: 'Node not found',
   })
-  async getNodeCapabilities(@Param('id') id: string): Promise<any> {
+  async getNodeCapabilities(@Param('id') id: string): Promise<NodeCapabilitiesDto> {
     const node = await this.nodesService.findOne(id);
 
     return {
