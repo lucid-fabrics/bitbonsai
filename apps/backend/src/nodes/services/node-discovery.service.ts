@@ -178,11 +178,11 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     const interfaces = os.networkInterfaces();
 
     for (const [_name, addrs] of Object.entries(interfaces)) {
-      if (!addrs) continue;
+      if (!addrs || !Array.isArray(addrs)) continue;
 
-      for (const addr of addrs as any[]) {
+      for (const addr of addrs) {
         // Skip internal and non-IPv4 addresses
-        if (addr.family === 'IPv4' && !addr.internal) {
+        if (addr && addr.family === 'IPv4' && !addr.internal) {
           return addr.address;
         }
       }

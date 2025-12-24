@@ -364,12 +364,22 @@ export class QueueService implements OnModuleInit {
 
       this.logger.log(`Job created: ${job.id} (${job.fileLabel})`);
       return job;
-    } catch (error) {
+    } catch (error: unknown) {
       // ISSUE #9 FIX: Catch unique constraint violation (race condition)
       // If another request created a job for this file while we were checking,
       // the database unique index will prevent duplicate creation
-      const err = error as any;
-      if (err?.code === 'P2002' && err?.meta?.target?.includes('unique_active_job_per_file')) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2002' &&
+        'meta' in error &&
+        error.meta &&
+        typeof error.meta === 'object' &&
+        'target' in error.meta &&
+        Array.isArray(error.meta.target) &&
+        error.meta.target.includes('unique_active_job_per_file')
+      ) {
         // Unique constraint violated - another job exists for this file
         // Return the existing job
         const existingJob = await this.prisma.job.findFirst({

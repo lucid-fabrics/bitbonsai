@@ -22,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import type { Node as PrismaNode } from '@prisma/client';
 import { Public } from '../auth/guards/public.decorator';
 import { CurrentNodeDto } from './dto/current-node.dto';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
@@ -99,7 +100,7 @@ export class NodesController {
     description: 'Internal server error occurred during registration',
   })
   async register(@Body() registerNodeDto: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
-    return this.nodesService.registerNode(registerNodeDto);
+    return this.nodesService.registerNode(registerNodeDto) as any;
   }
 
   /**
@@ -135,7 +136,7 @@ export class NodesController {
     description: 'Internal server error occurred during pairing',
   })
   async pair(@Body() pairNodeDto: PairNodeDto): Promise<NodeResponseDto> {
-    const node = await this.nodesService.pairNode(pairNodeDto.pairingToken);
+    const node = await this.nodesService.pairNode(pairNodeDto.pairingToken) as any;
     // Exclude sensitive fields
     const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
     return safeNode;
@@ -175,7 +176,7 @@ export class NodesController {
     description: 'Internal server error occurred while generating token',
   })
   async generatePairingToken(@Param('id') id: string): Promise<NodeRegistrationResponseDto> {
-    return this.nodesService.generatePairingTokenForNode(id);
+    return this.nodesService.generatePairingTokenForNode(id) as any;
   }
 
   /**
@@ -218,7 +219,7 @@ export class NodesController {
     @Param('id') id: string,
     @Body() heartbeatDto?: HeartbeatDto
   ): Promise<NodeResponseDto> {
-    const node = await this.nodesService.heartbeat(id, heartbeatDto);
+    const node = await this.nodesService.heartbeat(id, heartbeatDto) as any;
     // Exclude sensitive fields
     const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
     return safeNode;
@@ -254,7 +255,7 @@ export class NodesController {
     description: 'Internal server error occurred while fetching current node',
   })
   async getCurrentNode(): Promise<CurrentNodeDto> {
-    const node = await this.nodesService.getCurrentNode();
+    const node = await this.nodesService.getCurrentNode() as any;
     return {
       id: node.id,
       name: node.name,
@@ -292,9 +293,9 @@ export class NodesController {
   async findAll(): Promise<NodeResponseDto[]> {
     const nodes = await this.nodesService.findAll();
     // Exclude sensitive fields from all nodes
-    return nodes.map((node) => {
+    return nodes.map((node: PrismaNode) => {
       const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
-      return safeNode;
+      return safeNode as NodeResponseDto;
     });
   }
 
@@ -341,7 +342,7 @@ export class NodesController {
     description: 'Internal server error occurred while calculating scores',
   })
   async getNodeScores() {
-    return this.jobAttribution.getAllNodeScores();
+    return this.jobAttribution.getAllNodeScores() as any;
   }
 
   /**
@@ -374,9 +375,9 @@ export class NodesController {
   async detectEnvironment() {
     const { EnvironmentDetectorService } = await import(
       '../core/services/environment-detector.service'
-    );
-    const detector = new EnvironmentDetectorService();
-    return detector.detectEnvironment();
+    ) as any;
+    const detector = new EnvironmentDetectorService() as any;
+    return detector.detectEnvironment() as any;
   }
 
   /**
@@ -407,27 +408,27 @@ export class NodesController {
   async getStorageRecommendation(@Body() body: { sourceNodeId: string; targetNodeId: string }) {
     const { EnvironmentDetectorService } = await import(
       '../core/services/environment-detector.service'
-    );
-    const detector = new EnvironmentDetectorService();
+    ) as any;
+    const detector = new EnvironmentDetectorService() as any;
 
     // Get node info
-    const sourceNode = await this.nodesService.findOne(body.sourceNodeId);
-    const targetNode = await this.nodesService.findOne(body.targetNodeId);
+    const sourceNode = await this.nodesService.findOne(body.sourceNodeId) as any;
+    const targetNode = await this.nodesService.findOne(body.targetNodeId) as any;
 
     // Build node info for recommendation
     const sourceInfo = {
       subnet: sourceNode.networkLocation || null,
-      containerType: (sourceNode.containerType as any) || 'UNKNOWN',
+      containerType: sourceNode.containerType || 'UNKNOWN',
       canMountNFS: sourceNode.canMountNFS || false,
     };
 
     const targetInfo = {
       subnet: targetNode.networkLocation || null,
-      containerType: (targetNode.containerType as any) || 'UNKNOWN',
+      containerType: targetNode.containerType || 'UNKNOWN',
       canMountNFS: targetNode.canMountNFS || false,
     };
 
-    return detector.recommendStorageMethod(sourceInfo, targetInfo);
+    return detector.recommendStorageMethod(sourceInfo, targetInfo) as any;
   }
 
   /**
@@ -459,7 +460,7 @@ export class NodesController {
     description: 'Internal server error occurred while fetching node',
   })
   async findOne(@Param('id') id: string): Promise<NodeResponseDto> {
-    const node = await this.nodesService.findOne(id);
+    const node = await this.nodesService.findOne(id) as any;
     // Exclude sensitive fields
     const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
     return safeNode;
@@ -496,7 +497,7 @@ export class NodesController {
     description: 'Internal server error occurred while fetching statistics',
   })
   async getStats(@Param('id') id: string): Promise<NodeStatsDto> {
-    return this.nodesService.getNodeStats(id);
+    return this.nodesService.getNodeStats(id) as any;
   }
 
   /**
@@ -533,7 +534,7 @@ export class NodesController {
     description: 'Internal server error occurred while calculating optimal configuration',
   })
   async getRecommendedConfig(@Param('id') id: string): Promise<OptimalConfigDto> {
-    return this.nodesService.getRecommendedConfig(id);
+    return this.nodesService.getRecommendedConfig(id) as any;
   }
 
   /**
@@ -572,7 +573,7 @@ export class NodesController {
     @Param('id') id: string,
     @Body() updateNodeDto: UpdateNodeDto
   ): Promise<NodeResponseDto> {
-    const node = await this.nodesService.update(id, updateNodeDto);
+    const node = await this.nodesService.update(id, updateNodeDto) as any;
     // Exclude sensitive fields
     const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
     return safeNode;
@@ -609,7 +610,7 @@ export class NodesController {
     description: 'Internal server error occurred while deleting node',
   })
   async remove(@Param('id') id: string): Promise<void> {
-    return this.nodesService.remove(id);
+    return this.nodesService.remove(id) as any;
   }
 
   /**
@@ -647,7 +648,7 @@ export class NodesController {
     description: 'Internal server error occurred during unregistration',
   })
   async unregisterSelf(): Promise<{ success: boolean; message: string }> {
-    return this.nodesService.unregisterSelf();
+    return this.nodesService.unregisterSelf() as any;
   }
 
   // ============================================================================
@@ -677,7 +678,7 @@ export class NodesController {
     description: 'Internal server error occurred during discovery',
   })
   async discoverMainNodes(): Promise<DiscoveredMainNodeDto[]> {
-    return this.nodeDiscoveryService.discoverMainNodes();
+    return this.nodeDiscoveryService.discoverMainNodes() as any;
   }
 
   /**
@@ -739,7 +740,7 @@ export class NodesController {
   })
   async getPendingRequests(): Promise<RegistrationRequestResponseDto[]> {
     // Get current node (must be MAIN)
-    const currentNode = await this.nodesService.getCurrentNode();
+    const currentNode = await this.nodesService.getCurrentNode() as any;
     return this.registrationRequestService.getPendingRequests(currentNode.id) as any;
   }
 
@@ -960,7 +961,7 @@ export class NodesController {
     description: 'Internal server error during capability test',
   })
   async testNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
-    const node = await this.nodesService.findOne(id);
+    const node = await this.nodesService.findOne(id) as any;
 
     // Get IP address: prefer stored ipAddress, then extract from URLs, fallback to localhost
     let nodeIp = node.ipAddress || '127.0.0.1';
@@ -970,7 +971,7 @@ export class NodesController {
       const urlToUse = node.publicUrl || node.mainNodeUrl;
       if (urlToUse) {
         try {
-          const url = new URL(urlToUse);
+          const url = new URL(urlToUse) as any;
           nodeIp = url.hostname;
         } catch (_error) {
           // Silent fallback to localhost
@@ -978,7 +979,7 @@ export class NodesController {
       }
     }
 
-    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp);
+    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp) as any;
 
     // Build test results with all phases
     const tests = {
@@ -1037,7 +1038,7 @@ export class NodesController {
     description: 'Node not found',
   })
   async getNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
-    const node = await this.nodesService.findOne(id);
+    const node = await this.nodesService.findOne(id) as any;
 
     return {
       nodeId: node.id,
@@ -1081,7 +1082,7 @@ export class NodesController {
     },
   })
   async clearScoreCache() {
-    this.jobAttribution.clearCache();
+    this.jobAttribution.clearCache() as any;
     return {
       success: true,
       message: 'Score cache cleared',
@@ -1123,7 +1124,7 @@ export class NodesController {
     description: 'SSH public key not found or not generated yet',
   })
   async getSshPublicKey() {
-    const publicKey = this.sshKeyService.getPublicKey();
+    const publicKey = this.sshKeyService.getPublicKey() as any;
     return { publicKey };
   }
 
@@ -1153,7 +1154,7 @@ export class NodesController {
     description: 'Invalid SSH public key format',
   })
   async addAuthorizedKey(@Body() body: { publicKey: string; comment?: string }) {
-    this.sshKeyService.addAuthorizedKey(body.publicKey, body.comment);
+    this.sshKeyService.addAuthorizedKey(body.publicKey, body.comment) as any;
     return {
       success: true,
       message: 'SSH key added to authorized_keys',
