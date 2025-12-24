@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -92,7 +93,7 @@ export class WebhookNotificationService {
           filePath: job.filePath,
           stage: job.stage,
           progress: job.progress,
-          savedPercent: (job as any).savedPercent,
+          savedPercent: job.savedPercent,
           savedBytes: job.savedBytes?.toString(),
           error: job.error,
           ...additionalData,
@@ -193,12 +194,13 @@ export class WebhookNotificationService {
     webhookEvents: unknown;
   }> {
     const settings = await this.prisma.settings.findFirst();
+    const s = settings as SystemSettings | null;
 
     return {
-      webhookEnabled: (settings as any)?.webhookEnabled ?? false,
-      webhookUrl: (settings as any)?.webhookUrl ?? null,
-      webhookSecret: (settings as any)?.webhookSecret ?? null,
-      webhookEvents: (settings as any)?.webhookEvents ?? null,
+      webhookEnabled: false, // Field doesn't exist in schema
+      webhookUrl: s?.webhookUrl ?? null,
+      webhookSecret: s?.webhookSecret ?? null,
+      webhookEvents: null, // Field doesn't exist in schema
     };
   }
 

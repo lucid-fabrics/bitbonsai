@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
+import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -226,7 +227,7 @@ export class DiscordNotificationService {
   private async getWebhookUrl(): Promise<string | null> {
     try {
       const settings = await this.prisma.settings.findFirst();
-      return (settings as any)?.discordWebhookUrl || null;
+      return (settings as SystemSettings | null)?.discordWebhookUrl || null;
     } catch {
       return null;
     }

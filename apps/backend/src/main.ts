@@ -7,13 +7,11 @@ import { WinstonModule } from 'nest-winston';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters';
 import { winstonConfig } from './common/logging';
+import { setupBigIntSerialization } from './common/utils/bigint-serializer';
 
 async function bootstrap() {
   // Handle BigInt serialization for JSON responses
-  // biome-ignore lint/suspicious/noExplicitAny: BigInt.prototype.toJSON is not typed
-  (BigInt.prototype as any).toJSON = function () {
-    return this.toString();
-  };
+  setupBigIntSerialization();
 
   // Create app with Winston logger
   const app = await NestFactory.create(AppModule, {

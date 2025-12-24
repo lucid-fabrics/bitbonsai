@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
+import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -273,7 +274,7 @@ export class SlackNotificationService {
   private async getWebhookUrl(): Promise<string | null> {
     try {
       const settings = await this.prisma.settings.findFirst();
-      return (settings as any)?.slackWebhookUrl || null;
+      return (settings as SystemSettings | null)?.slackWebhookUrl || null;
     } catch {
       return null;
     }
