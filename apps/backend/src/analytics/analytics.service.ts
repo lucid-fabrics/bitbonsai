@@ -105,25 +105,27 @@ export class AnalyticsService {
       _avg: { savedPercent: true },
     });
 
-    // Processing time (from jobs with timing data)
-    const timingJobs = await this.prisma.job.findMany({
+    // Processing time (use aggregation instead of loading all rows)
+    const timingStats = await this.prisma.job.aggregate({
       where: {
         stage: JobStage.COMPLETED,
         completedAt: dateFilter,
         startedAt: { not: null },
       },
-      select: {
-        startedAt: true,
-        completedAt: true,
-      },
+      _count: { id: true },
     });
 
-    let totalProcessingMs = 0;
-    for (const job of timingJobs) {
-      if (job.startedAt && job.completedAt) {
-        totalProcessingMs += job.completedAt.getTime() - job.startedAt.getTime();
-      }
-    }
+    // Get average processing time using raw SQL aggregation
+    const avgProcessingResult = await this.prisma.$queryRaw<Array<{ avg_duration_ms: number }>>`
+      SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) * 1000) as avg_duration_ms
+      FROM jobs
+      WHERE stage = 'COMPLETED'
+        AND started_at IS NOT NULL
+        AND completed_at IS NOT NULL
+        ${dateFilter ? this.prisma.$queryRaw`AND completed_at >= ${dateFilter.gte} AND completed_at <= ${dateFilter.lte}` : this.prisma.$queryRaw``}
+    `;
+
+    const totalProcessingMs = (avgProcessingResult[0]?.avg_duration_ms || 0) * (timingStats._count.id || 0);
 
     // Success rate
     const failedJobs = await this.prisma.job.count({
@@ -180,39 +182,41 @@ export class AnalyticsService {
     const dateFilter = this.getDateFilter(period);
     const groupByFormat = this.getGroupByFormat(period);
 
-    const jobs = await this.prisma.job.findMany({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: dateFilter,
-      },
-      select: {
-        completedAt: true,
-        savedBytes: true,
-        savedPercent: true,
-      },
-      orderBy: { completedAt: 'asc' },
-    });
+    // Use raw SQL aggregation with GROUP BY instead of loading all rows
+    const groupedResults = await this.prisma.$queryRaw<Array<{
+      date_group: Date;
+      total_saved_bytes: bigint;
+      avg_saved_percent: number;
+      job_count: number;
+    }>>`
+      SELECT
+        DATE_TRUNC(${groupByFormat}, completed_at) as date_group,
+        SUM(saved_bytes)::bigint as total_saved_bytes,
+        AVG(saved_percent) as avg_saved_percent,
+        COUNT(*)::int as job_count
+      FROM jobs
+      WHERE stage = 'COMPLETED'
+        ${dateFilter ? this.prisma.$queryRaw`AND completed_at >= ${dateFilter.gte} AND completed_at <= ${dateFilter.lte}` : this.prisma.$queryRaw``}
+      GROUP BY DATE_TRUNC(${groupByFormat}, completed_at)
+      ORDER BY date_group ASC
+    `;
 
-    // Group by date
+    // Convert to Map format
     const grouped = new Map<string, { savedBytes: bigint; savedPercent: number; count: number }>();
-
-    for (const job of jobs) {
-      if (!job.completedAt) continue;
-
-      const dateKey = this.formatDate(job.completedAt, groupByFormat);
-      const existing = grouped.get(dateKey) || { savedBytes: BigInt(0), savedPercent: 0, count: 0 };
-
-      existing.savedBytes += job.savedBytes || BigInt(0);
-      existing.savedPercent += job.savedPercent || 0;
-      existing.count++;
-
-      grouped.set(dateKey, existing);
+    for (const row of groupedResults) {
+      const dateKey = row.date_group.toISOString().split('T')[0];
+      grouped.set(dateKey, {
+        savedBytes: row.total_saved_bytes,
+        savedPercent: row.avg_saved_percent,
+        count: row.job_count
+      });
     }
 
+    // Data already grouped and aggregated by SQL
     return Array.from(grouped.entries()).map(([date, data]) => ({
       date,
       savedBytes: Number(data.savedBytes),
-      savedPercent: data.count > 0 ? data.savedPercent / data.count : 0,
+      savedPercent: data.savedPercent, // Already averaged by SQL
       jobCount: data.count,
     }));
   }

@@ -168,7 +168,7 @@ export class SettingsController {
     description: 'Invalid request or API key regeneration not allowed',
   })
   async regenerateApiKey(): Promise<{ apiKey: string }> {
-    const randomKey = Math.random().toString(36).substring(2, 18);
+    const randomKey = require('crypto').randomBytes(16).toString('hex').substring(0, 16);
     return { apiKey: `bb_${randomKey}` };
   }
 
