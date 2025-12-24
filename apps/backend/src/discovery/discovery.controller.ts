@@ -11,12 +11,15 @@ import { Public } from '../auth/guards/public.decorator';
 import { RegistrationRequestService } from '../nodes/services/registration-request.service';
 import { SystemInfoService } from '../nodes/services/system-info.service';
 import { PolicySyncService } from '../sync/policy-sync.service';
+import { ApproveNodeResponseDto } from './dto/approve-node-response.dto';
 import { CompletePairingDto } from './dto/complete-pairing.dto';
+import { CompletePairingResponseDto } from './dto/complete-pairing-response.dto';
 import { DiscoveredNodeDto } from './dto/discovered-node.dto';
 import { HardwareDetectionDto } from './dto/hardware-detection.dto';
 import { PairRequestDto } from './dto/pair-request.dto';
 import { PairingStatus, PairResponseDto } from './dto/pair-response.dto';
 import { PairingTokenResponseDto } from './dto/pairing-token-response.dto';
+import { RejectNodeResponseDto } from './dto/reject-node-response.dto';
 import { RequestPairingDto } from './dto/request-pairing.dto';
 import { ScanResultDto } from './dto/scan-result.dto';
 import { NodeDiscoveryService } from './node-discovery.service';
@@ -353,8 +356,13 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to complete pairing',
   })
-  async completePairing(@Body() dto: CompletePairingDto): Promise<any> {
-    return this.discoveryService.completePairing(dto.mainNodeUrl, dto.pairingToken);
+  async completePairing(@Body() dto: CompletePairingDto): Promise<CompletePairingResponseDto> {
+    const result = await this.discoveryService.completePairing(dto.mainNodeUrl, dto.pairingToken);
+    return {
+      success: true,
+      nodeId: result.nodeId,
+      message: `Successfully paired with node ${result.name}`,
+    };
   }
 
   /**
@@ -384,7 +392,7 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to approve node',
   })
-  async approveNode(@Param('nodeId') nodeId: string): Promise<any> {
+  async approveNode(@Param('nodeId') nodeId: string): Promise<ApproveNodeResponseDto> {
     // Approve the node
     const node = await this.discoveryService.approveNode(nodeId);
 
@@ -395,9 +403,9 @@ export class DiscoveryController {
     });
 
     return {
+      success: true,
       message: 'Node approved successfully. Sync triggered in background.',
       nodeId: node.id,
-      nodeName: node.name,
     };
   }
 
@@ -425,10 +433,11 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to reject node',
   })
-  async rejectNode(@Param('nodeId') nodeId: string): Promise<any> {
+  async rejectNode(@Param('nodeId') nodeId: string): Promise<RejectNodeResponseDto> {
     await this.discoveryService.rejectNode(nodeId);
 
     return {
+      success: true,
       message: 'Node rejected successfully',
       nodeId,
     };

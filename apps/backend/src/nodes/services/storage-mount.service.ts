@@ -317,7 +317,11 @@ export class StorageMountService {
   /**
    * Add mount entry to /etc/fstab for persistence
    */
-  private async addToFstab(share: any): Promise<void> {
+  private async addToFstab(share: {
+    protocol: StorageProtocol;
+    mountPoint: string;
+    name: string;
+  }): Promise<void> {
     try {
       const fstabPath = '/etc/fstab';
       const fstabBackupPath = '/etc/fstab.backup';
@@ -373,7 +377,7 @@ export class StorageMountService {
   /**
    * Remove mount entry from /etc/fstab
    */
-  private async removeFromFstab(share: any): Promise<void> {
+  private async removeFromFstab(share: { mountPoint: string; name: string }): Promise<void> {
     try {
       const fstabPath = '/etc/fstab';
       const fstabBackupPath = '/etc/fstab.backup';

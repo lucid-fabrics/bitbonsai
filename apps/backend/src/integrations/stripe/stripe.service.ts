@@ -164,6 +164,10 @@ export class StripeService {
 
     // Get subscription to find price/tier
     const subscription = await this.stripe?.subscriptions.retrieve(subscriptionId);
+    if (!subscription) {
+      this.logger.error('Failed to retrieve subscription from Stripe');
+      return;
+    }
     const priceId = subscription.items.data[0]?.price.id;
     const config = this.priceMap[priceId];
 

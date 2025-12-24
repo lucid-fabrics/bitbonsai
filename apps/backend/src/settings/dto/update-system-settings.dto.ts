@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
 import { LogLevel } from '../../common/enums';
 
 export class UpdateSystemSettingsDto {
@@ -7,6 +8,8 @@ export class UpdateSystemSettingsDto {
     example: '/usr/bin/ffmpeg',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   ffmpegPath?: string;
 
   @ApiProperty({
@@ -15,6 +18,8 @@ export class UpdateSystemSettingsDto {
     example: LogLevel.INFO,
     required: false,
   })
+  @IsOptional()
+  @IsEnum(LogLevel)
   logLevel?: LogLevel;
 
   @ApiProperty({
@@ -22,6 +27,8 @@ export class UpdateSystemSettingsDto {
     example: true,
     required: false,
   })
+  @IsOptional()
+  @IsBoolean()
   analyticsEnabled?: boolean;
 
   @ApiProperty({
@@ -30,5 +37,7 @@ export class UpdateSystemSettingsDto {
     pattern: '^https://.+',
     required: false,
   })
+  @IsOptional()
+  @IsUrl({ protocols: ['https'] }, { message: 'Webhook URL must use HTTPS protocol' })
   webhookUrl?: string;
 }

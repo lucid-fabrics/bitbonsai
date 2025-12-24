@@ -151,7 +151,11 @@ export class DataAccessService {
    * @param stage - New job stage
    * @param data - Optional stage-specific data
    */
-  async updateJobStage(jobId: string, stage: JobStage, data?: any): Promise<void> {
+  async updateJobStage(
+    jobId: string,
+    stage: JobStage,
+    data?: Record<string, unknown>
+  ): Promise<void> {
     if (this.nodeRole === 'MAIN') {
       // MAIN mode: Pass-through to caller's QueueService
       throw new Error(

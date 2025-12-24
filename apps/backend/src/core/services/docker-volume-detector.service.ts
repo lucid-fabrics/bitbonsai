@@ -6,6 +6,20 @@ import type { DockerVolumeMount } from '../interfaces/file-transport.interface';
 const execAsync = promisify(exec);
 
 /**
+ * Docker inspect API response types
+ */
+interface DockerMountInfo {
+  Type: string;
+  Source: string;
+  Destination: string;
+  RW: boolean;
+}
+
+interface DockerInspectResponse {
+  Mounts?: DockerMountInfo[];
+}
+
+/**
  * Detects Docker volume mounts from the running container
  *
  * This allows us to automatically discover which paths are available
@@ -101,7 +115,7 @@ export class DockerVolumeDetectorService {
   /**
    * Inspect Docker container to get mount information
    */
-  private async inspectContainer(containerIdOrName: string): Promise<any> {
+  private async inspectContainer(containerIdOrName: string): Promise<DockerInspectResponse> {
     // Try multiple methods to find the container
     const candidateNames = [
       containerIdOrName, // Hostname
@@ -150,12 +164,12 @@ export class DockerVolumeDetectorService {
   /**
    * Parse mount information from Docker inspect output
    */
-  private parseVolumeMounts(containerInfo: any): DockerVolumeMount[] {
+  private parseVolumeMounts(containerInfo: DockerInspectResponse): DockerVolumeMount[] {
     const mounts = containerInfo.Mounts || [];
 
     return mounts
-      .filter((mount: any) => mount.Type === 'bind') // Only bind mounts
-      .map((mount: any) => ({
+      .filter((mount) => mount.Type === 'bind') // Only bind mounts
+      .map((mount) => ({
         source: mount.Source,
         destination: mount.Destination,
         readOnly: mount.RW === false,

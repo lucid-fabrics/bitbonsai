@@ -207,7 +207,7 @@ export class StorageShareService {
     status: StorageShareStatus,
     error?: string
   ): Promise<StorageShare> {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
     };
 
@@ -342,8 +342,8 @@ export class StorageShareService {
         const mainNodesResponse = await firstValueFrom(
           this.httpService.get(`${currentNode.mainNodeUrl}/api/v1/nodes`)
         );
-        const mainNodes = mainNodesResponse.data;
-        const mainNode = mainNodes.find((n: any) => n.role === 'MAIN');
+        const mainNodes = mainNodesResponse.data as Array<{ id: string; role: string }>;
+        const mainNode = mainNodes.find((n) => n.role === 'MAIN');
 
         if (!mainNode) {
           this.logger.warn('No MAIN node found in main node response');
@@ -461,8 +461,8 @@ export class StorageShareService {
         return result;
       }
 
-      const mainNodes = await mainNodesResponse.json();
-      const mainNode = mainNodes.find((n: any) => n.role === 'MAIN');
+      const mainNodes = (await mainNodesResponse.json()) as Array<{ id: string; role: string }>;
+      const mainNode = mainNodes.find((n) => n.role === 'MAIN');
 
       if (!mainNode) {
         this.logger.warn('No MAIN node found in response');
@@ -482,8 +482,8 @@ export class StorageShareService {
       const allMainShares = await sharesResponse.json();
 
       // Filter to only auto-managed shares owned by the main node
-      const autoManagedShares = allMainShares.filter(
-        (share: any) => share.ownerNodeId === mainNode.id && share.autoManaged === true
+      const autoManagedShares = (allMainShares as StorageShare[]).filter(
+        (share) => share.ownerNodeId === mainNode.id && share.autoManaged === true
       );
 
       result.detected = autoManagedShares.length;
@@ -538,10 +538,11 @@ export class StorageShareService {
 
               result.created++;
               this.logger.log(`✓ Created local share record for ${mainShare.name}`);
-            } catch (createError: any) {
+            } catch (createError: unknown) {
               // Handle race condition: unique constraint violation (P2002)
               // Another request may have created the record between our check and create
-              if (createError?.code === 'P2002') {
+              const prismaError = createError as { code?: string };
+              if (prismaError?.code === 'P2002') {
                 this.logger.debug(
                   `Share ${mainShare.name} was created by concurrent request, fetching existing record`
                 );

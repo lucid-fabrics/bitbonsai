@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import * as LicensesActions from './+state/licenses.actions';
 import {
   selectCurrentPage,
@@ -173,8 +175,9 @@ import { LicensesBo } from './licenses.bo';
   `,
   styleUrls: ['./licenses.component.scss'],
 })
-export class LicensesComponent implements OnInit {
+export class LicensesComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
+  private readonly destroy$ = new Subject<void>();
 
   // Expose BO to template (convention requirement)
   readonly LicensesBo = LicensesBo;
@@ -209,13 +212,23 @@ export class LicensesComponent implements OnInit {
    * Delegates to NgRx effect (NO logic in component!)
    */
   ngOnInit(): void {
-    // Subscribe to state changes
-    this.currentPage$.subscribe(page => this.currentPage = page);
-    this.pageSize$.subscribe(size => this.pageSize = size);
-    this.filterTier$.subscribe(tier => this.filterTier = tier);
-    this.searchEmail$.subscribe(email => this.searchEmail = email);
+    // Subscribe to state changes with proper cleanup
+    this.currentPage$.pipe(takeUntil(this.destroy$)).subscribe((page) => (this.currentPage = page));
+    this.pageSize$.pipe(takeUntil(this.destroy$)).subscribe((size) => (this.pageSize = size));
+    this.filterTier$.pipe(takeUntil(this.destroy$)).subscribe((tier) => (this.filterTier = tier));
+    this.searchEmail$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((email) => (this.searchEmail = email));
 
     this.loadLicenses();
+  }
+
+  /**
+   * Component cleanup
+   */
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   /**

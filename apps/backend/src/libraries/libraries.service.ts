@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import type { Library } from '@prisma/client';
+import type { Job, Library } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import { DistributionOrchestratorService } from '../distribution/services/distribution-orchestrator.service';
 import { FileWatcherService } from '../file-watcher/file-watcher.service';
@@ -23,7 +23,30 @@ import type { LibraryFilesDto } from './dto/library-files.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
 import type { BulkJobCreationResultDto, ScanPreviewDto } from './dto/scan-preview.dto';
 import type { UpdateLibraryDto } from './dto/update-library.dto';
-import { MediaAnalysisService } from './services/media-analysis.service';
+import {
+  FileHealthStatus,
+  MediaAnalysisService,
+  type VideoCodecInfo,
+} from './services/media-analysis.service';
+
+/**
+ * Internal types for library file analysis
+ */
+interface AnalyzedFileInfo {
+  filePath: string;
+  fileName: string;
+  codec: string;
+  resolution: string;
+  sizeBytes: number;
+  duration: number;
+  healthStatus: FileHealthStatus;
+  healthMessage: string;
+  canAddToQueue: boolean;
+  blockedReason?: string;
+  jobId?: string;
+  jobStage?: string;
+  jobProgress?: number;
+}
 
 /**
  * LibrariesService
@@ -656,20 +679,22 @@ export class LibrariesService {
     );
 
     // Helper function to annotate file with job status
-    const annotateFile = (file: any) => {
+    const annotateFile = (file: VideoCodecInfo): AnalyzedFileInfo => {
       const job = jobMap.get(file.filePath);
       const fileName = file.filePath.split('/').pop() || file.filePath;
 
       if (!job) {
         // No job exists - can add to queue
         return {
-          ...file,
+          filePath: file.filePath,
           fileName,
+          codec: file.codec,
+          resolution: file.resolution,
+          sizeBytes: file.sizeBytes,
+          duration: file.duration,
+          healthStatus: file.healthStatus,
+          healthMessage: file.healthMessage,
           canAddToQueue: true,
-          blockedReason: undefined,
-          jobId: undefined,
-          jobStage: undefined,
-          jobProgress: undefined,
         };
       }
 
@@ -765,7 +790,7 @@ export class LibrariesService {
     libraryId: string,
     policyId?: string,
     filePaths?: string[]
-  ): Promise<{ jobsCreated: number; jobs: any[] }> {
+  ): Promise<{ jobsCreated: number; jobs: Job[] }> {
     this.logger.log(
       `Creating jobs for library: ${libraryId} with policy: ${policyId || 'default'}`
     );
@@ -828,7 +853,7 @@ export class LibrariesService {
 
     // PERFORMANCE OPTIMIZATION: Parallelize job creation with batching
     // Process 100 files at a time to avoid overwhelming the database
-    const jobs: any[] = [];
+    const jobs: Job[] = [];
     const batchSize = 100;
 
     for (let i = 0; i < filesToEncode.length; i += batchSize) {
@@ -1221,7 +1246,7 @@ export class LibrariesService {
     this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
 
     // Analyze files in batches to avoid overwhelming FFprobe
-    const analyzedFiles: any[] = [];
+    const analyzedFiles: AnalyzedFileInfo[] = [];
     let totalSizeBytes = BigInt(0);
     const batchSize = 5; // Analyze 5 files at a time
 

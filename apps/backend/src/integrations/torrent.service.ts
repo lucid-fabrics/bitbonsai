@@ -26,6 +26,56 @@ export interface TorrentInfo {
 }
 
 /**
+ * qBittorrent API response types
+ */
+interface QBittorrentTorrentResponse {
+  hash: string;
+  name: string;
+  state: string;
+  progress: number;
+  ratio: number;
+  save_path?: string;
+  content_path?: string;
+}
+
+interface QBittorrentFileResponse {
+  name: string;
+}
+
+/**
+ * Transmission API response types
+ */
+interface TransmissionTorrentResponse {
+  hashString: string;
+  name: string;
+  status: number;
+  percentDone: number;
+  uploadRatio: number;
+  downloadDir: string;
+}
+
+interface TransmissionFileResponse {
+  name: string;
+}
+
+/**
+ * Deluge API response types
+ */
+interface DelugeTorrentInfo {
+  name: string;
+  state: string;
+  progress: number;
+  ratio: number;
+  save_path: string;
+}
+
+interface DelugeNodeContent {
+  type?: string;
+  name?: string;
+  contents?: Record<string, DelugeNodeContent>;
+}
+
+/**
  * TorrentIntegrationService
  *
  * Detects files being seeded in torrent clients.
@@ -193,13 +243,13 @@ export class TorrentIntegrationService {
       })
     );
 
-    return (response.data || []).map((t: any) => ({
+    return ((response.data as QBittorrentTorrentResponse[]) || []).map((t) => ({
       hash: t.hash,
       name: t.name,
       state: t.state,
       progress: t.progress,
       ratio: t.ratio,
-      savePath: t.save_path || t.content_path,
+      savePath: t.save_path || t.content_path || '',
       files: [],
     }));
   }
@@ -214,7 +264,7 @@ export class TorrentIntegrationService {
       })
     );
 
-    return (response.data || []).map((f: any) => f.name);
+    return ((response.data as QBittorrentFileResponse[]) || []).map((f) => f.name);
   }
 
   // ========== Transmission Implementation ==========
@@ -230,8 +280,11 @@ export class TorrentIntegrationService {
       await firstValueFrom(
         this.httpService.post(`${config.url}/transmission/rpc`, {}, { auth, timeout: 5000 })
       );
-    } catch (error: any) {
-      sessionId = error.response?.headers?.['x-transmission-session-id'] || '';
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { headers?: Record<string, string> } };
+        sessionId = axiosError.response?.headers?.['x-transmission-session-id'] || '';
+      }
     }
 
     const response = await firstValueFrom(
@@ -261,15 +314,17 @@ export class TorrentIntegrationService {
       6: 'seeding',
     };
 
-    return (response.data?.arguments?.torrents || []).map((t: any) => ({
-      hash: t.hashString,
-      name: t.name,
-      state: statusMap[t.status] || 'unknown',
-      progress: t.percentDone,
-      ratio: t.uploadRatio,
-      savePath: t.downloadDir,
-      files: [],
-    }));
+    return ((response.data?.arguments?.torrents as TransmissionTorrentResponse[]) || []).map(
+      (t) => ({
+        hash: t.hashString,
+        name: t.name,
+        state: statusMap[t.status] || 'unknown',
+        progress: t.percentDone,
+        ratio: t.uploadRatio,
+        savePath: t.downloadDir,
+        files: [],
+      })
+    );
   }
 
   private async getTransmissionFiles(config: TorrentConfig, hash: string): Promise<string[]> {
@@ -282,8 +337,11 @@ export class TorrentIntegrationService {
       await firstValueFrom(
         this.httpService.post(`${config.url}/transmission/rpc`, {}, { auth, timeout: 5000 })
       );
-    } catch (error: any) {
-      sessionId = error.response?.headers?.['x-transmission-session-id'] || '';
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { headers?: Record<string, string> } };
+        sessionId = axiosError.response?.headers?.['x-transmission-session-id'] || '';
+      }
     }
 
     const response = await firstValueFrom(
@@ -302,7 +360,7 @@ export class TorrentIntegrationService {
     );
 
     const torrent = response.data?.arguments?.torrents?.[0];
-    return (torrent?.files || []).map((f: any) => f.name);
+    return ((torrent?.files as TransmissionFileResponse[]) || []).map((f) => f.name);
   }
 
   // ========== Deluge Implementation ==========
@@ -334,9 +392,9 @@ export class TorrentIntegrationService {
       )
     );
 
-    const torrents = response.data?.result?.torrents || {};
+    const torrents = (response.data?.result?.torrents as Record<string, DelugeTorrentInfo>) || {};
 
-    return Object.entries(torrents).map(([hash, t]: [string, any]) => ({
+    return Object.entries(torrents).map(([hash, t]) => ({
       hash,
       name: t.name,
       state: t.state,
@@ -373,9 +431,9 @@ export class TorrentIntegrationService {
       )
     );
 
-    const extractFiles = (node: any, prefix = ''): string[] => {
+    const extractFiles = (node: DelugeNodeContent, prefix = ''): string[] => {
       const files: string[] = [];
-      if (node.type === 'file') {
+      if (node.type === 'file' && node.name) {
         files.push(prefix + node.name);
       } else if (node.contents) {
         for (const [name, child] of Object.entries(node.contents)) {
@@ -385,7 +443,7 @@ export class TorrentIntegrationService {
       return files;
     };
 
-    return extractFiles(response.data?.result || {});
+    return extractFiles((response.data?.result as DelugeNodeContent) || {});
   }
 
   /**
@@ -394,18 +452,17 @@ export class TorrentIntegrationService {
   private async getTorrentConfig(): Promise<TorrentConfig | null> {
     try {
       const settings = await this.prisma.settings.findFirst();
-      const s = settings as any;
 
-      if (!s?.torrentClient || !s?.torrentUrl) {
+      if (!settings?.torrentClient || !settings?.torrentUrl) {
         return null;
       }
 
       return {
-        client: s.torrentClient as TorrentClient,
-        url: s.torrentUrl.replace(/\/$/, ''),
-        username: s.torrentUsername,
-        password: s.torrentPassword,
-        skipSeeding: s.skipSeeding ?? true,
+        client: settings.torrentClient as TorrentClient,
+        url: settings.torrentUrl.replace(/\/$/, ''),
+        username: settings.torrentUsername || undefined,
+        password: settings.torrentPassword || undefined,
+        skipSeeding: settings.skipSeeding ?? true,
       };
     } catch {
       return null;

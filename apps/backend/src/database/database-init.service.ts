@@ -70,7 +70,11 @@ export class DatabaseInitService implements OnModuleInit {
    * Generate a license key in format: {tier}-{random}
    */
   private generateLicenseKey(tier: string): string {
-    const randomPart = require('crypto').randomBytes(10).toString('hex').substring(0, 13).toUpperCase();
+    const randomPart = require('crypto')
+      .randomBytes(10)
+      .toString('hex')
+      .substring(0, 13)
+      .toUpperCase();
     return `${tier}-${randomPart}`;
   }
 }

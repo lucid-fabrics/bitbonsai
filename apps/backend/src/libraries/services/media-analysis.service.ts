@@ -35,6 +35,27 @@ export interface ScanAnalysis {
 }
 
 /**
+ * FFprobe API response types
+ */
+interface FFprobeStream {
+  codec_type?: string;
+  codec_name?: string;
+  width?: number;
+  height?: number;
+}
+
+interface FFprobeFormat {
+  format_name?: string;
+  duration?: string;
+  size?: string;
+}
+
+interface FFprobeResponse {
+  format?: FFprobeFormat;
+  streams?: FFprobeStream[];
+}
+
+/**
  * MediaAnalysisService
  *
  * Analyzes video files using FFprobe to determine encoding needs
@@ -79,7 +100,7 @@ export class MediaAnalysisService {
         };
       }
 
-      const data = JSON.parse(stdout);
+      const data = JSON.parse(stdout) as FFprobeResponse;
 
       // Validate basic structure
       if (!data.format || !data.streams || data.streams.length === 0) {
@@ -91,7 +112,7 @@ export class MediaAnalysisService {
       }
 
       // Check if we have at least one video stream
-      const hasVideoStream = data.streams.some((s: any) => s.codec_type === 'video');
+      const hasVideoStream = data.streams.some((s) => s.codec_type === 'video');
       if (!hasVideoStream) {
         this.logger.warn(`No video stream found: ${filePath}`);
         return {

@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { JobStage } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { IsDate, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 /**
  * DTO for updating job progress
@@ -13,6 +15,10 @@ export class UpdateJobDto {
     maximum: 100,
     required: false,
   })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
   progress?: number;
 
   @ApiProperty({
@@ -20,6 +26,9 @@ export class UpdateJobDto {
     example: 1800,
     required: false,
   })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   etaSeconds?: number;
 
   @ApiProperty({
@@ -27,6 +36,9 @@ export class UpdateJobDto {
     example: 45.2,
     required: false,
   })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   fps?: number;
 
   @ApiProperty({
@@ -36,6 +48,8 @@ export class UpdateJobDto {
     enumName: 'JobStage',
     required: false,
   })
+  @IsOptional()
+  @IsEnum(JobStage)
   stage?: JobStage;
 
   // MULTI-NODE: Additional fields for job management
@@ -44,6 +58,8 @@ export class UpdateJobDto {
     example: '/path/to/.temp-file.mkv.tmp-jobid',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   tempFilePath?: string | null;
 
   @ApiProperty({
@@ -51,6 +67,8 @@ export class UpdateJobDto {
     example: '00:15:30',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   resumeTimestamp?: string | null;
 
   @ApiProperty({
@@ -58,6 +76,8 @@ export class UpdateJobDto {
     example: 'Encoding failed: insufficient disk space',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   error?: string | null;
 
   @ApiProperty({
@@ -65,6 +85,9 @@ export class UpdateJobDto {
     example: new Date(),
     required: false,
   })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   startedAt?: Date | null;
 
   @ApiProperty({
@@ -72,6 +95,9 @@ export class UpdateJobDto {
     example: new Date(),
     required: false,
   })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   autoHealedAt?: Date | null;
 
   @ApiProperty({
@@ -79,6 +105,10 @@ export class UpdateJobDto {
     example: 45.5,
     required: false,
   })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
   autoHealedProgress?: number | null;
 
   @ApiProperty({
@@ -86,6 +116,9 @@ export class UpdateJobDto {
     example: 2,
     required: false,
   })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   retryCount?: number;
 
   @ApiProperty({
@@ -93,6 +126,9 @@ export class UpdateJobDto {
     example: new Date(),
     required: false,
   })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   nextRetryAt?: Date | null;
 
   @ApiProperty({
@@ -100,6 +136,8 @@ export class UpdateJobDto {
     example: '/path/to/file.mkv.original',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   originalBackupPath?: string | null;
 
   @ApiProperty({
@@ -107,6 +145,8 @@ export class UpdateJobDto {
     example: '12345678901',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   originalSizeBytes?: bigint | null;
 
   @ApiProperty({
@@ -114,5 +154,7 @@ export class UpdateJobDto {
     example: 'REPLACED',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   replacementAction?: string | null;
 }
