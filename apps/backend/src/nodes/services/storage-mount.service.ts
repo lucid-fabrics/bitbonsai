@@ -5,7 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/client';
+import { StorageProtocol, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import { promisify } from 'util';

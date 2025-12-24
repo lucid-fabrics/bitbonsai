@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for License API
+  license-db:
+    image: postgres:15-alpine
+    container_name: bitbonsai-license-db
+    environment:
+      POSTGRES_DB: license_api
+      POSTGRES_USER: license_user
+      POSTGRES_PASSWORD: ${LICENSE_DB_PASSWORD}
+    volumes:
+      - license-db-data:/var/lib/postgresql/data
+    networks:
+      - bitbonsai-network
+    restart: unless-stopped
+
+  # License API (NestJS)
+  license-api:
+    build:
+      context: .
+      dockerfile: apps/license-api/Dockerfile
+    container_name: bitbonsai-license-api
+    environment:
+      NODE_ENV: production
+      LICENSE_DATABASE_URL: postgresql://license_user:${LICENSE_DB_PASSWORD}@license-db:5432/license_api
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_PRODUCT_ID: ${STRIPE_PRODUCT_ID}
+      PATREON_CLIENT_ID: ${PATREON_CLIENT_ID}
+      PATREON_CLIENT_SECRET: ${PATREON_CLIENT_SECRET}
+      PATREON_WEBHOOK_SECRET: ${PATREON_WEBHOOK_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - license-db
+    networks:
+      - bitbonsai-network
+    restart: unless-stopped
+    command: sh -c "npx prisma migrate deploy && node main.js"
+
+  # Admin Dashboard (Angular)
+  admin-dashboard:
+    build:
+      context: .
+      dockerfile: apps/admin-dashboard/Dockerfile
+    container_name: bitbonsai-admin-dashboard
+    environment:
+      LICENSE_API_URL: ${LICENSE_API_URL:-http://license-api:3000}
+    ports:
+      - "4200:80"
+    depends_on:
+      - license-api
+    networks:
+      - bitbonsai-network
+    restart: unless-stopped
+
+  # Marketing Website (Angular)
+  website:
+    build:
+      context: .
+      dockerfile: apps/website/Dockerfile
+    container_name: bitbonsai-website
+    environment:
+      LICENSE_API_URL: ${LICENSE_API_URL:-http://license-api:3000}
+    ports:
+      - "4201:80"
+    depends_on:
+      - license-api
+    networks:
+      - bitbonsai-network
+    restart: unless-stopped
+
+volumes:
+  license-db-data:
+
+networks:
+  bitbonsai-network:
+    driver: bridge

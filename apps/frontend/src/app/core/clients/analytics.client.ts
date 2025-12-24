@@ -61,37 +61,37 @@ export class AnalyticsClient {
 
   getSpaceSavings(period?: TimePeriod): Observable<SpaceSavingsDataPoint[]> {
     const params: Record<string, string> = {};
-    if (period) params['period'] = period;
+    if (period) params.period = period;
     return this.http.get<SpaceSavingsDataPoint[]>(`${this.apiUrl}/space-savings`, { params });
   }
 
   getEncodingSpeed(period?: TimePeriod): Observable<EncodingSpeedDataPoint[]> {
     const params: Record<string, string> = {};
-    if (period) params['period'] = period;
+    if (period) params.period = period;
     return this.http.get<EncodingSpeedDataPoint[]>(`${this.apiUrl}/encoding-speed`, { params });
   }
 
   getCostSavings(provider?: string): Observable<CostSavingsEstimate> {
     const params: Record<string, string> = {};
-    if (provider) params['provider'] = provider;
+    if (provider) params.provider = provider;
     return this.http.get<CostSavingsEstimate>(`${this.apiUrl}/cost-savings`, { params });
   }
 
   getNodePerformance(period?: TimePeriod): Observable<NodePerformance[]> {
     const params: Record<string, string> = {};
-    if (period) params['period'] = period;
+    if (period) params.period = period;
     return this.http.get<NodePerformance[]>(`${this.apiUrl}/node-performance`, { params });
   }
 
   getCodecPerformance(period?: TimePeriod): Observable<CodecPerformance[]> {
     const params: Record<string, string> = {};
-    if (period) params['period'] = period;
+    if (period) params.period = period;
     return this.http.get<CodecPerformance[]>(`${this.apiUrl}/codec-performance`, { params });
   }
 
   getSummary(period?: TimePeriod): Observable<AnalyticsSummary> {
     const params: Record<string, string> = {};
-    if (period) params['period'] = period;
+    if (period) params.period = period;
     return this.http.get<AnalyticsSummary>(`${this.apiUrl}/summary`, { params });
   }
 }

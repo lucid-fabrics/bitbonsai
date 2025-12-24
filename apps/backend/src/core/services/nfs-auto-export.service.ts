@@ -151,7 +151,7 @@ export class NFSAutoExportService {
             .split('\n')
             .slice(1) // Skip header
             .map((line) => line.trim().split(/\s+/)[0])
-            .filter((path) => path && path.startsWith('/'));
+            .filter((path) => path?.startsWith('/'));
 
           if (exports.length > 0) {
             this.logger.debug(`Found ${exports.length} NFS exports on host (${host})`);

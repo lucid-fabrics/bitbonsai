@@ -11,8 +11,6 @@ export class EncryptionService {
   private readonly algorithm = 'aes-256-gcm';
   private readonly keyLength = 32; // 256 bits
   private readonly ivLength = 16; // 128 bits
-  private readonly saltLength = 32;
-  private readonly authTagLength = 16; // 128 bits
 
   /**
    * Derives encryption key from environment variable

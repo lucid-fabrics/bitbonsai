@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -68,8 +68,6 @@ export interface AnalyticsSummary {
  */
 @Injectable()
 export class AnalyticsService {
-  private readonly logger = new Logger(AnalyticsService.name);
-
   // Storage cost estimates per GB/month (USD)
   private readonly STORAGE_COSTS: Record<string, number> = {
     'AWS S3': 0.023,

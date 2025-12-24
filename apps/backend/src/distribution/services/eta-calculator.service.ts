@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Job, Node } from '@prisma/client';
+import type { Job } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { DurationEstimate } from '../interfaces/scoring-factors.interface';
 
@@ -235,7 +235,7 @@ export class EtaCalculatorService {
 
     const workers = node?.maxWorkers || 1;
     const currentTime = new Date();
-    const activeSlots = 0;
+    const _activeSlots = 0;
 
     // Track when each slot becomes free
     const slotFreeTimes: Date[] = new Array(workers).fill(currentTime);

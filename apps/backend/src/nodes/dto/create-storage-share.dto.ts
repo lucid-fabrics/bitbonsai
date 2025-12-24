@@ -1,14 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { StorageProtocol } from '@prisma/client';
-import {
-  IsBoolean,
-  IsEnum,
-  IsIP,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateIf,
-} from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreateStorageShareDto {
   @ApiProperty({ description: 'Node ID that will use this storage share' })

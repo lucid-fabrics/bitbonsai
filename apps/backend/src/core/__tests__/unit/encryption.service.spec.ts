@@ -21,7 +21,7 @@ describe('EncryptionService', () => {
     if (originalEnv) {
       process.env.ENCRYPTION_KEY = originalEnv;
     } else {
-      delete process.env.ENCRYPTION_KEY;
+      process.env.ENCRYPTION_KEY = undefined;
     }
   });
 
@@ -153,7 +153,7 @@ describe('EncryptionService', () => {
       const parts = encrypted.split(':');
 
       // Tamper with the auth tag
-      parts[1] = 'AAAA' + parts[1].substring(4);
+      parts[1] = `AAAA${parts[1].substring(4)}`;
       const tampered = parts.join(':');
 
       expect(() => service.decrypt(tampered)).toThrow('Failed to decrypt data');
@@ -221,7 +221,7 @@ describe('EncryptionService', () => {
     const testCases = [
       'simple-password',
       'P@ssw0rd!123',
-      'very-long-password-' + 'x'.repeat(1000),
+      `very-long-password-${'x'.repeat(1000)}`,
       'пароль',
       '🔐🔑',
       'multi\nline\npassword',
@@ -253,13 +253,13 @@ describe('EncryptionService', () => {
   describe('environment variable validation', () => {
     it('should warn if ENCRYPTION_KEY is not set when encrypting', () => {
       // Temporarily remove the key
-      delete process.env.ENCRYPTION_KEY;
+      process.env.ENCRYPTION_KEY = undefined;
 
       // Create new service instance
       const customService = new EncryptionService();
 
       // Spy on logger.warn
-      const warnSpy = jest.spyOn(customService['logger'], 'warn').mockImplementation();
+      const warnSpy = jest.spyOn(customService.logger, 'warn').mockImplementation();
 
       // Trigger encryption (which calls getEncryptionKey)
       customService.encrypt('test');
@@ -311,7 +311,7 @@ describe('EncryptionService', () => {
 
       // Tamper with ciphertext by appending data
       const originalCiphertext = parts[2];
-      const tamperedCiphertext = originalCiphertext + 'AAAA';
+      const tamperedCiphertext = `${originalCiphertext}AAAA`;
       parts[2] = tamperedCiphertext;
 
       const tampered = parts.join(':');

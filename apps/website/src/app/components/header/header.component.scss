@@ -1,0 +1,91 @@
+@import '../../../styles/variables';
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba($bg-primary, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid $border-primary;
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 24px;
+    font-weight: 700;
+    color: $text-primary;
+    text-decoration: none;
+
+    &-icon {
+      font-size: 32px;
+    }
+
+    &-text {
+      color: $accent-primary;
+    }
+
+    &:hover {
+      .header__logo-text {
+        color: $accent-primary-hover;
+      }
+    }
+  }
+
+  &__nav {
+    display: flex;
+    gap: 32px;
+
+    a {
+      font-size: 16px;
+      font-weight: 500;
+      color: $text-secondary;
+      text-decoration: none;
+      transition: $transition-fast;
+      position: relative;
+
+      &:hover {
+        color: $accent-primary;
+      }
+
+      &.active {
+        color: $accent-primary;
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -6px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: $accent-primary;
+        }
+      }
+    }
+  }
+
+  &__cta {
+    background: $accent-primary;
+    color: $text-dark;
+    padding: 10px 24px;
+    border-radius: $border-radius-sm;
+    font-weight: 600;
+    font-size: 16px;
+    transition: $transition-fast;
+
+    &:hover {
+      background: $accent-primary-hover;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba($accent-primary, 0.3);
+    }
+  }
+}

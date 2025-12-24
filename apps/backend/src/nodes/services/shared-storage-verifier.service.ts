@@ -5,7 +5,6 @@ import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import { promisify } from 'util';
 import { PrismaService } from '../../prisma/prisma.service';
-import { escapeShellArg, sanitizePath } from '../utils/input-sanitizer';
 
 const execAsync = promisify(exec);
 
@@ -52,7 +51,7 @@ export class SharedStorageVerifierService {
       try {
         const result = await execAsync('mount');
         mountOutput = result.stdout;
-      } catch (error) {
+      } catch (_error) {
         this.logger.error('Failed to get system mounts, skipping health check');
         return;
       }

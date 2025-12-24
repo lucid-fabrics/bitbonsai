@@ -25,38 +25,38 @@ export class BatchClient {
 
   pauseAll(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
-    if (nodeId) params['nodeId'] = nodeId;
+    if (nodeId) params.nodeId = nodeId;
     return this.http.post<BatchOperationResult>(`${this.apiUrl}/pause`, {}, { params });
   }
 
   resumeAll(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
-    if (nodeId) params['nodeId'] = nodeId;
+    if (nodeId) params.nodeId = nodeId;
     return this.http.post<BatchOperationResult>(`${this.apiUrl}/resume`, {}, { params });
   }
 
   cancelAll(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
-    if (nodeId) params['nodeId'] = nodeId;
+    if (nodeId) params.nodeId = nodeId;
     return this.http.post<BatchOperationResult>(`${this.apiUrl}/cancel`, {}, { params });
   }
 
   retryAllFailed(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
-    if (nodeId) params['nodeId'] = nodeId;
+    if (nodeId) params.nodeId = nodeId;
     return this.http.post<BatchOperationResult>(`${this.apiUrl}/retry`, {}, { params });
   }
 
   deleteCompleted(olderThanDays?: number, nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
-    if (olderThanDays) params['olderThanDays'] = olderThanDays.toString();
-    if (nodeId) params['nodeId'] = nodeId;
+    if (olderThanDays) params.olderThanDays = olderThanDays.toString();
+    if (nodeId) params.nodeId = nodeId;
     return this.http.delete<BatchOperationResult>(`${this.apiUrl}/completed`, { params });
   }
 
   deleteFailed(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
-    if (nodeId) params['nodeId'] = nodeId;
+    if (nodeId) params.nodeId = nodeId;
     return this.http.delete<BatchOperationResult>(`${this.apiUrl}/failed`, { params });
   }
 
@@ -68,7 +68,7 @@ export class BatchClient {
 
   getStats(nodeId?: string): Observable<BatchStatsResult> {
     const params: Record<string, string> = {};
-    if (nodeId) params['nodeId'] = nodeId;
+    if (nodeId) params.nodeId = nodeId;
     return this.http.get<BatchStatsResult>(`${this.apiUrl}/stats`, { params });
   }
 }

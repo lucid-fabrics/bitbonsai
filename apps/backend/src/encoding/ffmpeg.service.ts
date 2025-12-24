@@ -359,7 +359,7 @@ export class FfmpegService implements OnModuleDestroy {
 
     // Get the codec for this combination, with fallbacks
     const selectedCodec =
-      codecMap[targetCodec]?.[hwType] || codecMap[targetCodec]?.['CPU'] || 'libx265';
+      codecMap[targetCodec]?.[hwType] || codecMap[targetCodec]?.CPU || 'libx265';
 
     this.logger.log(
       `Codec selection: ${targetCodec} (policy) + ${hwType} (hardware) = ${selectedCodec}`
@@ -1750,7 +1750,7 @@ export class FfmpegService implements OnModuleDestroy {
 
           processes.push({
             pid,
-            command: command.length > 200 ? command.substring(0, 200) + '...' : command,
+            command: command.length > 200 ? `${command.substring(0, 200)}...` : command,
             cpuPercent,
             memPercent,
             runtimeSeconds,

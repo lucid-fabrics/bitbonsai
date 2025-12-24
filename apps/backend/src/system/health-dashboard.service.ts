@@ -108,14 +108,8 @@ export interface SystemDashboard {
 @Injectable()
 export class HealthDashboardService {
   private readonly logger = new Logger(HealthDashboardService.name);
-
-  // Health thresholds
-  private readonly CPU_WARNING_THRESHOLD = 80;
-  private readonly CPU_CRITICAL_THRESHOLD = 95;
   private readonly MEMORY_WARNING_THRESHOLD = 85;
   private readonly MEMORY_CRITICAL_THRESHOLD = 95;
-  private readonly DISK_WARNING_THRESHOLD = 85;
-  private readonly DISK_CRITICAL_THRESHOLD = 95;
   private readonly LOAD_WARNING_MULTIPLIER = 1.5;
   private readonly LOAD_CRITICAL_MULTIPLIER = 2.0;
 
@@ -333,11 +327,11 @@ export class HealthDashboardService {
     if (completedJobs.length > 0) {
       const processingTimes = completedJobs
         .filter((j) => j.startedAt && j.completedAt)
-        .map((j) => j.completedAt!.getTime() - j.startedAt!.getTime());
+        .map((j) => j.completedAt?.getTime() - j.startedAt?.getTime());
 
       const waitTimes = completedJobs
         .filter((j) => j.startedAt)
-        .map((j) => j.startedAt!.getTime() - j.createdAt.getTime());
+        .map((j) => j.startedAt?.getTime() - j.createdAt.getTime());
 
       if (processingTimes.length > 0) {
         avgProcessingTimeMs = processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;
@@ -491,7 +485,7 @@ export class HealthDashboardService {
         gpuDetected: gpus.length > 0,
         gpuModel: gpus.length > 0 ? gpus[0].model : undefined,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         accelerationType: 'CPU',
         cpuCores: os.cpus().length,

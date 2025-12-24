@@ -1,0 +1,34 @@
+@use '../../styles/variables' as *;
+
+.stat-card {
+  text-align: center;
+
+  &__label {
+    color: $text-secondary;
+    font-size: 0.875rem;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__value {
+    color: $accent-primary;
+    font-size: 2rem;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__trend {
+    font-size: 0.875rem;
+  }
+}
+
+.trend {
+  font-weight: $font-weight-bold;
+
+  &--up {
+    color: $success;
+  }
+
+  &--down {
+    color: $danger;
+  }
+}
