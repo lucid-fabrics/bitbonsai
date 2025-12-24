@@ -1036,7 +1036,7 @@ export class NodesController {
   @ApiNotFoundResponse({
     description: 'Node not found',
   })
-  async getNodeCapabilities(@Param('id') id: string): Promise<NodeCapabilitiesDto> {
+  async getNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
     const node = await this.nodesService.findOne(id);
 
     return {

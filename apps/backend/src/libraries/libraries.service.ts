@@ -1276,6 +1276,8 @@ export class LibrariesService {
               duration: videoInfo.duration,
               healthStatus: videoInfo.healthStatus,
               healthMessage: videoInfo.healthMessage,
+              canAddToQueue: videoInfo.healthStatus === FileHealthStatus.HEALTHY,
+              blockedReason: videoInfo.healthStatus !== FileHealthStatus.HEALTHY ? videoInfo.healthMessage : undefined,
             };
           } catch (error) {
             this.logger.error(`Failed to analyze file ${filePath}`, error);

@@ -389,9 +389,7 @@ export class SettingsController {
       url = url || stored.jellyfinUrl || undefined;
       // For test, we need the actual API key, not masked
       if (!apiKey && stored.jellyfinApiKey) {
-        // Get unmasked API key from database directly
-        const settings = await this.settingsService.prisma.settings.findFirst();
-        apiKey = (settings as any)?.jellyfinApiKey;
+        apiKey = (await this.settingsService.getUnmaskedJellyfinApiKey()) || undefined;
       }
     }
 
