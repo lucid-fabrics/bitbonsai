@@ -329,6 +329,14 @@ export class SettingsService {
   }
 
   /**
+   * Get unmasked Jellyfin API key (for internal use only)
+   */
+  async getUnmaskedJellyfinApiKey(): Promise<string | null> {
+    const settings = await this.prisma.settings.findFirst();
+    return (settings as any)?.jellyfinApiKey || null;
+  }
+
+  /**
    * Update Jellyfin integration settings
    */
   async updateJellyfinSettings(dto: {

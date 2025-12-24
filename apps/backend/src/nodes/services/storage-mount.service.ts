@@ -5,7 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { StorageProtocol, StorageShareStatus } from '@prisma/client';
+import { StorageProtocol, StorageShare, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import { promisify } from 'util';
@@ -317,11 +317,7 @@ export class StorageMountService {
   /**
    * Add mount entry to /etc/fstab for persistence
    */
-  private async addToFstab(share: {
-    protocol: StorageProtocol;
-    mountPoint: string;
-    name: string;
-  }): Promise<void> {
+  private async addToFstab(share: StorageShare): Promise<void> {
     try {
       const fstabPath = '/etc/fstab';
       const fstabBackupPath = '/etc/fstab.backup';
@@ -377,7 +373,7 @@ export class StorageMountService {
   /**
    * Remove mount entry from /etc/fstab
    */
-  private async removeFromFstab(share: { mountPoint: string; name: string }): Promise<void> {
+  private async removeFromFstab(share: StorageShare): Promise<void> {
     try {
       const fstabPath = '/etc/fstab';
       const fstabBackupPath = '/etc/fstab.backup';
