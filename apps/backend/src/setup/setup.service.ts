@@ -168,7 +168,7 @@ export class SetupService {
       // Create a MAIN node entry
       const hostname = process.env.HOSTNAME || 'main-node';
       const apiKey = `bb_${this.generateRandomString(64)}`;
-      const pairingToken = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit token
+      const pairingToken = (100000 + require('crypto').randomInt(900000)).toString(); // 6-digit token
 
       await this.prisma.node.create({
         data: {
@@ -227,7 +227,7 @@ export class SetupService {
    */
   private generatePairingToken(): string {
     // Generate a random 8-character token
-    const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const randomPart = require('crypto').randomBytes(6).toString('hex').substring(0, 8).toUpperCase();
     return `BITBONSAI-${randomPart}`;
   }
 
@@ -238,12 +238,8 @@ export class SetupService {
    * @returns Random string
    */
   private generateRandomString(length: number): string {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    // Use crypto.randomBytes for cryptographically secure random strings
+    return require('crypto').randomBytes(Math.ceil(length * 3 / 4)).toString('base64').slice(0, length);
   }
 
   /**

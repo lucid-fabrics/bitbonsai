@@ -180,7 +180,7 @@ export class LicenseService {
    */
   private generateLicenseKey(tier: LicenseTier): string {
     const prefix = tier.substring(0, 3).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 12);
+    const random = require('crypto').randomBytes(8).toString('hex').substring(0, 10);
     return `${prefix}-${random}`;
   }
 }

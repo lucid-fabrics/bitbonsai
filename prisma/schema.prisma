@@ -814,6 +814,9 @@ model Job {
   @@index([migrationCount]) // Distribution v2: For tracking job migrations
   @@index([estimatedDuration]) // Distribution v2: For file size distribution
   @@index([stage, stickyUntil]) // Distribution v2: Composite for migration queries
+  @@index([stage, healthStatus, priority, createdAt]) // PERF AUDIT: Composite for queue claim with health filtering
+  @@index([libraryId, stage, isBlacklisted]) // PERF AUDIT: Composite for library scans
+  @@index([nodeId, stage, updatedAt]) // PERF AUDIT: Composite for stuck job detection
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
