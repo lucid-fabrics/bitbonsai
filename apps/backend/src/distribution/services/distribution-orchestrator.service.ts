@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import type { Job, JobStage, Node } from '@prisma/client';
+import type { Job, Node } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   JobAssignmentResult,
@@ -35,7 +35,7 @@ export class DistributionOrchestratorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorer: JobScorerService,
-    private readonly loadMonitor: LoadMonitorService,
+    readonly _loadMonitor: LoadMonitorService,
     private readonly etaCalculator: EtaCalculatorService,
     private readonly reliabilityTracker: ReliabilityTrackerService
   ) {}

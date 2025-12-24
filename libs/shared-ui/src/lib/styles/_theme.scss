@@ -1,0 +1,62 @@
+@use './variables' as *;
+@use './mixins' as *;
+
+// Global dark theme styles
+// Import this in your app's styles.scss: @use '@bitbonsai/shared-ui/styles/theme';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: $bg-primary;
+  color: $text-primary;
+  font-family: $font-family;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Scrollbar styling
+html {
+  @include scrollbar;
+}
+
+// Typography helpers
+.text-primary {
+  color: $text-primary;
+}
+
+.text-secondary {
+  color: $text-secondary;
+}
+
+.text-tertiary {
+  color: $text-tertiary;
+}
+
+.text-success {
+  color: $success;
+}
+
+.text-warning {
+  color: $warning;
+}
+
+.text-danger {
+  color: $danger;
+}
+
+// Background helpers
+.bg-primary {
+  background: $bg-primary;
+}
+
+.bg-secondary {
+  background: $bg-secondary;
+}
+
+.bg-tertiary {
+  background: $bg-tertiary;
+}

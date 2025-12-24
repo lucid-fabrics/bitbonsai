@@ -1,0 +1,123 @@
+@import '../../../styles/variables';
+
+.pricing {
+  padding: 80px 32px;
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+
+    h1 {
+      font-size: 48px;
+      font-weight: 700;
+      color: $text-primary;
+      margin: 0 0 16px 0;
+    }
+  }
+
+  &__subtitle {
+    font-size: 20px;
+    color: $text-secondary;
+    margin: 0 0 60px 0;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    margin-top: 60px;
+  }
+
+  &__loading,
+  &__empty {
+    padding: 48px;
+    color: $text-secondary;
+    font-size: 18px;
+  }
+}
+
+.pricing-card {
+  background: $bg-secondary;
+  border: 2px solid $border-primary;
+  border-radius: $border-radius-lg;
+  padding: 40px 32px;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: $accent-primary;
+    transform: translateY(-8px);
+    box-shadow: $shadow-md;
+  }
+
+  h3 {
+    font-size: 24px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 24px 0;
+  }
+
+  &__price {
+    margin-bottom: 32px;
+  }
+
+  &__currency {
+    font-size: 24px;
+    color: $text-secondary;
+    vertical-align: super;
+  }
+
+  &__amount {
+    font-size: 56px;
+    font-weight: 700;
+    color: $accent-primary;
+  }
+
+  &__period {
+    font-size: 18px;
+    color: $text-secondary;
+  }
+
+  &__features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 32px 0;
+    text-align: left;
+
+    li {
+      padding: 12px 0;
+      border-bottom: 1px solid $border-primary;
+      color: $text-secondary;
+      font-size: 16px;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &::before {
+        content: '✓';
+        color: $accent-primary;
+        font-weight: 700;
+        margin-right: 12px;
+      }
+    }
+  }
+
+  &__cta {
+    width: 100%;
+    padding: 14px 32px;
+    background: $accent-primary;
+    color: $text-dark;
+    border: none;
+    border-radius: $border-radius-sm;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: $transition-fast;
+
+    &:hover {
+      background: $accent-primary-hover;
+      transform: translateY(-2px);
+    }
+  }
+}

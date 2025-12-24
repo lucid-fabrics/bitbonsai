@@ -1,0 +1,116 @@
+@import '../../../styles/variables';
+
+.download {
+  padding: 80px 32px;
+
+  &__container {
+    max-width: 1000px;
+    margin: 0 auto;
+
+    h1 {
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      color: $text-primary;
+      margin: 0 0 16px 0;
+    }
+  }
+
+  &__subtitle {
+    font-size: 20px;
+    text-align: center;
+    color: $text-secondary;
+    margin: 0 0 60px 0;
+  }
+
+  &__options {
+    display: grid;
+    gap: 32px;
+    margin-bottom: 60px;
+  }
+
+  &__next-steps {
+    background: $bg-secondary;
+    border: 1px solid $border-primary;
+    border-radius: $border-radius-lg;
+    padding: 40px;
+
+    h2 {
+      font-size: 28px;
+      font-weight: 600;
+      color: $accent-primary;
+      margin: 0 0 24px 0;
+    }
+
+    ol {
+      font-size: 18px;
+      color: $text-secondary;
+      line-height: 2;
+      margin: 0 0 32px 0;
+    }
+  }
+
+  &__docs-link {
+    display: inline-block;
+    color: $accent-primary;
+    font-size: 18px;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      color: $accent-primary-hover;
+    }
+  }
+}
+
+.download-card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 32px;
+
+  h3 {
+    font-size: 24px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 12px 0;
+  }
+
+  p {
+    font-size: 16px;
+    color: $text-secondary;
+    margin: 0 0 20px 0;
+  }
+
+  pre {
+    background: $bg-primary;
+    border: 1px solid $border-primary;
+    border-radius: $border-radius-sm;
+    padding: 16px;
+    margin: 0;
+    overflow-x: auto;
+
+    code {
+      font-family: $font-mono;
+      font-size: 14px;
+      color: $accent-primary;
+      line-height: 1.6;
+    }
+  }
+
+  &__button {
+    display: inline-block;
+    padding: 12px 24px;
+    background: $accent-primary;
+    color: $text-dark;
+    border-radius: $border-radius-sm;
+    font-weight: 600;
+    text-decoration: none;
+    transition: $transition-fast;
+
+    &:hover {
+      background: $accent-primary-hover;
+      transform: translateY(-2px);
+    }
+  }
+}

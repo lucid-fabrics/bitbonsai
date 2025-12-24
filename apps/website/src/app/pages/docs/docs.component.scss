@@ -1,0 +1,66 @@
+@import '../../../styles/variables';
+
+.docs {
+  padding: 80px 32px;
+
+  &__container {
+    max-width: 1000px;
+    margin: 0 auto;
+
+    h1 {
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      color: $text-primary;
+      margin: 0 0 16px 0;
+    }
+  }
+
+  &__subtitle {
+    font-size: 20px;
+    text-align: center;
+    color: $text-secondary;
+    margin: 0 0 60px 0;
+  }
+
+  &__content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+  }
+
+  &__section {
+    background: $bg-secondary;
+    border: 1px solid $border-primary;
+    border-radius: $border-radius-md;
+    padding: 32px;
+
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      color: $accent-primary;
+      margin: 0 0 20px 0;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        margin-bottom: 12px;
+
+        a {
+          font-size: 16px;
+          color: $text-secondary;
+          text-decoration: none;
+          transition: $transition-fast;
+
+          &:hover {
+            color: $accent-primary;
+          }
+        }
+      }
+    }
+  }
+}

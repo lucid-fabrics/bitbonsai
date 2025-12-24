@@ -181,6 +181,10 @@ model Settings {
   readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
   maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
 
+  // ============ License Settings ============
+  licenseKey                   String?  // License key (stored in DB for seamless UX)
+  licenseLastVerified          DateTime? // Last successful verification timestamp
+
   // ============ Notification Settings ============
   // Discord webhook
   discordWebhookUrl            String?  // Discord webhook URL for notifications
@@ -289,12 +293,24 @@ model User {
   refreshToken          String?
   refreshTokenExpiresAt DateTime?
 
+  // Patreon OAuth Integration
+  patreonId           String?   @unique // Patreon user ID
+  patreonAccessToken  String?   // OAuth access token (encrypted)
+  patreonRefreshToken String?   // OAuth refresh token (encrypted)
+  patreonTokenExpiry  DateTime? // When access token expires
+  patreonEmail        String?   // Email from Patreon
+  patreonFullName     String?   // Full name from Patreon
+  patreonTier         LicenseTier? // Current Patreon tier
+  patreonLastSync     DateTime? // Last successful sync with Patreon API
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([username])
   @@index([email])
   @@index([isActive])
+  @@index([patreonId])
+  @@index([patreonTier])
   @@map("users")
 }
 

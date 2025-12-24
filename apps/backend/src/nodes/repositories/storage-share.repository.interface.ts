@@ -1,4 +1,4 @@
-import { type StorageProtocol, type StorageShare, type StorageShareStatus } from '@prisma/client';
+import { type StorageShare, type StorageShareStatus } from '@prisma/client';
 
 /**
  * Repository interface for StorageShare entity

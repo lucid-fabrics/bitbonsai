@@ -17,7 +17,6 @@ export class SshKeyService implements OnModuleInit {
   private readonly privateKeyPath = join(this.sshDir, 'id_rsa');
   private readonly publicKeyPath = join(this.sshDir, 'id_rsa.pub');
   private readonly authorizedKeysPath = join(this.sshDir, 'authorized_keys');
-  private initialized = false;
 
   async onModuleInit() {
     this.ensureSshDirectory();

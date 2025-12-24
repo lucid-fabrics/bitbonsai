@@ -1,0 +1,142 @@
+@import '../../../styles/variables';
+
+.bb-dashboard {
+  max-width: 1400px;
+}
+
+.bb-page-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0 0 32px 0;
+}
+
+.bb-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.bb-metric-card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 24px;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: rgba($accent-primary, 0.3);
+    box-shadow: $shadow-sm;
+  }
+
+  &__label {
+    font-size: 14px;
+    color: $text-secondary;
+    margin-bottom: 8px;
+  }
+
+  &__value {
+    font-size: 28px;
+    font-weight: 600;
+    color: $accent-primary;
+  }
+}
+
+.bb-section {
+  margin-bottom: 32px;
+
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 20px 0;
+  }
+}
+
+.bb-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.bb-health-card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 20px;
+  text-align: center;
+
+  &__value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  &__label {
+    font-size: 14px;
+    color: $text-secondary;
+  }
+
+  &--success {
+    border-color: rgba($success, 0.3);
+
+    .bb-health-card__value {
+      color: $success;
+    }
+  }
+
+  &--warning {
+    border-color: rgba($warning, 0.3);
+
+    .bb-health-card__value {
+      color: $warning;
+    }
+  }
+
+  &--danger {
+    border-color: rgba($danger, 0.3);
+
+    .bb-health-card__value {
+      color: $danger;
+    }
+  }
+}
+
+.bb-tier-list {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: 16px;
+}
+
+.bb-tier-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid $border-primary;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &__name {
+    font-size: 14px;
+    font-weight: 500;
+    color: $text-primary;
+  }
+
+  &__value {
+    font-size: 16px;
+    font-weight: 600;
+    color: $accent-primary;
+  }
+}
+
+.bb-loading {
+  text-align: center;
+  padding: 48px;
+  color: $text-secondary;
+  font-size: 16px;
+}

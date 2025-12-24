@@ -337,11 +337,11 @@ export class BatchOperationsService {
     }
 
     // Add PAUSED_LOAD count (it's a string not enum)
-    counts['PAUSED_LOAD'] = await this.prisma.job.count({
+    counts.PAUSED_LOAD = await this.prisma.job.count({
       where: { ...where, stage: 'PAUSED_LOAD' as JobStage },
     });
 
-    counts['TOTAL'] = await this.prisma.job.count({ where });
+    counts.TOTAL = await this.prisma.job.count({ where });
 
     return counts;
   }

@@ -379,7 +379,7 @@ export class TorrentIntegrationService {
         files.push(prefix + node.name);
       } else if (node.contents) {
         for (const [name, child] of Object.entries(node.contents)) {
-          files.push(...extractFiles(child, prefix + name + '/'));
+          files.push(...extractFiles(child, `${prefix + name}/`));
         }
       }
       return files;
@@ -430,7 +430,7 @@ export class TorrentIntegrationService {
         skipSeeding: true,
       };
 
-      const torrents = await this.getActiveTorrents(config);
+      const _torrents = await this.getActiveTorrents(config);
 
       return {
         success: true,

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { CreateLicenseDto } from './dto/create-license.dto';
 import type { ValidateLicenseDto } from './dto/validate-license.dto';
 import { LicenseService } from './license.service';
+import { LicenseClientService } from './license-client.service';
 
 /**
  * LicenseController
@@ -15,7 +16,10 @@ import { LicenseService } from './license.service';
 @ApiTags('licenses')
 @Controller('licenses')
 export class LicenseController {
-  constructor(private readonly licenseService: LicenseService) {}
+  constructor(
+    private readonly licenseService: LicenseService,
+    private readonly licenseClient: LicenseClientService
+  ) {}
 
   /**
    * Create a new license
@@ -147,5 +151,48 @@ export class LicenseController {
   async canAddNode(@Param('id') id: string) {
     const canAdd = await this.licenseService.checkCanAddNode(id);
     return { canAddNode: canAdd };
+  }
+
+  /**
+   * Get current license information (consumer mode)
+   *
+   * Returns the license verification status and limits for this BitBonsai instance
+   */
+  @Get('current')
+  @ApiOperation({
+    summary: 'Get current license information',
+    description: 'Returns license verification status and limits for this BitBonsai instance',
+  })
+  async getCurrentLicense() {
+    return this.licenseClient.verifyLicense();
+  }
+
+  /**
+   * Get current license limits (consumer mode)
+   *
+   * Returns node and job limits based on license tier
+   */
+  @Get('limits')
+  @ApiOperation({
+    summary: 'Get current license limits',
+    description: 'Returns node and job limits based on license tier',
+  })
+  async getCurrentLimits() {
+    return this.licenseClient.getCurrentLimits();
+  }
+
+  /**
+   * Set license key (consumer mode)
+   *
+   * Updates the license key and immediately verifies it
+   */
+  @Put('key')
+  @ApiOperation({
+    summary: 'Set license key',
+    description: 'Updates the license key and immediately verifies it',
+  })
+  async setLicenseKey(@Body() body: { key: string }) {
+    await this.licenseClient.setLicenseKey(body.key);
+    return { success: true, message: 'License key updated and verified' };
   }
 }

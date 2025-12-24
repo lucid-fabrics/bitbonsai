@@ -33,7 +33,6 @@ interface EmailConfig {
 @Injectable()
 export class EmailNotificationService {
   private readonly logger = new Logger(EmailNotificationService.name);
-  private transporter: Transporter | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -79,7 +78,7 @@ export class EmailNotificationService {
       </div>
     `;
 
-    await this.sendEmail(config, 'Encoding Complete: ' + job.fileLabel, html);
+    await this.sendEmail(config, `Encoding Complete: ${job.fileLabel}`, html);
   }
 
   /**
@@ -112,7 +111,7 @@ export class EmailNotificationService {
       </div>
     `;
 
-    await this.sendEmail(config, '⚠️ Encoding Failed: ' + job.fileLabel, html);
+    await this.sendEmail(config, `⚠️ Encoding Failed: ${job.fileLabel}`, html);
   }
 
   /**

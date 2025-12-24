@@ -281,7 +281,7 @@ export class DebugController {
 
           processes.push({
             pid,
-            command: command.length > 200 ? command.substring(0, 200) + '...' : command,
+            command: command.length > 200 ? `${command.substring(0, 200)}...` : command,
             cpuPercent,
             memPercent,
             runtimeSeconds,

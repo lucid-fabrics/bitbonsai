@@ -1,0 +1,272 @@
+@import '../../../styles/variables';
+
+.bb-licenses {
+  max-width: 1600px;
+}
+
+.bb-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.bb-page-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0;
+}
+
+.bb-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.bb-input,
+.bb-select {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-sm;
+  padding: 10px 14px;
+  color: $text-primary;
+  font-size: 14px;
+  transition: $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
+  }
+
+  &::placeholder {
+    color: $text-muted;
+  }
+}
+
+.bb-input {
+  flex: 1;
+}
+
+.bb-select {
+  min-width: 200px;
+}
+
+.bb-btn {
+  background: transparent;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-sm;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-primary;
+  cursor: pointer;
+  transition: $transition-fast;
+
+  &:hover:not(:disabled) {
+    border-color: $accent-primary;
+    color: $accent-primary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    background: $accent-primary;
+    border-color: $accent-primary;
+    color: $text-dark;
+
+    &:hover:not(:disabled) {
+      background: $accent-primary-hover;
+      border-color: $accent-primary-hover;
+      color: $text-dark;
+    }
+  }
+
+  &--outline {
+    background: transparent;
+    border-color: $border-primary;
+    color: $text-primary;
+
+    &:hover:not(:disabled) {
+      border-color: $accent-primary;
+      color: $accent-primary;
+    }
+  }
+
+  &--danger {
+    background: transparent;
+    border-color: $danger;
+    color: $danger;
+
+    &:hover:not(:disabled) {
+      background: $danger;
+      color: $text-white;
+    }
+  }
+
+  &--sm {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+.bb-table-container {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  overflow: hidden;
+}
+
+.bb-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead {
+    background: rgba($accent-primary, 0.05);
+    border-bottom: 1px solid $border-primary;
+
+    th {
+      padding: 14px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 600;
+      color: $text-primary;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  tbody {
+    tr {
+      border-bottom: 1px solid $border-primary;
+      transition: $transition-fast;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background: rgba($accent-primary, 0.02);
+      }
+
+      td {
+        padding: 14px;
+        font-size: 14px;
+        color: $text-secondary;
+
+        code {
+          background: rgba($accent-primary, 0.1);
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-family: $font-mono;
+          font-size: 12px;
+          color: $accent-primary;
+        }
+      }
+    }
+  }
+}
+
+.bb-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba($accent-primary, 0.1);
+  color: $accent-primary;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bb-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding: 20px;
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+
+  &__info {
+    color: $text-secondary;
+    font-size: 14px;
+  }
+}
+
+.bb-loading,
+.bb-empty {
+  text-align: center;
+  padding: 48px;
+  color: $text-secondary;
+  font-size: 16px;
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+}
+
+.bb-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.bb-dialog {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-lg;
+  padding: 32px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: $shadow-md;
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 24px 0;
+  }
+}
+
+.bb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bb-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    color: $text-primary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  textarea.bb-input {
+    resize: vertical;
+    font-family: inherit;
+  }
+}
+
+.bb-dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}

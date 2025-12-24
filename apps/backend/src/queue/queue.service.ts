@@ -3111,7 +3111,7 @@ export class QueueService implements OnModuleInit {
           transferCompletedAt: null,
           transferSpeedMBps: null,
           // If node has shared storage, transfer is not required
-          transferRequired: job.node?.hasSharedStorage ? false : true,
+          transferRequired: !job.node?.hasSharedStorage,
         },
       });
     }

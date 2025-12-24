@@ -1618,7 +1618,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const loadAvg = os.loadavg()[0]; // 1-minute load average
     const loadThreshold = cpuCount * this.loadThresholdMultiplier;
 
-    const totalMemory = os.totalmem();
+    const _totalMemory = os.totalmem();
     const freeMemory = os.freemem();
     const freeMemoryGB = freeMemory / 1024 ** 3;
 

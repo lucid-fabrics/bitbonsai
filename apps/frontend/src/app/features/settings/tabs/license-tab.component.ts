@@ -983,26 +983,26 @@ export class LicenseTabComponent implements OnInit {
   private handleCallbackParams(): void {
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       // Handle Patreon callback
-      if (params['patreon']) {
-        if (params['patreon'] === 'success') {
+      if (params.patreon) {
+        if (params.patreon === 'success') {
           this.callbackSuccess.set(true);
-          const tier = params['tier'] || 'supporter';
+          const tier = params.tier || 'supporter';
           this.callbackMessage.set(
             `Patreon connected successfully! Your ${tier} tier is now active.`
           );
-        } else if (params['patreon'] === 'error') {
+        } else if (params.patreon === 'error') {
           this.callbackSuccess.set(false);
-          const message = params['message'] || 'Unknown error';
+          const message = params.message || 'Unknown error';
           this.callbackMessage.set(`Patreon connection failed: ${message.replace(/_/g, ' ')}`);
         }
       }
 
       // Handle Stripe callback
-      if (params['stripe']) {
-        if (params['stripe'] === 'success') {
+      if (params.stripe) {
+        if (params.stripe === 'success') {
           this.callbackSuccess.set(true);
           this.callbackMessage.set('Payment successful! Your license has been activated.');
-        } else if (params['stripe'] === 'cancelled') {
+        } else if (params.stripe === 'cancelled') {
           this.callbackSuccess.set(false);
           this.callbackMessage.set('Checkout was cancelled. No payment was processed.');
         }
@@ -1116,7 +1116,7 @@ export class LicenseTabComponent implements OnInit {
     this.checkoutEmail = '';
   }
 
-  private processCheckout(tier: LicenseTierInfo, email: string, priceId: string): void {
+  private processCheckout(_tier: LicenseTierInfo, email: string, priceId: string): void {
     this.stripeLoading.set(true);
     this.error.set(null);
 
