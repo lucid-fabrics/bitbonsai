@@ -12,15 +12,12 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# Validate required environment variables
+# Validate required bootstrap environment variables
+# Note: Stripe, Resend, Patreon config managed via admin UI after deployment
 required_vars=(
     "LICENSE_DB_PASSWORD"
     "ENCRYPTION_KEY"
     "ADMIN_API_KEY"
-    "STRIPE_SECRET_KEY"
-    "STRIPE_WEBHOOK_SECRET"
-    "STRIPE_PRODUCT_ID"
-    "RESEND_API_KEY"
 )
 
 source .env
@@ -33,12 +30,17 @@ for var in "${required_vars[@]}"; do
 done
 
 if [ ${#missing_vars[@]} -gt 0 ]; then
-    echo "❌ ERROR: Missing required environment variables:"
+    echo "❌ ERROR: Missing required bootstrap environment variables:"
     for var in "${missing_vars[@]}"; do
         echo "   - $var"
     done
     echo ""
-    echo "   Please update your .env file with all required values."
+    echo "   Bootstrap variables are required to start the system."
+    echo "   Other config (Stripe, Patreon, Resend) can be set via admin UI."
+    echo ""
+    echo "   Generate missing values:"
+    echo "   ENCRYPTION_KEY: openssl rand -hex 32"
+    echo "   ADMIN_API_KEY:  openssl rand -hex 32"
     exit 1
 fi
 
