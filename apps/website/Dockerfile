@@ -2,11 +2,11 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY nx.json ./
 COPY tsconfig.base.json ./
 
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY apps/website ./apps/website
 COPY libs ./libs
