@@ -61,13 +61,13 @@ export class ApiService {
     });
   }
 
-  post<T>(endpoint: string, body: any): Observable<T> {
+  post<T, B = Record<string, unknown>>(endpoint: string, body: B): Observable<T> {
     return this.http.post<T>(`${this.baseUrl}${endpoint}`, body, {
       headers: this.getHeaders(),
     });
   }
 
-  patch<T>(endpoint: string, body: any): Observable<T> {
+  patch<T, B = Record<string, unknown>>(endpoint: string, body: B): Observable<T> {
     return this.http.patch<T>(`${this.baseUrl}${endpoint}`, body, {
       headers: this.getHeaders(),
     });

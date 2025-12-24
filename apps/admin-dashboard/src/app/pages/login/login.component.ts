@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { ApiService } from '../../services/api.service';
-import { AuthService } from '../../services/auth.service';
+import { Store } from '@ngrx/store';
+import * as LoginActions from './+state/login.actions';
+import { selectError, selectLoading } from './+state/login.selectors';
+import { LoginBo } from './login.bo';
 
 @Component({
   selector: 'app-login',
@@ -25,12 +26,14 @@ import { AuthService } from '../../services/auth.service';
             required
             autocomplete="off"
           />
-          <button type="submit" [disabled]="!apiKey || loading">
-            {{ loading ? 'Verifying...' : 'Login' }}
+          <button type="submit" [disabled]="LoginBo.isFormDisabled(apiKey, loading$ | async)">
+            {{ LoginBo.getButtonText(loading$ | async) }}
           </button>
         </form>
 
-        <p class="error" *ngIf="error">{{ error }}</p>
+        @if (error$ | async; as error) {
+          <p class="error">{{ error }}</p>
+        }
       </div>
     </div>
   `,
@@ -103,29 +106,25 @@ import { AuthService } from '../../services/auth.service';
   ],
 })
 export class LoginComponent {
+  private readonly store = inject(Store);
+
+  // Expose BO to template (convention requirement)
+  readonly LoginBo = LoginBo;
+
+  // Component state
   apiKey = '';
-  loading = false;
-  error = '';
 
-  constructor(
-    private auth: AuthService,
-    private api: ApiService,
-    private router: Router
-  ) {}
+  // Selectors (NgRx state)
+  loading$ = this.store.select(selectLoading);
+  error$ = this.store.select(selectError);
 
-  async login() {
-    this.loading = true;
-    this.error = '';
-
-    try {
-      // Test API key by making authenticated request
-      await this.api.testAdminAuth(this.apiKey);
-      this.auth.setApiKey(this.apiKey);
-      this.router.navigate(['/dashboard']);
-    } catch {
-      this.error = 'Invalid API key. Please try again.';
-    } finally {
-      this.loading = false;
+  /**
+   * Handle login form submission
+   * Delegates to NgRx effect (NO logic in component!)
+   */
+  login(): void {
+    if (LoginBo.isValidApiKeyFormat(this.apiKey)) {
+      this.store.dispatch(LoginActions.login({ apiKey: this.apiKey }));
     }
   }
 }
