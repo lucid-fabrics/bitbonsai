@@ -1,20 +1,13 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { LicenseStatus, LicenseTier } from '@prisma/client';
+import {
+  getLicenseTierFromPledgeAmount,
+  getPatreonTierConfig,
+} from '@bitbonsai/shared-models';
 import { createHmac } from 'crypto';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../../prisma/prisma.service';
-
-/**
- * Patreon tier mapping to BitBonsai license tiers
- */
-const PATREON_TIER_MAP: Record<number, LicenseTier> = {
-  // Map Patreon tier amounts (in cents) to license tiers
-  300: LicenseTier.PATREON_SUPPORTER, // $3/mo
-  500: LicenseTier.PATREON_PLUS, // $5/mo
-  1000: LicenseTier.PATREON_PRO, // $10/mo
-  2000: LicenseTier.PATREON_ULTIMATE, // $20/mo
-};
 
 /**
  * Patreon member data from API
@@ -146,6 +139,48 @@ export class PatreonService {
   }
 
   /**
+   * Refresh access token using refresh token
+   * Patreon tokens expire after 30 days
+   */
+  async refreshAccessToken(refreshToken: string): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  }> {
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error('Patreon OAuth not configured');
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          'https://www.patreon.com/api/oauth2/token',
+          new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: this.clientId,
+            client_secret: this.clientSecret,
+          }).toString(),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          }
+        )
+      );
+
+      return {
+        accessToken: response.data.access_token,
+        refreshToken: response.data.refresh_token,
+        expiresIn: response.data.expires_in,
+      };
+    } catch (error) {
+      this.logger.error('Failed to refresh Patreon access token', error);
+      throw new Error('Failed to refresh Patreon token');
+    }
+  }
+
+  /**
    * Get current user's Patreon membership info
    */
   async getMembershipInfo(accessToken: string): Promise<PatreonMember | null> {
@@ -186,6 +221,56 @@ export class PatreonService {
       this.logger.error('Failed to get Patreon membership info', error);
       return null;
     }
+  }
+
+  /**
+   * Refresh Patreon tokens for users with tokens expiring within 7 days
+   * Should be called by a cron job daily
+   */
+  async refreshExpiringTokens(): Promise<{ refreshed: number; failed: number }> {
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    // Find users with Patreon tokens expiring soon
+    const users = await this.prisma.user.findMany({
+      where: {
+        patreonRefreshToken: { not: null },
+        patreonTokenExpiry: {
+          lte: sevenDaysFromNow,
+        },
+      },
+    });
+
+    this.logger.log(`Refreshing Patreon tokens for ${users.length} users`);
+
+    let refreshed = 0;
+    let failed = 0;
+
+    for (const user of users) {
+      if (!user.patreonRefreshToken) continue;
+
+      try {
+        const tokens = await this.refreshAccessToken(user.patreonRefreshToken);
+
+        // Update user with new tokens
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            patreonAccessToken: tokens.accessToken,
+            patreonRefreshToken: tokens.refreshToken,
+            patreonTokenExpiry: new Date(Date.now() + tokens.expiresIn * 1000),
+          },
+        });
+
+        refreshed++;
+        this.logger.log(`Refreshed Patreon token for user ${user.id}`);
+      } catch (error) {
+        failed++;
+        this.logger.error(`Failed to refresh token for user ${user.id}`, error);
+      }
+    }
+
+    return { refreshed, failed };
   }
 
   /**
@@ -313,24 +398,23 @@ export class PatreonService {
    * Get license tier from pledge amount
    */
   private getTierFromPledgeAmount(amountCents: number): LicenseTier {
-    // Find highest matching tier
-    const amounts = Object.keys(PATREON_TIER_MAP)
-      .map(Number)
-      .sort((a, b) => b - a);
-
-    for (const amount of amounts) {
-      if (amountCents >= amount) {
-        return PATREON_TIER_MAP[amount];
-      }
-    }
-
-    return LicenseTier.FREE;
+    return getLicenseTierFromPledgeAmount(amountCents);
   }
 
   /**
    * Get tier configuration
    */
   private getTierConfig(tier: LicenseTier) {
+    const patreonConfig = getPatreonTierConfig(tier);
+    if (patreonConfig) {
+      return {
+        maxNodes: patreonConfig.maxNodes,
+        maxConcurrentJobs: patreonConfig.maxConcurrentJobs,
+        features: patreonConfig.features,
+      };
+    }
+
+    // Fallback for non-Patreon tiers
     const configs: Record<
       LicenseTier,
       { maxNodes: number; maxConcurrentJobs: number; features: object }

@@ -43,6 +43,14 @@ class EnvironmentVariables {
   PATREON_WEBHOOK_SECRET?: string;
 
   @IsOptional()
+  @IsString()
+  PATREON_REDIRECT_URI?: string;
+
+  @IsOptional()
+  @IsString()
+  KOFI_VERIFICATION_TOKEN?: string;
+
+  @IsOptional()
   @IsUrl()
   LICENSE_API_URL?: string;
 }

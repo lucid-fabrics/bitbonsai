@@ -13,6 +13,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { determineLicenseTierFromWebhook } from '@bitbonsai/shared-models';
 import * as crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import { Request } from 'express';
@@ -45,13 +46,6 @@ interface PatreonWebhookPayload {
   }>;
 }
 
-const PATREON_TIER_MAP: Record<string, LicenseTier> = {
-  Supporter: LicenseTier.PATREON_SUPPORTER,
-  Plus: LicenseTier.PATREON_PLUS,
-  Pro: LicenseTier.PATREON_PRO,
-  Ultimate: LicenseTier.PATREON_ULTIMATE,
-};
-
 @ApiExcludeController()
 @Controller('webhooks/patreon')
 @UseGuards(ThrottlerGuard)
@@ -80,7 +74,11 @@ export class PatreonController {
     const email = member.attributes.email;
     const customerId = member.id;
 
-    this.logger.log(`Patreon webhook: ${event} for ${email}`);
+    // Use Patreon's member ID as the event ID (unique per member, idempotent)
+    // Patreon doesn't provide a webhook event ID in headers, so we use member.id + event type
+    const providerEventId = `${event}:${customerId}:${Date.now()}`;
+
+    this.logger.log(`Patreon webhook: ${event} for ${email} (eventId: ${providerEventId})`);
 
     switch (event) {
       case 'members:pledge:create':
@@ -88,7 +86,7 @@ export class PatreonController {
         const tier = this.determineTier(payload);
         await this.webhookService.processNewSubscription({
           provider: PaymentProvider.PATREON,
-          providerEventId: randomUUID(),
+          providerEventId,
           email,
           tier,
           providerCustomerId: customerId,
@@ -102,7 +100,7 @@ export class PatreonController {
         const tier = this.determineTier(payload);
         await this.webhookService.processUpgrade({
           provider: PaymentProvider.PATREON,
-          providerEventId: randomUUID(),
+          providerEventId,
           providerCustomerId: customerId,
           newTier: tier,
           rawPayload: payload as unknown as Record<string, unknown>,
@@ -114,7 +112,7 @@ export class PatreonController {
       case 'members:delete': {
         await this.webhookService.processCancellation({
           provider: PaymentProvider.PATREON,
-          providerEventId: randomUUID(),
+          providerEventId,
           providerCustomerId: customerId,
           rawPayload: payload as unknown as Record<string, unknown>,
         });
@@ -161,19 +159,18 @@ export class PatreonController {
     const entitledTierIds =
       payload.data.relationships?.currently_entitled_tiers?.data.map((t) => t.id) ?? [];
 
+    // Collect entitled tier titles
+    const tierTitles: string[] = [];
     for (const tier of tiers) {
       if (entitledTierIds.includes(tier.id) && tier.attributes.title) {
-        const mapped = PATREON_TIER_MAP[tier.attributes.title];
-        if (mapped) return mapped;
+        tierTitles.push(tier.attributes.title);
       }
     }
 
-    const cents = payload.data.attributes.currently_entitled_amount_cents;
-    if (cents >= 2500) return LicenseTier.PATREON_ULTIMATE;
-    if (cents >= 1500) return LicenseTier.PATREON_PRO;
-    if (cents >= 1000) return LicenseTier.PATREON_PLUS;
-    if (cents >= 500) return LicenseTier.PATREON_SUPPORTER;
-
-    return LicenseTier.PATREON_SUPPORTER;
+    // Use shared configuration for tier determination
+    return determineLicenseTierFromWebhook({
+      entitledTierTitles: tierTitles,
+      pledgeAmountCents: payload.data.attributes.currently_entitled_amount_cents,
+    });
   }
 }

@@ -1077,7 +1077,7 @@ export class LicenseTabComponent implements OnInit {
 
   connectPatreon(): void {
     const returnUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${environment.apiUrl}/patreon/auth?return_url=${returnUrl}`;
+    window.location.href = `${environment.apiUrl}/api/v1/patreon/auth?return_url=${returnUrl}`;
   }
 
   startStripeCheckout(tier: LicenseTierInfo): void {
