@@ -10,8 +10,10 @@ import {
   RawBodyRequest,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { PatreonService } from './patreon.service';
 
@@ -23,15 +25,21 @@ import { PatreonService } from './patreon.service';
  * - GET /patreon/callback - OAuth callback (exchanges code for token)
  * - POST /patreon/webhook - Webhook endpoint for pledge events
  * - GET /patreon/status - Check if Patreon is connected
+ *
+ * Rate Limiting:
+ * - OAuth endpoints: 10 requests per minute per IP
+ * - Webhook endpoint: 30 requests per minute (handled by license-API)
  */
 @ApiTags('Patreon')
 @Controller('patreon')
+@UseGuards(ThrottlerGuard)
 export class PatreonController {
   private readonly logger = new Logger(PatreonController.name);
 
   constructor(private readonly patreonService: PatreonService) {}
 
   @Get('auth')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Start Patreon OAuth flow',
     description: 'Redirects user to Patreon authorization page.',
@@ -54,6 +62,7 @@ export class PatreonController {
   }
 
   @Get('callback')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Patreon OAuth callback',
     description: 'Handles the OAuth callback from Patreon and activates the license.',

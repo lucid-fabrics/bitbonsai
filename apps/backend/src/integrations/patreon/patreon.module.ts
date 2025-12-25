@@ -2,12 +2,18 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PatreonController } from './patreon.controller';
+import { PatreonTokenRefreshTask } from './patreon-token-refresh.task';
 import { PatreonService } from './patreon.service';
 
 /**
  * PatreonModule
  *
  * Provides Patreon OAuth and webhook integration for automatic license activation.
+ *
+ * Features:
+ * - OAuth flow for user-initiated Patreon connection
+ * - Automatic token refresh (daily cron job at 2 AM)
+ * - License tier mapping based on pledge amount
  *
  * Required environment variables:
  * - PATREON_CLIENT_ID: OAuth client ID from Patreon
@@ -18,7 +24,7 @@ import { PatreonService } from './patreon.service';
 @Module({
   imports: [HttpModule, PrismaModule],
   controllers: [PatreonController],
-  providers: [PatreonService],
+  providers: [PatreonService, PatreonTokenRefreshTask],
   exports: [PatreonService],
 })
 export class PatreonModule {}

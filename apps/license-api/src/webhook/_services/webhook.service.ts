@@ -34,6 +34,22 @@ export class WebhookService {
     providerCustomerId: string;
     rawPayload: Record<string, unknown>;
   }): Promise<WebhookResult> {
+    // Check if webhook event already processed (idempotency)
+    const existing = await this.findExistingWebhookEvent(
+      params.provider,
+      params.providerEventId
+    );
+    if (existing) {
+      this.logger.log(
+        `Webhook event ${params.providerEventId} already processed (status: ${existing.status}), skipping`
+      );
+      return {
+        success: existing.status === WebhookEventStatus.PROCESSED,
+        licenseId: existing.licenseId || undefined,
+        error: existing.error || undefined,
+      };
+    }
+
     const eventRecord = await this.createWebhookEvent({
       provider: params.provider,
       providerEventId: params.providerEventId,
@@ -84,6 +100,22 @@ export class WebhookService {
     newTier: LicenseTier;
     rawPayload: Record<string, unknown>;
   }): Promise<WebhookResult> {
+    // Check if webhook event already processed (idempotency)
+    const existing = await this.findExistingWebhookEvent(
+      params.provider,
+      params.providerEventId
+    );
+    if (existing) {
+      this.logger.log(
+        `Webhook event ${params.providerEventId} already processed (status: ${existing.status}), skipping`
+      );
+      return {
+        success: existing.status === WebhookEventStatus.PROCESSED,
+        licenseId: existing.licenseId || undefined,
+        error: existing.error || undefined,
+      };
+    }
+
     const eventRecord = await this.createWebhookEvent({
       provider: params.provider,
       providerEventId: params.providerEventId,
@@ -142,6 +174,22 @@ export class WebhookService {
     providerCustomerId: string;
     rawPayload: Record<string, unknown>;
   }): Promise<WebhookResult> {
+    // Check if webhook event already processed (idempotency)
+    const existing = await this.findExistingWebhookEvent(
+      params.provider,
+      params.providerEventId
+    );
+    if (existing) {
+      this.logger.log(
+        `Webhook event ${params.providerEventId} already processed (status: ${existing.status}), skipping`
+      );
+      return {
+        success: existing.status === WebhookEventStatus.PROCESSED,
+        licenseId: existing.licenseId || undefined,
+        error: existing.error || undefined,
+      };
+    }
+
     const eventRecord = await this.createWebhookEvent({
       provider: params.provider,
       providerEventId: params.providerEventId,
@@ -180,6 +228,20 @@ export class WebhookService {
       this.logger.error(`Failed to process cancellation webhook: ${errorMessage}`, error);
       return { success: false, error: errorMessage };
     }
+  }
+
+  private async findExistingWebhookEvent(
+    provider: PaymentProvider,
+    providerEventId: string
+  ) {
+    return this.prisma.webhookEvent.findUnique({
+      where: {
+        provider_providerEventId: {
+          provider,
+          providerEventId,
+        },
+      },
+    });
   }
 
   private async createWebhookEvent(params: {
