@@ -39,6 +39,10 @@ export class JobAttributionService {
   private scoreCache = new Map<string, { score: NodeScore; expiresAt: number }>();
   private readonly CACHE_TTL_MS = 60 * 1000; // 1 minute
 
+  // CRITICAL FIX #1: Mutex locks to prevent cache race conditions
+  // Prevents multiple workers from simultaneously calculating scores for same node
+  private scoreLocks = new Map<string, Promise<NodeScore>>();
+
   // Cache max encoding speed for 5 minutes to avoid repeated queries
   private maxSpeedCache: { value: number; expiresAt: number } | null = null;
   private readonly MAX_SPEED_CACHE_TTL_MS = 300000; // 5 minutes
@@ -108,14 +112,42 @@ export class JobAttributionService {
 
   /**
    * Calculate weighted score for a node
+   * CRITICAL FIX #1: Atomic cache operations to prevent race conditions
    */
   async calculateNodeScore(node: Node & { _count: { jobs: number } }): Promise<NodeScore> {
-    // Check cache first
+    // Check cache first (still fast path for hits)
     const cached = this.scoreCache.get(node.id);
     if (cached && Date.now() < cached.expiresAt) {
       return cached.score;
     }
 
+    // CRITICAL FIX #1: Check if calculation is already in progress (mutex pattern)
+    const existingLock = this.scoreLocks.get(node.id);
+    if (existingLock) {
+      // Another worker is calculating this score - wait for it
+      return existingLock;
+    }
+
+    // Start calculation and store promise as lock
+    const calculationPromise = this.performScoreCalculation(node);
+    this.scoreLocks.set(node.id, calculationPromise);
+
+    try {
+      const score = await calculationPromise;
+      return score;
+    } finally {
+      // Release lock after calculation completes
+      this.scoreLocks.delete(node.id);
+    }
+  }
+
+  /**
+   * Perform actual score calculation (called by calculateNodeScore with lock protection)
+   * CRITICAL FIX #1: Separated from public method to enable mutex pattern
+   */
+  private async performScoreCalculation(
+    node: Node & { _count: { jobs: number } }
+  ): Promise<NodeScore> {
     let totalScore = 0;
     const breakdown = {
       scheduleAvailable: false,
@@ -264,10 +296,12 @@ export class JobAttributionService {
 
   /**
    * Clear score cache (useful after node configuration changes)
+   * CRITICAL FIX #1: Also clear locks to prevent stale lock references
    */
   clearCache(): void {
     this.scoreCache.clear();
+    this.scoreLocks.clear(); // CRITICAL FIX #1: Clear locks too
     this.maxSpeedCache = null;
-    this.logger.debug('Score cache and max speed cache cleared');
+    this.logger.debug('Score cache, locks, and max speed cache cleared');
   }
 }

@@ -146,7 +146,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * - File system operations
    */
   private calculateOptimalWorkers(): number {
-    const cpuCount = os.cpus().length;
+    // LOW #16 FIX: Fallback for virtualized environments where CPU detection fails
+    let cpuCount = os.cpus().length;
+    if (!cpuCount || cpuCount < 2) {
+      this.logger.warn(`Low/invalid CPU count detected: ${cpuCount}, using fallback of 4 cores`);
+      cpuCount = 4; // Reasonable default for most systems
+    }
 
     // Theoretical maximum workers if CPU was only resource
     const theoreticalMax = Math.floor(cpuCount / this.CORES_PER_HEVC_JOB);
@@ -207,6 +212,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Step 3: Let file system stabilize after volumes are mounted
       this.logger.log('⏳ Waiting for file system to stabilize...');
       await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_STABILIZATION_DELAY_MS));
+
+      // HIGH #10 FIX: Kill ALL ffmpeg processes before auto-heal
+      // This prevents orphaned processes from previous crash/restart from consuming resources
+      this.logger.log('🧹 Killing all ffmpeg processes from previous session...');
+      const killResult = await this.ffmpegService.killAllFfmpegProcesses();
+      if (killResult.killed > 0) {
+        this.logger.log(
+          `✅ Killed ${killResult.killed} orphaned ffmpeg process(es) from previous session`
+        );
+      }
 
       // CRITICAL FIX: Only start workers for the CURRENT node, not all online nodes
       // This prevents MAIN nodes from starting workers for LINKED nodes, which causes
@@ -384,28 +399,44 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`🏥 Auto-heal: Checking for orphaned jobs on this node (${nodeId})...`);
 
     try {
+      // CRITICAL FIX #2: Check for jobs with recent heartbeats (< 2min old)
+      // These jobs are still being actively processed by other nodes and should NOT be healed
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+
       // On backend startup, jobs in active processing states need recovery
       // CRITICAL FIX: Only process jobs belonging to THIS node to prevent cross-node interference
       // Without this filter, CHILD node restart would reset MAIN node's actively encoding jobs
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
           nodeId, // CRITICAL: Only this node's jobs
-          OR: [
-            // Active processing stages - always recover
+          AND: [
+            // CRITICAL FIX #2: Exclude jobs with recent heartbeats
             {
-              stage: {
-                in: [
-                  JobStage.HEALTH_CHECK,
-                  JobStage.ENCODING,
-                  JobStage.VERIFYING,
-                  JobStage.PAUSED_LOAD, // System load-based pause - recover
-                ],
-              },
+              OR: [
+                { lastHeartbeat: null }, // No heartbeat = truly orphaned
+                { lastHeartbeat: { lt: twoMinutesAgo } }, // Stale heartbeat = orphaned
+              ],
             },
-            // PAUSED jobs - only recover if paused by schedule (has specific error message)
+            // Job stage conditions
             {
-              stage: JobStage.PAUSED,
-              error: { contains: 'Outside scheduled encoding window' },
+              OR: [
+                // Active processing stages - always recover
+                {
+                  stage: {
+                    in: [
+                      JobStage.HEALTH_CHECK,
+                      JobStage.ENCODING,
+                      JobStage.VERIFYING,
+                      JobStage.PAUSED_LOAD, // System load-based pause - recover
+                    ],
+                  },
+                },
+                // PAUSED jobs - only recover if paused by schedule (has specific error message)
+                {
+                  stage: JobStage.PAUSED,
+                  error: { contains: 'Outside scheduled encoding window' },
+                },
+              ],
             },
           ],
         },
@@ -475,15 +506,17 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           let recalculatedResumeTimestamp: string | null = null;
           if (tempFileExists && job.progress > 0) {
             try {
-              // Get the actual video file path from the job
+              // LOW #15 FIX: Use outer query job data instead of redundant inner query
+              // The job object already has filePath from the outer findMany query
               const videoJob = await this.prisma.job.findUnique({
                 where: { id: job.id },
                 select: { filePath: true },
               });
 
-              if (videoJob?.filePath) {
+              const filePath = videoJob?.filePath;
+              if (filePath) {
                 // Get video duration
-                const videoDuration = await this.ffmpegService.getVideoDuration(videoJob.filePath);
+                const videoDuration = await this.ffmpegService.getVideoDuration(filePath);
 
                 // Calculate resume time in seconds based on current progress
                 const resumeSeconds = (job.progress / 100) * videoDuration;
@@ -586,24 +619,37 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         const stuckJobs = await this.prisma.job.findMany({
           where: {
             stage: 'ENCODING',
-            OR: [
+            AND: [
+              // CRITICAL FIX #4: Exclude jobs recently paused (prevents false positives)
+              // Only consider jobs that have been in ENCODING state for the full timeout
               {
-                // Small files (<10GB): stuck for 5+ minutes
-                beforeSizeBytes: {
-                  lt: tenGB,
-                },
-                updatedAt: {
-                  lt: fiveMinutesAgo,
-                },
+                OR: [
+                  { lastStageChangeAt: null }, // Old jobs without timestamp
+                  { lastStageChangeAt: { lt: fiveMinutesAgo } }, // Must be in ENCODING >= 5min
+                ],
               },
+              // Dynamic timeout based on file size
               {
-                // Large files (>=10GB): stuck for 15+ minutes
-                beforeSizeBytes: {
-                  gte: tenGB,
-                },
-                updatedAt: {
-                  lt: fifteenMinutesAgo,
-                },
+                OR: [
+                  {
+                    // Small files (<10GB): stuck for 5+ minutes
+                    beforeSizeBytes: {
+                      lt: tenGB,
+                    },
+                    updatedAt: {
+                      lt: fiveMinutesAgo,
+                    },
+                  },
+                  {
+                    // Large files (>=10GB): stuck for 15+ minutes
+                    beforeSizeBytes: {
+                      gte: tenGB,
+                    },
+                    updatedAt: {
+                      lt: fifteenMinutesAgo,
+                    },
+                  },
+                ],
               },
             ],
           },
@@ -613,6 +659,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             progress: true,
             updatedAt: true,
             beforeSizeBytes: true,
+            lastStageChangeAt: true, // CRITICAL FIX #4: Include for debugging
           },
         });
 
@@ -762,20 +809,26 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     let loadLevel: string;
     const loadRatio = loadAvg / cpuCount;
 
-    if (loadRatio < 2.0) {
-      // Normal operation - all workers (load < 2x CPU count)
+    // HIGH #9 FIX: Apply loadThresholdMultiplier to all thresholds
+    // Default multiplier is 5.0, making thresholds: 5.0, 10.0, 15.0
+    const normalThreshold = 1.0 * this.loadThresholdMultiplier; // Default: 5.0
+    const moderateThreshold = 2.0 * this.loadThresholdMultiplier; // Default: 10.0
+    const highThreshold = 3.0 * this.loadThresholdMultiplier; // Default: 15.0
+
+    if (loadRatio < normalThreshold) {
+      // Normal operation - all workers (load < 1x multiplier)
       targetWorkers = nodeMaxWorkers;
       loadLevel = 'normal';
-    } else if (loadRatio < 4.0) {
-      // Moderate load - 80% workers (load 2-4x CPU count)
+    } else if (loadRatio < moderateThreshold) {
+      // Moderate load - 80% workers (load 1-2x multiplier)
       targetWorkers = Math.ceil(nodeMaxWorkers * 0.8);
       loadLevel = 'moderate';
-    } else if (loadRatio < 6.0) {
-      // High load - 50% workers (load 4-6x CPU count)
+    } else if (loadRatio < highThreshold) {
+      // High load - 50% workers (load 2-3x multiplier)
       targetWorkers = Math.ceil(nodeMaxWorkers * 0.5);
       loadLevel = 'high';
     } else {
-      // Emergency - 30% workers (minimum 2, load > 6x CPU count)
+      // Emergency - 30% workers (minimum 2, load > 3x multiplier)
       targetWorkers = Math.max(2, Math.ceil(nodeMaxWorkers * 0.3));
       loadLevel = 'critical';
     }
@@ -990,11 +1043,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
+        // HIGH #7 FIX: Add to Set BEFORE starting worker (prevents race)
+        // If startWorker fails, we remove from Set in the catch block
+        pool.activeWorkers.add(workerId);
+
         try {
           await this.startWorker(workerId, nodeId);
-          pool.activeWorkers.add(workerId);
           workersStarted++;
         } catch (error) {
+          // HIGH #7 FIX: Rollback on error - remove from Set
+          pool.activeWorkers.delete(workerId);
           this.logger.error(`Failed to start worker ${workerId}:`, error);
         }
       }
@@ -2121,7 +2179,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     tmpPath: string,
     atomicReplace: boolean
   ): Promise<void> {
-    
     const originalPath = job.filePath;
 
     // KEEP ORIGINAL FEATURE: Check if user requested to keep the original file
