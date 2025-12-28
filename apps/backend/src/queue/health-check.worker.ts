@@ -246,15 +246,18 @@ export class HealthCheckWorker implements OnModuleInit {
       return;
     }
 
-    // HIGH PRIORITY FIX: Exclude jobs that started health check in last 5 minutes
-    // This prevents false-positive orphan detection when health checks are just starting
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // HIGH PRIORITY FIX #5: Dynamic timeout based on file size
+    // Small files (<10GB): 10 minutes timeout
+    // Large files (>=10GB): 20 minutes timeout (4K videos on NFS can be slow)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
+    const tenGB = BigInt(10 * 1024 * 1024 * 1024);
 
     // Find jobs that need health checking
     // Include both DETECTED and HEALTH_CHECK stages:
     // - DETECTED: New jobs waiting for health check
     // - HEALTH_CHECK: Orphaned jobs stuck in this stage (safety net for recovery)
-    //   BUT: Exclude recently started checks (healthCheckStartedAt > 5min ago)
+    //   BUT: Exclude recently started checks (dynamic timeout based on file size)
     const jobs = await this.prisma.job.findMany({
       where: {
         AND: [
@@ -269,17 +272,30 @@ export class HealthCheckWorker implements OnModuleInit {
             },
           },
           {
-            // HIGH PRIORITY FIX: Exclude recently started health checks
+            // HIGH PRIORITY FIX #5: Exclude recently started health checks (dynamic timeout)
             OR: [
               {
                 stage: JobStage.DETECTED, // Always include DETECTED jobs
               },
               {
-                // For HEALTH_CHECK stage, only include if:
+                // For HEALTH_CHECK stage, only include if truly stuck:
                 stage: JobStage.HEALTH_CHECK,
                 OR: [
                   { healthCheckStartedAt: null }, // No start time (orphaned before fix)
-                  { healthCheckStartedAt: { lt: fiveMinutesAgo } }, // Started over 5min ago (truly stuck)
+                  // Small files (<10GB): stuck for 10+ minutes
+                  {
+                    AND: [
+                      { beforeSizeBytes: { lt: tenGB } },
+                      { healthCheckStartedAt: { lt: tenMinutesAgo } },
+                    ],
+                  },
+                  // Large files (>=10GB): stuck for 20+ minutes
+                  {
+                    AND: [
+                      { beforeSizeBytes: { gte: tenGB } },
+                      { healthCheckStartedAt: { lt: twentyMinutesAgo } },
+                    ],
+                  },
                 ],
               },
             ],

@@ -182,8 +182,8 @@ model Settings {
   maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
 
   // ============ License Settings ============
-  licenseKey                   String?  // License key (stored in DB for seamless UX)
-  licenseLastVerified          DateTime? // Last successful verification timestamp
+  licenseKey                   String?   @map("license_key") // License key (stored in DB for seamless UX)
+  licenseLastVerified          DateTime? @map("license_last_verified") // Last successful verification timestamp
 
   // ============ Notification Settings ============
   // Discord webhook
@@ -678,6 +678,7 @@ model Job {
   targetCodec     String // Target codec
   targetContainer String? // Target container (mkv, mp4, or null to keep original)
   stage           JobStage
+  lastStageChangeAt DateTime? // CRITICAL FIX #4: Track when stage last changed (prevents watchdog false positives)
   progress        Float     @default(0) // 0.0 to 100.0
   etaSeconds      Int? // Estimated time to completion
   fps             Float? // Current encoding speed (frames per second)
@@ -719,6 +720,10 @@ model Job {
   tempFilePath       String?   // Path to partial encoded file (e.g., "/path/video.mp4.tmp.mp4")
   resumeTimestamp    String?   // HH:MM:SS.MS where encoding stopped
   lastProgressUpdate DateTime? // When progress was last saved to DB
+
+  // CRITICAL FIX #2: Cross-node auto-heal protection
+  lastHeartbeat      DateTime? // Last heartbeat from encoding node (updated every 30s during ENCODING)
+  heartbeatNodeId    String?   // Which node sent the last heartbeat (for validation)
 
   // Encoding Preview Fields (Live thumbnails during encoding)
   previewImagePaths String? // JSON array of preview image paths (generated from temp file)

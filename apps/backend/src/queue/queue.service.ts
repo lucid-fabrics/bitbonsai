@@ -1046,6 +1046,13 @@ export class QueueService implements OnModuleInit {
         updateData.tempFilePath = updateJobDto.tempFilePath;
       }
 
+      // CRITICAL FIX #2: Update heartbeat timestamp during ENCODING
+      // This prevents cross-node auto-heal from resetting actively encoding jobs
+      if (existingJob.stage === 'ENCODING') {
+        updateData.lastHeartbeat = new Date();
+        updateData.heartbeatNodeId = existingJob.nodeId;
+      }
+
       const job = await this.prisma.job.update({
         where: { id },
         data: updateData,
@@ -1227,8 +1234,10 @@ export class QueueService implements OnModuleInit {
         failedAt: new Date(),
         error,
         // errorDetails, // TODO: Re-enable after Prisma migration applied
-        priority: 0, // Auto-reset priority to normal on failure
-        prioritySetAt: null, // Clear priority timestamp
+        // MEDIUM #14 FIX: DON'T reset priority on failure (preserve for retry)
+        // Only reset priority on COMPLETED, not FAILED
+        // priority: 0, // REMOVED - keep priority for retry
+        // prioritySetAt: null, // REMOVED - keep timestamp for retry
       },
     });
 
@@ -2762,11 +2771,20 @@ export class QueueService implements OnModuleInit {
     }
 
     // MAIN nodes update their own database
+    // CRITICAL FIX #4: Update lastStageChangeAt when stage changes
+    const updateData = { ...data };
+    if (data.stage !== undefined) {
+      updateData.lastStageChangeAt = new Date();
+    }
+
     return this.prisma.job.update({
       where: { id },
-      data,
+      data: updateData,
     });
   }
+
+  // HIGH #6 FIX: Track which jobs have had metrics updated to prevent double-counting
+  private metricsUpdated = new Set<string>();
 
   /**
    * Update metrics after job completion
@@ -2776,6 +2794,7 @@ export class QueueService implements OnModuleInit {
    * 2. Creates or updates license-wide daily metrics
    *
    * AUDIT #3 FIX: Added null safety checks for node relation
+   * HIGH #6 FIX: Prevents double-counting metrics on concurrent completion calls
    *
    * @param job - Completed job with node and license info
    * @param tx - Optional Prisma transaction client (for atomic operations)
@@ -2785,6 +2804,12 @@ export class QueueService implements OnModuleInit {
     job: Job & { node?: { licenseId: string } },
     tx?: Prisma.TransactionClient
   ): Promise<void> {
+    // HIGH #6 FIX: Check if metrics already updated for this job
+    if (this.metricsUpdated.has(job.id)) {
+      this.logger.debug(`Metrics already updated for job ${job.id}, skipping to prevent double-count`);
+      return;
+    }
+
     // AUDIT #3 FIX: Validate node relation exists before accessing
     if (!job.node?.licenseId) {
       this.logger.warn(
@@ -2792,6 +2817,9 @@ export class QueueService implements OnModuleInit {
       );
       return;
     }
+
+    // HIGH #6 FIX: Mark metrics as updated BEFORE updating (prevents race)
+    this.metricsUpdated.add(job.id);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

@@ -215,7 +215,12 @@ export class FileTransferService {
       });
 
       let lastProgress = 0;
-      let consecutiveUpdateFailures = 0;
+      // CRITICAL FIX #3: Atomic error counter using object property (not local variable)
+      // This prevents race conditions when multiple progress updates arrive simultaneously
+      const progressState = {
+        consecutiveUpdateFailures: 0,
+        pendingUpdate: false, // Prevents overlapping DB updates
+      };
       const MAX_CONSECUTIVE_FAILURES = 3;
 
       rsync.stdout.on('data', (data) => {
@@ -249,6 +254,17 @@ export class FileTransferService {
               }
             }
 
+            // CRITICAL FIX #3: Skip update if another update is in progress (prevents race)
+            if (progressState.pendingUpdate) {
+              this.logger.debug(
+                `Skipping progress update for job ${jobId} - another update is in progress`
+              );
+              return;
+            }
+
+            // Mark update as in progress
+            progressState.pendingUpdate = true;
+
             // Update job progress (non-blocking to avoid slowing transfer)
             this.prisma.job
               .update({
@@ -260,17 +276,19 @@ export class FileTransferService {
               })
               .then(() => {
                 // Reset failure counter on success
-                consecutiveUpdateFailures = 0;
+                progressState.consecutiveUpdateFailures = 0;
+                progressState.pendingUpdate = false;
               })
               .catch((err) => {
-                consecutiveUpdateFailures++;
+                progressState.consecutiveUpdateFailures++;
+                progressState.pendingUpdate = false;
                 this.logger.error(
-                  `Failed to update transfer progress for job ${jobId} (${consecutiveUpdateFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
+                  `Failed to update transfer progress for job ${jobId} (${progressState.consecutiveUpdateFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
                   err
                 );
 
                 // If too many consecutive failures, abort transfer
-                if (consecutiveUpdateFailures >= MAX_CONSECUTIVE_FAILURES) {
+                if (progressState.consecutiveUpdateFailures >= MAX_CONSECUTIVE_FAILURES) {
                   this.logger.error(
                     `Aborting transfer for job ${jobId}: ${MAX_CONSECUTIVE_FAILURES} consecutive progress update failures`
                   );
@@ -287,6 +305,8 @@ export class FileTransferService {
 
       rsync.on('close', (code) => {
         this.activeTransfers.delete(jobId);
+        rsync.stdout?.destroy();
+        rsync.stderr?.destroy();
 
         if (code === 0) {
           this.logger.log(`rsync completed successfully for job ${jobId}`);
@@ -298,6 +318,8 @@ export class FileTransferService {
 
       rsync.on('error', (error) => {
         this.activeTransfers.delete(jobId);
+        rsync.stdout?.destroy();
+        rsync.stderr?.destroy();
         this.logger.error(`rsync process error for job ${jobId}:`, error);
         reject(error);
       });
@@ -329,6 +351,7 @@ export class FileTransferService {
       let stdout = '';
       let stderr = '';
       let timedOut = false;
+      let forceKillTimeout: NodeJS.Timeout | null = null;
 
       // Set timeout to kill the SSH process if it hangs
       const timeout = setTimeout(() => {
@@ -336,7 +359,7 @@ export class FileTransferService {
         ssh.kill('SIGTERM');
 
         // Force kill if SIGTERM doesn't work
-        setTimeout(() => {
+        forceKillTimeout = setTimeout(() => {
           if (!ssh.killed) {
             ssh.kill('SIGKILL');
           }
@@ -359,6 +382,9 @@ export class FileTransferService {
 
       ssh.on('close', (code) => {
         clearTimeout(timeout);
+        if (forceKillTimeout) clearTimeout(forceKillTimeout);
+        ssh.stdout?.destroy();
+        ssh.stderr?.destroy();
 
         if (timedOut) {
           return; // Already rejected with timeout error
@@ -373,6 +399,9 @@ export class FileTransferService {
 
       ssh.on('error', (error) => {
         clearTimeout(timeout);
+        if (forceKillTimeout) clearTimeout(forceKillTimeout);
+        ssh.stdout?.destroy();
+        ssh.stderr?.destroy();
 
         if (timedOut) {
           return; // Already rejected with timeout error

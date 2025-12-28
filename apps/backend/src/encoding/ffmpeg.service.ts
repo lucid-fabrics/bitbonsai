@@ -386,9 +386,24 @@ export class FfmpegService implements OnModuleDestroy {
     // Check NVIDIA GPU
     try {
       const nvidiaSmi = spawn('nvidia-smi', ['--query-gpu=name', '--format=csv,noheader']);
+
+      const timeoutId = setTimeout(() => {
+        nvidiaSmi.kill('SIGKILL');
+      }, 5000);
+
       const nvidiaAvailable = await new Promise<boolean>((resolve) => {
-        nvidiaSmi.on('error', () => resolve(false));
-        nvidiaSmi.on('close', (code) => resolve(code === 0));
+        nvidiaSmi.on('error', () => {
+          clearTimeout(timeoutId);
+          nvidiaSmi.stdout?.destroy();
+          nvidiaSmi.stderr?.destroy();
+          resolve(false);
+        });
+        nvidiaSmi.on('close', (code) => {
+          clearTimeout(timeoutId);
+          nvidiaSmi.stdout?.destroy();
+          nvidiaSmi.stderr?.destroy();
+          resolve(code === 0);
+        });
       });
 
       if (nvidiaAvailable) {
@@ -973,6 +988,9 @@ export class FfmpegService implements OnModuleDestroy {
       ffprobe.on('close', (code) => {
         // AUDIT #2 ISSUE #26 FIX: Clear timeout on completion
         clearTimeout(timeoutId);
+        // Clean up streams to prevent memory leaks
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
 
         if (code === 0 && output.trim()) {
           try {
@@ -997,6 +1015,9 @@ export class FfmpegService implements OnModuleDestroy {
       ffprobe.on('error', (err) => {
         // AUDIT #2 ISSUE #26 FIX: Clear timeout on error
         clearTimeout(timeoutId);
+        // Clean up streams on error
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
         this.logger.warn(`[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`);
         resolve(3600);
       });
@@ -1036,6 +1057,9 @@ export class FfmpegService implements OnModuleDestroy {
 
       ffprobe.on('close', (code) => {
         clearTimeout(timeoutId);
+        // Clean up streams to prevent memory leaks
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
 
         if (code === 0 && output.trim()) {
           try {
@@ -1055,6 +1079,9 @@ export class FfmpegService implements OnModuleDestroy {
 
       ffprobe.on('error', (err) => {
         clearTimeout(timeoutId);
+        // Clean up streams on error
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
         reject(err);
       });
     });
@@ -1904,6 +1931,38 @@ export class FfmpegService implements OnModuleDestroy {
   }
 
   /**
+   * HIGH #10 FIX: Kill ALL ffmpeg processes (not just zombies)
+   * Used on startup to clean up orphaned processes from previous crashes/restarts
+   *
+   * @returns Number of processes killed
+   */
+  async killAllFfmpegProcesses(): Promise<{
+    killed: number;
+    failed: number;
+    details: Array<{ pid: number; success: boolean; message: string }>;
+  }> {
+    const allProcesses = await this.detectZombieFfmpegProcesses();
+    // Don't filter by isZombie - kill ALL ffmpeg processes
+
+    const details: Array<{ pid: number; success: boolean; message: string }> = [];
+    let killed = 0;
+    let failed = 0;
+
+    for (const process of allProcesses) {
+      const result = await this.killFfmpegByPid(process.pid);
+      details.push({ pid: process.pid, ...result });
+      if (result.success) {
+        killed++;
+      } else {
+        failed++;
+      }
+    }
+
+    this.logger.log(`All ffmpeg processes cleanup: ${killed} killed, ${failed} failed`);
+    return { killed, failed, details };
+  }
+
+  /**
    * Get the last time FFmpeg produced output for a job
    *
    * @param jobId - Job unique identifier
@@ -2326,7 +2385,20 @@ export class FfmpegService implements OnModuleDestroy {
         stderrOutput += data.toString();
       });
 
+      const timeoutId = setTimeout(() => {
+        ffprobe.kill('SIGKILL');
+        resolve({
+          isValid: false,
+          error: 'File verification timed out after 30 seconds',
+        });
+      }, 30000);
+
       ffprobe.on('close', (code) => {
+        clearTimeout(timeoutId);
+        // Clean up streams to prevent memory leaks
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+
         if (code !== 0 || !output.trim()) {
           // Build detailed error message
           let errorMessage = `File verification failed (exit code ${code})`;
@@ -2345,6 +2417,10 @@ export class FfmpegService implements OnModuleDestroy {
       });
 
       ffprobe.on('error', (err) => {
+        clearTimeout(timeoutId);
+        // Clean up streams on error
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
         resolve({
           isValid: false,
           error: `Failed to run ffprobe: ${err.message}`,
