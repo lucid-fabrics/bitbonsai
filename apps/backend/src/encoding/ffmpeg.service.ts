@@ -2296,6 +2296,10 @@ export class FfmpegService implements OnModuleDestroy {
       tempFilePath: resumeTimestamp && tempFilePath ? tempFilePath : null,
       resumeTimestamp: resumeTimestamp || null,
       lastProgressUpdate: null,
+      // CRITICAL FIX #2 & #4: Add new schema fields
+      lastHeartbeat: null,
+      heartbeatNodeId: null,
+      lastStageChangeAt: null,
       previewImagePaths: null,
       keepOriginalRequested: false,
       originalBackupPath: null,
