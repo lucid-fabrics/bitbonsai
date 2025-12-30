@@ -9,6 +9,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Cron } from '@nestjs/schedule';
 import { FileHealthStatus, type Job, JobEventType, JobStage, Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { NodeConfigService } from '../core/services/node-config.service';
@@ -953,8 +954,10 @@ export class QueueService implements OnModuleInit {
         return null;
       },
       {
-        maxWait: 5000, // Maximum time to wait for transaction to start (5s)
-        timeout: 10000, // Maximum time for transaction to complete (10s)
+        // CRITICAL #26 FIX: Increase timeouts for high concurrency / slow database scenarios
+        maxWait: 10000, // Maximum time to wait for transaction to start (10s, was 5s)
+        timeout: 30000, // Maximum time for transaction to complete (30s, was 10s)
+        isolationLevel: 'ReadCommitted', // CRITICAL #26 FIX: Reduce lock contention
       }
     );
 
@@ -2783,9 +2786,6 @@ export class QueueService implements OnModuleInit {
     });
   }
 
-  // HIGH #6 FIX: Track which jobs have had metrics updated to prevent double-counting
-  private metricsUpdated = new Set<string>();
-
   /**
    * Update metrics after job completion
    *
@@ -2795,6 +2795,7 @@ export class QueueService implements OnModuleInit {
    *
    * AUDIT #3 FIX: Added null safety checks for node relation
    * HIGH #6 FIX: Prevents double-counting metrics on concurrent completion calls
+   * CRITICAL #25 FIX: Database-backed idempotency check (survives restarts)
    *
    * @param job - Completed job with node and license info
    * @param tx - Optional Prisma transaction client (for atomic operations)
@@ -2804,12 +2805,6 @@ export class QueueService implements OnModuleInit {
     job: Job & { node?: { licenseId: string } },
     tx?: Prisma.TransactionClient
   ): Promise<void> {
-    // HIGH #6 FIX: Check if metrics already updated for this job
-    if (this.metricsUpdated.has(job.id)) {
-      this.logger.debug(`Metrics already updated for job ${job.id}, skipping to prevent double-count`);
-      return;
-    }
-
     // AUDIT #3 FIX: Validate node relation exists before accessing
     if (!job.node?.licenseId) {
       this.logger.warn(
@@ -2818,14 +2813,24 @@ export class QueueService implements OnModuleInit {
       return;
     }
 
-    // HIGH #6 FIX: Mark metrics as updated BEFORE updating (prevents race)
-    this.metricsUpdated.add(job.id);
+    // Use transaction if provided, otherwise use regular prisma client
+    const prisma = tx || this.prisma;
+
+    // CRITICAL #25 FIX: Check if metrics already processed for this job
+    // Database-backed idempotency check (survives backend restarts)
+    const alreadyProcessed = await prisma.metricsProcessedJob.findUnique({
+      where: { jobId: job.id },
+    });
+
+    if (alreadyProcessed) {
+      this.logger.debug(
+        `Metrics already processed for job ${job.id} at ${alreadyProcessed.processedAt}, skipping to prevent double-count`
+      );
+      return;
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    // Use transaction if provided, otherwise use regular prisma client
-    const prisma = tx || this.prisma;
 
     try {
       // Node-specific metric only (removed license-wide metric that caused null nodeId errors)
@@ -2878,6 +2883,11 @@ export class QueueService implements OnModuleInit {
         }
       }
 
+      // CRITICAL #25 FIX: Mark job as processed to prevent future double-counting
+      await prisma.metricsProcessedJob.create({
+        data: { jobId: job.id },
+      });
+
       this.logger.log(`Metrics updated for job: ${job.id}`);
     } catch (error) {
       this.logger.error(`Failed to update metrics for job: ${job.id}`, error);
@@ -2886,6 +2896,88 @@ export class QueueService implements OnModuleInit {
       if (tx) {
         throw error;
       }
+    }
+  }
+
+  /**
+   * CRITICAL #27 FIX: Cleanup stuck file transfers
+   *
+   * Runs every 10 minutes to detect and recover from stuck file transfers.
+   * Transfers can get stuck due to:
+   * - FileTransferService crash/restart
+   * - Network issues
+   * - Target node failure
+   *
+   * Recovery strategy:
+   * - After 1 hour with no progress, reset to DETECTED for retry
+   * - After 3 retry attempts, fail the job
+   */
+  @Cron('*/10 * * * *') // Every 10 minutes
+  async cleanupStuckTransfers(): Promise<void> {
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+      const stuckJobs = await this.prisma.job.findMany({
+        where: {
+          stage: 'TRANSFERRING',
+          transferStartedAt: { lt: oneHourAgo },
+          transferProgress: { lt: 100 },
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          transferRetryCount: true,
+          transferProgress: true,
+          transferStartedAt: true,
+        },
+      });
+
+      if (stuckJobs.length === 0) {
+        return;
+      }
+
+      this.logger.warn(
+        `🔧 CRITICAL #27 FIX: Found ${stuckJobs.length} stuck transfer(s) - attempting recovery`
+      );
+
+      for (const job of stuckJobs) {
+        const retryCount = job.transferRetryCount || 0;
+        const stuckDuration = Math.floor(
+          (Date.now() - new Date(job.transferStartedAt || 0).getTime()) / (60 * 1000)
+        );
+
+        if (retryCount >= 3) {
+          // Max retries exceeded - fail the job
+          this.logger.error(
+            `  ✗ Job ${job.fileLabel}: Transfer failed after ${retryCount} retries (stuck ${stuckDuration}min)`
+          );
+
+          await this.failJob(
+            job.id,
+            `File transfer stuck for over ${stuckDuration} minutes after ${retryCount} retry attempts. ` +
+              `Progress: ${job.transferProgress}%. Manual intervention required.`
+          );
+        } else {
+          // Reset to DETECTED for retry
+          this.logger.warn(
+            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/3 (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`
+          );
+
+          await this.update(job.id, {
+            stage: JobStage.DETECTED,
+            transferError: `Transfer timeout after ${stuckDuration} minutes - retry ${retryCount + 1}/3`,
+            transferRetryCount: retryCount + 1,
+            transferProgress: 0,
+            transferStartedAt: null,
+          });
+        }
+      }
+
+      this.logger.log(
+        `✅ CRITICAL #27 FIX: Stuck transfer cleanup complete - processed ${stuckJobs.length} job(s)`
+      );
+    } catch (error) {
+      this.logger.error('CRITICAL #27 FIX: Failed to cleanup stuck transfers:', error);
     }
   }
 

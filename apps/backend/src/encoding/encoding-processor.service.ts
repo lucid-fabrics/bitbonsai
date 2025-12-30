@@ -188,6 +188,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     this.logger.log('🔧 Initializing encoding processor...');
 
+    // CRITICAL #28 FIX: Clear stale pool locks from previous session
+    this.poolLocks.clear();
+    this.logger.log('✅ CRITICAL #28 FIX: Cleared stale pool locks from previous session');
+
     // PERF: Log cache pool configuration (loaded from DB via reloadNodeSettings)
     if (this.encodingTempPath) {
       this.logger.log(
@@ -947,16 +951,29 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * ISSUE #10 FIX: Acquire mutex lock for pool operations
+   * CRITICAL #28 FIX: Add timeout to prevent deadlock
    * Ensures only one operation modifies a pool at a time
    *
    * @param nodeId - Node unique identifier
+   * @param timeoutMs - Maximum time to wait for lock (default: 30s)
    * @private
    */
-  private async acquirePoolLock(nodeId: string): Promise<void> {
+  private async acquirePoolLock(nodeId: string, timeoutMs = 30000): Promise<void> {
     // Wait for any existing lock to complete
     const existingLock = this.poolLocks.get(nodeId);
     if (existingLock) {
-      await existingLock;
+      // CRITICAL #28 FIX: Add timeout to prevent infinite wait
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error(`Pool lock timeout for node ${nodeId}`)), timeoutMs);
+      });
+
+      try {
+        await Promise.race([existingLock, timeoutPromise]);
+      } catch (error) {
+        // Timeout - force clear stale lock
+        this.logger.warn(`⚠️ CRITICAL #28 FIX: Pool lock timeout for node ${nodeId}, clearing stale lock`);
+        this.poolLocks.delete(nodeId);
+      }
     }
 
     // Create new lock promise
@@ -1033,15 +1050,21 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         this.workerPools.set(nodeId, pool);
       }
 
-      // Start workers up to the max limit
-      let workersStarted = 0;
-      for (let i = 1; i <= validatedMaxWorkers; i++) {
-        const workerId = `${nodeId}-worker-${i}`;
+      // CRITICAL #29 FIX: Calculate how many workers needed
+      const currentWorkerCount = pool.activeWorkers.size;
+      const workersToStart = validatedMaxWorkers - currentWorkerCount;
 
-        // Skip if this worker is already running
-        if (pool.activeWorkers.has(workerId)) {
-          continue;
-        }
+      if (workersToStart <= 0) {
+        this.logger.debug(
+          `Worker pool already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
+        );
+        return 0;
+      }
+
+      // CRITICAL #29 FIX: Start only the needed workers (not all from 1 to max)
+      let workersStarted = 0;
+      for (let i = currentWorkerCount + 1; i <= validatedMaxWorkers; i++) {
+        const workerId = `${nodeId}-worker-${i}`;
 
         // HIGH #7 FIX: Add to Set BEFORE starting worker (prevents race)
         // If startWorker fails, we remove from Set in the catch block
