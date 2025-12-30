@@ -904,6 +904,23 @@ model Metric {
 }
 
 // ============================================================================
+// METRICS PROCESSED JOBS (AUDIT #2 - CRITICAL #25 FIX)
+// ============================================================================
+
+/// Tracks which jobs have had their metrics processed to prevent double-counting
+/// CRITICAL FIX #25: Prevents metrics double-count on backend restart
+/// The in-memory Set was cleared on restart, this persists to database
+model MetricsProcessedJob {
+  id          String   @id @default(cuid())
+  jobId       String   @unique
+  processedAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([processedAt]) // For cleanup of old entries
+  @@map("metrics_processed_jobs")
+}
+
+// ============================================================================
 // NODE FAILURE LOG MODEL (Distribution v2 - Reliability Tracking)
 // ============================================================================
 
