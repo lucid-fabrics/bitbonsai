@@ -155,6 +155,15 @@ export class QueueService implements OnModuleInit {
           newPolicy = allPolicies[0];
         }
 
+        // MEDIUM #3 FIX: Check if newPolicy is still null/undefined
+        if (!newPolicy) {
+          this.logger.error(
+            `POLICY HEAL FAILED: No policies available in system for job ${job.id}. ` +
+              `Please create at least one policy first.`
+          );
+          continue; // Skip this job and move to next
+        }
+
         await this.prisma.job.update({
           where: { id: job.id },
           data: {
@@ -517,7 +526,8 @@ export class QueueService implements OnModuleInit {
       let ffmpegThreads: number | undefined;
 
       if (videoInfo.codec.toLowerCase() === 'av1') {
-        const durationHours = videoInfo.duration / 3600;
+        // MEDIUM #1 FIX: Handle zero duration gracefully (min 1 minute = 0.0167 hours)
+        const durationHours = Math.max(videoInfo.duration / 3600, 0.0167);
         const estimatedHours = Math.round(durationHours * 150); // AV1 is ~150x slower
 
         warning =

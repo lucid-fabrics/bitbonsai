@@ -1312,7 +1312,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
         try {
           const newWorkerId = `${nodeId}-worker-${Date.now()}`;
-          await this.startWorker(nodeId, newWorkerId);
+          await this.startWorker(newWorkerId, nodeId);
           this.logger.log(`[${nodeId}] Replacement worker ${newWorkerId} started`);
         } catch (restartError) {
           this.logger.error(`[${nodeId}] Failed to restart worker after crash`, restartError);
