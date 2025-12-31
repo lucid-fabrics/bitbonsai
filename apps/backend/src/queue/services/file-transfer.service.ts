@@ -411,7 +411,7 @@ export class FileTransferService {
         });
 
         ssh.on('close', (code) => {
-          clearTimeout(timeout);
+          if (timeout) clearTimeout(timeout);
           if (forceKillTimeout) clearTimeout(forceKillTimeout);
           ssh.stdout?.destroy();
           ssh.stderr?.destroy();
@@ -428,7 +428,7 @@ export class FileTransferService {
         });
 
         ssh.on('error', (error) => {
-          clearTimeout(timeout);
+          if (timeout) clearTimeout(timeout);
           if (forceKillTimeout) clearTimeout(forceKillTimeout);
           ssh.stdout?.destroy();
           ssh.stderr?.destroy();
