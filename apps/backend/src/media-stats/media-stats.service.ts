@@ -279,7 +279,9 @@ export class MediaStatsService {
       try {
         data = JSON.parse(result.stdout);
       } catch (parseError) {
-        throw new Error(`Failed to parse ffprobe output: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`);
+        throw new Error(
+          `Failed to parse ffprobe output: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+        );
       }
 
       const codec = data.streams?.[0]?.codec_name?.toLowerCase() || 'unknown';
