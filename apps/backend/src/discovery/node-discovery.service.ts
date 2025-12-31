@@ -54,6 +54,10 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   private discoveredNodes: Map<string, DiscoveredNode> = new Map();
   private currentNodeRole: NodeRole | null = null;
 
+  // CRITICAL #5 FIX: Track active scan and timeout for proper cleanup
+  private activeScan: Promise<DiscoveredNode[]> | null = null;
+  private scanTimeoutId: NodeJS.Timeout | null = null;
+
   constructor(
     readonly _prisma: PrismaService,
     private readonly nodesService: NodesService,
@@ -170,7 +174,25 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * CRITICAL #5 FIX: Cleanup scan resources (browser and timeout)
+   * Prevents resource leaks from failed or cancelled scans
+   * @private
+   */
+  private cleanup(): void {
+    if (this.scanTimeoutId) {
+      clearTimeout(this.scanTimeoutId);
+      this.scanTimeoutId = null;
+    }
+    if (this.browser) {
+      this.browser.stop();
+      this.browser = null;
+    }
+  }
+
+  /**
    * Scan for MAIN nodes on the network (LINKED node feature)
+   *
+   * CRITICAL #5 FIX: Prevents concurrent scans and ensures proper cleanup
    *
    * @returns List of discovered MAIN nodes
    */
@@ -179,28 +201,44 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       throw new Error('Bonjour not initialized');
     }
 
+    // CRITICAL #5 FIX: Prevent concurrent scans - return existing promise
+    if (this.activeScan) {
+      this.logger.warn('Scan already in progress, returning existing promise');
+      return this.activeScan;
+    }
+
     this.logger.log('🔍 Scanning for MAIN nodes on network...');
 
     // Clear previous discoveries
     this.discoveredNodes.clear();
 
-    return new Promise((resolve, reject) => {
+    // CRITICAL #5 FIX: Track active scan promise
+    this.activeScan = new Promise<DiscoveredNode[]>((resolve, reject) => {
       try {
+        // CRITICAL #5 FIX: Stop any existing browser before creating new one
+        if (this.browser) {
+          this.browser.stop();
+          this.browser = null;
+        }
+
         // Create browser
         this.browser = this.bonjour?.find({ type: 'bitbonsai' }) ?? null;
 
-        const _timeout = setTimeout(() => {
+        if (!this.browser) {
+          reject(new Error('Failed to create mDNS browser'));
+          return;
+        }
+
+        // CRITICAL #5 FIX: Track timeout for cleanup
+        this.scanTimeoutId = setTimeout(() => {
+          this.scanTimeoutId = null;
           if (this.browser) {
             this.browser.stop();
+            this.browser = null;
           }
           this.logger.log(`✅ Scan complete - found ${this.discoveredNodes.size} node(s)`);
           resolve(Array.from(this.discoveredNodes.values()));
         }, 5000); // 5 second scan
-
-        if (!this.browser) {
-          reject(new Error('Failed to create browser'));
-          return;
-        }
 
         this.browser.on('up', async (service: Service) => {
           try {
@@ -287,12 +325,25 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
           }
         });
 
+        // CRITICAL #5 FIX: Handle errors and cleanup
+        this.browser.on('error', (error) => {
+          this.cleanup();
+          reject(error);
+        });
+
         this.browser.start();
       } catch (error) {
         this.logger.error('Failed to scan for nodes:', error);
+        this.cleanup();
         reject(error);
       }
+    }).finally(() => {
+      // CRITICAL #5 FIX: Always reset activeScan and cleanup resources
+      this.activeScan = null;
+      this.cleanup();
     });
+
+    return this.activeScan!; // Non-null assertion since we just assigned it
   }
 
   /**

@@ -1,6 +1,13 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
-import { forwardRef, Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AccelerationType, Job, Policy } from '@prisma/client';
 import { QueueService } from '../queue/queue.service';
@@ -129,6 +136,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   private readonly CODEC_CACHE_MAX_SIZE = 5000; // ~500KB max
   private readonly CODEC_CACHE_CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
   private codecCacheCleanupInterval?: NodeJS.Timeout; // CRITICAL #9 FIX
+  private lastCacheCleanup = 0; // Track last cleanup timestamp
 
   // Regex for parsing ffmpeg progress output
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
@@ -1207,30 +1215,6 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     }
 
     return result;
-  }
-
-  /**
-   * PERFORMANCE: Clean up expired codec cache entries
-   * Runs periodically (every 15 min) to prevent unbounded growth
-   * @private
-   */
-  private cleanupCodecCache(): void {
-    const now = Date.now();
-    let cleaned = 0;
-
-    for (const [filePath, entry] of this.codecCache.entries()) {
-      const age = now - entry.timestamp.getTime();
-      if (age >= this.CODEC_CACHE_TTL_MS) {
-        this.codecCache.delete(filePath);
-        cleaned++;
-      }
-    }
-
-    if (cleaned > 0) {
-      this.logger.debug(
-        `Cleaned up ${cleaned} expired codec cache entries (${this.codecCache.size} remaining)`
-      );
-    }
   }
 
   /**

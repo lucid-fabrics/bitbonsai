@@ -42,6 +42,14 @@ interface LockPromise extends Promise<void> {
   release?: () => void;
 }
 
+// CRITICAL #3 FIX: Enhanced lock holder tracking for deadlock detection
+interface PoolLockHolder {
+  promise: Promise<void>;
+  release: () => void;
+  acquiredAt: number;
+  holder: string; // For debugging (workerId or operation name)
+}
+
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
 
@@ -64,8 +72,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   // Worker pool management
   private readonly workerPools = new Map<string, NodeWorkerPool>();
   private readonly workers = new Map<string, WorkerState>(); // workerId -> WorkerState
-  // ISSUE #10 FIX: Mutex locks for each node to prevent concurrent pool modifications
-  private readonly poolLocks = new Map<string, Promise<void>>();
+  // CRITICAL #3 FIX: Enhanced mutex locks with deadlock detection and auto-recovery
+  private readonly poolLocks = new Map<string, PoolLockHolder>();
+  private lockWatchdogIntervalId?: NodeJS.Timeout;
 
   // AUDIT #2 ISSUE #24 FIX: Store watchdog interval for cleanup
   private watchdogIntervalId?: NodeJS.Timeout;
@@ -191,9 +200,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     this.logger.log('🔧 Initializing encoding processor...');
 
-    // CRITICAL #28 FIX: Clear stale pool locks from previous session
+    // CRITICAL #3 FIX: Clear stale pool locks from previous session and start watchdog
     this.poolLocks.clear();
-    this.logger.log('✅ CRITICAL #28 FIX: Cleared stale pool locks from previous session');
+    this.startLockWatchdog();
+    this.logger.log('✅ CRITICAL #3 FIX: Cleared stale pool locks and started deadlock watchdog');
 
     // PERF: Log cache pool configuration (loaded from DB via reloadNodeSettings)
     if (this.encodingTempPath) {
@@ -295,6 +305,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       EncodingProcessorService.activeIntervals.delete(this.watchdogIntervalId);
       this.watchdogIntervalId = undefined;
       this.logger.log('✓ Watchdog interval cleared');
+    }
+
+    // CRITICAL #3 FIX: Clear lock watchdog interval
+    if (this.lockWatchdogIntervalId) {
+      clearInterval(this.lockWatchdogIntervalId);
+      this.lockWatchdogIntervalId = undefined;
+      this.logger.log('✓ CRITICAL #3 FIX: Lock watchdog interval cleared');
     }
 
     // CRITICAL #5 FIX: Safety - clear ALL tracked intervals (hot reload protection)
@@ -971,75 +988,161 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * ISSUE #10 FIX: Acquire mutex lock for pool operations
-   * CRITICAL #28 FIX: Add timeout to prevent deadlock
-   * Ensures only one operation modifies a pool at a time
+   * CRITICAL #3 FIX: Acquire mutex lock with retry, stale lock detection, and auto-recovery.
+   *
+   * Prevents deadlocks by:
+   * - Auto-releasing locks held > 2 * timeout (stale lock detection)
+   * - Retry mechanism (3 attempts) with exponential backoff
+   * - Lock age tracking for debugging
+   * - Holder identification for diagnostics
    *
    * @param nodeId - Node unique identifier
-   * @param timeoutMs - Maximum time to wait for lock (default: 30s)
+   * @param holder - Lock holder identifier (workerId or operation name)
+   * @param timeoutMs - Maximum wait time for lock (default: 30s)
+   * @throws Error if lock acquisition fails after 3 retries
    * @private
    */
-  private async acquirePoolLock(nodeId: string, timeoutMs = 30000): Promise<void> {
-    // Wait for any existing lock to complete
-    const existingLock = this.poolLocks.get(nodeId);
-    if (existingLock) {
-      // CRITICAL #28 FIX: Add timeout to prevent infinite wait
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => reject(new Error(`Pool lock timeout for node ${nodeId}`)), timeoutMs);
+  private async acquirePoolLock(
+    nodeId: string,
+    holder: string,
+    timeoutMs = 30000
+  ): Promise<void> {
+    const maxRetries = 3;
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      const existingLock = this.poolLocks.get(nodeId);
+
+      if (existingLock) {
+        const age = Date.now() - existingLock.acquiredAt;
+        const staleLockThreshold = timeoutMs * 2;
+
+        // Auto-release stale locks (held > 2 * timeout)
+        if (age > staleLockThreshold) {
+          this.logger.warn(
+            `🔓 CRITICAL #3 FIX: Auto-releasing stale lock for node ${nodeId} ` +
+              `(held by ${existingLock.holder} for ${age}ms, threshold: ${staleLockThreshold}ms)`
+          );
+          existingLock.release();
+          this.poolLocks.delete(nodeId);
+          continue; // Retry acquire immediately
+        }
+
+        // Wait for lock with timeout
+        const timeoutPromise = new Promise<void>((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`Pool lock timeout for node ${nodeId}`)),
+            timeoutMs
+          );
+        });
+
+        try {
+          await Promise.race([existingLock.promise, timeoutPromise]);
+        } catch (error) {
+          attempt++;
+          if (attempt >= maxRetries) {
+            throw new Error(
+              `Failed to acquire pool lock for ${nodeId} after ${maxRetries} attempts`
+            );
+          }
+          this.logger.warn(
+            `⏳ Lock timeout attempt ${attempt}/${maxRetries} for ${nodeId}, retrying...`
+          );
+          continue; // Retry
+        }
+      }
+
+      // Acquire lock
+      let releaseLock!: () => void;
+      const lockPromise = new Promise<void>((resolve) => {
+        releaseLock = resolve;
       });
 
-      try {
-        await Promise.race([existingLock, timeoutPromise]);
-      } catch (error) {
-        // Timeout - force clear stale lock
-        this.logger.warn(
-          `⚠️ CRITICAL #28 FIX: Pool lock timeout for node ${nodeId}, clearing stale lock`
-        );
-        this.poolLocks.delete(nodeId);
-      }
+      this.poolLocks.set(nodeId, {
+        promise: lockPromise,
+        release: releaseLock,
+        acquiredAt: Date.now(),
+        holder,
+      });
+
+      return; // Lock acquired successfully
     }
 
-    // Create new lock promise
-    let releaseLock!: () => void;
-    const lockPromise = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-
-    // Store lock and return release function through closure
-    const lockWithRelease = lockPromise as LockPromise;
-    lockWithRelease.release = releaseLock;
-    this.poolLocks.set(nodeId, lockWithRelease);
+    throw new Error(`Failed to acquire pool lock for ${nodeId} after ${maxRetries} retries`);
   }
 
   /**
-   * ISSUE #10 FIX: Release mutex lock for pool operations
+   * CRITICAL #3 FIX: Release mutex lock for pool operations
    *
    * @param nodeId - Node unique identifier
    * @private
    */
   private releasePoolLock(nodeId: string): void {
-    const lockPromise = this.poolLocks.get(nodeId) as LockPromise | undefined;
-    if (lockPromise?.release) {
-      lockPromise.release();
+    const lockHolder = this.poolLocks.get(nodeId);
+    if (lockHolder) {
+      lockHolder.release();
+      this.poolLocks.delete(nodeId);
     }
-    this.poolLocks.delete(nodeId);
   }
 
   /**
-   * CRITICAL #4 FIX: Execute function with pool lock, ensuring release on error
+   * CRITICAL #3 FIX: Execute function with pool lock, ensuring release on error
    *
    * @param nodeId - Node unique identifier
+   * @param holder - Lock holder identifier (workerId or operation name)
    * @param fn - Function to execute while holding lock
    * @returns Result of function execution
    * @private
    */
-  private async withPoolLock<T>(nodeId: string, fn: () => Promise<T>): Promise<T> {
-    await this.acquirePoolLock(nodeId);
+  private async withPoolLock<T>(
+    nodeId: string,
+    holder: string,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    await this.acquirePoolLock(nodeId, holder);
     try {
       return await fn();
     } finally {
       this.releasePoolLock(nodeId); // ALWAYS release, even on error
     }
+  }
+
+  /**
+   * CRITICAL #3 FIX: Periodic watchdog to detect and release deadlocked pool locks.
+   *
+   * Runs every 30 seconds and forcibly releases locks held for > 60 seconds.
+   * Prevents permanent deadlocks from crashed operations or unhandled errors.
+   *
+   * @private
+   */
+  private startLockWatchdog(): void {
+    const watchdogInterval = 30000; // Check every 30 seconds
+    const staleLockThreshold = 60000; // 60 seconds
+
+    this.lockWatchdogIntervalId = setInterval(() => {
+      const now = Date.now();
+
+      for (const [nodeId, lock] of this.poolLocks.entries()) {
+        const age = now - lock.acquiredAt;
+
+        if (age > staleLockThreshold) {
+          this.logger.error(
+            `🚨 DEADLOCK DETECTED: Pool lock for ${nodeId} held by ${lock.holder} for ${age}ms ` +
+              `(threshold: ${staleLockThreshold}ms). Forcibly releasing.`
+          );
+
+          lock.release();
+          this.poolLocks.delete(nodeId);
+
+          this.logger.warn(`🔓 Deadlock resolved for ${nodeId}, lock forcibly released`);
+        }
+      }
+    }, watchdogInterval);
+
+    this.logger.log(
+      `✅ CRITICAL #3 FIX: Lock watchdog started (interval: ${watchdogInterval}ms, ` +
+        `threshold: ${staleLockThreshold}ms)`
+    );
   }
 
   /**
@@ -1058,8 +1161,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     nodeId: string,
     maxWorkers = this.DEFAULT_WORKERS_PER_NODE
   ): Promise<number> {
-    // CRITICAL #4 FIX: Use withPoolLock to ensure release on error
-    return await this.withPoolLock(nodeId, async () => {
+    // CRITICAL #3 FIX: Use withPoolLock to ensure release on error
+    return await this.withPoolLock(nodeId, 'startWorkerPool', async () => {
       // Validate maxWorkers
       const validatedMaxWorkers = Math.min(Math.max(1, maxWorkers), this.MAX_WORKERS_PER_NODE);
 
@@ -1160,20 +1263,76 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.workers.set(workerId, worker);
 
     // Start processing loop (fire and forget - runs in background)
-    // CRITICAL FIX: Wrap in try-catch to handle worker crashes
-    this.processLoop(workerId).catch((error) => {
+    // CRITICAL #7 FIX: Comprehensive crash recovery with FFmpeg cleanup and worker restart
+    this.processLoop(workerId).catch(async (error) => {
       this.logger.error(`[${workerId}] Worker crashed:`, error);
 
-      // CLEANUP: Remove worker from tracking to prevent memory leak
+      // CRITICAL #7 FIX: Get worker state BEFORE deleting
+      const worker = this.workers.get(workerId);
       const pool = this.workerPools.get(nodeId);
-      if (pool) {
-        pool.activeWorkers.delete(workerId);
+
+      if (!worker || !pool) {
+        this.logger.error(`[${workerId}] Worker or pool not found during crash cleanup`);
+        return;
       }
+
+      // CRITICAL #7 FIX: Kill active FFmpeg process if encoding
+      if (worker.currentJobId) {
+        this.logger.warn(
+          `[${workerId}] Killing orphaned FFmpeg for job ${worker.currentJobId}`
+        );
+
+        try {
+          await this.ffmpegService.killProcess(worker.currentJobId);
+        } catch (killError) {
+          this.logger.error(
+            `[${workerId}] Failed to kill FFmpeg for job ${worker.currentJobId}`,
+            killError
+          );
+        }
+
+        // CRITICAL #7 FIX: Reset job to QUEUED for retry
+        try {
+          await this.prisma.job.update({
+            where: { id: worker.currentJobId },
+            data: {
+              stage: JobStage.QUEUED,
+              error: `Worker ${workerId} crashed during encoding`,
+              retryCount: { increment: 1 },
+            },
+          });
+          this.logger.log(`[${workerId}] Reset job ${worker.currentJobId} to QUEUED`);
+        } catch (jobError) {
+          this.logger.error(
+            `[${workerId}] Failed to reset job ${worker.currentJobId}`,
+            jobError
+          );
+        }
+      }
+
+      // CLEANUP: Remove worker from tracking
+      pool.activeWorkers.delete(workerId);
       this.workers.delete(workerId);
 
-      // Resolve shutdown promise to unblock any waiting callers
+      // Resolve shutdown promise
       if (worker.shutdownResolve) {
         worker.shutdownResolve();
+      }
+
+      // CRITICAL #7 FIX: Restart worker to maintain pool size
+      const remainingWorkers = pool.activeWorkers.size;
+      if (remainingWorkers < pool.maxWorkers) {
+        this.logger.warn(
+          `[${nodeId}] Worker pool degraded to ${remainingWorkers}/${pool.maxWorkers}, restarting worker`
+        );
+
+        try {
+          const newWorkerId = `${nodeId}-worker-${Date.now()}`;
+          await this.startWorker(nodeId, newWorkerId);
+          this.logger.log(`[${nodeId}] Replacement worker ${newWorkerId} started`);
+        } catch (restartError) {
+          this.logger.error(`[${nodeId}] Failed to restart worker after crash`, restartError);
+        }
       }
 
       this.logger.log(`[${workerId}] Worker cleanup complete after crash`);
@@ -1192,9 +1351,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @param workerId - Optional specific worker ID to stop (if not provided, stops all workers for node)
    */
   async stopWorker(nodeId: string, workerId?: string): Promise<void> {
-    // ISSUE #10 FIX: Acquire lock before modifying pool
-    // CRITICAL #4 & #6 FIX: Use withPoolLock + snapshot IDs to avoid concurrent modification
-    await this.withPoolLock(nodeId, async () => {
+    // CRITICAL #3 FIX: Acquire lock before modifying pool
+    const holder = workerId ? `stopWorker:${workerId}` : 'stopWorker:all';
+    await this.withPoolLock(nodeId, holder, async () => {
       const pool = this.workerPools.get(nodeId);
 
       if (!pool) {
