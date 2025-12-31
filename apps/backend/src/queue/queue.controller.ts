@@ -496,8 +496,16 @@ export class QueueController {
       throw new NotFoundException(`Invalid preview index. Must be between 1 and 9.`);
     }
 
-    // Parse preview image paths from JSON
-    const previewPaths: string[] = job.previewImagePaths ? JSON.parse(job.previewImagePaths) : [];
+    // MEDIUM #8 FIX: Safe JSON parsing for preview paths
+    let previewPaths: string[] = [];
+    if (job.previewImagePaths) {
+      try {
+        previewPaths = JSON.parse(job.previewImagePaths);
+      } catch (parseError) {
+        this.logger.warn(`Failed to parse preview paths for job ${id}: ${parseError}`);
+        previewPaths = [];
+      }
+    }
 
     // Get the requested preview path (1-indexed to 0-indexed)
     const previewPath = previewPaths[previewIndex - 1];
@@ -682,8 +690,16 @@ export class QueueController {
       throw new BadRequestException(`Failed to capture preview: ${errorMessage}`);
     }
 
-    // Update job with new preview path
-    const existingPaths: string[] = job.previewImagePaths ? JSON.parse(job.previewImagePaths) : [];
+    // MEDIUM #8 FIX: Safe JSON parsing for existing preview paths
+    let existingPaths: string[] = [];
+    if (job.previewImagePaths) {
+      try {
+        existingPaths = JSON.parse(job.previewImagePaths);
+      } catch (parseError) {
+        this.logger.warn(`Failed to parse existing preview paths for job ${id}: ${parseError}`);
+        existingPaths = [];
+      }
+    }
 
     // Add new manual preview path to existing array
     const updatedPaths = [...existingPaths, manualPreviewPath];

@@ -823,6 +823,8 @@ model Job {
   @@index([stage, healthStatus, priority, createdAt]) // PERF AUDIT: Composite for queue claim with health filtering
   @@index([libraryId, stage, isBlacklisted]) // PERF AUDIT: Composite for library scans
   @@index([nodeId, stage, updatedAt]) // PERF AUDIT: Composite for stuck job detection
+  @@index([lastProgressUpdate]) // PERF AUDIT ROUND 4: For resume tracking queries
+  @@index([lastHeartbeat]) // PERF AUDIT ROUND 4: For heartbeat validation queries
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs

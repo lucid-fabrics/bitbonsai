@@ -829,7 +829,12 @@ export class QueueService implements OnModuleInit {
     // CRITICAL #8 FIX: Collect transfers outside transaction to prevent running on rollback
     const maxAttempts = 5;
     let attempt = 0;
-    const pendingTransfers: Array<{ jobId: string; filePath: string; sourceNode: any; targetNode: any }> = [];
+    const pendingTransfers: Array<{
+      jobId: string;
+      filePath: string;
+      sourceNode: any;
+      targetNode: any;
+    }> = [];
 
     while (attempt < maxAttempts) {
       attempt++;
@@ -981,9 +986,17 @@ export class QueueService implements OnModuleInit {
           setImmediate(() => {
             for (const transfer of pendingTransfers) {
               this.fileTransferService
-                .transferFile(transfer.jobId, transfer.filePath, transfer.sourceNode, transfer.targetNode)
+                .transferFile(
+                  transfer.jobId,
+                  transfer.filePath,
+                  transfer.sourceNode,
+                  transfer.targetNode
+                )
                 .catch((error) => {
-                  this.logger.error(`Background file transfer failed for job ${transfer.jobId}:`, error);
+                  this.logger.error(
+                    `Background file transfer failed for job ${transfer.jobId}:`,
+                    error
+                  );
                 });
             }
           });

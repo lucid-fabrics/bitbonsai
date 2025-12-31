@@ -274,7 +274,14 @@ export class MediaStatsService {
         throw new Error(`ffprobe exited with code ${result.status}: ${result.stderr}`);
       }
 
-      const data = JSON.parse(result.stdout);
+      // MEDIUM #8 FIX: Safe JSON parsing with try-catch
+      let data: any;
+      try {
+        data = JSON.parse(result.stdout);
+      } catch (parseError) {
+        throw new Error(`Failed to parse ffprobe output: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`);
+      }
+
       const codec = data.streams?.[0]?.codec_name?.toLowerCase() || 'unknown';
       const bitrate = parseInt(data.streams?.[0]?.bit_rate || '0', 10);
       const size = statSync(filePath).size;
