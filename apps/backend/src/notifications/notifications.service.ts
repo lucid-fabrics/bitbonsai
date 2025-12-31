@@ -153,4 +153,12 @@ export class NotificationsService {
     this.notifications.clear();
     this.logger.log(`🗑️  Cleared all notifications (${count} total)`);
   }
+
+  /**
+   * HIGH #26 FIX: Cleanup on module destruction
+   */
+  async onModuleDestroy(): Promise<void> {
+    this.notifications.clear();
+    this.logger.log('Notifications service destroyed - cleared all notifications');
+  }
 }
