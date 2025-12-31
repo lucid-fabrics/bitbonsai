@@ -38,6 +38,11 @@ services:
       - JWT_SECRET=th0gKVNxk7RWAaB8jHkBQ+E5TYFlg2ChbbR/ntTI0i4=
       - ADMIN_PASSWORD=12rIYlY8VxiooyMkHtu-1XdDgCOY-s7C
       - ENCRYPTION_KEY=VXwrVvc2qvR4OEvuHy7aGxcJzIgcPY53M0FOY4PaquI=
+      # Patreon Integration
+      - PATREON_CLIENT_ID=8bmOLWHpSMhbL2zihM_5THar_Ge06rkxwXltwDeKqrdyP8f8YiM2N1u_GN0Wu_YK
+      - PATREON_CLIENT_SECRET=IelRN-Fhu5zWqOvu_U-Gqq6mP1IkqkbIn76pWn0PfEcbRHHQfuoQRnSdGiHoUfMu
+      - PATREON_WEBHOOK_SECRET=placeholder_webhook_secret
+      - PATREON_REDIRECT_URI=http://192.168.1.100:3100/api/v1/patreon/callback
       # PERF: Use Unraid cache pool (SSD) for encoding temp files for faster I/O
       - ENCODING_TEMP_PATH=/cache
     volumes:

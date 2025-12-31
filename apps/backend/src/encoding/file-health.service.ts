@@ -148,6 +148,10 @@ export class FileHealthService {
       });
 
       ffprobe.on('close', (code) => {
+        // Clean up streams to prevent memory leaks
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+
         try {
           const result = { exitCode: code || 0, stdout, stderr };
 
@@ -182,6 +186,9 @@ export class FileHealthService {
       });
 
       ffprobe.on('error', (error) => {
+        // Clean up streams on error
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
         reject(error);
       });
     });
@@ -341,7 +348,24 @@ export class FileHealthService {
         stderr += data.toString();
       });
 
+      // Timeout after 30 seconds (shouldn't take that long for 10 seconds)
+      const timeoutId = setTimeout(() => {
+        try {
+          ffmpeg.kill('SIGKILL');
+        } catch {
+          // Ignore errors if already dead
+        }
+        resolve({
+          success: false,
+          error: 'Test decode timed out after 30 seconds',
+        });
+      }, 30000);
+
       ffmpeg.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stdout?.destroy();
+        ffmpeg.stderr?.destroy();
+
         if (code === 0) {
           resolve({ success: true });
         } else {
@@ -369,24 +393,14 @@ export class FileHealthService {
       });
 
       ffmpeg.on('error', (error) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stdout?.destroy();
+        ffmpeg.stderr?.destroy();
         resolve({
           success: false,
           error: `Failed to run ffmpeg: ${error.message}`,
         });
       });
-
-      // Timeout after 30 seconds (shouldn't take that long for 10 seconds)
-      setTimeout(() => {
-        try {
-          ffmpeg.kill('SIGKILL');
-        } catch {
-          // Ignore errors if already dead
-        }
-        resolve({
-          success: false,
-          error: 'Test decode timed out after 30 seconds',
-        });
-      }, 30000);
     });
   }
 }

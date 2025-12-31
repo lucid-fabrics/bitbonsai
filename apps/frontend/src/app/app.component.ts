@@ -144,14 +144,12 @@ export class AppComponent implements OnInit {
       )
       .subscribe((event: NavigationEnd) => {
         const url = event.urlAfterRedirects;
-        this.showLayout.set(url !== '/login' && url !== '/setup' && url !== '/node-setup');
+        this.showLayout.set(!this.isPublicRoute(url));
       });
 
     // Set initial value based on current route
     const currentUrl = this.router.url;
-    this.showLayout.set(
-      currentUrl !== '/login' && currentUrl !== '/setup' && currentUrl !== '/node-setup'
-    );
+    this.showLayout.set(!this.isPublicRoute(currentUrl));
 
     // Fetch current node information only when authenticated AND not on setup/node-setup routes
     // This is used for route guards and UI restrictions based on node role
@@ -179,5 +177,14 @@ export class AppComponent implements OnInit {
           // The user will need to register a node first
         },
       });
+  }
+
+  /**
+   * Check if URL is a public route (login, setup, node-setup)
+   * Handles URLs with query params like /login?returnUrl=/overview
+   */
+  private isPublicRoute(url: string): boolean {
+    const path = url.split('?')[0]; // Remove query params
+    return path === '/login' || path === '/setup' || path === '/node-setup';
   }
 }

@@ -70,6 +70,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   // AUDIT #2 ISSUE #24 FIX: Store watchdog interval for cleanup
   private watchdogIntervalId?: NodeJS.Timeout;
 
+  // CRITICAL #5 FIX: Track ALL active intervals globally to prevent leaks on hot reload
+  private static activeIntervals = new Set<NodeJS.Timeout>();
+
   // Configuration
   private readonly MAX_RETRIES = 3;
 
@@ -280,16 +283,29 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * AUDIT #2 ISSUE #24 FIX: Cleanup on module destruction
+   * CRITICAL #5 FIX: Clear ALL tracked intervals to prevent leaks on hot reload
    * Prevents memory leak from watchdog interval
    */
   async onModuleDestroy() {
     this.logger.log('🛑 Shutting down encoding processor...');
 
-    // Clear watchdog interval
+    // Clear current instance interval
     if (this.watchdogIntervalId) {
       clearInterval(this.watchdogIntervalId);
+      EncodingProcessorService.activeIntervals.delete(this.watchdogIntervalId);
       this.watchdogIntervalId = undefined;
       this.logger.log('✓ Watchdog interval cleared');
+    }
+
+    // CRITICAL #5 FIX: Safety - clear ALL tracked intervals (hot reload protection)
+    if (EncodingProcessorService.activeIntervals.size > 0) {
+      this.logger.warn(
+        `⚠️ Clearing ${EncodingProcessorService.activeIntervals.size} stale interval(s) from previous session`
+      );
+      for (const interval of EncodingProcessorService.activeIntervals) {
+        clearInterval(interval);
+      }
+      EncodingProcessorService.activeIntervals.clear();
     }
 
     // Note: Worker cleanup happens naturally when workers detect isRunning=false
@@ -601,10 +617,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // AUDIT #2 ISSUE #24 FIX: Clear existing interval if any (hot reload protection)
     if (this.watchdogIntervalId) {
       clearInterval(this.watchdogIntervalId);
+      EncodingProcessorService.activeIntervals.delete(this.watchdogIntervalId);
     }
 
-    // AUDIT #2 ISSUE #24 FIX: Store interval ID for cleanup
-    this.watchdogIntervalId = setInterval(async () => {
+    // CRITICAL #5 FIX: Track interval globally to prevent leaks on hot reload
+    const intervalId = setInterval(async () => {
       try {
         // UX PHILOSOPHY: Auto-cleanup zombie FFmpeg processes (self-healing)
         // This eliminates the need for manual "Kill Zombies" button in debug UI
@@ -717,6 +734,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         this.logger.error('Watchdog check failed:', error);
       }
     }, 60 * 1000); // Every 60 seconds
+
+    // CRITICAL #5 FIX: Store interval ID and track globally
+    this.watchdogIntervalId = intervalId;
+    EncodingProcessorService.activeIntervals.add(intervalId);
   }
 
   /**
@@ -971,7 +992,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         await Promise.race([existingLock, timeoutPromise]);
       } catch (error) {
         // Timeout - force clear stale lock
-        this.logger.warn(`⚠️ CRITICAL #28 FIX: Pool lock timeout for node ${nodeId}, clearing stale lock`);
+        this.logger.warn(
+          `⚠️ CRITICAL #28 FIX: Pool lock timeout for node ${nodeId}, clearing stale lock`
+        );
         this.poolLocks.delete(nodeId);
       }
     }
@@ -1003,6 +1026,23 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * CRITICAL #4 FIX: Execute function with pool lock, ensuring release on error
+   *
+   * @param nodeId - Node unique identifier
+   * @param fn - Function to execute while holding lock
+   * @returns Result of function execution
+   * @private
+   */
+  private async withPoolLock<T>(nodeId: string, fn: () => Promise<T>): Promise<T> {
+    await this.acquirePoolLock(nodeId);
+    try {
+      return await fn();
+    } finally {
+      this.releasePoolLock(nodeId); // ALWAYS release, even on error
+    }
+  }
+
+  /**
    * Start a worker pool for a node
    *
    * Starts multiple concurrent workers for a single node.
@@ -1018,10 +1058,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     nodeId: string,
     maxWorkers = this.DEFAULT_WORKERS_PER_NODE
   ): Promise<number> {
-    // ISSUE #10 FIX: Acquire lock before modifying pool
-    await this.acquirePoolLock(nodeId);
-
-    try {
+    // CRITICAL #4 FIX: Use withPoolLock to ensure release on error
+    return await this.withPoolLock(nodeId, async () => {
       // Validate maxWorkers
       const validatedMaxWorkers = Math.min(Math.max(1, maxWorkers), this.MAX_WORKERS_PER_NODE);
 
@@ -1085,10 +1123,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       );
 
       return workersStarted;
-    } finally {
-      // ISSUE #10 FIX: Always release lock, even on error
-      this.releasePoolLock(nodeId);
-    }
+    });
   }
 
   /**
@@ -1158,9 +1193,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   async stopWorker(nodeId: string, workerId?: string): Promise<void> {
     // ISSUE #10 FIX: Acquire lock before modifying pool
-    await this.acquirePoolLock(nodeId);
-
-    try {
+    // CRITICAL #4 & #6 FIX: Use withPoolLock + snapshot IDs to avoid concurrent modification
+    await this.withPoolLock(nodeId, async () => {
       const pool = this.workerPools.get(nodeId);
 
       if (!pool) {
@@ -1197,15 +1231,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         this.workers.delete(workerId);
         pool.activeWorkers.delete(workerId);
       } else {
-        // Stop all workers for this node
-        this.logger.log(`Stopping all ${pool.activeWorkers.size} worker(s) for node ${nodeId}...`);
+        // CRITICAL #6 FIX: Snapshot worker IDs to avoid concurrent modification during iteration
+        const workerIds = Array.from(pool.activeWorkers);
+        this.logger.log(`Stopping all ${workerIds.length} worker(s) for node ${nodeId}...`);
 
         const shutdownPromises: Promise<void>[] = [];
 
-        for (const wId of pool.activeWorkers) {
+        // Signal all workers to stop
+        for (const wId of workerIds) {
           const worker = this.workers.get(wId);
           if (worker) {
-            // Signal worker to stop
             worker.isRunning = false;
 
             if (worker.currentJobId) {
@@ -1214,7 +1249,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
               );
             }
 
-            shutdownPromises.push(worker.shutdownPromise!);
+            if (worker.shutdownPromise) {
+              shutdownPromises.push(worker.shutdownPromise);
+            }
           }
         }
 
@@ -1222,19 +1259,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         await Promise.all(shutdownPromises);
         this.logger.log(`All workers for node ${nodeId} stopped gracefully`);
 
-        // Clean up worker states
-        for (const wId of pool.activeWorkers) {
+        // NOW safe to delete (no concurrent modification)
+        for (const wId of workerIds) {
           this.workers.delete(wId);
+          pool.activeWorkers.delete(wId);
         }
 
         // Clear the pool
-        pool.activeWorkers.clear();
         this.workerPools.delete(nodeId);
       }
-    } finally {
-      // ISSUE #10 FIX: Always release lock, even on error
-      this.releasePoolLock(nodeId);
-    }
+    });
   }
 
   /**

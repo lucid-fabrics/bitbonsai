@@ -1,6 +1,6 @@
+import { LicenseTier, PaymentProvider } from '.prisma/license-client';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { LicenseTier, PaymentProvider } from '.prisma/license-client';
 import * as crypto from 'crypto';
 import { SecurityLoggerService } from '../../security/security-logger.service';
 import { WebhookService } from '../_services/webhook.service';

@@ -347,25 +347,32 @@ export class HardwareDetectionService {
         _stderr += data.toString();
       });
 
+      // Set timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        child.kill();
+        resolve(null);
+      }, 5000); // 5 second timeout
+
       child.on('error', (error) => {
         // Command not found or execution error
+        clearTimeout(timeoutId);
+        child.stdout?.destroy();
+        child.stderr?.destroy();
         this.logger.debug(`Command '${command}' failed: ${error.message}`);
         resolve(null);
       });
 
       child.on('close', (code) => {
+        clearTimeout(timeoutId);
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+
         if (code === 0 && stdout.trim()) {
           resolve(stdout.trim());
         } else {
           resolve(null);
         }
       });
-
-      // Set timeout to prevent hanging
-      setTimeout(() => {
-        child.kill();
-        resolve(null);
-      }, 5000); // 5 second timeout
     });
   }
 }

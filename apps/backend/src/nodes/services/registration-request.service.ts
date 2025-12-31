@@ -19,6 +19,7 @@ import {
 interface NodeRegistrationRequestWithApiKey extends NodeRegistrationRequest {
   apiKey?: string;
 }
+
 import { randomBytes } from 'crypto';
 import * as os from 'os';
 import { NotificationsGateway } from '../../notifications/notifications.gateway';

@@ -254,16 +254,16 @@ export class FileTransferService {
               }
             }
 
-            // CRITICAL FIX #3: Skip update if another update is in progress (prevents race)
-            if (progressState.pendingUpdate) {
+            // CRITICAL #3 FIX: Atomic check-and-set to prevent race condition
+            const wasUpdating = progressState.pendingUpdate;
+            progressState.pendingUpdate = true;
+
+            if (wasUpdating) {
               this.logger.debug(
                 `Skipping progress update for job ${jobId} - another update is in progress`
               );
               return;
             }
-
-            // Mark update as in progress
-            progressState.pendingUpdate = true;
 
             // Update job progress (non-blocking to avoid slowing transfer)
             this.prisma.job

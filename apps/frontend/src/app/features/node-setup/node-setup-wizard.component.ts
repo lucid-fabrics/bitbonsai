@@ -184,13 +184,11 @@ export class NodeSetupWizardComponent implements OnInit {
               this.startPollingPairingStatus(pendingRequestId);
             } else {
               // Request already processed or expired - clear stale state
-              console.log('[Setup] Clearing stale pairing state (status:', request.status, ')');
               this.clearPendingPairingState();
             }
           },
           error: () => {
             // Request not found or network error - clear stale state
-            console.log('[Setup] Clearing stale pairing state (request not found)');
             this.clearPendingPairingState();
           },
         });
@@ -401,12 +399,10 @@ export class NodeSetupWizardComponent implements OnInit {
     mainNodeInfo?: { id: string; name: string };
     childNodeId?: string;
   }): void {
-    console.log('[Setup] handlePairingApproved called with response:', response);
     this.stopPairingTimer();
     this.clearPendingPairingState();
 
     if (response.connectionToken && response.mainNodeInfo) {
-      console.log('[Setup] Connection token and mainNodeInfo present, proceeding with setup...');
       this.connectedMainNode.set(response.mainNodeInfo);
 
       // Store the approved node ID for capability testing
@@ -414,17 +410,13 @@ export class NodeSetupWizardComponent implements OnInit {
         this.approvedNodeId.set(response.childNodeId);
       }
 
-      console.log('[Setup] Calling completeSetup() to mark backend as complete...');
-
       // Complete setup (save connection token and mark backend setup as complete)
       this.discoveryService
         .completeSetup(response.connectionToken, response.mainNodeInfo)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
-            console.log('[Setup] Backend setup marked as complete successfully');
-
-            // NEW: Transition to capability testing instead of going to Complete
+            // Transition to capability testing instead of going to Complete
             if (this.approvedNodeId()) {
               this.currentStep.set(WizardStep.CapabilityTest);
             } else {
@@ -434,7 +426,6 @@ export class NodeSetupWizardComponent implements OnInit {
           },
           error: (error) => {
             // If setup finalization fails, show error
-            console.error('[Setup] Failed to mark backend setup as complete:', error);
             this.handleError(error, 'Failed to finalize setup. Please refresh and try again.');
           },
         });
@@ -496,13 +487,10 @@ export class NodeSetupWizardComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          console.log('[Polling] Received pairing status update:', response);
-          console.log('[Polling] Status:', response.status, 'Expected:', PairingStatus.APPROVED);
           this.pairingStatus.set(response.status);
 
           // Handle status changes
           if (response.status === PairingStatus.APPROVED) {
-            console.log('[Polling] ✅ Status is APPROVED, calling handlePairingApproved...');
             this.handlePairingApproved(response);
           } else if (response.status === PairingStatus.REJECTED) {
             this.handlePairingRejected(response);
@@ -511,12 +499,9 @@ export class NodeSetupWizardComponent implements OnInit {
             this.errorMessage.set(
               'Pairing request timed out. Please try again or contact the main node administrator.'
             );
-          } else {
-            console.log('[Polling] ⏳ Still waiting, status is:', response.status);
           }
         },
         error: (error) => {
-          console.error('[Polling] ❌ Error polling pairing status:', error);
           this.stopPairingTimer();
           this.handleError(error, 'Error checking pairing status. Please try again.');
         },
@@ -562,7 +547,6 @@ export class NodeSetupWizardComponent implements OnInit {
    * Transitions to results screen
    */
   handleCapabilityTestComplete(results: CapabilityTestResult): void {
-    console.log('[Setup] Capability test complete:', results);
     this.capabilityTestResults.set(results);
     this.currentStep.set(WizardStep.CapabilityResults);
   }
@@ -579,13 +563,10 @@ export class NodeSetupWizardComponent implements OnInit {
    * Finalizes setup and proceeds to completion screen
    */
   handleCapabilityResultsComplete(config: { maxWorkers: number; cpuLimit: number }): void {
-    console.log('[Setup] Capability results complete with config:', config);
-
     const mainNodeUrl = this.discoveryService.getMainNodeUrl();
     const nodeId = this.approvedNodeId();
 
     if (!mainNodeUrl || !nodeId) {
-      console.error('[Setup] Cannot save config: missing main node URL or node ID');
       this.errorMessage.set('Configuration save failed: missing connection information');
       return;
     }
@@ -601,27 +582,22 @@ export class NodeSetupWizardComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          console.log('[Setup] Node configuration saved successfully');
-
           // Fetch hardware detection for completion screen
           this.discoveryService
             .getHardwareDetection()
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (hardware) => {
-                console.log('[Setup] Hardware detection complete:', hardware);
                 this.hardwareDetection.set(hardware);
                 this.currentStep.set(WizardStep.Complete);
               },
-              error: (err) => {
+              error: () => {
                 // Even if hardware detection fails, proceed to complete
-                console.warn('[Setup] Hardware detection failed, proceeding anyway:', err);
                 this.currentStep.set(WizardStep.Complete);
               },
             });
         },
         error: (err) => {
-          console.error('[Setup] Failed to save node configuration:', err);
           this.errorMessage.set(
             `Failed to save configuration: ${err?.error?.message || err?.message || 'Unknown error'}`
           );

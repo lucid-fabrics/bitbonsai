@@ -3668,6 +3668,23 @@
       box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
     }
   }
+
+  &.local {
+    background: rgba(168, 85, 247, 0.15); // Purple for local/direct mount
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+
+    i {
+      color: #c084fc;
+    }
+
+    &:hover {
+      background: rgba(168, 85, 247, 0.25);
+      border-color: rgba(168, 85, 247, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(168, 85, 247, 0.2);
+    }
+  }
 }
 
 // Size & Compression Display

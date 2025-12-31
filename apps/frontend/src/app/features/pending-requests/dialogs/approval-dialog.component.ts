@@ -34,7 +34,9 @@ export interface ApprovalDialogData {
     <div class="dialog-container">
       <div class="dialog-header">
         <h2 class="dialog-header__title">{{ dialogTitle() }}</h2>
-        <button class="close-btn" (click)="dialogRef.close()" *ngIf="!isApproving()">×</button>
+        @if (!isApproving()) {
+          <button class="close-btn" (click)="dialogRef.close()">×</button>
+        }
       </div>
 
       <div class="dialog-body">
@@ -87,18 +89,22 @@ export interface ApprovalDialogData {
                 <span class="info-item__label">Disk:</span>
                 <span class="info-item__value">{{ data.request.hardwareSpecs.diskGb }} GB</span>
               </div>
-              <div class="info-item" *ngIf="data.request.hardwareSpecs.gpuModel">
-                <span class="info-item__label">GPU:</span>
-                <span class="info-item__value">{{ data.request.hardwareSpecs.gpuModel }}</span>
-              </div>
+              @if (data.request.hardwareSpecs.gpuModel) {
+                <div class="info-item">
+                  <span class="info-item__label">GPU:</span>
+                  <span class="info-item__value">{{ data.request.hardwareSpecs.gpuModel }}</span>
+                </div>
+              }
             </div>
           </div>
 
           <!-- Message from child node -->
-          <div class="info-section" *ngIf="data.request.message">
-            <h3>Message</h3>
-            <p class="message">{{ data.request.message }}</p>
-          </div>
+          @if (data.request.message) {
+            <div class="info-section">
+              <h3>Message</h3>
+              <p class="message">{{ data.request.message }}</p>
+            </div>
+          }
 
           <!-- Note about configuration -->
           <div class="info-section note-section">

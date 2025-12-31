@@ -35,10 +35,7 @@ export class WebhookService {
     rawPayload: Record<string, unknown>;
   }): Promise<WebhookResult> {
     // Check if webhook event already processed (idempotency)
-    const existing = await this.findExistingWebhookEvent(
-      params.provider,
-      params.providerEventId
-    );
+    const existing = await this.findExistingWebhookEvent(params.provider, params.providerEventId);
     if (existing) {
       this.logger.log(
         `Webhook event ${params.providerEventId} already processed (status: ${existing.status}), skipping`
@@ -101,10 +98,7 @@ export class WebhookService {
     rawPayload: Record<string, unknown>;
   }): Promise<WebhookResult> {
     // Check if webhook event already processed (idempotency)
-    const existing = await this.findExistingWebhookEvent(
-      params.provider,
-      params.providerEventId
-    );
+    const existing = await this.findExistingWebhookEvent(params.provider, params.providerEventId);
     if (existing) {
       this.logger.log(
         `Webhook event ${params.providerEventId} already processed (status: ${existing.status}), skipping`
@@ -175,10 +169,7 @@ export class WebhookService {
     rawPayload: Record<string, unknown>;
   }): Promise<WebhookResult> {
     // Check if webhook event already processed (idempotency)
-    const existing = await this.findExistingWebhookEvent(
-      params.provider,
-      params.providerEventId
-    );
+    const existing = await this.findExistingWebhookEvent(params.provider, params.providerEventId);
     if (existing) {
       this.logger.log(
         `Webhook event ${params.providerEventId} already processed (status: ${existing.status}), skipping`
@@ -230,10 +221,7 @@ export class WebhookService {
     }
   }
 
-  private async findExistingWebhookEvent(
-    provider: PaymentProvider,
-    providerEventId: string
-  ) {
+  private async findExistingWebhookEvent(provider: PaymentProvider, providerEventId: string) {
     return this.prisma.webhookEvent.findUnique({
       where: {
         provider_providerEventId: {

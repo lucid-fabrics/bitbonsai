@@ -50,9 +50,11 @@ export interface RejectionDialogData {
             class="form-control"
             [class.error]="showError && !rejectionReason.trim()"
           ></textarea>
-          <small *ngIf="showError && !rejectionReason.trim()" class="error-text">
-            Rejection reason is required
-          </small>
+          @if (showError && !rejectionReason.trim()) {
+            <small class="error-text">
+              Rejection reason is required
+            </small>
+          }
         </div>
 
         <p class="info-text">

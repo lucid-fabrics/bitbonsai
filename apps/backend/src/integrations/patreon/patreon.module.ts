@@ -2,8 +2,8 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PatreonController } from './patreon.controller';
-import { PatreonTokenRefreshTask } from './patreon-token-refresh.task';
 import { PatreonService } from './patreon.service';
+import { PatreonTokenRefreshTask } from './patreon-token-refresh.task';
 
 /**
  * PatreonModule
