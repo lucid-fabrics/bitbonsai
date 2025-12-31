@@ -102,6 +102,8 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.bonjour.destroy();
       this.bonjour = null;
     }
+    // HIGH #25 FIX: Clear discovered nodes map on shutdown
+    this.discoveredNodes.clear();
   }
 
   /**
