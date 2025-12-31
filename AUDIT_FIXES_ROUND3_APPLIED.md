@@ -1,9 +1,9 @@
 # Audit Fixes Round 3 - Applied Fixes
 
 **Date:** 2025-12-30
-**Status:** IN PROGRESS (16/43 fixes applied - ALL CRITICAL COMPLETE ✅)
+**Status:** IN PROGRESS (20/43 fixes applied - ALL CRITICAL COMPLETE ✅)
 
-## COMPLETED FIXES (16)
+## COMPLETED FIXES (20)
 
 ### ✅ CRITICAL #1: Job Claiming - Sleep Inside Transaction
 **File:** `apps/backend/src/queue/queue.service.ts:825-993`
@@ -94,11 +94,44 @@
 - Prevents memory leak even if loop crashes unexpectedly
 - Ensures shutdown promise always resolved
 
+### ✅ HIGH #14: Orphaned SSH Processes
+**File:** `apps/backend/src/queue/services/file-transfer.service.ts:336-431`
+**Fix Applied:** Wrapped executeRemoteCommand in try-finally with cleanup
+- Cleanup function kills SSH process and destroys streams
+- Prevents orphaned SSH processes on exception
+- Guarantees resource cleanup
+
+### ✅ HIGH #15: Rsync Stream Leak on Abort
+**File:** `apps/backend/src/queue/services/file-transfer.service.ts:217-231`
+**Fix Applied:** Added abort event handler with cleanup
+- Cleanup function destroys stdout/stderr streams
+- Kills rsync process on abort
+- Prevents stream memory leaks
+
+### ✅ HIGH #17: Missing Index on (nodeId, stage, updatedAt)
+**File:** `prisma/schema.prisma:824`
+**Status:** Already present in schema
+- Composite index exists for stuck job detection
+- No changes needed
+
+### ✅ HIGH #18: Promise.all() Fails on Any Rejection
+**File:** `apps/backend/src/encoding/ffmpeg.service.ts:321`
+**Status:** Already using Promise.allSettled
+- onModuleDestroy uses Promise.allSettled for kill operations
+- Handles failures gracefully
+
+### ✅ HIGH #19: No onModuleDestroy for FFmpeg Service
+**File:** `apps/backend/src/encoding/ffmpeg.service.ts:269-328`
+**Status:** Already implemented
+- Kills all active FFmpeg processes on shutdown
+- Uses SIGTERM then SIGKILL
+- Clears all tracking maps
+
 ---
 
-## PENDING FIXES (27)
+## PENDING FIXES (23)
 
-### HIGH PRIORITY (15)
+### HIGH PRIORITY (11)
 - **#14-27**: See AUDIT_FIXES_ROUND3.md for details
   - SSH process orphans
   - Rsync stream leaks
