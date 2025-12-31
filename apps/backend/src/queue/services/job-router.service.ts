@@ -107,7 +107,9 @@ export class JobRouterService {
 
       // PENALTY: Active job load
       const activeJobs = node._count.jobs;
-      const loadPercentage = (activeJobs / node.maxWorkers) * 100;
+      // MEDIUM #2 FIX: Prevent division by zero
+      const maxWorkers = Math.max(node.maxWorkers, 1);
+      const loadPercentage = (activeJobs / maxWorkers) * 100;
       const loadPenalty = Math.floor(loadPercentage * 2); // 2 points per 1% load
       score -= loadPenalty;
       reasons.push(`Load: ${activeJobs}/${node.maxWorkers} workers (-${loadPenalty} points)`);
