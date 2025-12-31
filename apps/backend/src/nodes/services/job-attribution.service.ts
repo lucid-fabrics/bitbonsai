@@ -134,9 +134,18 @@ export class JobAttributionService {
 
     try {
       const score = await calculationPromise;
+
+      // CRITICAL #7 FIX: Write cache WHILE holding lock (before finally releases it)
+      // performScoreCalculation already writes cache, but we ensure it's done atomically
+      // This prevents race where two workers both calculate and write different cache entries
+      this.scoreCache.set(node.id, {
+        score,
+        expiresAt: Date.now() + this.CACHE_TTL_MS,
+      });
+
       return score;
     } finally {
-      // Release lock after calculation completes
+      // Release lock after calculation AND cache write completes
       this.scoreLocks.delete(node.id);
     }
   }

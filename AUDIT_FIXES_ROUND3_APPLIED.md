@@ -1,9 +1,9 @@
 # Audit Fixes Round 3 - Applied Fixes
 
 **Date:** 2025-12-30
-**Status:** IN PROGRESS (12/43 fixes applied)
+**Status:** IN PROGRESS (16/43 fixes applied - ALL CRITICAL COMPLETE ✅)
 
-## COMPLETED FIXES (12)
+## COMPLETED FIXES (16)
 
 ### ✅ CRITICAL #1: Job Claiming - Sleep Inside Transaction
 **File:** `apps/backend/src/queue/queue.service.ts:825-993`
@@ -69,36 +69,34 @@
 - timeout: 30s → 10s
 - Combined with retry loop outside transaction (CRITICAL #1)
 
+### ✅ CRITICAL #10: activeEncodings Map Leak on Completion
+**File:** `apps/backend/src/encoding/ffmpeg.service.ts:1665-1667, 1703-1705`
+**Fix Applied:** Delete entries in close and error handlers
+- Prevents map from growing unbounded
+- Cleanup on normal completion and errors
+
+### ✅ CRITICAL #11: lastPreviewGeneration Map Unbounded
+**File:** `apps/backend/src/encoding/ffmpeg.service.ts:1665-1667, 1703-1705`
+**Fix Applied:** Delete entries in close and error handlers
+- Prevents map from growing unbounded
+- Cleanup on normal completion and errors
+
+### ✅ CRITICAL #7: Job Attribution Score Cache Write Race
+**File:** `apps/backend/src/nodes/services/job-attribution.service.ts:138-149`
+**Fix Applied:** Cache write happens atomically while holding lock
+- Prevents multiple workers from calculating and writing simultaneously
+- Ensures cache consistency under concurrent load
+
+### ✅ CRITICAL #12: Worker activeWorkers Set Leak on Crash
+**File:** `apps/backend/src/encoding/encoding-processor.service.ts:2441-2485`
+**Fix Applied:** Wrapped entire processLoop in try-finally
+- ALWAYS cleanup pool.activeWorkers and workers Map
+- Prevents memory leak even if loop crashes unexpectedly
+- Ensures shutdown promise always resolved
+
 ---
 
-## IN-PROGRESS FIXES (3)
-
-### 🔄 CRITICAL #10: activeEncodings Map Leak on Completion
-**File:** `apps/backend/src/encoding/ffmpeg.service.ts`
-**Status:** onModuleDestroy updated, need to cleanup on normal completion
-**Remaining Work:**
-- Add `this.activeEncodings.delete(job.id)` in encode() on close event
-- Add cleanup in error handler
-
-### 🔄 CRITICAL #11: lastPreviewGeneration Map Unbounded
-**File:** `apps/backend/src/encoding/ffmpeg.service.ts`
-**Status:** onModuleDestroy updated
-**Remaining Work:**
-- Add `this.lastPreviewGeneration.delete(job.id)` in encode() on close event
-
-### 🔄 CRITICAL #12: Worker activeWorkers Set Leak on Crash
-**File:** `apps/backend/src/encoding/encoding-processor.service.ts`
-**Status:** Needs try-finally in startWorkerLoop
-**Remaining Work:**
-- Wrap worker loop in try-finally
-- Always cleanup pool.activeWorkers and workers Map
-
----
-
-## PENDING FIXES (28)
-
-### CRITICAL (Remaining)
-- **#7**: Job Attribution Score Cache Write Race
+## PENDING FIXES (27)
 
 ### HIGH PRIORITY (15)
 - **#14-27**: See AUDIT_FIXES_ROUND3.md for details

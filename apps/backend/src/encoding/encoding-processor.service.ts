@@ -2444,31 +2444,43 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log(`[${workerId}] Started processing loop`);
 
-    while (worker.isRunning) {
-      try {
-        // LOAD-BASED THROTTLING: Wait if system is overloaded before picking up new job
-        await this.waitForSystemLoad();
+    // CRITICAL #12 FIX: Wrap entire loop in try-finally to ensure cleanup always happens
+    try {
+      while (worker.isRunning) {
+        try {
+          // LOAD-BASED THROTTLING: Wait if system is overloaded before picking up new job
+          await this.waitForSystemLoad();
 
-        // Check if worker was stopped while waiting
-        if (!worker.isRunning) break;
+          // Check if worker was stopped while waiting
+          if (!worker.isRunning) break;
 
-        const job = await this.processNextJob(workerId);
+          const job = await this.processNextJob(workerId);
 
-        if (!job) {
-          // No job available, wait before polling again
+          if (!job) {
+            // No job available, wait before polling again
+            await this.sleep(5000);
+          }
+        } catch (error) {
+          this.logger.error(`[${workerId}] Error in processing loop:`, error);
           await this.sleep(5000);
         }
-      } catch (error) {
-        this.logger.error(`[${workerId}] Error in processing loop:`, error);
-        await this.sleep(5000);
       }
-    }
 
-    this.logger.log(`[${workerId}] Stopped processing loop`);
+      this.logger.log(`[${workerId}] Stopped processing loop`);
+    } finally {
+      // CRITICAL #12 FIX: ALWAYS cleanup, even if loop crashes unexpectedly
+      const pool = this.workerPools.get(worker.nodeId);
+      if (pool) {
+        pool.activeWorkers.delete(workerId);
+      }
+      this.workers.delete(workerId);
 
-    // Resolve shutdown promise if it exists
-    if (worker.shutdownResolve) {
-      worker.shutdownResolve();
+      // Resolve shutdown promise if it exists
+      if (worker.shutdownResolve) {
+        worker.shutdownResolve();
+      }
+
+      this.logger.debug(`[${workerId}] Worker cleanup complete in finally block`);
     }
   }
 

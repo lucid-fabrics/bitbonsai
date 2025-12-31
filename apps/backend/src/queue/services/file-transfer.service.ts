@@ -214,6 +214,22 @@ export class FileTransferService {
         signal: abortController.signal,
       });
 
+      // HIGH #15 FIX: Cleanup function to destroy streams on abort
+      const cleanup = () => {
+        this.activeTransfers.delete(jobId);
+        rsync.stdout?.destroy();
+        rsync.stderr?.destroy();
+        if (!rsync.killed) {
+          rsync.kill('SIGKILL');
+        }
+      };
+
+      // HIGH #15 FIX: Register abort handler to cleanup streams
+      abortController.signal.addEventListener('abort', () => {
+        this.logger.log(`Transfer aborted for job ${jobId}, cleaning up rsync process`);
+        cleanup();
+      });
+
       let lastProgress = 0;
       // CRITICAL FIX #3: Atomic error counter using object property (not local variable)
       // This prevents race conditions when multiple progress updates arrive simultaneously
@@ -338,78 +354,96 @@ export class FileTransferService {
     command: string,
     timeoutMs = 30000
   ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const sshArgs = [
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        `root@${targetNode.ipAddress}`,
-        command,
-      ];
+    // HIGH #14 FIX: Wrap in try-finally to prevent orphaned SSH processes
+    const sshArgs = [
+      '-o',
+      'StrictHostKeyChecking=accept-new',
+      `root@${targetNode.ipAddress}`,
+      command,
+    ];
 
-      const ssh = spawn('ssh', sshArgs);
+    const ssh = spawn('ssh', sshArgs);
+    let timeout: NodeJS.Timeout | null = null;
+    let forceKillTimeout: NodeJS.Timeout | null = null;
 
-      let stdout = '';
-      let stderr = '';
-      let timedOut = false;
-      let forceKillTimeout: NodeJS.Timeout | null = null;
+    // HIGH #14 FIX: Cleanup function to ensure resources always released
+    const cleanup = () => {
+      if (timeout) clearTimeout(timeout);
+      if (forceKillTimeout) clearTimeout(forceKillTimeout);
+      if (!ssh.killed) {
+        ssh.kill('SIGKILL');
+      }
+      ssh.stdout?.destroy();
+      ssh.stderr?.destroy();
+    };
 
-      // Set timeout to kill the SSH process if it hangs
-      const timeout = setTimeout(() => {
-        timedOut = true;
-        ssh.kill('SIGTERM');
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        let stdout = '';
+        let stderr = '';
+        let timedOut = false;
 
-        // Force kill if SIGTERM doesn't work
-        forceKillTimeout = setTimeout(() => {
-          if (!ssh.killed) {
-            ssh.kill('SIGKILL');
+        // Set timeout to kill the SSH process if it hangs
+        timeout = setTimeout(() => {
+          timedOut = true;
+          ssh.kill('SIGTERM');
+
+          // Force kill if SIGTERM doesn't work
+          forceKillTimeout = setTimeout(() => {
+            if (!ssh.killed) {
+              ssh.kill('SIGKILL');
+            }
+          }, 5000);
+
+          reject(
+            new Error(
+              `SSH command timed out after ${timeoutMs}ms on ${targetNode.name} (${targetNode.ipAddress})`
+            )
+          );
+        }, timeoutMs);
+
+        ssh.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        ssh.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        ssh.on('close', (code) => {
+          clearTimeout(timeout);
+          if (forceKillTimeout) clearTimeout(forceKillTimeout);
+          ssh.stdout?.destroy();
+          ssh.stderr?.destroy();
+
+          if (timedOut) {
+            return; // Already rejected with timeout error
           }
-        }, 5000);
 
-        reject(
-          new Error(
-            `SSH command timed out after ${timeoutMs}ms on ${targetNode.name} (${targetNode.ipAddress})`
-          )
-        );
-      }, timeoutMs);
+          if (code === 0) {
+            resolve(stdout);
+          } else {
+            reject(new Error(`SSH command failed with code ${code}: ${stderr}`));
+          }
+        });
 
-      ssh.stdout.on('data', (data) => {
-        stdout += data.toString();
+        ssh.on('error', (error) => {
+          clearTimeout(timeout);
+          if (forceKillTimeout) clearTimeout(forceKillTimeout);
+          ssh.stdout?.destroy();
+          ssh.stderr?.destroy();
+
+          if (timedOut) {
+            return; // Already rejected with timeout error
+          }
+
+          reject(error);
+        });
       });
-
-      ssh.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      ssh.on('close', (code) => {
-        clearTimeout(timeout);
-        if (forceKillTimeout) clearTimeout(forceKillTimeout);
-        ssh.stdout?.destroy();
-        ssh.stderr?.destroy();
-
-        if (timedOut) {
-          return; // Already rejected with timeout error
-        }
-
-        if (code === 0) {
-          resolve(stdout);
-        } else {
-          reject(new Error(`SSH command failed with code ${code}: ${stderr}`));
-        }
-      });
-
-      ssh.on('error', (error) => {
-        clearTimeout(timeout);
-        if (forceKillTimeout) clearTimeout(forceKillTimeout);
-        ssh.stdout?.destroy();
-        ssh.stderr?.destroy();
-
-        if (timedOut) {
-          return; // Already rejected with timeout error
-        }
-
-        reject(error);
-      });
-    });
+    } finally {
+      // HIGH #14 FIX: ALWAYS cleanup, even if promise throws synchronously
+      cleanup();
+    }
   }
 
   /**
