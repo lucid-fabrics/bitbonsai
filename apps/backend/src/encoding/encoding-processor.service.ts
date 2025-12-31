@@ -1002,11 +1002,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @throws Error if lock acquisition fails after 3 retries
    * @private
    */
-  private async acquirePoolLock(
-    nodeId: string,
-    holder: string,
-    timeoutMs = 30000
-  ): Promise<void> {
+  private async acquirePoolLock(nodeId: string, holder: string, timeoutMs = 30000): Promise<void> {
     const maxRetries = 3;
     let attempt = 0;
 
@@ -1030,10 +1026,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
         // Wait for lock with timeout
         const timeoutPromise = new Promise<void>((_, reject) => {
-          setTimeout(
-            () => reject(new Error(`Pool lock timeout for node ${nodeId}`)),
-            timeoutMs
-          );
+          setTimeout(() => reject(new Error(`Pool lock timeout for node ${nodeId}`)), timeoutMs);
         });
 
         try {
@@ -1094,11 +1087,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @returns Result of function execution
    * @private
    */
-  private async withPoolLock<T>(
-    nodeId: string,
-    holder: string,
-    fn: () => Promise<T>
-  ): Promise<T> {
+  private async withPoolLock<T>(nodeId: string, holder: string, fn: () => Promise<T>): Promise<T> {
     await this.acquirePoolLock(nodeId, holder);
     try {
       return await fn();
@@ -1278,9 +1267,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // CRITICAL #7 FIX: Kill active FFmpeg process if encoding
       if (worker.currentJobId) {
-        this.logger.warn(
-          `[${workerId}] Killing orphaned FFmpeg for job ${worker.currentJobId}`
-        );
+        this.logger.warn(`[${workerId}] Killing orphaned FFmpeg for job ${worker.currentJobId}`);
 
         try {
           await this.ffmpegService.killProcess(worker.currentJobId);
@@ -1303,10 +1290,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           });
           this.logger.log(`[${workerId}] Reset job ${worker.currentJobId} to QUEUED`);
         } catch (jobError) {
-          this.logger.error(
-            `[${workerId}] Failed to reset job ${worker.currentJobId}`,
-            jobError
-          );
+          this.logger.error(`[${workerId}] Failed to reset job ${worker.currentJobId}`, jobError);
         }
       }
 

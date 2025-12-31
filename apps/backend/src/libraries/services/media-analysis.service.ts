@@ -100,7 +100,17 @@ export class MediaAnalysisService {
         };
       }
 
-      const data = JSON.parse(stdout) as FFprobeResponse;
+      // MEDIUM #8 FIX: Safe JSON parsing with try-catch
+      let data: FFprobeResponse;
+      try {
+        data = JSON.parse(stdout) as FFprobeResponse;
+      } catch (parseError) {
+        this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
+        return {
+          status: FileHealthStatus.CORRUPTED,
+          message: 'Failed to parse media file metadata',
+        };
+      }
 
       // Validate basic structure
       if (!data.format || !data.streams || data.streams.length === 0) {
@@ -188,7 +198,14 @@ export class MediaAnalysisService {
         { timeout: 10000 } // 10 second timeout per file
       );
 
-      const probeData = JSON.parse(stdout);
+      // MEDIUM #8 FIX: Safe JSON parsing with try-catch
+      let probeData: any;
+      try {
+        probeData = JSON.parse(stdout);
+      } catch (parseError) {
+        this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
+        return null;
+      }
 
       if (!probeData.streams || probeData.streams.length === 0) {
         this.logger.warn(`No video stream found in: ${filePath}`);

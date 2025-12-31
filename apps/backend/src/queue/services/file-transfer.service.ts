@@ -36,14 +36,33 @@ export class FileTransferService {
 
   /**
    * SECURITY: Validate rsync file path to prevent command injection
+   * MEDIUM #1 FIX: Enhanced validation with control character and length checks
    * @private
    */
   private validateRsyncPath(path: string): void {
+    // MEDIUM #1 FIX: Check for null bytes and control characters
+    if (/[\x00-\x1F\x7F]/.test(path)) {
+      throw new Error('Path contains control characters');
+    }
+
+    // MEDIUM #1 FIX: Check path length (Unix limit is 4096)
+    if (path.length > 4096) {
+      throw new Error('Path exceeds maximum length (4096 characters)');
+    }
+
+    // Character whitelist validation
     if (!/^[a-zA-Z0-9/_\-. ()]+$/.test(path)) {
       throw new Error('Invalid path characters detected');
     }
+
+    // Path traversal protection
     if (path.includes('..') || path.includes('//')) {
       throw new Error('Path traversal attempt detected');
+    }
+
+    // MEDIUM #1 FIX: Prevent rsync daemon syntax (::)
+    if (path.includes('::')) {
+      throw new Error('Path contains rsync daemon syntax');
     }
   }
 

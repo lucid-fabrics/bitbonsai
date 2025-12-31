@@ -157,7 +157,15 @@ export class FileHealthService {
 
           // Parse JSON output
           if (stdout.trim()) {
-            const json = JSON.parse(stdout);
+            // MEDIUM #8 FIX: Safe JSON parsing with try-catch
+            let json: any;
+            try {
+              json = JSON.parse(stdout);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`));
+              return;
+            }
+
             const format = json.format || {};
             const streams = json.streams || [];
 

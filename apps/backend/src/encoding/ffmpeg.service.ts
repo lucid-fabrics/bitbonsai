@@ -213,6 +213,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * CRITICAL #2 & #9 FIX: Start cache cleanup intervals
    */
   async onModuleInit() {
+    // MEDIUM #13 FIX: Clean up orphaned temp files on startup
+    await this.cleanupOrphanedTempFiles();
+
     // Start stderr cache cleanup every 15 minutes
     this.stderrCleanupInterval = setInterval(
       () => {
@@ -227,6 +230,47 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     }, this.CODEC_CACHE_CLEANUP_INTERVAL_MS);
 
     this.logger.log('✅ Cache cleanup intervals started');
+  }
+
+  /**
+   * MEDIUM #13 FIX: Clean up orphaned temp files from previous crash/restart
+   * Removes *.tmp.* files that were left behind when encoding was interrupted
+   * @private
+   */
+  private async cleanupOrphanedTempFiles(): Promise<void> {
+    try {
+      const { glob } = await import('glob');
+      const { unlink } = await import('fs/promises');
+
+      // Find all .tmp. files in /tmp directory (typical temp file location)
+      const tempFiles = await glob('/tmp/**/*.tmp.*', {
+        nodir: true,
+        absolute: true,
+      });
+
+      if (tempFiles.length === 0) {
+        this.logger.log('🧹 No orphaned temp files found');
+        return;
+      }
+
+      this.logger.log(`🧹 Found ${tempFiles.length} orphaned temp files, cleaning up...`);
+
+      let removed = 0;
+      for (const file of tempFiles) {
+        try {
+          await unlink(file);
+          removed++;
+        } catch (error) {
+          // File may have been deleted already or permission denied - skip it
+          this.logger.debug(`Failed to delete temp file ${file}: ${error}`);
+        }
+      }
+
+      this.logger.log(`✅ Cleaned up ${removed}/${tempFiles.length} orphaned temp files`);
+    } catch (error) {
+      // Don't crash on cleanup failure - log and continue
+      this.logger.warn(`Failed to cleanup orphaned temp files: ${error}`);
+    }
   }
 
   /**
