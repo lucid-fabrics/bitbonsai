@@ -249,6 +249,23 @@ export class QueueService implements OnModuleInit {
   async create(createJobDto: CreateJobDto): Promise<Job> {
     this.logger.log(`Creating job for: ${createJobDto.fileLabel}`);
 
+    // MEDIUM #5 FIX: Validate file size limits
+    const fileSizeBytes = BigInt(createJobDto.beforeSizeBytes);
+    const maxFileSizeBytes = BigInt(500) * BigInt(1024) * BigInt(1024) * BigInt(1024); // 500 GB
+    const minFileSizeBytes = BigInt(1024); // 1 KB
+
+    if (fileSizeBytes > maxFileSizeBytes) {
+      throw new BadRequestException(
+        `File size ${fileSizeBytes} bytes exceeds maximum allowed size of ${maxFileSizeBytes} bytes (500 GB)`
+      );
+    }
+
+    if (fileSizeBytes < minFileSizeBytes) {
+      throw new BadRequestException(
+        `File size ${fileSizeBytes} bytes is below minimum size of ${minFileSizeBytes} bytes (1 KB)`
+      );
+    }
+
     // MULTI-NODE: LINKED nodes should proxy job creation to MAIN node's API
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {

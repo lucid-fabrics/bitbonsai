@@ -1266,17 +1266,38 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * Maps various codec names to standardized identifiers
    */
   normalizeCodec(codec: string): string {
+    // MEDIUM #6 FIX: Enhanced codec normalization with more variants
     const codecMap: Record<string, string> = {
+      // HEVC / H.265 variants
       hevc: 'hevc',
       h265: 'hevc',
+      'h.265': 'hevc',
       hvc1: 'hevc',
+      x265: 'hevc',
+      // H.264 / AVC variants
       h264: 'h264',
+      'h.264': 'h264',
       avc: 'h264',
       avc1: 'h264',
+      x264: 'h264',
+      // VP9 variants
       vp9: 'vp9',
+      'vp 9': 'vp9',
+      vp09: 'vp9',
+      // AV1 variants
       av1: 'av1',
+      av01: 'av1',
+      // VP8
+      vp8: 'vp8',
+      vp08: 'vp8',
+      // MPEG variants
+      mpeg2: 'mpeg2',
+      'mpeg-2': 'mpeg2',
+      mpeg4: 'mpeg4',
+      'mpeg-4': 'mpeg4',
     };
-    return codecMap[codec.toLowerCase()] || codec.toLowerCase();
+    const normalized = codec.toLowerCase().trim();
+    return codecMap[normalized] || normalized;
   }
 
   /**
