@@ -1662,7 +1662,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           this.cacheStderr(job.id, encoding.lastStderr);
         }
 
+        // CRITICAL #10 & #11 FIX: Cleanup all job-related maps on completion
         this.activeEncodings.delete(job.id);
+        this.lastPreviewGeneration.delete(job.id);
 
         if (code === 0) {
           try {
@@ -1698,7 +1700,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           this.cacheStderr(job.id, encoding.lastStderr);
         }
 
+        // CRITICAL #10 & #11 FIX: Cleanup all job-related maps on error
         this.activeEncodings.delete(job.id);
+        this.lastPreviewGeneration.delete(job.id);
 
         let errorMessage = `FFmpeg Process Error: ${error.message}\n\n`;
 
