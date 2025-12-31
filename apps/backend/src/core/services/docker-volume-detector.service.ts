@@ -127,10 +127,11 @@ export class DockerVolumeDetectorService {
     for (const name of candidateNames) {
       try {
         const { stdout } = await execAsync(`docker inspect ${name}`);
-        const result = JSON.parse(stdout)[0];
-        if (result) {
+        const parsed = JSON.parse(stdout);
+        // MEDIUM FIX: Validate array has elements before accessing [0]
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) {
           this.logger.debug(`Successfully inspected container using name: ${name}`);
-          return result;
+          return parsed[0];
         }
       } catch (error) {
         this.logger.debug(`Failed to inspect container with name: ${name}`, error);
@@ -142,7 +143,12 @@ export class DockerVolumeDetectorService {
     try {
       const containerId = await this.getContainerIdFromCgroup();
       const { stdout } = await execAsync(`docker inspect ${containerId}`);
-      return JSON.parse(stdout)[0];
+      const parsed = JSON.parse(stdout);
+      // MEDIUM FIX: Validate array has elements before accessing [0]
+      if (!Array.isArray(parsed) || parsed.length === 0 || !parsed[0]) {
+        throw new Error('Docker inspect returned empty result');
+      }
+      return parsed[0];
     } catch (cgroupError) {
       this.logger.debug('Cgroup container inspection failed', cgroupError);
       throw new Error('Could not inspect Docker container using any method');

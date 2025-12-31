@@ -428,7 +428,7 @@ export class HealthCheckWorker implements OnModuleInit {
       // Check for container compatibility issues (AC3/DTS with MP4, etc.)
       const compatibilityIssues = await this.containerCompatibilityService.checkCompatibility(
         job.filePath,
-        'mp4' // TODO: Get target container from policy
+        job.targetContainer || 'mp4' // Use job's target container, fallback to mp4
       );
 
       // Check for codec match (file already in target codec)

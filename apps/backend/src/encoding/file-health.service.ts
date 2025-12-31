@@ -162,7 +162,11 @@ export class FileHealthService {
             try {
               json = JSON.parse(stdout);
             } catch (parseError) {
-              reject(new Error(`Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`));
+              reject(
+                new Error(
+                  `Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+                )
+              );
               return;
             }
 
