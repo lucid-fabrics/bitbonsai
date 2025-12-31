@@ -206,9 +206,12 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    */
   async onModuleInit() {
     // Start stderr cache cleanup every 15 minutes
-    this.stderrCleanupInterval = setInterval(() => {
-      this.cleanupStaleStderrCache();
-    }, 15 * 60 * 1000);
+    this.stderrCleanupInterval = setInterval(
+      () => {
+        this.cleanupStaleStderrCache();
+      },
+      15 * 60 * 1000
+    );
 
     // Start codec cache cleanup every 15 minutes
     this.codecCacheCleanupInterval = setInterval(() => {

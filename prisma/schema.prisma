@@ -512,6 +512,7 @@ model NodeRegistrationRequest {
   @@index([macAddress]) // For detecting duplicate requests
   @@index([createdAt]) // PERF: For sorting by creation time
   @@index([tokenExpiresAt, status]) // PERF: For expiration cleanup queries
+  @@index([status, createdAt]) // HIGH #22 FIX: Composite index for status-based queries with time ordering
   @@map("node_registration_requests")
 }
 
