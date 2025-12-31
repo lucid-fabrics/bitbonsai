@@ -222,7 +222,6 @@ export class DiscoveryService {
     connectionToken: string,
     mainNodeInfo: { id: string; name: string }
   ): Observable<void> {
-    console.log('[DiscoveryService] Saving connection token and main node info to localStorage');
     localStorage.setItem('bitbonsai_connection_token', connectionToken);
     localStorage.setItem('bitbonsai_main_node', JSON.stringify(mainNodeInfo));
 
@@ -234,8 +233,6 @@ export class DiscoveryService {
       allowLocalNetworkWithoutAuth: true,
       mainNodeUrl: this.mainNodeUrl, // Save main node URL for unregistration
     };
-
-    console.log('[DiscoveryService] Calling POST /api/v1/setup/initialize with payload:', payload);
 
     return this.http.post<void>('/api/v1/setup/initialize', payload);
   }

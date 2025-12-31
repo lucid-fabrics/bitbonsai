@@ -517,7 +517,7 @@
                         <i class="fas fa-share"></i> Delegated
                       </span>
                     }
-                    @if (job.transferRequired) {
+                    @if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'copied') {
                       <span class="access-badge copied"
                             bbTooltip
                             tooltipTitle="File Copied"
@@ -525,11 +525,19 @@
                             tooltipPlacement="top">
                         <i class="fas fa-download"></i> Copied
                       </span>
+                    } @else if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'local') {
+                      <span class="access-badge local"
+                            bbTooltip
+                            tooltipTitle="Direct Mount"
+                            tooltipContent="File accessed directly via Docker volume mount. Native performance."
+                            tooltipPlacement="top">
+                        <i class="fas fa-hdd"></i> Local
+                      </span>
                     } @else {
                       <span class="access-badge nfs"
                             bbTooltip
                             tooltipTitle="NFS Mount"
-                            tooltipContent="File accessed directly via NFS network mount. No file transfer required."
+                            tooltipContent="File accessed via NFS network mount from main node."
                             tooltipPlacement="top">
                         <i class="fas fa-network-wired"></i> NFS
                       </span>

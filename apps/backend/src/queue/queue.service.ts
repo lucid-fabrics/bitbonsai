@@ -825,15 +825,17 @@ export class QueueService implements OnModuleInit {
     // CRITICAL FIX: ATOMIC JOB CLAIMING WITH RACE CONDITION PREVENTION
     // Use transaction + updateMany + count check to ensure only ONE worker claims a job
     // This prevents race conditions where multiple workers grab the same job
-    const claimedJob = await this.prisma.$transaction(
-      async (tx) => {
-        // RACE CONDITION FIX: Retry loop to handle concurrent job claiming
-        // If we fail to claim a job (another worker got it first), immediately try the next one
-        const maxAttempts = 5; // Try up to 5 jobs before giving up
-        let attempt = 0;
+    // CRITICAL #1 FIX: Retry loop moved OUTSIDE transaction to avoid holding locks during sleep
+    // CRITICAL #8 FIX: Collect transfers outside transaction to prevent running on rollback
+    const maxAttempts = 5;
+    let attempt = 0;
+    const pendingTransfers: Array<{ jobId: string; filePath: string; sourceNode: any; targetNode: any }> = [];
 
-        while (attempt < maxAttempts) {
-          attempt++;
+    while (attempt < maxAttempts) {
+      attempt++;
+
+      const result = await this.prisma.$transaction(
+        async (tx) => {
 
           // Find next queued job (prioritize by: priority DESC, healthScore DESC, createdAt ASC)
           // Exclude jobs with future nextRetryAt (exponential backoff)
@@ -898,13 +900,12 @@ export class QueueService implements OnModuleInit {
             });
 
             if (sourceNode) {
-              // Trigger transfer asynchronously (outside transaction)
-              setImmediate(() => {
-                this.fileTransferService
-                  .transferFile(job.id, job.filePath, sourceNode, node)
-                  .catch((error) => {
-                    this.logger.error(`Background file transfer failed for job ${job.id}:`, error);
-                  });
+              // CRITICAL #8 FIX: Store transfer request, execute AFTER transaction commits
+              pendingTransfers.push({
+                jobId: job.id,
+                filePath: job.filePath,
+                sourceNode,
+                targetNode: node,
               });
             }
 
@@ -932,41 +933,63 @@ export class QueueService implements OnModuleInit {
             this.logger.debug(
               `Job ${job.id} was claimed by another worker (attempt ${attempt}/${maxAttempts}), trying next job`
             );
-            // RACE CONDITION FIX: Add random jitter delay (10-50ms) to prevent hot retry loops
-            // This reduces contention when multiple workers compete for the same jobs
-            const jitterMs = 10 + Math.random() * 40;
-            await new Promise((resolve) => setTimeout(resolve, jitterMs));
-            continue; // Try next available job
+            // CRITICAL #1 FIX: Exit transaction immediately, retry OUTSIDE to avoid holding locks
+            return { claimFailed: true, attemptedJobId: job.id };
           }
 
           // We successfully claimed the job - now fetch it with relations
-          return await tx.job.findUnique({
+          const claimedJob = await tx.job.findUnique({
             where: { id: job.id },
             include: {
               policy: true,
               library: true,
             },
           });
+
+          return { claimedJob };
+        },
+        {
+          // HIGH #13 FIX: Reduce timeouts - fail fast instead of holding locks
+          maxWait: 5000, // 5s (reduced from 10s)
+          timeout: 10000, // 10s (reduced from 30s)
+          isolationLevel: 'ReadCommitted',
+        }
+      );
+
+      // Check result
+      if (result.claimFailed) {
+        // CRITICAL #1 FIX: Jitter OUTSIDE transaction to avoid holding locks
+        const jitterMs = 10 + Math.random() * 40;
+        await new Promise((resolve) => setTimeout(resolve, jitterMs));
+        continue; // Try next job
+      }
+
+      if (result.claimedJob) {
+        this.logger.log(`Assigned job ${result.claimedJob.id} to node ${nodeId}`);
+
+        // CRITICAL #8 FIX: Execute pending transfers AFTER transaction commits
+        if (pendingTransfers.length > 0) {
+          setImmediate(() => {
+            for (const transfer of pendingTransfers) {
+              this.fileTransferService
+                .transferFile(transfer.jobId, transfer.filePath, transfer.sourceNode, transfer.targetNode)
+                .catch((error) => {
+                  this.logger.error(`Background file transfer failed for job ${transfer.jobId}:`, error);
+                });
+            }
+          });
         }
 
-        // Exhausted all retry attempts
-        this.logger.debug(`Failed to claim job after ${maxAttempts} attempts (high concurrency)`);
-        return null;
-      },
-      {
-        // CRITICAL #26 FIX: Increase timeouts for high concurrency / slow database scenarios
-        maxWait: 10000, // Maximum time to wait for transaction to start (10s, was 5s)
-        timeout: 30000, // Maximum time for transaction to complete (30s, was 10s)
-        isolationLevel: 'ReadCommitted', // CRITICAL #26 FIX: Reduce lock contention
+        return result.claimedJob;
       }
-    );
 
-    if (claimedJob) {
-      this.logger.log(`Assigned job ${claimedJob.id} to node ${nodeId}`);
-      return claimedJob;
+      // No jobs available
+      this.logger.log(`No queued jobs available for node ${nodeId}`);
+      return null;
     }
 
-    this.logger.log(`No queued jobs available for node ${nodeId}`);
+    // Exhausted all retry attempts
+    this.logger.debug(`Failed to claim job after ${maxAttempts} attempts (high concurrency)`);
     return null;
   }
 

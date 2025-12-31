@@ -34,6 +34,7 @@ import {
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-space-warning-banner/disk-space-warning-banner.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import { type Node as NodeModel } from '../nodes/models/node.model';
 import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { DecisionIssueCardComponent } from './components/decision-issue-card/decision-issue-card.component';
@@ -108,6 +109,7 @@ export class QueueComponent implements OnInit {
   protected readonly queueData$: Observable<QueueResponse | null>;
   protected readonly isLoading$: Observable<boolean>;
   protected readonly availableNodes$: Observable<Map<string, string>>;
+  protected readonly availableNodesWithRole$: Observable<NodeModel[]>;
   protected readonly availableLibraries$: Observable<
     Map<string, { name: string; nodeName: string }>
   >;
@@ -218,16 +220,21 @@ export class QueueComponent implements OnInit {
     this.isLoading$ = this.loadingSubject$.asObservable();
 
     // Fetch all available nodes from the API (not just nodes with jobs)
-    this.availableNodes$ = this.nodesApi.getNodes().pipe(
+    const nodesData$ = this.nodesApi
+      .getNodes()
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
+    this.availableNodes$ = nodesData$.pipe(
       map((nodes) => {
         const nodeMap = new Map<string, string>();
         for (const node of nodes) {
           nodeMap.set(node.id, node.name);
         }
         return nodeMap;
-      }),
-      shareReplay({ bufferSize: 1, refCount: true })
+      })
     );
+
+    this.availableNodesWithRole$ = nodesData$;
 
     // Extract available libraries from queue data (Map of libraryId -> { name, nodeName })
     this.availableLibraries$ = this.queueData$.pipe(
@@ -299,7 +306,7 @@ export class QueueComponent implements OnInit {
           // Apply default queue view if it's valid and no query param is set
           if (
             settings.defaultQueueView &&
-            this.statuses.includes(settings.defaultQueueView as any)
+            this.statuses.includes(settings.defaultQueueView as JobStatus | 'ALL')
           ) {
             this.selectedStatus = settings.defaultQueueView as JobStatus | 'ALL';
           }
@@ -315,7 +322,7 @@ export class QueueComponent implements OnInit {
       if (params.status) {
         const status = params.status;
         // Validate the status is a valid filter option
-        if (this.statuses.includes(status as any)) {
+        if (this.statuses.includes(status as JobStatus | 'ALL')) {
           this.selectedStatus = status as JobStatus | 'ALL';
         }
       }
@@ -1856,6 +1863,24 @@ export class QueueComponent implements OnInit {
    */
   protected getPreviewLabel(index: number): string {
     return `Manual #${index + 1}`;
+  }
+
+  /**
+   * Get storage access type for a job
+   * @param job - Job object with transferRequired and node info
+   * @param nodes - List of all nodes with role information
+   * @returns 'local' for MAIN node direct mounts, 'nfs' for CHILD node network mounts, 'copied' for file transfers
+   */
+  protected getStorageAccessType(
+    job: { transferRequired?: boolean; nodeId?: string },
+    nodes: NodeModel[]
+  ): 'local' | 'nfs' | 'copied' {
+    if (job.transferRequired) return 'copied';
+
+    const node = nodes.find((n) => n.id === job.nodeId);
+    if (node?.role === 'MAIN') return 'local';
+
+    return 'nfs';
   }
 
   /**

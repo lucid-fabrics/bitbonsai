@@ -1,6 +1,6 @@
+import { LicenseTier, PaymentProvider } from '.prisma/license-client';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { LicenseTier, PaymentProvider } from '.prisma/license-client';
 import * as crypto from 'crypto';
 import { SecurityLoggerService } from '../../security/security-logger.service';
 import { WebhookService } from '../_services/webhook.service';
@@ -161,7 +161,10 @@ describe('PatreonController', () => {
           controller.handleWebhook('', 'members:pledge:create', payload, mockRequest)
         ).rejects.toThrow('Invalid Patreon webhook signature');
 
-        expect(securityLogger.logWebhookSignatureInvalid).toHaveBeenCalledWith('patreon', '1.2.3.4');
+        expect(securityLogger.logWebhookSignatureInvalid).toHaveBeenCalledWith(
+          'patreon',
+          '1.2.3.4'
+        );
       });
 
       it('should reject webhook with invalid signature', async () => {
@@ -169,12 +172,7 @@ describe('PatreonController', () => {
         const invalidSignature = 'invalid_signature_abc123';
 
         await expect(
-          controller.handleWebhook(
-            invalidSignature,
-            'members:pledge:create',
-            payload,
-            mockRequest
-          )
+          controller.handleWebhook(invalidSignature, 'members:pledge:create', payload, mockRequest)
         ).rejects.toThrow('Invalid Patreon webhook signature');
       });
 

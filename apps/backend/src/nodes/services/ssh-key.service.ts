@@ -72,7 +72,16 @@ export class SshKeyService implements OnModuleInit {
         stderr += data.toString();
       });
 
+      const timeoutId = setTimeout(() => {
+        keygen.kill('SIGKILL');
+        reject(new Error('ssh-keygen timed out after 10 seconds'));
+      }, 10000);
+
       keygen.on('close', (code) => {
+        clearTimeout(timeoutId);
+        keygen.stdout?.destroy();
+        keygen.stderr?.destroy();
+
         if (code === 0) {
           // Set correct permissions
           chmodSync(this.privateKeyPath, 0o600); // rw-------
@@ -86,6 +95,9 @@ export class SshKeyService implements OnModuleInit {
       });
 
       keygen.on('error', (error) => {
+        clearTimeout(timeoutId);
+        keygen.stdout?.destroy();
+        keygen.stderr?.destroy();
         this.logger.error('Failed to spawn ssh-keygen:', error);
         reject(error);
       });
@@ -186,7 +198,17 @@ export class SshKeyService implements OnModuleInit {
         stdout += data.toString();
       });
 
+      const timeoutId = setTimeout(() => {
+        ssh.kill('SIGKILL');
+        this.logger.warn(`SSH connection to ${host} timed out after 10 seconds`);
+        resolve(false);
+      }, 10000);
+
       ssh.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ssh.stdout?.destroy();
+        ssh.stderr?.destroy();
+
         const success = code === 0 && stdout.includes('SSH_OK');
         if (success) {
           this.logger.log(`✅ SSH connection to ${host} successful`);
@@ -197,6 +219,9 @@ export class SshKeyService implements OnModuleInit {
       });
 
       ssh.on('error', (error) => {
+        clearTimeout(timeoutId);
+        ssh.stdout?.destroy();
+        ssh.stderr?.destroy();
         this.logger.error(`SSH connection error to ${host}:`, error);
         resolve(false);
       });
@@ -230,7 +255,16 @@ export class SshKeyService implements OnModuleInit {
         stderr += data.toString();
       });
 
+      const timeoutId = setTimeout(() => {
+        ssh.kill('SIGKILL');
+        reject(new Error(`SSH key copy to ${host} timed out after 15 seconds`));
+      }, 15000);
+
       ssh.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ssh.stdout?.destroy();
+        ssh.stderr?.destroy();
+
         if (code === 0) {
           this.logger.log(`✅ Copied public key to ${host}`);
           resolve();
@@ -241,6 +275,9 @@ export class SshKeyService implements OnModuleInit {
       });
 
       ssh.on('error', (error) => {
+        clearTimeout(timeoutId);
+        ssh.stdout?.destroy();
+        ssh.stderr?.destroy();
         this.logger.error(`Failed to connect to ${host}:`, error);
         reject(error);
       });

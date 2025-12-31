@@ -106,7 +106,7 @@ export interface FfmpegProgress {
  * - CPU: Software encoding fallback
  */
 @Injectable()
-export class FfmpegService implements OnModuleDestroy {
+export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FfmpegService.name);
   private readonly activeEncodings = new Map<string, ActiveEncoding>();
 
@@ -114,6 +114,7 @@ export class FfmpegService implements OnModuleDestroy {
   // This persists even after the job is removed from activeEncodings
   private readonly stderrCache = new Map<string, { stderr: string; timestamp: Date }>();
   private readonly STDERR_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private stderrCleanupInterval?: NodeJS.Timeout; // CRITICAL #2 FIX
 
   // Preview generation throttling (jobId -> last generation timestamp)
   private readonly lastPreviewGeneration = new Map<string, number>();
@@ -127,7 +128,7 @@ export class FfmpegService implements OnModuleDestroy {
   private readonly CODEC_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
   private readonly CODEC_CACHE_MAX_SIZE = 5000; // ~500KB max
   private readonly CODEC_CACHE_CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-  private lastCacheCleanup = 0;
+  private codecCacheCleanupInterval?: NodeJS.Timeout; // CRITICAL #9 FIX
 
   // Regex for parsing ffmpeg progress output
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
@@ -201,11 +202,77 @@ export class FfmpegService implements OnModuleDestroy {
   ) {}
 
   /**
+   * CRITICAL #2 & #9 FIX: Start cache cleanup intervals
+   */
+  async onModuleInit() {
+    // Start stderr cache cleanup every 15 minutes
+    this.stderrCleanupInterval = setInterval(() => {
+      this.cleanupStaleStderrCache();
+    }, 15 * 60 * 1000);
+
+    // Start codec cache cleanup every 15 minutes
+    this.codecCacheCleanupInterval = setInterval(() => {
+      this.cleanupCodecCache();
+    }, this.CODEC_CACHE_CLEANUP_INTERVAL_MS);
+
+    this.logger.log('✅ Cache cleanup intervals started');
+  }
+
+  /**
+   * CRITICAL #2 & #9 FIX: Cleanup stale stderr cache entries
+   * @private
+   */
+  private cleanupStaleStderrCache(): void {
+    const now = Date.now();
+    let removed = 0;
+
+    for (const [jobId, entry] of this.stderrCache.entries()) {
+      if (now - entry.timestamp.getTime() > this.STDERR_CACHE_TTL_MS) {
+        this.stderrCache.delete(jobId);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      this.logger.debug(`🧹 Cleaned up ${removed} stale stderr cache entries`);
+    }
+  }
+
+  /**
+   * CRITICAL #9 FIX: Cleanup stale codec cache entries
+   * @private
+   */
+  private cleanupCodecCache(): void {
+    const now = Date.now();
+    let removed = 0;
+
+    for (const [filePath, entry] of this.codecCache.entries()) {
+      if (now - entry.timestamp.getTime() > this.CODEC_CACHE_TTL_MS) {
+        this.codecCache.delete(filePath);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      this.logger.debug(`🧹 Cleaned up ${removed} stale codec cache entries`);
+    }
+  }
+
+  /**
    * HIGH PRIORITY FIX: OnModuleDestroy lifecycle hook to kill all FFmpeg processes
+   * CRITICAL #2, #9, #10, #11 FIX: Clear all caches and cleanup intervals
    * Prevents zombie FFmpeg processes when backend shuts down or restarts
    */
   async onModuleDestroy(): Promise<void> {
     this.logger.log('FfmpegService shutting down - killing all active FFmpeg processes');
+
+    // CRITICAL #2 & #9 FIX: Clear cleanup intervals
+    if (this.stderrCleanupInterval) {
+      clearInterval(this.stderrCleanupInterval);
+    }
+    if (this.codecCacheCleanupInterval) {
+      clearInterval(this.codecCacheCleanupInterval);
+    }
 
     const activeJobIds = Array.from(this.activeEncodings.keys());
 
@@ -250,15 +317,17 @@ export class FfmpegService implements OnModuleDestroy {
 
       await Promise.allSettled(killPromises);
 
-      // Clear all tracking maps
+      // CRITICAL #10 FIX: Clear all tracking maps
       this.activeEncodings.clear();
 
       this.logger.log('FFmpeg cleanup complete');
     }
 
-    // PERFORMANCE: Clear codec cache on shutdown
+    // CRITICAL #2, #9, #11 FIX: Clear all caches to prevent memory leaks
+    this.stderrCache.clear();
     this.codecCache.clear();
-    this.logger.log('Codec cache cleared');
+    this.lastPreviewGeneration.clear();
+    this.logger.log('✅ All caches cleared');
   }
 
   /**

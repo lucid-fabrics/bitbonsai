@@ -1,4 +1,5 @@
 import { LicenseTier, PaymentProvider } from '.prisma/license-client';
+import { determineLicenseTierFromWebhook } from '@bitbonsai/shared-models';
 import {
   Body,
   Controller,
@@ -13,7 +14,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { determineLicenseTierFromWebhook } from '@bitbonsai/shared-models';
 import * as crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import { Request } from 'express';

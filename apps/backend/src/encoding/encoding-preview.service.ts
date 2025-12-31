@@ -1,11 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { execFile } from 'child_process';
+import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { promisify } from 'util';
-
-const execFileAsync = promisify(execFile);
 
 /**
  * EncodingPreviewService
@@ -74,9 +71,8 @@ export class EncodingPreviewService {
             // -ss before -i for input seeking (faster)
             // -frames:v 1 to extract single frame
             // -vf scale to resize for fast transfer
-            await execFileAsync(
-              'ffmpeg',
-              [
+            await new Promise<void>((resolve, reject) => {
+              const ffmpeg = spawn('ffmpeg', [
                 '-y', // Overwrite existing
                 '-ss',
                 timestamp.toString(),
@@ -89,11 +85,32 @@ export class EncodingPreviewService {
                 '-q:v',
                 '2', // High quality JPEG
                 outputPath,
-              ],
-              {
-                timeout: 10000, // 10 second timeout per frame
-              }
-            );
+              ]);
+
+              const timeoutId = setTimeout(() => {
+                ffmpeg.kill('SIGKILL');
+                reject(new Error('FFmpeg preview extraction timeout'));
+              }, 10000);
+
+              ffmpeg.on('close', (code) => {
+                clearTimeout(timeoutId);
+                ffmpeg.stdout?.destroy();
+                ffmpeg.stderr?.destroy();
+
+                if (code === 0) {
+                  resolve();
+                } else {
+                  reject(new Error(`FFmpeg exited with code ${code}`));
+                }
+              });
+
+              ffmpeg.on('error', (error) => {
+                clearTimeout(timeoutId);
+                ffmpeg.stdout?.destroy();
+                ffmpeg.stderr?.destroy();
+                reject(error);
+              });
+            });
 
             // BUGFIX: Verify file exists before adding to preview paths
             // This prevents saving paths to non-existent files which causes

@@ -233,7 +233,17 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
         stderr += data.toString();
       });
 
+      const timeoutId = setTimeout(() => {
+        ffprobe.kill('SIGKILL');
+        reject(new Error('FFprobe timed out after 10 seconds'));
+      }, 10000);
+
       ffprobe.on('close', (code) => {
+        clearTimeout(timeoutId);
+        // Clean up streams to prevent memory leaks
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+
         if (code !== 0) {
           reject(new Error(`FFprobe failed with code ${code}: ${stderr}`));
           return;
@@ -250,6 +260,10 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
       });
 
       ffprobe.on('error', (error) => {
+        clearTimeout(timeoutId);
+        // Clean up streams on error
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
         reject(error);
       });
     });

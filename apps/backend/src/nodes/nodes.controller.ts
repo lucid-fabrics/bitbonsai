@@ -40,11 +40,18 @@ import { RegistrationRequestResponseDto } from './dto/registration/registration-
 import { RejectRequestDto } from './dto/registration/reject-request.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
-import { JobAttributionService } from './services/job-attribution.service';
+import { JobAttributionService, type NodeScore } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
 import { RegistrationRequestService } from './services/registration-request.service';
 import { SshKeyService } from './services/ssh-key.service';
+import {
+  toCurrentNodeDto,
+  toNodeResponseDto,
+  toNodeResponseDtoArray,
+  toRegistrationRequestResponseDto,
+  toRegistrationRequestResponseDtoArray,
+} from './utils/node.mapper';
 
 @ApiTags('nodes')
 @ApiBearerAuth('JWT-auth')
@@ -100,7 +107,7 @@ export class NodesController {
     description: 'Internal server error occurred during registration',
   })
   async register(@Body() registerNodeDto: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
-    return this.nodesService.registerNode(registerNodeDto) as any;
+    return this.nodesService.registerNode(registerNodeDto);
   }
 
   /**
@@ -136,10 +143,8 @@ export class NodesController {
     description: 'Internal server error occurred during pairing',
   })
   async pair(@Body() pairNodeDto: PairNodeDto): Promise<NodeResponseDto> {
-    const node = await this.nodesService.pairNode(pairNodeDto.pairingToken) as any;
-    // Exclude sensitive fields
-    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
-    return safeNode;
+    const node = await this.nodesService.pairNode(pairNodeDto.pairingToken);
+    return toNodeResponseDto(node);
   }
 
   /**
@@ -176,7 +181,7 @@ export class NodesController {
     description: 'Internal server error occurred while generating token',
   })
   async generatePairingToken(@Param('id') id: string): Promise<NodeRegistrationResponseDto> {
-    return this.nodesService.generatePairingTokenForNode(id) as any;
+    return this.nodesService.generatePairingTokenForNode(id);
   }
 
   /**
@@ -219,10 +224,8 @@ export class NodesController {
     @Param('id') id: string,
     @Body() heartbeatDto?: HeartbeatDto
   ): Promise<NodeResponseDto> {
-    const node = await this.nodesService.heartbeat(id, heartbeatDto) as any;
-    // Exclude sensitive fields
-    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
-    return safeNode;
+    const node = await this.nodesService.heartbeat(id, heartbeatDto);
+    return toNodeResponseDto(node);
   }
 
   /**
@@ -255,16 +258,8 @@ export class NodesController {
     description: 'Internal server error occurred while fetching current node',
   })
   async getCurrentNode(): Promise<CurrentNodeDto> {
-    const node = await this.nodesService.getCurrentNode() as any;
-    return {
-      id: node.id,
-      name: node.name,
-      role: node.role,
-      status: node.status,
-      version: node.version,
-      acceleration: node.acceleration,
-      mainNodeUrl: node.mainNodeUrl,
-    };
+    const node = await this.nodesService.getCurrentNode();
+    return toCurrentNodeDto(node);
   }
 
   /**
@@ -292,11 +287,7 @@ export class NodesController {
   })
   async findAll(): Promise<NodeResponseDto[]> {
     const nodes = await this.nodesService.findAll();
-    // Exclude sensitive fields from all nodes
-    return nodes.map((node: PrismaNode) => {
-      const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
-      return safeNode as NodeResponseDto;
-    });
+    return toNodeResponseDtoArray(nodes);
   }
 
   /**
@@ -341,8 +332,8 @@ export class NodesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while calculating scores',
   })
-  async getNodeScores() {
-    return this.jobAttribution.getAllNodeScores() as any;
+  async getNodeScores(): Promise<NodeScore[]> {
+    return this.jobAttribution.getAllNodeScores();
   }
 
   /**
@@ -375,9 +366,9 @@ export class NodesController {
   async detectEnvironment() {
     const { EnvironmentDetectorService } = await import(
       '../core/services/environment-detector.service'
-    ) as any;
-    const detector = new EnvironmentDetectorService() as any;
-    return detector.detectEnvironment() as any;
+    );
+    const detector = new EnvironmentDetectorService();
+    return detector.detectEnvironment();
   }
 
   /**
@@ -406,29 +397,36 @@ export class NodesController {
     },
   })
   async getStorageRecommendation(@Body() body: { sourceNodeId: string; targetNodeId: string }) {
-    const { EnvironmentDetectorService } = await import(
+    const { EnvironmentDetectorService, ContainerType } = await import(
       '../core/services/environment-detector.service'
-    ) as any;
-    const detector = new EnvironmentDetectorService() as any;
+    );
+    const detector = new EnvironmentDetectorService();
 
     // Get node info
-    const sourceNode = await this.nodesService.findOne(body.sourceNodeId) as any;
-    const targetNode = await this.nodesService.findOne(body.targetNodeId) as any;
+    const sourceNode = await this.nodesService.findOne(body.sourceNodeId);
+    const targetNode = await this.nodesService.findOne(body.targetNodeId);
 
-    // Build node info for recommendation
+    // Map NetworkLocation enum to string for subnet
+    const sourceSubnet = sourceNode.networkLocation ? String(sourceNode.networkLocation) : null;
+    const targetSubnet = targetNode.networkLocation ? String(targetNode.networkLocation) : null;
+
     const sourceInfo = {
-      subnet: sourceNode.networkLocation || null,
-      containerType: sourceNode.containerType || 'UNKNOWN',
+      subnet: sourceSubnet,
+      containerType:
+        (sourceNode.containerType as unknown as (typeof ContainerType)[keyof typeof ContainerType]) ||
+        ContainerType.UNKNOWN,
       canMountNFS: sourceNode.canMountNFS || false,
     };
 
     const targetInfo = {
-      subnet: targetNode.networkLocation || null,
-      containerType: targetNode.containerType || 'UNKNOWN',
+      subnet: targetSubnet,
+      containerType:
+        (targetNode.containerType as unknown as (typeof ContainerType)[keyof typeof ContainerType]) ||
+        ContainerType.UNKNOWN,
       canMountNFS: targetNode.canMountNFS || false,
     };
 
-    return detector.recommendStorageMethod(sourceInfo, targetInfo) as any;
+    return detector.recommendStorageMethod(sourceInfo, targetInfo);
   }
 
   /**
@@ -460,10 +458,8 @@ export class NodesController {
     description: 'Internal server error occurred while fetching node',
   })
   async findOne(@Param('id') id: string): Promise<NodeResponseDto> {
-    const node = await this.nodesService.findOne(id) as any;
-    // Exclude sensitive fields
-    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
-    return safeNode;
+    const node = await this.nodesService.findOne(id);
+    return toNodeResponseDto(node);
   }
 
   /**
@@ -497,7 +493,7 @@ export class NodesController {
     description: 'Internal server error occurred while fetching statistics',
   })
   async getStats(@Param('id') id: string): Promise<NodeStatsDto> {
-    return this.nodesService.getNodeStats(id) as any;
+    return this.nodesService.getNodeStats(id);
   }
 
   /**
@@ -534,7 +530,7 @@ export class NodesController {
     description: 'Internal server error occurred while calculating optimal configuration',
   })
   async getRecommendedConfig(@Param('id') id: string): Promise<OptimalConfigDto> {
-    return this.nodesService.getRecommendedConfig(id) as any;
+    return this.nodesService.getRecommendedConfig(id);
   }
 
   /**
@@ -573,10 +569,8 @@ export class NodesController {
     @Param('id') id: string,
     @Body() updateNodeDto: UpdateNodeDto
   ): Promise<NodeResponseDto> {
-    const node = await this.nodesService.update(id, updateNodeDto) as any;
-    // Exclude sensitive fields
-    const { apiKey, pairingToken, pairingExpiresAt, licenseId, ...safeNode } = node;
-    return safeNode;
+    const node = await this.nodesService.update(id, updateNodeDto);
+    return toNodeResponseDto(node);
   }
 
   /**
@@ -610,7 +604,7 @@ export class NodesController {
     description: 'Internal server error occurred while deleting node',
   })
   async remove(@Param('id') id: string): Promise<void> {
-    return this.nodesService.remove(id) as any;
+    return this.nodesService.remove(id);
   }
 
   /**
@@ -648,7 +642,7 @@ export class NodesController {
     description: 'Internal server error occurred during unregistration',
   })
   async unregisterSelf(): Promise<{ success: boolean; message: string }> {
-    return this.nodesService.unregisterSelf() as any;
+    return this.nodesService.unregisterSelf();
   }
 
   // ============================================================================
@@ -678,7 +672,7 @@ export class NodesController {
     description: 'Internal server error occurred during discovery',
   })
   async discoverMainNodes(): Promise<DiscoveredMainNodeDto[]> {
-    return this.nodeDiscoveryService.discoverMainNodes() as any;
+    return this.nodeDiscoveryService.discoverMainNodes();
   }
 
   /**
@@ -714,7 +708,8 @@ export class NodesController {
   async createRegistrationRequest(
     @Body() createDto: CreateRegistrationRequestDto
   ): Promise<RegistrationRequestResponseDto> {
-    return this.registrationRequestService.createRegistrationRequest(createDto) as any;
+    const request = await this.registrationRequestService.createRegistrationRequest(createDto);
+    return toRegistrationRequestResponseDto(request);
   }
 
   /**
@@ -740,8 +735,9 @@ export class NodesController {
   })
   async getPendingRequests(): Promise<RegistrationRequestResponseDto[]> {
     // Get current node (must be MAIN)
-    const currentNode = await this.nodesService.getCurrentNode() as any;
-    return this.registrationRequestService.getPendingRequests(currentNode.id) as any;
+    const currentNode = await this.nodesService.getCurrentNode();
+    const requests = await this.registrationRequestService.getPendingRequests(currentNode.id);
+    return toRegistrationRequestResponseDtoArray(requests);
   }
 
   /**
@@ -768,7 +764,8 @@ export class NodesController {
     description: 'Internal server error occurred while fetching request',
   })
   async getRegistrationRequest(@Param('id') id: string): Promise<RegistrationRequestResponseDto> {
-    return this.registrationRequestService.getRequest(id) as any;
+    const request = await this.registrationRequestService.getRequest(id);
+    return toRegistrationRequestResponseDto(request);
   }
 
   /**
@@ -812,7 +809,8 @@ export class NodesController {
     @Param('id') id: string,
     @Body() approveDto?: ApproveRequestDto
   ): Promise<RegistrationRequestResponseDto> {
-    return this.registrationRequestService.approveRequest(id, approveDto) as any;
+    const request = await this.registrationRequestService.approveRequest(id, approveDto);
+    return toRegistrationRequestResponseDto(request);
   }
 
   /**
@@ -851,7 +849,8 @@ export class NodesController {
     @Param('id') id: string,
     @Body() rejectDto: RejectRequestDto
   ): Promise<RegistrationRequestResponseDto> {
-    return this.registrationRequestService.rejectRequest(id, rejectDto) as any;
+    const request = await this.registrationRequestService.rejectRequest(id, rejectDto);
+    return toRegistrationRequestResponseDto(request);
   }
 
   /**
@@ -889,7 +888,8 @@ export class NodesController {
   async cancelRegistrationRequest(
     @Param('id') id: string
   ): Promise<RegistrationRequestResponseDto> {
-    return this.registrationRequestService.cancelRequest(id) as any;
+    const request = await this.registrationRequestService.cancelRequest(id);
+    return toRegistrationRequestResponseDto(request);
   }
 
   /**
@@ -925,7 +925,8 @@ export class NodesController {
   async cancelRegistrationRequestByToken(
     @Param('token') token: string
   ): Promise<RegistrationRequestResponseDto> {
-    return this.registrationRequestService.cancelRequestByToken(token) as any;
+    const request = await this.registrationRequestService.cancelRequestByToken(token);
+    return toRegistrationRequestResponseDto(request);
   }
 
   // ============================================================================
@@ -961,7 +962,7 @@ export class NodesController {
     description: 'Internal server error during capability test',
   })
   async testNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
-    const node = await this.nodesService.findOne(id) as any;
+    const node = await this.nodesService.findOne(id);
 
     // Get IP address: prefer stored ipAddress, then extract from URLs, fallback to localhost
     let nodeIp = node.ipAddress || '127.0.0.1';
@@ -971,7 +972,7 @@ export class NodesController {
       const urlToUse = node.publicUrl || node.mainNodeUrl;
       if (urlToUse) {
         try {
-          const url = new URL(urlToUse) as any;
+          const url = new URL(urlToUse);
           nodeIp = url.hostname;
         } catch (_error) {
           // Silent fallback to localhost
@@ -979,7 +980,7 @@ export class NodesController {
       }
     }
 
-    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp) as any;
+    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp);
 
     // Build test results with all phases
     const tests = {
@@ -1038,7 +1039,7 @@ export class NodesController {
     description: 'Node not found',
   })
   async getNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
-    const node = await this.nodesService.findOne(id) as any;
+    const node = await this.nodesService.findOne(id);
 
     return {
       nodeId: node.id,
@@ -1082,7 +1083,7 @@ export class NodesController {
     },
   })
   async clearScoreCache() {
-    this.jobAttribution.clearCache() as any;
+    this.jobAttribution.clearCache();
     return {
       success: true,
       message: 'Score cache cleared',
@@ -1124,7 +1125,7 @@ export class NodesController {
     description: 'SSH public key not found or not generated yet',
   })
   async getSshPublicKey() {
-    const publicKey = this.sshKeyService.getPublicKey() as any;
+    const publicKey = this.sshKeyService.getPublicKey();
     return { publicKey };
   }
 
@@ -1154,7 +1155,7 @@ export class NodesController {
     description: 'Invalid SSH public key format',
   })
   async addAuthorizedKey(@Body() body: { publicKey: string; comment?: string }) {
-    this.sshKeyService.addAuthorizedKey(body.publicKey, body.comment) as any;
+    this.sshKeyService.addAuthorizedKey(body.publicKey, body.comment);
     return {
       success: true,
       message: 'SSH key added to authorized_keys',

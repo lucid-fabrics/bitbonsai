@@ -1,145 +1,154 @@
-<div class="cpu-capacity-panel" *ngIf="!loading() && resources">
-  <!-- Header -->
-  <div class="panel-header">
-    <div class="icon-wrapper">
-      <svg class="cpu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="4" y="4" width="16" height="16" rx="2"/>
-        <rect x="9" y="9" width="6" height="6"/>
-        <line x1="9" y1="1" x2="9" y2="4"/>
-        <line x1="15" y1="1" x2="15" y2="4"/>
-        <line x1="9" y1="20" x2="9" y2="23"/>
-        <line x1="15" y1="20" x2="15" y2="23"/>
-        <line x1="20" y1="9" x2="23" y2="9"/>
-        <line x1="20" y1="14" x2="23" y2="14"/>
-        <line x1="1" y1="9" x2="4" y2="9"/>
-        <line x1="1" y1="14" x2="4" y2="14"/>
-      </svg>
-    </div>
-    <div class="header-content">
-      <h3>CPU Capacity Management</h3>
-      <p class="subtitle">Intelligent resource allocation for optimal performance</p>
-    </div>
-  </div>
-
-  <!-- CPU Info Card -->
-  <div class="info-card">
-    <div class="card-row">
-      <div class="card-label">
-        <span class="label-icon">🖥️</span>
-        <span>CPU Model</span>
+@if (!loading() && resources) {
+  <div class="cpu-capacity-panel">
+    <!-- Header -->
+    <div class="panel-header">
+      <div class="icon-wrapper">
+        <svg class="cpu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <rect x="9" y="9" width="6" height="6"/>
+          <line x1="9" y1="1" x2="9" y2="4"/>
+          <line x1="15" y1="1" x2="15" y2="4"/>
+          <line x1="9" y1="20" x2="9" y2="23"/>
+          <line x1="15" y1="20" x2="15" y2="23"/>
+          <line x1="20" y1="9" x2="23" y2="9"/>
+          <line x1="20" y1="14" x2="23" y2="14"/>
+          <line x1="1" y1="9" x2="4" y2="9"/>
+          <line x1="1" y1="14" x2="4" y2="14"/>
+        </svg>
       </div>
-      <div class="card-value">{{ resources.cpu.model }}</div>
-    </div>
-    <div class="card-row">
-      <div class="card-label">
-        <span class="label-icon">⚡</span>
-        <span>CPU Threads</span>
+      <div class="header-content">
+        <h3>CPU Capacity Management</h3>
+        <p class="subtitle">Intelligent resource allocation for optimal performance</p>
       </div>
-      <div class="card-value">{{ resources.cpu.cores }} threads ({{ resources.cpu.cores / 2 }} physical cores)</div>
-    </div>
-  </div>
-
-  <!-- Worker Calculation Visualization -->
-  <div class="calculation-card">
-    <div class="calc-header">
-      <h4>Active Configuration</h4>
-      <div class="calc-badge balanced">Balanced Mode</div>
     </div>
 
-    <div class="worker-visual">
-      <div class="worker-bar-container">
-        <div class="worker-bar-bg">
-          <div
-            class="worker-bar-fill"
-            [style.width.%]="getWorkerPercentage()">
+    <!-- CPU Info Card -->
+    <div class="info-card">
+      <div class="card-row">
+        <div class="card-label">
+          <span class="label-icon">🖥️</span>
+          <span>CPU Model</span>
+        </div>
+        <div class="card-value">{{ resources.cpu.model }}</div>
+      </div>
+      <div class="card-row">
+        <div class="card-label">
+          <span class="label-icon">⚡</span>
+          <span>CPU Threads</span>
+        </div>
+        <div class="card-value">{{ resources.cpu.cores }} threads ({{ resources.cpu.cores / 2 }} physical cores)</div>
+      </div>
+    </div>
+
+    <!-- Worker Calculation Visualization -->
+    <div class="calculation-card">
+      <div class="calc-header">
+        <h4>Active Configuration</h4>
+        <div class="calc-badge balanced">Balanced Mode</div>
+      </div>
+
+      <div class="worker-visual">
+        <div class="worker-bar-container">
+          <div class="worker-bar-bg">
+            <div
+              class="worker-bar-fill"
+              [style.width.%]="getWorkerPercentage()">
+            </div>
           </div>
-        </div>
-        <div class="worker-labels">
-          <span class="label-min">{{ resources.cpu.minWorkers }}</span>
-          <span class="label-current">{{ resources.cpu.configuredWorkers }} workers</span>
-          <span class="label-max">{{ resources.cpu.theoreticalMaxWorkers }}</span>
-        </div>
-      </div>
-
-      <div class="calc-formula">
-        <div class="formula-step">
-          <span class="formula-label">Theoretical Max:</span>
-          <span class="formula-value">{{ resources.cpu.cores }} threads ÷ {{ resources.cpu.coresPerJob }} threads/job = {{ resources.cpu.theoreticalMaxWorkers }}</span>
-        </div>
-        <div class="formula-step">
-          <span class="formula-label">Safety Margin:</span>
-          <span class="formula-value">{{ resources.cpu.theoreticalMaxWorkers }} × {{ resources.cpu.safetyMargin * 100 }}% = {{ resources.cpu.configuredWorkers }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="recommendation">
-      <div class="recommendation-icon">💡</div>
-      <div class="recommendation-text">
-        <strong>Why this matters:</strong>
-        {{ resources.recommendation.reason }}
-      </div>
-    </div>
-  </div>
-
-  <!-- Scenarios Comparison -->
-  <div class="scenarios-section">
-    <button class="toggle-details" (click)="toggleDetails()">
-      <span>{{ showDetails ? 'Hide' : 'Show' }} Alternative Configurations</span>
-      <svg
-        class="chevron"
-        [class.rotated]="showDetails"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </button>
-
-    <div class="scenarios-grid" *ngIf="showDetails">
-      <div
-        *ngFor="let scenario of resources.scenarios"
-        class="scenario-card"
-        [class.current]="isCurrentScenario(scenario.margin)">
-
-        <div class="scenario-header">
-          <h5>{{ scenario.label }}</h5>
-          <div class="scenario-badge" [ngClass]="getRiskClass(scenario.risk)">
-            {{ scenario.risk }} risk
+          <div class="worker-labels">
+            <span class="label-min">{{ resources.cpu.minWorkers }}</span>
+            <span class="label-current">{{ resources.cpu.configuredWorkers }} workers</span>
+            <span class="label-max">{{ resources.cpu.theoreticalMaxWorkers }}</span>
           </div>
         </div>
 
-        <div class="scenario-workers">
-          <span class="worker-count">{{ scenario.workers }}</span>
-          <span class="worker-label">concurrent workers</span>
+        <div class="calc-formula">
+          <div class="formula-step">
+            <span class="formula-label">Theoretical Max:</span>
+            <span class="formula-value">{{ resources.cpu.cores }} threads ÷ {{ resources.cpu.coresPerJob }} threads/job = {{ resources.cpu.theoreticalMaxWorkers }}</span>
+          </div>
+          <div class="formula-step">
+            <span class="formula-label">Safety Margin:</span>
+            <span class="formula-value">{{ resources.cpu.theoreticalMaxWorkers }} × {{ resources.cpu.safetyMargin * 100 }}% = {{ resources.cpu.configuredWorkers }}</span>
+          </div>
         </div>
+      </div>
 
-        <p class="scenario-description">{{ scenario.description }}</p>
-
-        <div class="scenario-current" *ngIf="isCurrentScenario(scenario.margin)">
-          <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          <span>Active Configuration</span>
+      <div class="recommendation">
+        <div class="recommendation-icon">💡</div>
+        <div class="recommendation-text">
+          <strong>Why this matters:</strong>
+          {{ resources.recommendation.reason }}
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Memory Info (Compact) -->
-  <div class="memory-info">
-    <div class="memory-row">
-      <span class="memory-label">Memory Usage</span>
-      <span class="memory-value">{{ formatBytes(resources.memory.used) }} / {{ formatBytes(resources.memory.total) }}</span>
+    <!-- Scenarios Comparison -->
+    <div class="scenarios-section">
+      <button class="toggle-details" (click)="toggleDetails()">
+        <span>{{ showDetails ? 'Hide' : 'Show' }} Alternative Configurations</span>
+        <svg
+          class="chevron"
+          [class.rotated]="showDetails"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      @if (showDetails) {
+        <div class="scenarios-grid">
+          @for (scenario of resources.scenarios; track scenario.margin) {
+            <div
+              class="scenario-card"
+              [class.current]="isCurrentScenario(scenario.margin)">
+
+              <div class="scenario-header">
+                <h5>{{ scenario.label }}</h5>
+                <div class="scenario-badge" [ngClass]="getRiskClass(scenario.risk)">
+                  {{ scenario.risk }} risk
+                </div>
+              </div>
+
+              <div class="scenario-workers">
+                <span class="worker-count">{{ scenario.workers }}</span>
+                <span class="worker-label">concurrent workers</span>
+              </div>
+
+              <p class="scenario-description">{{ scenario.description }}</p>
+
+              @if (isCurrentScenario(scenario.margin)) {
+                <div class="scenario-current">
+                  <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>Active Configuration</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
-    <div class="memory-bar">
-      <div class="memory-bar-fill" [style.width.%]="resources.memory.usedPercent"></div>
+
+    <!-- Memory Info (Compact) -->
+    <div class="memory-info">
+      <div class="memory-row">
+        <span class="memory-label">Memory Usage</span>
+        <span class="memory-value">{{ formatBytes(resources.memory.used) }} / {{ formatBytes(resources.memory.total) }}</span>
+      </div>
+      <div class="memory-bar">
+        <div class="memory-bar-fill" [style.width.%]="resources.memory.usedPercent"></div>
+      </div>
     </div>
   </div>
-</div>
+}
 
-<div class="loading-state" *ngIf="loading()">
-  <div class="spinner"></div>
-  <p>Loading system resources...</p>
-</div>
+@if (loading()) {
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading system resources...</p>
+  </div>
+}
