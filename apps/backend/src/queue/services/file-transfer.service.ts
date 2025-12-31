@@ -365,11 +365,21 @@ export class FileTransferService {
     const ssh = spawn('ssh', sshArgs);
     let timeout: NodeJS.Timeout | null = null;
     let forceKillTimeout: NodeJS.Timeout | null = null;
+    let cleanupExecuted = false;
 
-    // HIGH #14 FIX: Cleanup function to ensure resources always released
+    // CRITICAL #2 FIX: Idempotent cleanup to prevent double cleanup and race conditions
     const cleanup = () => {
-      if (timeout) clearTimeout(timeout);
-      if (forceKillTimeout) clearTimeout(forceKillTimeout);
+      if (cleanupExecuted) return; // Prevent double cleanup
+      cleanupExecuted = true;
+
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      if (forceKillTimeout) {
+        clearTimeout(forceKillTimeout);
+        forceKillTimeout = null;
+      }
       if (!ssh.killed) {
         ssh.kill('SIGKILL');
       }
@@ -388,9 +398,9 @@ export class FileTransferService {
           timedOut = true;
           ssh.kill('SIGTERM');
 
-          // Force kill if SIGTERM doesn't work
+          // CRITICAL #2 FIX: Ensure forceKillTimeout respects cleanup state
           forceKillTimeout = setTimeout(() => {
-            if (!ssh.killed) {
+            if (!ssh.killed && !cleanupExecuted) {
               ssh.kill('SIGKILL');
             }
           }, 5000);
@@ -411,10 +421,7 @@ export class FileTransferService {
         });
 
         ssh.on('close', (code) => {
-          if (timeout) clearTimeout(timeout);
-          if (forceKillTimeout) clearTimeout(forceKillTimeout);
-          ssh.stdout?.destroy();
-          ssh.stderr?.destroy();
+          cleanup(); // Use idempotent cleanup
 
           if (timedOut) {
             return; // Already rejected with timeout error
@@ -428,10 +435,7 @@ export class FileTransferService {
         });
 
         ssh.on('error', (error) => {
-          if (timeout) clearTimeout(timeout);
-          if (forceKillTimeout) clearTimeout(forceKillTimeout);
-          ssh.stdout?.destroy();
-          ssh.stderr?.destroy();
+          cleanup(); // Use idempotent cleanup
 
           if (timedOut) {
             return; // Already rejected with timeout error
@@ -441,7 +445,7 @@ export class FileTransferService {
         });
       });
     } finally {
-      // HIGH #14 FIX: ALWAYS cleanup, even if promise throws synchronously
+      // CRITICAL #2 FIX: Safe idempotent cleanup
       cleanup();
     }
   }

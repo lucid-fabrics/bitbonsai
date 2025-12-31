@@ -836,6 +836,10 @@ export class QueueService implements OnModuleInit {
 
       const result = await this.prisma.$transaction(
         async (tx) => {
+          // CRITICAL #6 FIX: Acquire PostgreSQL advisory lock to prevent race conditions
+          // This lock is automatically released when transaction commits/rollbacks
+          // hashtext() generates deterministic hash from nodeId for lock key
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${nodeId}))`;
 
           // Find next queued job (prioritize by: priority DESC, healthScore DESC, createdAt ASC)
           // Exclude jobs with future nextRetryAt (exponential backoff)
@@ -909,7 +913,8 @@ export class QueueService implements OnModuleInit {
               });
             }
 
-            continue; // Try next job instead of returning null
+            // Return flag to continue with next job instead of returning null
+            return { claimFailed: true, needsTransfer: true };
           }
 
           // CRITICAL FIX: Use updateMany with WHERE clause to atomically claim the job
@@ -957,6 +962,10 @@ export class QueueService implements OnModuleInit {
       );
 
       // Check result
+      if (!result) {
+        return null; // No more jobs to claim
+      }
+
       if (result.claimFailed) {
         // CRITICAL #1 FIX: Jitter OUTSIDE transaction to avoid holding locks
         const jitterMs = 10 + Math.random() * 40;
@@ -1153,55 +1162,64 @@ export class QueueService implements OnModuleInit {
       }
     }
 
-    // CRITICAL FIX #1: Use transaction to ensure atomic completion + metrics update
-    // This prevents race conditions where job shows COMPLETED via API but disappears after restart
-    const job = await this.prisma.$transaction(async (tx) => {
-      // RACE CONDITION FIX: Check job isn't already completed to prevent double metrics
-      const existingJob = await tx.job.findUnique({
-        where: { id },
-        select: { stage: true },
-      });
+    // CRITICAL #8 FIX: Wrap transaction in try-catch for proper error handling
+    let job: Job;
 
-      if (!existingJob) {
-        throw new NotFoundException(`Job with ID "${id}" not found`);
-      }
-
-      if (existingJob.stage === JobStage.COMPLETED) {
-        this.logger.warn(`Job ${id} already completed - skipping to prevent double metrics`);
-        // Return the existing completed job
-        return tx.job.findUnique({
+    try {
+      // PHASE 1: Database updates (atomic transaction)
+      job = await this.prisma.$transaction(async (tx) => {
+        // RACE CONDITION FIX: Check job isn't already completed to prevent double metrics
+        const existingJob = await tx.job.findUnique({
           where: { id },
-          include: { node: { include: { license: true } } },
-        }) as Promise<Job & { node: { licenseId: string } }>;
-      }
+          select: { stage: true },
+        });
 
-      // Step 1: Update job to COMPLETED
-      const completedJob = await tx.job.update({
-        where: { id },
-        data: {
-          stage: JobStage.COMPLETED,
-          progress: 100,
-          afterSizeBytes: BigInt(completeJobDto.afterSizeBytes),
-          savedBytes: BigInt(completeJobDto.savedBytes),
-          savedPercent: completeJobDto.savedPercent,
-          completedAt: new Date(),
-          priority: 0, // Auto-reset priority to normal on completion
-          prioritySetAt: null, // Clear priority timestamp
-        },
-        include: {
-          node: {
-            include: {
-              license: true,
+        if (!existingJob) {
+          throw new NotFoundException(`Job with ID "${id}" not found`);
+        }
+
+        if (existingJob.stage === JobStage.COMPLETED) {
+          this.logger.warn(`Job ${id} already completed - skipping to prevent double metrics`);
+          // Return the existing completed job
+          return tx.job.findUnique({
+            where: { id },
+            include: { node: { include: { license: true } } },
+          }) as Promise<Job & { node: { licenseId: string } }>;
+        }
+
+        // Step 1: Update job to COMPLETED
+        const completedJob = await tx.job.update({
+          where: { id },
+          data: {
+            stage: JobStage.COMPLETED,
+            progress: 100,
+            afterSizeBytes: BigInt(completeJobDto.afterSizeBytes),
+            savedBytes: BigInt(completeJobDto.savedBytes),
+            savedPercent: completeJobDto.savedPercent,
+            completedAt: new Date(),
+            priority: 0, // Auto-reset priority to normal on completion
+            prioritySetAt: null, // Clear priority timestamp
+          },
+          include: {
+            node: {
+              include: {
+                license: true,
+              },
             },
           },
-        },
+        });
+
+        // Step 2: Update metrics INSIDE transaction (not outside)
+        await this.updateMetrics(completedJob, tx);
+
+        return completedJob;
       });
-
-      // Step 2: Update metrics INSIDE transaction (not outside)
-      await this.updateMetrics(completedJob, tx);
-
-      return completedJob;
-    });
+    } catch (txError) {
+      // CRITICAL #8 FIX: Catch transaction errors and re-throw with context
+      this.logger.error(`Transaction failed for job ${id}:`, txError);
+      const errorMessage = txError instanceof Error ? txError.message : String(txError);
+      throw new Error(`Failed to mark job as completed: ${errorMessage}`);
+    }
 
     this.logger.log(`Job completed: ${id} (saved ${completeJobDto.savedPercent}%)`);
     return job;

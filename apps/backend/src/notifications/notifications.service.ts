@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { CreateNotificationDto } from './dto/notification.dto';
 import type { Notification } from './types/notification.types';
 
@@ -13,14 +13,33 @@ import type { Notification } from './types/notification.types';
  * - In-memory storage for fast access
  * - Per-user/session notification queues
  * - Read/unread tracking
- * - Auto-expiration of old notifications
+ * - Auto-expiration of old notifications (CRITICAL #4 FIX: Periodic cleanup every 10 minutes)
  * - Event emission for real-time updates via WebSocket
  */
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly notifications: Map<string, Notification> = new Map();
   private readonly EXPIRATION_HOURS = 24;
+
+  // CRITICAL #4 FIX: Track cleanup interval for proper shutdown
+  private cleanupIntervalId?: NodeJS.Timeout;
+
+  /**
+   * CRITICAL #4 FIX: Start periodic cleanup of expired notifications
+   * Runs every 10 minutes to prevent unbounded Map growth
+   */
+  onModuleInit() {
+    const cleanupIntervalMs = 10 * 60 * 1000; // 10 minutes
+
+    this.cleanupIntervalId = setInterval(() => {
+      this.clearExpired();
+    }, cleanupIntervalMs);
+
+    this.logger.log(
+      `✅ CRITICAL #4 FIX: Notification cleanup interval started (every ${cleanupIntervalMs / 1000}s)`
+    );
+  }
 
   /**
    * Create and store a new notification
@@ -53,16 +72,25 @@ export class NotificationsService {
   /**
    * Get all active notifications (not expired)
    *
+   * CRITICAL #4 FIX: Lazy cleanup - delete expired notifications during read
+   *
    * @param includeRead - Whether to include read notifications (default: true)
    * @returns Array of active notifications
    */
   async getNotifications(includeRead = true): Promise<Notification[]> {
     const now = new Date();
+    const active: Notification[] = [];
 
-    // Filter out expired notifications
-    const active = Array.from(this.notifications.values()).filter(
-      (n) => n.expiresAt > now && (includeRead || !n.read)
-    );
+    // CRITICAL #4 FIX: Filter active notifications AND delete expired ones (lazy cleanup)
+    for (const [id, notification] of this.notifications.entries()) {
+      if (notification.expiresAt <= now) {
+        // Expired - delete from Map
+        this.notifications.delete(id);
+      } else if (includeRead || !notification.read) {
+        // Active and matches read filter
+        active.push(notification);
+      }
+    }
 
     return active.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
@@ -155,9 +183,17 @@ export class NotificationsService {
   }
 
   /**
-   * HIGH #26 FIX: Cleanup on module destruction
+   * CRITICAL #4 FIX: Cleanup on module destruction
+   * Clears cleanup interval and all notifications
    */
   async onModuleDestroy(): Promise<void> {
+    // CRITICAL #4 FIX: Clear cleanup interval
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = undefined;
+      this.logger.log('✓ CRITICAL #4 FIX: Notification cleanup interval cleared');
+    }
+
     this.notifications.clear();
     this.logger.log('Notifications service destroyed - cleared all notifications');
   }

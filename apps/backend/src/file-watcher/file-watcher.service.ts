@@ -186,6 +186,8 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
     const existingTimer = this.debounceTimers.get(debounceKey);
     if (existingTimer) {
       clearTimeout(existingTimer);
+      // CRITICAL #1 FIX: Delete from Map to prevent unbounded growth
+      this.debounceTimers.delete(debounceKey);
     }
 
     // Set new timer
