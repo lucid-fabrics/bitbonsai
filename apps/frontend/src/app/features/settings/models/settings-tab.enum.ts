@@ -6,4 +6,5 @@ export enum SettingsTab {
   ADVANCED = 'advanced',
   INTEGRATIONS = 'integrations',
   DEBUG = 'debug',
+  DOCS = 'docs',
 }

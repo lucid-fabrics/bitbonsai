@@ -43,11 +43,14 @@ interface LockPromise extends Promise<void> {
 }
 
 // CRITICAL #3 FIX: Enhanced lock holder tracking for deadlock detection
+// CRITICAL #2 FIX: Track expected duration to prevent false positive deadlock detection
 interface PoolLockHolder {
   promise: Promise<void>;
   release: () => void;
   acquiredAt: number;
   holder: string; // For debugging (workerId or operation name)
+  expectedDurationMs: number; // Expected operation duration (for long-running ops)
+  staleThreshold: number; // Computed: staleLockThreshold + expectedDuration
 }
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
@@ -107,11 +110,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   // Load-based throttling thresholds
   // LOAD_THRESHOLD_MULTIPLIER: Max load = CPU cores * multiplier
   // Higher values = more tolerant of high load (useful for NAS systems with high I/O wait)
-  // Default: 5.0 - generous default so nodes "just work" without manual tuning
+  // MEDIUM #3 FIX: Cap at 2.0 to prevent absurd values on high-core systems
+  // Default: 2.0 (reduced from 5.0) - Linux scheduler degrades above 2× cores
   // UX Philosophy: Smart defaults over configuration - users shouldn't need to adjust this
   // Priority: 1. Database setting (per-node), 2. ENV var, 3. Default
-  private readonly DEFAULT_LOAD_THRESHOLD_MULTIPLIER = parseFloat(
-    process.env.LOAD_THRESHOLD_MULTIPLIER || '5.0'
+  private readonly DEFAULT_LOAD_THRESHOLD_MULTIPLIER = Math.min(
+    parseFloat(process.env.LOAD_THRESHOLD_MULTIPLIER || '2.0'),
+    2.0 // CRITICAL CAP: Prevent load thresholds above 2× CPU count
   );
   // Cached load threshold from database (updated on init and via reload method)
   private loadThresholdMultiplier: number = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
@@ -158,11 +163,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * - File system operations
    */
   private calculateOptimalWorkers(): number {
-    // LOW #16 FIX: Fallback for virtualized environments where CPU detection fails
+    // MEDIUM #4 FIX: Robust CPU detection with better fallback for VMs
     let cpuCount = os.cpus().length;
-    if (!cpuCount || cpuCount < 2) {
-      this.logger.warn(`Low/invalid CPU count detected: ${cpuCount}, using fallback of 4 cores`);
-      cpuCount = 4; // Reasonable default for most systems
+    if (!cpuCount || cpuCount < 1) {
+      this.logger.warn(`Invalid CPU count detected: ${cpuCount}, using fallback of 8 cores`);
+      cpuCount = 8; // Better default for modern systems (prevents severe under-utilization)
+    } else if (cpuCount < 4) {
+      this.logger.warn(
+        `Low CPU count detected: ${cpuCount}, using minimum of 4 cores for worker calculation`
+      );
+      cpuCount = 4; // Minimum for reasonable encoding performance
     }
 
     // Theoretical maximum workers if CPU was only resource
@@ -447,10 +457,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         where: {
           nodeId, // CRITICAL: Only this node's jobs
           AND: [
+            // HIGH #2 FIX: Exclude legitimately new jobs (startedAt null) from auto-heal
+            // Only heal jobs that were started but have stale heartbeat
+            {
+              startedAt: { not: null }, // Must have been started
+            },
             // CRITICAL FIX #2: Exclude jobs with recent heartbeats
             {
               OR: [
-                { lastHeartbeat: null }, // No heartbeat = truly orphaned
+                { lastHeartbeat: null }, // Started but no heartbeat = orphaned
                 { lastHeartbeat: { lt: twoMinutesAgo } }, // Stale heartbeat = orphaned
               ],
             },
@@ -989,9 +1004,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * CRITICAL #3 FIX: Acquire mutex lock with retry, stale lock detection, and auto-recovery.
+   * CRITICAL #2 FIX: Support expected duration to prevent false positive deadlock detection.
    *
    * Prevents deadlocks by:
-   * - Auto-releasing locks held > 2 * timeout (stale lock detection)
+   * - Auto-releasing locks held > staleThreshold (dynamic based on expected duration)
    * - Retry mechanism (3 attempts) with exponential backoff
    * - Lock age tracking for debugging
    * - Holder identification for diagnostics
@@ -999,10 +1015,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @param nodeId - Node unique identifier
    * @param holder - Lock holder identifier (workerId or operation name)
    * @param timeoutMs - Maximum wait time for lock (default: 30s)
+   * @param expectedDurationMs - Expected operation duration for long-running ops (default: 0)
    * @throws Error if lock acquisition fails after 3 retries
    * @private
    */
-  private async acquirePoolLock(nodeId: string, holder: string, timeoutMs = 30000): Promise<void> {
+  private async acquirePoolLock(
+    nodeId: string,
+    holder: string,
+    timeoutMs = 30000,
+    expectedDurationMs = 0
+  ): Promise<void> {
     const maxRetries = 3;
     let attempt = 0;
 
@@ -1011,13 +1033,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       if (existingLock) {
         const age = Date.now() - existingLock.acquiredAt;
-        const staleLockThreshold = timeoutMs * 2;
 
-        // Auto-release stale locks (held > 2 * timeout)
-        if (age > staleLockThreshold) {
+        // HIGH #2 FIX: Force-release stale locks to prevent deadlock
+        // If lock holder crashes or database query hangs, this auto-recovers
+        if (age > existingLock.staleThreshold) {
           this.logger.warn(
-            `🔓 CRITICAL #3 FIX: Auto-releasing stale lock for node ${nodeId} ` +
-              `(held by ${existingLock.holder} for ${age}ms, threshold: ${staleLockThreshold}ms)`
+            `🔓 HIGH #2 FIX: Auto-releasing stale lock for node ${nodeId} ` +
+              `(held by ${existingLock.holder} for ${age}ms, threshold: ${existingLock.staleThreshold}ms, ` +
+              `expected duration: ${existingLock.expectedDurationMs}ms)`
           );
           existingLock.release();
           this.poolLocks.delete(nodeId);
@@ -1051,11 +1074,17 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         releaseLock = resolve;
       });
 
+      // CRITICAL #2 FIX: Compute staleThreshold based on expected duration
+      const baseStaleLockThreshold = timeoutMs * 2; // 2x timeout as baseline
+      const staleThreshold = baseStaleLockThreshold + expectedDurationMs;
+
       this.poolLocks.set(nodeId, {
         promise: lockPromise,
         release: releaseLock,
         acquiredAt: Date.now(),
         holder,
+        expectedDurationMs,
+        staleThreshold,
       });
 
       return; // Lock acquired successfully
@@ -1080,15 +1109,22 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * CRITICAL #3 FIX: Execute function with pool lock, ensuring release on error
+   * CRITICAL #2 FIX: Support expected duration for long-running operations
    *
    * @param nodeId - Node unique identifier
    * @param holder - Lock holder identifier (workerId or operation name)
    * @param fn - Function to execute while holding lock
+   * @param expectedDurationMs - Expected operation duration (default: 0)
    * @returns Result of function execution
    * @private
    */
-  private async withPoolLock<T>(nodeId: string, holder: string, fn: () => Promise<T>): Promise<T> {
-    await this.acquirePoolLock(nodeId, holder);
+  private async withPoolLock<T>(
+    nodeId: string,
+    holder: string,
+    fn: () => Promise<T>,
+    expectedDurationMs = 0
+  ): Promise<T> {
+    await this.acquirePoolLock(nodeId, holder, 30000, expectedDurationMs);
     try {
       return await fn();
     } finally {
@@ -1098,15 +1134,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * CRITICAL #3 FIX: Periodic watchdog to detect and release deadlocked pool locks.
+   * CRITICAL #2 FIX: Use per-lock staleThreshold to avoid false positives.
    *
-   * Runs every 30 seconds and forcibly releases locks held for > 60 seconds.
+   * Runs every 30 seconds and forcibly releases locks held beyond their staleThreshold.
    * Prevents permanent deadlocks from crashed operations or unhandled errors.
    *
    * @private
    */
   private startLockWatchdog(): void {
     const watchdogInterval = 30000; // Check every 30 seconds
-    const staleLockThreshold = 60000; // 60 seconds
 
     this.lockWatchdogIntervalId = setInterval(() => {
       const now = Date.now();
@@ -1114,10 +1150,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       for (const [nodeId, lock] of this.poolLocks.entries()) {
         const age = now - lock.acquiredAt;
 
-        if (age > staleLockThreshold) {
+        // CRITICAL #2 FIX: Use lock's own staleThreshold (not global 60s)
+        if (age > lock.staleThreshold) {
           this.logger.error(
             `🚨 DEADLOCK DETECTED: Pool lock for ${nodeId} held by ${lock.holder} for ${age}ms ` +
-              `(threshold: ${staleLockThreshold}ms). Forcibly releasing.`
+              `(threshold: ${lock.staleThreshold}ms, expected: ${lock.expectedDurationMs}ms). Forcibly releasing.`
           );
 
           lock.release();
@@ -1129,8 +1166,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     }, watchdogInterval);
 
     this.logger.log(
-      `✅ CRITICAL #3 FIX: Lock watchdog started (interval: ${watchdogInterval}ms, ` +
-        `threshold: ${staleLockThreshold}ms)`
+      `✅ CRITICAL #2 FIX: Lock watchdog started (interval: ${watchdogInterval}ms, ` +
+        `using per-lock staleThreshold)`
     );
   }
 
@@ -1311,7 +1348,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         );
 
         try {
-          const newWorkerId = `${nodeId}-worker-${Date.now()}`;
+          // LOW #2 FIX: Use crypto UUID to prevent ID collisions in rapid crash scenarios
+          const { randomUUID } = await import('crypto');
+          const newWorkerId = `${nodeId}-worker-${randomUUID().slice(0, 8)}`;
           await this.startWorker(newWorkerId, nodeId);
           this.logger.log(`[${nodeId}] Replacement worker ${newWorkerId} started`);
         } catch (restartError) {
@@ -2574,6 +2613,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Processing loop for worker
+   * CRITICAL #3 FIX: Added background heartbeat to prevent false auto-heal
    *
    * Continuously polls for new jobs while worker is running.
    * Each worker runs independently and competes for jobs from the queue.
@@ -2586,6 +2626,28 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     if (!worker) return;
 
     this.logger.log(`[${workerId}] Started processing loop`);
+
+    // CRITICAL #3 FIX: Background heartbeat to prevent auto-heal race condition
+    // Updates heartbeat every 30s to keep job alive during silent encoding phases
+    const heartbeatInterval = setInterval(async () => {
+      if (worker.currentJobId && worker.isRunning) {
+        try {
+          await this.prisma.job.updateMany({
+            where: {
+              id: worker.currentJobId,
+              stage: { in: ['ENCODING', 'VERIFYING'] },
+            },
+            data: {
+              lastHeartbeat: new Date(),
+              heartbeatNodeId: worker.nodeId,
+            },
+          });
+          this.logger.debug(`[${workerId}] Heartbeat sent for job ${worker.currentJobId}`);
+        } catch (error) {
+          this.logger.debug(`[${workerId}] Heartbeat update failed (non-fatal):`, error);
+        }
+      }
+    }, 30000); // Every 30 seconds
 
     // CRITICAL #12 FIX: Wrap entire loop in try-finally to ensure cleanup always happens
     try {
@@ -2611,6 +2673,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log(`[${workerId}] Stopped processing loop`);
     } finally {
+      // CRITICAL #3 FIX: Clear heartbeat interval to prevent memory leak
+      clearInterval(heartbeatInterval);
+      this.logger.debug(`[${workerId}] Heartbeat interval cleared`);
+
       // CRITICAL #12 FIX: ALWAYS cleanup, even if loop crashes unexpectedly
       const pool = this.workerPools.get(worker.nodeId);
       if (pool) {

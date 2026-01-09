@@ -75,6 +75,29 @@ export class EmailService {
     }
   }
 
+  async sendEmail(params: { to: string; subject: string; html: string }): Promise<void> {
+    const { to, subject, html } = params;
+
+    try {
+      if (!this.configService.get<string>('RESEND_API_KEY')) {
+        this.logger.warn(`[DRY RUN] Email to ${to}: ${subject}`);
+        return;
+      }
+
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to,
+        subject,
+        html,
+      });
+
+      this.logger.log(`Email sent successfully to ${to}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${to}:`, error);
+      throw error;
+    }
+  }
+
   private formatTierName(tier: string): string {
     const names: Record<string, string> = {
       FREE: 'Free',

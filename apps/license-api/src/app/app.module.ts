@@ -13,6 +13,7 @@ import { PricingModule } from '../pricing/pricing.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PromoModule } from '../promo/promo.module';
 import { SecurityModule } from '../security/security.module';
+import { StripeModule } from '../stripe/stripe.module';
 import { WebhookModule } from '../webhook/webhook.module';
 
 @Module({
@@ -51,6 +52,7 @@ import { WebhookModule } from '../webhook/webhook.module';
     PromoModule,
     AppConfigModule,
     WebhookModule,
+    StripeModule,
   ],
 })
 export class AppModule {}

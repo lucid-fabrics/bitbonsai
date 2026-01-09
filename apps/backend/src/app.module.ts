@@ -12,6 +12,7 @@ import { CoreModule } from './core/core.module';
 import { DatabaseInitService } from './database/database-init.service';
 import { DiscoveryModule } from './discovery/discovery.module';
 import { DistributionModule } from './distribution/distribution.module';
+import { DocsModule } from './docs/docs.module';
 import { EncodingModule } from './encoding/encoding.module';
 import { FilesystemModule } from './filesystem/filesystem.module';
 import { HealthModule } from './health/health.module';
@@ -76,6 +77,7 @@ import { SystemModule } from './system/system.module';
     AnalyticsModule,
     IntegrationsModule,
     DistributionModule,
+    DocsModule,
   ],
   controllers: [],
   providers: [

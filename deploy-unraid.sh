@@ -98,27 +98,42 @@ echo "✅ Backend rebuilt"
 echo ""
 
 # Step 4.5: Rebuild frontend to compile TypeScript and template changes
-echo "🎨 Step 5/9: Rebuilding frontend application..."
+echo "🎨 Step 5/10: Rebuilding frontend application..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-frontend sh -c 'npx nx build frontend --configuration=production'" || {
     echo "⚠️  Warning: Frontend rebuild failed (container may not be running yet)"
 }
 echo "✅ Frontend rebuilt"
 echo ""
 
-# Step 5: Restart containers to pick up code changes
-echo "♻️  Step 6/9: Restarting containers..."
+# Step 5.5: Deploy website to nginx container
+echo "🌐 Step 6/10: Deploying website to public nginx..."
+if [ -d "dist/apps/website/browser" ]; then
+    echo "   Building website locally..."
+    npx nx build website --configuration=production
+    echo "   Syncing to Unraid nginx..."
+    rsync -az --delete \
+        dist/apps/website/browser/ \
+        $UNRAID_SSH:/mnt/user/appdata/bitbonsai-website/html/
+    echo "✅ Website deployed to https://bitbonsai.app"
+else
+    echo "⚠️  Warning: Website build not found, skipping deployment"
+fi
+echo ""
+
+# Step 6: Restart containers to pick up code changes
+echo "♻️  Step 7/10: Restarting containers..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker-compose -f docker-compose.unraid.yml restart"
 echo "✅ Containers restarted"
 echo ""
 
 # Step 7: Wait for containers to be ready
-echo "⏳ Step 7/9: Waiting for backend to be ready..."
+echo "⏳ Step 8/10: Waiting for backend to be ready..."
 sleep 10
 echo "✅ Backend should be ready"
 echo ""
 
 # Step 8: Regenerate Prisma Client (CRITICAL - prevents 504 errors)
-echo "🔄 Step 8/9: Regenerating Prisma Client (prevents proxy errors)..."
+echo "🔄 Step 9/10: Regenerating Prisma Client (prevents proxy errors)..."
 MAX_RETRIES=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -139,7 +154,7 @@ done
 echo ""
 
 # Step 9: Apply pending migrations
-echo "🗄️  Step 9/9: Applying database migrations..."
+echo "🗄️  Step 10/10: Applying database migrations..."
 ssh $UNRAID_SSH "cd $DEPLOY_PATH && docker exec bitbonsai-backend npx prisma migrate deploy" || {
     echo "⚠️  Warning: Migration failed (may not be needed)"
 }

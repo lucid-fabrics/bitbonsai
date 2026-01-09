@@ -77,6 +77,16 @@
         <i class="fa fa-bug"></i>
         <span>Debug</span>
       </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'docs']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-book"></i>
+        <span>Documentation</span>
+      </a>
     </nav>
 
     <!-- Tab Content -->

@@ -171,6 +171,6 @@ export class PatreonController {
     return determineLicenseTierFromWebhook({
       entitledTierTitles: tierTitles,
       pledgeAmountCents: payload.data.attributes.currently_entitled_amount_cents,
-    });
+    }) as any;
   }
 }

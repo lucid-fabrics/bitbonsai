@@ -171,19 +171,93 @@ export class JobRouterService {
   /**
    * Rebalance jobs across nodes (periodic optimization)
    *
-   * Moves jobs from overloaded LOCAL nodes to underutilized LOCAL nodes
-   * to maintain even load distribution.
+   * ALGORITHM OVERVIEW:
+   * Redistributes QUEUED jobs from heavily loaded nodes to idle nodes to maximize
+   * cluster throughput and prevent bottlenecks.
    *
-   * @returns Number of jobs rebalanced
+   * HOW IT WORKS (Step-by-Step):
+   *
+   * 1. ELIGIBILITY CHECK
+   *    - Only considers ONLINE nodes with networkLocation = LOCAL
+   *    - Requires at least 2 nodes (can't rebalance with 1 node)
+   *    - Only moves jobs in QUEUED stage (never ENCODING, COMPLETED, etc.)
+   *    - Respects shared storage requirements (LOCAL nodes have NFS access)
+   *
+   * 2. LOAD CALCULATION
+   *    - Load % = (QUEUED jobs / maxWorkers) × 100
+   *    - Example: Node with 20 queued jobs and 4 workers = 500% load
+   *    - Nodes sorted by load (highest first)
+   *
+   * 3. THRESHOLD CLASSIFICATION
+   *    - OVERLOADED: Load > 80%  (e.g., 4 queued jobs with 4 workers = 100% > 80%)
+   *    - UNDERUTILIZED: Load < 50%  (e.g., 1 queued job with 4 workers = 25% < 50%)
+   *    - BALANCED: Between 50-80% (no action needed)
+   *
+   * 4. REBALANCE DECISION
+   *    - Triggers ONLY when BOTH conditions met:
+   *      a) At least one OVERLOADED node exists (>80%)
+   *      b) At least one UNDERUTILIZED node exists (<50%)
+   *    - If all nodes are 50-80%, rebalancing skipped (considered balanced)
+   *    - If all nodes >80%, no target available (all overloaded)
+   *
+   * 5. JOB MIGRATION
+   *    - Moves up to 5 jobs per overloaded node
+   *    - Distributes jobs round-robin across underutilized nodes
+   *    - Updates job.nodeId (workers automatically pick up reassigned jobs)
+   *    - Respects job stickiness (won't move jobs that recently migrated)
+   *
+   * EXAMPLE SCENARIOS:
+   *
+   * Scenario A - Rebalancing WILL trigger:
+   *   Main Node: 20 queued / 4 workers = 500% (OVERLOADED)
+   *   Child Node: 1 queued / 5 workers = 20% (UNDERUTILIZED)
+   *   → Moves 5 jobs from Main to Child
+   *
+   * Scenario B - Rebalancing WILL NOT trigger:
+   *   Main Node: 20 queued / 4 workers = 500% (OVERLOADED)
+   *   Child Node: 15 queued / 5 workers = 300% (OVERLOADED)
+   *   → Both overloaded, no underutilized target available
+   *
+   * Scenario C - Rebalancing WILL NOT trigger:
+   *   Main Node: 3 queued / 4 workers = 75% (BALANCED)
+   *   Child Node: 2 queued / 5 workers = 40% (UNDERUTILIZED)
+   *   → Main node not overloaded (75% < 80%), no action needed
+   *
+   * IMPORTANT LIMITATIONS:
+   *
+   * - Conservative thresholds prevent over-rebalancing but may miss imbalances
+   * - Does NOT rebalance REMOTE nodes (network latency would hurt performance)
+   * - Does NOT move ENCODING jobs (would interrupt in-progress work)
+   * - Batch size limited to 5 jobs/node to avoid thundering herd
+   * - Manual intervention may be needed for severe imbalances (e.g., 92 vs 11 queue)
+   *
+   * WHEN TO USE:
+   *
+   * - Automatic: Triggered periodically by cron (if enabled)
+   * - Manual: Call POST /api/v1/queue/rebalance endpoint
+   * - After major job additions to unevenly loaded nodes
+   * - When adding new nodes to distribute existing queue
+   *
+   * TROUBLESHOOTING:
+   *
+   * If rebalancing returns 0 jobs moved but distribution looks uneven:
+   *
+   * 1. Check if both nodes are LOCAL (REMOTE nodes excluded)
+   * 2. Verify thresholds: Overloaded >80%, Underutilized <50%
+   * 3. If both nodes >50% load, rebalance won't trigger (by design)
+   * 4. Consider manual SQL: UPDATE jobs SET nodeId = 'target' WHERE nodeId = 'source' AND stage = 'QUEUED' LIMIT 10
+   * 5. Or adjust thresholds in this method (lines 219-220)
+   *
+   * @returns Number of jobs redistributed across nodes
    */
   async rebalanceJobs(): Promise<number> {
     this.logger.log('⚖️  Rebalancing jobs across nodes...');
 
-    // Get all online nodes with their load
+    // STEP 1: Get all eligible nodes (ONLINE + LOCAL only)
     const nodes = await this.prisma.node.findMany({
       where: {
         status: 'ONLINE',
-        networkLocation: NetworkLocation.LOCAL, // Only rebalance LOCAL nodes
+        networkLocation: NetworkLocation.LOCAL, // Only rebalance LOCAL nodes (have shared storage)
       },
       select: {
         id: true,
@@ -193,7 +267,7 @@ export class JobRouterService {
           select: {
             jobs: {
               where: {
-                stage: { in: ['QUEUED'] }, // Only move queued jobs
+                stage: { in: ['QUEUED'] }, // Only count queued jobs (not ENCODING or COMPLETED)
               },
             },
           },
@@ -202,47 +276,51 @@ export class JobRouterService {
     });
 
     if (nodes.length < 2) {
-      this.logger.log('Not enough nodes for rebalancing');
+      this.logger.log('Not enough nodes for rebalancing (need at least 2)');
       return 0;
     }
 
-    // Calculate load percentage for each node
+    // STEP 2: Calculate load percentage for each node
+    // Load = (queued jobs / worker capacity) × 100
     const nodeLoads = nodes.map((node) => ({
       ...node,
       load: (node._count.jobs / node.maxWorkers) * 100,
     }));
 
-    // Sort by load (descending)
+    // STEP 3: Sort nodes by load (highest to lowest)
     nodeLoads.sort((a, b) => b.load - a.load);
 
-    // Find overloaded and underutilized nodes
-    const overloaded = nodeLoads.filter((n) => n.load > 80);
-    const underutilized = nodeLoads.filter((n) => n.load < 50);
+    // STEP 4: Classify nodes by load thresholds
+    const overloaded = nodeLoads.filter((n) => n.load > 80); // >80% = needs to offload jobs
+    const underutilized = nodeLoads.filter((n) => n.load < 50); // <50% = can accept jobs
 
+    // STEP 5: Check if rebalancing is needed
     if (overloaded.length === 0 || underutilized.length === 0) {
-      this.logger.log('No rebalancing needed (load is balanced)');
+      this.logger.log(
+        `No rebalancing needed - Overloaded: ${overloaded.length}, Underutilized: ${underutilized.length}`
+      );
       return 0;
     }
 
     let movedCount = 0;
 
-    // Move jobs from overloaded to underutilized nodes
+    // STEP 6: Move jobs from overloaded to underutilized nodes
     for (const overloadedNode of overloaded) {
-      // Get queued jobs from overloaded node
+      // Get up to 5 queued jobs from this overloaded node
       const jobsToMove = await this.prisma.job.findMany({
         where: {
           nodeId: overloadedNode.id,
           stage: 'QUEUED',
         },
-        take: 5, // Move up to 5 jobs per node
+        take: 5, // Limit batch size to prevent overwhelming target nodes
         select: { id: true, fileLabel: true },
       });
 
       for (const job of jobsToMove) {
-        // Find best underutilized node
+        // Round-robin distribution across underutilized nodes
         const targetNode = underutilized[movedCount % underutilized.length];
 
-        // Move job to target node
+        // Reassign job to target node (workers will pick it up automatically)
         await this.prisma.job.update({
           where: { id: job.id },
           data: { nodeId: targetNode.id },

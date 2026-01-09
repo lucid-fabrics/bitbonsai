@@ -72,7 +72,7 @@ export class PromoService {
           entityType: 'PROMO_CODE',
           entityId: id,
           userId: adminUserId,
-          changes: dto,
+          changes: JSON.parse(JSON.stringify(dto)),
         },
       });
 

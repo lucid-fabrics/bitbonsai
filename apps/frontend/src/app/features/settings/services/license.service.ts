@@ -20,7 +20,7 @@ export class LicenseService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/licenses`;
   private readonly patreonUrl = `${environment.apiUrl}/patreon`;
-  private readonly stripeUrl = `${environment.apiUrl}/stripe`;
+  private readonly stripeUrl = `${environment.licenseApiUrl}/stripe`; // Use license-api for Stripe
 
   // License endpoints
   getCurrentLicense(): Observable<License> {
@@ -61,6 +61,8 @@ export class LicenseService {
     return this.http.post<StripeCheckoutResponse>(`${this.stripeUrl}/checkout`, {
       email,
       priceId,
+      successUrl: `${window.location.origin}/settings?tab=license&stripe=success`,
+      cancelUrl: `${window.location.origin}/settings?tab=license`,
     });
   }
 

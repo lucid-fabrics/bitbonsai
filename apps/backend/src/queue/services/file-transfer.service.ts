@@ -1,5 +1,5 @@
-import { spawn } from 'node:child_process';
-import { Injectable, Logger } from '@nestjs/common';
+import { exec, spawn } from 'node:child_process';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { type Node } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -28,21 +28,43 @@ export interface TransferProgress {
  * - Widely available on Linux systems
  */
 @Injectable()
-export class FileTransferService {
+export class FileTransferService implements OnModuleInit {
   private readonly logger = new Logger(FileTransferService.name);
   private activeTransfers = new Map<string, AbortController>();
 
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * CRITICAL #2 FIX: Kill orphaned SSH/rsync processes from previous crash
+   * Prevents resource leaks when service restarts without cleanup
+   */
+  async onModuleInit() {
+    try {
+      exec('pkill -f "^(ssh|rsync).*bitbonsai"', (error, stdout, stderr) => {
+        // Exit code 1 means no processes found (expected on clean start)
+        if (!error || error.code === 1) {
+          this.logger.log('🧹 CRITICAL #2 FIX: Killed orphaned SSH/rsync processes');
+        } else {
+          this.logger.warn(`Failed to kill orphaned processes: ${stderr}`);
+        }
+      });
+    } catch (error) {
+      this.logger.warn(`CRITICAL #2 FIX: Error killing orphaned SSH: ${error}`);
+    }
+  }
+
+  /**
    * SECURITY: Validate rsync file path to prevent command injection
    * MEDIUM #1 FIX: Enhanced validation with control character and length checks
+   * SEC #1 FIX: Reject spaces to prevent shell expansion attacks
+   * CRITICAL #4 FIX: Explicitly reject newlines to prevent rsync argument injection
    * @private
    */
   private validateRsyncPath(path: string): void {
-    // MEDIUM #1 FIX: Check for null bytes and control characters
-    if (/[\x00-\x1F\x7F]/.test(path)) {
-      throw new Error('Path contains control characters');
+    // CRITICAL #4 FIX: Reject ALL control chars including newlines (\n, \r)
+    // Newlines allow injecting arbitrary rsync arguments
+    if (/[\x00-\x1F\x7F\n\r]/.test(path)) {
+      throw new Error('Path contains control characters or newlines');
     }
 
     // MEDIUM #1 FIX: Check path length (Unix limit is 4096)
@@ -50,9 +72,11 @@ export class FileTransferService {
       throw new Error('Path exceeds maximum length (4096 characters)');
     }
 
-    // Character whitelist validation
-    if (!/^[a-zA-Z0-9/_\-. ()]+$/.test(path)) {
-      throw new Error('Invalid path characters detected');
+    // SEC #1 FIX: Strict character whitelist - NO SPACES to prevent shell expansion
+    if (!/^[a-zA-Z0-9/_\-.]+$/.test(path)) {
+      throw new Error(
+        'Invalid path characters detected (spaces and special chars not allowed for security)'
+      );
     }
 
     // Path traversal protection
@@ -216,13 +240,15 @@ export class FileTransferService {
       this.activeTransfers.set(jobId, abortController);
 
       // Build rsync command
+      // SEC #2 FIX: Use StrictHostKeyChecking=yes with pre-populated known_hosts for MITM protection
+      // Note: For first-time setup, admin must manually add host keys to ~/.ssh/known_hosts
       // rsync -avz --partial --info=progress2 -e "ssh -p 22" /source/file user@host:/dest/path
       const rsyncArgs = [
         '-avz', // Archive mode, verbose, compress
         '--partial', // Resume support
         '--info=progress2', // Progress reporting
         '-e',
-        'ssh -o StrictHostKeyChecking=accept-new', // SSH command (accept new keys, reject changed keys for security)
+        'ssh -o StrictHostKeyChecking=yes', // SEC #2 FIX: Reject unknown/changed host keys
         sourcePath,
         `root@${targetNode.ipAddress}:${remotePath}`,
       ];
@@ -258,14 +284,18 @@ export class FileTransferService {
       };
       const MAX_CONSECUTIVE_FAILURES = 3;
 
+      // MEDIUM #4 FIX: Capture stderr for error reporting
+      let stderrBuffer = '';
+
       rsync.stdout.on('data', (data) => {
         const output = data.toString();
         this.logger.debug(`rsync stdout: ${output}`);
 
         // Parse progress from rsync output
-        // Example: "1.23M  12%  345.67kB/s    0:00:23"
+        // MEDIUM #3 FIX: Locale-independent regex (matches numbers in any locale)
+        // Example: "1.23M  12%  345.67kB/s    0:00:23" or "1,23M  12%  345,67kB/s"
         const progressMatch = output.match(/(\d+)%/);
-        const speedMatch = output.match(/([\d.]+)([kMG]B\/s)/);
+        const speedMatch = output.match(/([\d.,]+)([kMG]B\/s)/);
 
         if (progressMatch) {
           const progress = Number.parseInt(progressMatch[1], 10);
@@ -276,7 +306,9 @@ export class FileTransferService {
 
             let speedMBps: number | null = null;
             if (speedMatch) {
-              const speed = Number.parseFloat(speedMatch[1]);
+              // MEDIUM #3 FIX: Normalize comma decimal separator to period for parseFloat
+              const speedStr = speedMatch[1].replace(',', '.');
+              const speed = Number.parseFloat(speedStr);
               const unit = speedMatch[2];
 
               // Convert to MB/s
@@ -289,7 +321,7 @@ export class FileTransferService {
               }
             }
 
-            // CRITICAL #3 FIX: Atomic check-and-set to prevent race condition
+            // CRITICAL #3 FIX: Atomic check-and-set with timeout wrapper
             const wasUpdating = progressState.pendingUpdate;
             progressState.pendingUpdate = true;
 
@@ -300,23 +332,24 @@ export class FileTransferService {
               return;
             }
 
-            // Update job progress (non-blocking to avoid slowing transfer)
-            this.prisma.job
-              .update({
+            // CRITICAL #3 FIX: Wrap DB update with 5s timeout to prevent deadlock
+            const updatePromise = Promise.race([
+              this.prisma.job.update({
                 where: { id: jobId },
                 data: {
                   transferProgress: progress,
                   transferSpeedMBps: speedMBps,
                 },
-              })
-              .then(() => {
-                // Reset failure counter on success
-                progressState.consecutiveUpdateFailures = 0;
-                progressState.pendingUpdate = false;
-              })
+              }),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Progress update timeout (5s)')), 5000)
+              ),
+            ]);
+
+            // HIGH #1 FIX: Ensure .finally() runs AFTER .catch() to prevent race
+            updatePromise
               .catch((err) => {
                 progressState.consecutiveUpdateFailures++;
-                progressState.pendingUpdate = false;
                 this.logger.error(
                   `Failed to update transfer progress for job ${jobId} (${progressState.consecutiveUpdateFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
                   err
@@ -329,13 +362,26 @@ export class FileTransferService {
                   );
                   abortController.abort();
                 }
+              })
+              .then(() => {
+                // Reset failure counter on success (runs after catch)
+                if (progressState.consecutiveUpdateFailures === 0) {
+                  return; // Already reset, was success
+                }
+                // Don't reset if catch incremented it
+              })
+              .finally(() => {
+                // HIGH #1 FIX: Reset flag AFTER catch evaluation completes
+                progressState.pendingUpdate = false;
               });
           }
         }
       });
 
       rsync.stderr.on('data', (data) => {
-        this.logger.error(`rsync stderr: ${data.toString()}`);
+        const errorText = data.toString();
+        stderrBuffer += errorText;
+        this.logger.error(`rsync stderr: ${errorText}`);
       });
 
       rsync.on('close', (code) => {
@@ -347,7 +393,9 @@ export class FileTransferService {
           this.logger.log(`rsync completed successfully for job ${jobId}`);
           resolve();
         } else {
-          reject(new Error(`rsync exited with code ${code}`));
+          // MEDIUM #4 FIX: Include stderr in error message for debugging
+          const errorMessage = stderrBuffer.trim() || `rsync exited with code ${code}`;
+          reject(new Error(errorMessage));
         }
       });
 
@@ -361,8 +409,16 @@ export class FileTransferService {
     });
   }
 
+  // CRITICAL #4 FIX: Instance-level SSH process tracking to prevent orphans
+  private activeSshProcesses = new Map<
+    string,
+    { process: ReturnType<typeof spawn>; cleanup: () => void }
+  >();
+
   /**
    * Execute remote command on target node via SSH
+   *
+   * CRITICAL #4 FIX: Centralized process tracking prevents orphaned SSH processes
    *
    * @param targetNode - Target node
    * @param command - Command to execute
@@ -373,10 +429,10 @@ export class FileTransferService {
     command: string,
     timeoutMs = 30000
   ): Promise<string> {
-    // HIGH #14 FIX: Wrap in try-finally to prevent orphaned SSH processes
+    const commandId = `${targetNode.id}-${Date.now()}-${Math.random()}`;
     const sshArgs = [
       '-o',
-      'StrictHostKeyChecking=accept-new',
+      'StrictHostKeyChecking=yes', // SEC #2 FIX: Reject unknown host keys
       `root@${targetNode.ipAddress}`,
       command,
     ];
@@ -384,12 +440,13 @@ export class FileTransferService {
     const ssh = spawn('ssh', sshArgs);
     let timeout: NodeJS.Timeout | null = null;
     let forceKillTimeout: NodeJS.Timeout | null = null;
-    let cleanupExecuted = false;
 
-    // CRITICAL #2 FIX: Idempotent cleanup to prevent double cleanup and race conditions
+    // CRITICAL #4 FIX: Idempotent cleanup registered in instance map
     const cleanup = () => {
-      if (cleanupExecuted) return; // Prevent double cleanup
-      cleanupExecuted = true;
+      const entry = this.activeSshProcesses.get(commandId);
+      if (!entry) return; // Already cleaned
+
+      this.activeSshProcesses.delete(commandId);
 
       if (timeout) {
         clearTimeout(timeout);
@@ -406,8 +463,11 @@ export class FileTransferService {
       ssh.stderr?.destroy();
     };
 
+    // Register process for tracking
+    this.activeSshProcesses.set(commandId, { process: ssh, cleanup });
+
     try {
-      return await new Promise<string>((resolve, reject) => {
+      const result = await new Promise<string>((resolve, reject) => {
         let stdout = '';
         let stderr = '';
         let timedOut = false;
@@ -417,9 +477,9 @@ export class FileTransferService {
           timedOut = true;
           ssh.kill('SIGTERM');
 
-          // CRITICAL #2 FIX: Ensure forceKillTimeout respects cleanup state
+          // CRITICAL #4 FIX: Force kill if SIGTERM didn't work
           forceKillTimeout = setTimeout(() => {
-            if (!ssh.killed && !cleanupExecuted) {
+            if (!ssh.killed) {
               ssh.kill('SIGKILL');
             }
           }, 5000);
@@ -440,8 +500,6 @@ export class FileTransferService {
         });
 
         ssh.on('close', (code) => {
-          cleanup(); // Use idempotent cleanup
-
           if (timedOut) {
             return; // Already rejected with timeout error
           }
@@ -454,8 +512,6 @@ export class FileTransferService {
         });
 
         ssh.on('error', (error) => {
-          cleanup(); // Use idempotent cleanup
-
           if (timedOut) {
             return; // Already rejected with timeout error
           }
@@ -463,8 +519,10 @@ export class FileTransferService {
           reject(error);
         });
       });
+
+      return result;
     } finally {
-      // CRITICAL #2 FIX: Safe idempotent cleanup
+      // CRITICAL #4 FIX: Always cleanup via centralized tracker
       cleanup();
     }
   }

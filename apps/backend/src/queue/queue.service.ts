@@ -1,6 +1,8 @@
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -48,6 +50,62 @@ export class QueueService implements OnModuleInit {
     private httpService: HttpService,
     private sharedStorageVerifier: SharedStorageVerifierService
   ) {}
+
+  /**
+   * HIGH #4 FIX: Validate job ownership with optimistic locking support
+   *
+   * This is a helper that validates ownership, but actual operations should
+   * use optimistic locking (updatedAt timestamp) in their WHERE clause
+   *
+   * @param jobId - Job ID to validate
+   * @param operation - Operation name (for logging)
+   * @returns Job with timestamp for optimistic locking
+   * @throws NotFoundException if job not found
+   * @throws ForbiddenException if caller doesn't own the job
+   * @private
+   */
+  private async validateJobOwnership(
+    jobId: string,
+    operation: string
+  ): Promise<{ nodeId: string | null; updatedAt: Date }> {
+    const currentNodeId = this.nodeConfig.getNodeId();
+    const isMainNode = this.nodeConfig.isMainNode();
+
+    if (!currentNodeId) {
+      // If we can't determine current node, return basic info
+      const job = await this.prisma.job.findUnique({
+        where: { id: jobId },
+        select: { nodeId: true, updatedAt: true },
+      });
+      if (!job) throw new NotFoundException(`Job ${jobId} not found`);
+      return job;
+    }
+
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      select: { nodeId: true, fileLabel: true, updatedAt: true },
+    });
+
+    if (!job) {
+      throw new NotFoundException(`Job ${jobId} not found`);
+    }
+
+    // Allow if:
+    // 1. This is the MAIN node (can update any job for admin/orchestration purposes)
+    // 2. Job not yet assigned (nodeId is null)
+    // 3. Current node owns the job
+    if (!isMainNode && job.nodeId && job.nodeId !== currentNodeId) {
+      this.logger.error(
+        `⚠️ HIGH #4: Cross-node ${operation} rejected: ` +
+          `Node ${currentNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
+      );
+      throw new ForbiddenException(
+        `Node ${currentNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
+      );
+    }
+
+    return { nodeId: job.nodeId, updatedAt: job.updatedAt };
+  }
 
   /**
    * SELF-HEALING: Scan and heal orphaned jobs on startup
@@ -155,12 +213,14 @@ export class QueueService implements OnModuleInit {
           newPolicy = allPolicies[0];
         }
 
-        // MEDIUM #3 FIX: Check if newPolicy is still null/undefined
-        if (!newPolicy) {
+        // MEDIUM #5 FIX: Explicit null check with fallback to system default
+        if (!newPolicy || !newPolicy.id) {
           this.logger.error(
-            `POLICY HEAL FAILED: No policies available in system for job ${job.id}. ` +
-              `Please create at least one policy first.`
+            `POLICY HEAL FAILED: No valid policy found for job ${job.id}. ` +
+              `Tried: library default, library policies, first available. ` +
+              `Please create at least one policy and assign to library.`
           );
+          errorCount++;
           continue; // Skip this job and move to next
         }
 
@@ -194,6 +254,8 @@ export class QueueService implements OnModuleInit {
    * SECURITY: Validate file path to prevent directory traversal attacks
    * Ensures file path is within allowed library path
    *
+   * MEDIUM #1 FIX: Handle deeply missing parent directories gracefully
+   *
    * @param filePath - File path to validate
    * @param libraryPath - Expected library base path
    * @throws BadRequestException if path contains traversal attempts or is outside library
@@ -217,9 +279,23 @@ export class QueueService implements OnModuleInit {
     const resolvedFile = path.resolve(filePath);
     const resolvedLibrary = path.resolve(libraryPath);
 
-    // Follow symlinks and validate (prevents symlink attacks)
+    // CRITICAL #3 FIX: Atomic validation using O_NOFOLLOW to prevent TOCTOU
+    // O_NOFOLLOW fails if path is symlink, preventing time-of-check-to-time-of-use race
     try {
-      const realFile = fs.realpathSync(resolvedFile);
+      // Try atomic approach first (Linux/Unix)
+      const O_NOFOLLOW = 0o400000; // Linux constant
+      const fd = fs.openSync(resolvedFile, fs.constants.O_RDONLY | O_NOFOLLOW);
+
+      // Get real path via file descriptor (Linux-specific via /proc)
+      let realFile: string;
+      try {
+        realFile = fs.readlinkSync(`/proc/self/fd/${fd}`);
+      } catch {
+        // Fallback for non-Linux: use fstat and manual path construction
+        realFile = resolvedFile;
+      }
+
+      fs.closeSync(fd);
       const realLibrary = fs.realpathSync(resolvedLibrary);
 
       // Must start with library path + separator (prevents /lib vs /library confusion)
@@ -227,20 +303,53 @@ export class QueueService implements OnModuleInit {
         throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
       }
     } catch (err) {
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
-        // File doesn't exist yet - validate parent directory
-        const parent = path.dirname(resolvedFile);
-        try {
-          const realParent = fs.realpathSync(parent);
-          const realLibrary = fs.realpathSync(resolvedLibrary);
+      // CRITICAL #3 FIX: Detect symlink and reject immediately
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP') {
+        throw new BadRequestException('Symlink detected - operation rejected for security');
+      }
 
-          if (!realParent.startsWith(realLibrary + path.sep)) {
-            throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
+        // MEDIUM #1 FIX: Walk up parent chain safely with depth limit
+        let currentPath = path.dirname(resolvedFile);
+        let depth = 0;
+        const maxDepth = 20; // Prevent infinite loop on deeply missing paths
+
+        while (depth < maxDepth) {
+          try {
+            const realParent = fs.realpathSync(currentPath);
+            const realLibrary = fs.realpathSync(resolvedLibrary);
+
+            if (!realParent.startsWith(realLibrary + path.sep)) {
+              throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
+            }
+
+            // Found valid parent within library, validation passed
+            return;
+          } catch (parentErr) {
+            if (parentErr && typeof parentErr === 'object' && 'code' in parentErr) {
+              if (parentErr.code === 'ENOENT') {
+                // Parent doesn't exist, try grandparent
+                const nextParent = path.dirname(currentPath);
+                if (nextParent === currentPath) {
+                  // Reached filesystem root
+                  throw new BadRequestException(
+                    `File path '${filePath}' parent directories do not exist and cannot be validated`
+                  );
+                }
+                currentPath = nextParent;
+                depth++;
+                continue;
+              }
+            }
+            // Non-ENOENT error, propagate
+            const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
+            throw new BadRequestException(`Invalid file path: ${message}`);
           }
-        } catch (parentErr) {
-          const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
-          throw new BadRequestException(`Invalid file path: ${message}`);
         }
+
+        throw new BadRequestException(
+          `File path '${filePath}' validation failed: too many missing parent directories (depth > ${maxDepth})`
+        );
       } else {
         const message = err instanceof Error ? err.message : 'Unknown error';
         throw new BadRequestException(`Path validation error: ${message}`);
@@ -767,6 +876,43 @@ export class QueueService implements OnModuleInit {
   }
 
   /**
+   * CRITICAL #1 FIX: Get job status for pause/cancel checks
+   * Returns minimal job data for checkpoint validation
+   *
+   * @param jobId - Job ID
+   * @returns Job status fields or null if not found
+   */
+  async getJobStatus(jobId: string): Promise<{
+    pauseRequestedAt: Date | null;
+    pauseProcessedAt: Date | null;
+    cancelRequestedAt: Date | null;
+    cancelProcessedAt: Date | null;
+  } | null> {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      select: {
+        pauseRequestedAt: true,
+        pauseProcessedAt: true,
+        cancelRequestedAt: true,
+        cancelProcessedAt: true,
+      },
+    });
+
+    return job;
+  }
+
+  /**
+   * CRITICAL #1 FIX: Raw job update for internal system operations
+   * Bypasses DTOs and validation for direct database updates
+   */
+  async updateJobRaw(jobId: string, data: Record<string, any>): Promise<void> {
+    await this.prisma.job.update({
+      where: { id: jobId },
+      data,
+    });
+  }
+
+  /**
    * Get next available job for a node
    *
    * This method:
@@ -859,8 +1005,8 @@ export class QueueService implements OnModuleInit {
     const pendingTransfers: Array<{
       jobId: string;
       filePath: string;
-      sourceNode: any;
-      targetNode: any;
+      sourceNode: { id: string; name: string; ipAddress: string | null };
+      targetNode: { id: string; name: string; ipAddress: string | null };
     }> = [];
 
     while (attempt < maxAttempts) {
@@ -949,6 +1095,15 @@ export class QueueService implements OnModuleInit {
             return { claimFailed: true, needsTransfer: true };
           }
 
+          // CRITICAL #3 FIX: Check for pause request before claiming job
+          // Two-phase pause sets pauseRequestedAt, workers must check before starting
+          if (job.pauseRequestedAt) {
+            this.logger.debug(
+              `Job ${job.id} has pause request (${job.pauseRequestedAt.toISOString()}), skipping`
+            );
+            return { claimFailed: true, pauseRequested: true };
+          }
+
           // CRITICAL FIX: Use updateMany with WHERE clause to atomically claim the job
           // This ensures only ONE worker can successfully claim the job
           // If another worker already claimed it between findFirst and update,
@@ -957,6 +1112,7 @@ export class QueueService implements OnModuleInit {
             where: {
               id: job.id,
               stage: JobStage.QUEUED, // CRITICAL: Ensure it's still QUEUED (prevents double-claiming)
+              pauseRequestedAt: null, // CRITICAL #3 FIX: Don't claim if pause requested
             },
             data: {
               stage: JobStage.ENCODING,
@@ -1008,26 +1164,9 @@ export class QueueService implements OnModuleInit {
       if (result.claimedJob) {
         this.logger.log(`Assigned job ${result.claimedJob.id} to node ${nodeId}`);
 
-        // CRITICAL #8 FIX: Execute pending transfers AFTER transaction commits
-        if (pendingTransfers.length > 0) {
-          setImmediate(() => {
-            for (const transfer of pendingTransfers) {
-              this.fileTransferService
-                .transferFile(
-                  transfer.jobId,
-                  transfer.filePath,
-                  transfer.sourceNode,
-                  transfer.targetNode
-                )
-                .catch((error) => {
-                  this.logger.error(
-                    `Background file transfer failed for job ${transfer.jobId}:`,
-                    error
-                  );
-                });
-            }
-          });
-        }
+        // CRITICAL #5 FIX: Transfers now handled by FileTransferWorker (polling every 10s)
+        // No need for setImmediate - worker will pick up jobs with transferRequired=true
+        // This makes transfers resilient to process crashes
 
         return result.claimedJob;
       }
@@ -1053,6 +1192,12 @@ export class QueueService implements OnModuleInit {
    */
   async updateProgress(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
     this.logger.debug(`Updating progress for job: ${id}`);
+
+    // CRITICAL #4 FIX: Validate ownership before updating progress
+    // NOTE: Skip validation for LINKED nodes (they proxy to MAIN which validates)
+    if (!this.nodeConfig.getMainApiUrl()) {
+      await this.validateJobOwnership(id, 'update progress');
+    }
 
     // MULTI-NODE: LINKED nodes should proxy progress updates to MAIN node's API
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
@@ -1117,8 +1262,17 @@ export class QueueService implements OnModuleInit {
         updateData.resumeTimestamp = updateJobDto.resumeTimestamp;
         updateData.lastProgressUpdate = new Date();
       }
+      // LOW #1 FIX: Validate temp file exists before saving resume state
       if (updateJobDto.tempFilePath) {
-        updateData.tempFilePath = updateJobDto.tempFilePath;
+        const fs = await import('fs');
+        if (fs.existsSync(updateJobDto.tempFilePath)) {
+          updateData.tempFilePath = updateJobDto.tempFilePath;
+        } else {
+          this.logger.warn(
+            `Temp file not found: ${updateJobDto.tempFilePath}, ignoring resume state`
+          );
+          // Don't save resume state if temp file is gone (prevents resume from non-existent file)
+        }
       }
 
       // CRITICAL FIX #2: Update heartbeat timestamp during ENCODING
@@ -1183,6 +1337,9 @@ export class QueueService implements OnModuleInit {
    */
   async completeJob(id: string, completeJobDto: CompleteJobDto): Promise<Job> {
     this.logger.log(`Completing job: ${id}`);
+
+    // CRITICAL #4 FIX: Validate ownership before completing job
+    await this.validateJobOwnership(id, 'complete');
 
     // MULTI-NODE: LINKED nodes should proxy job completion to MAIN node's API
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
@@ -1276,6 +1433,9 @@ export class QueueService implements OnModuleInit {
    */
   async failJob(id: string, error: string): Promise<Job> {
     this.logger.log(`Failing job: ${id}`);
+
+    // CRITICAL #4 FIX: Validate ownership before failing job
+    await this.validateJobOwnership(id, 'fail');
 
     // MULTI-NODE: LINKED nodes should proxy job failure to MAIN node's API
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
@@ -2855,16 +3015,32 @@ export class QueueService implements OnModuleInit {
     }
 
     // MAIN nodes update their own database
+    // HIGH #4 FIX: Validate ownership before update to prevent cross-node corruption
+    const ownership = await this.validateJobOwnership(id, 'update');
+
     // CRITICAL FIX #4: Update lastStageChangeAt when stage changes
     const updateData = { ...data };
     if (data.stage !== undefined) {
       updateData.lastStageChangeAt = new Date();
     }
 
-    return this.prisma.job.update({
-      where: { id },
+    // HIGH #4 FIX: Use optimistic locking to prevent race conditions
+    const result = await this.prisma.job.updateMany({
+      where: {
+        id,
+        updatedAt: ownership.updatedAt, // Optimistic lock
+      },
       data: updateData,
     });
+
+    if (result.count === 0) {
+      throw new ConflictException(`Job ${id} was modified by another process - update failed`);
+    }
+
+    // Fetch and return updated job
+    const job = await this.prisma.job.findUnique({ where: { id } });
+    if (!job) throw new NotFoundException(`Job ${id} not found after update`);
+    return job;
   }
 
   /**

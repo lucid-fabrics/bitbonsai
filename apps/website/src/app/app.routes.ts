@@ -19,4 +19,19 @@ export const appRoutes: Route[] = [
     path: 'docs',
     loadComponent: () => import('./pages/docs/docs.component').then((m) => m.DocsComponent),
   },
+  {
+    path: 'compare',
+    loadComponent: () =>
+      import('./pages/compare/compare.component').then((m) => m.CompareComponent),
+  },
+  {
+    path: 'checkout',
+    loadComponent: () =>
+      import('./pages/checkout/checkout.component').then((m) => m.CheckoutComponent),
+  },
+  {
+    path: 'success',
+    loadComponent: () =>
+      import('./pages/success/success.component').then((m) => m.SuccessComponent),
+  },
 ];

@@ -1,12 +1,12 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AdminGuard } from '../security/admin.guard';
+import { AdminApiKeyGuard } from '../security/admin-api-key.guard';
 import { AuditService } from './audit.service';
 
 @ApiTags('Admin - Audit Log')
 @Controller('admin/audit-log')
-@UseGuards(AdminGuard)
+@UseGuards(AdminApiKeyGuard)
 @ApiBearerAuth()
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}

@@ -12,10 +12,22 @@ export interface PricingTier {
   maxConcurrentJobs: number;
   priceMonthly: number;
   priceYearly?: number;
-  features: string[];
   stripePriceIdMonthly?: string;
   stripePriceIdYearly?: string;
+  patreonTierId?: string;
   isActive: boolean;
+}
+
+export interface CreateCheckoutDto {
+  email: string;
+  priceId: string;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export interface CheckoutResponse {
+  url: string;
+  sessionId: string;
 }
 
 @Injectable({
@@ -23,9 +35,14 @@ export interface PricingTier {
 })
 export class PricingApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.licenseApiUrl}/pricing`;
+  private readonly pricingUrl = `${environment.licenseApiUrl}/pricing`;
+  private readonly stripeUrl = `${environment.licenseApiUrl}/stripe`;
 
   getActiveTiers(): Observable<PricingTier[]> {
-    return this.http.get<PricingTier[]>(`${this.baseUrl}/active`);
+    return this.http.get<PricingTier[]>(this.pricingUrl);
+  }
+
+  createCheckoutSession(dto: CreateCheckoutDto): Observable<CheckoutResponse> {
+    return this.http.post<CheckoutResponse>(`${this.stripeUrl}/checkout`, dto);
   }
 }
