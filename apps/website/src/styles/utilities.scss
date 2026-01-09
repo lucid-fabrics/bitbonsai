@@ -1,0 +1,45 @@
+@use 'variables';
+
+// Icon utility classes for FontAwesome
+.icon {
+  &--xs { font-size: 14px; }
+  &--sm { font-size: 18px; }
+  &--md { font-size: 24px; }
+  &--lg { font-size: 32px; }
+  &--xl { font-size: 48px; }
+  &--xxl { font-size: 64px; }
+
+  &--accent { color: variables.$accent-primary; }
+  &--success { color: variables.$success; }
+  &--muted { color: variables.$text-secondary; }
+  &--primary { color: variables.$text-primary; }
+}
+
+// Animation utilities
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

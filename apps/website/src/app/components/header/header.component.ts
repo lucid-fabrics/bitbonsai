@@ -1,15 +1,18 @@
-import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, HostListener } from '@angular/core';
 import { RouterModule } from '@angular/router';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faSeedling } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   selector: 'bb-header',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule, CommonModule, FontAwesomeModule],
   template: `
-    <header class="header">
+    <header class="header" [class.scrolled]="isScrolled">
       <div class="header__container">
         <a routerLink="/" class="header__logo">
-          <span class="header__logo-icon">🌱</span>
+          <fa-icon [icon]="faSeedling" class="header__logo-icon"></fa-icon>
           <span class="header__logo-text">BitBonsai</span>
         </a>
 
@@ -28,4 +31,12 @@ import { RouterModule } from '@angular/router';
   `,
   styleUrls: ['./header.component.scss'],
 })
-export class HeaderComponent {}
+export class HeaderComponent {
+  faSeedling = faSeedling;
+  isScrolled = false;
+
+  @HostListener('window:scroll')
+  onWindowScroll() {
+    this.isScrolled = window.scrollY > 50;
+  }
+}

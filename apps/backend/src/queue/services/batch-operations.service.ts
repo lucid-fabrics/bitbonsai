@@ -33,6 +33,10 @@ export class BatchOperationsService {
   /**
    * Pause all queued and encoding jobs
    *
+   * CRITICAL #5 FIX: Two-phase pause to handle QUEUED→ENCODING race condition
+   * Phase 1: Mark jobs with pauseRequestedAt timestamp
+   * Phase 2: Workers check pauseRequestedAt before starting new encoding
+   *
    * @param nodeId - Optional: Only pause jobs for specific node
    * @returns Operation result
    */
@@ -40,25 +44,39 @@ export class BatchOperationsService {
     this.logger.log(`Pausing all jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
 
     try {
+      const now = new Date();
       const where: Record<string, unknown> = {
-        stage: {
-          in: [JobStage.QUEUED, JobStage.ENCODING],
-        },
+        stage: { in: [JobStage.QUEUED, JobStage.ENCODING] },
       };
 
       if (nodeId) {
         where.nodeId = nodeId;
       }
 
-      const result = await this.prisma.job.updateMany({
+      // CRITICAL #3 FIX: Two-phase pause to prevent QUEUED→ENCODING race
+      // Phase 1: Mark all jobs with pause request timestamp
+      await this.prisma.job.updateMany({
         where,
+        data: { pauseRequestedAt: now },
+      });
+
+      // Phase 2: Only transition jobs still in QUEUED stage
+      // Workers check pauseRequestedAt before starting encoding
+      const result = await this.prisma.job.updateMany({
+        where: {
+          ...where,
+          pauseRequestedAt: now, // Only jobs we just marked
+          stage: { in: [JobStage.QUEUED] }, // Don't forcibly stop ENCODING
+        },
         data: {
           stage: JobStage.PAUSED,
           error: 'Batch paused by user',
         },
       });
 
-      this.logger.log(`✅ Paused ${result.count} job(s)`);
+      this.logger.log(
+        `✅ Paused ${result.count} job(s) (workers will stop ENCODING jobs at next checkpoint)`
+      );
 
       return {
         success: true,
@@ -125,6 +143,9 @@ export class BatchOperationsService {
   /**
    * Cancel all active jobs (queued, encoding, paused)
    *
+   * CRITICAL #5 FIX: Include ENCODING jobs with cancelRequestedAt flag
+   * Workers check this flag at progress checkpoints to gracefully stop
+   *
    * @param nodeId - Optional: Only cancel jobs for specific node
    * @returns Operation result
    */
@@ -132,11 +153,12 @@ export class BatchOperationsService {
     this.logger.log(`Cancelling all active jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
 
     try {
+      const now = new Date();
       const where: Record<string, unknown> = {
         stage: {
           in: [
             JobStage.QUEUED,
-            JobStage.ENCODING,
+            JobStage.ENCODING, // CRITICAL #5 FIX: Include ENCODING for graceful stop
             JobStage.PAUSED,
             'PAUSED_LOAD',
             JobStage.HEALTH_CHECK,
@@ -152,8 +174,9 @@ export class BatchOperationsService {
         where,
         data: {
           stage: JobStage.CANCELLED,
+          cancelRequestedAt: now, // CRITICAL #5 FIX: Workers check this flag
           error: 'Batch cancelled by user',
-          completedAt: new Date(),
+          completedAt: now,
         },
       });
 

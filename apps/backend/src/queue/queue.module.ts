@@ -5,6 +5,7 @@ import { LibrariesModule } from '../libraries/libraries.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
 import { BatchController } from './batch.controller';
+import { FileTransferWorker } from './file-transfer.worker';
 import { HealthCheckWorker } from './health-check.worker';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
@@ -50,6 +51,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     JobHistoryService,
     JobRouterService,
     FileTransferService,
+    FileTransferWorker,
     HealthCheckWorker,
     AutoHealingService,
     RetrySchedulerService,

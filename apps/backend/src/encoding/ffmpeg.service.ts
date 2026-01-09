@@ -301,6 +301,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const now = Date.now();
     let removed = 0;
 
+    // Step 1: Remove stale entries
     for (const [filePath, entry] of this.codecCache.entries()) {
       if (now - entry.timestamp.getTime() > this.CODEC_CACHE_TTL_MS) {
         this.codecCache.delete(filePath);
@@ -308,8 +309,23 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    // MEDIUM #2 FIX: Enforce max size by removing oldest entries
+    if (this.codecCache.size > this.CODEC_CACHE_MAX_SIZE) {
+      const entries = Array.from(this.codecCache.entries());
+      // Sort by timestamp ascending (oldest first)
+      entries.sort((a, b) => a[1].timestamp.getTime() - b[1].timestamp.getTime());
+
+      const toRemove = this.codecCache.size - this.CODEC_CACHE_MAX_SIZE;
+      for (let i = 0; i < toRemove; i++) {
+        this.codecCache.delete(entries[i][0]);
+        removed++;
+      }
+    }
+
     if (removed > 0) {
-      this.logger.debug(`🧹 Cleaned up ${removed} stale codec cache entries`);
+      this.logger.debug(
+        `🧹 Cleaned ${removed} codec cache entries (size: ${this.codecCache.size}/${this.CODEC_CACHE_MAX_SIZE})`
+      );
     }
   }
 
@@ -867,14 +883,27 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param resumeFromPercent - Percentage we resumed from (0 if starting fresh)
    * @private
    */
-  private handleProgressUpdate(
+  private async handleProgressUpdate(
     progressData: Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'>,
     job: Job,
     activeEncoding: ActiveEncoding,
     estimatedDurationSeconds: number,
     tempOutput: string,
     resumeFromPercent = 0
-  ): void {
+  ): Promise<void> {
+    // CRITICAL #1 FIX: Check for pause/cancel requests before processing progress
+    const jobStatus = await this.queueService.getJobStatus(job.id);
+    if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
+      this.logger.warn(`[${job.id}] Pause requested, killing FFmpeg gracefully...`);
+      await this.killProcess(job.id);
+      return;
+    }
+    if (jobStatus?.cancelRequestedAt && !jobStatus.cancelProcessedAt) {
+      this.logger.warn(`[${job.id}] Cancel requested, killing FFmpeg gracefully...`);
+      await this.killProcess(job.id);
+      return;
+    }
+
     // Calculate current progress based on time position
     let currentProgress = this.calculateProgressPercentage(
       progressData.currentTime,
@@ -932,6 +961,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)${isFirstProgressEvent ? ' [FIRST]' : ''}`
       );
       // CRITICAL: Retry progress updates with exponential backoff to handle transient database locks
+      // MEDIUM #3 FIX: Enhanced error handling for failed progress updates
       this.retryWithBackoff(() =>
         this.queueService.updateProgress(job.id, {
           progress: Math.round(adjustedProgress * 100) / 100, // Round to 2 decimal places
@@ -942,7 +972,11 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           tempFilePath: tempOutput,
         })
       ).catch((error) => {
-        this.logger.error(`Failed to update job progress after 3 retry attempts: ${error.message}`);
+        // MEDIUM #3 FIX: Log as warning instead of error (doesn't kill encoding)
+        // Next progress update will retry with fresh data
+        this.logger.warn(
+          `[${job.id}] Progress update failed after 3 retries at ${adjustedProgress.toFixed(2)}% - will retry on next checkpoint: ${error.message}`
+        );
       });
       activeEncoding.lastProgress = adjustedProgress;
 
@@ -1697,7 +1731,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
                     estimatedDurationSeconds,
                     tempOutput,
                     resumeFromPercent
-                  );
+                  ).catch((error) => {
+                    this.logger.error(`[${job.id}] Progress update error: ${error.message}`);
+                  });
                 }
                 break;
             }
@@ -1775,17 +1811,34 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * Kill FFmpeg process for a job without marking it as cancelled
    *
    * Used by watchdog to terminate stuck processes before failing the job.
+   * CRITICAL #1 FIX: Also used for graceful pause/cancel handling
    *
    * @param jobId - Job unique identifier
+   * @param markProcessed - If true, update pauseProcessedAt/cancelProcessedAt timestamps
    * @returns True if process was found and killed, false if no active process
    */
-  async killProcess(jobId: string): Promise<boolean> {
+  async killProcess(jobId: string, markProcessed = true): Promise<boolean> {
     const activeEncoding = this.activeEncodings.get(jobId);
     if (!activeEncoding) {
       return false;
     }
 
     try {
+      // CRITICAL #1 FIX: Mark pause/cancel as processed before killing
+      if (markProcessed) {
+        const jobStatus = await this.queueService.getJobStatus(jobId);
+        const updateData: Record<string, Date> = {};
+        if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
+          updateData.pauseProcessedAt = new Date();
+        }
+        if (jobStatus?.cancelRequestedAt && !jobStatus.cancelProcessedAt) {
+          updateData.cancelProcessedAt = new Date();
+        }
+        if (Object.keys(updateData).length > 0) {
+          await this.queueService.updateJobRaw(jobId, updateData);
+        }
+      }
+
       // Kill ffmpeg process
       activeEncoding.process.kill('SIGTERM');
 
@@ -2418,6 +2471,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       decisionData: null,
       priority: 0,
       prioritySetAt: null,
+      pauseRequestedAt: null, // CRITICAL #5 FIX
+      pauseProcessedAt: null, // CRITICAL #1 FIX
+      cancelRequestedAt: null, // CRITICAL #5 FIX
+      cancelProcessedAt: null, // CRITICAL #1 FIX
       tempFilePath: resumeTimestamp && tempFilePath ? tempFilePath : null,
       resumeTimestamp: resumeTimestamp || null,
       lastProgressUpdate: null,

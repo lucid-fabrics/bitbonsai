@@ -717,6 +717,12 @@ model Job {
   priority      Int       @default(0) // 0=normal, 1=high, 2=top (max 3 top priority at once)
   prioritySetAt DateTime? // When priority was last changed (for tracking)
 
+  // CRITICAL #5 FIX: Graceful pause/cancel for active encoding jobs
+  pauseRequestedAt  DateTime? // Timestamp when pause was requested (workers check this at progress checkpoints)
+  pauseProcessedAt  DateTime? // Timestamp when worker acknowledged the pause request
+  cancelRequestedAt DateTime? // Timestamp when cancel was requested (workers check this at progress checkpoints)
+  cancelProcessedAt DateTime? // Timestamp when worker acknowledged the cancel request
+
   // Resume State Fields (TRUE RESUME after backend crash/restart)
   tempFilePath       String?   // Path to partial encoded file (e.g., "/path/video.mp4.tmp.mp4")
   resumeTimestamp    String?   // HH:MM:SS.MS where encoding stopped
@@ -780,8 +786,9 @@ model Job {
   libraryId String
   library   Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
 
-  policyId String
-  policy   Policy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  // MEDIUM #4 FIX: Allow policy deletion by setting jobs to NULL instead of blocking
+  policyId String?
+  policy   Policy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
 
   // Relations
   history JobHistory[]

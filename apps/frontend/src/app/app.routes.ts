@@ -144,6 +144,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/settings/tabs/debug-tab.component').then((m) => m.DebugTabComponent),
       },
+      {
+        path: 'docs',
+        loadComponent: () =>
+          import('./features/settings/tabs/docs-tab.component').then((m) => m.DocsTabComponent),
+      },
     ],
   },
   {

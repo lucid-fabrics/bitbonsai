@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import type { Job, Node } from '@prisma/client';
+// HIGH #3 FIX: Import at top level instead of dynamic require in hot loop
+import * as scheduleChecker from '../../nodes/utils/schedule-checker';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   JobAssignmentResult,
@@ -142,9 +144,14 @@ export class DistributionOrchestratorService {
     // Get duration estimate
     const durationEstimate = await this.etaCalculator.estimateDuration(job);
 
-    // Update job
-    await this.prisma.job.update({
-      where: { id: jobId },
+    // CRITICAL #1 FIX: Atomic job assignment with optimistic locking
+    // Use updatedAt timestamp to prevent race conditions
+    const updateResult = await this.prisma.job.updateMany({
+      where: {
+        id: jobId,
+        nodeId: job.nodeId, // Exact match prevents race if job was reassigned
+        updatedAt: job.updatedAt, // Optimistic lock - fails if job modified elsewhere
+      },
       data: {
         nodeId,
         assignedAt: now,
@@ -155,6 +162,13 @@ export class DistributionOrchestratorService {
         assignmentReason: this.generateAssignmentReason(score),
       },
     });
+
+    // Check if update succeeded (count === 1 means we won the race)
+    if (updateResult.count === 0) {
+      // Another distribution run claimed this job between findUnique and update
+      this.logger.debug(`Job ${jobId} was reassigned by another distribution process, skipping`);
+      return null;
+    }
 
     // Update node's queued job count
     await this.updateNodeQueueCount(nodeId);
@@ -429,9 +443,8 @@ export class DistributionOrchestratorService {
 
         if (availableSlots <= 0) continue;
 
-        // Check if this node's schedule allows encoding
-        const { isNodeInAllowedWindow } = require('../../nodes/utils/schedule-checker');
-        if (!isNodeInAllowedWindow(targetNode)) continue;
+        // HIGH #3 FIX: Use top-level import instead of dynamic require
+        if (!scheduleChecker.isNodeInAllowedWindow(targetNode)) continue;
 
         // Find QUEUED jobs from OTHER nodes that can be moved here
         // Prioritize moving from overloaded nodes
@@ -447,16 +460,35 @@ export class DistributionOrchestratorService {
 
         if (jobsToMove.length === 0) continue;
 
-        // Move jobs to this node
+        // CRITICAL #1 FIX: Move jobs with optimistic locking to prevent race conditions
+        // Re-validate schedule immediately before assignment to avoid TOCTOU
+        if (!scheduleChecker.isNodeInAllowedWindow(targetNode)) {
+          this.logger.debug(
+            `Node ${targetNode.name} left schedule window during distribution, skipping`
+          );
+          continue;
+        }
+
         for (const job of jobsToMove) {
-          await this.prisma.job.update({
-            where: { id: job.id },
+          // Atomic update with optimistic lock - prevents double assignment
+          const result = await this.prisma.job.updateMany({
+            where: {
+              id: job.id,
+              nodeId: { not: targetNode.id }, // Skip if already moved
+              updatedAt: job.updatedAt, // Optimistic lock
+              stage: 'QUEUED', // Only QUEUED jobs
+            },
             data: {
               nodeId: targetNode.id,
               assignedAt: new Date(),
               stickyUntil: new Date(Date.now() + 5 * 60 * 1000), // 5 min sticky
             },
           });
+
+          if (result.count === 0) {
+            this.logger.debug(`Job ${job.id} already reassigned by another process, skipping`);
+            continue;
+          }
 
           this.logger.log(
             `⚡ Auto-distributed: ${job.fileLabel} → ${targetNode.name} (filling empty slot)`
@@ -605,8 +637,8 @@ export class DistributionOrchestratorService {
       let score = 100; // Base score
 
       // Check schedule availability (gate)
-      const { isNodeInAllowedWindow } = require('../../nodes/utils/schedule-checker');
-      if (!isNodeInAllowedWindow(node)) {
+      // HIGH #3 FIX: Use top-level import instead of dynamic require
+      if (!scheduleChecker.isNodeInAllowedWindow(node)) {
         score = 0; // Node not available due to schedule
         return { node, score, reason: 'Outside schedule' };
       }

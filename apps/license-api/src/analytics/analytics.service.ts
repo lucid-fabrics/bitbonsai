@@ -133,7 +133,7 @@ export class AnalyticsService {
 
       const cancelledCount = await this.prisma.license.count({
         where: {
-          status: 'CANCELLED',
+          status: 'REVOKED',
           updatedAt: { gte: monthStart, lt: monthEnd },
         },
       });
@@ -141,7 +141,7 @@ export class AnalyticsService {
       const totalAtStart = await this.prisma.license.count({
         where: {
           createdAt: { lt: monthEnd },
-          status: { in: ['ACTIVE', 'CANCELLED'] },
+          status: { in: ['ACTIVE', 'REVOKED'] },
         },
       });
 
@@ -196,7 +196,7 @@ export class AnalyticsService {
 
     const cancelledCount = await this.prisma.license.count({
       where: {
-        status: 'CANCELLED',
+        status: 'REVOKED',
         updatedAt: { gte: thirtyDaysAgo },
       },
     });

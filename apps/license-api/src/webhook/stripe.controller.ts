@@ -72,6 +72,12 @@ export class StripeController {
         break;
       }
 
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        await this.handleRefund(charge, event.id);
+        break;
+      }
+
       default:
         this.logger.debug(`Unhandled Stripe event: ${event.type}`);
     }
@@ -153,6 +159,24 @@ export class StripeController {
       providerEventId: eventId,
       providerCustomerId: customerId,
       rawPayload: subscription as unknown as Record<string, unknown>,
+    });
+  }
+
+  private async handleRefund(charge: Stripe.Charge, eventId: string): Promise<void> {
+    const customerId = charge.customer as string;
+
+    if (!customerId) {
+      this.logger.warn(`Refund received with no customer ID (charge: ${charge.id})`);
+      return;
+    }
+
+    this.logger.log(`Processing refund for customer ${customerId} (charge: ${charge.id})`);
+
+    await this.webhookService.processCancellation({
+      provider: PaymentProvider.STRIPE,
+      providerEventId: eventId,
+      providerCustomerId: customerId,
+      rawPayload: charge as unknown as Record<string, unknown>,
     });
   }
 

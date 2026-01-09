@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AdminGuard } from '../security/admin.guard';
+import { AdminApiKeyGuard } from '../security/admin-api-key.guard';
 import { AppConfigService, CreateConfigDto, UpdateConfigDto } from './app-config.service';
 
 @ApiTags('Admin - Configuration')
 @Controller('admin/config')
-@UseGuards(AdminGuard)
+@UseGuards(AdminApiKeyGuard)
 @ApiBearerAuth()
 export class AppConfigController {
   constructor(private readonly configService: AppConfigService) {}

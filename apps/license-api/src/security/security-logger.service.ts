@@ -97,4 +97,15 @@ export class SecurityLoggerService {
       details: { licenseKeyPrefix },
     });
   }
+
+  logCriticalEvent(eventType: string, details: Record<string, unknown>): void {
+    this.logger.error(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        eventType,
+        severity: 'CRITICAL',
+        ...details,
+      })
+    );
+  }
 }

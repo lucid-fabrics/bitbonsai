@@ -65,6 +65,10 @@ export class HealthCheckWorker implements OnModuleInit {
     this.start();
   }
 
+  // HIGH #5 FIX: Track cron execution to prevent overlap
+  private cronRunning = false;
+  private cronLockExpiry = 0;
+
   /**
    * Auto-requeue CORRUPTED jobs for re-validation
    *
@@ -74,9 +78,37 @@ export class HealthCheckWorker implements OnModuleInit {
    * and resets them to DETECTED so they get re-checked automatically.
    *
    * This prevents permanent job blockage from transient file system issues.
+   *
+   * MEDIUM #2 FIX: Stale lock detection prevents permanent lock if process crashes
+   * HIGH #5 FIX: Lock prevents overlapping executions if previous run takes > 1 hour
    */
   @Cron(CronExpression.EVERY_HOUR)
   async autoRequeueCorruptedJobs(): Promise<void> {
+    const now = Date.now();
+
+    // MEDIUM #2 FIX: Check if lock is stale (>2h old)
+    if (this.cronRunning && now - this.cronLockExpiry < 2 * 60 * 60 * 1000) {
+      this.logger.warn('Auto-requeue: Previous execution still running, skipping this cycle');
+      return;
+    }
+
+    if (this.cronRunning) {
+      this.logger.warn(
+        `Auto-requeue: Stale lock detected (${Math.round((now - this.cronLockExpiry) / 1000 / 60)}m old), forcing reset`
+      );
+    }
+
+    this.cronRunning = true;
+    this.cronLockExpiry = now;
+
+    try {
+      await this._autoRequeueCorruptedJobsImpl();
+    } finally {
+      this.cronRunning = false;
+    }
+  }
+
+  private async _autoRequeueCorruptedJobsImpl(): Promise<void> {
     try {
       // Find CORRUPTED jobs that are stuck (not actively being processed)
       const corruptedJobs = await this.prisma.job.findMany({
@@ -132,6 +164,36 @@ export class HealthCheckWorker implements OnModuleInit {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Auto-requeue failed: ${errorMessage}`);
     }
+  }
+
+  /**
+   * MEDIUM #2 FIX: Calculate dynamic timeout based on file size
+   * Formula: min(60, 10 + (sizeGB / 2)) minutes
+   * MEDIUM #2 FIX: Handle zero-byte files explicitly
+   *
+   * @param fileSizeBytes - File size in bytes
+   * @returns Timeout threshold date
+   * @private
+   */
+  private calculateHealthCheckTimeout(fileSizeBytes: bigint): Date {
+    // MEDIUM #2 FIX: Zero-byte files are corrupted, use minimum timeout
+    if (fileSizeBytes <= 0n) {
+      return new Date(Date.now() - 1 * 60 * 1000); // 1 minute for corrupted files
+    }
+
+    // MEDIUM #1 FIX: Use BigInt arithmetic throughout to prevent precision loss
+    // Safe for files up to 2^53 bytes (~9 petabytes)
+    const sizeGB = fileSizeBytes / BigInt(1024 ** 3);
+
+    // Calculate timeout: 10 min base + 0.5 min per GB, capped at 60 min
+    let timeoutMinutes: number;
+    if (sizeGB > 100n) {
+      timeoutMinutes = 60; // Cap at 60 min for files > 100GB
+    } else {
+      timeoutMinutes = Math.min(60, Number(10n + sizeGB / 2n));
+    }
+
+    return new Date(Date.now() - timeoutMinutes * 60 * 1000);
   }
 
   /**
@@ -246,12 +308,16 @@ export class HealthCheckWorker implements OnModuleInit {
       return;
     }
 
-    // HIGH PRIORITY FIX #5: Dynamic timeout based on file size
-    // Small files (<10GB): 10 minutes timeout
-    // Large files (>=10GB): 20 minutes timeout (4K videos on NFS can be slow)
+    // MEDIUM #1 FIX: Exponential timeout based on file size
+    // Formula: min(60, 10 + (sizeGB / 2)) minutes
+    // Examples: 5GB=12.5min, 10GB=15min, 50GB=35min, 100GB=60min (capped)
+    // Old: 10min for <10GB, 20min for >=10GB (too rigid)
+    const tenGB = BigInt(10 * 1024 * 1024 * 1024);
+
+    // We'll use the old timeouts as fallback for the WHERE clause
+    // Actual timeout validation happens per-job in the check loop
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
     const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
-    const tenGB = BigInt(10 * 1024 * 1024 * 1024);
 
     // Find jobs that need health checking
     // Include both DETECTED and HEALTH_CHECK stages:
@@ -272,30 +338,18 @@ export class HealthCheckWorker implements OnModuleInit {
             },
           },
           {
-            // HIGH PRIORITY FIX #5: Exclude recently started health checks (dynamic timeout)
+            // MEDIUM #1 FIX: Use conservative 60min timeout in WHERE clause
+            // Dynamic per-file timeout filtering happens in-memory after fetch
             OR: [
               {
                 stage: JobStage.DETECTED, // Always include DETECTED jobs
               },
               {
-                // For HEALTH_CHECK stage, only include if truly stuck:
+                // For HEALTH_CHECK stage, fetch all started >60min ago (conservative)
                 stage: JobStage.HEALTH_CHECK,
                 OR: [
                   { healthCheckStartedAt: null }, // No start time (orphaned before fix)
-                  // Small files (<10GB): stuck for 10+ minutes
-                  {
-                    AND: [
-                      { beforeSizeBytes: { lt: tenGB } },
-                      { healthCheckStartedAt: { lt: tenMinutesAgo } },
-                    ],
-                  },
-                  // Large files (>=10GB): stuck for 20+ minutes
-                  {
-                    AND: [
-                      { beforeSizeBytes: { gte: tenGB } },
-                      { healthCheckStartedAt: { lt: twentyMinutesAgo } },
-                    ],
-                  },
+                  { healthCheckStartedAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } }, // 60min
                 ],
               },
             ],
@@ -312,12 +366,34 @@ export class HealthCheckWorker implements OnModuleInit {
       return; // No jobs to process
     }
 
+    // MEDIUM #1 FIX: Filter jobs using dynamic timeout based on file size
+    const filteredJobs = jobs.filter((job) => {
+      if (job.stage === JobStage.DETECTED) {
+        return true; // Always process DETECTED jobs
+      }
+
+      if (job.stage === JobStage.HEALTH_CHECK && !job.healthCheckStartedAt) {
+        return true; // Orphaned jobs with no start time
+      }
+
+      if (job.healthCheckStartedAt) {
+        const timeout = this.calculateHealthCheckTimeout(job.beforeSizeBytes);
+        return job.healthCheckStartedAt < timeout; // Exceeded dynamic timeout
+      }
+
+      return false;
+    });
+
+    if (filteredJobs.length === 0) {
+      return; // No jobs exceed their dynamic timeout
+    }
+
     this.logger.debug(
-      `Processing ${jobs.length} health checks (${this.currentlyChecking.size}/${this.CONCURRENCY} slots busy)`
+      `Processing ${filteredJobs.length} health checks (filtered from ${jobs.length}, ${this.currentlyChecking.size}/${this.CONCURRENCY} slots busy)`
     );
 
     // Process jobs in parallel (fire and forget)
-    const promises = jobs.map((job) => this.checkJobHealth(job.id));
+    const promises = filteredJobs.map((job) => this.checkJobHealth(job.id));
     await Promise.allSettled(promises);
   }
 
@@ -410,15 +486,26 @@ export class HealthCheckWorker implements OnModuleInit {
         }
       }
 
-      // Update stage to HEALTH_CHECK (visible in UI)
-      // HIGH PRIORITY FIX: Set healthCheckStartedAt timestamp to prevent false orphan detection
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: {
-          stage: JobStage.HEALTH_CHECK,
-          healthCheckStartedAt: new Date(), // HIGH PRIORITY FIX: Track when check started
-        },
-      });
+      // CRITICAL #2 FIX: Atomically claim job with database-level locking
+      // Use raw SQL to ensure true atomicity - prevents double-claim race
+      const claimResult = await this.prisma.$executeRaw`
+        UPDATE jobs
+        SET stage = 'HEALTH_CHECK',
+            "healthCheckStartedAt" = NOW()
+        WHERE id = ${jobId}
+          AND stage IN ('DETECTED', 'HEALTH_CHECK')
+          AND (
+            "healthCheckStartedAt" IS NULL
+            OR "healthCheckStartedAt" < NOW() - INTERVAL '10 minutes'
+          )
+      `;
+
+      // Check if we successfully claimed the job (returns affected row count)
+      if (claimResult === 0) {
+        // Another worker already claimed this job for health check
+        this.logger.debug(`Job ${jobId} already claimed by another health check worker, skipping`);
+        return;
+      }
 
       this.logger.debug(`Health checking: ${job.fileLabel}`);
 

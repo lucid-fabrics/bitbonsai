@@ -75,7 +75,7 @@ export class KofiController {
         provider: 'KOFI',
         providerEventId: data.kofi_transaction_id,
         status: 'PENDING',
-        rawPayload: data as unknown as Record<string, unknown>,
+        rawPayload: JSON.parse(JSON.stringify(data)),
       },
     });
 
@@ -91,7 +91,6 @@ export class KofiController {
         <p>Thank you again for your generosity!</p>
         <p>- The BitBonsai Team</p>
       `,
-      text: `Thank you for supporting BitBonsai! We received your donation of $${data.amount}. Ko-fi donations do not include a license. Visit https://bitbonsai.io/pricing to purchase a license.`,
     });
 
     return { received: true };

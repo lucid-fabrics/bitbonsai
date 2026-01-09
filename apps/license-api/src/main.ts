@@ -15,7 +15,10 @@ async function bootstrap() {
   // CORS configuration
   const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
     'https://bitbonsai.io',
+    'https://www.bitbonsai.io',
     'https://app.bitbonsai.io',
+    'http://localhost:4201', // Website dev
+    'http://localhost:4210', // Frontend dev
   ];
   app.enableCors({
     origin: allowedOrigins,
