@@ -3,6 +3,52 @@ title: System Requirements
 description: Minimum and recommended specifications for running BitBonsai
 ---
 
+## Which Installation Method Should I Use?
+
+<AccordionGroup>
+  <Accordion title="I use Unraid (easiest option)" icon="server">
+    **✅ Best choice:** Install from Community Applications
+
+    Unraid has a built-in app store that makes installation simple—just search for BitBonsai and click install.
+
+    **Why choose this:**
+    - One-click installation
+    - No command line needed
+    - Built-in GPU support
+    - Automatic updates
+
+    [Go to Unraid Installation Guide →](/installation/unraid)
+  </Accordion>
+
+  <Accordion title="I'm new to Docker" icon="question">
+    **✅ Best choice:** Docker Compose
+
+    Docker Compose uses a simple configuration file to set everything up. Best for home servers and personal use.
+
+    **Why choose this:**
+    - Simple setup (one file)
+    - Easy to customize
+    - Works on Linux, Windows (WSL2), macOS
+
+    [Go to Docker Installation Guide →](/installation/docker)
+  </Accordion>
+
+  <Accordion title="I want to use multiple computers for encoding" icon="network-wired">
+    **✅ Best choice:** Multi-node setup
+
+    Run one main server (database + web interface) and connect additional computers as workers. Encodes videos 2-10x faster depending on how many nodes you add.
+
+    **Why choose this:**
+    - Faster encoding (uses all available computers)
+    - Use spare hardware (old PCs, servers)
+    - Shared storage via [NFS](/glossary#nfs)
+
+    [Go to Multi-Node Guide →](/advanced/multi-node)
+  </Accordion>
+</AccordionGroup>
+
+---
+
 ## Minimum Requirements
 
 <Card title="Basic Setup" icon="server">
@@ -13,9 +59,9 @@ description: Minimum and recommended specifications for running BitBonsai
 |-----------|--------------|
 | **CPU** | 4 cores (x86_64 or ARM64) |
 | **RAM** | 4 GB |
-| **Storage** | 20 GB (system) + video library space |
+| **Storage** | 20 GB (system) + [video library](/glossary#library) space |
 | **OS** | Linux, Windows (with WSL2), macOS |
-| **Software** | Docker 20.10+, Docker Compose 2.0+ |
+| **Software** | [Docker](/glossary#docker) 20.10+, Docker Compose 2.0+ |
 
 ---
 
@@ -103,8 +149,14 @@ description: Minimum and recommended specifications for running BitBonsai
 ## Hardware Transcoding (Optional)
 
 <Note>
-Hardware encoding is **5-10x faster** than software encoding but may reduce quality slightly.
+[Hardware acceleration](/glossary#hardware-acceleration) uses your graphics card ([GPU](/glossary#hardware-acceleration)) to encode videos **5-10x faster** than using just your CPU.
+
+**Trade-off:** Slightly lower quality than CPU encoding, but the speed difference is massive.
 </Note>
+
+**Simple explanation:** Your graphics card can encode videos much faster than your CPU. For a 2-hour movie:
+- **CPU only**: 2-4 hours to encode
+- **GPU (NVIDIA/Intel/AMD)**: 20-40 minutes to encode
 
 ### Supported GPUs
 

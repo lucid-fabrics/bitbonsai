@@ -5,11 +5,35 @@ description: Effortless video encoding for your media library
 
 # What is BitBonsai?
 
-BitBonsai automatically converts your video library to modern codecs (HEVC/AV1) with zero configuration.
+BitBonsai automatically converts your video library to modern [codecs](/glossary#codec) (HEVC/AV1) with zero configuration.
+
+## How It Works (Simple View)
+
+Here's what BitBonsai does in three steps:
+
+```mermaid
+graph LR
+    A[Your Video Library<br/>100 GB of movies] -->|Scan & Queue| B[BitBonsai<br/>Encodes videos]
+    B -->|HEVC/AV1| C[Encoded Library<br/>40 GB same quality]
+
+    style A fill:#ff6b6b
+    style B fill:#f9be03
+    style C fill:#51cf66
+```
+
+**In plain English:**
+
+1. **You point BitBonsai** at a folder with videos (like `/media/movies`)
+2. **BitBonsai encodes them** to modern formats (HEVC or AV1) that use 40-70% less space
+3. **You get smaller files** that look the same but take up way less storage
+
+**Example:** A 100 GB movie collection becomes 40 GB after encoding—no visible quality loss.
+
+---
 
 ## What BitBonsai Does
 
-BitBonsai monitors your video libraries and automatically transcodes them to modern, efficient codecs like HEVC (H.265) and AV1. Point it at your Plex, Jellyfin, or personal video collections, and it handles the rest—detecting new files, queuing them for encoding, and replacing originals with compressed versions that maintain visual quality while dramatically reducing file sizes.
+BitBonsai monitors your video libraries and automatically [transcodes](/glossary#transcoding) them to modern, efficient [codecs](/glossary#codec) like HEVC (H.265) and AV1. Point it at your Plex, Jellyfin, or personal video collections, and it handles the rest—detecting new files, queuing them for [encoding](/glossary#encoding), and replacing originals with compressed versions that maintain visual quality while dramatically reducing file sizes.
 
 Unlike traditional transcoding tools that require complex configuration, BitBonsai uses smart defaults optimized for 99% of users. Add a folder, click encode, done.
 
@@ -83,20 +107,26 @@ Add nodes with a single config change. Load balancing happens automatically.
   </Accordion>
 </AccordionGroup>
 
-## Architecture Overview
+## Architecture Overview (For Advanced Users)
+
+<Info>
+**New to technical diagrams?** Don't worry about this section. The simple view above is all you need.
+
+This section explains how BitBonsai works internally—useful if you want to understand multi-node setups or troubleshoot issues.
+</Info>
 
 ```mermaid
 graph TD
-    A[User Browser] -->|Port 4210| B[Frontend - Angular]
-    B -->|REST API| C[Main Node - NestJS]
-    C -->|PostgreSQL| D[(Database)]
-    C -->|Job Queue| E[Worker 1]
-    C -->|Job Queue| F[Worker 2]
-    C -->|Job Queue| G[Worker N]
-    E -->|NFS| H[Shared Storage]
-    F -->|NFS| H
-    G -->|NFS| H
-    C -->|NFS| H
+    A[Your Web Browser] -->|Port 4210| B[Web Interface<br/>What you see]
+    B -->|Talks to API| C[Main Node<br/>Manages everything]
+    C -->|Stores data in| D[(Database<br/>PostgreSQL)]
+    C -->|Sends jobs to| E[Worker 1<br/>Encodes videos]
+    C -->|Sends jobs to| F[Worker 2<br/>Encodes videos]
+    C -->|Sends jobs to| G[Worker N<br/>More workers]
+    E -->|Reads/writes via NFS| H[Shared Storage<br/>Your video files]
+    F -->|Reads/writes via NFS| H
+    G -->|Reads/writes via NFS| H
+    C -->|Reads/writes via NFS| H
 
     style C fill:#4CAF50
     style E fill:#2196F3
@@ -104,6 +134,14 @@ graph TD
     style G fill:#2196F3
     style H fill:#FF9800
 ```
+
+**Simple explanation:**
+
+- **Web Interface** (what you see in your browser at [http://localhost:4210](/glossary#port))
+- **Main Node** (the "brain" that coordinates everything)
+- **Database** (stores job information and settings)
+- **Workers** (computers that actually encode videos—can be 1 or many)
+- **Shared Storage** (your video files, accessible by all workers via [NFS](/glossary#nfs))
 
 **Components:**
 

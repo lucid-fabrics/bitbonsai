@@ -29,14 +29,14 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["introduction", "quickstart"]
+      "pages": ["introduction", "quickstart", "glossary"]
     },
     {
       "group": "Installation",
       "pages": ["installation/docker", "installation/unraid", "installation/requirements"]
     },
     {
-      "group": "User Guide",
+      "group": "Using BitBonsai",
       "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
     },
     {
@@ -45,7 +45,7 @@
     },
     {
       "group": "Support",
-      "pages": ["faq"]
+      "pages": ["faq", "support/get-help"]
     }
   ],
   "footerSocials": {

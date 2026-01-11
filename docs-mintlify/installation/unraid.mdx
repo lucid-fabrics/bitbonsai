@@ -3,14 +3,26 @@ title: Unraid Installation
 description: Install BitBonsai from Unraid Community Apps
 ---
 
-BitBonsai is available as a Docker container template in Unraid Community Applications. This guide walks through installation, configuration, and GPU setup.
+BitBonsai is available as a [Docker container](/glossary#container) template in Unraid Community Applications. This is the easiest way to install BitBonsai.
+
+<Info>
+**What is Unraid?**
+
+Unraid is a popular operating system for home servers. It has a built-in app store called "Community Applications" that makes installing Docker apps as easy as clicking a button.
+
+If you're using Unraid, this is your best installation option—no command line needed.
+</Info>
+
+---
 
 ## Prerequisites
 
+Before you start, make sure you have:
+
 - Unraid 6.9+ (6.11+ recommended)
-- Community Applications plugin installed
-- Media library accessible on `/mnt/user/` shares
-- (Optional) NVIDIA GPU with nvidia-driver plugin for hardware encoding
+- Community Applications plugin installed (search "Apps" tab in Unraid)
+- Media library accessible on `/mnt/user/` shares (your video folders)
+- (Optional) NVIDIA GPU with nvidia-driver plugin for [hardware encoding](/glossary#hardware-acceleration)
 
 ---
 
@@ -123,7 +135,15 @@ If BitBonsai is not yet available in Community Apps, use the manual Docker insta
 
 ## Path Mapping for Media Libraries
 
-Unraid uses `/mnt/user/` paths for shares. BitBonsai must access the **same physical path** inside the container.
+<Info>
+**Understanding paths in Unraid:**
+
+Unraid stores files in "shares" that start with `/mnt/user/` (like `/mnt/user/media`). When you install BitBonsai in Docker, it runs inside a [container](/glossary#container) that has its own file system.
+
+**Path mapping** connects your Unraid folders to folders inside the BitBonsai container. This lets BitBonsai access your video files.
+</Info>
+
+Unraid uses `/mnt/user/` paths for shares. BitBonsai must access the **same physical path** inside the [container](/glossary#container).
 
 ### Example Configurations
 
@@ -169,13 +189,21 @@ Bridge mode is recommended for security. Frontend and backend communicate via ho
 
 ## GPU Passthrough (Hardware Encoding)
 
-BitBonsai supports **NVIDIA GPU acceleration** for faster encoding.
+<Info>
+**What is GPU passthrough?**
+
+Your Unraid server might have a graphics card (NVIDIA, Intel, or AMD). "GPU passthrough" means giving BitBonsai permission to use that graphics card for encoding.
+
+**Why do this?** Encoding with a GPU is **5-10x faster** than using just the CPU.
+</Info>
+
+BitBonsai supports **NVIDIA [GPU](/glossary#hardware-acceleration) acceleration** for faster [encoding](/glossary#encoding).
 
 ### Requirements
 
-- NVIDIA GPU installed in Unraid server
-- **nvidia-driver** plugin installed from Community Apps
-- Container runtime configured for GPU access
+- NVIDIA graphics card installed in your Unraid server
+- **nvidia-driver** plugin installed from [Community Applications](/glossary#community-applications)
+- [Container](/glossary#container) configured for GPU access
 
 ### Setup Steps
 

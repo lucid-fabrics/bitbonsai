@@ -1,0 +1,302 @@
+---
+title: Glossary
+description: Common terms explained in simple language
+icon: book
+---
+
+# Glossary
+
+Simple explanations for technical terms used in BitBonsai documentation.
+
+---
+
+## Video & Encoding Terms
+
+### Encoding
+Converting video files to use less storage space while maintaining quality. Like compressing a photo to make it smaller without making it look worse.
+
+**Example:** A 100 GB movie becomes 40 GB after encoding (60% smaller).
+
+---
+
+### Codec
+The format used to compress video. Think of it like different file formats (like .jpg vs .png for images).
+
+**Common codecs:**
+- **H.264** - Old standard, larger files
+- **HEVC (H.265)** - Modern, 40-60% smaller files
+- **AV1** - Newest, 50-70% smaller files
+
+**Related:** [Codec Selection Guide](/advanced/codec-selection)
+
+---
+
+### Transcoding
+Converting a video from one codec to another. BitBonsai transcodes your H.264 videos to HEVC or AV1 to save space.
+
+---
+
+### CRF (Constant Rate Factor)
+A quality setting for encoding. Lower numbers = better quality but larger files.
+
+**Typical values:**
+- CRF 18-22: Very high quality (large files)
+- CRF 23-28: Balanced quality (recommended)
+- CRF 29-35: Lower quality (small files)
+
+**BitBonsai default:** CRF 23 (good balance)
+
+---
+
+### Bitrate
+How much data is used per second of video. Higher bitrate = better quality but larger files.
+
+**Example:** 5 Mbps (megabits per second) means 5 million bits of data per second.
+
+---
+
+### Hardware Acceleration
+Using your computer's graphics card (GPU) to encode videos **5-10x faster** than using just the CPU.
+
+**GPU types:**
+- NVIDIA (NVENC)
+- Intel (QuickSync/QSV)
+- AMD (VCE/VCN)
+
+**Related:** [GPU Setup Guide](/advanced/gpu-acceleration)
+
+---
+
+## Docker & Installation Terms
+
+### Docker
+A tool that runs applications in isolated "containers." Think of it like a virtual box that contains BitBonsai and everything it needs to run.
+
+**Why use Docker?**
+- Easy installation (one command)
+- Works the same on all computers
+- Keeps BitBonsai separate from other apps
+
+---
+
+### Container
+A packaged application that runs in Docker. Like a self-contained app that doesn't interfere with anything else on your computer.
+
+**Example:** BitBonsai runs in a container with its own copy of all required software.
+
+---
+
+### Image
+A template used to create a Docker container. Like a blueprint or recipe.
+
+**Example:** `lucidfabrics/bitbonsai:latest` is the image name.
+
+---
+
+### Port
+A "door" on your computer that allows network connections. Each app uses a different port number.
+
+**BitBonsai ports:**
+- **4210** - Web interface (where you access BitBonsai in your browser)
+- **3100** - API (internal communication)
+
+**Example:** `http://localhost:4210` means "connect to port 4210 on my computer"
+
+---
+
+### Port Mapping
+Connecting a port on your computer to a port inside the Docker container.
+
+**Example:** `-p 4210:4210` means:
+- Left 4210 = Your computer's port
+- Right 4210 = Container's port
+
+**Why it matters:** This is how you access BitBonsai in your web browser.
+
+---
+
+### Volume Mount
+Connecting a folder on your computer to a folder inside the Docker container. This lets BitBonsai access your video files.
+
+**Example:** `-v /path/to/videos:/media` means:
+- Left side = Folder on your computer (`/path/to/videos`)
+- Right side = Folder inside container (`/media`)
+
+**Analogy:** Like creating a shortcut from your Desktop to a folder on an external drive.
+
+---
+
+### Environment Variable
+A configuration setting passed to the application.
+
+**Example:** `-e TZ=America/New_York` sets the timezone.
+
+**Common variables:**
+- `TZ` - Timezone
+- `NODE_ENV` - Run mode (production or development)
+
+---
+
+## Multi-Node Terms
+
+### Node
+A computer running BitBonsai. You can have one node (simple) or multiple nodes (faster).
+
+**Types:**
+- **Main node** - Has the database, assigns jobs to workers
+- **Child node** - Worker that encodes videos assigned by main node
+
+**Analogy:** Main node is the manager, child nodes are the workers.
+
+---
+
+### Main Node
+The primary BitBonsai installation that owns the database and web interface. Coordinates all encoding work.
+
+**Responsibilities:**
+- Stores job database
+- Distributes jobs to workers
+- Hosts the web interface
+
+---
+
+### Child Node (Worker)
+An additional computer that helps encode videos. Receives jobs from the main node, encodes them, and reports back.
+
+**Benefits:**
+- Faster encoding (more computers = more speed)
+- Use spare computers for encoding
+- Can have 1 main + many workers
+
+**Related:** [Multi-Node Setup Guide](/advanced/multi-node)
+
+---
+
+### NFS (Network File System)
+A way for multiple computers to access the same files over a network. Required for multi-node setups.
+
+**Why needed?** All nodes need to read the same video files, so they share them via NFS.
+
+**Example:** Your main node has videos in `/videos`, child nodes can access the same folder via NFS.
+
+---
+
+### Load Balancing
+Automatically distributing encoding jobs across multiple nodes to use all available computing power efficiently.
+
+**BitBonsai does this automatically** - you don't need to configure anything.
+
+---
+
+## Storage Terms
+
+### Library
+A folder containing video files that you want BitBonsai to encode.
+
+**Example:** `/media/movies` or `/videos/tv-shows`
+
+---
+
+### Temporary Files
+Files created during encoding that are deleted after the job completes. BitBonsai needs space for these.
+
+**Storage needed:** ~2-5 GB per active encoding job.
+
+---
+
+### Atomic Replace
+Safely replacing the original file with the encoded version. BitBonsai uses a rename operation (not copy) to prevent corruption.
+
+**Why it matters:** If encoding fails or is interrupted, your original file is safe.
+
+---
+
+## Job Status Terms
+
+### Job
+A single video file being encoded. Each video in your library becomes one job.
+
+**Job lifecycle:**
+1. **QUEUED** - Waiting to start
+2. **ENCODING** - Currently being processed
+3. **COMPLETED** - Successfully encoded
+4. **FAILED** - Error occurred (can retry)
+5. **CORRUPTED** - Output file is damaged (auto-retried)
+
+---
+
+### Queue
+The list of jobs waiting to be encoded. Jobs are processed in order (oldest first).
+
+---
+
+### Self-Healing
+BitBonsai's ability to automatically recover from errors without manual intervention.
+
+**Examples:**
+- Retries failed jobs automatically (3 times)
+- Detects corrupted output files and re-encodes
+- Recovers stuck jobs on startup
+- Validates health of encoded files
+
+**Philosophy:** You shouldn't need to babysit the encoding process.
+
+---
+
+## System Terms
+
+### API (Application Programming Interface)
+The internal communication system BitBonsai uses. You don't interact with it directly - the web interface does.
+
+**Port:** 3100 (internal only)
+
+---
+
+### Database
+Where BitBonsai stores information about jobs, libraries, and settings.
+
+**Default:** SQLite (file-based, works for most users)
+**Advanced:** PostgreSQL (for high-performance setups)
+
+---
+
+### Health Check
+BitBonsai automatically verifies encoded files can be played back correctly. If not, it marks them as CORRUPTED and retries.
+
+**Why it matters:** Ensures you don't replace good files with broken ones.
+
+---
+
+## Unraid-Specific Terms
+
+### Community Applications
+Unraid's app store where you can easily install Docker containers with a few clicks.
+
+**How to find BitBonsai:** Open Unraid web interface → Apps tab → Search "BitBonsai"
+
+---
+
+### Appdata
+Unraid's default location for application configuration files.
+
+**BitBonsai appdata:** `/mnt/user/appdata/bitbonsai`
+
+---
+
+### Cache Pool
+Unraid's fast storage (usually SSD) used for temporary files. Dramatically speeds up encoding.
+
+**Recommended:** Use cache pool for BitBonsai temp directory.
+
+---
+
+## Need More Help?
+
+<CardGroup cols={2}>
+  <Card title="FAQ" icon="circle-question" href="/faq">
+    Frequently asked questions
+  </Card>
+  <Card title="Get Support" icon="life-ring" href="/support/get-help">
+    Discord, GitHub, community forums
+  </Card>
+</CardGroup>
