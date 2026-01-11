@@ -50,7 +50,7 @@
     },
     {
       "group": "Support",
-      "pages": ["faq"]
+      "pages": ["faq", "test-page"]
     }
   ],
   "footerSocials": {
