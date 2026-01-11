@@ -7,6 +7,10 @@ description: Learn about job statuses, lifecycle, and auto-healing
 
 Every video goes through a multi-stage lifecycle from detection to completion. BitBonsai manages this automatically with zero user intervention required.
 
+<Note>
+**What is a job?** A job is a single video file being encoded. Each video in your library becomes one job. See [glossary](/glossary#job) for more details.
+</Note>
+
 | Status | Description | What Happens Next |
 |--------|-------------|-------------------|
 | **DETECTED** | File found during library scan | Health check runs automatically |
@@ -57,10 +61,10 @@ Most jobs go: **DETECTED** → **HEALTH_CHECK** → **NEEDS_DECISION** → **QUE
 - **Next step:** Health check runs automatically
 
 ### HEALTH_CHECK
-- **What it means:** BitBonsai is validating file integrity with FFmpeg
+- **What it means:** BitBonsai is validating file integrity with [FFmpeg](/glossary#ffmpeg)
 - **Checks performed:**
   - File exists and is readable
-  - Container format is valid (MP4, MKV, AVI, etc.)
+  - [Container](/glossary#container) format is valid (MP4, MKV, AVI, etc.)
   - Video/audio streams are decodable
   - Duration and metadata are accessible
   - No critical corruption in file structure
@@ -76,46 +80,46 @@ Health checks prevent encoding failures by detecting corrupt files before wastin
 
 ### NEEDS_DECISION
 - **What it means:** File is healthy and ready to encode
-- **User action:** Select codec (HEVC/AV1) and click "Queue Selected"
+- **User action:** Select [codec](/glossary#codec) (HEVC/AV1) and click "Queue Selected"
 - **Where to find:** Libraries → Queue tab
 - **Filters available:**
   - Codec (find H.264 videos to upgrade)
-  - Resolution (1080p, 4K, etc.)
-  - Bitrate (target high-bitrate files)
+  - [Resolution](/glossary#resolution) (1080p, 4K, etc.)
+  - [Bitrate](/glossary#bitrate) (target high-bitrate files)
   - File size (prioritize large files)
 
 ### QUEUED
-- **What it means:** Job is waiting for an available worker node
+- **What it means:** Job is waiting for an available worker [node](/glossary#node)
 - **User action:** None (automatic)
-- **Duration:** Seconds to minutes (depends on queue depth)
+- **Duration:** Seconds to minutes (depends on [queue](/glossary#queue) depth)
 - **Priority:** First-in, first-out (FIFO)
-- **Next step:** Starts encoding when worker is free
+- **Next step:** Starts [encoding](/glossary#encoding) when worker is free
 
 <Info>
 Queue depth is visible in the **Encoding** tab header: "3 queued, 2 encoding". Add more worker nodes to process queued jobs faster.
 </Info>
 
 ### TRANSFERRING
-- **What it means:** (Multi-node only) File is being copied to worker node
+- **What it means:** ([Multi-node](/glossary#multi-node) only) File is being copied to worker node
 - **User action:** None (automatic)
 - **Duration:** Depends on network speed and file size
-- **Why this happens:** Some multi-node setups don't use shared storage (NFS), so files must be transferred before encoding
+- **Why this happens:** Some multi-node setups don't use shared storage ([NFS](/glossary#nfs)), so files must be transferred before encoding
 - **Next step:** Encoding starts after transfer completes
 
 <Warning>
-If you see many TRANSFERRING jobs, consider setting up NFS shared storage for instant zero-copy access. See [Multi-Node Setup](/advanced/multi-node).
+If you see many TRANSFERRING jobs, consider setting up [NFS](/glossary#nfs) shared storage for instant zero-copy access. See [Multi-Node Setup](/advanced/multi-node).
 </Warning>
 
 ### ENCODING
-- **What it means:** FFmpeg is actively encoding the video
+- **What it means:** [FFmpeg](/glossary#ffmpeg) is actively encoding the video
 - **User action:** Monitor progress, or pause/cancel if needed
-- **Duration:** Minutes to hours (depends on codec, resolution, and hardware)
+- **Duration:** Minutes to hours (depends on [codec](/glossary#codec), [resolution](/glossary#resolution), and [hardware acceleration](/glossary#hardware-acceleration))
 - **What you see:**
   - Progress percentage (0-100%)
   - Estimated time remaining
   - Encoding speed (FPS)
   - Output file size estimate
-  - Current vs. target bitrate
+  - Current vs. target [bitrate](/glossary#bitrate)
 
 #### Progress Bar Breakdown
 
@@ -137,7 +141,7 @@ If you see many TRANSFERRING jobs, consider setting up NFS shared storage for in
 | 1-5 FPS | CPU | AV1 | Very slow but best quality |
 
 <Tip>
-**Slow encoding?** Check Settings → Hardware Acceleration and enable NVIDIA/Intel/AMD GPU encoding if available. HEVC on GPU is 3-10x faster than CPU.
+**Slow encoding?** Check Settings → [Hardware Acceleration](/glossary#hardware-acceleration) and enable NVIDIA/Intel/AMD [GPU](/glossary#gpu) encoding if available. HEVC on GPU is 3-10x faster than CPU.
 </Tip>
 
 ### PAUSED
@@ -151,7 +155,7 @@ If you see many TRANSFERRING jobs, consider setting up NFS shared storage for in
 - **What it means:** Encoded file is being validated for corruption
 - **Checks performed:**
   - Output file exists and is readable
-  - FFprobe can parse container and streams
+  - [FFprobe](/glossary#ffmpeg) can parse [container](/glossary#container) and streams
   - Duration matches original (within 2 seconds)
   - Video/audio streams are decodable
 - **User action:** None (automatic)
@@ -165,13 +169,13 @@ If verification fails repeatedly (3+ retries), the source file may be corrupted.
 </Warning>
 
 ### COMPLETED
-- **What it means:** Encoding succeeded and file replaced
+- **What it means:** [Encoding](/glossary#encoding) succeeded and file replaced
 - **User action:** None (automatic)
 - **What happened:**
   1. Original file backed up to `/media/.bitbonsai/originals/[library]/[file]`
-  2. Encoded file replaces original in library
-  3. Library metadata updated (new codec, bitrate, file size)
-  4. Job marked complete and removed from active queue
+  2. Encoded file replaces original in [library](/glossary#library)
+  3. Library metadata updated (new [codec](/glossary#codec), [bitrate](/glossary#bitrate), file size)
+  4. Job marked complete and removed from active [queue](/glossary#queue)
 - **File location:** Same path as original (in-place replacement)
 - **Backup location:** `[library-path]/.bitbonsai/originals/[relative-path]`
 
@@ -187,7 +191,7 @@ Typical savings after encoding:
 | H.264 (4K)     | AV1          | 60-70% smaller      |
 
 <Check>
-**Example:** A 10 GB H.264 movie encoded to HEVC becomes ~5 GB (50% savings). No quality loss with default settings.
+**Example:** A 10 GB H.264 movie encoded to [HEVC](/glossary#codec) becomes ~5 GB (50% savings). No quality loss with default [CRF](/glossary#crf) settings.
 </Check>
 
 ### FAILED
@@ -199,8 +203,8 @@ Typical savings after encoding:
 - **Common causes:**
   - Corrupted source file (skip it)
   - Insufficient disk space (free up space)
-  - FFmpeg crash (bug in codec)
-  - Hardware encoder failure (try CPU fallback)
+  - [FFmpeg](/glossary#ffmpeg) crash (bug in [codec](/glossary#codec))
+  - [Hardware encoder](/glossary#hardware-acceleration) failure (try CPU fallback)
 - **Auto-retry behavior:**
   - 1st retry: Immediate
   - 2nd retry: 5 minutes later
@@ -213,9 +217,9 @@ Typical savings after encoding:
 |------------|-------|-----|
 | **Source Corrupted** | Original file unreadable | Skip file or re-download |
 | **Disk Full** | No space for output file | Free up space, job auto-retries |
-| **Codec Error** | FFmpeg crash or unsupported stream | Try different codec (HEVC → AV1) |
-| **Hardware Failure** | GPU encoder crash | Disable hardware accel in Settings |
-| **Permission Denied** | Docker volume permissions | Fix with `chmod -R 777 /media` |
+| **Codec Error** | [FFmpeg](/glossary#ffmpeg) crash or unsupported stream | Try different [codec](/glossary#codec) (HEVC → AV1) |
+| **Hardware Failure** | [GPU](/glossary#gpu) encoder crash | Disable [hardware acceleration](/glossary#hardware-acceleration) in Settings |
+| **Permission Denied** | [Docker](/glossary#docker) [volume](/glossary#volume-mount) permissions | Fix with `chmod -R 777 /media` |
 
 <Accordion title="View detailed error message">
 1. Go to **Encoding** tab

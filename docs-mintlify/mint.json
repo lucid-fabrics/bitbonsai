@@ -6,11 +6,11 @@
   },
   "favicon": "/favicon.png",
   "colors": {
-    "primary": "#f9be03",
-    "light": "#fcd34d",
-    "dark": "#d4a003",
+    "primary": "#10b981",
+    "light": "#34d399",
+    "dark": "#047857",
     "background": {
-      "dark": "#1a1a1a"
+      "dark": "#0f1419"
     }
   },
   "topbar": {
@@ -29,23 +29,28 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["introduction", "quickstart", "glossary"]
+      "pages": ["introduction", "quickstart"]
     },
     {
       "group": "Installation",
       "pages": ["installation/docker", "installation/unraid", "installation/requirements"]
     },
     {
-      "group": "Using BitBonsai",
+      "group": "User Guide",
       "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
     },
     {
       "group": "Advanced",
-      "pages": ["advanced/multi-node", "advanced/codec-selection", "advanced/troubleshooting"]
+      "pages": [
+        "advanced/gpu-acceleration",
+        "advanced/multi-node",
+        "advanced/codec-selection",
+        "advanced/troubleshooting"
+      ]
     },
     {
       "group": "Support",
-      "pages": ["faq", "support/get-help"]
+      "pages": ["faq"]
     }
   ],
   "footerSocials": {

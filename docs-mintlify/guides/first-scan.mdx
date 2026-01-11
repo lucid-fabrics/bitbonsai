@@ -17,25 +17,13 @@ This guide walks you through creating your first library, scanning for videos, a
   <Step title="Open the Libraries page">
     Click **Libraries** in the left sidebar navigation.
 
-    The Libraries page displays all configured [libraries](/glossary#library) and their [encoding](/glossary#encoding) statistics.
-
-    <Frame>
-      ![Libraries page with empty state](placeholder-libraries-empty.png)
-
-      **What to capture:** The Libraries page showing the empty state with "Add Library" button in the top-right corner
-    </Frame>
+    The Libraries page displays all configured libraries and their encoding statistics.
   </Step>
 
   <Step title="Click Add Library button">
     Click the **Add Library** button in the top-right corner of the page.
 
-    A dialog will appear with [library](/glossary#library) configuration fields.
-
-    <Frame>
-      ![Add Library dialog](placeholder-add-library-dialog.png)
-
-      **What to capture:** The "Add Library" modal dialog showing Name, Path, and Target Codec fields
-    </Frame>
+    A dialog will appear with library configuration fields.
   </Step>
 </Steps>
 
@@ -51,24 +39,20 @@ This guide walks you through creating your first library, scanning for videos, a
   </Step>
 
   <Step title="Specify library path">
-    Enter the **absolute path** inside the [Docker container](/glossary#container) where your videos are mounted.
+    Enter the **absolute path** inside the Docker container where your videos are mounted.
 
     ```text
     Path: /videos/movies
     ```
 
     <Warning>
-      **Important:** The path must match your Docker [volume mount](/glossary#volume-mount).
-
-      If you mounted `/mnt/media/movies` to `/videos/movies` in docker-compose.yml, use `/videos/movies` here (the container path, not your computer's path).
+      The path must match your Docker volume mount. If you mounted `/mnt/media/movies` to `/videos/movies` in docker-compose.yml, use `/videos/movies` here.
     </Warning>
 
     <Note>
       For Unraid setups, common paths are:
       - `/videos/movies` (mapped from `/mnt/user/media/movies`)
       - `/videos/tv` (mapped from `/mnt/user/media/tv`)
-
-      **Not sure?** Check your docker-compose.yml or Unraid container settings for the "Container Path" you configured.
     </Note>
   </Step>
 
@@ -98,13 +82,7 @@ This guide walks you through creating your first library, scanning for videos, a
   <Step title="Start the scan">
     Click the **Scan** button (magnifying glass icon) next to your newly created library.
 
-    BitBonsai will recursively search the [library](/glossary#library) path for video files.
-
-    <Frame>
-      ![Library with Scan button highlighted](placeholder-library-scan-button.png)
-
-      **What to capture:** The Libraries page showing the newly created library with the "Scan" button (magnifying glass icon) highlighted
-    </Frame>
+    BitBonsai will recursively search the library path for video files.
 
     <Note>
       Scanning large libraries (1000+ files) may take 1-5 minutes. The UI updates automatically when complete.
@@ -114,26 +92,18 @@ This guide walks you through creating your first library, scanning for videos, a
   <Step title="Review detected videos">
     Once scanning completes, click the library name to view detected videos.
 
-    <Frame>
-      ![Library video list](placeholder-library-video-list.png)
-
-      **What to capture:** The video list showing detected files with columns for Filename, Size, Codec, Duration, and Status
-    </Frame>
-
     The video table displays:
 
     | Column | Description |
     |--------|-------------|
     | **Filename** | Video file name and relative path |
     | **Size** | File size in GB |
-    | **[Codec](/glossary#codec)** | Current video [codec](/glossary#codec) (H.264, HEVC, etc.) |
+    | **Codec** | Current video codec (H.264, HEVC, etc.) |
     | **Duration** | Video length in HH:MM:SS |
-    | **Status** | [Encoding](/glossary#encoding) status (NOT_QUEUED, QUEUED, ENCODING, COMPLETE) |
+    | **Status** | Encoding status (NOT_QUEUED, QUEUED, ENCODING, COMPLETE) |
 
     <Warning>
-      Videos **already encoded** in the target [codec](/glossary#codec) are marked SKIPPED and cannot be re-encoded.
-
-      **Why?** Re-encoding a video that's already compressed causes quality loss. BitBonsai prevents this automatically.
+      Videos **already encoded** in the target codec are marked SKIPPED and cannot be re-encoded (to prevent quality loss from transcoding already-compressed files).
     </Warning>
   </Step>
 </Steps>
@@ -144,14 +114,8 @@ This guide walks you through creating your first library, scanning for videos, a
   <Step title="Select videos to encode">
     Use checkboxes to select specific videos, or click **Select All** to choose all eligible videos.
 
-    <Frame>
-      ![Video selection with checkboxes](placeholder-select-videos.png)
-
-      **What to capture:** The video table with several videos selected via checkboxes, showing the "Queue Selected" button enabled
-    </Frame>
-
     <Note>
-      Only videos with status `NOT_QUEUED` can be selected. Videos already in [queue](/glossary#queue) or encoded are disabled.
+      Only videos with status `NOT_QUEUED` can be selected. Videos already in queue or encoded are disabled.
     </Note>
   </Step>
 
@@ -159,14 +123,6 @@ This guide walks you through creating your first library, scanning for videos, a
     Click the **Queue Selected** button at the top of the video table.
 
     Selected videos change from `NOT_QUEUED` → `QUEUED` status.
-
-    <Info>
-    **What does "queuing" mean?**
-
-    When you queue a video, you're adding it to the list of videos waiting to be encoded. BitBonsai will process them one by one (or in parallel if you have multiple [worker nodes](/glossary#child-node)).
-
-    Think of it like a to-do list for encoding jobs.
-    </Info>
   </Step>
 
   <Step title="Alternative: Queue all videos">
@@ -206,17 +162,13 @@ This guide walks you through creating your first library, scanning for videos, a
 
 ## What Happens Next?
 
-Once videos are [queued](/glossary#queue), BitBonsai automatically:
+Once videos are queued, BitBonsai automatically:
 
-1. **Distributes [jobs](/glossary#job)** to available [worker nodes](/glossary#child-node) based on load
+1. **Distributes jobs** to available worker nodes based on load
 2. **Encodes videos** using FFmpeg with optimized quality settings
-3. **Validates output** to ensure no corruption or quality loss (see [Self-Healing](/glossary#self-healing))
+3. **Validates output** to ensure no corruption or quality loss
 4. **Replaces original** with encoded version (if configured)
 5. **Moves to next job** in queue
-
-<Info>
-**You don't need to do anything else.** BitBonsai runs automatically in the background. Check the Jobs page to monitor progress.
-</Info>
 
 <Card title="Next Steps" icon="arrow-right" href="/guides/understanding-jobs">
   Learn how to monitor job progress, handle failures, and optimize encoding performance.
@@ -225,101 +177,47 @@ Once videos are [queued](/glossary#queue), BitBonsai automatically:
 ## Common Issues
 
 <AccordionGroup>
-  <Accordion title="Library scan finds 0 videos" icon="magnifying-glass">
-    **Possible causes:**
-    - The path doesn't exist inside the [Docker container](/glossary#container)
-    - [Volume mount](/glossary#volume-mount) misconfigured in docker-compose.yml
+  <Accordion title="Library scan finds 0 videos">
+    **Causes:**
+    - Path doesn't exist inside Docker container
+    - Volume mount misconfigured in docker-compose.yml
     - Files are not recognized video formats (MP4, MKV, AVI, MOV)
 
-    **How to fix:**
-
-    1. **Check if the path exists inside the container:**
-       ```bash
-       docker exec bitbonsai-backend ls /videos/movies
-       ```
-       If you see "No such file or directory," the path is wrong.
-
-    2. **Check your docker-compose.yml [volume mount](/glossary#volume-mount):**
-       Look for a line like:
-       ```yaml
-       - /mnt/media/movies:/videos
-       ```
-       The part after the `:` is the container path (use this in BitBonsai).
-
-    3. **Make sure your files are videos:**
-       BitBonsai only recognizes `.mp4`, `.mkv`, `.avi`, `.mov`, `.m4v`, `.ts` files.
-
-    **Still stuck?** See [Get Help](/support/get-help) for support channels.
+    **Solution:**
+    - Verify path exists: `docker exec bitbonsai-backend ls /videos/movies`
+    - Check docker-compose.yml volume mounts
+    - Ensure files have video extensions
   </Accordion>
 
-  <Accordion title="All videos marked SKIPPED" icon="forward">
-    **Why this happens:**
+  <Accordion title="All videos marked SKIPPED">
+    **Cause:** Videos are already encoded in the target codec (e.g., library set to HEVC, but videos are already H.265).
 
-    Your videos are already encoded in the target [codec](/glossary#codec). For example:
-    - You set the library to encode to HEVC
-    - But your videos are already HEVC (H.265)
-
-    **This is intentional!** Re-encoding a video that's already compressed causes quality loss. BitBonsai prevents this automatically.
-
-    **What to do:**
-
-    If you want to encode these videos anyway (not recommended):
-    1. Delete the library
-    2. Create a new library with a different [codec](/glossary#codec) (e.g., AV1 instead of HEVC)
-
-    **Recommendation:** Leave them as-is. They're already optimized.
+    **Solution:**
+    - This is intentional to prevent quality loss from re-encoding
+    - If you want to re-encode, delete the library and create a new one with a different codec
   </Accordion>
 
-  <Accordion title="Queue button is disabled (grayed out)" icon="ban">
-    **Why this happens:**
-    - No videos are selected
-    - Selected videos are already [queued](/glossary#queue) or encoded
-    - No [worker nodes](/glossary#child-node) are available
+  <Accordion title="Queue button disabled">
+    **Causes:**
+    - No videos selected
+    - Selected videos already queued or encoded
+    - No worker nodes available
 
-    **How to fix:**
-
-    1. **Select videos with `NOT_QUEUED` status** (use checkboxes on the left)
-    2. **Check if workers are running:**
-       - Go to Settings → Nodes
-       - Make sure at least one [node](/glossary#node) shows "Healthy" status
-    3. **Restart backend if needed:**
-       ```bash
-       docker compose restart bitbonsai-backend
-       ```
-
-    **Still stuck?** See [Get Help](/support/get-help).
+    **Solution:**
+    - Select videos with `NOT_QUEUED` status
+    - Check worker node health in Settings → Nodes
   </Accordion>
 
-  <Accordion title="Jobs stuck in QUEUED status (not starting)" icon="hourglass">
-    **Why this happens:**
-    - No [worker nodes](/glossary#child-node) are connected
-    - All workers are at max [concurrent job](/glossary#queue) capacity
-    - Worker nodes are offline or unhealthy
+  <Accordion title="Jobs stuck in QUEUED status">
+    **Causes:**
+    - No worker nodes connected
+    - All workers at max concurrent job capacity
+    - Worker nodes offline or unhealthy
 
-    **How to fix:**
-
-    1. **Check worker node status:**
-       - Go to Settings → Nodes in the web interface
-       - Look for nodes with "Unhealthy" or "Offline" status
-
-    2. **Verify backend is running:**
-       ```bash
-       docker compose ps
-       ```
-       Both `bitbonsai-backend` and `bitbonsai-frontend` should show "Up".
-
-    3. **Check backend logs for errors:**
-       ```bash
-       docker compose logs bitbonsai-backend
-       ```
-       Look for errors like "Cannot connect to database" or "Worker node timeout".
-
-    4. **Restart the backend:**
-       ```bash
-       docker compose restart bitbonsai-backend
-       ```
-
-    **Still stuck?** See [Troubleshooting Guide](/advanced/troubleshooting) or [Get Help](/support/get-help).
+    **Solution:**
+    - Check worker node status: Settings → Nodes
+    - Verify main/child node services running
+    - Review worker logs: `docker logs bitbonsai-backend`
   </Accordion>
 </AccordionGroup>
 

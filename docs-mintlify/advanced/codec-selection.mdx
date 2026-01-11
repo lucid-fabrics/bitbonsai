@@ -5,15 +5,19 @@ description: Choose between HEVC and AV1 codecs
 
 ## Quick Comparison
 
-Choose the right codec for your library based on encoding speed, file size, and device compatibility.
+Choose the right [codec](/glossary#codec) for your [library](/glossary#library) based on [encoding](/glossary#encoding) speed, file size, and device compatibility.
 
-| Feature | HEVC (H.265) | AV1 |
+<Note>
+**New to video encoding?** A codec is the format used to compress video. See the [codec glossary entry](/glossary#codec) for a simple explanation.
+</Note>
+
+| Feature | [HEVC](/glossary#codec) (H.265) | AV1 |
 |---------|-------------|-----|
 | **File Size Reduction** | 40-60% smaller vs H.264 | 50-70% smaller vs H.264 |
-| **Encoding Speed** | Fast (CPU/GPU) | Slow (CPU only) |
-| **Hardware Acceleration** | NVIDIA, Intel, AMD | Limited (Intel Arc only) |
+| **Encoding Speed** | Fast (CPU/[GPU](/glossary#gpu)) | Slow (CPU only) |
+| **[Hardware Acceleration](/glossary#hardware-acceleration)** | NVIDIA, Intel, AMD | Limited (Intel Arc only) |
 | **Device Compatibility** | Widespread (2015+) | Limited (2020+) |
-| **Quality at Same Bitrate** | Good | Excellent |
+| **Quality at Same [Bitrate](/glossary#bitrate)** | Good | Excellent |
 | **Browser Playback** | Safari, Edge | Chrome, Firefox, Edge |
 | **Smart TV Support** | Most 2016+ models | Few 2021+ models |
 | **Best For** | Balanced speed + compatibility | Maximum storage savings |
@@ -35,7 +39,7 @@ Encoding large libraries (1000+ movies) where time matters more than maximum com
 </Card>
 
 <Card title="Hardware Encoder Available" icon="microchip">
-NVIDIA RTX 20/30/40 series, Intel 6th gen+, or AMD RX 6000+ GPUs provide 3-10x speedup with NVENC/QSV/VCE hardware acceleration.
+NVIDIA RTX 20/30/40 series, Intel 6th gen+, or AMD RX 6000+ [GPUs](/glossary#gpu) provide 3-10x speedup with NVENC/QSV/VCE [hardware acceleration](/glossary#hardware-acceleration).
 </Card>
 
 <Card title="Apple Ecosystem" icon="apple">
@@ -57,7 +61,7 @@ Most smart TVs from 2016+ support HEVC hardware decoding. Older or budget TVs of
 | Intel i5-12400 (CPU) | 4K | 5-10 FPS | 3-5 hours |
 
 <Tip>
-Enable hardware acceleration in **Settings → Encoding** to unlock GPU speeds. HEVC on NVIDIA RTX 3060+ provides near-identical quality to CPU at 5-10x the speed.
+Enable [hardware acceleration](/glossary#hardware-acceleration) in **Settings → Encoding** to unlock [GPU](/glossary#gpu) speeds. [HEVC](/glossary#codec) on NVIDIA RTX 3060+ provides near-identical quality to CPU at 5-10x the speed.
 </Tip>
 
 ### HEVC File Size Savings
@@ -132,7 +136,7 @@ Typical storage reduction when converting from H.264 to AV1:
 
 ## Quality Settings (CRF Values)
 
-Both HEVC and AV1 use **CRF (Constant Rate Factor)** to control quality. Lower CRF = higher quality + larger files.
+Both [HEVC](/glossary#codec) and AV1 use **[CRF](/glossary#crf) (Constant Rate Factor)** to control quality. Lower CRF = higher quality + larger files.
 
 | CRF Range | Quality | File Size | Use Case |
 |-----------|---------|-----------|----------|
@@ -142,7 +146,7 @@ Both HEVC and AV1 use **CRF (Constant Rate Factor)** to control quality. Lower C
 | **36+** | Low Quality | Very Small (10-20% of source) | Not recommended |
 
 <Info>
-**BitBonsai default: CRF 23** for both HEVC and AV1. This provides transparent quality indistinguishable from the source for most content.
+**BitBonsai default: [CRF](/glossary#crf) 23** for both [HEVC](/glossary#codec) and AV1. This provides transparent quality indistinguishable from the source for most content.
 </Info>
 
 ### CRF Comparison Examples
@@ -157,7 +161,7 @@ Encoding a 10 GB 1080p H.264 BluRay movie:
 | 33 | 1.5 GB | 1.2 GB | Visible compression artifacts |
 
 <Tip>
-**How to adjust CRF:** Settings → Encoding → Quality → CRF slider. Lower for archival quality, higher for streaming/mobile libraries.
+**How to adjust [CRF](/glossary#crf):** Settings → Encoding → Quality → CRF slider. Lower for archival quality, higher for streaming/mobile [libraries](/glossary#library).
 </Tip>
 
 ### Recommended CRF by Content Type
@@ -174,7 +178,11 @@ Encoding a 10 GB 1080p H.264 BluRay movie:
 
 ## Hardware Transcoding
 
-Hardware encoding uses GPU/iGPU for 3-10x speedup vs CPU. Quality is slightly lower but visually transparent for most content.
+[Hardware encoding](/glossary#hardware-acceleration) uses [GPU](/glossary#gpu)/iGPU for 3-10x speedup vs CPU. Quality is slightly lower but visually transparent for most content.
+
+<Note>
+**What is hardware transcoding?** Using your graphics card to encode videos 5-10x faster than CPU-only encoding. See [hardware acceleration](/glossary#hardware-acceleration) in the glossary.
+</Note>
 
 ### NVIDIA NVENC (GeForce/RTX)
 

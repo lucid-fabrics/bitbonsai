@@ -5,30 +5,19 @@ description: Install BitBonsai with Docker or Docker Compose
 
 Deploy BitBonsai using Docker containers for simplified installation and updates.
 
-## What is Docker?
-
-[Docker](/glossary#docker) is a tool that packages BitBonsai and everything it needs into a "container." Think of it like an app that runs in its own isolated box—it won't interfere with other software on your computer.
-
-**Why use Docker?**
-- **Easy installation**: One command to get started
-- **Works everywhere**: Runs the same on Linux, Windows, and macOS
-- **Safe**: BitBonsai stays isolated from your system
-
----
-
 ## Prerequisites
 
 Before installing, ensure you have:
 
 | Requirement | Minimum Version | Check Command |
 |-------------|----------------|---------------|
-| [Docker](/glossary#docker) | 20.10+ | `docker --version` |
-| [Docker Compose](/glossary#docker) | 2.0+ | `docker compose version` |
-| Disk Space | 100GB+ | For [temporary files](/glossary#temporary-files) during encoding |
-| RAM | 8GB+ | For running multiple encoding jobs at once |
+| Docker | 20.10+ | `docker --version` |
+| Docker Compose | 2.0+ | `docker compose version` |
+| Disk Space | 100GB+ | For temporary encoding files |
+| RAM | 8GB+ | For parallel encoding jobs |
 
 <Note>
-BitBonsai needs access to your video files. We'll connect your video folder to the Docker container using a [volume mount](/glossary#volume-mount).
+BitBonsai requires access to your video library via volume mounts. Plan your directory structure before installation.
 </Note>
 
 ## Quick Start
@@ -42,19 +31,7 @@ BitBonsai needs access to your video files. We'll connect your video folder to t
   </Step>
 
   <Step title="Create docker-compose.yml">
-    Create a `docker-compose.yml` file with the following configuration.
-
-    <Info>
-    **What this file does:**
-
-    This file tells Docker how to run BitBonsai. It sets up three things:
-
-    1. **PostgreSQL** - The [database](/glossary#database) that stores your job information
-    2. **Backend** - The API that manages encoding jobs
-    3. **Frontend** - The web interface you'll use in your browser
-
-    You'll customize the paths to point to your video folders.
-    </Info>
+    Create a `docker-compose.yml` file with the following configuration:
 
     ```yaml docker-compose.yml
     version: '3.8'
@@ -113,23 +90,6 @@ BitBonsai needs access to your video files. We'll connect your video folder to t
     <Warning>
     Replace `/path/to/your/videos` and `/path/to/temp` with actual paths on your host system.
     </Warning>
-
-    <Accordion title="Understanding the key settings" icon="circle-info">
-      **Ports (`-p` flag):**
-      - `4210:4210` - Your computer's [port](/glossary#port) 4210 connects to BitBonsai's web interface
-      - `3100:3100` - Internal [API](/glossary#api) port for communication
-      - `5432:5432` - [Database](/glossary#database) port (internal only)
-
-      **Volume Mounts (`volumes:` section):**
-      - `/path/to/your/videos:/videos` - Connects your video folder to the container (left side = your computer, right side = inside container)
-      - `/path/to/temp:/tmp/bitbonsai` - Temporary storage for encoding (use fast storage like SSD)
-      - `postgres-data:/var/lib/postgresql/data` - Database storage
-
-      **Environment Variables (`environment:` section):**
-      - `DATABASE_URL` - Tells the backend how to connect to PostgreSQL
-      - `POSTGRES_PASSWORD` - Password for the database (change "changeme" to something secure)
-      - `NODE_ENV: production` - Runs BitBonsai in production mode
-    </Accordion>
   </Step>
 
   <Step title="Configure Environment">

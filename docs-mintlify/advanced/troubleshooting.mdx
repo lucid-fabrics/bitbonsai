@@ -3,14 +3,18 @@ title: Troubleshooting
 description: Fix common BitBonsai issues
 ---
 
-BitBonsai is designed to self-heal from most issues, but occasionally you may need to intervene manually. This guide covers common problems and their solutions.
+BitBonsai is designed to [self-heal](/glossary#self-healing) from most issues, but occasionally you may need to intervene manually. This guide covers common problems and their solutions.
+
+<Note>
+**New to troubleshooting?** Most issues are automatically fixed by BitBonsai's auto-healing systems. See [self-healing](/glossary#self-healing) in the glossary.
+</Note>
 
 ## Quick Diagnostics
 
 Before diving into specific issues, run these commands to check system health:
 
 ```bash
-# Check container status
+# Check Docker container status
 docker compose ps
 
 # Check backend logs
@@ -19,9 +23,13 @@ docker compose logs -f bitbonsai-backend
 # Check database connectivity
 docker compose exec postgres pg_isready -U bitbonsai
 
-# Check disk space
+# Check disk space (see temporary files glossary entry)
 df -h /path/to/temp /path/to/videos
 ```
+
+<Info>
+**[Docker](/glossary#docker)** is the tool BitBonsai uses to run. **[Database](/glossary#database)** stores job information. **[Temporary files](/glossary#temporary-files)** are created during encoding.
+</Info>
 
 ## Common Issues
 
@@ -29,7 +37,7 @@ df -h /path/to/temp /path/to/videos
   <Accordion title="NFS Mount Not Found (Child Nodes)" icon="network-wired">
     ### Symptom
 
-    Child node logs show:
+    [Child node](/glossary#child-node) logs show:
     ```
     [ERROR] Failed to detect temp file after 10 retries
     [ERROR] ENOENT: no such file or directory
@@ -37,8 +45,8 @@ df -h /path/to/temp /path/to/videos
 
     ### Cause
 
-    Worker node cannot access shared storage via NFS mount. Common reasons:
-    - NFS server is down
+    Worker [node](/glossary#node) cannot access shared storage via [NFS](/glossary#nfs) mount. Common reasons:
+    - [NFS](/glossary#nfs) server is down
     - Export path not configured correctly
     - Network connectivity issue
     - Mount point not created
@@ -126,13 +134,13 @@ df -h /path/to/temp /path/to/videos
   <Accordion title="Jobs Stuck in ENCODING (Orphaned Jobs)" icon="clock">
     ### Symptom
 
-    Jobs remain in `ENCODING` status after system restart or crash. Progress bar frozen at last checkpoint.
+    [Jobs](/glossary#job) remain in `ENCODING` status after system restart or crash. Progress bar frozen at last checkpoint.
 
     ### Cause
 
-    Worker process terminated unexpectedly before updating job status to `COMPLETED` or `FAILED`. Common scenarios:
-    - System reboot during encoding
-    - Docker container killed
+    Worker process terminated unexpectedly before updating [job](/glossary#job) status to `COMPLETED` or `FAILED`. Common scenarios:
+    - System reboot during [encoding](/glossary#encoding)
+    - [Docker](/glossary#docker) container killed
     - Out-of-memory (OOM) kill
     - Power loss
 
@@ -140,14 +148,14 @@ df -h /path/to/temp /path/to/videos
 
     <Tabs>
       <Tab title="Automatic (On Startup)">
-        BitBonsai automatically recovers orphaned jobs on backend startup:
+        BitBonsai [automatically recovers](/glossary#self-healing) orphaned jobs on backend startup:
 
         ```
         [INFO] Found 3 orphaned jobs in ENCODING state
         [INFO] Resetting to QUEUED for retry
         ```
 
-        **No action needed.** Jobs will restart from beginning on next queue cycle.
+        **No action needed.** Jobs will restart from beginning on next [queue](/glossary#queue) cycle.
 
         Verify recovery in logs:
         ```bash
