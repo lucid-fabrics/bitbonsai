@@ -1,5 +1,277 @@
 ---
 title: System Requirements
-description: Hardware and software requirements for BitBonsai
+description: Minimum and recommended specifications for running BitBonsai
 ---
 
+## Minimum Requirements
+
+<Card title="Basic Setup" icon="server">
+  Suitable for small libraries (< 500 videos) on a single node
+</Card>
+
+| Component | Minimum Spec |
+|-----------|--------------|
+| **CPU** | 4 cores (x86_64 or ARM64) |
+| **RAM** | 4 GB |
+| **Storage** | 20 GB (system) + video library space |
+| **OS** | Linux, Windows (with WSL2), macOS |
+| **Software** | Docker 20.10+, Docker Compose 2.0+ |
+
+---
+
+## Recommended Specifications
+
+<CardGroup cols={2}>
+  <Card title="Medium Library" icon="film">
+    **1,000-5,000 videos**
+
+    - 8+ cores
+    - 8 GB RAM
+    - Hardware transcoding (optional)
+  </Card>
+
+  <Card title="Large Library" icon="database">
+    **5,000+ videos**
+
+    - 16+ cores (or multi-node setup)
+    - 16 GB RAM
+    - NFS storage for multi-node
+  </Card>
+</CardGroup>
+
+### Performance Factors
+
+| Factor | Impact | Recommendation |
+|--------|--------|----------------|
+| **CPU Cores** | Encoding speed | More cores = faster encoding |
+| **RAM** | Job concurrency | 4 GB + (2 GB per concurrent job) |
+| **Storage** | Temp files during encoding | SSD recommended for temp directory |
+| **Network** | Multi-node performance | 1 Gbps+ for NFS shared storage |
+
+---
+
+## Software Requirements
+
+### Docker & Docker Compose
+
+<Tabs>
+  <Tab title="Linux">
+    ```bash
+    # Install Docker
+    curl -fsSL https://get.docker.com | sh
+
+    # Install Docker Compose
+    sudo apt install docker-compose-plugin
+
+    # Verify versions
+    docker --version          # Should be 20.10+
+    docker compose version    # Should be 2.0+
+    ```
+  </Tab>
+
+  <Tab title="Windows (WSL2)">
+    ```powershell
+    # Install Docker Desktop with WSL2 backend
+    # Download from: https://www.docker.com/products/docker-desktop
+
+    # Enable WSL2
+    wsl --install
+
+    # Verify in WSL2 terminal
+    docker --version
+    docker compose version
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    ```bash
+    # Install Docker Desktop
+    # Download from: https://www.docker.com/products/docker-desktop
+
+    # Or use Homebrew
+    brew install --cask docker
+
+    # Verify
+    docker --version
+    docker compose version
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Hardware Transcoding (Optional)
+
+<Note>
+Hardware encoding is **5-10x faster** than software encoding but may reduce quality slightly.
+</Note>
+
+### Supported GPUs
+
+<CardGroup cols={3}>
+  <Card title="NVIDIA" icon="n">
+    **NVENC**
+
+    GTX 1050+ or RTX series
+
+    Requires NVIDIA drivers
+  </Card>
+
+  <Card title="Intel" icon="microchip">
+    **Quick Sync (QSV)**
+
+    6th gen (Skylake) or newer
+
+    Built into CPU
+  </Card>
+
+  <Card title="AMD" icon="a">
+    **VCE/VCN**
+
+    RX 400 series or newer
+
+    Limited support
+  </Card>
+</CardGroup>
+
+### Docker GPU Passthrough
+
+**NVIDIA Setup:**
+```bash
+# Install NVIDIA Container Toolkit
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
+  sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+sudo apt update && sudo apt install -y nvidia-container-toolkit
+sudo systemctl restart docker
+```
+
+Add to `docker-compose.yml`:
+```yaml
+services:
+  bitbonsai-backend:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+```
+
+---
+
+## Network Requirements
+
+### Single Node
+
+| Port | Service | Required |
+|------|---------|----------|
+| **4210** | Frontend UI | Yes |
+| **3100** | Backend API | Yes (internal) |
+| **5432** | PostgreSQL | Yes (internal) |
+
+<Tip>
+Only port **4210** needs to be accessible from your browser. Ports 3100 and 5432 are internal to Docker.
+</Tip>
+
+### Multi-Node Setup
+
+| Port | Service | Required |
+|------|---------|----------|
+| **3100** | Main node API | Yes (for child nodes) |
+| **2049** | NFS Server | Yes (if using NFS) |
+| **111** | NFS RPC | Yes (if using NFS) |
+
+**Bandwidth recommendation:** 1 Gbps+ between nodes for NFS shared storage.
+
+---
+
+## Storage Considerations
+
+### Disk Space
+
+<AccordionGroup>
+  <Accordion title="System Space (20 GB minimum)" icon="hard-drive">
+    - Docker images: ~5 GB
+    - Database: 100 MB - 1 GB (scales with library size)
+    - Temp files: 2-5 GB per active job
+    - Logs: 1-2 GB (rotated automatically)
+  </Accordion>
+
+  <Accordion title="Video Library Space" icon="film">
+    BitBonsai **replaces** original files after successful encoding.
+
+    **During encoding:**
+    - Original file: 100 MB (example)
+    - Temp encoded file: 40 MB (60% savings)
+    - **Total:** 140 MB (peak usage)
+
+    **After encoding:**
+    - New encoded file: 40 MB
+    - **Savings:** 60 MB (original deleted)
+  </Accordion>
+</AccordionGroup>
+
+### Storage Performance
+
+| Storage Type | Use Case | Notes |
+|--------------|----------|-------|
+| **HDD** | Video library | Acceptable (sequential reads) |
+| **SSD** | Temp directory | Recommended for faster I/O |
+| **NFS** | Multi-node shared storage | 1 Gbps+ network required |
+
+---
+
+## Supported Operating Systems
+
+<Tabs>
+  <Tab title="Linux (Recommended)">
+    **Tested distributions:**
+    - Ubuntu 20.04+ / Debian 11+
+    - Fedora 36+
+    - Arch Linux
+    - Unraid 6.10+ (via Community Apps)
+
+    **Why Linux?**
+    - Best Docker performance
+    - Native hardware transcoding support
+    - Lowest resource overhead
+  </Tab>
+
+  <Tab title="Windows (WSL2)">
+    **Requirements:**
+    - Windows 10 (build 19041+) or Windows 11
+    - WSL2 enabled
+    - Docker Desktop with WSL2 backend
+
+    **Limitations:**
+    - GPU passthrough limited (NVIDIA only)
+    - Slightly higher overhead than Linux
+  </Tab>
+
+  <Tab title="macOS">
+    **Requirements:**
+    - macOS 11 (Big Sur) or newer
+    - Docker Desktop for Mac
+
+    **Limitations:**
+    - No GPU hardware transcoding (ARM Macs)
+    - Intel Macs: QSV may work with limitations
+  </Tab>
+</Tabs>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Install with Docker" icon="docker" href="/installation/docker">
+    Deploy BitBonsai using Docker Compose
+  </Card>
+  <Card title="Install on Unraid" icon="server" href="/installation/unraid">
+    Use Unraid Community Applications
+  </Card>
+</CardGroup>

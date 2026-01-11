@@ -3,3 +3,375 @@ title: Unraid Installation
 description: Install BitBonsai from Unraid Community Apps
 ---
 
+BitBonsai is available as a Docker container template in Unraid Community Applications. This guide walks through installation, configuration, and GPU setup.
+
+## Prerequisites
+
+- Unraid 6.9+ (6.11+ recommended)
+- Community Applications plugin installed
+- Media library accessible on `/mnt/user/` shares
+- (Optional) NVIDIA GPU with nvidia-driver plugin for hardware encoding
+
+---
+
+## Install from Community Applications
+
+<Steps>
+  <Step title="Open Community Applications">
+    Navigate to **Apps** tab in Unraid webUI.
+  </Step>
+
+  <Step title="Search for BitBonsai">
+    Search for `bitbonsai` and select the template.
+  </Step>
+
+  <Step title="Review Configuration">
+    The template includes pre-configured settings for both **backend** and **frontend** containers.
+  </Step>
+</Steps>
+
+<Note>
+If BitBonsai is not yet available in Community Apps, use the manual Docker installation below.
+</Note>
+
+---
+
+## Manual Docker Installation
+
+### Backend Container
+
+<Steps>
+  <Step title="Add Container">
+    Go to **Docker** tab → **Add Container**.
+  </Step>
+
+  <Step title="Configure Repository">
+    ```
+    Repository: ghcr.io/bitbonsai/backend:latest
+    ```
+  </Step>
+
+  <Step title="Set Network Mode">
+    **Network Type:** `bridge` (recommended)
+  </Step>
+
+  <Step title="Configure Ports">
+    | Container Port | Host Port | Description |
+    |----------------|-----------|-------------|
+    | 3100 | 3100 | Backend API |
+    | 5432 | 5432 | PostgreSQL database |
+  </Step>
+
+  <Step title="Add Path Mappings">
+    | Container Path | Host Path | Mode | Description |
+    |----------------|-----------|------|-------------|
+    | `/config` | `/mnt/user/appdata/bitbonsai` | Read/Write | App config and database |
+    | `/videos` | `/mnt/user/videos` | Read/Write | Media libraries (adjust to your path) |
+  </Step>
+
+  <Step title="Set Environment Variables">
+    | Variable | Value | Description |
+    |----------|-------|-------------|
+    | `POSTGRES_USER` | `bitbonsai` | Database username |
+    | `POSTGRES_PASSWORD` | `changeme` | Database password (change this!) |
+    | `POSTGRES_DB` | `bitbonsai` | Database name |
+    | `NODE_ENV` | `production` | Runtime environment |
+  </Step>
+
+  <Step title="Apply and Start">
+    Click **Apply** to create and start the container.
+  </Step>
+</Steps>
+
+### Frontend Container
+
+<Steps>
+  <Step title="Add Second Container">
+    Go to **Docker** tab → **Add Container**.
+  </Step>
+
+  <Step title="Configure Repository">
+    ```
+    Repository: ghcr.io/bitbonsai/frontend:latest
+    ```
+  </Step>
+
+  <Step title="Set Network Mode">
+    **Network Type:** `bridge`
+  </Step>
+
+  <Step title="Configure Port">
+    | Container Port | Host Port | Description |
+    |----------------|-----------|-------------|
+    | 80 | 4210 | Web interface |
+  </Step>
+
+  <Step title="Set Backend URL">
+    | Variable | Value | Description |
+    |----------|-------|-------------|
+    | `API_URL` | `http://[UNRAID-IP]:3100` | Backend API endpoint |
+
+    Replace `[UNRAID-IP]` with your server's IP (e.g., `http://192.168.1.100:3100`).
+  </Step>
+
+  <Step title="Apply and Start">
+    Click **Apply** to create and start the container.
+  </Step>
+</Steps>
+
+---
+
+## Path Mapping for Media Libraries
+
+Unraid uses `/mnt/user/` paths for shares. BitBonsai must access the **same physical path** inside the container.
+
+### Example Configurations
+
+| Scenario | Host Path | Container Path |
+|----------|-----------|----------------|
+| Single media share | `/mnt/user/media` | `/videos` |
+| Multiple shares | `/mnt/user/` | `/mnt/user/` (passthrough) |
+| Specific folders | `/mnt/user/media/movies` | `/movies` |
+
+<Warning>
+**Critical:** When adding libraries in BitBonsai, use the **container path** (e.g., `/videos/movies`), NOT the Unraid host path.
+</Warning>
+
+<Tip>
+**Best Practice:** Map `/mnt/user/` → `/mnt/user/` to avoid path translation issues. This allows BitBonsai to use identical paths to Unraid.
+</Tip>
+
+### How to Verify Path Mapping
+
+1. Add a test library in BitBonsai using the container path
+2. Start a scan
+3. If files are not detected, check Docker logs:
+   ```bash
+   docker logs bitbonsai-backend
+   ```
+4. Look for errors like `ENOENT: no such file or directory`
+
+---
+
+## Network Mode Selection
+
+| Mode | Pros | Cons | Recommendation |
+|------|------|------|----------------|
+| **Bridge** | Isolated, port control | Manual port mapping | ✅ **Recommended** |
+| **Host** | No port mapping needed | Exposes all ports | Use only if needed |
+| **Custom** | Advanced routing | Requires network config | Advanced users only |
+
+<Note>
+Bridge mode is recommended for security. Frontend and backend communicate via host IP.
+</Note>
+
+---
+
+## GPU Passthrough (Hardware Encoding)
+
+BitBonsai supports **NVIDIA GPU acceleration** for faster encoding.
+
+### Requirements
+
+- NVIDIA GPU installed in Unraid server
+- **nvidia-driver** plugin installed from Community Apps
+- Container runtime configured for GPU access
+
+### Setup Steps
+
+<Steps>
+  <Step title="Install nvidia-driver Plugin">
+    1. Go to **Apps** → Search for `nvidia-driver`
+    2. Install and configure for your GPU
+    3. Reboot if prompted
+  </Step>
+
+  <Step title="Enable GPU in Backend Container">
+    Edit the BitBonsai backend container:
+
+    1. **Extra Parameters:**
+       ```
+       --runtime=nvidia --gpus all
+       ```
+
+    2. **Environment Variables:**
+       ```
+       NVIDIA_VISIBLE_DEVICES=all
+       NVIDIA_DRIVER_CAPABILITIES=all
+       ```
+  </Step>
+
+  <Step title="Restart Container">
+    Stop and start the backend container.
+  </Step>
+
+  <Step title="Verify GPU Access">
+    Check container logs:
+    ```bash
+    docker exec bitbonsai-backend nvidia-smi
+    ```
+    Should display GPU information.
+  </Step>
+</Steps>
+
+<Warning>
+GPU encoding requires HEVC (h264_nvenc/hevc_nvenc) or AV1 (av1_nvenc) codec support. Check your GPU's capabilities.
+</Warning>
+
+<Tip>
+To verify FFmpeg sees the GPU:
+```bash
+docker exec bitbonsai-backend ffmpeg -encoders | grep nvenc
+```
+</Tip>
+
+---
+
+## Starting the Containers
+
+After configuration:
+
+1. Both containers should auto-start with Unraid
+2. Backend may take 30-60 seconds to initialize database
+3. Check Docker tab for status (green = running)
+
+### Verify Installation
+
+1. **Backend health check:**
+   ```
+   curl http://[UNRAID-IP]:3100/health
+   ```
+   Should return: `{"status":"ok"}`
+
+2. **Access Web UI:**
+   ```
+   http://[UNRAID-IP]:4210
+   ```
+
+---
+
+## Accessing the Web Interface
+
+Open your browser and navigate to:
+
+```
+http://[UNRAID-IP]:4210
+```
+
+Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100:4210`).
+
+### First-Time Setup
+
+1. Click **Add Library**
+2. Enter container path (e.g., `/videos/movies`)
+3. Select codec (HEVC recommended)
+4. Click **Scan Library**
+
+---
+
+## Troubleshooting Unraid-Specific Issues
+
+### Container Won't Start
+
+**Symptom:** Container immediately stops after starting.
+
+**Solutions:**
+1. Check Docker logs:
+   ```bash
+   docker logs bitbonsai-backend
+   ```
+2. Verify port conflicts (3100, 4210, 5432 not in use)
+3. Check appdata directory permissions:
+   ```bash
+   ls -la /mnt/user/appdata/bitbonsai
+   ```
+
+---
+
+### "Permission Denied" Errors
+
+**Symptom:** Cannot read/write video files.
+
+**Solutions:**
+1. Verify path mapping matches your Unraid shares
+2. Check container runs as correct user (usually `nobody:users`)
+3. Set permissions on media folder:
+   ```bash
+   chmod -R 777 /mnt/user/videos
+   ```
+   (Adjust as needed for security)
+
+---
+
+### Path Mapping Issues
+
+**Symptom:** "No videos found" after scanning.
+
+**Solutions:**
+1. Verify container path matches host path mapping
+2. Use **Console** button in Docker tab to access container:
+   ```bash
+   ls /videos
+   ```
+   Confirm files are visible inside container
+3. Check path in BitBonsai matches container path, not host path
+
+---
+
+### Backend Cannot Connect to Database
+
+**Symptom:** Backend logs show PostgreSQL connection errors.
+
+**Solutions:**
+1. Verify PostgreSQL port 5432 is not blocked
+2. Check `POSTGRES_PASSWORD` environment variable is set
+3. Delete `/mnt/user/appdata/bitbonsai/postgres` and restart (will recreate DB)
+
+---
+
+### GPU Not Detected
+
+**Symptom:** Encoding uses CPU instead of GPU.
+
+**Solutions:**
+1. Verify nvidia-driver plugin is running:
+   ```bash
+   nvidia-smi
+   ```
+2. Check container has GPU access:
+   ```bash
+   docker exec bitbonsai-backend nvidia-smi
+   ```
+3. Verify `--runtime=nvidia` in Extra Parameters
+4. Restart container after nvidia-driver updates
+
+---
+
+### Frontend Shows "Cannot Connect to Backend"
+
+**Symptom:** Web UI displays connection error.
+
+**Solutions:**
+1. Verify backend is running (Docker tab)
+2. Check `API_URL` environment variable in frontend container
+3. Test backend directly:
+   ```bash
+   curl http://[UNRAID-IP]:3100/health
+   ```
+4. Ensure no firewall blocking port 3100
+
+---
+
+## Next Steps
+
+<Card title="Add Your First Library" icon="folder" href="/guides/first-scan">
+  Scan and encode your first video collection
+</Card>
+
+<Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
+  Add worker nodes for faster encoding
+</Card>
+
+<Card title="Troubleshooting Guide" icon="wrench" href="/advanced/troubleshooting">
+  Fix common issues and optimize performance
+</Card>
