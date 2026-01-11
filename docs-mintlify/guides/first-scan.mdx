@@ -3,3 +3,235 @@ title: Add Your First Library
 description: Scan and encode your first video library
 ---
 
+This guide walks you through creating your first library, scanning for videos, and queuing encoding jobs.
+
+## Prerequisites
+
+- BitBonsai backend running with access to video files
+- Docker volume mounts configured for video directories (see [Configuration](/installation/configuration))
+- At least one worker node connected (main node or linked nodes)
+
+## Navigate to Libraries
+
+<Steps>
+  <Step title="Open the Libraries page">
+    Click **Libraries** in the left sidebar navigation.
+
+    The Libraries page displays all configured libraries and their encoding statistics.
+  </Step>
+
+  <Step title="Click Add Library button">
+    Click the **Add Library** button in the top-right corner of the page.
+
+    A dialog will appear with library configuration fields.
+  </Step>
+</Steps>
+
+## Configure Library Settings
+
+<Steps>
+  <Step title="Enter library name">
+    Provide a descriptive name for your library (e.g., "Movies", "TV Shows", "Documentaries").
+
+    ```text
+    Name: Movies
+    ```
+  </Step>
+
+  <Step title="Specify library path">
+    Enter the **absolute path** inside the Docker container where your videos are mounted.
+
+    ```text
+    Path: /videos/movies
+    ```
+
+    <Warning>
+      The path must match your Docker volume mount. If you mounted `/mnt/media/movies` to `/videos/movies` in docker-compose.yml, use `/videos/movies` here.
+    </Warning>
+
+    <Note>
+      For Unraid setups, common paths are:
+      - `/videos/movies` (mapped from `/mnt/user/media/movies`)
+      - `/videos/tv` (mapped from `/mnt/user/media/tv`)
+    </Note>
+  </Step>
+
+  <Step title="Select target codec">
+    Choose the encoding codec for this library:
+
+    | Codec | Compression | Speed | Quality | Use Case |
+    |-------|-------------|-------|---------|----------|
+    | **HEVC (H.265)** | High | Fast | Excellent | General purpose, wide device support |
+    | **AV1** | Higher | Slower | Superior | Maximum compression, modern devices |
+
+    <Note>
+      HEVC is recommended for most users. AV1 provides better compression but encodes slower and requires newer hardware for playback.
+    </Note>
+  </Step>
+
+  <Step title="Save the library">
+    Click **Save** to create the library.
+
+    The library appears in the Libraries list with 0 videos scanned.
+  </Step>
+</Steps>
+
+## Scan for Videos
+
+<Steps>
+  <Step title="Start the scan">
+    Click the **Scan** button (magnifying glass icon) next to your newly created library.
+
+    BitBonsai will recursively search the library path for video files.
+
+    <Note>
+      Scanning large libraries (1000+ files) may take 1-5 minutes. The UI updates automatically when complete.
+    </Note>
+  </Step>
+
+  <Step title="Review detected videos">
+    Once scanning completes, click the library name to view detected videos.
+
+    The video table displays:
+
+    | Column | Description |
+    |--------|-------------|
+    | **Filename** | Video file name and relative path |
+    | **Size** | File size in GB |
+    | **Codec** | Current video codec (H.264, HEVC, etc.) |
+    | **Duration** | Video length in HH:MM:SS |
+    | **Status** | Encoding status (NOT_QUEUED, QUEUED, ENCODING, COMPLETE) |
+
+    <Warning>
+      Videos **already encoded** in the target codec are marked SKIPPED and cannot be re-encoded (to prevent quality loss from transcoding already-compressed files).
+    </Warning>
+  </Step>
+</Steps>
+
+## Queue Videos for Encoding
+
+<Steps>
+  <Step title="Select videos to encode">
+    Use checkboxes to select specific videos, or click **Select All** to choose all eligible videos.
+
+    <Note>
+      Only videos with status `NOT_QUEUED` can be selected. Videos already in queue or encoded are disabled.
+    </Note>
+  </Step>
+
+  <Step title="Queue selected videos">
+    Click the **Queue Selected** button at the top of the video table.
+
+    Selected videos change from `NOT_QUEUED` → `QUEUED` status.
+  </Step>
+
+  <Step title="Alternative: Queue all videos">
+    To queue all eligible videos at once, click **Queue All** instead of selecting individually.
+
+    This is useful for initial library setup when you want to encode everything.
+  </Step>
+</Steps>
+
+## Monitor Encoding Progress
+
+<Steps>
+  <Step title="Navigate to Jobs page">
+    Click **Jobs** in the left sidebar to view all encoding jobs.
+
+    Jobs appear in the queue with status progression:
+
+    ```
+    QUEUED → ENCODING → COMPLETE
+    ```
+  </Step>
+
+  <Step title="Track job progress">
+    The Jobs page displays:
+
+    - **Current progress** (percentage, frames processed)
+    - **Encoding speed** (fps)
+    - **Estimated time remaining** (ETA)
+    - **Worker node** handling the job
+    - **File size change** (original → encoded)
+
+    <Note>
+      For detailed job monitoring and troubleshooting, see [Understanding Jobs](/guides/understanding-jobs).
+    </Note>
+  </Step>
+</Steps>
+
+## What Happens Next?
+
+Once videos are queued, BitBonsai automatically:
+
+1. **Distributes jobs** to available worker nodes based on load
+2. **Encodes videos** using FFmpeg with optimized quality settings
+3. **Validates output** to ensure no corruption or quality loss
+4. **Replaces original** with encoded version (if configured)
+5. **Moves to next job** in queue
+
+<Card title="Next Steps" icon="arrow-right" href="/guides/understanding-jobs">
+  Learn how to monitor job progress, handle failures, and optimize encoding performance.
+</Card>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Library scan finds 0 videos">
+    **Causes:**
+    - Path doesn't exist inside Docker container
+    - Volume mount misconfigured in docker-compose.yml
+    - Files are not recognized video formats (MP4, MKV, AVI, MOV)
+
+    **Solution:**
+    - Verify path exists: `docker exec bitbonsai-backend ls /videos/movies`
+    - Check docker-compose.yml volume mounts
+    - Ensure files have video extensions
+  </Accordion>
+
+  <Accordion title="All videos marked SKIPPED">
+    **Cause:** Videos are already encoded in the target codec (e.g., library set to HEVC, but videos are already H.265).
+
+    **Solution:**
+    - This is intentional to prevent quality loss from re-encoding
+    - If you want to re-encode, delete the library and create a new one with a different codec
+  </Accordion>
+
+  <Accordion title="Queue button disabled">
+    **Causes:**
+    - No videos selected
+    - Selected videos already queued or encoded
+    - No worker nodes available
+
+    **Solution:**
+    - Select videos with `NOT_QUEUED` status
+    - Check worker node health in Settings → Nodes
+  </Accordion>
+
+  <Accordion title="Jobs stuck in QUEUED status">
+    **Causes:**
+    - No worker nodes connected
+    - All workers at max concurrent job capacity
+    - Worker nodes offline or unhealthy
+
+    **Solution:**
+    - Check worker node status: Settings → Nodes
+    - Verify main/child node services running
+    - Review worker logs: `docker logs bitbonsai-backend`
+  </Accordion>
+</AccordionGroup>
+
+## Tips for Large Libraries
+
+<Note>
+  **For libraries with 500+ videos:**
+
+  - Queue videos in **batches** (e.g., 50-100 at a time) to monitor progress
+  - Start with **smallest files** to verify settings before encoding large videos
+  - Use **multiple linked nodes** to parallelize encoding across hardware
+  - Enable **auto-replace** to automatically delete originals after successful encoding
+</Note>
+
+<Warning>
+  **Always backup your original files** before enabling auto-replace. While BitBonsai validates encoded output, hardware failures or power loss during replacement can cause data loss.
+</Warning>

@@ -3,3 +3,936 @@ title: Troubleshooting
 description: Fix common BitBonsai issues
 ---
 
+BitBonsai is designed to self-heal from most issues, but occasionally you may need to intervene manually. This guide covers common problems and their solutions.
+
+## Quick Diagnostics
+
+Before diving into specific issues, run these commands to check system health:
+
+```bash
+# Check container status
+docker compose ps
+
+# Check backend logs
+docker compose logs -f bitbonsai-backend
+
+# Check database connectivity
+docker compose exec postgres pg_isready -U bitbonsai
+
+# Check disk space
+df -h /path/to/temp /path/to/videos
+```
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="NFS Mount Not Found (Child Nodes)" icon="network-wired">
+    ### Symptom
+
+    Child node logs show:
+    ```
+    [ERROR] Failed to detect temp file after 10 retries
+    [ERROR] ENOENT: no such file or directory
+    ```
+
+    ### Cause
+
+    Worker node cannot access shared storage via NFS mount. Common reasons:
+    - NFS server is down
+    - Export path not configured correctly
+    - Network connectivity issue
+    - Mount point not created
+
+    ### Fix
+
+    <Steps>
+      <Step title="Verify NFS Server Running">
+        On the **main node** (Unraid):
+        ```bash
+        # Check NFS service status
+        systemctl status nfs-server
+
+        # If stopped, start it
+        systemctl start nfs-server
+        ```
+      </Step>
+
+      <Step title="Check NFS Exports">
+        Verify shared directories are exported:
+        ```bash
+        # View active exports
+        exportfs -v
+
+        # Should show something like:
+        # /mnt/user/bitbonsai  192.168.1.0/24(rw,sync,no_subtree_check)
+        ```
+
+        If missing, add to `/etc/exports`:
+        ```bash
+        /mnt/user/bitbonsai 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+        ```
+
+        Then reload:
+        ```bash
+        exportfs -ra
+        ```
+      </Step>
+
+      <Step title="Test Mount Manually">
+        On the **child node** (worker):
+        ```bash
+        # Create mount point if missing
+        mkdir -p /mnt/bitbonsai
+
+        # Test mount
+        mount -t nfs 192.168.1.100:/mnt/user/bitbonsai /mnt/bitbonsai
+
+        # Verify access
+        ls -la /mnt/bitbonsai
+        touch /mnt/bitbonsai/test.txt
+        rm /mnt/bitbonsai/test.txt
+        ```
+
+        If mount fails, check network connectivity:
+        ```bash
+        ping 192.168.1.100
+        showmount -e 192.168.1.100
+        ```
+      </Step>
+
+      <Step title="Check Firewall Rules">
+        NFS requires these ports open on the **main node**:
+        - TCP/UDP 2049 (NFS)
+        - TCP/UDP 111 (portmapper)
+
+        On Unraid, check firewall settings or disable temporarily to test.
+      </Step>
+
+      <Step title="Restart Worker Service">
+        After fixing mount issues:
+        ```bash
+        # On child node
+        systemctl restart bitbonsai-backend
+        journalctl -u bitbonsai-backend -f
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+    BitBonsai retries temp file detection 10 times with 2-second delays. If NFS mount is slow to come up after boot, increase retry count in `encoding-processor.service.ts`.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Jobs Stuck in ENCODING (Orphaned Jobs)" icon="clock">
+    ### Symptom
+
+    Jobs remain in `ENCODING` status after system restart or crash. Progress bar frozen at last checkpoint.
+
+    ### Cause
+
+    Worker process terminated unexpectedly before updating job status to `COMPLETED` or `FAILED`. Common scenarios:
+    - System reboot during encoding
+    - Docker container killed
+    - Out-of-memory (OOM) kill
+    - Power loss
+
+    ### Fix
+
+    <Tabs>
+      <Tab title="Automatic (On Startup)">
+        BitBonsai automatically recovers orphaned jobs on backend startup:
+
+        ```
+        [INFO] Found 3 orphaned jobs in ENCODING state
+        [INFO] Resetting to QUEUED for retry
+        ```
+
+        **No action needed.** Jobs will restart from beginning on next queue cycle.
+
+        Verify recovery in logs:
+        ```bash
+        docker compose logs bitbonsai-backend | grep -i orphan
+        ```
+      </Tab>
+
+      <Tab title="Manual Reset (UI)">
+        If automatic recovery doesn't trigger:
+
+        1. Navigate to **Jobs** page
+        2. Filter by status: `ENCODING`
+        3. Select stuck jobs (checkbox)
+        4. Click **Actions → Reset to Queued**
+
+        Jobs will restart immediately if workers are available.
+      </Tab>
+
+      <Tab title="Database Query (Advanced)">
+        Manually reset via SQL:
+
+        ```bash
+        docker compose exec postgres psql -U bitbonsai -d bitbonsai
+        ```
+
+        ```sql
+        -- View stuck jobs
+        SELECT id, "originalPath", status, "updatedAt"
+        FROM "EncodingJob"
+        WHERE status = 'ENCODING'
+        ORDER BY "updatedAt" ASC;
+
+        -- Reset to QUEUED (only if updatedAt > 1 hour ago)
+        UPDATE "EncodingJob"
+        SET status = 'QUEUED', progress = 0, "assignedNodeId" = NULL
+        WHERE status = 'ENCODING'
+        AND "updatedAt" < NOW() - INTERVAL '1 hour';
+        ```
+      </Tab>
+    </Tabs>
+
+    <Note>
+    The **Stuck Job Watchdog** (if enabled) automatically detects jobs with no progress updates for 30+ minutes and resets them.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Health Check Failures (CORRUPTED Jobs)" icon="exclamation-triangle">
+    ### Symptom
+
+    Jobs complete encoding but marked as `CORRUPTED` instead of `COMPLETED`. Error in logs:
+    ```
+    [ERROR] Health check failed after 5 retries
+    [ERROR] FFprobe validation failed: Invalid data found when processing input
+    ```
+
+    ### Cause
+
+    Post-encoding validation detected issues:
+    - Output file corrupted during encoding
+    - File moved/deleted during health check
+    - NFS network interruption during validation
+    - FFprobe timeout or crash
+
+    ### Fix
+
+    <Steps>
+      <Step title="Verify File Integrity">
+        Check if output file actually exists and is playable:
+
+        ```bash
+        # Find the encoded file path (check job details in UI)
+        FILE="/path/to/encoded/video.mkv"
+
+        # Check file size (should be > 0)
+        ls -lh "$FILE"
+
+        # Test with FFprobe
+        ffprobe -v error "$FILE" 2>&1
+
+        # Test playback (if ffmpeg available)
+        ffmpeg -v error -i "$FILE" -f null - 2>&1
+        ```
+
+        If file is **valid**, this is a false positive health check failure.
+      </Step>
+
+      <Step title="Manual Re-validation">
+        Trigger health check retry:
+
+        1. Navigate to **Jobs** page → Filter by `CORRUPTED`
+        2. Select job(s)
+        3. Click **Actions → Re-validate Health**
+
+        Or via API:
+        ```bash
+        curl -X POST http://localhost:3100/api/jobs/{jobId}/revalidate
+        ```
+      </Step>
+
+      <Step title="Automatic Hourly Retry">
+        BitBonsai automatically re-checks `CORRUPTED` jobs every hour:
+
+        ```
+        [INFO] Health Check Cron: Re-validating 12 CORRUPTED jobs
+        [INFO] Job 456: Health check now PASSED, marking COMPLETED
+        ```
+
+        Check logs to confirm auto-recovery:
+        ```bash
+        docker compose logs bitbonsai-backend | grep "Health Check Cron"
+        ```
+      </Step>
+
+      <Step title="Increase Retry Threshold (If Persistent)">
+        If health checks consistently fail on slow storage:
+
+        Edit `apps/backend/src/queue/health-check.worker.ts`:
+        ```typescript
+        // Increase from 5 to 10 retries
+        const MAX_RETRIES = 10;
+        const RETRY_DELAY_MS = 3000; // 3 seconds
+        ```
+
+        Rebuild and redeploy backend container.
+      </Step>
+    </Steps>
+
+    <Warning>
+    Do NOT blindly mark CORRUPTED jobs as COMPLETED without validation. Verify file integrity first to avoid data loss.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Temp File Detection Failed (10 Retries)" icon="file-slash">
+    ### Symptom
+
+    Encoding starts but immediately fails with:
+    ```
+    [ERROR] Temp file not detected after 10 retries
+    [ERROR] Expected: /tmp/bitbonsai/encoding-123/temp.mkv
+    ```
+
+    ### Cause
+
+    FFmpeg couldn't create temporary file or BitBonsai couldn't detect it. Possible reasons:
+    - NFS mount delay (file created but not visible yet)
+    - Insufficient disk space
+    - Permission issues on temp directory
+    - Slow storage (HDD instead of SSD)
+
+    ### Fix
+
+    <Steps>
+      <Step title="Check Disk Space">
+        Verify temp directory has sufficient free space:
+
+        ```bash
+        # On worker node
+        df -h /tmp/bitbonsai
+
+        # Should have 2× largest video file size available
+        # Example: If encoding 50GB file, need 100GB+ free
+        ```
+
+        If low on space:
+        - Clear old temp files: `rm -rf /tmp/bitbonsai/*`
+        - Reduce concurrent jobs (fewer jobs = less temp space used)
+        - Move temp directory to larger partition
+      </Step>
+
+      <Step title="Verify Permissions">
+        Check temp directory is writable:
+
+        ```bash
+        # On worker node
+        ls -ld /tmp/bitbonsai
+
+        # Should be: drwxrwxrwx or owned by container user
+
+        # Test write access
+        touch /tmp/bitbonsai/test.txt
+        rm /tmp/bitbonsai/test.txt
+        ```
+
+        Fix permissions:
+        ```bash
+        chmod 777 /tmp/bitbonsai
+        # OR set ownership to container user (e.g., UID 1000)
+        chown -R 1000:1000 /tmp/bitbonsai
+        ```
+      </Step>
+
+      <Step title="Check NFS Mount Status">
+        If using NFS shared storage:
+
+        ```bash
+        # Verify mount active
+        mount | grep bitbonsai
+
+        # Test write latency
+        time dd if=/dev/zero of=/mnt/bitbonsai/test bs=1M count=100
+        rm /mnt/bitbonsai/test
+
+        # High latency (>500ms) indicates network issues
+        ```
+      </Step>
+
+      <Step title="Increase Retry Delays (Advanced)">
+        For slow NFS mounts, increase detection retries:
+
+        Edit `apps/backend/src/encoding/encoding-processor.service.ts`:
+        ```typescript
+        const MAX_RETRIES = 20; // Increase from 10
+        const RETRY_DELAY_MS = 3000; // 3 seconds instead of 2
+        ```
+
+        Rebuild backend container.
+      </Step>
+    </Steps>
+
+    <Tip>
+    Use local SSD/NVMe for `/tmp/bitbonsai` instead of NFS for better performance and reliability.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Child Node Disconnected (Network Issues)" icon="link-slash">
+    ### Symptom
+
+    Child node shows as `OFFLINE` or `DISCONNECTED` in UI. Worker logs show:
+    ```
+    [ERROR] Failed to connect to main node API
+    [ERROR] ECONNREFUSED 192.168.1.100:3100
+    ```
+
+    ### Cause
+
+    Worker node cannot reach main node API. Common reasons:
+    - Network connectivity issue
+    - Firewall blocking port 3100
+    - Main node backend service down
+    - Invalid API key configuration
+
+    ### Fix
+
+    <Steps>
+      <Step title="Verify Network Connectivity">
+        On **child node**:
+        ```bash
+        # Test ping
+        ping -c 3 192.168.1.100
+
+        # Test port connectivity
+        nc -zv 192.168.1.100 3100
+        # Should show: Connection succeeded
+
+        # Test HTTP access
+        curl -v http://192.168.1.100:3100/health
+        # Should return: {"status":"ok"}
+        ```
+      </Step>
+
+      <Step title="Check Firewall Rules">
+        On **main node**, ensure port 3100 is open:
+
+        ```bash
+        # Check listening ports
+        netstat -tlnp | grep 3100
+
+        # Unraid: Check Docker network settings
+        docker network inspect bridge
+
+        # Allow port in firewall (if applicable)
+        ufw allow 3100/tcp
+        ```
+      </Step>
+
+      <Step title="Verify Main Node Backend Running">
+        ```bash
+        # Check container status
+        docker compose ps bitbonsai-backend
+
+        # View logs for errors
+        docker compose logs bitbonsai-backend
+
+        # Restart if needed
+        docker compose restart bitbonsai-backend
+        ```
+      </Step>
+
+      <Step title="Validate API Key Configuration">
+        Worker nodes must provide valid API key to connect:
+
+        On **child node**, check environment variables:
+        ```bash
+        cat /etc/systemd/system/bitbonsai-backend.service
+
+        # Should contain:
+        Environment="MAIN_NODE_URL=http://192.168.1.100:3100"
+        Environment="NODE_API_KEY=your-api-key-here"
+        ```
+
+        Verify API key matches main node configuration:
+        ```bash
+        # On main node
+        docker compose exec bitbonsai-backend env | grep NODE_API_KEY
+        ```
+
+        Update child node config if needed:
+        ```bash
+        systemctl edit bitbonsai-backend
+        # Add/update environment variables
+        systemctl daemon-reload
+        systemctl restart bitbonsai-backend
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+    Child nodes in `OFFLINE` state won't receive job assignments. Fix connectivity issues promptly to avoid job queue buildup.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Frontend Can't Connect to Backend" icon="browser">
+    ### Symptom
+
+    Web UI shows loading spinner indefinitely or displays:
+    ```
+    Failed to connect to API
+    ERR_CONNECTION_REFUSED
+    ```
+
+    ### Cause
+
+    Frontend cannot reach backend API. Possible reasons:
+    - Backend container not running
+    - Port 3100 not exposed
+    - Incorrect `API_URL` environment variable
+    - CORS configuration issue (if accessing from different origin)
+
+    ### Fix
+
+    <Steps>
+      <Step title="Verify Backend Container Running">
+        ```bash
+        docker compose ps bitbonsai-backend
+
+        # Should show: Up (healthy)
+
+        # Check logs for startup errors
+        docker compose logs bitbonsai-backend | tail -50
+        ```
+
+        If not running:
+        ```bash
+        docker compose up -d bitbonsai-backend
+        ```
+      </Step>
+
+      <Step title="Test Backend API Directly">
+        ```bash
+        # From host machine
+        curl http://localhost:3100/health
+
+        # Should return: {"status":"ok"}
+
+        # If failed, check port mapping
+        docker compose ps bitbonsai-backend
+        # Ports should show: 0.0.0.0:3100->3100/tcp
+        ```
+      </Step>
+
+      <Step title="Check API_URL Configuration">
+        Verify frontend knows where to find backend:
+
+        ```bash
+        docker compose exec bitbonsai-frontend env | grep API_URL
+
+        # Should be:
+        # API_URL=http://bitbonsai-backend:3100  (internal Docker network)
+        # OR
+        # API_URL=http://localhost:3100  (if accessing from outside)
+        ```
+
+        Update `docker-compose.yml` if incorrect:
+        ```yaml
+        bitbonsai-frontend:
+          environment:
+            API_URL: http://bitbonsai-backend:3100
+        ```
+
+        Restart:
+        ```bash
+        docker compose restart bitbonsai-frontend
+        ```
+      </Step>
+
+      <Step title="Verify Browser Network Tab">
+        Open browser DevTools (F12) → Network tab:
+
+        1. Refresh BitBonsai UI
+        2. Look for failed API requests
+        3. Check request URL matches backend address
+        4. Check for CORS errors in console
+
+        Common fixes:
+        - **Wrong URL:** Update `API_URL` environment variable
+        - **CORS error:** Add your frontend origin to backend CORS config
+        - **ERR_CONNECTION_REFUSED:** Backend not accessible from browser's network
+      </Step>
+    </Steps>
+
+    <Tip>
+    If accessing BitBonsai from a different machine, use `http://[server-ip]:4210` and ensure `API_URL` is set to `http://[server-ip]:3100`.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Database Connection Refused" icon="database">
+    ### Symptom
+
+    Backend logs show:
+    ```
+    [ERROR] Database connection failed
+    [ERROR] ECONNREFUSED 127.0.0.1:5432
+    ```
+
+    ### Cause
+
+    Backend cannot connect to PostgreSQL database. Possible reasons:
+    - PostgreSQL container not running
+    - Incorrect `DATABASE_URL` connection string
+    - Database initialization not complete
+    - Network issue between containers
+
+    ### Fix
+
+    <Steps>
+      <Step title="Check PostgreSQL Container Health">
+        ```bash
+        docker compose ps postgres
+
+        # Should show: Up (healthy)
+
+        # Check logs for errors
+        docker compose logs postgres | tail -50
+        ```
+
+        If not healthy:
+        ```bash
+        docker compose restart postgres
+
+        # Wait for health check to pass
+        docker compose exec postgres pg_isready -U bitbonsai
+        ```
+      </Step>
+
+      <Step title="Verify DATABASE_URL Correct">
+        Check backend environment:
+        ```bash
+        docker compose exec bitbonsai-backend env | grep DATABASE_URL
+
+        # Should be:
+        # DATABASE_URL=postgresql://bitbonsai:password@postgres:5432/bitbonsai
+        ```
+
+        **Common mistakes:**
+        - Hostname: `postgres` (Docker service name), NOT `localhost`
+        - Password: Must match `POSTGRES_PASSWORD` in postgres service
+        - Port: `5432` (internal Docker network port)
+
+        Update `docker-compose.yml` if incorrect:
+        ```yaml
+        bitbonsai-backend:
+          environment:
+            DATABASE_URL: postgresql://bitbonsai:changeme@postgres:5432/bitbonsai
+        ```
+
+        Restart:
+        ```bash
+        docker compose restart bitbonsai-backend
+        ```
+      </Step>
+
+      <Step title="Test Database Connection Manually">
+        ```bash
+        # Connect to database
+        docker compose exec postgres psql -U bitbonsai -d bitbonsai
+
+        # Run test query
+        SELECT COUNT(*) FROM "EncodingJob";
+
+        # Exit
+        \q
+        ```
+
+        If connection fails:
+        - Check credentials match `POSTGRES_USER` and `POSTGRES_PASSWORD`
+        - Verify database `bitbonsai` exists: `\l` in psql
+      </Step>
+
+      <Step title="Recreate Database (Last Resort)">
+        <Warning>
+        This will delete all data. Backup first if needed.
+        </Warning>
+
+        ```bash
+        # Backup current database
+        docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup.sql
+
+        # Stop services
+        docker compose down
+
+        # Remove database volume
+        docker volume rm bitbonsai_postgres-data
+
+        # Start fresh
+        docker compose up -d
+        ```
+
+        Backend will automatically apply migrations on startup.
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="Out of Disk Space During Encoding" icon="hard-drive">
+    ### Symptom
+
+    Encoding fails with:
+    ```
+    [ERROR] FFmpeg error: No space left on device
+    [ERROR] Failed to write output file
+    ```
+
+    ### Cause
+
+    Temporary directory ran out of space during encoding. FFmpeg creates temporary files that can be 1-2× original video size before final compression.
+
+    ### Fix
+
+    <Steps>
+      <Step title="Check Available Space">
+        ```bash
+        # Check temp directory usage
+        df -h /path/to/temp
+
+        # Check size of temp files
+        du -sh /path/to/temp/bitbonsai/*
+
+        # Find largest files
+        find /path/to/temp -type f -exec du -h {} + | sort -rh | head -10
+        ```
+      </Step>
+
+      <Step title="Clear Old Temporary Files">
+        ```bash
+        # BitBonsai should auto-clean, but manual cleanup if needed:
+        docker compose exec bitbonsai-backend rm -rf /tmp/bitbonsai/*
+
+        # OR from host (if mounted)
+        rm -rf /path/to/temp/bitbonsai/*
+        ```
+
+        <Warning>
+        Only clear temp files when no jobs are actively encoding. Check Jobs page first.
+        </Warning>
+      </Step>
+
+      <Step title="Reduce Concurrent Jobs">
+        Lower parallel job limit to reduce temp space usage:
+
+        1. Navigate to **Settings → Encoding**
+        2. Set **Max Concurrent Jobs** to lower value (e.g., 1-2 instead of 4)
+        3. Save settings
+
+        This reduces temp space requirements but slows overall throughput.
+      </Step>
+
+      <Step title="Increase Temp Directory Size">
+        Expand temp storage capacity:
+
+        **Option 1: Move to larger partition**
+        ```yaml
+        # In docker-compose.yml
+        bitbonsai-backend:
+          volumes:
+            - /mnt/larger-disk/bitbonsai-temp:/tmp/bitbonsai
+        ```
+
+        **Option 2: Add more disk space to existing partition**
+        - Expand virtual disk (if VM/LXC)
+        - Add physical disk and extend volume group
+        - Clean up other files on same partition
+      </Step>
+
+      <Step title="Enable Two-Pass Encoding (Smaller Temps)">
+        Two-pass encoding uses less temp space:
+
+        In **Settings → Encoding Presets**, use presets with:
+        - Lower CRF values (e.g., CRF 23 instead of 18)
+        - Slower presets (e.g., `medium` instead of `fast`)
+
+        Trade-off: Slower encoding speed for less temp space.
+      </Step>
+    </Steps>
+
+    <Tip>
+    **Minimum free space formula:**
+    `Free Space = (Largest Video × 2) × Concurrent Jobs`
+
+    Example: 50GB video, 4 concurrent jobs = 400GB minimum
+    </Tip>
+  </Accordion>
+</AccordionGroup>
+
+## Log Locations
+
+Access logs for debugging:
+
+| Component | Docker Command | Direct Path (if not containerized) |
+|-----------|----------------|-------------------------------------|
+| Backend | `docker compose logs -f bitbonsai-backend` | `journalctl -u bitbonsai-backend -f` |
+| Frontend | `docker compose logs -f bitbonsai-frontend` | `/var/log/bitbonsai-frontend.log` |
+| PostgreSQL | `docker compose logs -f postgres` | `/var/lib/postgresql/data/log/` |
+| FFmpeg Output | Check job details in UI | `/tmp/bitbonsai/encoding-*/ffmpeg.log` |
+
+<Tip>
+Add `-f` flag to follow logs in real-time: `docker compose logs -f bitbonsai-backend`
+</Tip>
+
+## Recovery Procedures
+
+### Full System Reset (Nuclear Option)
+
+<Warning>
+This will delete all job history and settings. Use only as last resort.
+</Warning>
+
+```bash
+# Stop all services
+docker compose down
+
+# Remove all data (CAUTION: Irreversible)
+docker volume rm bitbonsai_postgres-data
+
+# Remove temp files
+rm -rf /path/to/temp/bitbonsai/*
+
+# Start fresh
+docker compose up -d
+
+# Verify clean startup
+docker compose logs bitbonsai-backend | grep "Application listening"
+```
+
+### Database Backup & Restore
+
+**Backup:**
+```bash
+# Create backup
+docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup-$(date +%Y%m%d).sql
+
+# Verify backup
+ls -lh backup-*.sql
+```
+
+**Restore:**
+```bash
+# Stop backend (to prevent write conflicts)
+docker compose stop bitbonsai-backend
+
+# Restore from backup
+docker compose exec -T postgres psql -U bitbonsai -d bitbonsai < backup-20260111.sql
+
+# Restart backend
+docker compose start bitbonsai-backend
+```
+
+### Reset Stuck Jobs (Safe)
+
+Reset all jobs to fresh state without losing configuration:
+
+```sql
+-- Connect to database
+docker compose exec postgres psql -U bitbonsai -d bitbonsai
+
+-- Reset all jobs to QUEUED
+UPDATE "EncodingJob"
+SET status = 'QUEUED',
+    progress = 0,
+    "assignedNodeId" = NULL,
+    "startedAt" = NULL,
+    "completedAt" = NULL
+WHERE status IN ('ENCODING', 'CORRUPTED', 'FAILED');
+
+-- Verify reset
+SELECT status, COUNT(*) FROM "EncodingJob" GROUP BY status;
+```
+
+## When to Report Bugs
+
+If you've tried the above fixes and still experiencing issues, please report to GitHub:
+
+<Card title="Report Issue on GitHub" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues/new">
+  Create a new issue with logs and reproduction steps
+</Card>
+
+**Include in your report:**
+1. BitBonsai version (`docker compose images | grep bitbonsai`)
+2. Deployment method (Docker Compose, Unraid, LXC)
+3. Node configuration (single vs. multi-node)
+4. Full error logs (use `docker compose logs --tail=100 bitbonsai-backend`)
+5. Steps to reproduce the issue
+6. Expected vs. actual behavior
+
+## Advanced Debugging
+
+### Enable Debug Logging
+
+<Tabs>
+  <Tab title="Docker Compose">
+    Edit `docker-compose.yml`:
+    ```yaml
+    bitbonsai-backend:
+      environment:
+        LOG_LEVEL: debug  # Change from 'info'
+    ```
+
+    Restart:
+    ```bash
+    docker compose restart bitbonsai-backend
+    ```
+  </Tab>
+
+  <Tab title="Environment File">
+    Create `.env` file:
+    ```bash
+    LOG_LEVEL=debug
+    DEBUG=*
+    ```
+
+    Restart containers to apply.
+  </Tab>
+</Tabs>
+
+### Monitor Resource Usage
+
+```bash
+# Real-time container stats
+docker stats bitbonsai-backend bitbonsai-frontend postgres
+
+# Check CPU/memory limits
+docker inspect bitbonsai-backend | grep -A 10 "Memory"
+
+# Monitor disk I/O
+iostat -x 1
+```
+
+### Network Debugging
+
+```bash
+# Check Docker network configuration
+docker network inspect bitbonsai_default
+
+# Test inter-container connectivity
+docker compose exec bitbonsai-frontend ping bitbonsai-backend
+docker compose exec bitbonsai-backend ping postgres
+
+# Capture network traffic (advanced)
+docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i any port 3100
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
+    Add worker nodes for distributed encoding
+  </Card>
+
+  <Card title="Codec Selection Guide" icon="film" href="/advanced/codec-selection">
+    Choose optimal encoding settings
+  </Card>
+
+  <Card title="FAQ" icon="question" href="/faq">
+    Frequently asked questions
+  </Card>
+
+  <Card title="GitHub Issues" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues">
+    Report bugs and request features
+  </Card>
+</CardGroup>

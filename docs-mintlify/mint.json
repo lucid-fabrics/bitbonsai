@@ -6,12 +6,11 @@
   },
   "favicon": "/favicon.png",
   "colors": {
-    "primary": "#f9be03",
-    "light": "#fcd34d",
-    "dark": "#d4a003",
+    "primary": "#10b981",
+    "light": "#34d399",
+    "dark": "#047857",
     "background": {
-      "dark": "#1a1a1a",
-      "light": "#ffffff"
+      "dark": "#0f1419"
     }
   },
   "topbar": {
@@ -20,12 +19,12 @@
   "topbarLinks": [
     {
       "name": "Website",
-      "url": "https://bitbonsai.app"
+      "url": "https://bitbonsai.io"
     }
   ],
   "topbarCtaButton": {
     "name": "Get Started",
-    "url": "https://app.bitbonsai.io"
+    "url": "https://bitbonsai.app"
   },
   "navigation": [
     {
@@ -43,10 +42,6 @@
     {
       "group": "Advanced",
       "pages": ["advanced/multi-node", "advanced/codec-selection", "advanced/troubleshooting"]
-    },
-    {
-      "group": "Development",
-      "pages": ["development/website", "development/license-api"]
     },
     {
       "group": "Support",
