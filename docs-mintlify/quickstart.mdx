@@ -3,3 +3,186 @@ title: Quickstart
 description: Get BitBonsai running in under 5 minutes
 ---
 
+## Goal
+
+Encode your first video library in 5 minutes with zero configuration.
+
+<Steps>
+  <Step title="Run Docker Compose">
+    Create `docker-compose.yml`:
+
+    ```yaml docker-compose.yml
+    version: '3.8'
+    services:
+      db:
+        image: postgres:15
+        environment:
+          POSTGRES_DB: bitbonsai
+          POSTGRES_USER: bitbonsai
+          POSTGRES_PASSWORD: bitbonsai
+        volumes:
+          - bitbonsai-db:/var/lib/postgresql/data
+        restart: unless-stopped
+
+      backend:
+        image: bitbonsai/backend:latest
+        ports:
+          - "3100:3100"
+        environment:
+          DATABASE_URL: postgresql://bitbonsai:bitbonsai@db:5432/bitbonsai
+          NODE_ENV: production
+        volumes:
+          - /path/to/your/videos:/media
+        depends_on:
+          - db
+        restart: unless-stopped
+
+      frontend:
+        image: bitbonsai/frontend:latest
+        ports:
+          - "4210:80"
+        environment:
+          API_URL: http://localhost:3100
+        depends_on:
+          - backend
+        restart: unless-stopped
+
+    volumes:
+      bitbonsai-db:
+    ```
+
+    Replace `/path/to/your/videos` with your actual video library path.
+
+    Start the stack:
+
+    ```bash
+    docker-compose up -d
+    ```
+  </Step>
+
+  <Step title="Access the UI">
+    Open browser to:
+
+    ```
+    http://localhost:4210
+    ```
+
+    Wait 10-15 seconds for backend initialization. The UI loads automatically.
+  </Step>
+
+  <Step title="Add Video Library">
+    1. Click **Libraries** in sidebar
+    2. Click **Add Library**
+    3. Enter library name (e.g., "Movies")
+    4. Set path: `/media` (Docker mount point)
+    5. Click **Create**
+
+    <Info>
+      Path must match the Docker volume mount from Step 1. BitBonsai reads/writes files in-place.
+    </Info>
+  </Step>
+
+  <Step title="Scan for Videos">
+    1. Click your new library
+    2. Click **Scan Library**
+    3. Watch status: `Scanning...` → `X videos found`
+
+    Scanning speed: ~1000 files/second. A 5000-video library scans in 5 seconds.
+
+    <Tip>
+      BitBonsai automatically detects codec, resolution, bitrate, and file size. No manual tagging needed.
+    </Tip>
+  </Step>
+
+  <Step title="Queue Videos for Encoding">
+    1. Click **Queue** tab
+    2. Use filters to select videos:
+       - Codec: `H.264` (find videos to upgrade)
+       - Resolution: `1080p` or higher
+       - Bitrate: `> 5 Mbps`
+    3. Select videos (checkbox or **Select All**)
+    4. Choose target codec:
+       - **HEVC (H.265)**: Fast, 40-50% smaller, universal compatibility
+       - **AV1**: Slowest, 50-60% smaller, best quality
+    5. Click **Queue Selected**
+
+    Jobs move to **Encoding** tab and start immediately.
+
+    <Warning>
+      First encode may take 2-5 minutes for a typical 1080p movie. Progress shows in real-time.
+    </Warning>
+  </Step>
+
+  <Step title="Monitor Progress">
+    Go to **Encoding** tab to see:
+
+    | Column | What It Shows |
+    |--------|---------------|
+    | Status | `QUEUED` → `ENCODING` → `COMPLETED` |
+    | Progress | Percentage + time remaining |
+    | Speed | Frames per second (FPS) |
+    | Output Size | Final file size estimate |
+
+    **Auto-replacement**: When encoding completes, BitBonsai:
+    - Backs up original to `.bitbonsai/originals/`
+    - Replaces original with encoded file
+    - Updates library metadata
+    - Moves to next job in queue
+
+    <Check>
+      Your first encode is complete when status shows `COMPLETED` and file size decreased by 40-60%.
+    </Check>
+  </Step>
+</Steps>
+
+## What's Next
+
+You're encoding. Here's what to explore:
+
+### Advanced Features
+
+- **[Multi-Node Setup](/advanced/multi-node)** - Add worker nodes for parallel encoding (3x-10x faster)
+- **[Codec Selection Guide](/advanced/codec-selection)** - HEVC vs AV1 vs VP9 tradeoffs
+- **[Job Monitoring](/guides/monitoring)** - Track encoding stats, failures, and health
+
+### Common Questions
+
+<AccordionGroup>
+  <Accordion title="What if encoding fails?">
+    BitBonsai auto-retries failed jobs 3 times with exponential backoff. Check **Encoding** tab → **Failed** filter for errors.
+
+    Common causes:
+    - Corrupted source file (skip it)
+    - Insufficient disk space (free up space, job auto-retries)
+    - Codec not supported (change target codec)
+  </Accordion>
+
+  <Accordion title="Can I pause encoding?">
+    Yes. Click job → **Pause** or use **Pause All** button. Resume anytime with zero progress loss.
+  </Accordion>
+
+  <Accordion title="How do I undo an encode?">
+    Originals are backed up to:
+    ```
+    /media/.bitbonsai/originals/[library-name]/[video-file]
+    ```
+
+    Restore manually by copying back to original location.
+  </Accordion>
+
+  <Accordion title="Does BitBonsai delete originals?">
+    No. Originals are moved to `.bitbonsai/originals/` and only deleted if you manually enable **Delete Originals After X Days** in Settings.
+
+    Default: Keep forever.
+  </Accordion>
+</AccordionGroup>
+
+### Get Help
+
+- **[Troubleshooting](/advanced/troubleshooting)** - Fix common issues
+- **[FAQ](/faq)** - Frequently asked questions
+- **GitHub Issues** - Report bugs or request features
+
+---
+
+**Time to first encode:** < 5 minutes ✓

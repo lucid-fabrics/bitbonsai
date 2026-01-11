@@ -3,3 +3,576 @@ title: FAQ
 description: Frequently asked questions about BitBonsai
 ---
 
+## General Questions
+
+<Accordion title="What video formats are supported?">
+BitBonsai supports all video formats that FFmpeg can decode, including:
+
+- **MP4** (.mp4, .m4v)
+- **Matroska** (.mkv)
+- **AVI** (.avi)
+- **QuickTime** (.mov)
+- **WebM** (.webm)
+- **MPEG** (.mpg, .mpeg)
+- **FLV** (.flv)
+- **WMV** (.wmv)
+
+The app automatically detects codec compatibility. If a file is already in HEVC or AV1, it's skipped unless you force re-encoding.
+
+See [Understanding Jobs](/guides/understanding-jobs) for more details on job statuses.
+</Accordion>
+
+<Accordion title="How much storage space will I save?">
+Storage savings depend on the source codec and target codec:
+
+| Source → Target | Typical Savings |
+|-----------------|-----------------|
+| H.264 → HEVC | 40-50% |
+| H.264 → AV1 | 50-70% |
+| MPEG-2 → HEVC | 60-80% |
+
+**Example:**
+- 1 TB of H.264 movies → ~500 GB as HEVC
+- 1 TB of H.264 movies → ~350 GB as AV1
+
+Actual savings vary based on:
+- Source quality (bitrate, resolution)
+- CRF/quality setting (lower CRF = larger files)
+- Content type (animation compresses better than live action)
+
+High-quality 4K files may save less (30-40%) due to already efficient encoding.
+</Accordion>
+
+<Accordion title="Does BitBonsai support hardware transcoding?">
+Yes. BitBonsai supports hardware acceleration via FFmpeg:
+
+| Vendor | Technology | Linux | Windows |
+|--------|------------|-------|---------|
+| **NVIDIA** | NVENC | ✅ | ✅ |
+| **Intel** | Quick Sync (QSV) | ✅ | ✅ |
+| **AMD** | AMF/VCE | ✅ | ✅ |
+
+**Configuration:**
+Hardware encoding is configured per-library. When creating or editing a library, select the encoder:
+
+```
+Codec: HEVC
+Encoder: NVIDIA NVENC (hevc_nvenc)
+```
+
+**Requirements:**
+- NVIDIA: GPU with NVENC support + drivers
+- Intel: iGPU with Quick Sync + drivers
+- AMD: GPU with VCE support + drivers
+
+**Performance:**
+- NVENC: 3-10x faster than CPU encoding
+- Quality: Slightly lower than CPU at same bitrate (acceptable for most users)
+
+See [Codec Selection](/advanced/codec-selection) for encoder comparisons.
+</Accordion>
+
+<Accordion title="Can I pause and resume encoding jobs?">
+Yes. BitBonsai has a **TRUE RESUME** feature that preserves partial encoding progress.
+
+**How It Works:**
+1. Click **Pause** on an encoding job
+2. Job status changes to `PAUSED`
+3. FFmpeg process is killed gracefully
+4. Temp file (`*.bbtmp`) is **kept** on disk
+5. Click **Resume** to continue from last keyframe
+
+**Benefits:**
+- No wasted work (unlike traditional pause which discards progress)
+- Safe to pause/resume anytime
+- Temp files cleaned up automatically on completion
+
+**Technical Details:**
+- Resume point determined by temp file size vs. expected output
+- If temp file is corrupted, job auto-retries from scratch
+- If temp file is missing (deleted manually), job resets to `QUEUED`
+
+**Limitations:**
+- Resume accuracy ~95-98% (may re-encode last 1-2 seconds)
+- Two-pass encoding does not support resume (restarts pass)
+</Accordion>
+
+<Accordion title="What happens if encoding fails?">
+BitBonsai has automatic retry and error recovery:
+
+**Auto-Retry Mechanism:**
+1. Job fails (FFmpeg error, disk full, etc.)
+2. Status → `QUEUED` with retry counter incremented
+3. System retries up to **3 times**
+4. After 3 failures → status changes to `FAILED`
+
+**Failed Job Recovery:**
+- Review error logs in the job details panel
+- Fix underlying issue (disk space, permissions, corrupted source)
+- Click **Retry** to manually reset the job
+
+**Common Failure Causes:**
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| FFmpeg error code 1 | Corrupted source file | Re-download or remux file |
+| Disk full | Insufficient temp space | Free up disk space |
+| Permission denied | File/folder permissions | Check ownership and rwx permissions |
+| Timeout | Job exceeded max duration | Increase timeout in settings |
+
+**Auto-Healing:**
+- Orphaned jobs (stuck in `ENCODING` after restart) → auto-reset to `QUEUED`
+- Corrupted temp files → auto-deleted and job re-queued
+- Health check failures → auto-retry every hour
+
+See [Troubleshooting](/advanced/troubleshooting) for detailed error diagnostics.
+</Accordion>
+
+## Multi-Node & Scaling
+
+<Accordion title="How do I add more worker nodes?">
+BitBonsai supports multi-node distributed encoding. Steps:
+
+**1. Set Up Main Node (Database Owner)**
+```bash
+docker run -d \
+  -e ROLE=main \
+  -e DATABASE_URL=postgresql://user:pass@localhost:5432/bitbonsai \
+  -p 3100:3100 \
+  bitbonsai/backend
+```
+
+**2. Set Up Child Nodes (Workers)**
+```bash
+docker run -d \
+  -e ROLE=linked \
+  -e MAIN_NODE_URL=http://192.168.1.100:3100 \
+  -v /mnt/shared:/media \
+  bitbonsai/backend
+```
+
+**3. Configure Shared Storage (NFS)**
+- All nodes must access the **same media files** via NFS
+- Recommended: 1 Gbps+ network, NFS v4
+- Mount paths must be identical across nodes
+
+**4. Verify Registration**
+- Child nodes auto-register with main node on startup
+- Check **Settings → Nodes** to see all active workers
+
+**Architecture:**
+- **Main node**: Owns PostgreSQL, API, job queue
+- **Child nodes**: Workers only, proxy API calls to main
+- **Job distribution**: Automatic load balancing via queue system
+
+See [Multi-Node Setup](/advanced/multi-node) for detailed configuration.
+</Accordion>
+
+<Accordion title="Is there a license for multi-node setups?">
+Yes. Multi-node support requires a paid license:
+
+| Tier | Max Nodes | Max Concurrent Jobs | Price |
+|------|-----------|---------------------|-------|
+| **FREE** | 1 node | 1 job | Free |
+| **SUPPORTER** | 3 nodes | 5 jobs | $5/month |
+| **PRO** | Unlimited | Unlimited | $15/month |
+
+**Features Locked Behind License:**
+- Multi-node worker registration
+- Concurrent job execution (>1 job at once)
+- Priority support
+
+**How to Purchase:**
+1. Visit [bitbonsai.io/pricing](https://bitbonsai.io/pricing)
+2. Subscribe via Stripe or Patreon
+3. Receive license key via email
+4. Enter key in **Settings → License**
+
+**Trial Period:**
+- 14-day free trial for SUPPORTER/PRO tiers
+- No credit card required for FREE tier
+- Downgrade anytime (keeps data)
+
+**Why Paid?**
+- Server costs (license validation, updates)
+- Development funding (full-time maintainer)
+- Community support (Discord, GitHub)
+
+See [Pricing Page](https://bitbonsai.io/pricing) for current rates.
+</Accordion>
+
+## Video Quality & Codecs
+
+<Accordion title="Can I encode 4K/HDR videos?">
+Yes. BitBonsai fully supports 4K and HDR encoding.
+
+**HDR Metadata Preservation:**
+- HDR10 (PQ/ST.2084) → ✅ Preserved
+- HDR10+ → ✅ Preserved (HEVC only)
+- Dolby Vision → ⚠️ Converted to HDR10 (AV1/HEVC)
+- HLG (Hybrid Log-Gamma) → ✅ Preserved
+
+**Codec Support:**
+
+| Codec | 4K | HDR10 | HDR10+ | Dolby Vision |
+|-------|-------|-------|--------|--------------|
+| HEVC | ✅ | ✅ | ✅ | Profile 5 only |
+| AV1 | ✅ | ✅ | ❌ | ❌ |
+
+**Configuration:**
+When encoding HDR content, use:
+- **CRF 18-22** (lower = higher quality)
+- **Preset: slow** (better compression)
+- **Color space:** Auto-detected from source
+
+**Example FFmpeg Command (Auto-Generated):**
+```bash
+ffmpeg -i input.mkv \
+  -c:v libx265 \
+  -crf 20 -preset slow \
+  -color_primaries bt2020 \
+  -color_trc smpte2084 \
+  -colorspace bt2020nc \
+  -x265-params "hdr-opt=1:repeat-headers=1" \
+  output.mkv
+```
+
+**Playback Compatibility:**
+- Ensure media player supports HDR (VLC, Plex, Jellyfin)
+- HDR displays required for proper viewing
+- SDR tone-mapping handled by player
+
+See [Codec Selection](/advanced/codec-selection) for quality settings.
+</Accordion>
+
+<Accordion title="What's the difference between HEVC and AV1?">
+Both are modern video codecs. Key differences:
+
+| Feature | HEVC (H.265) | AV1 |
+|---------|-------------|-----|
+| **Compression** | 40-50% better than H.264 | 50-70% better than H.264 |
+| **Encoding Speed** | Fast (HW accelerated) | Slow (CPU only) |
+| **Hardware Support** | Wide (2015+ devices) | Limited (2020+ devices) |
+| **Licensing** | Paid (patent-encumbered) | Free (royalty-free) |
+| **Quality** | Excellent | Slightly better |
+
+**When to Use HEVC:**
+- Need fast encoding (NVENC, QSV)
+- Wide device compatibility (TVs, phones)
+- Hardware decoding available
+
+**When to Use AV1:**
+- Maximum compression (archival)
+- Don't care about encoding time
+- Modern playback devices only
+
+**Encoding Time Comparison (1080p movie):**
+- H.264 CPU: 1 hour
+- HEVC CPU: 2 hours
+- HEVC NVENC: 15 minutes
+- AV1 CPU: 6 hours
+
+**Recommendation:**
+- **Most users:** HEVC with hardware encoding
+- **Archival/storage priority:** AV1 (set and forget)
+- **Compatibility priority:** Stick with H.264
+
+See [Codec Selection](/advanced/codec-selection) for detailed comparison.
+</Accordion>
+
+## Backup & Maintenance
+
+<Accordion title="How do I back up my database?">
+BitBonsai uses PostgreSQL. Backup methods:
+
+**1. PostgreSQL Dump (Recommended)**
+```bash
+# Full backup
+docker exec bitbonsai-postgres pg_dump -U bitbonsai > backup.sql
+
+# Restore
+docker exec -i bitbonsai-postgres psql -U bitbonsai < backup.sql
+```
+
+**2. Volume Backup (Docker)**
+```bash
+# Stop containers
+docker-compose down
+
+# Backup data volume
+tar -czf bitbonsai-data.tar.gz /var/lib/docker/volumes/bitbonsai_postgres_data
+
+# Restore
+tar -xzf bitbonsai-data.tar.gz -C /
+docker-compose up -d
+```
+
+**3. Automated Backups (Cron)**
+```bash
+# Add to crontab (daily at 2 AM)
+0 2 * * * docker exec bitbonsai-postgres pg_dump -U bitbonsai | gzip > /backups/bitbonsai-$(date +\%Y\%m\%d).sql.gz
+```
+
+**What Gets Backed Up:**
+- Libraries and scan history
+- Job queue and encoding history
+- Settings and node configuration
+- User preferences
+
+**What Doesn't Get Backed Up:**
+- Media files (backup separately via rsync/Duplicati)
+- Temp files (`*.bbtmp`) - safe to delete
+- Logs (ephemeral, rotate after 30 days)
+
+**Restore Testing:**
+Test your backups monthly to ensure they're valid.
+</Accordion>
+
+<Accordion title="Can I run BitBonsai on Windows?">
+Yes, but **WSL2 is required** for optimal performance.
+
+**Option 1: WSL2 + Docker (Recommended)**
+```bash
+# Install WSL2
+wsl --install
+
+# Install Docker Desktop (with WSL2 backend)
+# Download from: https://docker.com/desktop
+
+# Run BitBonsai
+docker-compose up -d
+```
+
+**Option 2: Native Windows (Not Recommended)**
+- NestJS backend runs on Windows
+- FFmpeg works but slower (no native POSIX)
+- NFS shares not supported (use SMB)
+- Path handling issues (backslashes vs. forward slashes)
+
+**Why WSL2?**
+- Native Linux performance
+- Better FFmpeg efficiency
+- NFS support for multi-node
+- Easier troubleshooting (Docker Compose)
+
+**Configuration:**
+- Mount media via WSL2: `\\wsl$\Ubuntu\mnt\media`
+- Database in WSL2 volume (better I/O)
+- Frontend accessible via `localhost:4200`
+
+**Known Limitations:**
+- GPU passthrough (NVENC) requires WSL2 + CUDA drivers
+- Network performance slightly lower than bare metal
+- File watchers may lag on large libraries (10K+ files)
+
+See [Installation Requirements](/installation/requirements) for system specs.
+</Accordion>
+
+## Network & Remote Access
+
+<Accordion title="What's the recommended NFS setup for multi-node?">
+Multi-node encoding requires shared storage. NFS setup:
+
+**Server (NAS/Unraid):**
+```bash
+# /etc/exports
+/mnt/media 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+# Restart NFS
+exportfs -ra
+systemctl restart nfs-server
+```
+
+**Client (Worker Nodes):**
+```bash
+# Mount NFS share
+mount -t nfs -o vers=4,rw 192.168.1.100:/mnt/media /media
+
+# Auto-mount on boot (fstab)
+echo "192.168.1.100:/mnt/media /media nfs vers=4,rw 0 0" >> /etc/fstab
+```
+
+**Performance Requirements:**
+
+| Library Size | Recommended Speed | Note |
+|--------------|-------------------|------|
+| < 1 TB | 1 Gbps | Adequate for 1080p |
+| 1-5 TB | 2.5 Gbps | Better for 4K |
+| > 5 TB | 10 Gbps | Ideal for multi-node |
+
+**Tuning:**
+```bash
+# Increase NFS read/write size (performance boost)
+mount -t nfs -o vers=4,rw,rsize=1048576,wsize=1048576 \
+  192.168.1.100:/mnt/media /media
+```
+
+**Common Issues:**
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Stale file handle | NFS share restarted | Remount NFS |
+| Permission denied | no_root_squash missing | Update exports |
+| Slow encoding | 100 Mbps network | Upgrade to 1 Gbps+ |
+
+**SMB Alternative:**
+- Not recommended (slower than NFS)
+- Use if NFS unavailable (Windows hosts)
+- Enable SMB 3.0+ for performance
+
+See [Multi-Node Setup](/advanced/multi-node) for full configuration.
+</Accordion>
+
+<Accordion title="How do I monitor encoding progress remotely?">
+BitBonsai provides multiple monitoring options:
+
+**1. Web UI (Mobile-Friendly)**
+```
+Access: http://YOUR_IP:4200
+Features:
+- Real-time job progress (%)
+- Live FFmpeg output logs
+- Queue status and ETA
+- Responsive design (works on phones)
+```
+
+**2. API Endpoints**
+```bash
+# Get all jobs
+curl http://YOUR_IP:3100/api/jobs
+
+# Get specific job
+curl http://YOUR_IP:3100/api/jobs/123
+
+# Get encoding stats
+curl http://YOUR_IP:3100/api/statistics
+```
+
+**3. WebSocket (Real-Time Updates)**
+```javascript
+// Connect to WebSocket
+const ws = new WebSocket('ws://YOUR_IP:3100');
+
+ws.onmessage = (event) => {
+  const { jobId, progress, status } = JSON.parse(event.data);
+  console.log(`Job ${jobId}: ${progress}% - ${status}`);
+};
+```
+
+**4. Notifications (Planned)**
+- Email alerts on job completion/failure
+- Discord webhooks
+- Pushover/Telegram integration
+
+**Mobile Access:**
+- Enable port forwarding (3100, 4200)
+- Use VPN for secure remote access (Tailscale, WireGuard)
+- Or reverse proxy with SSL (Nginx, Caddy)
+
+**Example: Nginx Reverse Proxy**
+```nginx
+server {
+  listen 443 ssl;
+  server_name bitbonsai.yourdomain.com;
+
+  location / {
+    proxy_pass http://localhost:4200;
+  }
+
+  location /api {
+    proxy_pass http://localhost:3100;
+  }
+}
+```
+
+See [Monitoring Guide](/guides/monitoring) for dashboards.
+</Accordion>
+
+## Roadmap & Features
+
+<Accordion title="Can I schedule encoding during off-peak hours?">
+Not yet. This is a **planned feature** for v2.0.
+
+**Requested Functionality:**
+- Schedule encoding windows (e.g., 2 AM - 6 AM)
+- Pause all jobs during business hours
+- Limit CPU/GPU usage by time of day
+- Priority queue for specific libraries
+
+**Workarounds:**
+1. **Manual Pause/Resume**
+   - Pause all jobs before peak hours
+   - Resume overnight
+
+2. **Cron Script (API-Based)**
+```bash
+# Pause at 8 AM
+0 8 * * * curl -X POST http://localhost:3100/api/queue/pause-all
+
+# Resume at 6 PM
+0 18 * * * curl -X POST http://localhost:3100/api/queue/resume-all
+```
+
+3. **CPU Limiting (Docker)**
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    cpus: '2.0'  # Limit to 2 cores
+```
+
+**Vote for This Feature:**
+- GitHub Issue: [#45 - Scheduled Encoding](https://github.com/bitbonsai/bitbonsai/issues/45)
+- Discord: `#feature-requests` channel
+
+**ETA:** Q2 2026 (tentative)
+</Accordion>
+
+<Accordion title="What are the pricing tiers for licenses?">
+BitBonsai offers three tiers:
+
+| Tier | Price | Max Nodes | Max Jobs | Features |
+|------|-------|-----------|----------|----------|
+| **FREE** | $0 | 1 node | 1 job | Single-node, basic features |
+| **SUPPORTER** | $5/month or $50/year | 3 nodes | 5 jobs | Multi-node, priority support |
+| **PRO** | $15/month or $150/year | Unlimited | Unlimited | Enterprise features, SLA |
+
+**Feature Comparison:**
+
+| Feature | FREE | SUPPORTER | PRO |
+|---------|------|-----------|-----|
+| Libraries | Unlimited | Unlimited | Unlimited |
+| Storage | Unlimited | Unlimited | Unlimited |
+| Hardware Encoding | ✅ | ✅ | ✅ |
+| Multi-Node | ❌ | ✅ (3 max) | ✅ (Unlimited) |
+| Concurrent Jobs | 1 | 5 | Unlimited |
+| Priority Support | ❌ | ✅ | ✅ + SLA |
+| Discord Badge | ❌ | ✅ | ✅ |
+| Early Access | ❌ | ✅ | ✅ |
+| Commercial Use | ❌ | ❌ | ✅ |
+
+**Payment Options:**
+- **Stripe** (credit card, monthly/yearly)
+- **Patreon** (monthly subscriptions)
+- **Crypto** (annual licenses only, contact sales)
+
+**Refund Policy:**
+- 14-day money-back guarantee
+- Cancel anytime (no questions asked)
+- Downgrade keeps data intact
+
+**Purchase Link:**
+[bitbonsai.io/pricing](https://bitbonsai.io/pricing)
+
+**Non-Profit/Educational Discounts:**
+Contact `hello@bitbonsai.io` with proof of status for 50% discount.
+</Accordion>
+
+## Need More Help?
+
+Still have questions? Try these resources:
+
+- **Documentation:** [BitBonsai Docs](https://docs.bitbonsai.io)
+- **Discord:** [Join Community](https://discord.gg/bitbonsai)
+- **GitHub Issues:** [Report Bugs](https://github.com/bitbonsai/bitbonsai/issues)
+- **Email:** hello@bitbonsai.io
