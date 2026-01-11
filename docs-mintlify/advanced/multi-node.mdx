@@ -3,17 +3,21 @@ title: Multi-Node Setup
 description: Add worker nodes to speed up encoding
 ---
 
-Scale BitBonsai's transcoding capacity by adding worker nodes across multiple machines. Distribute encoding jobs automatically with zero manual intervention.
+Scale BitBonsai's [transcoding](/glossary#transcoding) capacity by adding worker [nodes](/glossary#node) across multiple machines. Distribute [encoding](/glossary#encoding) [jobs](/glossary#job) automatically with zero manual intervention.
+
+<Note>
+**What is multi-node?** Running BitBonsai on multiple computers to encode videos faster. See [multi-node](/glossary#multi-node) in the glossary.
+</Note>
 
 ## What is Multi-Node Encoding?
 
-Multi-node encoding distributes video transcoding jobs across multiple physical machines, dramatically reducing total encoding time.
+Multi-node encoding distributes video [transcoding](/glossary#transcoding) [jobs](/glossary#job) across multiple physical machines, dramatically reducing total encoding time.
 
 **How it works:**
-- **Main Node**: Owns the PostgreSQL database, distributes jobs, hosts the web UI
-- **Child Nodes**: Worker-only nodes that pull jobs from the main node's queue
-- **Shared Storage**: NFS mount ensures all nodes access the same video files (zero-copy encoding)
-- **Automatic Load Balancing**: Jobs are distributed based on each node's current load and capacity
+- **[Main Node](/glossary#main-node)**: Owns the PostgreSQL [database](/glossary#database), distributes jobs, hosts the web UI
+- **[Child Nodes](/glossary#child-node)**: Worker-only nodes that pull jobs from the [main node](/glossary#main-node)'s [queue](/glossary#queue)
+- **Shared Storage**: [NFS](/glossary#nfs) mount ensures all nodes access the same video files (zero-copy encoding)
+- **Automatic [Load Balancing](/glossary#load-balancing)**: Jobs are distributed based on each node's current load and capacity
 
 **Example:**
 ```
@@ -39,34 +43,40 @@ Total capacity: 20 concurrent encoding jobs
 
 ```mermaid
 graph TD
-    UI[Web UI :4210] -->|API calls| Main[Main Node :3100]
-    Main -->|owns| DB[(PostgreSQL)]
-    Main -->|reads/writes| NFS[NFS Share /videos]
+    UI[🖥️ Web UI :4210] -->|API calls| Main[⚡ Main Node :3100<br/>Database Owner<br/>Job Distributor<br/>Web UI Host]
+    Main -->|owns & manages| DB[(🗄️ PostgreSQL<br/>Job Queue<br/>Libraries<br/>Node Registry)]
+    Main -->|reads/writes videos| NFS[📁 NFS Share<br/>/videos<br/>Shared Storage]
 
-    Main -->|distributes jobs| Main
-    Main -->|distributes jobs| Child1[Child Node 1]
-    Main -->|distributes jobs| Child2[Child Node 2]
+    Main -->|assigns jobs| Main
+    Main -->|assigns jobs| Child1[👷 Child Node 1<br/>Worker Only<br/>8 concurrent jobs]
+    Main -->|assigns jobs| Child2[👷 Child Node 2<br/>Worker Only<br/>8 concurrent jobs]
 
-    Child1 -->|proxy API| Main
-    Child2 -->|proxy API| Main
+    Child1 -->|proxy API calls| Main
+    Child2 -->|proxy API calls| Main
 
-    Child1 -->|reads/writes| NFS
-    Child2 -->|reads/writes| NFS
+    Child1 -->|reads/writes videos| NFS
+    Child2 -->|reads/writes videos| NFS
 
-    style Main fill:#4CAF50
-    style Child1 fill:#2196F3
-    style Child2 fill:#2196F3
-    style NFS fill:#FF9800
+    style Main fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#000
+    style Child1 fill:#2196F3,stroke:#1565C0,stroke-width:3px,color:#000
+    style Child2 fill:#2196F3,stroke:#1565C0,stroke-width:3px,color:#000
+    style NFS fill:#FF9800,stroke:#E65100,stroke-width:3px,color:#000
+    style DB fill:#9C27B0,stroke:#6A1B9A,stroke-width:3px,color:#fff
+    style UI fill:#FFC107,stroke:#F57F17,stroke-width:3px,color:#000
 ```
+
+<Info>
+**Key insight:** [Child nodes](/glossary#child-node) are **worker-only** - they don't have their own [database](/glossary#database). They fetch [jobs](/glossary#job) from the [main node](/glossary#main-node) and report back progress.
+</Info>
 
 ### Key Components
 
 | Component | Role | Responsibilities |
 |-----------|------|------------------|
-| **Main Node** | Master + Worker | Database, API, UI, job distribution, encoding |
-| **Child Node** | Worker only | Fetch jobs, encode, report progress, proxy API calls |
-| **NFS Share** | Shared storage | Centralized video file access (no file copying) |
-| **PostgreSQL** | State management | Job queue, libraries, node registry |
+| **[Main Node](/glossary#main-node)** | Master + Worker | [Database](/glossary#database), [API](/glossary#api), UI, [job](/glossary#job) distribution, [encoding](/glossary#encoding) |
+| **[Child Node](/glossary#child-node)** | Worker only | Fetch jobs, encode, report progress, proxy API calls |
+| **[NFS](/glossary#nfs) Share** | Shared storage | Centralized video file access (no file copying) |
+| **PostgreSQL** | State management | Job [queue](/glossary#queue), [libraries](/glossary#library), node registry |
 
 ---
 
