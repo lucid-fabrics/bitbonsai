@@ -44,13 +44,13 @@ Total capacity: 20 concurrent encoding jobs
 
 ```mermaid
 graph TD
-    UI[🖥️ Web UI :4210] -->|API calls| Main[⚡ Main Node :3100<br/>Database Owner<br/>Job Distributor<br/>Web UI Host]
-    Main -->|owns & manages| DB[(🗄️ PostgreSQL<br/>Job Queue<br/>Libraries<br/>Node Registry)]
-    Main -->|reads/writes videos| NFS[📁 NFS Share<br/>/videos<br/>Shared Storage]
+    UI[Web UI :4210] -->|API calls| Main[Main Node :3100<br/>Database Owner<br/>Job Distributor<br/>Web UI Host]
+    Main -->|owns & manages| DB[(PostgreSQL<br/>Job Queue<br/>Libraries<br/>Node Registry)]
+    Main -->|reads/writes videos| NFS[NFS Share<br/>/videos<br/>Shared Storage]
 
     Main -->|assigns jobs| Main
-    Main -->|assigns jobs| Child1[👷 Child Node 1<br/>Worker Only<br/>8 concurrent jobs]
-    Main -->|assigns jobs| Child2[👷 Child Node 2<br/>Worker Only<br/>8 concurrent jobs]
+    Main -->|assigns jobs| Child1[Child Node 1<br/>Worker Only<br/>8 concurrent jobs]
+    Main -->|assigns jobs| Child2[Child Node 2<br/>Worker Only<br/>8 concurrent jobs]
 
     Child1 -->|proxy API calls| Main
     Child2 -->|proxy API calls| Main

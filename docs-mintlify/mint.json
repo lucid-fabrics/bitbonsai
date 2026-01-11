@@ -6,11 +6,11 @@
   },
   "favicon": "/favicon.png",
   "colors": {
-    "primary": "#10b981",
-    "light": "#34d399",
-    "dark": "#047857",
+    "primary": "#f9be03",
+    "light": "#fcd34d",
+    "dark": "#d4a003",
     "background": {
-      "dark": "#0f1419"
+      "dark": "#1a1a1a"
     }
   },
   "topbar": {
