@@ -573,6 +573,108 @@
   }
 }
 
+// Pain Section
+.pain-section {
+  padding: 100px 0;
+  background: variables.$bg-secondary;
+
+  &__container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  &__header {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+
+  &__title {
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 800;
+    color: variables.$text-primary;
+    margin-bottom: 12px;
+  }
+
+  &__subtitle {
+    font-size: 18px;
+    color: variables.$text-secondary;
+    font-weight: 500;
+  }
+}
+
+.pain-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pain-card {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 24px;
+  background: variables.$bg-primary;
+  border: 1px solid variables.$border-primary;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: variables.$accent-primary;
+    transform: translateX(4px);
+  }
+
+  &__problem {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  &__solution {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    &--bad {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    &--good {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+  }
+
+  &__text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: variables.$text-primary;
+  }
+
+  &__arrow {
+    font-size: 24px;
+    color: variables.$accent-primary;
+    font-weight: 700;
+  }
+}
+
 // CTA Section
 .cta {
   padding: 120px 0;
@@ -620,6 +722,14 @@
     flex-wrap: wrap;
     gap: 16px;
     justify-content: center;
+    margin-bottom: 24px;
+  }
+
+  &__guarantee {
+    font-size: 14px;
+    color: variables.$text-secondary;
+    font-style: italic;
+    margin-top: 16px;
   }
 }
 
@@ -692,5 +802,15 @@
 
   .code-block__code {
     font-size: 12px;
+  }
+
+  .pain-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+
+    &__arrow {
+      transform: rotate(90deg);
+      text-align: center;
+    }
   }
 }
