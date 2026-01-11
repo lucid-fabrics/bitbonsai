@@ -3,7 +3,11 @@ title: Dashboard & Monitoring
 description: Real-time system monitoring and job tracking
 ---
 
-The BitBonsai dashboard provides comprehensive system monitoring, job tracking, and performance analytics in a single unified view.
+The BitBonsai dashboard provides comprehensive system monitoring, [job](/glossary#job) tracking, and performance analytics in a single unified view.
+
+<Info>
+**What is the dashboard?** The main screen showing all your [encoding](/glossary#encoding) activity, [queue](/glossary#queue) status, and system health in real-time.
+</Info>
 
 ## Dashboard Overview
 
@@ -26,7 +30,7 @@ Access the dashboard at the main application page after login. The interface is 
 
 ## Active Jobs Panel
 
-Shows encoding tasks currently being processed across all nodes.
+Shows [encoding](/glossary#encoding) tasks currently being processed across all [nodes](/glossary#node).
 
 ### Job Information Display
 
@@ -35,7 +39,7 @@ Shows encoding tasks currently being processed across all nodes.
 | **File Name** | Media file being encoded (e.g., `Movie.2024.1080p.mkv`) |
 | **Progress** | Encoding completion percentage (0-100%) |
 | **Speed** | Current encoding speed (fps - frames per second) |
-| **Node** | Which node is processing this job (hostname or IP) |
+| **Node** | Which [node](/glossary#node) is processing this [job](/glossary#job) (hostname or IP) |
 | **Stage** | Current job stage: `ENCODING`, `ANALYZING`, `TRANSFERRING` |
 | **ETA** | Estimated time remaining for completion |
 
@@ -65,23 +69,23 @@ Active jobs display real-time progress bars:
 
 ### Node Assignment
 
-Each job shows which node is processing it. This helps identify:
+Each [job](/glossary#job) shows which [node](/glossary#node) is processing it. This helps identify:
 
-- Load distribution across nodes
-- Node performance differences (GPU vs CPU)
+- [Load distribution](/glossary#load-balancing) across nodes
+- Node performance differences ([GPU](/glossary#gpu) vs CPU)
 - Potential bottlenecks (one node handling too many jobs)
 
 ## Queue Status
 
 ### Pending Jobs
 
-Shows jobs waiting to be processed:
+Shows [jobs](/glossary#job) waiting to be processed:
 
 | Metric | Meaning |
 |--------|---------|
-| **QUEUED** | Jobs waiting for available node capacity |
-| **PENDING** | Jobs discovered but not yet queued (awaiting library scan) |
-| **ANALYZING** | Files being analyzed for codec/bitrate information |
+| **QUEUED** | Jobs waiting for available [node](/glossary#node) capacity |
+| **PENDING** | Jobs discovered but not yet [queued](/glossary#queue) (awaiting [library](/glossary#library) scan) |
+| **ANALYZING** | Files being analyzed for [codec](/glossary#codec)/[bitrate](/glossary#bitrate) information |
 
 ### Estimated Completion Time
 
@@ -132,7 +136,7 @@ ETA = (QUEUED jobs + ANALYZING jobs) / throughput_per_hour
 
 ### Disk Space
 
-Shows storage statistics for all configured library paths:
+Shows storage statistics for all configured [library](/glossary#library) paths:
 
 | Path | Total | Used | Free | Used % |
 |------|-------|------|------|--------|
@@ -141,17 +145,17 @@ Shows storage statistics for all configured library paths:
 | `/mnt/media/anime` | 1 TB | 800 GB | 200 GB | 80% |
 
 <Warning>
-**Low Disk Space**: When any path exceeds 90% usage, encoding may fail if output file cannot be written.
+**Low Disk Space**: When any path exceeds 90% usage, [encoding](/glossary#encoding) may fail if output file cannot be written. BitBonsai needs temporary space (see [temporary files](/glossary#temporary-files)).
 </Warning>
 
 ## Node Status
 
 ### Health Indicators
 
-Each node displays a status badge:
+Each [node](/glossary#node) displays a status badge:
 
-- **🟢 ONLINE**: Node is healthy and accepting jobs
-- **🔴 OFFLINE**: Node unreachable or not responding to health checks
+- **🟢 ONLINE**: Node is healthy and accepting [jobs](/glossary#job)
+- **🔴 OFFLINE**: Node unreachable or not responding to [health checks](/glossary#health-check)
 - **🟡 DEGRADED**: Node online but experiencing high load or errors
 
 ### Active Jobs Per Node
@@ -174,10 +178,10 @@ Track workload distribution across your encoding cluster:
 
 ### Load Distribution
 
-Shows how jobs are distributed across nodes:
+Shows how [jobs](/glossary#job) are distributed across [nodes](/glossary#node):
 
-- **Main node**: Primary encoding node (usually GPU-accelerated)
-- **Linked nodes**: Worker nodes for parallel processing
+- **[Main node](/glossary#main-node)**: Primary [encoding](/glossary#encoding) node (usually [GPU](/glossary#gpu)-accelerated)
+- **[Child nodes](/glossary#child-node)**: Worker nodes for parallel processing
 - **Balanced**: Jobs distributed evenly based on node capacity
 - **Overloaded**: One node handling disproportionate workload (>2x average)
 
@@ -203,49 +207,49 @@ Shows encoding activity over the past month:
 
 ### Failed Jobs
 
-Track encoding failures to identify problematic files:
+Track [encoding](/glossary#encoding) failures to identify problematic files:
 
 | File | Reason | Node | Date |
 |------|--------|------|------|
 | `Corrupted.mkv` | File validation failed | Main | Jan 10 |
 | `LargeFile.mkv` | Insufficient disk space | Node-170 | Jan 09 |
-| `BadCodec.avi` | Unsupported codec | Main | Jan 08 |
+| `BadCodec.avi` | Unsupported [codec](/glossary#codec) | Main | Jan 08 |
 
 **Failure Categories:**
 
 - **Corrupted File**: Source file is damaged or incomplete (40%)
 - **Disk Space**: Insufficient storage for output file (25%)
-- **Codec Issues**: Unsupported or proprietary codec (20%)
-- **FFmpeg Errors**: Encoding process crashed (10%)
+- **Codec Issues**: Unsupported or proprietary [codec](/glossary#codec) (20%)
+- **[FFmpeg](/glossary#ffmpeg) Errors**: Encoding process crashed (10%)
 - **Other**: Miscellaneous errors (5%)
 
 <Info>
-**Auto-Retry**: Failed jobs are automatically retried up to 3 times with different encoding settings before being marked as permanently failed.
+**[Auto-Retry](/glossary#self-healing)**: Failed [jobs](/glossary#job) are automatically retried up to 3 times with different encoding settings before being marked as permanently failed.
 </Info>
 
 ## Performance Metrics
 
 ### Average Encode Speed (fps)
 
-Frames per second processed by the encoding engine:
+Frames per second processed by the [encoding](/glossary#encoding) engine:
 
 | Hardware | Typical Speed | Use Case |
 |----------|---------------|----------|
-| **NVIDIA GPU** | 40-80 fps | HEVC/AV1 encoding |
-| **Intel QSV** | 20-40 fps | HEVC encoding |
+| **NVIDIA [GPU](/glossary#gpu)** | 40-80 fps | [HEVC](/glossary#codec)/AV1 encoding |
+| **Intel [QSV](/glossary#hardware-acceleration)** | 20-40 fps | HEVC encoding |
 | **AMD GPU** | 25-50 fps | HEVC encoding |
 | **CPU-only** | 3-8 fps | Fallback for unsupported hardware |
 
 **Factors Affecting Speed:**
 
-1. **Resolution**: 4K files encode slower than 1080p (~60% speed reduction)
-2. **Codec**: AV1 is ~40% slower than HEVC, HEVC is ~30% slower than H.264
-3. **Bitrate**: Higher bitrate source files take longer to process
-4. **Concurrent Jobs**: Multiple jobs share GPU/CPU resources
+1. **[Resolution](/glossary#resolution)**: 4K files encode slower than 1080p (~60% speed reduction)
+2. **[Codec](/glossary#codec)**: AV1 is ~40% slower than HEVC, HEVC is ~30% slower than H.264
+3. **[Bitrate](/glossary#bitrate)**: Higher bitrate source files take longer to process
+4. **Concurrent Jobs**: Multiple [jobs](/glossary#job) share GPU/CPU resources
 
 ### Storage Saved
 
-Total space saved by re-encoding to HEVC/AV1:
+Total space saved by re-[encoding](/glossary#encoding) to [HEVC](/glossary#codec)/AV1:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -258,11 +262,11 @@ Total space saved by re-encoding to HEVC/AV1:
 └─────────────────────────────────────────────┘
 ```
 
-**Savings by Codec Conversion:**
+**Savings by [Codec](/glossary#codec) Conversion:**
 
 | From → To | Avg Savings | Quality Impact |
 |-----------|-------------|----------------|
-| H.264 → HEVC | 40-50% | Visually identical |
+| H.264 → [HEVC](/glossary#codec) | 40-50% | Visually identical (same [CRF](/glossary#crf)) |
 | H.264 → AV1 | 50-60% | Slightly better |
 | HEVC → AV1 | 20-30% | Marginal improvement |
 
@@ -292,10 +296,10 @@ Efficiency:       2.96x (close to ideal 3.0x)
 
 ### Codec Distribution
 
-See `/insights/codecs` endpoint for codec usage analytics:
+See `/insights/codecs` endpoint for [codec](/glossary#codec) usage analytics:
 
-- Pie chart showing H.264, HEVC, AV1, VP9 distribution
-- Percentage of library using each codec
+- Pie chart showing H.264, [HEVC](/glossary#codec), AV1, VP9 distribution
+- Percentage of [library](/glossary#library) using each codec
 - Helps identify remaining H.264 files to convert
 
 ### Savings Trend (30-Day)
@@ -304,38 +308,38 @@ Track space savings over time:
 
 - Daily savings bar chart
 - Cumulative savings line graph
-- Identify encoding velocity (GB saved per day)
+- Identify [encoding](/glossary#encoding) velocity (GB saved per day)
 
 ### Node Performance Comparison
 
-Compare encoding efficiency across nodes:
+Compare [encoding](/glossary#encoding) efficiency across [nodes](/glossary#node):
 
 | Node | Jobs | Success Rate | Saved GB | Throughput |
 |------|------|--------------|----------|------------|
 | Main (NVIDIA) | 523 | 98.7% | 250.0 | 15.3/hr |
-| Secondary (QSV) | 412 | 97.8% | 188.3 | 11.2/hr |
+| Secondary ([QSV](/glossary#hardware-acceleration)) | 412 | 97.8% | 188.3 | 11.2/hr |
 | Backup (CPU) | 312 | 96.5% | 50.0 | 5.8/hr |
 
 **Use Cases:**
 
 - Identify underperforming nodes
-- Compare GPU vs CPU efficiency
-- Plan hardware upgrades
+- Compare [GPU](/glossary#gpu) vs CPU efficiency
+- Plan [hardware acceleration](/glossary#hardware-acceleration) upgrades
 
 ## Health Checks
 
-The system continuously monitors:
+The system continuously monitors (see [health check](/glossary#health-check)):
 
 | Check | Healthy | Warning | Critical |
 |-------|---------|---------|----------|
 | **CPU Load** | <1.5x cores | 1.5-2.0x cores | >2.0x cores |
 | **Memory** | <85% | 85-95% | >95% |
-| **Database** | Connected | - | Disconnected |
-| **Queue** | 0 stuck jobs | 1-5 stuck | >5 stuck |
-| **Nodes** | All online | 1+ offline | Main offline |
+| **[Database](/glossary#database)** | Connected | - | Disconnected |
+| **[Queue](/glossary#queue)** | 0 stuck [jobs](/glossary#job) | 1-5 stuck | >5 stuck |
+| **[Nodes](/glossary#node)** | All online | 1+ offline | [Main](/glossary#main-node) offline |
 
 <Check>
-**Overall Status**: Aggregated from all health checks. Dashboard displays:
+**Overall Status**: Aggregated from all [health checks](/glossary#health-check). Dashboard displays:
 - **HEALTHY** (green): All checks passing
 - **WARNING** (yellow): One or more warnings
 - **CRITICAL** (red): One or more critical failures
@@ -365,8 +369,8 @@ curl http://localhost:3100/nodes
 
 **Possible causes:**
 
-1. Library paths not configured in database
-2. NFS mounts not accessible
+1. [Library](/glossary#library) paths not configured in [database](/glossary#database)
+2. [NFS](/glossary#nfs) mounts not accessible
 3. Permission issues reading disk stats
 
 **Solution:**
@@ -383,9 +387,9 @@ df -h /mnt/media/*
 
 **Possible causes:**
 
-1. Job actually stalled (no FFmpeg progress updates)
+1. [Job](/glossary#job) actually stalled (no [FFmpeg](/glossary#ffmpeg) progress updates)
 2. WebSocket connection lost (no real-time updates)
-3. Node crashed mid-encode
+3. [Node](/glossary#node) crashed mid-[encode](/glossary#encoding)
 
 **Solution:**
 
