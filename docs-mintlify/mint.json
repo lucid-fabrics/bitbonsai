@@ -1,0 +1,64 @@
+{
+  "name": "BitBonsai",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#10b981",
+    "light": "#34d399",
+    "dark": "#047857",
+    "background": {
+      "dark": "#0f1419"
+    }
+  },
+  "topbar": {
+    "style": "default"
+  },
+  "topbarLinks": [
+    {
+      "name": "Website",
+      "url": "https://bitbonsai.io"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://app.bitbonsai.io"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Installation",
+      "pages": ["installation/docker", "installation/unraid", "installation/requirements"]
+    },
+    {
+      "group": "User Guide",
+      "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
+    },
+    {
+      "group": "Advanced",
+      "pages": ["advanced/multi-node", "advanced/codec-selection", "advanced/troubleshooting"]
+    },
+    {
+      "group": "Development",
+      "pages": ["development/website", "development/license-api"]
+    },
+    {
+      "group": "Support",
+      "pages": ["faq"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/bitbonsai/bitbonsai",
+    "discord": "https://discord.gg/bitbonsai"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  }
+}
