@@ -12,8 +12,7 @@
     "background": {
       "dark": "#1a1a1a",
       "light": "#ffffff"
-    },
-    "accent": "#f9be03"
+    }
   },
   "topbar": {
     "style": "default"
