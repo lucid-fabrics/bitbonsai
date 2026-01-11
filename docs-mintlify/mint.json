@@ -43,7 +43,7 @@
       "group": "Advanced",
       "pages": [
         "advanced/gpu-acceleration",
-        "advanced/multi-node-setup",
+        "advanced/multi-node",
         "advanced/codec-selection",
         "advanced/troubleshooting"
       ]
