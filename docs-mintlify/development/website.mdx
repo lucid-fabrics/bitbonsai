@@ -1,0 +1,400 @@
+---
+title: 'Website (Marketing Site)'
+description: 'Angular standalone application for bitbonsai.io'
+icon: 'globe'
+---
+
+## Overview
+
+<CardGroup cols={2}>
+  <Card title="Type" icon="code">
+    Static Angular website
+  </Card>
+  <Card title="Framework" icon="angular">
+    Angular 20 (standalone)
+  </Card>
+  <Card title="Domain" icon="link">
+    bitbonsai.io
+  </Card>
+  <Card title="Port (dev)" icon="network-wired">
+    4201
+  </Card>
+</CardGroup>
+
+---
+
+## Architecture
+
+```
+apps/website/
+├── src/
+│   ├── app/
+│   │   ├── pages/
+│   │   │   ├── home/              # Landing page
+│   │   │   ├── pricing/           # Pricing & tiers (API integration)
+│   │   │   ├── features/          # Feature showcase
+│   │   │   ├── about/             # About us
+│   │   │   └── contact/           # Contact form
+│   │   ├── components/
+│   │   │   ├── header/            # Navigation
+│   │   │   ├── footer/            # Footer
+│   │   │   └── shared/            # Reusable components
+│   │   ├── services/
+│   │   │   └── pricing-api.service.ts  # License-API integration
+│   │   └── app.routes.ts          # Route configuration
+│   ├── environments/
+│   │   ├── environment.ts         # Dev config
+│   │   └── environment.prod.ts    # Prod config
+│   └── styles.scss                # Global styles
+└── public/
+    ├── favicon.ico
+    └── robots.txt
+```
+
+---
+
+## License-API Integration
+
+Website fetches live pricing data from the license-api backend.
+
+<Tabs>
+  <Tab title="Development">
+    ```typescript
+    apiUrl: 'http://localhost:3200/api'
+    ```
+  </Tab>
+  <Tab title="Production">
+    ```typescript
+    apiUrl: 'https://api.bitbonsai.io/api'
+    ```
+  </Tab>
+</Tabs>
+
+### Pricing Endpoint
+
+**GET /api/pricing** - Public endpoint (no auth required)
+
+<CodeGroup>
+```typescript Response
+PricingTier[] = [
+  {
+    id: "cm3abc123",
+    name: "FREE",
+    displayName: "Free",
+    description: "Perfect for hobbyists",
+    maxNodes: 1,
+    maxConcurrentJobs: 2,
+    priceMonthly: 0,
+    priceYearly: null,
+    isActive: true
+  }
+  // ... more tiers
+]
+```
+
+```typescript Service Usage
+import { PricingApiService } from '@services/pricing-api.service';
+
+export class PricingComponent {
+  tiers$ = this.pricingApi.getActiveTiers();
+
+  constructor(private pricingApi: PricingApiService) {}
+}
+```
+</CodeGroup>
+
+<Note>
+API automatically converts prices from cents to dollars for display.
+</Note>
+
+---
+
+## Development
+
+<Steps>
+  <Step title="Start Dev Server">
+    ```bash
+    nx serve website
+    ```
+    Access at **http://localhost:4201**
+  </Step>
+
+  <Step title="Environment Setup">
+    Create `src/environments/environment.ts`:
+    ```typescript
+    export const environment = {
+      production: false,
+      apiUrl: 'http://localhost:3200/api',
+      licenseApiUrl: 'http://localhost:3200/api'
+    };
+    ```
+  </Step>
+
+  <Step title="Watch Mode">
+    ```bash
+    nx serve website --open
+    ```
+    Opens browser automatically with live reload
+  </Step>
+</Steps>
+
+---
+
+## Build & Deploy
+
+### Production Build
+
+```bash
+# Clean build
+nx reset
+nx build website --configuration=production
+
+# Output: dist/apps/website
+```
+
+### Deployment Platforms
+
+<CardGroup cols={2}>
+  <Card title="Netlify" icon="n">
+    **Recommended**
+
+    Drag & drop `dist/apps/website`
+  </Card>
+  <Card title="Vercel" icon="v">
+    CLI or GitHub integration
+  </Card>
+  <Card title="AWS S3" icon="aws">
+    S3 + CloudFront for CDN
+  </Card>
+  <Card title="GitHub Pages" icon="github">
+    Free tier option
+  </Card>
+</CardGroup>
+
+### Build Configuration
+
+**Netlify/Vercel Settings:**
+- **Build command:** `npx nx build website --configuration=production`
+- **Publish directory:** `dist/apps/website`
+
+---
+
+## Pages
+
+### Home (`/`)
+
+<AccordionGroup>
+  <Accordion title="Components">
+    - Hero section with CTA buttons
+    - Feature highlights (cards)
+    - Screenshots/demo video
+    - Testimonials
+    - Pricing preview
+    - Footer CTA
+  </Accordion>
+
+  <Accordion title="Key Features">
+    - Responsive design (mobile-first)
+    - Scroll animations
+    - Video background
+    - Newsletter signup
+  </Accordion>
+</AccordionGroup>
+
+### Pricing (`/pricing`)
+
+**Dynamic pricing table** fetched from license-api:
+
+<Card title="Features" icon="dollar-sign">
+  - Monthly/yearly toggle
+  - Feature comparison matrix
+  - CTA buttons (Patreon/Stripe)
+  - Real-time pricing data
+</Card>
+
+**Component:** `apps/website/src/app/pages/pricing/pricing.component.ts`
+
+---
+
+## Styling
+
+### Tailwind CSS
+
+**Custom Theme:**
+```typescript
+theme: {
+  extend: {
+    colors: {
+      primary: '#3b82f6',    // Blue
+      secondary: '#10b981',  // Green
+      accent: '#f59e0b'      // Orange
+    }
+  }
+}
+```
+
+**Usage:**
+```html
+<button class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90">
+  Get Started
+</button>
+```
+
+---
+
+## Assets
+
+### Favicon
+
+**Location:** `apps/website/public/`
+
+<CardGroup cols={3}>
+  <Card title="Legacy" icon="file">
+    favicon.ico
+  </Card>
+  <Card title="Modern" icon="file-code">
+    favicon.svg
+  </Card>
+  <Card title="Apple" icon="apple">
+    apple-touch-icon.png (180x180)
+  </Card>
+</CardGroup>
+
+### Images
+
+**Location:** `apps/website/src/assets/images/`
+
+**Naming convention:**
+- `screenshot-{feature}.png` (e.g., `screenshot-queue.png`)
+- `logo-{variant}.svg` (e.g., `logo-dark.svg`)
+- `hero-background.jpg`
+
+<Tip>
+Use WebP for photos, SVG for icons/logos, and lazy loading: `<img loading="lazy">`
+</Tip>
+
+---
+
+## SEO
+
+### Meta Tags
+
+```html
+<head>
+  <title>BitBonsai - Professional Media Automation</title>
+  <meta name="description" content="Distributed video transcoding with TRUE RESUME">
+  <meta name="keywords" content="video encoding, HEVC, AV1, transcoding">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="BitBonsai - Media Automation">
+  <meta property="og:image" content="https://bitbonsai.io/og-image.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+</head>
+```
+
+### robots.txt
+
+```txt
+User-agent: *
+Allow: /
+
+Sitemap: https://bitbonsai.io/sitemap.xml
+```
+
+---
+
+## Testing
+
+<Tabs>
+  <Tab title="Unit Tests">
+    ```bash
+    # Run tests
+    nx test website
+
+    # Watch mode
+    nx test website --watch
+
+    # Coverage
+    nx test website --coverage
+    ```
+  </Tab>
+
+  <Tab title="E2E Tests">
+    ```bash
+    # Playwright tests
+    nx e2e website-e2e
+
+    # Specific test
+    nx e2e website-e2e --spec="pricing.spec.ts"
+    ```
+  </Tab>
+</Tabs>
+
+**Example test:**
+```typescript
+test('should load pricing tiers from API', async ({ page }) => {
+  await page.goto('/pricing');
+  await expect(page.locator('.tier-card')).toHaveCount(4);
+  await expect(page.locator('text=Free')).toBeVisible();
+});
+```
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="API Connection Errors" icon="triangle-exclamation">
+    **Symptom:** "Failed to load pricing data"
+
+    **Fix:**
+    1. Check license-api is running: `nx serve license-api`
+    2. Verify API URL in `environment.ts`
+    3. Check CORS settings in license-api
+  </Accordion>
+
+  <Accordion title="Build Failures" icon="circle-xmark">
+    **Symptom:** `nx build website` fails
+
+    **Fix:**
+    ```bash
+    # Clear cache
+    nx reset
+
+    # Reinstall dependencies
+    rm -rf node_modules package-lock.json
+    npm install
+
+    # Rebuild
+    nx build website
+    ```
+  </Accordion>
+
+  <Accordion title="Favicon Not Showing" icon="image">
+    **Symptom:** Browser shows default favicon
+
+    **Fix:**
+    1. Verify `public/favicon.ico` exists
+    2. Clear browser cache (Ctrl+Shift+R)
+    3. Check `index.html` links:
+    ```html
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="License-API" icon="key" href="/development/license-api">
+    Backend API integration details
+  </Card>
+  <Card title="Main Backend" icon="server" href="/development/backend">
+    BitBonsai transcoding backend
+  </Card>
+</CardGroup>

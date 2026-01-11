@@ -44,6 +44,10 @@
       "pages": ["advanced/multi-node", "advanced/codec-selection", "advanced/troubleshooting"]
     },
     {
+      "group": "Development",
+      "pages": ["development/website", "development/license-api"]
+    },
+    {
       "group": "Support",
       "pages": ["faq"]
     }

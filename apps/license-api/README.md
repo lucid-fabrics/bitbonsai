@@ -1,14 +1,29 @@
-# License API
+# BitBonsai License API
 
-BitBonsai license management and payment processing API.
+> **License management, pricing, and subscription backend for BitBonsai**
+
+NestJS backend providing licensing, pricing data, and subscription management via Stripe/Patreon/Ko-fi integration.
+
+---
 
 ## Overview
+
+| Property | Value |
+|----------|-------|
+| **Type** | NestJS REST API |
+| **Framework** | NestJS 11 |
+| **Database** | PostgreSQL 15+ |
+| **Domain** | api.bitbonsai.io |
+| **Port** | 3200 (dev/prod) |
 
 The License API handles:
 - **License key generation and validation** (Ed25519 cryptographic signatures)
 - **Payment provider webhooks** (Stripe, Patreon, Ko-fi)
 - **License tier management** (FREE, PATREON_*, COMMERCIAL_*)
+- **Pricing API** (public endpoint for website integration)
 - **Email notifications** (license delivery via Resend)
+
+---
 
 ## Architecture
 
@@ -40,6 +55,85 @@ The License API handles:
 │  └────────────────────────────────┘               │
 └─────────────────────────────────────────────────────┘
 ```
+
+---
+
+## API Endpoints
+
+### Public Endpoints
+
+#### GET /api/pricing
+
+**Description:** Fetch active pricing tiers (public, no auth)
+
+**Rate Limit:** 100 requests/60s per IP
+
+**Response:**
+```typescript
+PricingTier[] = [
+  {
+    id: "cm3abc123",
+    name: "FREE",
+    displayName: "Free",
+    description: "Perfect for hobbyists",
+    maxNodes: 1,
+    maxConcurrentJobs: 2,
+    priceMonthly: 0,
+    priceYearly: null,
+    stripePriceIdMonthly: null,
+    stripePriceIdYearly: null,
+    patreonTierId: null,
+    isActive: true
+  }
+  // ... more tiers
+]
+```
+
+**CORS:** Enabled for `bitbonsai.io`, `app.bitbonsai.io`
+
+**Usage:**
+```bash
+curl https://api.bitbonsai.io/api/pricing
+```
+
+### Admin Endpoints (Protected)
+
+**Authentication:** API Key in `X-API-KEY` header
+
+#### POST /api/admin/licenses
+
+**Description:** Generate new license
+
+**Headers:**
+```
+X-API-KEY: your-admin-api-key
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "tierId": "cm3def456",
+  "expiresAt": "2026-12-31T23:59:59Z"  // optional
+}
+```
+
+**Response:**
+```json
+{
+  "id": "cm4xyz789",
+  "licenseKey": "BITBONSAI-PAT-...",
+  "email": "user@example.com",
+  "tier": {
+    "name": "PATREON_PRO",
+    "displayName": "Patreon Pro"
+  },
+  "status": "ACTIVE"
+}
+```
+
+---
 
 ## Ed25519 Keypair Management
 
@@ -205,20 +299,109 @@ KOFI_VERIFICATION_TOKEN=...
 RESEND_API_KEY=re_...
 ```
 
-## Development
+---
+
+## Development Setup
+
+### Prerequisites
+
+- PostgreSQL 15+ running on `localhost:5432`
+- Node.js 20.x LTS
+- Stripe/Patreon/Ko-fi accounts (test mode keys)
+
+### Database Setup
 
 ```bash
-# Install dependencies
-npm install
+# 1. Start PostgreSQL (if not running)
+docker run -d \
+  --name bitbonsai-postgres \
+  -p 5432:5432 \
+  -e POSTGRES_DB=bitbonsai_licenses \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  postgres:15
 
-# Run migrations
+# 2. Generate Prisma Client
+cd apps/license-api
+npx prisma generate
+
+# 3. Run migrations
 npx prisma migrate dev
 
-# Start dev server
-npm run dev
+# 4. (Optional) Seed pricing data
+npx prisma db seed
+```
 
-# Run tests
-npm test
+### Development Environment
+
+Create `apps/license-api/.env.local`:
+
+```bash
+# Database
+LICENSE_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bitbonsai_licenses"
+
+# Encryption (32 bytes hex = 64 characters)
+ENCRYPTION_KEY="$(openssl rand -hex 32)"
+
+# Admin API Key
+ADMIN_API_KEY="$(openssl rand -base64 32)"
+
+# Stripe (test mode)
+STRIPE_SECRET_KEY="sk_test_51A2B3C..."
+STRIPE_WEBHOOK_SECRET="whsec_abc123..."
+STRIPE_PRODUCT_ID="prod_test123"
+
+# Patreon (test mode)
+PATREON_CLIENT_ID="test_client_id"
+PATREON_CLIENT_SECRET="test_client_secret"
+PATREON_WEBHOOK_SECRET="test_webhook_secret"
+
+# Ko-fi
+KOFI_VERIFICATION_TOKEN="test_token"
+
+# Email (Resend API)
+RESEND_API_KEY="re_dummy_for_dev"
+
+# Server
+LICENSE_API_PORT=3200
+NODE_ENV=development
+```
+
+**Generate secrets:**
+```bash
+# Encryption key (64 hex chars)
+openssl rand -hex 32
+
+# API key (base64)
+openssl rand -base64 32
+```
+
+### Start Dev Server
+
+```bash
+# Serve license-api (port 3200)
+nx serve license-api
+
+# Watch mode with live reload
+nx serve license-api --watch
+```
+
+**Access:** http://localhost:3200/api/pricing
+
+### Testing
+
+```bash
+# Unit tests
+nx test license-api
+
+# Watch mode
+nx test license-api --watch
+
+# Coverage
+nx test license-api --coverage
+
+# E2E tests (requires PostgreSQL)
+nx e2e license-api-e2e
 ```
 
 ## Deployment
@@ -278,8 +461,86 @@ Payload (decoded):
 }
 ```
 
+---
+
+## Troubleshooting
+
+### Database Connection Errors
+
+**Symptom:** `Can't reach database server`
+
+**Fix:**
+```bash
+# Check PostgreSQL is running
+docker ps | grep postgres
+
+# Test connection
+psql -h localhost -U postgres -d bitbonsai_licenses
+
+# Verify DATABASE_URL in .env.local
+cat apps/license-api/.env.local | grep DATABASE_URL
+```
+
+### Encryption Key Errors
+
+**Symptom:** `ENCRYPTION_KEY must be 64 hex characters`
+
+**Fix:**
+```bash
+# Generate valid key
+openssl rand -hex 32
+
+# Update .env.local
+echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> apps/license-api/.env.local
+```
+
+### Build Errors (Missing Prisma Client)
+
+**Symptom:** `Cannot find module '@prisma/client'`
+
+**Fix:**
+```bash
+cd apps/license-api
+npx prisma generate
+nx build license-api
+```
+
+### Webhook Signature Verification Failed
+
+**Symptom:** `Webhook signature verification failed`
+
+**Fix:**
+1. Check webhook secret matches provider dashboard
+2. Test locally with provider CLI:
+   ```bash
+   # Stripe
+   stripe listen --forward-to localhost:3200/api/stripe/webhook
+   ```
+3. Use signing secret from CLI output
+
+---
+
+## Related Documentation
+
+- [Website Integration](../website/README.md)
+- [Main Backend](../backend/README.md)
+- [Main Project README](../../README.md)
+- [CLAUDE.md - License API Section](../../CLAUDE.md#license-api)
+
+---
+
 ## Support
 
 For issues or questions:
-- **GitHub Issues:** https://github.com/bitbonsai/bitbonsai/issues
+- **GitHub Issues:** https://github.com/lucidfabrics/bitbonsai/issues
 - **Email:** support@bitbonsai.io
+
+---
+
+<div align="center">
+
+**License & subscription management for BitBonsai**
+
+[API Health](https://api.bitbonsai.io/health) • [Docs Home](../../docs/README.md) • [Main README](../../README.md)
+
+</div>
