@@ -59,7 +59,7 @@ rsync -az --delete \
 
 # Sync critical config files that are mounted in containers
 rsync -az \
-    ./proxy.docker.conf.json \
+    ./proxy.conf.json \
     ./angular.json \
     ./docker-compose.unraid.yml \
     ./Dockerfile.dev \
