@@ -1,5 +1,6 @@
 @use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
+@use 'sass:color';
 
 .bb-button {
   @include button-reset;
@@ -35,7 +36,7 @@
     color: $text-white;
 
     &:hover:not(:disabled) {
-      background: lighten($danger, 10%);
+      background: color.adjust($danger, $lightness: 10%);
     }
   }
 
