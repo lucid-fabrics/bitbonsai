@@ -4,9 +4,6 @@
   "scripts": {
     "prepare": "husky"
   },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  },
   "private": false,
   "dependencies": {
     "@angular/animations": "^20.3.3",
