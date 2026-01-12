@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AuditModule } from '../audit/audit.module';
+import { AuthModule } from '../auth/auth.module';
 import { AppConfigModule } from '../config/app-config.module';
 import { validate } from '../config/env.validation';
 import { CryptoModule } from '../crypto/crypto.module';
@@ -47,6 +48,7 @@ import { WebhookModule } from '../webhook/webhook.module';
     HealthModule,
     AuditModule,
     AnalyticsModule,
+    AuthModule,
     LicenseModule,
     PricingModule,
     PromoModule,

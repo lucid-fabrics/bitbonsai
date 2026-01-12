@@ -15,10 +15,12 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { Request } from 'express';
 import Stripe from 'stripe';
+import { Public } from '../auth/decorators/public.decorator';
 import { PricingService } from '../pricing/pricing.service';
 import { SecurityLoggerService } from '../security/security-logger.service';
 import { WebhookService } from './_services/webhook.service';
 
+@Public()
 @ApiExcludeController()
 @Controller('webhooks/stripe')
 @UseGuards(ThrottlerGuard)

@@ -1,4 +1,5 @@
 import { Route } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -33,5 +34,16 @@ export const appRoutes: Route[] = [
     path: 'success',
     loadComponent: () =>
       import('./pages/success/success.component').then((m) => m.SuccessComponent),
+  },
+  {
+    path: 'admin/login',
+    loadComponent: () =>
+      import('./pages/admin/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'admin/dashboard',
+    loadComponent: () =>
+      import('./pages/admin/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    canActivate: [authGuard],
   },
 ];

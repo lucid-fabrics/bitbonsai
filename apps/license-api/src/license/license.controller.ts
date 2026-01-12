@@ -10,6 +10,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator';
 import { CryptoService } from '../crypto/crypto.service';
 import { AdminApiKeyGuard } from '../guards/admin-api-key.guard';
 import {
@@ -45,6 +46,7 @@ export class LicenseController {
     return this.mapToResponse(license);
   }
 
+  @Public()
   @Post('verify')
   @ApiOperation({ summary: 'Verify a license key' })
   @ApiResponse({ status: 200, description: 'Verification result', type: VerifyLicenseResponseDto })
@@ -87,6 +89,7 @@ export class LicenseController {
     };
   }
 
+  @Public()
   @Get('public-key')
   @ApiOperation({ summary: 'Get the public key for offline license verification' })
   @ApiResponse({ status: 200, description: 'Public key in PEM format' })

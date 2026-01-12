@@ -13,6 +13,7 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { timingSafeEqual } from 'crypto';
 import { Request } from 'express';
+import { Public } from '../auth/decorators/public.decorator';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityLoggerService } from '../security/security-logger.service';
@@ -39,6 +40,7 @@ interface KofiWebhookPayload {
   data: string;
 }
 
+@Public()
 @ApiExcludeController()
 @Controller('webhooks/kofi')
 @UseGuards(ThrottlerGuard)

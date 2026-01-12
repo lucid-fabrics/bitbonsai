@@ -1,0 +1,125 @@
+<div class="dashboard">
+  <header class="dashboard-header">
+    <h1>Admin Dashboard</h1>
+    <div class="user-info">
+      @if (currentUser) {
+        <span>{{ currentUser.name }} ({{ currentUser.email }})</span>
+        <button (click)="logout()" class="btn-logout">Logout</button>
+      }
+    </div>
+  </header>
+
+  <div class="dashboard-content">
+    @if (error()) {
+      <div class="error-message">{{ error() }}</div>
+    }
+
+    <div class="actions">
+      <button (click)="showCreateForm.set(!showCreateForm())" class="btn-primary">
+        {{ showCreateForm() ? 'Cancel' : 'Create New Admin' }}
+      </button>
+    </div>
+
+    @if (showCreateForm()) {
+      <div class="create-form">
+        <h2>Create New Admin</h2>
+        <form (ngSubmit)="createAdmin()">
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input
+              type="text"
+              id="name"
+              [value]="newAdminName()"
+              (input)="newAdminName.set($any($event.target).value)"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              [value]="newAdminEmail()"
+              (input)="newAdminEmail.set($any($event.target).value)"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              [value]="newAdminPassword()"
+              (input)="newAdminPassword.set($any($event.target).value)"
+              required
+              minlength="8"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="role">Role</label>
+            <select
+              id="role"
+              [value]="newAdminRole()"
+              (change)="newAdminRole.set($any($event.target).value)"
+            >
+              <option value="ADMIN">Admin</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+            </select>
+          </div>
+
+          <button type="submit" [disabled]="loading()" class="btn-submit">
+            {{ loading() ? 'Creating...' : 'Create Admin' }}
+          </button>
+        </form>
+      </div>
+    }
+
+    <div class="admins-list">
+      <h2>Admin Users</h2>
+
+      @if (loading()) {
+        <div class="loading">Loading...</div>
+      }
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (admin of admins(); track admin.id) {
+            <tr [class.inactive]="!admin.isActive">
+              <td>{{ admin.name }}</td>
+              <td>{{ admin.email }}</td>
+              <td>{{ admin.role }}</td>
+              <td>
+                <span class="status" [class.active]="admin.isActive">
+                  {{ admin.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>{{ admin.lastLoginAt ? (admin.lastLoginAt | date: 'short') : 'Never' }}</td>
+              <td>
+                <button
+                  (click)="toggleAdminStatus(admin.id)"
+                  class="btn-toggle"
+                  [disabled]="admin.id === currentUser?.id"
+                >
+                  {{ admin.isActive ? 'Deactivate' : 'Activate' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

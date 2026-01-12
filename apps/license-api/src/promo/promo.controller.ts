@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Public } from '../auth/decorators/public.decorator';
 import { AdminApiKeyGuard } from '../security/admin-api-key.guard';
 import { CreatePromoCodeDto, PromoService, UpdatePromoCodeDto } from './promo.service';
 
@@ -62,6 +63,7 @@ export class PromoAdminController {
 export class PromoPublicController {
   constructor(private readonly promoService: PromoService) {}
 
+  @Public()
   @Post('validate')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   async validatePromoCode(@Body() body: { code: string }) {
