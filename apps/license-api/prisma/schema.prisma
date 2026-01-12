@@ -235,3 +235,26 @@ model EmailTemplate {
   @@index([key])
   @@map("email_templates")
 }
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdBy    String?   @map("created_by")
+
+  @@index([email])
+  @@index([isActive])
+  @@map("admin_users")
+}

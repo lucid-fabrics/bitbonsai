@@ -17,6 +17,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import { Request } from 'express';
+import { Public } from '../auth/decorators/public.decorator';
 import { SecurityLoggerService } from '../security/security-logger.service';
 import { WebhookService } from './_services/webhook.service';
 
@@ -46,6 +47,7 @@ interface PatreonWebhookPayload {
   }>;
 }
 
+@Public()
 @ApiExcludeController()
 @Controller('webhooks/patreon')
 @UseGuards(ThrottlerGuard)

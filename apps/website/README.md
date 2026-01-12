@@ -1,6 +1,6 @@
 # BitBonsai Website
 
-> **Static marketing website for bitbonsai.io**
+> **Static marketing website for bitbonsai.app**
 
 Angular standalone application serving as the public-facing marketing site for BitBonsai.
 
@@ -12,7 +12,7 @@ Angular standalone application serving as the public-facing marketing site for B
 |----------|-------|
 | **Type** | Static Angular website |
 | **Framework** | Angular 20 (standalone) |
-| **Domain** | bitbonsai.io |
+| **Domain** | bitbonsai.app |
 | **Port (dev)** | 4201 |
 | **Deploy** | Static files (Netlify/Vercel/S3) |
 
@@ -62,7 +62,7 @@ Website fetches live pricing data from license-api:
 | Environment | API URL |
 |-------------|---------|
 | **Dev** | http://localhost:3200/api |
-| **Prod** | https://api.bitbonsai.io/api |
+| **Prod** | https://api.bitbonsai.app/api |
 
 **Key Endpoint:**
 ```typescript
@@ -177,7 +177,7 @@ Set in hosting platform:
 
 | Variable | Dev | Prod |
 |----------|-----|------|
-| `API_URL` | http://localhost:3200/api | https://api.bitbonsai.io/api |
+| `API_URL` | http://localhost:3200/api | https://api.bitbonsai.app/api |
 
 **Netlify/Vercel:**
 - Build command: `npx nx build website --configuration=production`
@@ -354,7 +354,7 @@ convert favicon.svg -resize 16x16 favicon-16x16.png
   <!-- Open Graph -->
   <meta property="og:title" content="BitBonsai - Media Automation">
   <meta property="og:description" content="Professional video transcoding platform">
-  <meta property="og:image" content="https://bitbonsai.io/og-image.png">
+  <meta property="og:image" content="https://bitbonsai.app/og-image.png">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
@@ -370,7 +370,7 @@ convert favicon.svg -resize 16x16 favicon-16x16.png
 User-agent: *
 Allow: /
 
-Sitemap: https://bitbonsai.io/sitemap.xml
+Sitemap: https://bitbonsai.app/sitemap.xml
 ```
 
 ### sitemap.xml
@@ -402,7 +402,7 @@ ng add @ng-toolkit/universal
 ### Plausible (Privacy-friendly alternative)
 
 ```html
-<script defer data-domain="bitbonsai.io" src="https://plausible.io/js/script.js"></script>
+<script defer data-domain="bitbonsai.app" src="https://plausible.io/js/script.js"></script>
 ```
 
 ---
@@ -519,6 +519,6 @@ docs(website): update deployment guide
 
 **Marketing website for BitBonsai**
 
-[Live Site](https://bitbonsai.io) • [Docs Home](../../docs/README.md) • [License-API](../license-api/README.md)
+[Live Site](https://bitbonsai.app) • [Docs Home](../../docs/README.md) • [License-API](../license-api/README.md)
 
 </div>

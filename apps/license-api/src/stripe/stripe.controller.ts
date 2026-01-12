@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Logger, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Public } from '../auth/decorators/public.decorator';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { StripeService } from './stripe.service';
 
@@ -12,6 +13,7 @@ export class StripeController {
 
   constructor(private readonly stripeService: StripeService) {}
 
+  @Public()
   @Post('checkout')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({ summary: 'Create Stripe checkout session for subscription' })

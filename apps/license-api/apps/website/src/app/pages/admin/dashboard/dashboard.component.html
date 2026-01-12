@@ -1,0 +1,85 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <div>
+      <h1>Admin Dashboard</h1>
+      @if (authService.currentUser(); as user) {
+        <p>Welcome, {{ user.name }} ({{ user.role }})</p>
+      }
+    </div>
+    <button (click)="authService.logout()" class="logout-btn">Logout</button>
+  </header>
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+
+  <section class="create-admin-section">
+    <h2>Create New Admin</h2>
+    <form (ngSubmit)="createAdmin()" class="create-admin-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="newAdminEmail" name="email" required />
+        </div>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" [(ngModel)]="newAdminName" name="name" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" [(ngModel)]="newAdminPassword" name="password" required />
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select [(ngModel)]="newAdminRole" name="role">
+            <option [value]="AdminRole.ADMIN">Admin</option>
+            <option [value]="AdminRole.SUPER_ADMIN">Super Admin</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="submit-btn">Create Admin</button>
+    </form>
+  </section>
+
+  <section class="admins-list-section">
+    <h2>Admin Users</h2>
+    @if (loading()) {
+      <p>Loading...</p>
+    } @else {
+      <table class="admins-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (admin of admins(); track admin.id) {
+            <tr [class.inactive]="!admin.isActive">
+              <td>{{ admin.name }}</td>
+              <td>{{ admin.email }}</td>
+              <td>{{ admin.role }}</td>
+              <td>
+                <span [class]="admin.isActive ? 'status-active' : 'status-inactive'">
+                  {{ admin.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>{{ admin.lastLoginAt ? (admin.lastLoginAt | date: 'short') : 'Never' }}</td>
+              <td>
+                <button (click)="toggleStatus(admin)" class="toggle-btn">
+                  {{ admin.isActive ? 'Deactivate' : 'Activate' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+</div>

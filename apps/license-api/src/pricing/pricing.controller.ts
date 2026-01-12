@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Public } from '../auth/decorators/public.decorator';
 import { AdminApiKeyGuard } from '../security/admin-api-key.guard';
 import { CreatePricingTierDto, PricingService, UpdatePricingTierDto } from './pricing.service';
 
@@ -73,12 +74,14 @@ export class PricingAdminController {
 export class PricingPublicController {
   constructor(private readonly pricingService: PricingService) {}
 
+  @Public()
   @Get()
   @Throttle({ default: { limit: 100, ttl: 60000 } })
   async getActiveTiers() {
     return this.pricingService.getActiveTiers();
   }
 
+  @Public()
   @Get(':id')
   @Throttle({ default: { limit: 100, ttl: 60000 } })
   async getTierById(@Param('id') id: string) {
