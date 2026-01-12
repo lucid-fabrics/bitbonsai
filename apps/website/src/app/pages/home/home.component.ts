@@ -247,32 +247,38 @@ export class HomeComponent {
     {
       faIcon: faPlay,
       title: 'Stateful Job Recovery',
-      description: 'Progress checkpointed every 10 seconds. System failures, power loss, or manual restarts resume from exact frame. No wasted compute cycles.',
+      description:
+        'Progress checkpointed every 10 seconds. System failures, power loss, or manual restarts resume from exact frame. No wasted compute cycles.',
     },
     {
       faIcon: faShieldAlt,
       title: 'Autonomous Fault Handling',
-      description: 'Automatic job redistribution on node failure. Disk space monitoring with graceful degradation. Self-healing architecture requires zero manual intervention.',
+      description:
+        'Automatic job redistribution on node failure. Disk space monitoring with graceful degradation. Self-healing architecture requires zero manual intervention.',
     },
     {
       faIcon: faBolt,
       title: 'Zero-Configuration Design',
-      description: 'Smart defaults based on empirical testing. Auto-detection of hardware acceleration. Production-ready out of box without tuning parameters.',
+      description:
+        'Smart defaults based on empirical testing. Auto-detection of hardware acceleration. Production-ready out of box without tuning parameters.',
     },
     {
       faIcon: faNetworkWired,
       title: 'Horizontal Scalability',
-      description: 'Linear throughput scaling with additional nodes. Shared storage architecture with zero-copy optimization. Turn weeks of encoding into days.',
+      description:
+        'Linear throughput scaling with additional nodes. Shared storage architecture with zero-copy optimization. Turn weeks of encoding into days.',
     },
     {
       faIcon: faRocket,
       title: 'Hardware-Accelerated Encoding',
-      description: 'NVIDIA NVENC, Intel QSV, AMD VCE, Apple VideoToolbox. Automatic detection and optimal codec selection. Maximize throughput while minimizing power consumption.',
+      description:
+        'NVIDIA NVENC, Intel QSV, AMD VCE, Apple VideoToolbox. Automatic detection and optimal codec selection. Maximize throughput while minimizing power consumption.',
     },
     {
       faIcon: faSave,
       title: 'Verified Quality Preservation',
-      description: 'HEVC/AV1 encoding with CRF-based quality targeting. 40-60% storage reduction with perceptually identical output. Automated quality verification.',
+      description:
+        'HEVC/AV1 encoding with CRF-based quality targeting. 40-60% storage reduction with perceptually identical output. Automated quality verification.',
     },
   ];
 
