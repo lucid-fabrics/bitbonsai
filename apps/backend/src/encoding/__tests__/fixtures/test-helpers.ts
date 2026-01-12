@@ -1,7 +1,10 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Job, Library, Node, Policy } from '@prisma/client';
+import { DataAccessService } from '../../../core/services/data-access.service';
+import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
+import { NodesService } from '../../../nodes/nodes.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
@@ -36,6 +39,9 @@ export async function createTestModule(): Promise<TestingModule> {
       QueueService,
       FfmpegService,
       LibrariesService,
+      NodesService,
+      DataAccessService,
+      FileRelocatorService,
       {
         provide: EventEmitter2,
         useValue: {
