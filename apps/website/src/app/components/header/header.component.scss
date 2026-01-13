@@ -90,6 +90,28 @@
     }
   }
 
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  &__admin {
+    text-decoration: none;
+    color: variables.$text-secondary;
+    font-weight: 500;
+    font-size: 14px;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: variables.$text-primary;
+    }
+  }
+
   &__cta {
     padding: 10px 24px;
     background: variables.$accent-primary;
@@ -104,10 +126,6 @@
       background: variables.$accent-primary-hover;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(249, 190, 3, 0.3);
-    }
-
-    @media (max-width: 768px) {
-      display: none;
     }
   }
 }
