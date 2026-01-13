@@ -103,3 +103,5 @@ test-media
 *.bak
 *.backup
 *~
+!dist/apps/license-api
+!node_modules

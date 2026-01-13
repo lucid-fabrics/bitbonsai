@@ -522,3 +522,85 @@ docs(website): update deployment guide
 [Live Site](https://bitbonsai.app) • [Docs Home](../../docs/README.md) • [License-API](../license-api/README.md)
 
 </div>
+
+## Admin Panel
+
+### Access
+
+**URLs:**
+- Dev: http://localhost:4201/admin/login
+- Prod: https://bitbonsai.app/admin/login
+
+**Default Credentials:**
+- Email: admin@bitbonsai.app
+- Password: admin123
+
+**Navigation:** Admin link in header (top-right)
+
+### Features
+
+| Feature | Endpoint | Description |
+|---------|----------|-------------|
+| **Login** | POST /api/auth/login | JWT authentication |
+| **Dashboard** | /admin/dashboard | User management interface |
+| **Create Admin** | POST /api/auth/admin | Create new admin users |
+| **List Admins** | GET /api/auth/admins | View all admin accounts |
+| **Toggle Status** | PATCH /api/auth/admins/:id/toggle | Activate/deactivate users |
+| **Password Reset** | POST /api/auth/password-reset/request | Request reset token |
+| **Confirm Reset** | POST /api/auth/password-reset/confirm | Reset with token |
+
+### Security
+
+- JWT tokens (7-day expiration)
+- Bcrypt password hashing (10 rounds)
+- Rate limiting (5 login attempts/min)
+- Self-deactivation prevention
+- Audit logging for all actions
+
+### Frontend Structure
+
+\`\`\`
+apps/website/src/app/
+├── pages/admin/
+│   ├── login/           # Login form
+│   └── dashboard/       # Admin management
+├── services/
+│   └── auth.service.ts  # Authentication state
+├── guards/
+│   └── auth.guard.ts    # Route protection
+└── interceptors/
+    └── auth.interceptor.ts  # JWT injection
+\`\`\`
+
+### Backend Integration
+
+**Service:** \`apps/website/src/app/services/auth.service.ts\`
+
+**Key Methods:**
+\`\`\`typescript
+login(dto: LoginDto): Observable<LoginResponse>
+logout(): void
+createAdmin(dto: CreateAdminDto): Observable<AdminUser>
+getAllAdmins(): Observable<AdminUser[]>
+toggleAdminStatus(id: string): Observable<AdminUser>
+\`\`\`
+
+**State Management:**
+\`\`\`typescript
+currentUser = signal<AdminUser | null>(null);
+isAuthenticated = signal(false);
+\`\`\`
+
+### Local Development
+
+**Start website:**
+\`\`\`bash
+nx serve website
+\`\`\`
+
+**Start license-api:**
+\`\`\`bash
+nx serve license-api
+\`\`\`
+
+**Access:** http://localhost:4201/admin/login
