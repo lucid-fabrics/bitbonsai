@@ -749,6 +749,10 @@ model Job {
   startedFromSeconds      Float?   // Healing point: seconds where encoding resumed from
   healingPointSeconds     Float?   // Healing point: detected resume point in temp file
 
+  // DEEP AUDIT P2: Auto-heal atomic claim pattern (prevents multi-node heal race)
+  autoHealClaimedAt       DateTime? // When this job was claimed for auto-healing
+  autoHealClaimedBy       String?   // Which node claimed this job for healing (nodeId)
+
   // Job Attribution Fields (for distributed encoding & delegation)
   originalNodeId   String?  // Node where job was originally created (null = created on current node)
   manualAssignment Boolean  @default(false) // Was this job manually delegated by user?
@@ -832,6 +836,7 @@ model Job {
   @@index([nodeId, stage, updatedAt]) // PERF AUDIT: Composite for stuck job detection
   @@index([lastProgressUpdate]) // PERF AUDIT ROUND 4: For resume tracking queries
   @@index([lastHeartbeat]) // PERF AUDIT ROUND 4: For heartbeat validation queries
+  @@index([autoHealClaimedAt, autoHealClaimedBy]) // DEEP AUDIT P2: For auto-heal claim queries
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs

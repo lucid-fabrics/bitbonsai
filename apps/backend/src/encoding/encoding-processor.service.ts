@@ -44,6 +44,7 @@ interface LockPromise extends Promise<void> {
 
 // CRITICAL #3 FIX: Enhanced lock holder tracking for deadlock detection
 // CRITICAL #2 FIX: Track expected duration to prevent false positive deadlock detection
+// DEEP AUDIT P0: Added heartbeat mechanism to track actual operation activity
 interface PoolLockHolder {
   promise: Promise<void>;
   release: () => void;
@@ -51,6 +52,7 @@ interface PoolLockHolder {
   holder: string; // For debugging (workerId or operation name)
   expectedDurationMs: number; // Expected operation duration (for long-running ops)
   staleThreshold: number; // Computed: staleLockThreshold + expectedDuration
+  lastHeartbeat: number; // DEEP AUDIT P0: Track last activity timestamp
 }
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
@@ -450,13 +452,28 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // These jobs are still being actively processed by other nodes and should NOT be healed
       const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
 
+      // DEEP AUDIT FIX: Auto-heal claim staleness threshold reduced to 2 minutes
+      // If another node claimed a job but didn't complete healing within 2 minutes, it's stale
+      // (matches heartbeat check interval for consistency)
+      const twoMinutesAgoForClaim = new Date(Date.now() - 2 * 60 * 1000);
+
       // On backend startup, jobs in active processing states need recovery
       // CRITICAL FIX: Only process jobs belonging to THIS node to prevent cross-node interference
       // Without this filter, CHILD node restart would reset MAIN node's actively encoding jobs
+      // DEEP AUDIT P2: Added atomic claim pattern to prevent multi-node heal race
       const orphanedJobs = await this.prisma.job.findMany({
         where: {
           nodeId, // CRITICAL: Only this node's jobs
           AND: [
+            // DEEP AUDIT P2: Exclude jobs already claimed for healing by another node
+            // Unless the claim is stale (> 10 minutes old)
+            {
+              OR: [
+                { autoHealClaimedAt: null }, // Not claimed
+                { autoHealClaimedBy: nodeId }, // Claimed by us (retry)
+                { autoHealClaimedAt: { lt: twoMinutesAgoForClaim } }, // Stale claim
+              ],
+            },
             // HIGH #2 FIX: Exclude legitimately new jobs (startedAt null) from auto-heal
             // Only heal jobs that were started but have stale heartbeat
             {
@@ -536,6 +553,28 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // TRUE RESUME: Keep progress and resume state (DON'T reset to 0%)
       for (const job of orphanedJobs) {
         try {
+          // DEEP AUDIT P2: Atomic claim - try to claim job for healing
+          // This prevents race condition where multiple nodes try to heal same job
+          const claimResult = await this.prisma.job.updateMany({
+            where: {
+              id: job.id,
+              OR: [
+                { autoHealClaimedAt: null },
+                { autoHealClaimedBy: nodeId },
+                { autoHealClaimedAt: { lt: new Date(Date.now() - 2 * 60 * 1000) } },
+              ],
+            },
+            data: {
+              autoHealClaimedAt: new Date(),
+              autoHealClaimedBy: nodeId,
+            },
+          });
+
+          if (claimResult.count === 0) {
+            this.logger.debug(`  ⏭️ Job ${job.id} already claimed by another node, skipping`);
+            continue; // Another node claimed this job
+          }
+
           // TRUE RESUME: Check if temp file still exists (with retry logic)
           const tempFileExists = await this.checkTempFileWithRetry(job.tempFilePath);
 
@@ -613,6 +652,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
                   tempFilePath: null,
                   resumeTimestamp: null,
                 }),
+            // DEEP AUDIT P2: Clear the claim after successful healing
+            autoHealClaimedAt: null,
+            autoHealClaimedBy: null,
           });
 
           this.logger.log(
@@ -1032,15 +1074,26 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const existingLock = this.poolLocks.get(nodeId);
 
       if (existingLock) {
-        const age = Date.now() - existingLock.acquiredAt;
+        const now = Date.now();
+        const timeSinceHeartbeat = now - existingLock.lastHeartbeat;
+        const age = now - existingLock.acquiredAt;
+
+        // DEEP AUDIT P0: Use heartbeat-based stale detection instead of pure time-based
+        // A lock is stale if no heartbeat activity for 60 seconds
+        const HEARTBEAT_STALE_THRESHOLD = 60000; // 60s without heartbeat = stale
 
         // HIGH #2 FIX: Force-release stale locks to prevent deadlock
-        // If lock holder crashes or database query hangs, this auto-recovers
-        if (age > existingLock.staleThreshold) {
+        // DEEP AUDIT P0: Check heartbeat staleness first (more accurate), then fall back to time-based
+        const isHeartbeatStale = timeSinceHeartbeat > HEARTBEAT_STALE_THRESHOLD;
+        const isTimeStale = age > existingLock.staleThreshold;
+
+        if (isHeartbeatStale || isTimeStale) {
+          const reason = isHeartbeatStale
+            ? `no heartbeat for ${timeSinceHeartbeat}ms (threshold: ${HEARTBEAT_STALE_THRESHOLD}ms)`
+            : `held for ${age}ms (threshold: ${existingLock.staleThreshold}ms)`;
           this.logger.warn(
-            `🔓 HIGH #2 FIX: Auto-releasing stale lock for node ${nodeId} ` +
-              `(held by ${existingLock.holder} for ${age}ms, threshold: ${existingLock.staleThreshold}ms, ` +
-              `expected duration: ${existingLock.expectedDurationMs}ms)`
+            `🔓 DEEP AUDIT P0: Auto-releasing stale lock for node ${nodeId} ` +
+              `(held by ${existingLock.holder}, ${reason})`
           );
           existingLock.release();
           this.poolLocks.delete(nodeId);
@@ -1077,14 +1130,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // CRITICAL #2 FIX: Compute staleThreshold based on expected duration
       const baseStaleLockThreshold = timeoutMs * 2; // 2x timeout as baseline
       const staleThreshold = baseStaleLockThreshold + expectedDurationMs;
+      const now = Date.now();
 
       this.poolLocks.set(nodeId, {
         promise: lockPromise,
         release: releaseLock,
-        acquiredAt: Date.now(),
+        acquiredAt: now,
         holder,
         expectedDurationMs,
         staleThreshold,
+        lastHeartbeat: now, // DEEP AUDIT P0: Initialize heartbeat at lock acquisition
       });
 
       return; // Lock acquired successfully
@@ -1104,6 +1159,22 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     if (lockHolder) {
       lockHolder.release();
       this.poolLocks.delete(nodeId);
+    }
+  }
+
+  /**
+   * DEEP AUDIT P0: Refresh lock heartbeat to indicate operation is still active
+   *
+   * Call this periodically during long-running operations to prevent
+   * false positive stale lock detection.
+   *
+   * @param nodeId - Node unique identifier
+   * @private
+   */
+  private refreshLockHeartbeat(nodeId: string): void {
+    const lock = this.poolLocks.get(nodeId);
+    if (lock) {
+      lock.lastHeartbeat = Date.now();
     }
   }
 
@@ -1143,18 +1214,26 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private startLockWatchdog(): void {
     const watchdogInterval = 30000; // Check every 30 seconds
+    const HEARTBEAT_STALE_THRESHOLD = 60000; // 60s without heartbeat = stale
 
     this.lockWatchdogIntervalId = setInterval(() => {
       const now = Date.now();
 
       for (const [nodeId, lock] of this.poolLocks.entries()) {
         const age = now - lock.acquiredAt;
+        const timeSinceHeartbeat = now - lock.lastHeartbeat;
 
-        // CRITICAL #2 FIX: Use lock's own staleThreshold (not global 60s)
-        if (age > lock.staleThreshold) {
+        // DEEP AUDIT FIX: Check both heartbeat staleness and time-based threshold
+        const isHeartbeatStale = timeSinceHeartbeat > HEARTBEAT_STALE_THRESHOLD;
+        const isTimeStale = age > lock.staleThreshold;
+
+        if (isHeartbeatStale || isTimeStale) {
+          const reason = isHeartbeatStale
+            ? `no heartbeat for ${timeSinceHeartbeat}ms`
+            : `held for ${age}ms (threshold: ${lock.staleThreshold}ms)`;
+
           this.logger.error(
-            `🚨 DEADLOCK DETECTED: Pool lock for ${nodeId} held by ${lock.holder} for ${age}ms ` +
-              `(threshold: ${lock.staleThreshold}ms, expected: ${lock.expectedDurationMs}ms). Forcibly releasing.`
+            `🚨 DEADLOCK DETECTED: Pool lock for ${nodeId} held by ${lock.holder} - ${reason}. Forcibly releasing.`
           );
 
           lock.release();
@@ -1166,8 +1245,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     }, watchdogInterval);
 
     this.logger.log(
-      `✅ CRITICAL #2 FIX: Lock watchdog started (interval: ${watchdogInterval}ms, ` +
-        `using per-lock staleThreshold)`
+      `✅ Lock watchdog started (interval: ${watchdogInterval}ms, ` +
+        `heartbeat threshold: ${HEARTBEAT_STALE_THRESHOLD}ms)`
     );
   }
 
@@ -1501,6 +1580,24 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       worker.currentJobId = job.id;
 
       try {
+        // DEEP AUDIT P2: Fresh check for pauseRequestedAt before starting encoding
+        // This closes the window between getNextJob and actual encoding start
+        const freshJob = await this.prisma.job.findUnique({
+          where: { id: job.id },
+          select: { pauseRequestedAt: true, stage: true },
+        });
+
+        if (freshJob?.pauseRequestedAt) {
+          this.logger.log(
+            `[${workerId}] DEEP AUDIT P2: Job ${job.id} has pause request, transitioning to PAUSED`
+          );
+          await this.queueService.update(job.id, {
+            stage: JobStage.PAUSED,
+            error: 'Paused before encoding started',
+          });
+          return null; // Skip encoding
+        }
+
         // Verify source file exists - with auto-relocation for renamed files
         if (!fs.existsSync(job.filePath)) {
           const dirExists = fs.existsSync(path.dirname(job.filePath));

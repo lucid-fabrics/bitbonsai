@@ -145,7 +145,9 @@ export class QueueComponent implements OnInit {
   } | null = null;
 
   // Job history cache (jobId -> history events)
+  // DEEP AUDIT P2: Limited to prevent unbounded memory growth
   protected jobHistoryCache = new Map<string, JobHistoryEvent[]>();
+  private readonly JOB_HISTORY_CACHE_MAX_SIZE = 50;
 
   // Manual preview capture state
   protected capturingJobId: string | null = null;
@@ -470,14 +472,29 @@ export class QueueComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (history) => {
+            this.maintainCacheSize();
             this.jobHistoryCache.set(jobId, history);
           },
           error: (error) => {
             console.error(`Failed to fetch job history for ${jobId}:`, error);
             // Set empty array to prevent retrying on every expand
+            this.maintainCacheSize();
             this.jobHistoryCache.set(jobId, []);
           },
         });
+    }
+  }
+
+  /**
+   * DEEP AUDIT P2: Maintain cache size to prevent unbounded memory growth
+   * Evicts oldest entry when cache reaches max size
+   */
+  private maintainCacheSize(): void {
+    if (this.jobHistoryCache.size >= this.JOB_HISTORY_CACHE_MAX_SIZE) {
+      const firstKey = this.jobHistoryCache.keys().next().value;
+      if (firstKey) {
+        this.jobHistoryCache.delete(firstKey);
+      }
     }
   }
 
@@ -1017,6 +1034,7 @@ export class QueueComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (history) => {
+            this.maintainCacheSize();
             this.jobHistoryCache.set(job.id, history);
             this.jobHistoryModalData = {
               fileName: job.fileName,
@@ -1028,6 +1046,7 @@ export class QueueComponent implements OnInit {
           error: (error) => {
             console.error(`Failed to fetch job history for ${job.id}:`, error);
             this.toastService.error('Failed to load job history');
+            this.maintainCacheSize();
             this.jobHistoryCache.set(job.id, []);
           },
         });
@@ -1171,6 +1190,7 @@ export class QueueComponent implements OnInit {
 
   /**
    * Parse decision issues JSON string into HealthCheckIssue array
+   * DEEP AUDIT P2: Added schema validation for parsed JSON
    */
   protected parseDecisionIssues(decisionIssuesJson: string | null | undefined): HealthCheckIssue[] {
     if (!decisionIssuesJson) {
@@ -1179,7 +1199,18 @@ export class QueueComponent implements OnInit {
 
     try {
       const issues = JSON.parse(decisionIssuesJson);
-      return Array.isArray(issues) ? issues : [];
+      if (!Array.isArray(issues)) {
+        return [];
+      }
+
+      // DEEP AUDIT P2: Validate each issue has required properties
+      return issues.filter(
+        (issue): issue is HealthCheckIssue =>
+          issue !== null &&
+          typeof issue === 'object' &&
+          typeof issue.type === 'string' &&
+          typeof issue.message === 'string'
+      );
     } catch (error) {
       console.error('Failed to parse decision issues:', error);
       return [];
@@ -1188,6 +1219,7 @@ export class QueueComponent implements OnInit {
 
   /**
    * Handle action selection from decision issue card
+   * DEEP AUDIT P2: Added defaultValue to firstValueFrom to handle empty observables
    */
   protected async onDecisionActionSelected(event: {
     issue: HealthCheckIssue;
@@ -1204,8 +1236,16 @@ export class QueueComponent implements OnInit {
     this.toastService.info(`Applying fix: ${event.action.label}...`);
 
     try {
-      // Call API to resolve decision with selected action config
-      await firstValueFrom(this.queueApi.resolveDecision(jobId, event.action.config || {}));
+      // DEEP AUDIT P2: Add defaultValue to handle empty observable case
+      const result = await firstValueFrom(
+        this.queueApi.resolveDecision(jobId, event.action.config || {}),
+        { defaultValue: null }
+      );
+
+      if (result === null) {
+        this.toastService.error('No response from server');
+        return;
+      }
 
       // Show success message
       this.toastService.success(`${event.action.label} applied successfully. Job moved to queue.`);
