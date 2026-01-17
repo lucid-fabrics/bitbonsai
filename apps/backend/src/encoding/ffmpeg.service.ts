@@ -2516,6 +2516,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       estimatedCompleteAt: null,
       lastScoreBreakdown: null,
       assignmentReason: null,
+      // DEEP AUDIT P2: Auto-heal claim fields
+      autoHealClaimedAt: null,
+      autoHealClaimedBy: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

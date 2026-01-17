@@ -8,7 +8,7 @@ import {
   UrlTree,
 } from '@angular/router';
 import { Observable, of } from 'rxjs';
-import { catchError, map, switchMap, take } from 'rxjs/operators';
+import { catchError, map, switchMap, take, timeout } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 /**
@@ -44,7 +44,9 @@ export const authGuard: CanActivateFn = (
       }
 
       // If not authenticated, check if local network bypass is enabled
+      // DEEP AUDIT P2: Add 5-second timeout to prevent guard from hanging
       return http.get<{ allowLocalNetworkWithoutAuth: boolean }>('/api/v1/settings/security').pipe(
+        timeout(5000), // DEEP AUDIT P2: 5-second timeout
         map((settings) => {
           // If local network bypass is enabled, allow access without authentication
           if (settings.allowLocalNetworkWithoutAuth) {
@@ -57,7 +59,7 @@ export const authGuard: CanActivateFn = (
           });
         }),
         catchError(() => {
-          // If security settings check fails, redirect to login
+          // If security settings check fails or times out, redirect to login
           return of(
             router.createUrlTree(['/login'], {
               queryParams: { returnUrl: state.url },

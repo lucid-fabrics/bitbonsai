@@ -4,6 +4,73 @@ import { environment } from '../../../environments/environment';
 import { NodeConfigService } from '../services/node-config.service';
 
 /**
+ * DEEP AUDIT P1: Validate API URL to prevent XSS injection attacks
+ * DEEP AUDIT FIX: Added proper octet range validation (0-255)
+ *
+ * Only allows:
+ * - http:// or https:// protocols
+ * - localhost or 127.0.0.1
+ * - Private IP ranges with valid octets (0-255):
+ *   - 192.168.x.x
+ *   - 10.x.x.x
+ *   - 172.16-31.x.x
+ *
+ * @param url - URL to validate
+ * @returns true if URL is safe to use
+ */
+function isValidApiUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+
+    // Only allow http/https protocols
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+
+    const hostname = parsed.hostname;
+
+    // Allow localhost
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return true;
+    }
+
+    // DEEP AUDIT FIX: Parse and validate IP octets properly
+    const ipParts = hostname.split('.');
+    if (ipParts.length !== 4) {
+      return false;
+    }
+
+    const octets = ipParts.map((s) => parseInt(s, 10));
+
+    // Validate all octets are numbers in range 0-255
+    if (octets.some((n) => isNaN(n) || n < 0 || n > 255)) {
+      return false;
+    }
+
+    // 192.168.x.x (Private Class C)
+    if (octets[0] === 192 && octets[1] === 168) {
+      return true;
+    }
+
+    // 10.x.x.x (Private Class A)
+    if (octets[0] === 10) {
+      return true;
+    }
+
+    // 172.16.0.0 - 172.31.255.255 (Private Class B)
+    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) {
+      return true;
+    }
+
+    // Reject all other URLs (public IPs, domains, etc.)
+    return false;
+  } catch {
+    // Invalid URL format
+    return false;
+  }
+}
+
+/**
  * Get the API base URL at runtime
  *
  * Priority:
@@ -14,21 +81,33 @@ import { NodeConfigService } from '../services/node-config.service';
 function getApiBaseUrl(nodeConfigService: NodeConfigService): string {
   // Priority 1: Check NodeConfigService for dynamically loaded main API URL
   const configuredMainUrl = nodeConfigService.getMainApiUrl();
-  if (configuredMainUrl) {
+  if (configuredMainUrl && isValidApiUrl(configuredMainUrl)) {
     return configuredMainUrl;
   }
 
   // Priority 2: Check for main-api-url meta tag (for LINKED nodes)
+  // DEEP AUDIT P1: Validate URL from meta tag to prevent XSS injection
   const mainApiMeta = document.querySelector('meta[name="main-api-url"]');
   if (mainApiMeta) {
     const mainApiUrl = mainApiMeta.getAttribute('content');
-    if (mainApiUrl) {
+    if (mainApiUrl && isValidApiUrl(mainApiUrl)) {
       return mainApiUrl;
     }
   }
 
   // Priority 3: Fall back to environment configuration
-  return environment.apiUrl;
+  // DEEP AUDIT FIX: Validate environment fallback too (defense in depth)
+  // Note: In production, environment.apiUrl is typically 'http://localhost:3100' or similar
+  // which is always valid. This check protects against build-time tampering.
+  if (isValidApiUrl(environment.apiUrl)) {
+    return environment.apiUrl;
+  }
+
+  // Absolute fallback - should never reach here in normal operation
+  console.error(
+    '[API Interceptor] Invalid environment.apiUrl detected, using localhost fallback'
+  );
+  return 'http://localhost:3100';
 }
 
 /**
