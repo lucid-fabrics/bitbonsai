@@ -11,6 +11,7 @@ export interface SettingsState {
   isLoading: boolean;
   error: string | null;
   successMessage: string | null;
+  advancedModeEnabled: boolean;
 }
 
 export const initialState: SettingsState = {
@@ -20,6 +21,7 @@ export const initialState: SettingsState = {
   isLoading: false,
   error: null,
   successMessage: null,
+  advancedModeEnabled: false,
 };
 
 export const settingsReducer = createReducer(
@@ -164,6 +166,42 @@ export const settingsReducer = createReducer(
     successMessage: 'API key regenerated successfully!',
   })),
   on(SettingsActions.regenerateAPIKeyFailure, (state, { error }) => ({
+    ...state,
+    error,
+    isLoading: false,
+  })),
+
+  // Load Advanced Mode
+  on(SettingsActions.loadAdvancedMode, (state) => ({
+    ...state,
+    isLoading: true,
+    error: null,
+  })),
+  on(SettingsActions.loadAdvancedModeSuccess, (state, { enabled }) => ({
+    ...state,
+    advancedModeEnabled: enabled,
+    isLoading: false,
+  })),
+  on(SettingsActions.loadAdvancedModeFailure, (state, { error }) => ({
+    ...state,
+    error,
+    isLoading: false,
+  })),
+
+  // Update Advanced Mode
+  on(SettingsActions.updateAdvancedMode, (state) => ({
+    ...state,
+    isLoading: true,
+    error: null,
+    successMessage: null,
+  })),
+  on(SettingsActions.updateAdvancedModeSuccess, (state, { enabled }) => ({
+    ...state,
+    advancedModeEnabled: enabled,
+    isLoading: false,
+    successMessage: enabled ? 'Advanced mode enabled' : 'Advanced mode disabled',
+  })),
+  on(SettingsActions.updateAdvancedModeFailure, (state, { error }) => ({
     ...state,
     error,
     isLoading: false,

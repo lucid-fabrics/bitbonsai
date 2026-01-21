@@ -67,16 +67,20 @@
         <i class="fa fa-plug"></i>
         <span>Integrations</span>
       </a>
-      <a
-        class="tab-button"
-        [routerLink]="['/settings', 'debug']"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{exact: false}"
-        tabindex="0"
-      >
-        <i class="fa fa-bug"></i>
-        <span>Debug</span>
-      </a>
+      <!-- Debug tab: Development only -->
+      <!-- DEEP AUDIT P3-1: Convert *ngIf to @if for modern Angular syntax -->
+      @if (showDebugTab) {
+        <a
+          class="tab-button"
+          [routerLink]="['/settings', 'debug']"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{exact: false}"
+          tabindex="0"
+        >
+          <i class="fa fa-bug"></i>
+          <span>Debug</span>
+        </a>
+      }
       <a
         class="tab-button"
         [routerLink]="['/settings', 'docs']"

@@ -10,11 +10,14 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { Store } from '@ngrx/store';
 import { SettingsClient } from '../../../core/clients/settings.client';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
 } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { SettingsActions } from '../+state/settings.actions';
+import { SettingsSelectors } from '../+state/settings.selectors';
 import { LogLevel } from '../models/log-level.enum';
 import type { SystemSettings } from '../models/system-settings.model';
 import { SettingsService } from '../services/settings.service';
@@ -31,6 +34,37 @@ import { SettingsService } from '../services/settings.service';
       @if (systemSettings()) {
         <!-- Settings Grid - 2 columns -->
         <div class="advanced-grid">
+          <!-- Advanced Mode Toggle Card (UI Simplification) -->
+          <div class="info-card setting-card">
+            <div class="setting-card-header">
+              <div class="setting-icon advanced-mode-icon">
+                <i class="fa fa-sliders-h"></i>
+              </div>
+              <div class="setting-header-text">
+                <h3>Advanced Mode</h3>
+                <p>Show power user controls</p>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  id="advancedMode"
+                  [ngModel]="advancedModeEnabled()"
+                  (ngModelChange)="onAdvancedModeToggle($event)"
+                  [ngModelOptions]="{standalone: true}"
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-note">
+              <i class="fa fa-info-circle"></i>
+              @if (advancedModeEnabled()) {
+                Showing bulk actions, node filters, debug info, and technical details
+              } @else {
+                Minimal interface with essential controls only
+              }
+            </div>
+          </div>
+
           <!-- Security Toggle Card -->
           <div class="info-card setting-card">
             <div class="setting-card-header">
@@ -243,6 +277,7 @@ export class AdvancedTabComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(Dialog);
+  private readonly store = inject(Store);
 
   systemSettings = signal<SystemSettings | null>(null);
   loading = signal(false);
@@ -252,6 +287,7 @@ export class AdvancedTabComponent implements OnInit {
   localNetworkBypassEnabled = signal(false);
   readyFilesCacheTtl = signal(5);
   maxAutoHealRetries = signal(15);
+  advancedModeEnabled = signal(false);
 
   settingsForm!: FormGroup<{
     ffmpegPath: FormControl<string | null>;
@@ -268,6 +304,7 @@ export class AdvancedTabComponent implements OnInit {
     this.loadSecuritySettings();
     this.loadReadyFilesCacheTtl();
     this.loadAutoHealRetryLimit();
+    this.loadAdvancedMode();
   }
 
   private initializeForm(): void {
@@ -293,7 +330,9 @@ export class AdvancedTabComponent implements OnInit {
             webhookUrl: settings.webhookUrl || '',
           });
         },
-        error: () => {},
+        error: () => {
+          this.error.set('Failed to load system settings');
+        },
       });
   }
 
@@ -305,7 +344,9 @@ export class AdvancedTabComponent implements OnInit {
         next: (settings) => {
           this.localNetworkBypassEnabled.set(settings.allowLocalNetworkWithoutAuth);
         },
-        error: () => {},
+        error: () => {
+          // Silent fail - security settings have safe defaults
+        },
       });
   }
 
@@ -317,7 +358,9 @@ export class AdvancedTabComponent implements OnInit {
         next: (settings) => {
           this.readyFilesCacheTtl.set(settings.readyFilesCacheTtlMinutes);
         },
-        error: () => {},
+        error: () => {
+          // Silent fail - uses default value from signal (5)
+        },
       });
   }
 
@@ -329,7 +372,46 @@ export class AdvancedTabComponent implements OnInit {
         next: (settings) => {
           this.maxAutoHealRetries.set(settings.maxAutoHealRetries);
         },
-        error: () => {},
+        error: () => {
+          // Silent fail - uses default value from signal (15)
+        },
+      });
+  }
+
+  private loadAdvancedMode(): void {
+    // Dispatch action to load from API (effect handles HTTP call)
+    this.store.dispatch(SettingsActions.loadAdvancedMode());
+
+    // Subscribe to store to sync local signal with NgRx state
+    this.store
+      .select(SettingsSelectors.selectAdvancedMode)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((enabled) => {
+        this.advancedModeEnabled.set(enabled);
+      });
+  }
+
+  onAdvancedModeToggle(enabled: boolean): void {
+    this.advancedModeEnabled.set(enabled);
+    this.loading.set(true);
+    this.error.set(null);
+    this.successMessage.set(null);
+
+    this.settingsClient
+      .updateAdvancedMode(enabled)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.successMessage.set(enabled ? 'Advanced mode enabled' : 'Minimal mode enabled');
+          // Sync to NgRx store so Queue page and other components get the update
+          this.store.dispatch(SettingsActions.updateAdvancedModeSuccess({ enabled }));
+        },
+        error: () => {
+          this.loading.set(false);
+          this.error.set('Failed to update interface mode');
+          this.advancedModeEnabled.set(!enabled);
+        },
       });
   }
 

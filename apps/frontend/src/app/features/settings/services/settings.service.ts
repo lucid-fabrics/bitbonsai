@@ -48,4 +48,7 @@ export class SettingsService {
   updateSecuritySettings(settings: SecuritySettings): Observable<SecuritySettings> {
     return this.http.patch<SecuritySettings>(`${this.apiUrl}/security`, settings);
   }
+
+  // Note: Advanced mode methods are in SettingsClient to avoid duplication
+  // Effects use SettingsClient for advancedMode operations
 }
