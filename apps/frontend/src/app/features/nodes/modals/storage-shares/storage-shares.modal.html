@@ -237,12 +237,12 @@
                   <span class="share-card__detail-label">Mount Point:</span>
                   <span class="share-card__detail-value">{{ share.mountPoint }}</span>
                 </div>
-                @if (share.isMounted && share.usedPercent !== undefined) {
+                @if (share.isMounted && share.usedPercent != null) {
                   <div class="share-card__detail-row">
                     <span class="share-card__detail-label">Usage:</span>
                     <span class="share-card__detail-value">
                       {{ formatBytes(share.totalSizeBytes) }} total,
-                      {{ share.usedPercent.toFixed(1) }}% used
+                      {{ share.usedPercent?.toFixed(1) }}% used
                     </span>
                   </div>
                 }

@@ -1,5 +1,6 @@
 import type { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { devOnlyGuard } from './core/guards/dev-only.guard';
 import { mainNodeGuard } from './core/guards/main-node.guard';
 import { setupGuard } from './core/guards/setup.guard';
 
@@ -143,6 +144,7 @@ export const routes: Routes = [
         path: 'debug',
         loadComponent: () =>
           import('./features/settings/tabs/debug-tab.component').then((m) => m.DebugTabComponent),
+        canActivate: [devOnlyGuard], // Development only - blocked in production
       },
       {
         path: 'docs',

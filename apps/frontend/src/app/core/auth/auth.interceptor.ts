@@ -1,12 +1,13 @@
 import {
   HttpErrorResponse,
+  type HttpEvent,
   HttpHandlerFn,
   HttpInterceptorFn,
   HttpRequest,
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, catchError, filter, Observable, switchMap, take, throwError } from 'rxjs';
+import { catchError, filter, Observable, switchMap, take, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 /**
@@ -18,6 +19,9 @@ import { AuthService } from './auth.service';
  * - Handles 401 errors with automatic token refresh
  * - Prevents race conditions during concurrent refresh attempts
  * - Redirects to login on authentication failure
+ *
+ * DEEP AUDIT P1-2: Refresh state moved to AuthService to prevent memory leaks
+ * across login/logout cycles. Module-level state was never cleaned up.
  */
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
@@ -72,19 +76,19 @@ function addAuthHeader(request: HttpRequest<unknown>, token: string): HttpReques
 /**
  * Handles 401 errors with token refresh logic.
  * Implements race condition prevention for concurrent refresh attempts.
+ *
+ * DEEP AUDIT P1-2: Now uses AuthService state instead of module-level variables.
+ * This ensures state is properly cleaned up on logout.
  */
-let isRefreshing = false;
-const refreshTokenSubject = new BehaviorSubject<string | null>(null);
-
 function handle401Error(
   request: HttpRequest<unknown>,
   next: HttpHandlerFn,
   authService: AuthService,
   router: Router
-): Observable<any> {
+): Observable<HttpEvent<unknown>> {
   // If already refreshing, queue this request
-  if (isRefreshing) {
-    return refreshTokenSubject.pipe(
+  if (authService.isRefreshing) {
+    return authService.refreshTokenSubject.pipe(
       filter((token) => token !== null),
       take(1),
       switchMap((token) => {
@@ -94,23 +98,23 @@ function handle401Error(
   }
 
   // Start refresh process
-  isRefreshing = true;
-  refreshTokenSubject.next(null);
+  authService.isRefreshing = true;
+  authService.refreshTokenSubject.next(null);
 
   return authService.refreshToken().pipe(
     switchMap((response: { accessToken: string }) => {
-      isRefreshing = false;
+      authService.isRefreshing = false;
       const newToken = response.accessToken;
 
       // Notify all waiting requests of new token
-      refreshTokenSubject.next(newToken);
+      authService.refreshTokenSubject.next(newToken);
 
       // Retry original request with new token
       return next(addAuthHeader(request, newToken));
     }),
     catchError((error: HttpErrorResponse) => {
-      isRefreshing = false;
-      refreshTokenSubject.next(null);
+      authService.isRefreshing = false;
+      authService.refreshTokenSubject.next(null);
 
       // Refresh failed - clear tokens and redirect to login
       authService.clearTokens();

@@ -3,7 +3,14 @@ import { Component, forwardRef, Input, OnInit, signal, ViewChild } from '@angula
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
-import { CalendarOptions, EventInput } from '@fullcalendar/core';
+import type {
+  CalendarOptions,
+  DateSelectArg,
+  EventClickArg,
+  EventDropArg,
+  EventInput,
+} from '@fullcalendar/core';
+import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 
@@ -95,12 +102,13 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
   /**
    * Handle date selection (drag to create new window)
+   * DEEP AUDIT P2-1: Fix any type with proper FullCalendar types
    */
-  handleDateSelect(selectInfo: any): void {
+  handleDateSelect(selectInfo: DateSelectArg): void {
     if (this.disabled) return;
 
-    const start = selectInfo.start as Date;
-    const end = selectInfo.end as Date;
+    const start = selectInfo.start;
+    const end = selectInfo.end;
 
     // Create new time window
     const window: TimeWindow = {
@@ -124,8 +132,9 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
   /**
    * Handle event click (delete window)
+   * DEEP AUDIT P2-1: Fix any type with proper FullCalendar types
    */
-  handleEventClick(clickInfo: any): void {
+  handleEventClick(clickInfo: EventClickArg): void {
     if (this.disabled) return;
 
     if (confirm('Delete this time window?')) {
@@ -143,8 +152,9 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
   /**
    * Handle event resize (change window duration)
+   * DEEP AUDIT P2-1: Fix any type with proper FullCalendar types
    */
-  handleEventResize(resizeInfo: any): void {
+  handleEventResize(resizeInfo: EventResizeDoneArg): void {
     if (this.disabled) {
       resizeInfo.revert();
       return;
@@ -152,8 +162,8 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
     const eventId = resizeInfo.event.id;
     const windowIndex = parseInt(eventId, 10);
-    const start = resizeInfo.event.start as Date;
-    const end = resizeInfo.event.end as Date;
+    const start = resizeInfo.event.start!;
+    const end = resizeInfo.event.end!;
 
     // Update window
     const currentWindows = this.windows();
@@ -172,8 +182,9 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
   /**
    * Handle event drop (move window to different day/time)
+   * DEEP AUDIT P2-1: Fix any type with proper FullCalendar types
    */
-  handleEventDrop(dropInfo: any): void {
+  handleEventDrop(dropInfo: EventDropArg): void {
     if (this.disabled) {
       dropInfo.revert();
       return;
@@ -181,8 +192,8 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
     const eventId = dropInfo.event.id;
     const windowIndex = parseInt(eventId, 10);
-    const start = dropInfo.event.start as Date;
-    const end = dropInfo.event.end as Date;
+    const start = dropInfo.event.start!;
+    const end = dropInfo.event.end!;
 
     // Update window
     const currentWindows = this.windows();

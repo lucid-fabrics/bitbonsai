@@ -104,9 +104,7 @@ function getApiBaseUrl(nodeConfigService: NodeConfigService): string {
   }
 
   // Absolute fallback - should never reach here in normal operation
-  console.error(
-    '[API Interceptor] Invalid environment.apiUrl detected, using localhost fallback'
-  );
+  console.error('[API Interceptor] Invalid environment.apiUrl detected, using localhost fallback');
   return 'http://localhost:3100';
 }
 
