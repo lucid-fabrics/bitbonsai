@@ -39,6 +39,8 @@ interface PolicyFormData {
   targetQuality: number;
   targetContainer?: string | null;
   skipReencoding?: boolean;
+  allowSameCodec?: boolean;
+  minSavingsPercent?: number;
   libraryId: string;
   deviceProfiles: Set<DeviceProfile>;
   ffmpegFlags: string;
@@ -123,6 +125,8 @@ export class PoliciesComponent implements OnInit {
       targetQuality: policy.targetQuality,
       targetContainer: policy.targetContainer ?? 'mkv',
       skipReencoding: policy.skipReencoding ?? true,
+      allowSameCodec: policy.allowSameCodec ?? false,
+      minSavingsPercent: policy.minSavingsPercent ?? 0,
       libraryId: policy.libraryId || '',
       deviceProfiles: new Set(policy.deviceProfiles),
       ffmpegFlags: policy.ffmpegFlags || '',
@@ -198,6 +202,8 @@ export class PoliciesComponent implements OnInit {
       targetQuality: this.formData.targetQuality,
       targetContainer: this.formData.targetContainer ?? 'mkv',
       skipReencoding: this.formData.skipReencoding ?? true,
+      allowSameCodec: this.formData.allowSameCodec ?? false,
+      minSavingsPercent: this.formData.allowSameCodec ? (this.formData.minSavingsPercent ?? 0) : 0,
       libraryId: this.formData.libraryId || undefined,
       deviceProfiles: {
         appleTV: this.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
@@ -304,6 +310,8 @@ export class PoliciesComponent implements OnInit {
       targetQuality: 23,
       targetContainer: 'mkv',
       skipReencoding: true,
+      allowSameCodec: false,
+      minSavingsPercent: 0,
       libraryId: '',
       deviceProfiles: new Set(),
       ffmpegFlags: '',

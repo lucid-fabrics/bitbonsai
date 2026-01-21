@@ -6,6 +6,8 @@ export interface PolicyModel {
   crf: number;
   target_container?: string | null;
   skip_reencoding?: boolean;
+  allow_same_codec?: boolean;
+  min_savings_percent?: number | null;
   library_id?: string;
   device_profiles: DeviceProfiles;
   ffmpeg_flags?: string;
@@ -83,6 +85,8 @@ export interface CreatePolicyRequest {
   targetQuality: number;
   targetContainer?: string | null;
   skipReencoding?: boolean;
+  allowSameCodec?: boolean;
+  minSavingsPercent?: number;
   libraryId?: string;
   deviceProfiles: DeviceProfiles;
   advancedSettings: AdvancedSettings;
@@ -94,6 +98,8 @@ export interface UpdatePolicyRequest {
   targetQuality?: number;
   targetContainer?: string | null;
   skipReencoding?: boolean;
+  allowSameCodec?: boolean;
+  minSavingsPercent?: number;
   libraryId?: string;
   deviceProfiles?: DeviceProfiles;
   advancedSettings?: AdvancedSettings;

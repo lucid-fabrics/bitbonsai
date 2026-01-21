@@ -51,6 +51,18 @@ export class PolicyDto {
   skipReencoding!: boolean;
 
   @ApiProperty({
+    description: 'Allow same codec re-encoding without confirmation (skip NEEDS_DECISION)',
+    example: false,
+  })
+  allowSameCodec!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Minimum expected savings percentage required for same-codec encoding (0-100)',
+    example: 0,
+  })
+  minSavingsPercent?: number | null;
+
+  @ApiProperty({
     description: 'Device compatibility profiles',
     example: {
       appleTv: true,

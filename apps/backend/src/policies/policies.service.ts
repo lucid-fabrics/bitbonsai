@@ -42,6 +42,8 @@ export class PoliciesService {
       atomicReplace: createPolicyDto.atomicReplace ?? true,
       verifyOutput: createPolicyDto.verifyOutput ?? true,
       skipSeeding: createPolicyDto.skipSeeding ?? true,
+      allowSameCodec: createPolicyDto.allowSameCodec ?? false,
+      minSavingsPercent: createPolicyDto.minSavingsPercent ?? 0,
       libraryId: createPolicyDto.libraryId,
     });
 
@@ -86,6 +88,8 @@ export class PoliciesService {
       atomicReplace: updatePolicyDto.atomicReplace,
       verifyOutput: updatePolicyDto.verifyOutput,
       skipSeeding: updatePolicyDto.skipSeeding,
+      allowSameCodec: updatePolicyDto.allowSameCodec,
+      minSavingsPercent: updatePolicyDto.minSavingsPercent,
       libraryId: updatePolicyDto.libraryId,
     });
 
@@ -160,6 +164,8 @@ export class PoliciesService {
     targetQuality: number;
     targetContainer: string | null;
     skipReencoding: boolean;
+    allowSameCodec: boolean;
+    minSavingsPercent: number | null;
     deviceProfiles: Prisma.JsonValue;
     advancedSettings: Prisma.JsonValue;
     atomicReplace: boolean;
@@ -177,6 +183,8 @@ export class PoliciesService {
       targetQuality: policy.targetQuality,
       targetContainer: policy.targetContainer,
       skipReencoding: policy.skipReencoding,
+      allowSameCodec: policy.allowSameCodec,
+      minSavingsPercent: policy.minSavingsPercent,
       deviceProfiles: policy.deviceProfiles as object,
       advancedSettings: policy.advancedSettings as object,
       atomicReplace: policy.atomicReplace,

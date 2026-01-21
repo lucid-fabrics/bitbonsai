@@ -17,6 +17,8 @@ export interface CreatePolicyData {
   atomicReplace: boolean;
   verifyOutput: boolean;
   skipSeeding: boolean;
+  allowSameCodec: boolean;
+  minSavingsPercent: number;
   libraryId?: string | null;
 }
 
@@ -30,6 +32,8 @@ export interface UpdatePolicyData {
   atomicReplace?: boolean;
   verifyOutput?: boolean;
   skipSeeding?: boolean;
+  allowSameCodec?: boolean;
+  minSavingsPercent?: number;
   libraryId?: string | null;
 }
 
@@ -52,6 +56,8 @@ export class PolicyRepository {
         atomicReplace: data.atomicReplace,
         verifyOutput: data.verifyOutput,
         skipSeeding: data.skipSeeding,
+        allowSameCodec: data.allowSameCodec,
+        minSavingsPercent: data.minSavingsPercent,
         libraryId: data.libraryId,
       },
     });
@@ -117,6 +123,8 @@ export class PolicyRepository {
         atomicReplace: data.atomicReplace,
         verifyOutput: data.verifyOutput,
         skipSeeding: data.skipSeeding,
+        allowSameCodec: data.allowSameCodec,
+        minSavingsPercent: data.minSavingsPercent,
         libraryId: data.libraryId,
       },
     });

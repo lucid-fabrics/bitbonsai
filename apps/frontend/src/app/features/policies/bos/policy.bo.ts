@@ -16,6 +16,8 @@ export class PolicyBo {
   targetQuality: number;
   targetContainer?: string | null;
   skipReencoding?: boolean;
+  allowSameCodec?: boolean;
+  minSavingsPercent?: number | null;
   libraryId?: string;
   deviceProfiles: DeviceProfile[];
   ffmpegFlags?: string;
@@ -38,6 +40,10 @@ export class PolicyBo {
       (apiModel.targetContainer as string | null | undefined) ?? model.target_container ?? 'mkv';
     this.skipReencoding =
       (apiModel.skipReencoding as boolean | undefined) ?? model.skip_reencoding ?? true;
+    this.allowSameCodec =
+      (apiModel.allowSameCodec as boolean | undefined) ?? model.allow_same_codec ?? false;
+    this.minSavingsPercent =
+      (apiModel.minSavingsPercent as number | null | undefined) ?? model.min_savings_percent ?? 0;
     this.libraryId = (apiModel.libraryId as string | undefined) || model.library_id;
     this.deviceProfiles = this.convertDeviceProfilesToArray(
       (apiModel.deviceProfiles as DeviceProfiles | undefined) || model.device_profiles
