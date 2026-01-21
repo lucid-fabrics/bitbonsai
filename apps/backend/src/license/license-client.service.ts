@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LicenseStatus, type Prisma } from '@prisma/client';
@@ -7,8 +7,8 @@ import * as crypto from 'crypto';
 import * as os from 'os';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { getTierFeatures, TIER_LIMITS } from './tier-config';
 import { mapExternalTier } from './tier-mapping';
-import { TIER_LIMITS, getTierFeatures } from './tier-config';
 
 export interface LicenseInfo {
   key: string;
@@ -192,11 +192,7 @@ export class LicenseClientService {
     try {
       // Call licensing-service to verify the license key
       const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.apiUrl}/licenses/verify`,
-          { licenseKey },
-          { timeout: 10000 }
-        )
+        this.httpService.post(`${this.apiUrl}/licenses/verify`, { licenseKey }, { timeout: 10000 })
       );
 
       const result = response.data;
@@ -260,7 +256,9 @@ export class LicenseClientService {
       }
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`License activation failed: ${errorMessage}`);
-      throw new BadRequestException('Failed to activate license. Please check the key and try again.');
+      throw new BadRequestException(
+        'Failed to activate license. Please check the key and try again.'
+      );
     }
   }
 
@@ -273,11 +271,7 @@ export class LicenseClientService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.apiUrl}/licenses/lookup`,
-          { email },
-          { timeout: 10000 }
-        )
+        this.httpService.post(`${this.apiUrl}/licenses/lookup`, { email }, { timeout: 10000 })
       );
 
       const result = response.data;

@@ -86,17 +86,24 @@ export class LicensesService {
 
       if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
         this.logger.error('License verification timed out', error);
-        throw new ServiceUnavailableException('License server is slow to respond. Please try again.');
+        throw new ServiceUnavailableException(
+          'License server is slow to respond. Please try again.'
+        );
       }
 
       if (axiosError.response?.status === 429) {
         this.logger.warn('Rate limited by licensing service');
-        throw new HttpException('Too many license verification attempts. Please wait a moment.', HttpStatus.TOO_MANY_REQUESTS);
+        throw new HttpException(
+          'Too many license verification attempts. Please wait a moment.',
+          HttpStatus.TOO_MANY_REQUESTS
+        );
       }
 
       if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ENOTFOUND') {
         this.logger.error('Cannot connect to licensing service', error);
-        throw new ServiceUnavailableException('License server is unavailable. Please try again later.');
+        throw new ServiceUnavailableException(
+          'License server is unavailable. Please try again later.'
+        );
       }
 
       this.logger.error('Failed to verify license with licensing-service', error);
@@ -173,17 +180,24 @@ export class LicensesService {
 
       if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
         this.logger.error('License lookup timed out', error);
-        throw new ServiceUnavailableException('License server is slow to respond. Please try again.');
+        throw new ServiceUnavailableException(
+          'License server is slow to respond. Please try again.'
+        );
       }
 
       if (axiosError.response?.status === 429) {
         this.logger.warn('Rate limited by licensing service');
-        throw new HttpException('Too many license lookup attempts. Please wait a moment.', HttpStatus.TOO_MANY_REQUESTS);
+        throw new HttpException(
+          'Too many license lookup attempts. Please wait a moment.',
+          HttpStatus.TOO_MANY_REQUESTS
+        );
       }
 
       if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ENOTFOUND') {
         this.logger.error('Cannot connect to licensing service', error);
-        throw new ServiceUnavailableException('License server is unavailable. Please try again later.');
+        throw new ServiceUnavailableException(
+          'License server is unavailable. Please try again later.'
+        );
       }
 
       this.logger.error('Failed to lookup license', error);
