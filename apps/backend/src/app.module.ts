@@ -43,6 +43,9 @@ import { SystemModule } from './system/system.module';
     // Note: Higher limit to accommodate multi-node setups where LINKED nodes
     // make frequent API calls to MAIN (getNextJob, progress updates, etc.)
     // 5 workers × frequent updates can easily exceed 100/min
+    // Note: Named throttlers (e.g., 'setup') are NOT defined here because
+    // NestJS applies ALL throttlers globally. Individual endpoints that need
+    // stricter limits use @Throttle({ default: { limit: X, ttl: Y } }) decorator.
     ThrottlerModule.forRoot([
       {
         name: 'default',

@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Post } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/guards/public.decorator';
 import { InitializeSetupDto } from './dto/initialize-setup.dto';
 import { SetupStatusDto } from './dto/setup-status.dto';
@@ -28,10 +29,11 @@ export class SetupController {
 
   @Post('initialize')
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 3600000 } }) // SECURITY: 5 attempts per hour
   @ApiOperation({
     summary: 'Initialize system setup',
     description:
-      'Initialize the system with the first admin user and security settings. This endpoint can only be called once when no users exist. It creates the first admin user with a hashed password and configures the initial security settings. This endpoint is public and does not require authentication.',
+      'Initialize the system with the first admin user and security settings. This endpoint can only be called once when no users exist. It creates the first admin user with a hashed password and configures the initial security settings. This endpoint is public and does not require authentication. Rate limited to 5 attempts per hour per IP to prevent brute force attacks.',
   })
   @ApiResponse({
     status: 201,

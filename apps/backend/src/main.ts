@@ -1,9 +1,12 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as crypto from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
+import * as fs from 'fs';
 import helmet from 'helmet';
 import { WinstonModule } from 'nest-winston';
+import { join } from 'path';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters';
 import { winstonConfig } from './common/logging';
@@ -12,6 +15,53 @@ import { setupBigIntSerialization } from './common/utils/bigint-serializer';
 async function bootstrap() {
   // Handle BigInt serialization for JSON responses
   setupBigIntSerialization();
+
+  // SECURITY: JWT_SECRET validation and auto-generation
+  // Generate JWT secret if missing (first-time setup)
+  if (!process.env.JWT_SECRET) {
+    // Production: require explicit JWT_SECRET
+    if (process.env.NODE_ENV === 'production') {
+      Logger.error(
+        'JWT_SECRET not set in production! Set JWT_SECRET environment variable.',
+        'Bootstrap'
+      );
+      Logger.error('Generate one with: openssl rand -base64 32', 'Bootstrap');
+      throw new Error('JWT_SECRET is required in production mode');
+    }
+
+    // Development: auto-generate and save to .env
+    const secret = crypto.randomBytes(32).toString('base64');
+    const envPath = join(process.cwd(), '.env');
+
+    try {
+      fs.appendFileSync(
+        envPath,
+        `\n# Auto-generated JWT secret (${new Date().toISOString()})\nJWT_SECRET=${secret}\n`
+      );
+      process.env.JWT_SECRET = secret;
+      Logger.warn(
+        `⚠️  Generated new JWT_SECRET and saved to .env: ${secret.substring(0, 8)}...`,
+        'Bootstrap'
+      );
+      Logger.warn(
+        '⚠️  For production, ensure .env is properly secured and not committed to git',
+        'Bootstrap'
+      );
+    } catch (error) {
+      Logger.error(
+        'Failed to save JWT_SECRET to .env file. Set JWT_SECRET environment variable manually.',
+        'Bootstrap'
+      );
+      throw new Error(`JWT_SECRET must be set. Generate one with: openssl rand -base64 32`);
+    }
+  }
+
+  // Validate JWT_SECRET length
+  if (process.env.JWT_SECRET.length < 32) {
+    throw new Error(
+      'JWT_SECRET must be at least 32 characters. Generate a new one with: openssl rand -base64 32'
+    );
+  }
 
   // Create app with Winston logger
   const app = await NestFactory.create(AppModule, {
@@ -57,9 +107,8 @@ async function bootstrap() {
 
   // Serve static frontend files from production build
   const express = require('express');
-  const path = require('path');
   // __dirname is dist/apps/backend, so we need ../frontend
-  const frontendPath = path.join(__dirname, '../frontend');
+  const frontendPath = join(__dirname, '../frontend');
 
   // Serve static files (JS, CSS, images)
   app.use(
@@ -77,8 +126,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  // SECURITY: CORS with validation logic instead of static whitelist
-  // Validates origins against environment variable patterns
+  // SECURITY: CORS with explicit origin validation
+  // For production on-premise deployments, use ALLOWED_ORIGINS environment variable
   app.enableCors({
     origin: (
       origin: string | undefined,
@@ -90,33 +139,57 @@ async function bootstrap() {
         return;
       }
 
-      // Get allowed origins from environment (comma-separated)
-      const allowedOrigins = [
+      // Parse URL to extract hostname and port
+      let originUrl: URL;
+      try {
+        originUrl = new URL(origin);
+      } catch {
+        callback(new Error(`Invalid origin: ${origin}`));
+        return;
+      }
+
+      // Base allowed origins (explicit only)
+      const explicitOrigins = [
         'http://localhost:4200', // Development frontend (default)
         'http://localhost:4201', // Development frontend (HMR)
         'http://localhost:3000', // LXC frontend on port 3000
-        `http://*:${port}`, // Allow any IP on same port (for LXC deployments)
-        'http://*:3000', // Allow any IP on port 3000 (LXC frontend)
-        'http://*:4210', // Allow any IP on port 4210 (standard frontend port for all nodes)
         process.env.FRONTEND_URL,
         ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
       ].filter(Boolean) as string[];
 
-      // Check if origin is in whitelist
-      const isAllowed = allowedOrigins.some((allowedOrigin: string) => {
-        // Support wildcard patterns (e.g., https://*.bitbonsai.com)
-        if (allowedOrigin.includes('*')) {
-          const regex = new RegExp(`^${allowedOrigin.replace(/\*/g, '.*')}$`);
-          return regex.test(origin);
-        }
-        return origin === allowedOrigin;
-      });
-
-      if (isAllowed) {
+      // Check explicit origins first
+      if (explicitOrigins.includes(origin)) {
         callback(null, true);
-      } else {
-        callback(new Error(`Origin ${origin} not allowed by CORS`));
+        return;
       }
+
+      // For on-premise deployments: Allow private IP ranges on specific ports
+      // This replaces the wildcard patterns with explicit subnet validation
+      const hostname = originUrl.hostname;
+      const port = originUrl.port;
+      const isPrivateIP =
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.startsWith('172.16.') ||
+        hostname.startsWith('172.17.') ||
+        hostname.startsWith('172.18.') ||
+        hostname.startsWith('172.19.') ||
+        hostname.startsWith('172.2') ||
+        hostname.startsWith('172.30.') ||
+        hostname.startsWith('172.31.');
+
+      // Allow private IPs on specific ports (on-premise deployments)
+      const allowedPorts = ['3000', '3100', '4200', '4210'];
+      if (isPrivateIP && allowedPorts.includes(port)) {
+        callback(null, true);
+        return;
+      }
+
+      // Origin not in allowlist
+      Logger.warn(`CORS blocked origin: ${origin}`, 'Bootstrap');
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
@@ -145,6 +218,8 @@ async function bootstrap() {
   );
 
   // Swagger API Documentation Configuration
+  // Available at /api/docs for on-premise administrators
+  // Protected by JWT authentication for sensitive endpoints
   const config = new DocumentBuilder()
     .setTitle('BitBonsai API')
     .setDescription('REST API for analyzing video media libraries')
@@ -183,6 +258,7 @@ async function bootstrap() {
       showCommonExtensions: true,
     },
   });
+  Logger.log('📚 Swagger API documentation available at /api/docs', 'Bootstrap');
 
   // Catch-all route to serve index.html for Angular routing
   // Must be AFTER all API routes and Swagger setup
@@ -193,7 +269,7 @@ async function bootstrap() {
       return;
     }
     // Serve index.html for all other routes (Angular routing)
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    res.sendFile(join(frontendPath, 'index.html'));
   });
 
   const port = process.env.PORT || 3000;

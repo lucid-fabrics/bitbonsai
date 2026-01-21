@@ -1115,16 +1115,25 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * Uses ffprobe to extract the actual video duration for accurate progress calculation.
    * Falls back to 3600 seconds if ffprobe fails or duration cannot be determined.
    *
+   * AUDIT FIX: Now uses stream duration (actual frame timestamps) instead of container
+   * metadata duration. This is more accurate for VFR (Variable Frame Rate) videos where
+   * container duration can differ from actual playback duration.
+   *
    * @param filePath - Path to video file
    * @returns Duration in seconds, or 3600 if unable to determine
    */
   async getVideoDuration(filePath: string): Promise<number> {
     return new Promise((resolve) => {
+      // AUDIT FIX: Use stream duration for more accurate VFR video handling
+      // -select_streams v:0 = first video stream only
+      // stream=duration gives actual frame-based duration, not container metadata
       const ffprobe = spawn('ffprobe', [
         '-v',
         'error',
+        '-select_streams',
+        'v:0',
         '-show_entries',
-        'format=duration',
+        'stream=duration',
         '-of',
         'default=noprint_wrappers=1:nokey=1',
         filePath,
@@ -1154,20 +1163,23 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           try {
             const duration = Number.parseFloat(output.trim());
             if (!Number.isNaN(duration) && duration > 0) {
-              this.logger.debug(`[${filePath}] FFprobe detected duration: ${duration.toFixed(2)}s`);
+              this.logger.debug(
+                `[${filePath}] FFprobe detected stream duration: ${duration.toFixed(2)}s`
+              );
               resolve(duration);
               return;
             }
           } catch {
-            // Fall through to default
+            // Fall through to format duration fallback
           }
         }
 
-        // Fall back to default 3600s if ffprobe fails or returns invalid data
-        this.logger.warn(
-          `[${filePath}] Failed to get duration from ffprobe (code: ${code}), using fallback 3600s`
+        // AUDIT FIX: Stream duration not available (common for MKV, some MP4)
+        // Fall back to format/container duration as secondary source
+        this.logger.debug(
+          `[${filePath}] Stream duration not available (code: ${code}), trying format duration`
         );
-        resolve(3600);
+        this.getFormatDuration(filePath).then(resolve);
       });
 
       ffprobe.on('error', (err) => {
@@ -1177,6 +1189,78 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
         this.logger.warn(`[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`);
+        resolve(3600);
+      });
+    });
+  }
+
+  /**
+   * AUDIT FIX: Get format/container duration as fallback when stream duration unavailable
+   *
+   * Some containers (MKV, certain MP4) don't store duration in the video stream metadata,
+   * only in the container/format level. This is the fallback for getVideoDuration().
+   *
+   * @param filePath - Path to video file
+   * @returns Duration in seconds, or 3600 if unable to determine
+   * @private
+   */
+  private async getFormatDuration(filePath: string): Promise<number> {
+    return new Promise((resolve) => {
+      const ffprobe = spawn('ffprobe', [
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
+        filePath,
+      ]);
+
+      let output = '';
+
+      ffprobe.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      const timeoutId = setTimeout(() => {
+        ffprobe.kill();
+        this.logger.warn(`[${filePath}] FFprobe format duration timeout, using fallback 3600s`);
+        resolve(3600);
+      }, 10000);
+
+      ffprobe.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+
+        if (code === 0 && output.trim()) {
+          try {
+            const duration = Number.parseFloat(output.trim());
+            if (!Number.isNaN(duration) && duration > 0) {
+              this.logger.debug(
+                `[${filePath}] FFprobe detected format duration: ${duration.toFixed(2)}s`
+              );
+              resolve(duration);
+              return;
+            }
+          } catch {
+            // Fall through to default
+          }
+        }
+
+        this.logger.warn(
+          `[${filePath}] Failed to get format duration from ffprobe (code: ${code}), using fallback 3600s`
+        );
+        resolve(3600);
+      });
+
+      ffprobe.on('error', (err) => {
+        clearTimeout(timeoutId);
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+        this.logger.warn(
+          `[${filePath}] FFprobe format duration error: ${err.message}, using fallback 3600s`
+        );
         resolve(3600);
       });
     });
@@ -2504,6 +2588,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       transferSpeedMBps: null,
       transferStartedAt: null,
       transferCompletedAt: null,
+      transferLastProgressAt: null, // DEEP AUDIT P0
       transferError: null,
       remoteTempPath: null,
       transferRetryCount: 0,
@@ -2574,13 +2659,16 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         stderrOutput += data.toString();
       });
 
+      // P2 FIX: Increased timeout from 30s to 60s for large NFS files
+      // NFS can be slow to seek through large files, especially with high latency
+      const VERIFY_TIMEOUT_MS = 60000;
       const timeoutId = setTimeout(() => {
         ffprobe.kill('SIGKILL');
         resolve({
           isValid: false,
-          error: 'File verification timed out after 30 seconds',
+          error: `File verification timed out after ${VERIFY_TIMEOUT_MS / 1000} seconds`,
         });
-      }, 30000);
+      }, VERIFY_TIMEOUT_MS);
 
       ffprobe.on('close', (code) => {
         clearTimeout(timeoutId);

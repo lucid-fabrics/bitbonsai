@@ -37,10 +37,62 @@ export class DatabaseInitService implements OnModuleInit {
       } else {
         this.logger.log('✅ Database already initialized');
       }
+
+      // RECOVERY: Ensure MAIN node exists if setup was completed but node is missing
+      // This can happen if setup was done before node creation logic was added
+      await this.ensureMainNodeExists();
     } catch (error) {
       this.logger.error('❌ Failed to initialize database:', error);
       // Don't throw - allow app to continue even if initialization fails
     }
+  }
+
+  /**
+   * Ensure a MAIN node exists if setup is complete
+   * This is a recovery mechanism for databases that completed setup before node creation was added
+   */
+  private async ensureMainNodeExists(): Promise<void> {
+    // Check if setup is complete
+    const settings = await this.prisma.settings.findFirst();
+    if (!settings?.isSetupComplete) {
+      return; // Setup not complete, don't create node
+    }
+
+    // Check if any node exists
+    const nodeCount = await this.prisma.node.count();
+    if (nodeCount > 0) {
+      return; // Node already exists
+    }
+
+    // Find a license to associate with the node
+    const license = await this.prisma.license.findFirst();
+    if (!license) {
+      this.logger.warn('⚠️ Cannot create MAIN node: no license found');
+      return;
+    }
+
+    this.logger.log('🔧 RECOVERY: Creating missing MAIN node...');
+
+    const hostname = process.env.HOSTNAME || 'main-node';
+    const apiKey = `bb_${require('crypto').randomBytes(48).toString('base64').slice(0, 64)}`;
+    const pairingToken = (100000 + require('crypto').randomInt(900000)).toString();
+
+    await this.prisma.node.create({
+      data: {
+        name: `Main Node (${hostname})`,
+        role: 'MAIN',
+        status: 'ONLINE',
+        version: require('../../../../package.json').version,
+        acceleration: 'CPU',
+        apiKey,
+        pairingToken,
+        pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        lastHeartbeat: new Date(),
+        licenseId: license.id,
+      },
+    });
+
+    this.logger.log('✅ MAIN node created successfully');
   }
 
   /**
