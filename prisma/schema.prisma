@@ -180,6 +180,7 @@ model Settings {
   defaultQueueView             String   @default("ENCODING") // Default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)
   readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
   maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
+  advancedModeEnabled          Boolean  @default(false) // Show advanced UI controls (default: minimal mode for simple UX)
 
   // ============ License Settings ============
   licenseKey                   String?   @map("license_key") // License key (stored in DB for seamless UX)
@@ -323,7 +324,7 @@ model License {
   key                  String        @unique
   tier                 LicenseTier
   status               LicenseStatus
-  email                String
+  email                String        @unique
   maxNodes             Int
   maxConcurrentJobs    Int
   features             Json // Feature flags: { multiNode: true, advancedPresets: true, api: true }
@@ -341,9 +342,7 @@ model License {
 
   @@index([status])
   @@index([tier])
-  @@index([email])
   @@index([validUntil])
-  @@index([patreonId])
   @@map("licenses")
 }
 
@@ -641,6 +640,8 @@ model Policy {
   targetQuality    Int // CRF value (0-51, lower = better quality)
   targetContainer  String?      @default("mkv") // Target container format (mkv, mp4, or null to keep original)
   skipReencoding   Boolean      @default(true) // Skip re-encoding if already in target codec (fast remux instead)
+  allowSameCodec   Boolean      @default(false) // Allow source=target codec without NEEDS_DECISION (for re-compression scenarios)
+  minSavingsPercent Int?        @default(0) // Minimum expected savings % to encode (0 = no threshold, only with allowSameCodec)
   deviceProfiles   Json // { appleTv: bool, roku: bool, web: bool, chromecast: bool }
   advancedSettings Json // { ffmpegFlags: string[], hwaccel: string, etc }
   atomicReplace    Boolean      @default(true) // Replace original atomically (rename)
@@ -764,6 +765,7 @@ model Job {
   transferSpeedMBps    Float?    // Current transfer speed (MB/s)
   transferStartedAt    DateTime? // When transfer started
   transferCompletedAt  DateTime? // When transfer completed
+  transferLastProgressAt DateTime? // DEEP AUDIT P0: When transfer progress was last updated (for stall detection)
   transferError        String?   // Error message if transfer failed
   remoteTempPath       String?   // Temporary path on child node during transfer
   transferRetryCount   Int       @default(0) // Number of transfer retry attempts (max 3)
@@ -837,6 +839,7 @@ model Job {
   @@index([lastProgressUpdate]) // PERF AUDIT ROUND 4: For resume tracking queries
   @@index([lastHeartbeat]) // PERF AUDIT ROUND 4: For heartbeat validation queries
   @@index([autoHealClaimedAt, autoHealClaimedBy]) // DEEP AUDIT P2: For auto-heal claim queries
+  @@index([stage, transferLastProgressAt]) // DEEP AUDIT P0: Composite for TRANSFERRING stall detection
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
