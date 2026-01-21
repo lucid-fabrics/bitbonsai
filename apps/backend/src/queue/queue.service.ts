@@ -2299,6 +2299,88 @@ export class QueueService implements OnModuleInit {
   }
 
   /**
+   * Force encode all jobs where codec already matches target
+   *
+   * Bulk force re-encoding for NEEDS_DECISION jobs that have the CODEC_ALREADY_MATCHES_TARGET issue.
+   * Jobs are moved to QUEUED to proceed with encoding despite matching codecs.
+   *
+   * Use case: Re-compress files at a different quality setting (e.g., higher CRF to save space)
+   *
+   * @returns Count of queued jobs and list of job details
+   */
+  async forceEncodeAllCodecMatch(): Promise<{
+    queuedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+  }> {
+    this.logger.log('Force encoding all jobs where codec already matches target');
+
+    try {
+      // Find all NEEDS_DECISION jobs
+      const allNeedsDecisionJobs = await this.prisma.job.findMany({
+        where: {
+          stage: JobStage.NEEDS_DECISION,
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          sourceCodec: true,
+          targetCodec: true,
+          decisionIssues: true,
+        },
+      });
+
+      // Filter to those where source codec matches target codec (normalized comparison)
+      const jobsToEncode = allNeedsDecisionJobs.filter((job) => {
+        const normalizedSource = this.ffmpegService.normalizeCodec(job.sourceCodec);
+        const normalizedTarget = this.ffmpegService.normalizeCodec(job.targetCodec);
+        return normalizedSource === normalizedTarget;
+      });
+
+      if (jobsToEncode.length === 0) {
+        this.logger.log('No codec-match jobs found to force encode');
+        return { queuedCount: 0, jobs: [] };
+      }
+
+      // Bulk update all matching jobs to QUEUED
+      const now = new Date();
+      const result = await this.prisma.job.updateMany({
+        where: {
+          id: { in: jobsToEncode.map((j) => j.id) },
+        },
+        data: {
+          stage: JobStage.QUEUED,
+          decisionRequired: false,
+          decisionIssues: null,
+          decisionMadeAt: now,
+          decisionData: JSON.stringify({
+            actionConfig: {
+              action: 'force_encode',
+              reason: 'user_requested',
+              bulkAction: true,
+            },
+          }),
+          healthMessage: '⚡ Force re-encoding - user requested (bulk action)',
+        },
+      });
+
+      this.logger.log(`Queued ${result.count} codec-match job(s) for force encoding`);
+
+      return {
+        queuedCount: result.count,
+        jobs: jobsToEncode.map((job) => ({
+          id: job.id,
+          fileLabel: job.fileLabel,
+          sourceCodec: job.sourceCodec,
+          targetCodec: job.targetCodec,
+        })),
+      };
+    } catch (error) {
+      this.logger.error('Failed to force encode codec-match jobs', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a job
    *
    * @param id - Job unique identifier

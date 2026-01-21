@@ -70,6 +70,30 @@
   }
 }
 
+.btn-warning {
+  background: $warning;
+  color: $text-dark;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: $transition-fast;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  &:hover {
+    background: color.adjust($warning, $lightness: -5%);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 // ============================================
 // NODE STATUS BAR - UX-friendly design
 // Shows meaningful status instead of raw metrics
@@ -951,6 +975,7 @@
       &.col-codec { width: 160px; }
       &.col-policy { width: 120px; }
       &.col-progress { width: 150px; }
+      &.col-expected-savings { width: 140px; }
       &.col-size { width: 200px; }
       &.col-node { width: 100px; }
       &.col-failed-at { width: 130px; font-size: 11px; }
@@ -1219,6 +1244,11 @@
 
 .savings-text {
   color: $success;
+  font-weight: 500;
+}
+
+.expected-savings-value {
+  color: #10b981;
   font-weight: 500;
 }
 

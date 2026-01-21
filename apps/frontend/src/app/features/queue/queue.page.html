@@ -1,3 +1,4 @@
+<ng-container *ngIf="{ advanced: advancedMode$ | async } as vm">
 <div class="queue-container">
   <div class="page-header">
     <div>
@@ -9,73 +10,82 @@
         </button>
       </p>
     </div>
-    <div class="header-actions">
-      @if ((queueData$ | async)?.stats?.codecMatchCount && (queueData$ | async)!.stats!.codecMatchCount > 0) {
-        <button (click)="openSkipCodecMatchDialog()" class="btn btn-info" title="Skip encoding for files already in target codec">
-          <i class="fas fa-forward"></i>
-          Skip Codec Match ({{ (queueData$ | async)!.stats!.codecMatchCount }})
-        </button>
-      }
-      @if ((queueData$ | async)?.stats?.cancelled && (queueData$ | async)!.stats!.cancelled > 0) {
-        <button (click)="openRetryAllDialog()" class="btn btn-success">
-          <i class="fas fa-redo"></i>
-          Retry All Cancelled ({{ (queueData$ | async)!.stats!.cancelled }})
-        </button>
-      }
-      @if ((queueData$ | async)?.stats?.failed && (queueData$ | async)!.stats!.failed > 0) {
-        <button (click)="openRetryFailedDialog()" class="btn btn-success">
-          <i class="fas fa-redo"></i>
-          Retry Failed Jobs ({{ (queueData$ | async)!.stats!.failed }})
-        </button>
-      }
-      @if ((queueData$ | async)?.stats?.queued && (queueData$ | async)!.stats!.queued > 0) {
-        <button (click)="openCancelAllDialog()" class="btn btn-danger">
-          <i class="fas fa-times-circle"></i>
-          Cancel All Queued ({{ (queueData$ | async)!.stats!.queued }})
-        </button>
-        <button (click)="rebalanceJobs()" class="btn btn-info" title="Redistribute queued jobs across available nodes">
-          <i class="fas fa-balance-scale"></i>
-          Rebalance Jobs
-        </button>
-      }
-      <button (click)="openClearJobsDialog(selectedStatus !== 'ALL' ? [selectedStatus] : undefined)" class="btn btn-warning btn-clear-jobs">
-        <i class="fas fa-trash-alt"></i>
-        @if (selectedStatus !== 'ALL') {
-          Clear {{ selectedStatus }} Jobs
-        } @else {
-          Clear All Jobs
+    <!-- Advanced Mode: Bulk Actions -->
+    @if (vm.advanced) {
+      <div class="header-actions">
+        @if ((queueData$ | async)?.stats?.codecMatchCount && (queueData$ | async)!.stats!.codecMatchCount > 0) {
+          <button (click)="openSkipCodecMatchDialog()" class="btn btn-info" title="Skip encoding for files already in target codec">
+            <i class="fas fa-forward"></i>
+            Skip Codec Match ({{ (queueData$ | async)!.stats!.codecMatchCount }})
+          </button>
+          <button (click)="openForceEncodeCodecMatchDialog()" class="btn btn-warning" title="Force re-encode files already in target codec (for re-compression)">
+            <i class="fas fa-compress-arrows-alt"></i>
+            Re-encode Anyway ({{ (queueData$ | async)!.stats!.codecMatchCount }})
+          </button>
         }
-      </button>
-    </div>
+        @if ((queueData$ | async)?.stats?.cancelled && (queueData$ | async)!.stats!.cancelled > 0) {
+          <button (click)="openRetryAllDialog()" class="btn btn-success">
+            <i class="fas fa-redo"></i>
+            Retry All Cancelled ({{ (queueData$ | async)!.stats!.cancelled }})
+          </button>
+        }
+        @if ((queueData$ | async)?.stats?.failed && (queueData$ | async)!.stats!.failed > 0) {
+          <button (click)="openRetryFailedDialog()" class="btn btn-success">
+            <i class="fas fa-redo"></i>
+            Retry Failed Jobs ({{ (queueData$ | async)!.stats!.failed }})
+          </button>
+        }
+        @if ((queueData$ | async)?.stats?.queued && (queueData$ | async)!.stats!.queued > 0) {
+          <button (click)="openCancelAllDialog()" class="btn btn-danger">
+            <i class="fas fa-times-circle"></i>
+            Cancel All Queued ({{ (queueData$ | async)!.stats!.queued }})
+          </button>
+          <button (click)="rebalanceJobs()" class="btn btn-info" title="Redistribute queued jobs across available nodes">
+            <i class="fas fa-balance-scale"></i>
+            Rebalance Jobs
+          </button>
+        }
+        <button (click)="openClearJobsDialog(selectedStatus !== 'ALL' ? [selectedStatus] : undefined)" class="btn btn-warning btn-clear-jobs">
+          <i class="fas fa-trash-alt"></i>
+          @if (selectedStatus !== 'ALL') {
+            Clear {{ selectedStatus }} Jobs
+          } @else {
+            Clear All Jobs
+          }
+        </button>
+      </div>
+    }
   </div>
 
   <!-- Disk Space Warning Banner -->
   <app-disk-space-warning-banner></app-disk-space-warning-banner>
 
-  <!-- Node Status Bar (Simplified UX) -->
-  @if (nodeCapacity$ | async; as nodes) {
-    @if (nodes.length > 0) {
-      <div class="node-status-bar">
-        @for (node of nodes; track node.nodeId) {
-          <div class="node-status" [class]="getNodeStatusClass(node)"
-               bbTooltip
-               [tooltipTitle]="node.nodeName + ' Details'"
-               [tooltipContent]="getNodeTooltipContent(node)"
-               tooltipPlacement="bottom">
-            <div class="node-status__indicator">
-              <i [class]="getNodeStatusIcon(node)"></i>
+  <!-- Node Status Bar (Advanced Mode Only) -->
+  @if (vm.advanced) {
+    @if (nodeCapacity$ | async; as nodes) {
+      @if (nodes.length > 0) {
+        <div class="node-status-bar">
+          @for (node of nodes; track node.nodeId) {
+            <div class="node-status" [class]="getNodeStatusClass(node)"
+                 bbTooltip
+                 [tooltipTitle]="node.nodeName + ' Details'"
+                 [tooltipContent]="getNodeTooltipContent(node)"
+                 tooltipPlacement="bottom">
+              <div class="node-status__indicator">
+                <i [class]="getNodeStatusIcon(node)"></i>
+              </div>
+              <div class="node-status__info">
+                <span class="node-status__name">{{ node.nodeName }}</span>
+                <span class="node-status__label">{{ getNodeStatusLabel(node) }}</span>
+              </div>
+              <div class="node-status__workers">
+                <span class="workers-count">{{ node.activeJobs }}</span>
+                <span class="workers-max">/ {{ node.maxWorkers }}</span>
+              </div>
             </div>
-            <div class="node-status__info">
-              <span class="node-status__name">{{ node.nodeName }}</span>
-              <span class="node-status__label">{{ getNodeStatusLabel(node) }}</span>
-            </div>
-            <div class="node-status__workers">
-              <span class="workers-count">{{ node.activeJobs }}</span>
-              <span class="workers-max">/ {{ node.maxWorkers }}</span>
-            </div>
-          </div>
-        }
-      </div>
+          }
+        </div>
+      }
     }
   }
 
@@ -187,7 +197,8 @@
         </div>
       </div>
 
-      @if (isMainNode$ | async) {
+      <!-- Advanced Mode: Node Filter -->
+      @if ((vm.advanced) && (isMainNode$ | async)) {
         <div class="filter-group">
           <label for="node-filter">Node:</label>
           <select
@@ -204,21 +215,24 @@
         </div>
       }
 
-      @if (availableLibraries$ | async; as availableLibraries) {
-        <div class="filter-group">
-          <label for="library-filter">Library:</label>
-          <select
-            id="library-filter"
-            [value]="selectedLibraryId"
-            (change)="onLibraryFilterChange($any($event.target).value)"
-            class="filter-select"
-          >
-            <option value="">All Libraries</option>
-            @for (library of availableLibraries | keyvalue; track library.key) {
-              <option [value]="library.key">{{ library.value.name }} ({{ library.value.nodeName }})</option>
-            }
-          </select>
-        </div>
+      <!-- Advanced Mode: Library Filter -->
+      @if (vm.advanced) {
+        @if (availableLibraries$ | async; as availableLibraries) {
+          <div class="filter-group">
+            <label for="library-filter">Library:</label>
+            <select
+              id="library-filter"
+              [value]="selectedLibraryId"
+              (change)="onLibraryFilterChange($any($event.target).value)"
+              class="filter-select"
+            >
+              <option value="">All Libraries</option>
+              @for (library of availableLibraries | keyvalue; track library.key) {
+                <option [value]="library.key">{{ library.value.name }} ({{ library.value.nodeName }})</option>
+              }
+            </select>
+          </div>
+        }
       }
 
       <div class="filter-group search-group">
@@ -252,14 +266,23 @@
               <tr>
                 <th class="col-status">Status</th>
                 <th class="col-filename">File Name</th>
-                <th class="col-library">Library</th>
+                @if (vm.advanced) {
+                  <th class="col-library">Library</th>
+                }
                 <th class="col-codec">Codec</th>
-                <th class="col-policy">Policy</th>
-                @if (selectedStatus !== JobStatus.COMPLETED) {
+                @if (vm.advanced) {
+                  <th class="col-policy">Policy</th>
+                }
+                @if (selectedStatus !== JobStatus.COMPLETED && selectedStatus !== JobStatus.NEEDS_DECISION) {
                   <th class="col-progress">Progress</th>
                 }
-                <th class="col-size">Size & Compression</th>
-                <th class="col-node">Node</th>
+                @if (selectedStatus === JobStatus.NEEDS_DECISION) {
+                  <th class="col-expected-savings">Expected Savings</th>
+                }
+                <th class="col-size">Size</th>
+                @if (vm.advanced) {
+                  <th class="col-node">Node</th>
+                }
                 @if (selectedStatus === JobStatus.FAILED) {
                   <th class="col-failed-at">Failed At</th>
                   <th class="col-failure-progress">Progress</th>
@@ -294,22 +317,25 @@
                 </td>
                 <td class="col-filename" [title]="job.fileName">
                   {{ job.fileName }}
-                  @if (job.type === 'REMUX') {
-                    <span class="job-type-badge remux"
-                          bbTooltip
-                          tooltipTitle="Fast Remuxing"
-                          tooltipContent="This job is using stream copy (remux) to quickly change the container format without re-encoding. Much faster than encoding!"
-                          tooltipPlacement="top">
-                      <i class="fas fa-bolt"></i> REMUXING
-                    </span>
-                  } @else if (job.type === 'ENCODE') {
-                    <span class="job-type-badge encode"
-                          bbTooltip
-                          tooltipTitle="Full Encoding"
-                          tooltipContent="This job is performing full video/audio transcoding to optimize quality and compression."
-                          tooltipPlacement="top">
-                      <i class="fas fa-cog"></i> ENCODING
-                    </span>
+                  <!-- Hide job type badge for NEEDS_DECISION - it's not encoding yet -->
+                  @if (job.status !== JobStatus.NEEDS_DECISION) {
+                    @if (job.type === 'REMUX') {
+                      <span class="job-type-badge remux"
+                            bbTooltip
+                            tooltipTitle="Fast Remuxing"
+                            tooltipContent="This job is using stream copy (remux) to quickly change the container format without re-encoding. Much faster than encoding!"
+                            tooltipPlacement="top">
+                        <i class="fas fa-bolt"></i> REMUXING
+                      </span>
+                    } @else if (job.type === 'ENCODE') {
+                      <span class="job-type-badge encode"
+                            bbTooltip
+                            tooltipTitle="Full Encoding"
+                            tooltipContent="This job is performing full video/audio transcoding to optimize quality and compression."
+                            tooltipPlacement="top">
+                        <i class="fas fa-cog"></i> ENCODING
+                      </span>
+                    }
                   }
                   @if (wasHealedFreshStart(job)) {
                     <span class="auto-heal-badge warning"
@@ -346,7 +372,9 @@
                     </span>
                   }
                 </td>
-                <td class="col-library">{{ job.libraryName }}</td>
+                @if (vm.advanced) {
+                  <td class="col-library">{{ job.libraryName }}</td>
+                }
                 <td class="col-codec">
                   @if (job.sourceCodec && job.targetCodec) {
                     <div class="codec-conversion">
@@ -362,18 +390,20 @@
                     <span class="codec-placeholder">-</span>
                   }
                 </td>
-                <td class="col-policy">
-                  <span class="policy-badge-queue"
-                    bbTooltip
-                    tooltipTitle="Encoding Policy"
-                    [tooltipContent]="'This job uses the ' + job.policyName + ' policy'"
-                    tooltipWhen="You want to understand which encoding settings are being used for this job."
-                    tooltipPlacement="top">
-                    <i class="fas fa-cog"></i>
-                    {{ job.policyName }}
-                  </span>
-                </td>
-                @if (selectedStatus !== JobStatus.COMPLETED) {
+                @if (vm.advanced) {
+                  <td class="col-policy">
+                    <span class="policy-badge-queue"
+                      bbTooltip
+                      tooltipTitle="Encoding Policy"
+                      [tooltipContent]="'This job uses the ' + job.policyName + ' policy'"
+                      tooltipWhen="You want to understand which encoding settings are being used for this job."
+                      tooltipPlacement="top">
+                      <i class="fas fa-cog"></i>
+                      {{ job.policyName }}
+                    </span>
+                  </td>
+                }
+                @if (selectedStatus !== JobStatus.COMPLETED && selectedStatus !== JobStatus.NEEDS_DECISION) {
                   <td class="col-progress">
                     @if (job.status === 'ENCODING') {
                     <div class="progress-details">
@@ -457,6 +487,11 @@
                     }
                   </td>
                 }
+                @if (selectedStatus === JobStatus.NEEDS_DECISION) {
+                  <td class="col-expected-savings">
+                    <span class="expected-savings-value">{{ calculateExpectedSavings(job) }}</span>
+                  </td>
+                }
                 <td class="col-size">
                   @if (job.status === 'COMPLETED' && job.currentSize > 0) {
                     <!-- Completed: Show actual results -->
@@ -496,54 +531,56 @@
                     <span class="size-original">{{ formatBytes(job.originalSize) }}</span>
                   }
                 </td>
-                <td class="col-node">
-                  <div class="node-assignment">
-                    <span class="node-name">{{ job.nodeName }}</span>
-                    @if (job.manualAssignment) {
-                      <span class="assignment-badge manual"
-                            bbTooltip
-                            tooltipTitle="Manually Assigned"
-                            tooltipContent="This job was manually assigned to this node by a user."
-                            tooltipPlacement="top">
-                        <i class="fas fa-hand-pointer"></i> Manual
-                      </span>
-                    }
-                    @if (job.originalNodeId && job.originalNodeId !== job.nodeId) {
-                      <span class="assignment-badge delegated"
-                            bbTooltip
-                            tooltipTitle="Delegated Job"
-                            tooltipContent="This job was delegated from another node."
-                            tooltipPlacement="top">
-                        <i class="fas fa-share"></i> Delegated
-                      </span>
-                    }
-                    @if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'copied') {
-                      <span class="access-badge copied"
-                            bbTooltip
-                            tooltipTitle="File Copied"
-                            tooltipContent="File was copied to node's local storage before encoding. Provides faster encoding speeds."
-                            tooltipPlacement="top">
-                        <i class="fas fa-download"></i> Copied
-                      </span>
-                    } @else if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'local') {
-                      <span class="access-badge local"
-                            bbTooltip
-                            tooltipTitle="Direct Mount"
-                            tooltipContent="File accessed directly via Docker volume mount. Native performance."
-                            tooltipPlacement="top">
-                        <i class="fas fa-hdd"></i> Local
-                      </span>
-                    } @else {
-                      <span class="access-badge nfs"
-                            bbTooltip
-                            tooltipTitle="NFS Mount"
-                            tooltipContent="File accessed via NFS network mount from main node."
-                            tooltipPlacement="top">
-                        <i class="fas fa-network-wired"></i> NFS
-                      </span>
-                    }
-                  </div>
-                </td>
+                @if (vm.advanced) {
+                  <td class="col-node">
+                    <div class="node-assignment">
+                      <span class="node-name">{{ job.nodeName }}</span>
+                      @if (job.manualAssignment) {
+                        <span class="assignment-badge manual"
+                              bbTooltip
+                              tooltipTitle="Manually Assigned"
+                              tooltipContent="This job was manually assigned to this node by a user."
+                              tooltipPlacement="top">
+                          <i class="fas fa-hand-pointer"></i> Manual
+                        </span>
+                      }
+                      @if (job.originalNodeId && job.originalNodeId !== job.nodeId) {
+                        <span class="assignment-badge delegated"
+                              bbTooltip
+                              tooltipTitle="Delegated Job"
+                              tooltipContent="This job was delegated from another node."
+                              tooltipPlacement="top">
+                          <i class="fas fa-share"></i> Delegated
+                        </span>
+                      }
+                      @if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'copied') {
+                        <span class="access-badge copied"
+                              bbTooltip
+                              tooltipTitle="File Copied"
+                              tooltipContent="File was copied to node's local storage before encoding. Provides faster encoding speeds."
+                              tooltipPlacement="top">
+                          <i class="fas fa-download"></i> Copied
+                        </span>
+                      } @else if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'local') {
+                        <span class="access-badge local"
+                              bbTooltip
+                              tooltipTitle="Direct Mount"
+                              tooltipContent="File accessed directly via Docker volume mount. Native performance."
+                              tooltipPlacement="top">
+                          <i class="fas fa-hdd"></i> Local
+                        </span>
+                      } @else {
+                        <span class="access-badge nfs"
+                              bbTooltip
+                              tooltipTitle="NFS Mount"
+                              tooltipContent="File accessed via NFS network mount from main node."
+                              tooltipPlacement="top">
+                          <i class="fas fa-network-wired"></i> NFS
+                        </span>
+                      }
+                    </div>
+                  </td>
+                }
                 @if (selectedStatus === JobStatus.FAILED) {
                   <td class="col-failed-at">{{ formatTimestamp(job.failedAt) }}</td>
                   <td class="col-failure-progress">
@@ -558,131 +595,135 @@
                 }
                 <td class="col-actions">
                   <div class="action-buttons">
-                    @if (job.status === 'ENCODING') {
-                      <button
-                        (click)="pauseJob(job.id, $event)"
-                        class="action-btn pause-btn"
-                        bbTooltip
-                        tooltipTitle="Pause Encoding"
-                        tooltipContent="Temporarily pauses the encoding process. You can resume this job later to continue from where it left off."
-                        tooltipWhen="You want to temporarily stop encoding this file to free up resources or prioritize other jobs."
-                        tooltipPlacement="top">
-                        <i class="fas fa-pause"></i>
-                      </button>
-                      @if (!job.keepOriginalRequested) {
+                    <!-- Advanced Mode: Pause, Keep Original, Resume, Force Start, Priority, Delegate -->
+                    @if (vm.advanced) {
+                      @if (job.status === 'ENCODING') {
                         <button
-                          (click)="keepOriginal(job, $event)"
-                          class="action-btn keep-original-btn"
+                          (click)="pauseJob(job.id, $event)"
+                          class="action-btn pause-btn"
                           bbTooltip
-                          tooltipTitle="Keep Original"
-                          tooltipContent="Preserves the original file after encoding completes. The original will be renamed to .original extension, allowing you to compare quality or restore it later."
-                          tooltipWhen="You want to keep the original file as a backup or for quality comparison."
+                          tooltipTitle="Pause Encoding"
+                          tooltipContent="Temporarily pauses the encoding process. You can resume this job later to continue from where it left off."
+                          tooltipWhen="You want to temporarily stop encoding this file to free up resources or prioritize other jobs."
                           tooltipPlacement="top">
-                          <i class="fas fa-save"></i>
+                          <i class="fas fa-pause"></i>
                         </button>
-                      } @else {
+                        @if (!job.keepOriginalRequested) {
+                          <button
+                            (click)="keepOriginal(job, $event)"
+                            class="action-btn keep-original-btn"
+                            bbTooltip
+                            tooltipTitle="Keep Original"
+                            tooltipContent="Preserves the original file after encoding completes. The original will be renamed to .original extension, allowing you to compare quality or restore it later."
+                            tooltipWhen="You want to keep the original file as a backup or for quality comparison."
+                            tooltipPlacement="top">
+                            <i class="fas fa-save"></i>
+                          </button>
+                        } @else {
+                          <button
+                            class="action-btn keep-original-btn active"
+                            disabled
+                            bbTooltip
+                            tooltipTitle="Keeping Original"
+                            tooltipContent="Original file will be preserved after encoding completes."
+                            tooltipPlacement="top">
+                            <i class="fas fa-check"></i>
+                          </button>
+                        }
+                      }
+                      @if (job.status === 'PAUSED') {
                         <button
-                          class="action-btn keep-original-btn active"
+                          (click)="resumeJob(job.id, $event)"
+                          class="action-btn resume-btn"
+                          bbTooltip
+                          tooltipTitle="Resume Encoding"
+                          tooltipContent="Resumes the paused encoding process. The job will continue from where it was paused."
+                          tooltipWhen="You want to continue encoding this paused job."
+                          tooltipPlacement="top">
+                          <i class="fas fa-play"></i>
+                        </button>
+                      }
+                      @if (job.status === 'QUEUED' || job.status === 'DETECTED') {
+                        <button
+                          (click)="forceStartJob(job.id, $event)"
+                          class="action-btn force-start-btn"
+                          bbTooltip
+                          tooltipTitle="Force Start Now"
+                          tooltipContent="Immediately starts encoding this job, bypassing the normal queue order. The job will be prioritized and start within seconds."
+                          tooltipWhen="You want to test or prioritize this specific file for immediate encoding."
+                          tooltipPlacement="top">
+                          <i class="fas fa-bolt"></i>
+                        </button>
+                      }
+                      @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'DETECTED') {
+                        <div class="priority-dropdown" (click)="$event.stopPropagation()">
+                          <button
+                            (click)="togglePriorityMenu(job.id)"
+                            [class]="'action-btn priority-btn priority-' + (job.priority ?? 0)"
+                            bbTooltip
+                            tooltipTitle="Set Priority"
+                            tooltipContent="Change job priority: Normal (0), High (1), or Top Priority (2). Max 3 jobs can have top priority. Priority auto-resets on completion."
+                            tooltipWhen="You want to change the order in which this job will be processed."
+                            tooltipPlacement="top">
+                            @if ((job.priority ?? 0) === 2) {
+                              <fa-icon [icon]="icons.fire"></fa-icon>
+                            } @else if ((job.priority ?? 0) === 1) {
+                              <fa-icon [icon]="icons.bolt"></fa-icon>
+                            } @else {
+                              <fa-icon [icon]="icons.layers"></fa-icon>
+                            }
+                          </button>
+                          <div class="priority-menu" [class.show]="openPriorityMenuId === job.id">
+                            <button
+                              (click)="setPriority(job.id, 0, $event)"
+                              [class.active]="(job.priority ?? 0) === 0"
+                              class="priority-option priority-0">
+                              <fa-icon [icon]="icons.layers"></fa-icon>
+                              Normal
+                            </button>
+                            <button
+                              (click)="setPriority(job.id, 1, $event)"
+                              [class.active]="(job.priority ?? 0) === 1"
+                              class="priority-option priority-1">
+                              <fa-icon [icon]="icons.bolt"></fa-icon>
+                              High
+                            </button>
+                            <button
+                              (click)="setPriority(job.id, 2, $event)"
+                              [class.active]="(job.priority ?? 0) === 2"
+                              class="priority-option priority-2">
+                              <fa-icon [icon]="icons.fire"></fa-icon>
+                              Top Priority
+                            </button>
+                          </div>
+                        </div>
+                      }
+                      @if (job.canBeDelegated) {
+                        <button
+                          (click)="openDelegationDialog(job, $event)"
+                          class="action-btn delegate-btn"
+                          bbTooltip
+                          tooltipTitle="Send to Node"
+                          [tooltipContent]="job.status === 'FAILED' ? 'Sends this failed job to a different node for retry. The error will be cleared and retryCount reset.' : 'Manually assign this job to a specific node. This overrides the automatic node selection algorithm.'"
+                          tooltipWhen="You want to choose which node should process this job."
+                          tooltipPlacement="top">
+                          <i class="fas fa-share"></i>
+                        </button>
+                      }
+                      @if (!job.canBeDelegated && (job.status === 'ENCODING' || job.status === 'PAUSED')) {
+                        <button
+                          class="action-btn delegate-btn disabled"
                           disabled
                           bbTooltip
-                          tooltipTitle="Keeping Original"
-                          tooltipContent="Original file will be preserved after encoding completes."
+                          tooltipTitle="Cannot Delegate"
+                          tooltipContent="This job cannot be delegated because it has already started encoding ({{ job.progress }}% complete). Partially-encoded jobs have temp files stored on the current node's local storage that cannot be transferred. Only jobs that haven't started (0% progress) can be delegated."
+                          tooltipWhen="You want to understand why this job cannot be moved to another node."
                           tooltipPlacement="top">
-                          <i class="fas fa-check"></i>
+                          <i class="fas fa-share"></i>
                         </button>
                       }
                     }
-                    @if (job.status === 'PAUSED') {
-                      <button
-                        (click)="resumeJob(job.id, $event)"
-                        class="action-btn resume-btn"
-                        bbTooltip
-                        tooltipTitle="Resume Encoding"
-                        tooltipContent="Resumes the paused encoding process. The job will continue from where it was paused."
-                        tooltipWhen="You want to continue encoding this paused job."
-                        tooltipPlacement="top">
-                        <i class="fas fa-play"></i>
-                      </button>
-                    }
-                    @if (job.status === 'QUEUED' || job.status === 'DETECTED') {
-                      <button
-                        (click)="forceStartJob(job.id, $event)"
-                        class="action-btn force-start-btn"
-                        bbTooltip
-                        tooltipTitle="Force Start Now"
-                        tooltipContent="Immediately starts encoding this job, bypassing the normal queue order. The job will be prioritized and start within seconds."
-                        tooltipWhen="You want to test or prioritize this specific file for immediate encoding."
-                        tooltipPlacement="top">
-                        <i class="fas fa-bolt"></i>
-                      </button>
-                    }
-                    @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'DETECTED') {
-                      <div class="priority-dropdown" (click)="$event.stopPropagation()">
-                        <button
-                          (click)="togglePriorityMenu(job.id)"
-                          [class]="'action-btn priority-btn priority-' + (job.priority ?? 0)"
-                          bbTooltip
-                          tooltipTitle="Set Priority"
-                          tooltipContent="Change job priority: Normal (0), High (1), or Top Priority (2). Max 3 jobs can have top priority. Priority auto-resets on completion."
-                          tooltipWhen="You want to change the order in which this job will be processed."
-                          tooltipPlacement="top">
-                          @if ((job.priority ?? 0) === 2) {
-                            <fa-icon [icon]="icons.fire"></fa-icon>
-                          } @else if ((job.priority ?? 0) === 1) {
-                            <fa-icon [icon]="icons.bolt"></fa-icon>
-                          } @else {
-                            <fa-icon [icon]="icons.layers"></fa-icon>
-                          }
-                        </button>
-                        <div class="priority-menu" [class.show]="openPriorityMenuId === job.id">
-                          <button
-                            (click)="setPriority(job.id, 0, $event)"
-                            [class.active]="(job.priority ?? 0) === 0"
-                            class="priority-option priority-0">
-                            <fa-icon [icon]="icons.layers"></fa-icon>
-                            Normal
-                          </button>
-                          <button
-                            (click)="setPriority(job.id, 1, $event)"
-                            [class.active]="(job.priority ?? 0) === 1"
-                            class="priority-option priority-1">
-                            <fa-icon [icon]="icons.bolt"></fa-icon>
-                            High
-                          </button>
-                          <button
-                            (click)="setPriority(job.id, 2, $event)"
-                            [class.active]="(job.priority ?? 0) === 2"
-                            class="priority-option priority-2">
-                            <fa-icon [icon]="icons.fire"></fa-icon>
-                            Top Priority
-                          </button>
-                        </div>
-                      </div>
-                    }
-                    @if (job.canBeDelegated) {
-                      <button
-                        (click)="openDelegationDialog(job, $event)"
-                        class="action-btn delegate-btn"
-                        bbTooltip
-                        tooltipTitle="Send to Node"
-                        [tooltipContent]="job.status === 'FAILED' ? 'Sends this failed job to a different node for retry. The error will be cleared and retryCount reset.' : 'Manually assign this job to a specific node. This overrides the automatic node selection algorithm.'"
-                        tooltipWhen="You want to choose which node should process this job."
-                        tooltipPlacement="top">
-                        <i class="fas fa-share"></i>
-                      </button>
-                    }
-                    @if (!job.canBeDelegated && (job.status === 'ENCODING' || job.status === 'PAUSED')) {
-                      <button
-                        class="action-btn delegate-btn disabled"
-                        disabled
-                        bbTooltip
-                        tooltipTitle="Cannot Delegate"
-                        tooltipContent="This job cannot be delegated because it has already started encoding ({{ job.progress }}% complete). Partially-encoded jobs have temp files stored on the current node's local storage that cannot be transferred. Only jobs that haven't started (0% progress) can be delegated."
-                        tooltipWhen="You want to understand why this job cannot be moved to another node."
-                        tooltipPlacement="top">
-                        <i class="fas fa-share"></i>
-                      </button>
-                    }
+                    <!-- Essential: Cancel button (always visible) -->
                     @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'FAILED') {
                       <button
                         (click)="openCancelDialog(job.id, $event)"
@@ -707,30 +748,46 @@
                         <i class="fas fa-redo"></i>
                       </button>
                     }
-                    @if (job.status === 'FAILED') {
-                      <button
-                        (click)="recheckJob(job.id, $event)"
-                        class="action-btn recheck-btn"
-                        bbTooltip
-                        tooltipTitle="Recheck Job"
-                        tooltipContent="Re-validates if the file is truly failed by checking file existence and running health checks. If the file is actually valid, the job will be moved back to COMPLETED. Useful for jobs incorrectly marked as FAILED due to race conditions."
-                        tooltipWhen="You suspect the job was incorrectly marked as failed and the file might actually be valid."
-                        tooltipPlacement="top">
-                        <i class="fas fa-check-circle"></i>
-                      </button>
+                    <!-- Advanced Mode: Debug/analysis actions -->
+                    @if (vm.advanced) {
+                      @if (job.status === 'FAILED') {
+                        <button
+                          (click)="recheckJob(job.id, $event)"
+                          class="action-btn recheck-btn"
+                          bbTooltip
+                          tooltipTitle="Recheck Job"
+                          tooltipContent="Re-validates if the file is truly failed by checking file existence and running health checks. If the file is actually valid, the job will be moved back to COMPLETED. Useful for jobs incorrectly marked as FAILED due to race conditions."
+                          tooltipWhen="You suspect the job was incorrectly marked as failed and the file might actually be valid."
+                          tooltipPlacement="top">
+                          <i class="fas fa-check-circle"></i>
+                        </button>
+                      }
+                      @if (job.status === 'COMPLETED') {
+                        <button
+                          (click)="detectAndRequeue(job.id, $event)"
+                          class="action-btn detect-btn"
+                          bbTooltip
+                          tooltipTitle="Detect & Requeue"
+                          tooltipContent="Checks if encoding actually compressed the file. If the file is the same size or larger than the original, the job will be automatically requeued for retry. If compression was successful, you'll get an error message."
+                          tooltipWhen="You notice a completed job has the same file size as the original, indicating encoding didn't actually compress it."
+                          tooltipPlacement="top">
+                          <i class="fas fa-search"></i>
+                        </button>
+                      }
+                      @if ((job.status === 'FAILED' || job.status === 'CANCELLED') && ((job.retryCount ?? 0) > 0 || jobHistoryCache.has(job.id))) {
+                        <button
+                          (click)="openJobHistoryModal(job, $event)"
+                          class="action-btn history-btn"
+                          bbTooltip
+                          tooltipTitle="View Event History"
+                          tooltipContent="Shows a timeline of all failure, cancellation, restart, and auto-heal events for this job. Useful for troubleshooting repeated failures."
+                          tooltipWhen="You want to see the complete history of what happened to this job."
+                          tooltipPlacement="top">
+                          <i class="fas fa-history"></i>
+                        </button>
+                      }
                     }
-                    @if (job.status === 'COMPLETED') {
-                      <button
-                        (click)="detectAndRequeue(job.id, $event)"
-                        class="action-btn detect-btn"
-                        bbTooltip
-                        tooltipTitle="Detect & Requeue"
-                        tooltipContent="Checks if encoding actually compressed the file. If the file is the same size or larger than the original, the job will be automatically requeued for retry. If compression was successful, you'll get an error message."
-                        tooltipWhen="You notice a completed job has the same file size as the original, indicating encoding didn't actually compress it."
-                        tooltipPlacement="top">
-                        <i class="fas fa-search"></i>
-                      </button>
-                    }
+                    <!-- Essential: Error details (always visible for failed jobs) -->
                     @if (job.status === 'FAILED' && job.error) {
                       <button
                         (click)="openErrorDetailsModal(job)"
@@ -741,18 +798,6 @@
                         tooltipWhen="You need to understand why this job failed and how to fix it."
                         tooltipPlacement="top">
                         <i class="fas fa-exclamation-circle"></i>
-                      </button>
-                    }
-                    @if ((job.status === 'FAILED' || job.status === 'CANCELLED') && ((job.retryCount ?? 0) > 0 || jobHistoryCache.has(job.id))) {
-                      <button
-                        (click)="openJobHistoryModal(job, $event)"
-                        class="action-btn history-btn"
-                        bbTooltip
-                        tooltipTitle="View Event History"
-                        tooltipContent="Shows a timeline of all failure, cancellation, restart, and auto-heal events for this job. Useful for troubleshooting repeated failures."
-                        tooltipWhen="You want to see the complete history of what happened to this job."
-                        tooltipPlacement="top">
-                        <i class="fas fa-history"></i>
                       </button>
                     }
                     @if (job.status === 'FAILED' || job.status === 'CANCELLED') {
@@ -777,7 +822,8 @@
                 <tr class="details-row">
                   <td colspan="9">
                     <div class="job-details-expanded">
-                      <!-- Job Timeline (Horizontal) -->
+                      <!-- Job Timeline (Advanced Mode Only) -->
+                      @if (vm.advanced) {
                       <div class="timeline-section">
                         <h4><i class="fas fa-history"></i> Job Timeline</h4>
                         <div class="timeline-horizontal">
@@ -926,9 +972,10 @@
                           }
                         </div>
                       </div>
+                      }
 
-                      <!-- Encoding Preview (for ENCODING jobs) -->
-                      @if (job.status === 'ENCODING') {
+                      <!-- Encoding Preview (Advanced Mode Only, for ENCODING jobs) -->
+                      @if ((vm.advanced) && job.status === 'ENCODING') {
                         <div class="encoding-preview-section">
                           <div class="preview-header">
                             <h4><i class="fas fa-images"></i> Encoding Preview</h4>
@@ -964,7 +1011,8 @@
                         </div>
                       }
 
-                      <!-- Expected Results -->
+                      <!-- Expected Results (Advanced Mode Only) -->
+                      @if (vm.advanced) {
                       <div class="results-section">
                         <h4><i class="fas fa-calculator"></i> Expected Results</h4>
                         <div class="results-grid">
@@ -988,6 +1036,7 @@
                           }
                         </div>
                       </div>
+                      }
 
                       <!-- Original File Status (for COMPLETED jobs) -->
                       @if (job.status === 'COMPLETED') {
@@ -1070,8 +1119,8 @@
                         </div>
                       }
 
-                      <!-- Retry Information -->
-                      @if (job.retryCount && job.retryCount > 0) {
+                      <!-- Retry Information (Advanced Mode Only) -->
+                      @if ((vm.advanced) && job.retryCount && job.retryCount > 0) {
                         <div class="retry-section">
                           <h4><i class="fas fa-redo"></i> Retry History</h4>
                           <div class="retry-info">
@@ -1680,6 +1729,64 @@
   </div>
 }
 
+<!-- Force Encode Codec Match Confirmation Dialog -->
+@if (showForceEncodeCodecMatchDialog) {
+  <div class="dialog-overlay" (click)="closeForceEncodeCodecMatchDialog()">
+    <div class="dialog-content skip-codec-match-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-compress-arrows-alt"></i> Re-encode Codec Match Jobs</h3>
+        <button (click)="closeForceEncodeCodecMatchDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon" style="color: var(--warning-color)">
+                <i class="fas fa-compress-arrows-alt"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ data.stats.codecMatchCount }}</div>
+                <div class="summary-label">Jobs to Re-encode</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box" style="border-color: var(--warning-color)">
+            <i class="fas fa-exclamation-triangle" style="color: var(--warning-color)"></i>
+            <div class="info-content">
+              <strong>Why force re-encode?</strong>
+              <p>These files are already in the target codec. Re-encoding is useful when:</p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>You want to re-compress at a different quality (CRF) setting</li>
+                <li>You want to change the container format</li>
+                <li>You want to apply different encoding flags</li>
+              </ul>
+              <p style="margin-top: 0.5rem;"><strong>Warning:</strong></p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>Re-encoding the same codec can <strong>increase file size</strong> if quality settings are similar</li>
+                <li>Each re-encode causes <strong>generational quality loss</strong></li>
+                <li>This will consume significant CPU/GPU time</li>
+              </ul>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeForceEncodeCodecMatchDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button (click)="confirmForceEncodeCodecMatch()" class="btn btn-warning">
+          <i class="fas fa-compress-arrows-alt"></i>
+          Re-encode All Codec Match Jobs
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
 <!-- Retry All Cancelled Confirmation Dialog -->
 @if (showRetryAllDialog) {
   <div class="dialog-overlay" (click)="closeRetryAllDialog()">
@@ -1986,3 +2093,4 @@
     [fullscreen]="true"
     (close)="closeFullscreenCarousel()" />
 }
+</ng-container>

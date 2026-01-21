@@ -39,6 +39,11 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   // CAPA FIX: Reduced from 60min to 10min for faster stuck job detection
   private readonly ENCODING_TIMEOUT_MIN = parseInt(process.env.ENCODING_TIMEOUT_MIN || '10', 10);
   private readonly VERIFYING_TIMEOUT_MIN = parseInt(process.env.VERIFYING_TIMEOUT_MIN || '30', 10);
+  // DEEP AUDIT P0: TRANSFERRING stage timeout (15 min with no progress = stalled)
+  private readonly TRANSFERRING_TIMEOUT_MIN = parseInt(
+    process.env.TRANSFERRING_TIMEOUT_MIN || '15',
+    10
+  );
 
   constructor(
     private readonly prisma: PrismaService,
@@ -259,8 +264,89 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       }
     }
 
+    // DEEP AUDIT P0: Scenario 4 - Jobs stuck in TRANSFERRING (no progress for >15 min)
+    // This catches file transfers that stall mid-progress (e.g., network issues, rsync hangs)
+    const transferringCutoff = new Date(now.getTime() - this.TRANSFERRING_TIMEOUT_MIN * 60 * 1000);
+    const stuckTransferring = await this.prisma.job.findMany({
+      where: {
+        stage: JobStage.TRANSFERRING,
+        OR: [
+          // No progress update for X minutes
+          {
+            transferLastProgressAt: {
+              lt: transferringCutoff,
+            },
+          },
+          // Or transferLastProgressAt is null but transferStartedAt is old
+          {
+            transferLastProgressAt: null,
+            transferStartedAt: {
+              lt: transferringCutoff,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        fileLabel: true,
+        transferStartedAt: true,
+        transferLastProgressAt: true,
+        transferProgress: true,
+        transferRetryCount: true,
+      },
+    });
+
+    if (stuckTransferring.length > 0) {
+      this.logger.warn(
+        `Found ${stuckTransferring.length} job(s) stuck in TRANSFERRING for >${this.TRANSFERRING_TIMEOUT_MIN}min`
+      );
+
+      for (const job of stuckTransferring) {
+        const lastProgress = job.transferLastProgressAt || job.transferStartedAt || now;
+        const stuckMinutes = Math.round((now.getTime() - lastProgress.getTime()) / 1000 / 60);
+        const retryCount = job.transferRetryCount + 1;
+        const maxRetries = 3;
+
+        if (retryCount >= maxRetries) {
+          // Max retries reached, mark as failed
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.FAILED,
+              failedAt: new Date(),
+              error: `File transfer stalled after ${maxRetries} attempts (last progress: ${job.transferProgress}% at ${stuckMinutes}min ago)`,
+              transferError: `Transfer stalled - no progress for ${stuckMinutes} minutes`,
+            },
+          });
+          this.logger.error(
+            `✗ Transfer failed (max retries): ${job.fileLabel} (progress: ${job.transferProgress}%) → FAILED`
+          );
+        } else {
+          // Reset to DETECTED for retry
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.DETECTED,
+              transferRetryCount: retryCount,
+              transferProgress: 0,
+              transferStartedAt: null,
+              transferLastProgressAt: null,
+              transferError: `Transfer stalled at ${job.transferProgress}% (no progress for ${stuckMinutes}min). Retrying...`,
+            },
+          });
+          this.logger.log(
+            `🔄 Recovered stuck TRANSFERRING job: ${job.fileLabel} (progress: ${job.transferProgress}%, no progress for ${stuckMinutes}min, retry ${retryCount}/${maxRetries}) → DETECTED`
+          );
+        }
+      }
+    }
+
     // Log summary
-    const totalRecovered = stuckHealthCheck.length + stuckEncoding.length + stuckVerifying.length;
+    const totalRecovered =
+      stuckHealthCheck.length +
+      stuckEncoding.length +
+      stuckVerifying.length +
+      stuckTransferring.length;
     if (totalRecovered > 0) {
       this.logger.log(`✅ Recovery complete: ${totalRecovered} job(s) recovered`);
     }

@@ -35,6 +35,8 @@ import {
 import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-space-warning-banner/disk-space-warning-banner.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { type Node as NodeModel } from '../nodes/models/node.model';
+import { SettingsActions } from '../settings/+state/settings.actions';
+import { SettingsSelectors } from '../settings/+state/settings.selectors';
 import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { DecisionIssueCardComponent } from './components/decision-issue-card/decision-issue-card.component';
@@ -115,6 +117,7 @@ export class QueueComponent implements OnInit {
   >;
   protected readonly isMainNode$: Observable<boolean>;
   protected readonly nodeCapacity$: Observable<NodeCapacity[]>;
+  protected readonly advancedMode$: Observable<boolean>;
 
   // State
   protected expandedJobId: string | null = null;
@@ -125,6 +128,7 @@ export class QueueComponent implements OnInit {
   protected showRetryFailedDialog = false;
   protected retryFailedSelectedError: string | null = null;
   protected showSkipCodecMatchDialog = false;
+  protected showForceEncodeCodecMatchDialog = false;
   protected showClearJobsDialog = false;
   protected clearJobsStages: string[] = [];
   protected cancelDialogLoading = false;
@@ -282,9 +286,17 @@ export class QueueComponent implements OnInit {
       ),
       shareReplay({ bufferSize: 1, refCount: true })
     );
+
+    // Advanced mode from settings store
+    this.advancedMode$ = this.store
+      .select(SettingsSelectors.selectAdvancedMode)
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 
   ngOnInit(): void {
+    // Load advanced mode setting
+    this.store.dispatch(SettingsActions.loadAdvancedMode());
+
     // Auto-select current node ONLY for LINKED nodes (child nodes show only their own jobs)
     // MAIN nodes show all nodes by default (empty filter = "All Nodes")
     this.store
@@ -426,7 +438,13 @@ export class QueueComponent implements OnInit {
   }
 
   protected updateQueryParams(): void {
-    const queryParams: any = {};
+    // DEEP AUDIT P2-1: Fix any type with proper interface
+    const queryParams: {
+      status?: string;
+      nodeId?: string;
+      libraryId?: string;
+      search?: string;
+    } = {};
 
     if (this.selectedStatus !== 'ALL') {
       queryParams.status = this.selectedStatus;
@@ -884,6 +902,38 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected openForceEncodeCodecMatchDialog(): void {
+    this.showForceEncodeCodecMatchDialog = true;
+  }
+
+  protected closeForceEncodeCodecMatchDialog(): void {
+    this.showForceEncodeCodecMatchDialog = false;
+  }
+
+  protected confirmForceEncodeCodecMatch(): void {
+    this.queueApi
+      .forceEncodeAllCodecMatch()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const count = result.queuedCount;
+          if (count === 0) {
+            this.toastService.info('No codec-match jobs found to re-encode');
+          } else {
+            this.toastService.success(
+              count === 1 ? '1 job queued for re-encoding' : `${count} jobs queued for re-encoding`
+            );
+          }
+          this.closeForceEncodeCodecMatchDialog();
+          this.refreshQueue();
+        },
+        error: () => {
+          this.toastService.error('Failed to queue codec-match jobs for re-encoding');
+          this.closeForceEncodeCodecMatchDialog();
+        },
+      });
+  }
+
   protected openRetryAllDialog(): void {
     this.showRetryAllDialog = true;
   }
@@ -1204,11 +1254,12 @@ export class QueueComponent implements OnInit {
       }
 
       // DEEP AUDIT P2: Validate each issue has required properties
+      // FIX: Validate 'category' (not 'type') to match HealthCheckIssue interface
       return issues.filter(
         (issue): issue is HealthCheckIssue =>
           issue !== null &&
           typeof issue === 'object' &&
-          typeof issue.type === 'string' &&
+          typeof issue.category === 'string' &&
           typeof issue.message === 'string'
       );
     } catch (error) {
