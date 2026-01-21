@@ -1693,6 +1693,58 @@ export class QueueController {
   }
 
   /**
+   * Force encode all jobs where codec already matches target
+   */
+  @Post('force-encode-codec-match')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Force encode all jobs where codec already matches target',
+    description:
+      'Bulk force re-encoding for all NEEDS_DECISION jobs where the source codec matches the target codec.\n\n' +
+      'This is useful when:\n' +
+      '- You want to re-compress files at a different quality/CRF setting\n' +
+      '- You want to change container format while re-encoding\n\n' +
+      '**What happens**:\n' +
+      '- Jobs with CODEC_ALREADY_MATCHES_TARGET issue are moved to QUEUED\n' +
+      '- Files will be re-encoded despite already being in target codec\n' +
+      '- This may increase file size if quality settings are similar',
+  })
+  @ApiOkResponse({
+    description: 'Successfully queued codec-match jobs for force encoding',
+    schema: {
+      type: 'object',
+      properties: {
+        queuedCount: {
+          type: 'number',
+          description: 'Number of jobs queued for force encoding',
+          example: 5,
+        },
+        jobs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'clxx123456789' },
+              fileLabel: { type: 'string', example: 'movie.mkv' },
+              sourceCodec: { type: 'string', example: 'hevc' },
+              targetCodec: { type: 'string', example: 'hevc' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error occurred while queueing jobs',
+  })
+  async forceEncodeAllCodecMatch(): Promise<{
+    queuedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+  }> {
+    return this.queueService.forceEncodeAllCodecMatch();
+  }
+
+  /**
    * Delete a job
    */
   @Delete(':id')

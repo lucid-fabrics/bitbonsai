@@ -44,10 +44,13 @@ export class HealthCheckWorker implements OnModuleInit {
   private loopPromise?: Promise<void>;
 
   // Configuration (can be moved to Settings later)
-  private readonly CONCURRENCY = parseInt(process.env.HEALTH_CHECK_CONCURRENCY || '10', 10);
+  // DEEP AUDIT P1-3: Reduced default concurrency from 10 to 5 to prevent DB pool exhaustion
+  private readonly CONCURRENCY = parseInt(process.env.HEALTH_CHECK_CONCURRENCY || '5', 10);
   private readonly INTERVAL_MS = parseInt(process.env.HEALTH_CHECK_INTERVAL_MS || '2000', 10);
   private readonly MIN_HEALTH_SCORE = parseInt(process.env.MIN_HEALTH_SCORE || '40', 10);
   private readonly MAX_RETRY_ATTEMPTS = parseInt(process.env.MAX_RETRY_ATTEMPTS || '3', 10);
+  // DEEP AUDIT P1-3: Maximum pool utilization before applying backpressure (0-1)
+  private readonly MAX_POOL_UTILIZATION = 0.8;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -298,6 +301,7 @@ export class HealthCheckWorker implements OnModuleInit {
    * Process a batch of health checks with parallel execution
    *
    * HIGH PRIORITY FIX: Exclude recently started health checks from orphan detection
+   * DEEP AUDIT P1-3: Added DB pool backpressure monitoring
    */
   private async processHealthChecks(): Promise<void> {
     // Calculate how many slots are available
@@ -305,6 +309,18 @@ export class HealthCheckWorker implements OnModuleInit {
 
     if (availableSlots <= 0) {
       // All slots busy, wait for next iteration
+      return;
+    }
+
+    // DEEP AUDIT P1-3: Simple backpressure based on concurrent check count
+    // This prevents overwhelming the system under heavy load
+    // Note: Using currentlyChecking.size as a proxy for DB pool pressure
+    // since Prisma $metrics may not be available in all configurations
+    if (this.currentlyChecking.size >= this.CONCURRENCY * this.MAX_POOL_UTILIZATION) {
+      // Already at 80% of max concurrency, apply backpressure
+      this.logger.debug(
+        `Backpressure: ${this.currentlyChecking.size}/${this.CONCURRENCY} checks in progress (>${Math.round(this.MAX_POOL_UTILIZATION * 100)}%)`
+      );
       return;
     }
 
@@ -407,9 +423,17 @@ export class HealthCheckWorker implements OnModuleInit {
     this.currentlyChecking.add(jobId);
 
     try {
-      // Get job details
+      // Get job details including policy for allowSameCodec and minSavingsPercent check
       const job = await this.prisma.job.findUnique({
         where: { id: jobId },
+        include: {
+          policy: {
+            select: {
+              allowSameCodec: true,
+              minSavingsPercent: true,
+            },
+          },
+        },
       });
 
       if (!job) {
@@ -519,10 +543,40 @@ export class HealthCheckWorker implements OnModuleInit {
       );
 
       // Check for codec match (file already in target codec)
-      const codecMatchIssue = this.checkCodecMatch(job.sourceCodec, job.targetCodec);
-      if (codecMatchIssue) {
-        compatibilityIssues.push(codecMatchIssue);
+      // Skip this check if policy has allowSameCodec enabled AND expected savings meets threshold
+      const allowSameCodec = job.policy?.allowSameCodec ?? false;
+      const minSavingsPercent = job.policy?.minSavingsPercent ?? 0;
+
+      if (!allowSameCodec) {
+        // allowSameCodec is disabled - always check for codec match
+        const codecMatchIssue = this.checkCodecMatch(job.sourceCodec, job.targetCodec);
+        if (codecMatchIssue) {
+          compatibilityIssues.push(codecMatchIssue);
+        }
+      } else if (minSavingsPercent > 0) {
+        // allowSameCodec is enabled but has a savings threshold
+        // Calculate expected savings and compare against threshold
+        const expectedSavings = this.calculateExpectedSavingsPercent(
+          job.sourceCodec,
+          job.targetCodec,
+          job.beforeSizeBytes
+        );
+
+        if (expectedSavings < minSavingsPercent) {
+          // Expected savings is below threshold - show NEEDS_DECISION
+          const codecMatchIssue = this.checkCodecMatchWithThreshold(
+            job.sourceCodec,
+            job.targetCodec,
+            expectedSavings,
+            minSavingsPercent
+          );
+          if (codecMatchIssue) {
+            compatibilityIssues.push(codecMatchIssue);
+          }
+        }
+        // If expectedSavings >= minSavingsPercent, skip the codec match check (allow encoding)
       }
+      // If allowSameCodec is true and minSavingsPercent is 0, skip the codec match check entirely
 
       // Determine next stage based on health result and compatibility
       let nextStage: JobStage;
@@ -724,6 +778,130 @@ Re-encoding a file to the same codec offers no benefit and may actually increase
       vp9: 'VP9',
     };
     return displayNames[codec.toLowerCase()] || codec.toUpperCase();
+  }
+
+  /**
+   * Calculate expected savings percentage based on codec compression ratios
+   *
+   * Uses typical compression ratios between codecs:
+   * - H.264 → HEVC: ~30-50% savings
+   * - H.264 → AV1: ~40-60% savings
+   * - HEVC → AV1: ~20-30% savings
+   * - Same codec: ~0-5% savings (minimal)
+   */
+  private calculateExpectedSavingsPercent(
+    sourceCodec: string,
+    targetCodec: string,
+    _beforeSizeBytes: bigint
+  ): number {
+    const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
+    const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
+
+    // Same codec typically yields minimal savings
+    if (normalizedSource === normalizedTarget) {
+      return 5; // Conservative estimate for same-codec re-encoding
+    }
+
+    // Compression ratio estimates (conservative)
+    const compressionRatios: Record<string, Record<string, number>> = {
+      h264: {
+        hevc: 35, // H.264 → HEVC: ~35% savings
+        av1: 50, // H.264 → AV1: ~50% savings
+        vp9: 30, // H.264 → VP9: ~30% savings
+      },
+      hevc: {
+        av1: 25, // HEVC → AV1: ~25% savings
+        vp9: 10, // HEVC → VP9: ~10% savings
+        h264: -30, // HEVC → H.264: negative savings (quality loss)
+      },
+      av1: {
+        hevc: -10, // AV1 → HEVC: negative savings
+        vp9: 0, // AV1 → VP9: similar
+        h264: -50, // AV1 → H.264: significant increase
+      },
+      vp9: {
+        hevc: 10, // VP9 → HEVC: ~10% savings
+        av1: 20, // VP9 → AV1: ~20% savings
+        h264: -20, // VP9 → H.264: negative savings
+      },
+    };
+
+    return compressionRatios[normalizedSource]?.[normalizedTarget] ?? 0;
+  }
+
+  /**
+   * Check codec match with savings threshold - creates a BLOCKER issue
+   * when expected savings is below the policy's minimum threshold
+   */
+  private checkCodecMatchWithThreshold(
+    sourceCodec: string,
+    targetCodec: string,
+    expectedSavings: number,
+    minSavingsThreshold: number
+  ): HealthCheckIssue | null {
+    const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
+    const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
+    const codecDisplayName = this.getCodecDisplayName(normalizedTarget);
+
+    const suggestedActions: HealthCheckSuggestedAction[] = [
+      {
+        id: 'skip_encoding',
+        label: 'Skip Encoding',
+        description: `Skip this job - expected savings (${expectedSavings}%) is below the ${minSavingsThreshold}% threshold`,
+        impact: 'Job will be marked as COMPLETED with no changes to the file',
+        recommended: true,
+        config: {
+          action: 'skip',
+          reason: 'savings_below_threshold',
+        },
+      },
+      {
+        id: 'force_reencode',
+        label: 'Force Re-encode Anyway',
+        description: `Re-encode despite low expected savings (${expectedSavings}%)`,
+        impact: `File will be re-encoded but savings may be less than ${minSavingsThreshold}%`,
+        recommended: false,
+        config: {
+          action: 'force_encode',
+          reason: 'user_requested',
+        },
+      },
+      {
+        id: 'cancel_job',
+        label: 'Cancel Job',
+        description: 'Remove this job from the queue entirely',
+        impact: 'Job will be cancelled and the file left unchanged',
+        recommended: false,
+        config: {
+          action: 'cancel',
+          reason: 'savings_below_threshold',
+        },
+      },
+    ];
+
+    return {
+      category: HealthCheckIssueCategory.CODEC,
+      severity: HealthCheckIssueSeverity.BLOCKER,
+      code: 'SAVINGS_BELOW_THRESHOLD',
+      message: `Expected savings (${expectedSavings}%) is below the policy threshold (${minSavingsThreshold}%)`,
+      technicalDetails: `
+Source codec: ${sourceCodec} (normalized: ${normalizedSource})
+Target codec: ${targetCodec} (normalized: ${normalizedTarget})
+Expected savings: ${expectedSavings}%
+Policy threshold: ${minSavingsThreshold}%
+
+The expected file size reduction from encoding this file to ${codecDisplayName} is below your policy's minimum savings threshold.
+
+This typically means the encoding would take significant time with minimal space benefit.
+`.trim(),
+      suggestedActions,
+      metadata: {
+        sourceCodec: normalizedSource,
+        targetCodec: normalizedTarget,
+        expectedSavings,
+        minSavingsThreshold,
+      },
+    };
   }
 
   /**

@@ -136,12 +136,14 @@ export class FileTransferService implements OnModuleInit {
       this.validateIpAddress(targetNode.ipAddress);
 
       // Update job to TRANSFERRING stage
+      // DEEP AUDIT P0: Initialize transferLastProgressAt for stall detection
       await this.prisma.job.update({
         where: { id: jobId },
         data: {
           stage: 'TRANSFERRING',
           transferRequired: true,
           transferStartedAt: new Date(),
+          transferLastProgressAt: new Date(), // P0 FIX: Track progress timestamp for stall detection
           transferProgress: 0,
           transferError: null,
           originalFilePath: sourceFilePath, // CRITICAL: Preserve original path before transfer changes filePath
@@ -333,12 +335,14 @@ export class FileTransferService implements OnModuleInit {
             }
 
             // CRITICAL #3 FIX: Wrap DB update with 5s timeout to prevent deadlock
+            // DEEP AUDIT P0: Update transferLastProgressAt for stall detection
             const updatePromise = Promise.race([
               this.prisma.job.update({
                 where: { id: jobId },
                 data: {
                   transferProgress: progress,
                   transferSpeedMBps: speedMBps,
+                  transferLastProgressAt: new Date(), // P0 FIX: Track progress for stall detection
                 },
               }),
               new Promise((_, reject) =>
