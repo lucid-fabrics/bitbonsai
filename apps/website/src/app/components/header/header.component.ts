@@ -26,7 +26,6 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
         </nav>
 
         <div class="header__actions">
-          <a routerLink="/admin/login" class="header__admin">Admin</a>
           <a routerLink="/download" class="header__cta">Get Started</a>
         </div>
       </div>

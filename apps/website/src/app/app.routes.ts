@@ -36,6 +36,15 @@ export const appRoutes: Route[] = [
       import('./pages/success/success.component').then((m) => m.SuccessComponent),
   },
   {
+    path: 'privacy',
+    loadComponent: () =>
+      import('./pages/privacy/privacy.component').then((m) => m.PrivacyComponent),
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./pages/terms/terms.component').then((m) => m.TermsComponent),
+  },
+  {
     path: 'admin/login',
     loadComponent: () =>
       import('./pages/admin/login/login.component').then((m) => m.LoginComponent),
