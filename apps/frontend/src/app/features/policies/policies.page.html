@@ -418,6 +418,65 @@
                     </small>
                   </div>
 
+                  <!-- Allow Same Codec Re-encoding Toggle -->
+                  <div class="form-group">
+                    <label class="form-group__checkbox-label">
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="formData.allowSameCodec"
+                        name="allowSameCodec"
+                        class="form-group__checkbox"
+                      />
+                      <span
+                        bbTooltip
+                        tooltipTitle="Allow Same Codec Re-encoding"
+                        tooltipContent="When enabled, jobs will proceed directly to encoding even if the source file is already in the target codec (e.g., HEVC → HEVC). Normally, this would pause the job to confirm since re-encoding the same codec usually increases file size. Enable this if you want to re-compress files at a different quality setting without confirmation."
+                        tooltipWhen="You want to re-compress files at a different CRF/quality without being asked to confirm each time."
+                        tooltipPlacement="right"
+                      >
+                        Allow same codec re-encoding (skip confirmation)
+                      </span>
+                    </label>
+                    <small class="form-group__help-text">
+                      Enable to re-encode files already in target codec without "Needs Decision" prompt
+                    </small>
+
+                    <!-- Min Savings Threshold (only shown when allowSameCodec is enabled) -->
+                    @if (formData.allowSameCodec) {
+                      <div class="min-savings-threshold">
+                        <label for="minSavingsPercent" class="form-group__label">
+                          Minimum Expected Savings
+                          <span
+                            bbTooltip
+                            tooltipTitle="Minimum Savings Threshold"
+                            tooltipContent="Only re-encode same-codec files if the expected file size savings exceeds this percentage. For example, set to 10% to skip re-encoding files that would only save 5% of disk space. Set to 0 to re-encode regardless of expected savings."
+                            tooltipWhen="You want to avoid re-encoding files where the space savings wouldn't be worth the time/quality trade-off."
+                            tooltipPlacement="right"
+                          >
+                            ℹ️
+                          </span>
+                        </label>
+                        <div class="min-savings-input-wrapper">
+                          <input
+                            id="minSavingsPercent"
+                            type="number"
+                            class="form-group__input min-savings-input"
+                            [(ngModel)]="formData.minSavingsPercent"
+                            name="minSavingsPercent"
+                            min="0"
+                            max="100"
+                            step="1"
+                            placeholder="0"
+                          />
+                          <span class="min-savings-suffix">%</span>
+                        </div>
+                        <small class="form-group__help-text">
+                          Only re-encode if expected savings exceeds this % (0 = always re-encode)
+                        </small>
+                      </div>
+                    }
+                  </div>
+
                   <!-- FFmpeg Flags -->
                   <div class="form-group">
                     <label for="ffmpeg" class="form-group__label">Custom FFmpeg Flags</label>

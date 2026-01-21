@@ -98,6 +98,30 @@ export class CreatePolicyDto {
   skipReencoding?: boolean;
 
   @ApiPropertyOptional({
+    description:
+      'Allow encoding when source and target codec are the same without requiring user confirmation. When enabled, jobs will proceed directly to encoding instead of pausing at NEEDS_DECISION. Useful for re-compression scenarios where you want to reduce file size even if already in target codec.',
+    example: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowSameCodec?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Minimum expected savings percentage required to proceed with same-codec encoding. Only applies when allowSameCodec is enabled. Jobs with expected savings below this threshold will be skipped. Range: 0-100 (0 = no threshold).',
+    example: 10,
+    default: 0,
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  minSavingsPercent?: number;
+
+  @ApiPropertyOptional({
     description: 'Optional library ID to associate this policy with a specific media library',
     example: 'clxxxx123456789',
     nullable: true,
