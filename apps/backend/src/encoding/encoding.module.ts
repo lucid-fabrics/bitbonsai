@@ -1,5 +1,4 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CoreModule } from '../core/core.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { NodesModule } from '../nodes/nodes.module';
@@ -19,14 +18,13 @@ import { FileHealthService } from './file-health.service';
  *
  * Provides encoding job processing with FFmpeg integration.
  * Handles worker orchestration, queue management, and file operations.
- * Includes EventEmitter2 for real-time progress tracking.
+ * Uses EventEmitter2 for real-time progress tracking (registered globally in AppModule).
  * Includes FileHealthService for pre-encoding file validation.
  * Includes EncodingPreviewService for live encoding preview generation.
  * Includes EncodingHistoryService for ETA improvements with historical data.
  */
 @Module({
   imports: [
-    EventEmitterModule.forRoot(),
     CoreModule,
     forwardRef(() => QueueModule),
     forwardRef(() => LibrariesModule),
