@@ -7,7 +7,7 @@ import type {
   License,
   LicenseCapabilities,
   LicenseTierInfo,
-  PatreonStatus,
+  LookupLicenseResponse,
   StripeCheckoutResponse,
   StripePlan,
   StripeStatus,
@@ -19,7 +19,6 @@ import type {
 export class LicenseService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/licenses`;
-  private readonly patreonUrl = `${environment.apiUrl}/patreon`;
   private readonly stripeUrl = `${environment.licenseApiUrl}/stripe`; // Use license-api for Stripe
 
   // License endpoints
@@ -39,13 +38,8 @@ export class LicenseService {
     return this.http.post<License>(`${this.apiUrl}/activate`, activateDto);
   }
 
-  // Patreon endpoints
-  getPatreonStatus(): Observable<PatreonStatus> {
-    return this.http.get<PatreonStatus>(`${this.patreonUrl}/status`);
-  }
-
-  getPatreonAuthUrl(): Observable<{ url: string }> {
-    return this.http.get<{ url: string }>(`${this.patreonUrl}/auth`);
+  lookupLicense(email: string): Observable<LookupLicenseResponse> {
+    return this.http.post<LookupLicenseResponse>(`${this.apiUrl}/lookup`, { email });
   }
 
   // Stripe endpoints

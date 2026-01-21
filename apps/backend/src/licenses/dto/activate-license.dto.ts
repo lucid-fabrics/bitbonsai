@@ -1,24 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class ActivateLicenseDto {
   @ApiProperty({
-    description: 'License key in format XXX-XXXX-XXXX-XXXX',
-    example: 'ABC-1234-5678-9012',
-    pattern: '^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$',
+    description: 'License key from licensing-service (BITBONSAI-XXX-... format)',
+    example: 'BITBONSAI-SUP-eyJlbWFpbCI6InVz...',
   })
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'License key is required' })
   @IsString()
-  @Matches(/^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/, {
-    message: 'License key must be in format XXX-XXXX-XXXX-XXXX',
-  })
+  @MinLength(20, { message: 'License key is too short' })
+  @MaxLength(1000, { message: 'License key is too long' })
   licenseKey!: string;
 
   @ApiProperty({
     description: 'Email address for license activation',
     example: 'user@example.com',
   })
-  @IsNotEmpty()
-  @IsEmail()
+  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Invalid email format' })
+  @MaxLength(254, { message: 'Email is too long' })
+  @Transform(({ value }) => value?.toLowerCase().trim())
   email!: string;
 }

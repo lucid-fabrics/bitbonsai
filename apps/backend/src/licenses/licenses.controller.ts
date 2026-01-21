@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { LicenseTier } from '@prisma/client';
 import { LicenseGuardService } from '../license/license-guard.service';
-import type { ActivateLicenseDto } from './dto/activate-license.dto';
+import { ActivateLicenseDto } from './dto/activate-license.dto';
 import { LicenseDto } from './dto/license.dto';
+import { LookupLicenseDto } from './dto/lookup-license.dto';
+import { LicensesService } from './licenses.service';
 
 /**
  * License Tier Configuration
@@ -18,7 +21,10 @@ import { LicenseDto } from './dto/license.dto';
 @ApiTags('licenses')
 @Controller('licenses')
 export class LicensesController {
-  constructor(private readonly licenseGuard: LicenseGuardService) {}
+  constructor(
+    private readonly licenseGuard: LicenseGuardService,
+    private readonly licensesService: LicensesService
+  ) {}
 
   @Get('current')
   @ApiOperation({
@@ -154,6 +160,8 @@ export class LicensesController {
   }
 
   @Post('activate')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute - matches licensing-service
   @ApiOperation({
     summary: 'Activate a license key',
     description:
@@ -168,26 +176,74 @@ export class LicensesController {
     status: 400,
     description: 'Invalid license key format or activation failed',
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests - rate limited',
+  })
   async activateLicense(@Body() activateDto: ActivateLicenseDto): Promise<LicenseDto> {
-    // TODO: Wire to actual license validation
-    const maskedKey = `${activateDto.licenseKey.slice(0, 3)}-XXXX-XXXX-${activateDto.licenseKey.slice(-4)}`;
+    const result = await this.licensesService.activateLicense(activateDto);
+
+    // Get capabilities to get current node count
+    const capabilities = await this.licenseGuard.getCapabilities();
+
+    // Mask the license key for display (security: minimize exposed chars)
+    const maskedKey = this.maskLicenseKey(activateDto.licenseKey);
+
+    // Determine features based on tier
+    const isPatreonProOrHigher =
+      result.tier === LicenseTier.PATREON_PRO || result.tier === LicenseTier.PATREON_ULTIMATE;
+    const isCommercial = result.tier.startsWith('COMMERCIAL');
 
     return {
-      tier: LicenseTier.PATREON_PRO,
+      tier: result.tier,
       licenseKey: maskedKey,
-      email: activateDto.email,
-      validUntil: '2026-12-31T23:59:59Z',
-      maxNodes: 5,
-      usedNodes: 0,
-      maxConcurrentJobs: 10,
+      email: result.email,
+      validUntil: result.expiresAt ? result.expiresAt.toISOString() : 'Lifetime',
+      maxNodes: result.maxNodes,
+      usedNodes: capabilities.currentNodes,
+      maxConcurrentJobs: result.maxConcurrentJobs,
       features: [
-        { name: 'Multi-Node (5)', enabled: true },
-        { name: 'Advanced Presets', enabled: true },
-        { name: 'API Access', enabled: true },
-        { name: 'Webhooks', enabled: true },
-        { name: 'Priority Queue', enabled: true },
-        { name: 'Cloud Storage', enabled: false },
+        { name: 'Single Node', enabled: true },
+        { name: 'Multi-Node', enabled: result.tier !== LicenseTier.FREE },
+        { name: 'Advanced Presets', enabled: result.tier !== LicenseTier.FREE },
+        { name: 'API Access', enabled: isPatreonProOrHigher || isCommercial },
+        { name: 'Priority Queue', enabled: isPatreonProOrHigher || isCommercial },
+        { name: 'Webhooks', enabled: isPatreonProOrHigher || isCommercial },
+        { name: 'Cloud Storage', enabled: isCommercial },
       ],
     };
+  }
+
+  @Post('lookup')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute - matches licensing-service
+  @ApiOperation({
+    summary: 'Lookup license by email',
+    description: 'Find license associated with an email address (for post-Stripe checkout flow).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'License lookup result',
+  })
+  async lookupLicense(@Body() dto: LookupLicenseDto): Promise<{
+    found: boolean;
+    license?: {
+      tier: string;
+      maxNodes: number;
+      maxConcurrentJobs: number;
+      maskedKey: string;
+    };
+  }> {
+    return this.licensesService.lookupLicenseByEmail(dto.email);
+  }
+
+  /**
+   * Mask license key for display (security: minimize exposed chars)
+   */
+  private maskLicenseKey(key: string): string {
+    if (key.length <= 20) return '****';
+    const prefixMatch = key.match(/^(BITBONSAI-[A-Z]+-)/);
+    const prefix = prefixMatch ? prefixMatch[1] : key.slice(0, 12) + '-';
+    return `${prefix}****${key.slice(-4)}`;
   }
 }

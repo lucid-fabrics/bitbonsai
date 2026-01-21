@@ -56,10 +56,15 @@ export interface ActivateLicense {
   email: string;
 }
 
-export interface PatreonStatus {
-  configured: boolean;
-  connected: boolean;
-  authUrl?: string;
+export interface LookupLicenseResponse {
+  found: boolean;
+  license?: {
+    tier: string;
+    maxNodes: number;
+    maxConcurrentJobs: number;
+    maskedKey: string;
+    expiresAt?: string | null;
+  };
 }
 
 export interface StripeStatus {

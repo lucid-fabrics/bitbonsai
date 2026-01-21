@@ -11,7 +11,6 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
-import { environment } from '../../../../environments/environment';
 import { LicenseBo } from '../bos/license.bo';
 import type {
   ActivateLicense,
@@ -150,43 +149,45 @@ import { LicenseService } from '../services/license.service';
           </div>
         </div>
 
-        <!-- Patreon Section -->
-        @if (patreonConfigured()) {
-          <section class="support-section" id="patreon-section">
+        <!-- Stripe Success - Email Lookup Section -->
+        @if (showStripeLookup()) {
+          <section class="support-section stripe-lookup-section">
             <div class="section-header">
-              <i class="fab fa-patreon"></i>
-              <h3>Support via Patreon</h3>
+              <i class="fa fa-check-circle" style="color: var(--success-color)"></i>
+              <h3>Payment Successful!</h3>
             </div>
-            <p class="section-desc">Link your Patreon account to automatically activate your supporter tier.</p>
-            <div class="patreon-tiers">
-              @for (tier of patreonTiers; track tier.id) {
-                <div class="tier-card patreon" [class.current]="capabilities()?.tier === tier.id">
-                  <div class="tier-card-header">
-                    <span class="tier-name">{{ tier.name }}</span>
-                    <span class="tier-price">{{ '$' + tier.price }}<span class="period">/mo</span></span>
-                  </div>
-                  <ul class="tier-features">
-                    <li>{{ tier.maxNodes }} nodes</li>
-                    <li>{{ tier.maxConcurrentJobs }} concurrent jobs</li>
-                    @for (feat of tier.features; track feat) {
-                      <li>{{ feat }}</li>
-                    }
-                  </ul>
-                  @if (capabilities()?.tier === tier.id) {
-                    <span class="current-badge">Current</span>
-                  }
-                </div>
-              }
-            </div>
-            <button
-              type="button"
-              class="btn-patreon"
-              (click)="connectPatreon()"
-              [disabled]="patreonLoading()"
-            >
-              <i class="fab fa-patreon"></i>
-              {{ LicenseBo.isPatreonTier(capabilities()?.tier || LicenseTier.FREE) ? 'Manage on Patreon' : 'Connect Patreon' }}
-            </button>
+            <p class="section-desc">Enter your email to retrieve your license key.</p>
+            <form (ngSubmit)="lookupLicenseByEmail()" class="email-form">
+              <input
+                type="email"
+                class="form-control"
+                [(ngModel)]="lookupEmail"
+                name="lookupEmail"
+                placeholder="your@email.com"
+                required
+                email
+                #lookupEmailInput="ngModel"
+                [class.invalid]="lookupEmailInput.invalid && lookupEmailInput.touched"
+              />
+              <div class="email-actions">
+                <button type="button" class="btn-cancel" (click)="dismissStripeLookup()">Skip</button>
+                <button type="submit" class="btn-primary" [disabled]="lookupEmailInput.invalid || lookupLoading()">
+                  {{ lookupLoading() ? 'Looking up...' : 'Find My License' }}
+                </button>
+              </div>
+            </form>
+            @if (lookupResult()) {
+              <div class="lookup-result" [class.success]="lookupResult()?.found" [class.error]="!lookupResult()?.found">
+                @if (lookupResult()?.found) {
+                  <p><strong>License found!</strong></p>
+                  <p>Tier: {{ lookupResult()?.license?.tier }}</p>
+                  <p>Key: {{ lookupResult()?.license?.maskedKey }}</p>
+                  <p class="lookup-hint">Check your email for the full license key, then activate below.</p>
+                } @else {
+                  <p>No license found for this email. Please check your email or contact support.</p>
+                }
+              </div>
+            }
           </section>
         }
 
@@ -674,7 +675,40 @@ import { LicenseService } from '../services/license.service';
       color: var(--text-color);
     }
 
-    .patreon-tiers, .commercial-tiers {
+    /* Stripe Lookup Section */
+    .stripe-lookup-section {
+      border: 2px solid var(--success-color);
+      background: rgba(34, 197, 94, 0.05);
+    }
+
+    .lookup-result {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+    }
+
+    .lookup-result.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid var(--success-color);
+    }
+
+    .lookup-result.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--danger-color);
+    }
+
+    .lookup-result p {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+
+    .lookup-hint {
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 8px !important;
+    }
+
+    .commercial-tiers {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
@@ -870,11 +904,9 @@ export class LicenseTabComponent implements OnInit {
   capabilities = signal<LicenseCapabilities | null>(null);
   loading = signal(false);
   activating = signal(false);
-  patreonLoading = signal(false);
   stripeLoading = signal(false);
   error = signal<string | null>(null);
   successMessage = signal<string | null>(null);
-  patreonConfigured = signal(false);
   stripeConfigured = signal(false);
   stripePlans = signal<Map<LicenseTier, string>>(new Map());
 
@@ -882,10 +914,18 @@ export class LicenseTabComponent implements OnInit {
   callbackMessage = signal<string | null>(null);
   callbackSuccess = signal(false);
 
-  // Stripe email input
+  // Stripe email input for checkout
   showEmailInput = signal(false);
   checkoutEmail = '';
   private pendingCheckoutTier: LicenseTierInfo | null = null;
+
+  // Stripe success - license lookup
+  showStripeLookup = signal(false);
+  lookupEmail = '';
+  lookupLoading = signal(false);
+  lookupResult = signal<{ found: boolean; license?: { tier: string; maskedKey: string } } | null>(
+    null
+  );
 
   licenseForm!: FormGroup<{
     licenseKey: FormControl<string | null>;
@@ -894,45 +934,6 @@ export class LicenseTabComponent implements OnInit {
 
   LicenseTier = LicenseTier;
   readonly LicenseBo = LicenseBo;
-
-  patreonTiers: LicenseTierInfo[] = [
-    {
-      id: LicenseTier.PATREON_SUPPORTER,
-      name: 'Supporter',
-      price: 3,
-      priceUnit: 'month',
-      maxNodes: 2,
-      maxConcurrentJobs: 3,
-      features: ['Advanced presets', 'Email support'],
-    },
-    {
-      id: LicenseTier.PATREON_PLUS,
-      name: 'Plus',
-      price: 5,
-      priceUnit: 'month',
-      maxNodes: 3,
-      maxConcurrentJobs: 5,
-      features: ['Advanced presets', 'Priority support'],
-    },
-    {
-      id: LicenseTier.PATREON_PRO,
-      name: 'Pro',
-      price: 10,
-      priceUnit: 'month',
-      maxNodes: 5,
-      maxConcurrentJobs: 10,
-      features: ['API access', 'Webhooks', 'Priority queue'],
-    },
-    {
-      id: LicenseTier.PATREON_ULTIMATE,
-      name: 'Ultimate',
-      price: 20,
-      priceUnit: 'month',
-      maxNodes: 10,
-      maxConcurrentJobs: 20,
-      features: ['Everything in Pro', 'Early access'],
-    },
-  ];
 
   commercialTiers: LicenseTierInfo[] = [
     {
@@ -982,26 +983,15 @@ export class LicenseTabComponent implements OnInit {
 
   private handleCallbackParams(): void {
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      // Handle Patreon callback
-      if (params.patreon) {
-        if (params.patreon === 'success') {
-          this.callbackSuccess.set(true);
-          const tier = params.tier || 'supporter';
-          this.callbackMessage.set(
-            `Patreon connected successfully! Your ${tier} tier is now active.`
-          );
-        } else if (params.patreon === 'error') {
-          this.callbackSuccess.set(false);
-          const message = params.message || 'Unknown error';
-          this.callbackMessage.set(`Patreon connection failed: ${message.replace(/_/g, ' ')}`);
-        }
-      }
-
       // Handle Stripe callback
       if (params.stripe) {
         if (params.stripe === 'success') {
           this.callbackSuccess.set(true);
-          this.callbackMessage.set('Payment successful! Your license has been activated.');
+          this.callbackMessage.set(
+            'Payment successful! Enter your email below to retrieve your license.'
+          );
+          // Show the license lookup section
+          this.showStripeLookup.set(true);
         } else if (params.stripe === 'cancelled') {
           this.callbackSuccess.set(false);
           this.callbackMessage.set('Checkout was cancelled. No payment was processed.');
@@ -1014,11 +1004,44 @@ export class LicenseTabComponent implements OnInit {
     this.callbackMessage.set(null);
     // Clean URL params without reload
     const url = new URL(window.location.href);
-    url.searchParams.delete('patreon');
     url.searchParams.delete('stripe');
-    url.searchParams.delete('tier');
-    url.searchParams.delete('message');
     window.history.replaceState({}, '', url.toString());
+  }
+
+  dismissStripeLookup(): void {
+    this.showStripeLookup.set(false);
+    this.lookupResult.set(null);
+    this.lookupEmail = '';
+    // Clean URL params
+    const url = new URL(window.location.href);
+    url.searchParams.delete('stripe');
+    window.history.replaceState({}, '', url.toString());
+  }
+
+  lookupLicenseByEmail(): void {
+    if (!this.lookupEmail) return;
+
+    this.lookupLoading.set(true);
+    this.lookupResult.set(null);
+
+    this.licenseService
+      .lookupLicense(this.lookupEmail)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.lookupResult.set(result);
+          this.lookupLoading.set(false);
+
+          // If found, auto-fill the activation form
+          if (result.found && result.license) {
+            this.licenseForm.patchValue({ email: this.lookupEmail });
+          }
+        },
+        error: () => {
+          this.lookupResult.set({ found: false });
+          this.lookupLoading.set(false);
+        },
+      });
   }
 
   private loadData(): void {
@@ -1027,9 +1050,6 @@ export class LicenseTabComponent implements OnInit {
     forkJoin({
       license: this.licenseService.getCurrentLicense(),
       capabilities: this.licenseService.getCapabilities(),
-      patreon: this.licenseService
-        .getPatreonStatus()
-        .pipe(catchError(() => of({ configured: false, connected: false }))),
       stripePlans: this.licenseService
         .getStripePlans()
         .pipe(catchError(() => of({ configured: false, plans: [] as StripePlan[] }))),
@@ -1039,7 +1059,6 @@ export class LicenseTabComponent implements OnInit {
         next: (data) => {
           this.license.set(data.license);
           this.capabilities.set(data.capabilities);
-          this.patreonConfigured.set(data.patreon.configured);
           this.stripeConfigured.set(data.stripePlans.configured);
 
           const planMap = new Map<LicenseTier, string>();
@@ -1070,14 +1089,8 @@ export class LicenseTabComponent implements OnInit {
   }
 
   scrollToTiers(): void {
-    const el =
-      document.getElementById('patreon-section') || document.getElementById('commercial-section');
+    const el = document.getElementById('commercial-section');
     el?.scrollIntoView({ behavior: 'smooth' });
-  }
-
-  connectPatreon(): void {
-    const returnUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${environment.apiUrl}/api/v1/patreon/auth?return_url=${returnUrl}`;
   }
 
   startStripeCheckout(tier: LicenseTierInfo): void {
