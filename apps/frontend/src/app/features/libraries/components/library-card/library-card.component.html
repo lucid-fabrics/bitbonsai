@@ -32,9 +32,11 @@
       }
     </div>
     <div class="header-right">
-      <span class="status-badge" [class.online]="library().node.status === 'ONLINE'">
-        {{ library().node.name }}
-      </span>
+      @if (library().node) {
+        <span class="status-badge" [class.online]="library().node.status === 'ONLINE'">
+          {{ library().node.name }}
+        </span>
+      }
     </div>
   </div>
 

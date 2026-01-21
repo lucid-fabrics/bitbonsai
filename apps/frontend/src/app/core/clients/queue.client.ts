@@ -168,6 +168,24 @@ export class QueueClient {
   }
 
   /**
+   * Force encode all jobs where codec already matches target
+   *
+   * Bulk force re-encoding for all NEEDS_DECISION jobs where the source codec matches the target codec.
+   * Jobs are moved to QUEUED to proceed with encoding despite matching codecs.
+   *
+   * @returns Observable with count of queued jobs and list of job details
+   */
+  forceEncodeAllCodecMatch(): Observable<{
+    queuedCount: number;
+    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+  }> {
+    return this.http.post<{
+      queuedCount: number;
+      jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    }>(`${this.apiUrl}/force-encode-codec-match`, {});
+  }
+
+  /**
    * Delegate job to specific node
    *
    * Manually assigns a job to a specific node, bypassing automatic node selection.

@@ -27,6 +27,10 @@ export interface JellyfinTestResult {
   error?: string;
 }
 
+export interface AdvancedModeSettings {
+  advancedModeEnabled: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -75,5 +79,16 @@ export class SettingsClient {
 
   testJellyfinConnection(settings: JellyfinSettings): Observable<JellyfinTestResult> {
     return this.http.post<JellyfinTestResult>(`${this.apiUrl}/jellyfin/test`, settings);
+  }
+
+  // Advanced Mode (UI Simplification)
+  getAdvancedMode(): Observable<AdvancedModeSettings> {
+    return this.http.get<AdvancedModeSettings>(`${this.apiUrl}/advanced-mode`);
+  }
+
+  updateAdvancedMode(enabled: boolean): Observable<AdvancedModeSettings> {
+    return this.http.patch<AdvancedModeSettings>(`${this.apiUrl}/advanced-mode`, {
+      advancedModeEnabled: enabled,
+    });
   }
 }

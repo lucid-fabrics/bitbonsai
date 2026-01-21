@@ -16,12 +16,25 @@
         "main": "apps/frontend/src/main.ts",
         "polyfills": [],
         "tsConfig": "apps/frontend/tsconfig.app.json",
-        "assets": ["apps/frontend/src/assets"],
+        "assets": [
+          "apps/frontend/src/assets",
+          {
+            "glob": "**/*",
+            "input": "apps/frontend/public",
+            "output": "/"
+          }
+        ],
         "styles": ["apps/frontend/src/styles.scss"],
         "scripts": []
       },
       "configurations": {
         "production": {
+          "optimization": true,
+          "buildOptimizer": true,
+          "sourceMap": false,
+          "namedChunks": false,
+          "extractLicenses": true,
+          "vendorChunk": false,
           "budgets": [
             {
               "type": "initial",
@@ -34,7 +47,13 @@
               "maximumError": "80kb"
             }
           ],
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/frontend/src/environments/environment.ts",
+              "with": "apps/frontend/src/environments/environment.prod.ts"
+            }
+          ]
         },
         "development": {
           "buildOptimizer": false,

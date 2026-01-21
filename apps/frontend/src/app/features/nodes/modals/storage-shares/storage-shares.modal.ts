@@ -14,6 +14,23 @@ import {
 } from '../../../../core/clients/storage-shares.client';
 import type { Node } from '../../models/node.model';
 
+/**
+ * DEEP AUDIT P2-1: Type-safe error message extraction helper
+ * Replaces catch (error: any) pattern with proper unknown error handling
+ */
+function extractErrorMessage(error: unknown, defaultMessage: string): string {
+  if (error && typeof error === 'object' && 'error' in error) {
+    const innerError = (error as { error?: { message?: string } }).error;
+    if (innerError && typeof innerError === 'object' && 'message' in innerError) {
+      return innerError.message || defaultMessage;
+    }
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return defaultMessage;
+}
+
 export interface StorageSharesModalData {
   node: Node;
 }
@@ -166,8 +183,8 @@ export class StorageSharesModal implements OnInit, OnDestroy {
 
       const shares = await this.storageClient.getSharesByNode(this.node.id).toPromise();
       this.shares.set(shares || []);
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'Failed to load storage shares');
+    } catch (error: unknown) {
+      this.error.set(extractErrorMessage(error, 'Failed to load storage shares'));
     } finally {
       this.loading.set(false);
     }
@@ -204,8 +221,8 @@ export class StorageSharesModal implements OnInit, OnDestroy {
         this.autoDetectMessage.set(messages.join('\n'));
         await this.loadShares(); // Reload to show newly created shares
       }
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'Failed to auto-detect shares');
+    } catch (error: unknown) {
+      this.error.set(extractErrorMessage(error, 'Failed to auto-detect shares'));
       this.autoDetectMessage.set(
         `Auto-detection failed. You can still add shares manually. ` +
           `Make sure the main node is accessible and has NFS/SMB exports enabled.`
@@ -235,10 +252,12 @@ export class StorageSharesModal implements OnInit, OnDestroy {
           this.loadShares();
         }, 1500);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.error.set(
-        error?.error?.message ||
+        extractErrorMessage(
+          error,
           'Failed to auto-export Docker volumes. Make sure you are running on the main node in a Docker container.'
+        )
       );
       this.autoDetectMessage.set(
         `Auto-export failed. This feature requires:\n` +
@@ -264,8 +283,8 @@ export class StorageSharesModal implements OnInit, OnDestroy {
         this.error.set(result?.error || result?.message || 'Mount failed');
         share.status = StorageShareStatus.ERROR;
       }
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'Failed to mount share');
+    } catch (error: unknown) {
+      this.error.set(extractErrorMessage(error, 'Failed to mount share'));
       share.status = StorageShareStatus.ERROR;
     }
   }
@@ -281,8 +300,8 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       } else {
         this.error.set(result?.error || result?.message || 'Unmount failed');
       }
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'Failed to unmount share');
+    } catch (error: unknown) {
+      this.error.set(extractErrorMessage(error, 'Failed to unmount share'));
     }
   }
 
@@ -294,8 +313,8 @@ export class StorageSharesModal implements OnInit, OnDestroy {
     try {
       await this.storageClient.deleteShare(share.id).toPromise();
       await this.loadShares();
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'Failed to delete share');
+    } catch (error: unknown) {
+      this.error.set(extractErrorMessage(error, 'Failed to delete share'));
     }
   }
 
@@ -364,8 +383,8 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       this.autoFillServerAddress();
 
       await this.loadShares();
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'Failed to create share');
+    } catch (error: unknown) {
+      this.error.set(extractErrorMessage(error, 'Failed to create share'));
     } finally {
       this.creating.set(false);
     }

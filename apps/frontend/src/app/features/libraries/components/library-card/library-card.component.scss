@@ -1,5 +1,10 @@
 @use '../../../../../styles/variables' as *;
 
+:host {
+  display: block;
+  width: 100%;
+}
+
 .library-card {
   background: $bg-secondary;
   border: 1px solid $border-primary;

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, tap } from 'rxjs';
 import { AuthResponse, LoginCredentials, RefreshTokenRequest } from './models/auth-response.model';
 
 /**
@@ -34,6 +34,35 @@ export class AuthService {
   private readonly isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasValidTokens());
   public readonly isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
+  // DEEP AUDIT P1-2: Token refresh state management (moved from module-level interceptor)
+  // This prevents memory leaks across login/logout cycles
+  private _isRefreshing = false;
+  private readonly _refreshTokenSubject = new BehaviorSubject<string | null>(null);
+  private readonly _logoutSubject = new Subject<void>();
+
+  /** Observable that emits when logout occurs - interceptor should reset state */
+  public readonly logout$ = this._logoutSubject.asObservable();
+
+  /** Current refresh state - true if a token refresh is in progress */
+  get isRefreshing(): boolean {
+    return this._isRefreshing;
+  }
+
+  set isRefreshing(value: boolean) {
+    this._isRefreshing = value;
+  }
+
+  /** Subject that emits new tokens when refresh completes */
+  get refreshTokenSubject(): BehaviorSubject<string | null> {
+    return this._refreshTokenSubject;
+  }
+
+  /** Reset refresh state - called on logout to prevent stale state */
+  resetRefreshState(): void {
+    this._isRefreshing = false;
+    this._refreshTokenSubject.next(null);
+  }
+
   /**
    * Check if user has valid tokens in storage
    */
@@ -60,9 +89,13 @@ export class AuthService {
    *
    * Clears all authentication tokens and user data from storage
    * and updates authentication state.
+   *
+   * DEEP AUDIT P1-2: Also resets refresh state to prevent memory leaks
    */
   logout(): void {
     this.clearTokens();
+    this.resetRefreshState(); // P1-2 FIX: Clear stale refresh state
+    this._logoutSubject.next(); // Notify interceptor of logout
     this.isAuthenticatedSubject.next(false);
   }
 

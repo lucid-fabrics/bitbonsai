@@ -21,6 +21,59 @@ import {
 import { Store } from '@ngrx/store';
 import { distinctUntilChanged } from 'rxjs';
 import { OverviewActions } from './+state/overview.actions';
+import type { OverviewModel } from './models/overview.model';
+
+/**
+ * DEEP AUDIT P2-2: Custom equality check for OverviewModel
+ * Replaces JSON.stringify comparison with shallow key comparison for better performance.
+ * Only compares the numeric values that affect UI rendering.
+ */
+function overviewDataEqual(prev: OverviewModel | null, curr: OverviewModel | null): boolean {
+  if (prev === curr) return true;
+  if (!prev || !curr) return false;
+
+  // Compare queue_summary (most frequently changing)
+  const pq = prev.queue_summary;
+  const cq = curr.queue_summary;
+  if (
+    pq.queued !== cq.queued ||
+    pq.encoding !== cq.encoding ||
+    pq.completed !== cq.completed ||
+    pq.failed !== cq.failed
+  ) {
+    return false;
+  }
+
+  // Compare system_health
+  const ph = prev.system_health;
+  const ch = curr.system_health;
+  if (
+    ph.active_nodes.current !== ch.active_nodes.current ||
+    ph.active_nodes.total !== ch.active_nodes.total ||
+    ph.queue_status.encoding_count !== ch.queue_status.encoding_count ||
+    ph.storage_saved.total_tb !== ch.storage_saved.total_tb ||
+    ph.success_rate.percentage !== ch.success_rate.percentage ||
+    ph.cpu_utilization.percentage !== ch.cpu_utilization.percentage
+  ) {
+    return false;
+  }
+
+  // Compare recent_activity length and first item (most visible change)
+  if (prev.recent_activity.length !== curr.recent_activity.length) return false;
+  if (prev.recent_activity.length > 0) {
+    const pa = prev.recent_activity[0];
+    const ca = curr.recent_activity[0];
+    if (pa.id !== ca.id || pa.progress !== ca.progress || pa.stage !== ca.stage) {
+      return false;
+    }
+  }
+
+  // Compare top_libraries length
+  if (prev.top_libraries.length !== curr.top_libraries.length) return false;
+
+  return true;
+}
+
 import {
   selectChildNodes,
   selectEnvironmentInfo,
@@ -45,10 +98,10 @@ export class OverviewComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
 
   // Observables from NgRx store
-  // Use distinctUntilChanged with deep comparison to prevent flashing when data values are identical
+  // DEEP AUDIT P2-2: Use custom equality function instead of JSON.stringify for better performance
   readonly overviewData$ = this.store
     .select(selectOverviewData)
-    .pipe(distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)));
+    .pipe(distinctUntilChanged(overviewDataEqual));
   readonly environmentInfo$ = this.store.select(selectEnvironmentInfo);
   readonly nodes$ = this.store.select(selectNodes);
   readonly isLoading$ = this.store.select(selectIsLoading);
@@ -152,7 +205,8 @@ export class OverviewComponent implements OnInit, OnDestroy {
   }
 
   // TrackBy functions to prevent unnecessary re-renders
-  trackByActivityId(_index: number, activity: any): string {
+  // DEEP AUDIT P2-1: Fix any type
+  trackByActivityId(_index: number, activity: { id: string }): string {
     return activity.id;
   }
 }

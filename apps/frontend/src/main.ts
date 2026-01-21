@@ -29,6 +29,7 @@ import { QueueEffects } from './app/features/queue/+state/queue.effects';
 import { queueReducer } from './app/features/queue/+state/queue.reducer';
 import { SettingsEffects } from './app/features/settings/+state/settings.effects';
 import { settingsReducer } from './app/features/settings/+state/settings.reducer';
+import { environment } from './environments/environment';
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -63,9 +64,14 @@ bootstrapApplication(AppComponent, {
       InsightsEffects,
       SettingsEffects,
     ]),
-    provideStoreDevtools({
-      maxAge: 25,
-      logOnly: false,
-    }),
+    // NgRx DevTools: Only enable in development
+    ...(environment.production
+      ? []
+      : [
+          provideStoreDevtools({
+            maxAge: 25,
+            logOnly: false,
+          }),
+        ]),
   ],
 }).catch((err) => console.error(err));
