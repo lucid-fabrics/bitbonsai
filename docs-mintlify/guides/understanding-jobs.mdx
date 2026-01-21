@@ -79,14 +79,25 @@ Health checks prevent encoding failures by detecting corrupt files before wastin
 </Tip>
 
 ### NEEDS_DECISION
-- **What it means:** File is healthy and ready to encode
-- **User action:** Select [codec](/glossary#codec) (HEVC/AV1) and click "Queue Selected"
-- **Where to find:** Libraries → Queue tab
-- **Filters available:**
-  - Codec (find H.264 videos to upgrade)
-  - [Resolution](/glossary#resolution) (1080p, 4K, etc.)
-  - [Bitrate](/glossary#bitrate) (target high-bitrate files)
-  - File size (prioritize large files)
+- **What it means:** File requires user confirmation before encoding
+- **Common reasons:**
+  - **Codec already matches target** - Source file is already in the target codec (e.g., HEVC → HEVC)
+  - **Container incompatibility** - Audio/video streams may not work with the target container
+- **User action:** Review the issue and choose an action (Skip, Force Re-encode, or Cancel)
+- **Where to find:** Queue → Filter by "Needs Decision" status
+
+<Accordion title="Codec Already Matches Target">
+When a file is already encoded in your target codec, re-encoding would waste time and potentially increase file size without improving quality.
+
+**Options:**
+- **Skip Encoding** (Recommended) - Mark as complete without re-encoding
+- **Force Re-encode** - Re-encode anyway (useful for re-compression at different CRF)
+- **Cancel Job** - Remove from queue
+
+<Tip>
+**Pro tip:** If you frequently want to re-encode files at a different quality setting (e.g., re-compress old HEVC files at higher CRF), enable **"Allow same codec re-encoding"** in your policy's Advanced Settings. This skips the confirmation and proceeds directly to encoding.
+</Tip>
+</Accordion>
 
 ### QUEUED
 - **What it means:** Job is waiting for an available worker [node](/glossary#node)
@@ -310,6 +321,10 @@ Retry all failed jobs at once:
 2. Click "Select All" (top left)
 3. Click "Retry Selected"
 ```
+
+<Note>
+Bulk actions are hidden by default. Enable **Advanced Mode** in Settings to access bulk retry, cancel all, and rebalance features. See [Display Modes](/settings/modes).
+</Note>
 
 ---
 
