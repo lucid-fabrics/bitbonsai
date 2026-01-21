@@ -27,7 +27,10 @@ const EXTERNAL_TO_INTERNAL_TIER: Record<string, LicenseTier> = {
  * Maps an external tier name to BitBonsai's internal LicenseTier enum.
  * Logs a warning for unknown tiers and falls back to FREE.
  */
-export function mapExternalTier(externalTier: string, logger?: { warn: (msg: string) => void }): LicenseTier {
+export function mapExternalTier(
+  externalTier: string,
+  logger?: { warn: (msg: string) => void }
+): LicenseTier {
   const tier = EXTERNAL_TO_INTERNAL_TIER[externalTier?.toUpperCase()];
   if (!tier) {
     const msg = `Unknown license tier "${externalTier}" - defaulting to FREE`;
