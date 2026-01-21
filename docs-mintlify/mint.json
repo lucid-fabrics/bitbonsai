@@ -40,6 +40,10 @@
       "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
     },
     {
+      "group": "Settings",
+      "pages": ["settings/overview", "settings/modes"]
+    },
+    {
       "group": "Advanced",
       "pages": [
         "advanced/gpu-acceleration",
