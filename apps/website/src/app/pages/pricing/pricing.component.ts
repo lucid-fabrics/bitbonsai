@@ -133,17 +133,8 @@ export class PricingComponent implements OnInit {
       error: (err) => {
         console.error('Failed to load pricing:', err);
 
-        // User-friendly error messages
-        if (err.status === 0) {
-          this.error = 'Unable to connect to pricing service. Please check your connection.';
-        } else if (err.status >= 500) {
-          this.error = 'Pricing service is temporarily unavailable. Please try again later.';
-        } else if (err.status === 429) {
-          this.error = 'Too many requests. Please wait a moment and refresh.';
-        } else {
-          this.error = 'Unable to load pricing. Please try again later.';
-        }
-
+        // Use fallback tiers instead of showing error
+        this.tiers = this.getFallbackTiers();
         this.loading = false;
       },
     });

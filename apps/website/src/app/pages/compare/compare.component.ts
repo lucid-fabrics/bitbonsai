@@ -56,11 +56,11 @@ interface ComparisonSection {
               <h3 class="summary-card__name">Tdarr</h3>
               <p class="summary-card__tagline">Plugin-based transcoding</p>
               <ul class="summary-card__highlights">
-                <li>Hours of setup</li>
-                <li>Restart from 0%</li>
-                <li>Manual recovery</li>
-                <li>Single-node</li>
-                <li>47+ plugins to configure</li>
+                <li>Highly customizable</li>
+                <li>Large plugin ecosystem</li>
+                <li>Mature community</li>
+                <li>Flow-based workflows</li>
+                <li>Free forever</li>
               </ul>
             </div>
           </div>
@@ -133,15 +133,13 @@ interface ComparisonSection {
             <div class="use-case-card">
               <h3 class="use-case-card__title">Choose Tdarr If You Want:</h3>
               <ul class="use-case-card__list">
-                <li>Plugin-based customization</li>
+                <li>Deep plugin-based customization</li>
                 <li>Complete control over every setting</li>
                 <li>Mature, established project</li>
-                <li>Larger community</li>
-                <li>Flow-based configuration</li>
+                <li>Larger community and ecosystem</li>
+                <li>Flow-based visual workflows</li>
+                <li>100% free with no feature limits</li>
               </ul>
-              <p class="use-case-card__note">
-                Note: Expect hours of configuration and frequent manual intervention
-              </p>
             </div>
           </div>
         </div>
@@ -179,16 +177,21 @@ export class CompareComponent {
     {
       title: 'Setup & Configuration',
       rows: [
-        { feature: 'Setup Time', bitbonsai: '5 minutes', tdarr: 'Hours', highlight: true },
+        {
+          feature: 'Setup Time',
+          bitbonsai: '~5 minutes',
+          tdarr: 'Varies by complexity',
+          highlight: true,
+        },
         {
           feature: 'Default Configuration',
           bitbonsai: 'Works out of box',
-          tdarr: '47+ plugins to configure',
+          tdarr: 'Plugin-based (flexible)',
           highlight: true,
         },
         { feature: 'Docker Compose', bitbonsai: true, tdarr: true },
         { feature: 'Unraid Template', bitbonsai: true, tdarr: true },
-        { feature: 'Manual Tuning Required', bitbonsai: false, tdarr: true },
+        { feature: 'Customization Depth', bitbonsai: 'Moderate', tdarr: 'Extensive' },
       ],
     },
     {
@@ -196,14 +199,14 @@ export class CompareComponent {
       rows: [
         {
           feature: 'Resume After Crash',
-          bitbonsai: 'TRUE RESUME™ (exact timestamp)',
-          tdarr: 'Restart from 0%',
+          bitbonsai: 'TRUE RESUME™ (exact frame)',
+          tdarr: 'Restart from beginning',
           highlight: true,
         },
         {
-          feature: 'Auto-Healing',
-          bitbonsai: '4-layer recovery system',
-          tdarr: 'Manual retry',
+          feature: 'Auto-Recovery',
+          bitbonsai: 'Automatic',
+          tdarr: 'Manual',
           highlight: true,
         },
         { feature: 'Orphaned Job Recovery', bitbonsai: true, tdarr: false },
@@ -211,24 +214,23 @@ export class CompareComponent {
         {
           feature: 'Stuck Job Detection',
           bitbonsai: 'Automatic watchdog',
-          tdarr: 'Manual intervention',
+          tdarr: 'Manual',
         },
       ],
     },
     {
       title: 'Multi-Node Processing',
       rows: [
-        { feature: 'Multi-Node Support', bitbonsai: true, tdarr: false, highlight: true },
+        { feature: 'Distributed Processing', bitbonsai: true, tdarr: true, highlight: true },
         {
           feature: 'Load Balancing',
-          bitbonsai: 'Distribution v2 algorithm',
-          tdarr: 'N/A',
+          bitbonsai: 'Automatic',
+          tdarr: 'Manual assignment',
           highlight: true,
         },
         { feature: 'Node Health Monitoring', bitbonsai: true, tdarr: false },
-        { feature: 'Shared Storage', bitbonsai: 'NFS/SMB', tdarr: 'N/A' },
+        { feature: 'Shared Storage', bitbonsai: 'NFS/SMB', tdarr: 'NFS/SMB' },
         { feature: 'File Transfer Mode', bitbonsai: true, tdarr: false },
-        { feature: 'Node Pairing', bitbonsai: '6-digit code', tdarr: 'N/A' },
       ],
     },
     {
@@ -239,25 +241,23 @@ export class CompareComponent {
         {
           feature: 'Hardware Acceleration',
           bitbonsai: 'NVIDIA, Intel, AMD, Apple',
-          tdarr: 'NVIDIA, Intel',
+          tdarr: 'NVIDIA, Intel, AMD',
         },
         { feature: 'Concurrent Jobs', bitbonsai: '2-20 (tier-based)', tdarr: 'Unlimited' },
-        { feature: 'Quality Presets', bitbonsai: 'Smart defaults', tdarr: 'Manual configuration' },
-        { feature: 'Bitrate Control', bitbonsai: 'Auto-optimized', tdarr: 'Manual' },
+        { feature: 'Quality Presets', bitbonsai: 'Smart defaults', tdarr: 'Custom via plugins' },
       ],
     },
     {
       title: 'User Experience',
       rows: [
         {
-          feature: 'UI/UX Design',
-          bitbonsai: 'Modern, clean',
-          tdarr: 'Complex, overwhelming',
+          feature: 'UI Design',
+          bitbonsai: 'Modern, minimal',
+          tdarr: 'Feature-rich',
           highlight: true,
         },
-        { feature: 'Learning Curve', bitbonsai: 'Minimal', tdarr: 'Steep', highlight: true },
-        { feature: 'Error Messages', bitbonsai: 'User-friendly', tdarr: 'Technical jargon' },
-        { feature: 'Progress Tracking', bitbonsai: 'Real-time', tdarr: 'Periodic updates' },
+        { feature: 'Learning Curve', bitbonsai: 'Minimal', tdarr: 'Moderate', highlight: true },
+        { feature: 'Progress Tracking', bitbonsai: 'Real-time', tdarr: 'Real-time' },
         { feature: 'Job Queue', bitbonsai: 'Visual grid', tdarr: 'Table view' },
       ],
     },
@@ -266,7 +266,7 @@ export class CompareComponent {
       rows: [
         { feature: 'Jellyfin', bitbonsai: true, tdarr: true },
         { feature: 'Plex', bitbonsai: true, tdarr: true },
-        { feature: 'qBittorrent', bitbonsai: true, tdarr: false },
+        { feature: 'qBittorrent', bitbonsai: true, tdarr: true },
         { feature: 'Webhooks', bitbonsai: true, tdarr: true },
         { feature: 'Discord Notifications', bitbonsai: true, tdarr: true },
       ],
@@ -275,9 +275,8 @@ export class CompareComponent {
       title: 'Licensing & Support',
       rows: [
         { feature: 'Free Tier', bitbonsai: '1 node, 2 concurrent', tdarr: 'Unlimited' },
-        { feature: 'Paid Tiers', bitbonsai: '$3-$20/mo', tdarr: 'Free' },
+        { feature: 'Paid Options', bitbonsai: '$3-$20/mo', tdarr: 'Free (donations welcome)' },
         { feature: 'Community Support', bitbonsai: 'Discord', tdarr: 'Discord, Reddit' },
-        { feature: 'Documentation', bitbonsai: 'Comprehensive', tdarr: 'Community-driven' },
         { feature: 'Active Development', bitbonsai: true, tdarr: true },
       ],
     },

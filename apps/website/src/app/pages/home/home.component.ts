@@ -14,7 +14,6 @@ import {
   faPlug,
   faRocket,
   faSave,
-  faShieldAlt,
   faSync,
 } from '@fortawesome/free-solid-svg-icons';
 import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.directive';
@@ -35,13 +34,13 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
             </div>
 
             <h1 class="hero__title">
-              Enterprise-Grade Video Encoding<br>
-              <span class="hero__gradient">Without the Complexity</span>
+              Zero-Effort Video Encoding<br>
+              <span class="hero__gradient">Point. Click. Done.</span>
             </h1>
 
             <p class="hero__subtitle">
-              Distributed transcoding with automatic fault recovery. Reduce storage 40-60%.<br class="desktop-only">
-              Resume from exact failure point. Zero manual intervention.
+              Point BitBonsai at your media library and walk away. We handle the rest.<br class="desktop-only">
+              Shrink your storage 40-60%. Crashes? We recover automatically.
             </p>
 
             <div class="hero__actions">
@@ -49,7 +48,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
                 <fa-icon [icon]="faDownload" class="btn__icon"></fa-icon>
                 <span>Start Encoding in 5 Minutes</span>
               </a>
-              <a href="https://github.com/lucid-fabrics/bitbonsai" class="btn btn--secondary" target="_blank">
+              <a href="https://github.com/bitbonsai/bitbonsai" class="btn btn--secondary" target="_blank">
                 <fa-icon [icon]="faCode" class="btn__icon"></fa-icon>
                 <span>View on GitHub</span>
               </a>
@@ -84,9 +83,9 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
       <section class="features">
         <div class="features__container">
           <div class="section-header">
-            <h2 class="section-header__title">Built for Production Workloads</h2>
+            <h2 class="section-header__title">Why BitBonsai?</h2>
             <p class="section-header__subtitle">
-              Fault-tolerant architecture designed for unattended operation at scale
+              Set it and forget it. BitBonsai handles the hard stuff.
             </p>
           </div>
 
@@ -208,9 +207,9 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
       <!-- CTA Section -->
       <section class="cta">
         <div class="cta__container">
-          <h2 class="cta__title">Deploy Production-Grade Encoding</h2>
+          <h2 class="cta__title">Start Shrinking Your Library</h2>
           <p class="cta__subtitle">
-            Open source. Self-hosted. Battle-tested by homelabbers encoding petabytes.
+            Open source. Self-hosted. Running on thousands of homelabs.
           </p>
           <div class="cta__actions">
             <a routerLink="/download" class="btn btn--primary btn--large">Deploy in 5 Minutes</a>
@@ -246,39 +245,27 @@ export class HomeComponent {
   keyFeatures = [
     {
       faIcon: faPlay,
-      title: 'Stateful Job Recovery',
+      title: 'TRUE RESUME™',
       description:
-        'Progress checkpointed every 10 seconds. System failures, power loss, or manual restarts resume from exact frame. No wasted compute cycles.',
-    },
-    {
-      faIcon: faShieldAlt,
-      title: 'Autonomous Fault Handling',
-      description:
-        'Automatic job redistribution on node failure. Disk space monitoring with graceful degradation. Self-healing architecture requires zero manual intervention.',
+        'Crashes happen. Power outages happen. BitBonsai saves your progress every 10 seconds and picks up exactly where it left off. No wasted time.',
     },
     {
       faIcon: faBolt,
-      title: 'Zero-Configuration Design',
+      title: 'Zero Configuration',
       description:
-        'Smart defaults based on empirical testing. Auto-detection of hardware acceleration. Production-ready out of box without tuning parameters.',
+        'Smart defaults that work for 99% of users. No tuning. No settings to tweak. Just point at your library and go.',
     },
     {
       faIcon: faNetworkWired,
-      title: 'Horizontal Scalability',
+      title: 'Add Machines, Encode Faster',
       description:
-        'Linear throughput scaling with additional nodes. Shared storage architecture with zero-copy optimization. Turn weeks of encoding into days.',
-    },
-    {
-      faIcon: faRocket,
-      title: 'Hardware-Accelerated Encoding',
-      description:
-        'NVIDIA NVENC, Intel QSV, AMD VCE, Apple VideoToolbox. Automatic detection and optimal codec selection. Maximize throughput while minimizing power consumption.',
+        'Have extra computers? Add them as worker nodes. Turn weeks of encoding into days. They work together automatically.',
     },
     {
       faIcon: faSave,
-      title: 'Verified Quality Preservation',
+      title: 'Same Quality, Half the Size',
       description:
-        'HEVC/AV1 encoding with CRF-based quality targeting. 40-60% storage reduction with perceptually identical output. Automated quality verification.',
+        'Modern codecs (HEVC/AV1) shrink your library 40-60% with zero visible quality loss. Reclaim your storage.',
     },
   ];
 
