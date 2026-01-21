@@ -6,6 +6,7 @@ import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
 import { EnvironmentService } from '../common/environment.service';
 import { JellyfinIntegrationService } from '../integrations/jellyfin.service';
+import { AdvancedModeDto } from './dto/advanced-mode.dto';
 import { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import { DefaultQueueViewDto } from './dto/default-queue-view.dto';
 import { JellyfinSettingsDto, JellyfinTestResultDto } from './dto/jellyfin-settings.dto';
@@ -315,6 +316,50 @@ export class SettingsController {
     @Body() updateDto: AutoHealRetryLimitDto
   ): Promise<AutoHealRetryLimitDto> {
     return this.settingsService.updateAutoHealRetryLimit(updateDto.maxAutoHealRetries);
+  }
+
+  // ============================================================================
+  // ADVANCED MODE (UI Simplification)
+  // ============================================================================
+
+  @Get('advanced-mode')
+  @ApiOperation({
+    summary: 'Get advanced mode setting',
+    description:
+      'Retrieve whether advanced UI controls should be shown. Default is false (minimal mode) for simpler UX.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Advanced mode setting retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        advancedModeEnabled: { type: 'boolean', example: false },
+      },
+    },
+  })
+  async getAdvancedMode(): Promise<AdvancedModeDto> {
+    return this.settingsService.getAdvancedMode();
+  }
+
+  @Patch('advanced-mode')
+  @ApiOperation({
+    summary: 'Update advanced mode setting',
+    description:
+      'Toggle visibility of advanced UI controls (bulk actions, node filters, debug info, etc.).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Advanced mode setting updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        advancedModeEnabled: { type: 'boolean', example: true },
+      },
+    },
+  })
+  async updateAdvancedMode(@Body() updateDto: AdvancedModeDto): Promise<AdvancedModeDto> {
+    return this.settingsService.updateAdvancedMode(updateDto.advancedModeEnabled);
   }
 
   // ============================================================================

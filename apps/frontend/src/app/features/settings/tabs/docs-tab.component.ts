@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, type OnInit, signal } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
 @Component({
@@ -315,7 +316,10 @@ export class DocsTabComponent implements OnInit {
       next: (markdown) => {
         try {
           const html = marked(markdown);
-          this.renderedContent.set(this.sanitizer.bypassSecurityTrustHtml(html as string));
+          // DEEP AUDIT P1-1: Sanitize HTML with DOMPurify before trusting
+          // This prevents XSS attacks from malicious markdown content
+          const sanitizedHtml = DOMPurify.sanitize(html as string);
+          this.renderedContent.set(this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml));
           this.loading.set(false);
         } catch (err) {
           this.error.set('Failed to render documentation');

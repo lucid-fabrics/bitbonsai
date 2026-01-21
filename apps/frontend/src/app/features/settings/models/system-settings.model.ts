@@ -12,4 +12,5 @@ export interface SystemSettings {
   analyticsEnabled: boolean;
   apiKey: string;
   webhookUrl?: string;
+  advancedModeEnabled?: boolean;
 }

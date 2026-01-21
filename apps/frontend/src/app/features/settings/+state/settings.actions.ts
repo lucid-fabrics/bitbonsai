@@ -38,5 +38,13 @@ export const SettingsActions = createActionGroup({
     'Regenerate API Key': emptyProps(),
     'Regenerate API Key Success': props<{ apiKey: string }>(),
     'Regenerate API Key Failure': props<{ error: string }>(),
+
+    'Load Advanced Mode': emptyProps(),
+    'Load Advanced Mode Success': props<{ enabled: boolean }>(),
+    'Load Advanced Mode Failure': props<{ error: string }>(),
+
+    'Update Advanced Mode': props<{ enabled: boolean }>(),
+    'Update Advanced Mode Success': props<{ enabled: boolean }>(),
+    'Update Advanced Mode Failure': props<{ error: string }>(),
   },
 });

@@ -297,6 +297,71 @@ export class SettingsService {
   }
 
   // ============================================================================
+  // ADVANCED MODE SETTING (UI Simplification)
+  // ============================================================================
+
+  /**
+   * Get advanced mode setting
+   *
+   * Returns whether advanced UI controls should be shown (default: false for minimal UX)
+   * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
+   */
+  async getAdvancedMode(): Promise<{ advancedModeEnabled: boolean }> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+
+      // Create default settings if they don't exist
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            advancedModeEnabled: false,
+          },
+        });
+      }
+
+      return s;
+    });
+
+    return {
+      advancedModeEnabled: settings.advancedModeEnabled,
+    };
+  }
+
+  /**
+   * Update advanced mode setting
+   *
+   * Toggles visibility of advanced UI controls in the queue and other pages
+   * RACE CONDITION FIX: Uses transaction to atomically check and create/update
+   */
+  async updateAdvancedMode(enabled: boolean): Promise<{ advancedModeEnabled: boolean }> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      // Get existing settings or create if doesn't exist
+      let s = await tx.settings.findFirst();
+
+      if (!s) {
+        s = await tx.settings.create({
+          data: {
+            advancedModeEnabled: enabled,
+          },
+        });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: {
+            advancedModeEnabled: enabled,
+          },
+        });
+      }
+
+      return s;
+    });
+
+    return {
+      advancedModeEnabled: settings.advancedModeEnabled,
+    };
+  }
+
+  // ============================================================================
   // JELLYFIN INTEGRATION SETTINGS
   // ============================================================================
 

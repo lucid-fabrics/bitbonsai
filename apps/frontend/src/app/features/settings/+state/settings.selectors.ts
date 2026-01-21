@@ -10,4 +10,5 @@ export const SettingsSelectors = {
   selectIsLoading: createSelector(selectSettingsState, (state) => state.isLoading),
   selectError: createSelector(selectSettingsState, (state) => state.error),
   selectSuccessMessage: createSelector(selectSettingsState, (state) => state.successMessage),
+  selectAdvancedMode: createSelector(selectSettingsState, (state) => state.advancedModeEnabled),
 };
