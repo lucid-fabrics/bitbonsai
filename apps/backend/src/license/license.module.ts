@@ -1,6 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JobLimitGuard } from './guards/job-limit.guard';
 import { NodeLimitGuard } from './guards/node-limit.guard';
@@ -17,9 +16,11 @@ import { LicenseGuardService } from './license-guard.service';
  * - License verification client (consumer mode - queries remote API)
  * - License limit enforcement (nodes, concurrent jobs)
  * - Feature gating based on tier
+ *
+ * Note: ScheduleModule.forRoot() is registered in AppModule
  */
 @Module({
-  imports: [PrismaModule, HttpModule, ScheduleModule.forRoot()],
+  imports: [PrismaModule, HttpModule],
   controllers: [LicenseController],
   providers: [
     LicenseService,

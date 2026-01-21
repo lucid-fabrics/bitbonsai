@@ -3,7 +3,7 @@ import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { CreateLicenseDto } from './dto/create-license.dto';
 import type { ValidateLicenseDto } from './dto/validate-license.dto';
 import { LicenseService } from './license.service';
-import { LicenseClientService } from './license-client.service';
+import { LicenseClientService, type LookupLicenseResponse } from './license-client.service';
 
 /**
  * LicenseController
@@ -194,5 +194,72 @@ export class LicenseController {
   async setLicenseKey(@Body() body: { key: string }) {
     await this.licenseClient.setLicenseKey(body.key);
     return { success: true, message: 'License key updated and verified' };
+  }
+
+  /**
+   * Activate a license (consumer mode)
+   *
+   * Verifies the license key with the licensing-service and stores it locally
+   */
+  @Post('activate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Activate a license key',
+    description:
+      'Verifies the license key with the central licensing service and stores it locally',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'License activated successfully',
+    schema: {
+      example: {
+        key: 'BITBONSAI-SUP-xxxx',
+        email: 'user@example.com',
+        tier: 'PATREON_SUPPORTER',
+        status: 'ACTIVE',
+        maxNodes: 2,
+        maxConcurrentJobs: 3,
+        expiresAt: null,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid license key',
+  })
+  async activateLicense(@Body() body: { key: string; email?: string }) {
+    return this.licenseClient.activateLicense(body.key, body.email);
+  }
+
+  /**
+   * Lookup a license by email (consumer mode)
+   *
+   * For post-checkout flows - allows users to retrieve their license after purchase
+   */
+  @Post('lookup')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lookup license by email',
+    description:
+      'Find an active license associated with an email address (for post-checkout flows)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'License lookup result',
+    schema: {
+      example: {
+        found: true,
+        license: {
+          tier: 'PATREON_SUPPORTER',
+          maxNodes: 2,
+          maxConcurrentJobs: 3,
+          maskedKey: 'BITBONSAI-SUP-****xxxx',
+          expiresAt: null,
+        },
+      },
+    },
+  })
+  async lookupLicense(@Body() body: { email: string }): Promise<LookupLicenseResponse> {
+    return this.licenseClient.lookupLicenseByEmail(body.email);
   }
 }

@@ -1,11 +1,14 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { LicenseStatus, type Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { mapExternalTier } from './tier-mapping';
+import { TIER_LIMITS, getTierFeatures } from './tier-config';
 
 export interface LicenseInfo {
   key: string;
@@ -15,6 +18,17 @@ export interface LicenseInfo {
   maxNodes: number;
   maxConcurrentJobs: number;
   expiresAt: Date | null;
+}
+
+export interface LookupLicenseResponse {
+  found: boolean;
+  license?: {
+    tier: string;
+    maxNodes: number;
+    maxConcurrentJobs: number;
+    maskedKey: string;
+    expiresAt: string | null;
+  };
 }
 
 @Injectable()
@@ -121,6 +135,28 @@ export class LicenseClientService {
         return this.cachedLicense;
       }
 
+      // Fallback to local database license if API unreachable
+      const localLicense = await this.prisma.license.findFirst({
+        where: { status: LicenseStatus.ACTIVE },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (localLicense) {
+        this.logger.warn('License API unreachable, using local database license');
+        const licenseInfo: LicenseInfo = {
+          key: localLicense.key,
+          email: localLicense.email,
+          tier: localLicense.tier,
+          status: localLicense.status,
+          maxNodes: localLicense.maxNodes,
+          maxConcurrentJobs: localLicense.maxConcurrentJobs,
+          expiresAt: localLicense.validUntil,
+        };
+        this.cachedLicense = licenseInfo;
+        this.lastVerification = now;
+        return licenseInfo;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error('License verification failed and no cache available', errorMessage);
       throw new UnauthorizedException('License verification failed');
@@ -143,6 +179,126 @@ export class LicenseClientService {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error('Daily license verification failed', errorMessage);
+    }
+  }
+
+  /**
+   * Activate a license key by verifying with the licensing-service
+   * and storing it locally in the database
+   */
+  async activateLicense(licenseKey: string, email?: string): Promise<LicenseInfo> {
+    this.logger.log(`Activating license key for ${email || 'unknown email'}...`);
+
+    try {
+      // Call licensing-service to verify the license key
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.apiUrl}/licenses/verify`,
+          { licenseKey },
+          { timeout: 10000 }
+        )
+      );
+
+      const result = response.data;
+      if (!result?.valid || !result?.license) {
+        throw new BadRequestException(result?.error || 'Invalid license key');
+      }
+
+      const { license: verifiedPayload } = result;
+
+      // Map external tier to internal tier
+      const internalTier = mapExternalTier(verifiedPayload.tier, this.logger);
+      const limits = TIER_LIMITS[internalTier];
+      const features = getTierFeatures(internalTier);
+
+      // Store or update license in local database
+      const existingLicense = await this.prisma.license.findFirst();
+
+      const licenseData = {
+        key: licenseKey,
+        email: verifiedPayload.email || email || 'unknown@bitbonsai.io',
+        tier: internalTier,
+        status: LicenseStatus.ACTIVE,
+        maxNodes: limits.maxNodes,
+        maxConcurrentJobs: limits.maxConcurrentJobs,
+        features: features as unknown as Prisma.InputJsonValue,
+        validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
+      };
+
+      let savedLicense;
+      if (existingLicense) {
+        savedLicense = await this.prisma.license.update({
+          where: { id: existingLicense.id },
+          data: licenseData,
+        });
+        this.logger.log(`Updated existing license to ${internalTier}`);
+      } else {
+        savedLicense = await this.prisma.license.create({
+          data: licenseData,
+        });
+        this.logger.log(`Created new license: ${internalTier}`);
+      }
+
+      // Update cache
+      const licenseInfo: LicenseInfo = {
+        key: savedLicense.key,
+        email: savedLicense.email,
+        tier: savedLicense.tier,
+        status: savedLicense.status,
+        maxNodes: savedLicense.maxNodes,
+        maxConcurrentJobs: savedLicense.maxConcurrentJobs,
+        expiresAt: savedLicense.validUntil,
+      };
+
+      this.cachedLicense = licenseInfo;
+      this.lastVerification = new Date();
+
+      return licenseInfo;
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`License activation failed: ${errorMessage}`);
+      throw new BadRequestException('Failed to activate license. Please check the key and try again.');
+    }
+  }
+
+  /**
+   * Lookup a license by email (for post-checkout flows)
+   * Proxies to the licensing-service lookup endpoint
+   */
+  async lookupLicenseByEmail(email: string): Promise<LookupLicenseResponse> {
+    this.logger.log(`Looking up license for email: ${email}`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.apiUrl}/licenses/lookup`,
+          { email },
+          { timeout: 10000 }
+        )
+      );
+
+      const result = response.data;
+
+      if (result?.found && result?.license) {
+        // Map external tier to internal tier name for display
+        const internalTier = mapExternalTier(result.license.tier, this.logger);
+        return {
+          found: true,
+          license: {
+            ...result.license,
+            tier: internalTier,
+          },
+        };
+      }
+
+      return { found: false };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`License lookup failed: ${errorMessage}`);
+      return { found: false };
     }
   }
 
