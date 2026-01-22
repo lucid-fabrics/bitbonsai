@@ -1,6 +1,10 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { ActivateLicenseDto } from './dto/activate-license.dto';
 import type { CreateLicenseDto } from './dto/create-license.dto';
+import { LookupLicenseDto } from './dto/lookup-license.dto';
+import { SetLicenseKeyDto } from './dto/set-license-key.dto';
 import type { ValidateLicenseDto } from './dto/validate-license.dto';
 import { LicenseService } from './license.service';
 import { LicenseClientService, type LookupLicenseResponse } from './license-client.service';
@@ -157,8 +161,10 @@ export class LicenseController {
    * Get current license information (consumer mode)
    *
    * Returns the license verification status and limits for this BitBonsai instance
+   * Rate limited to 10 requests per minute to prevent abuse
    */
   @Get('current')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Get current license information',
     description: 'Returns license verification status and limits for this BitBonsai instance',
@@ -171,8 +177,10 @@ export class LicenseController {
    * Get current license limits (consumer mode)
    *
    * Returns node and job limits based on license tier
+   * Rate limited to 10 requests per minute to prevent abuse
    */
   @Get('limits')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Get current license limits',
     description: 'Returns node and job limits based on license tier',
@@ -185,14 +193,16 @@ export class LicenseController {
    * Set license key (consumer mode)
    *
    * Updates the license key and immediately verifies it
+   * Rate limited to 5 requests per minute to prevent brute force
    */
   @Put('key')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: 'Set license key',
     description: 'Updates the license key and immediately verifies it',
   })
-  async setLicenseKey(@Body() body: { key: string }) {
-    await this.licenseClient.setLicenseKey(body.key);
+  async setLicenseKey(@Body() dto: SetLicenseKeyDto) {
+    await this.licenseClient.setLicenseKey(dto.key);
     return { success: true, message: 'License key updated and verified' };
   }
 
@@ -200,9 +210,11 @@ export class LicenseController {
    * Activate a license (consumer mode)
    *
    * Verifies the license key with the licensing-service and stores it locally
+   * Rate limited to 5 requests per minute to prevent brute force
    */
   @Post('activate')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: 'Activate a license key',
     description:
@@ -227,17 +239,23 @@ export class LicenseController {
     status: 400,
     description: 'Invalid license key',
   })
-  async activateLicense(@Body() body: { key: string; email?: string }) {
-    return this.licenseClient.activateLicense(body.key, body.email);
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests - rate limit exceeded',
+  })
+  async activateLicense(@Body() dto: ActivateLicenseDto) {
+    return this.licenseClient.activateLicense(dto.key, dto.email);
   }
 
   /**
    * Lookup a license by email (consumer mode)
    *
    * For post-checkout flows - allows users to retrieve their license after purchase
+   * Rate limited to 10 requests per minute to prevent enumeration
    */
   @Post('lookup')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Lookup license by email',
     description:
@@ -259,7 +277,11 @@ export class LicenseController {
       },
     },
   })
-  async lookupLicense(@Body() body: { email: string }): Promise<LookupLicenseResponse> {
-    return this.licenseClient.lookupLicenseByEmail(body.email);
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests - rate limit exceeded',
+  })
+  async lookupLicense(@Body() dto: LookupLicenseDto): Promise<LookupLicenseResponse> {
+    return this.licenseClient.lookupLicenseByEmail(dto.email);
   }
 }
