@@ -43,7 +43,7 @@ export class LicenseClientService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService
   ) {
-    this.apiUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.io';
+    this.apiUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
   }
 
   async getLicenseKey(): Promise<string | null> {
