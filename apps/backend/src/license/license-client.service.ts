@@ -1,5 +1,11 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LicenseStatus, type Prisma } from '@prisma/client';
@@ -31,10 +37,17 @@ export interface LookupLicenseResponse {
   };
 }
 
+// Default HTTP timeout for all license API calls (10 seconds)
+const DEFAULT_HTTP_TIMEOUT = 10000;
+
+// Cache TTL in hours (configurable via LICENSE_CACHE_TTL_HOURS env var)
+const DEFAULT_CACHE_TTL_HOURS = 24;
+
 @Injectable()
 export class LicenseClientService {
   private readonly logger = new Logger(LicenseClientService.name);
   private readonly apiUrl: string;
+  private readonly cacheTtlHours: number;
   private cachedLicense: LicenseInfo | null = null;
   private lastVerification: Date | null = null;
 
@@ -43,7 +56,34 @@ export class LicenseClientService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService
   ) {
-    this.apiUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
+    const configuredUrl =
+      this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
+
+    // M4: Enforce HTTPS in production
+    if (!configuredUrl.startsWith('https://') && process.env.NODE_ENV === 'production') {
+      throw new Error('LICENSE_API_URL must use HTTPS in production');
+    }
+
+    this.apiUrl = configuredUrl;
+    this.cacheTtlHours =
+      this.configService.get<number>('LICENSE_CACHE_TTL_HOURS') || DEFAULT_CACHE_TTL_HOURS;
+  }
+
+  /**
+   * Mask a license key for display (show only last 4 characters)
+   */
+  private maskLicenseKey(key: string): string {
+    if (!key || key.length < 8) return '****';
+    const lastFour = key.slice(-4);
+    const prefix = key.includes('-') ? key.split('-').slice(0, -1).join('-') + '-' : '';
+    return `${prefix}****${lastFour}`;
+  }
+
+  /**
+   * Hash a license key for secure storage comparison
+   */
+  private hashLicenseKey(key: string): string {
+    return crypto.createHash('sha256').update(key).digest('hex');
   }
 
   async getLicenseKey(): Promise<string | null> {
@@ -71,13 +111,17 @@ export class LicenseClientService {
   async verifyLicense(): Promise<LicenseInfo> {
     const now = new Date();
 
-    // Return cache if verified within 24h
+    // Return cache if verified within configured TTL
     if (this.cachedLicense && this.lastVerification) {
       const hoursSinceVerification =
         (now.getTime() - this.lastVerification.getTime()) / (1000 * 60 * 60);
-      if (hoursSinceVerification < 24) {
-        this.logger.debug('Using cached license (verified within 24h)');
-        return this.cachedLicense;
+      if (hoursSinceVerification < this.cacheTtlHours) {
+        this.logger.debug(`Using cached license (verified within ${this.cacheTtlHours}h)`);
+        // Return with masked key for security
+        return {
+          ...this.cachedLicense,
+          key: this.maskLicenseKey(this.cachedLicense.key),
+        };
       }
     }
 
@@ -88,7 +132,7 @@ export class LicenseClientService {
       this.logger.warn('No license key configured - using FREE tier');
       const freeLicense: LicenseInfo = {
         key: 'FREE',
-        email: 'free@bitbonsai.io',
+        email: 'free@bitbonsai.app',
         tier: 'FREE',
         status: 'ACTIVE',
         maxNodes: 1,
@@ -110,7 +154,7 @@ export class LicenseClientService {
             machineName: os.hostname(),
           },
           {
-            timeout: 10000, // 10s timeout
+            timeout: DEFAULT_HTTP_TIMEOUT,
           }
         )
       );
@@ -127,12 +171,26 @@ export class LicenseClientService {
         `License verified: ${verifiedLicense.tier} (${verifiedLicense.maxNodes} nodes, ${verifiedLicense.maxConcurrentJobs} jobs)`
       );
 
-      return verifiedLicense;
+      // Return with masked key for security
+      return {
+        ...verifiedLicense,
+        key: this.maskLicenseKey(verifiedLicense.key),
+      };
     } catch (error: unknown) {
+      // Log detailed error for debugging
+      const errorDetails = this.extractErrorDetails(error);
+      this.logger.warn('License API call failed', errorDetails);
+
       // Graceful degradation: use cached license if API unreachable
       if (this.cachedLicense) {
-        this.logger.warn('License API unreachable, using cached license');
-        return this.cachedLicense;
+        this.logger.warn('License API unreachable, using cached license', {
+          cacheAge: `${Math.round((now.getTime() - (this.lastVerification?.getTime() || 0)) / 3600000)}h`,
+          tier: this.cachedLicense.tier,
+        });
+        return {
+          ...this.cachedLicense,
+          key: this.maskLicenseKey(this.cachedLicense.key),
+        };
       }
 
       // Fallback to local database license if API unreachable
@@ -144,7 +202,7 @@ export class LicenseClientService {
       if (localLicense) {
         this.logger.warn('License API unreachable, using local database license');
         const licenseInfo: LicenseInfo = {
-          key: localLicense.key,
+          key: this.maskLicenseKey(localLicense.key),
           email: localLicense.email,
           tier: localLicense.tier,
           status: localLicense.status,
@@ -152,13 +210,15 @@ export class LicenseClientService {
           maxConcurrentJobs: localLicense.maxConcurrentJobs,
           expiresAt: localLicense.validUntil,
         };
-        this.cachedLicense = licenseInfo;
+        this.cachedLicense = {
+          ...licenseInfo,
+          key: localLicense.key, // Store full key in cache
+        };
         this.lastVerification = now;
         return licenseInfo;
       }
 
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error('License verification failed and no cache available', errorMessage);
+      this.logger.error('License verification failed and no cache available', errorDetails);
       throw new UnauthorizedException('License verification failed');
     }
   }
@@ -185,6 +245,8 @@ export class LicenseClientService {
   /**
    * Activate a license key by verifying with the licensing-service
    * and storing it locally in the database
+   *
+   * Uses transaction to prevent race conditions (M6)
    */
   async activateLicense(licenseKey: string, email?: string): Promise<LicenseInfo> {
     this.logger.log(`Activating license key for ${email || 'unknown email'}...`);
@@ -192,7 +254,11 @@ export class LicenseClientService {
     try {
       // Call licensing-service to verify the license key
       const response = await firstValueFrom(
-        this.httpService.post(`${this.apiUrl}/licenses/verify`, { licenseKey }, { timeout: 10000 })
+        this.httpService.post(
+          `${this.apiUrl}/licenses/verify`,
+          { licenseKey },
+          { timeout: DEFAULT_HTTP_TIMEOUT }
+        )
       );
 
       const result = response.data;
@@ -207,35 +273,38 @@ export class LicenseClientService {
       const limits = TIER_LIMITS[internalTier];
       const features = getTierFeatures(internalTier);
 
-      // Store or update license in local database
-      const existingLicense = await this.prisma.license.findFirst();
+      // M6: Use transaction to prevent race conditions
+      const savedLicense = await this.prisma.$transaction(async (tx) => {
+        const existingLicense = await tx.license.findFirst();
 
-      const licenseData = {
-        key: licenseKey,
-        email: verifiedPayload.email || email || 'unknown@bitbonsai.io',
-        tier: internalTier,
-        status: LicenseStatus.ACTIVE,
-        maxNodes: limits.maxNodes,
-        maxConcurrentJobs: limits.maxConcurrentJobs,
-        features: features as unknown as Prisma.InputJsonValue,
-        validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
-      };
+        const licenseData = {
+          key: licenseKey,
+          email: verifiedPayload.email || email || 'unknown@bitbonsai.app',
+          tier: internalTier,
+          status: LicenseStatus.ACTIVE,
+          maxNodes: limits.maxNodes,
+          maxConcurrentJobs: limits.maxConcurrentJobs,
+          features: features as unknown as Prisma.InputJsonValue,
+          validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
+        };
 
-      let savedLicense;
-      if (existingLicense) {
-        savedLicense = await this.prisma.license.update({
-          where: { id: existingLicense.id },
-          data: licenseData,
-        });
-        this.logger.log(`Updated existing license to ${internalTier}`);
-      } else {
-        savedLicense = await this.prisma.license.create({
-          data: licenseData,
-        });
-        this.logger.log(`Created new license: ${internalTier}`);
-      }
+        if (existingLicense) {
+          const updated = await tx.license.update({
+            where: { id: existingLicense.id },
+            data: licenseData,
+          });
+          this.logger.log(`Updated existing license to ${internalTier}`);
+          return updated;
+        } else {
+          const created = await tx.license.create({
+            data: licenseData,
+          });
+          this.logger.log(`Created new license: ${internalTier}`);
+          return created;
+        }
+      });
 
-      // Update cache
+      // Update cache with full key (for internal use)
       const licenseInfo: LicenseInfo = {
         key: savedLicense.key,
         email: savedLicense.email,
@@ -249,13 +318,27 @@ export class LicenseClientService {
       this.cachedLicense = licenseInfo;
       this.lastVerification = new Date();
 
-      return licenseInfo;
+      // Return with masked key for security
+      return {
+        ...licenseInfo,
+        key: this.maskLicenseKey(licenseInfo.key),
+      };
     } catch (error: unknown) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`License activation failed: ${errorMessage}`);
+
+      const errorDetails = this.extractErrorDetails(error);
+
+      // M1: Better error messages based on error type
+      if (errorDetails.isNetworkError) {
+        this.logger.error('License activation failed - network error', errorDetails);
+        throw new ServiceUnavailableException(
+          'Unable to reach licensing service. Please check your internet connection and try again.'
+        );
+      }
+
+      this.logger.error('License activation failed', errorDetails);
       throw new BadRequestException(
         'Failed to activate license. Please check the key and try again.'
       );
@@ -271,7 +354,11 @@ export class LicenseClientService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(`${this.apiUrl}/licenses/lookup`, { email }, { timeout: 10000 })
+        this.httpService.post(
+          `${this.apiUrl}/licenses/lookup`,
+          { email },
+          { timeout: DEFAULT_HTTP_TIMEOUT }
+        )
       );
 
       const result = response.data;
@@ -290,10 +377,43 @@ export class LicenseClientService {
 
       return { found: false };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`License lookup failed: ${errorMessage}`);
+      const errorDetails = this.extractErrorDetails(error);
+      this.logger.error('License lookup failed', errorDetails);
       return { found: false };
     }
+  }
+
+  /**
+   * Extract detailed error information for logging
+   */
+  private extractErrorDetails(error: unknown): {
+    message: string;
+    code?: string;
+    isNetworkError: boolean;
+  } {
+    if (error instanceof Error) {
+      const axiosError = error as Error & {
+        code?: string;
+        response?: { status?: number; data?: unknown };
+      };
+
+      const isNetworkError =
+        axiosError.code === 'ECONNREFUSED' ||
+        axiosError.code === 'ETIMEDOUT' ||
+        axiosError.code === 'ENOTFOUND' ||
+        axiosError.code === 'ENETUNREACH';
+
+      return {
+        message: axiosError.message,
+        code: axiosError.code,
+        isNetworkError,
+      };
+    }
+
+    return {
+      message: 'Unknown error',
+      isNetworkError: false,
+    };
   }
 
   private getMachineId(): string {

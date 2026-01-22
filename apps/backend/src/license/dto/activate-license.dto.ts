@@ -1,0 +1,30 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+
+/**
+ * DTO for activating a license key
+ */
+export class ActivateLicenseDto {
+  @ApiProperty({
+    description: 'License key to activate',
+    example: 'BITBONSAI-SUP-a1b2c3d4',
+    minLength: 10,
+    maxLength: 100,
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'License key is required' })
+  @MinLength(10, { message: 'License key must be at least 10 characters' })
+  @MaxLength(100, { message: 'License key must not exceed 100 characters' })
+  @Matches(/^[A-Za-z0-9-]+$/, {
+    message: 'License key can only contain letters, numbers, and hyphens',
+  })
+  key!: string;
+
+  @ApiPropertyOptional({
+    description: 'Email address associated with the license (optional)',
+    example: 'user@example.com',
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Invalid email format' })
+  email?: string;
+}

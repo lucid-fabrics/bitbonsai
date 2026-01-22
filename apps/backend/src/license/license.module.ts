@@ -20,7 +20,14 @@ import { LicenseGuardService } from './license-guard.service';
  * Note: ScheduleModule.forRoot() is registered in AppModule
  */
 @Module({
-  imports: [PrismaModule, HttpModule],
+  imports: [
+    PrismaModule,
+    // M2: Configure global HTTP timeout and redirect limits
+    HttpModule.register({
+      timeout: 10000, // 10 second default timeout
+      maxRedirects: 3,
+    }),
+  ],
   controllers: [LicenseController],
   providers: [
     LicenseService,
