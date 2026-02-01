@@ -8,6 +8,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommonModule } from './common/common.module';
+import { envValidationSchema } from './common/config/env.validation';
 import { CoreModule } from './core/core.module';
 import { DatabaseInitService } from './database/database-init.service';
 import { DiscoveryModule } from './discovery/discovery.module';
@@ -38,6 +39,7 @@ import { SystemModule } from './system/system.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
+      validate: envValidationSchema,
     }),
     // SECURITY: Global rate limiting - 1000 requests per minute per IP
     // Note: Higher limit to accommodate multi-node setups where LINKED nodes

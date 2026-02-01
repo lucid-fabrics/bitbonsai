@@ -362,8 +362,10 @@
   width: 100%;
   max-width: 700px;
   max-height: 90vh;
-  overflow-y: auto;
   box-shadow: $shadow-md;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   &.confirm-dialog {
     max-width: 500px;
@@ -376,6 +378,8 @@
   align-items: center;
   padding: 24px 32px;
   border-bottom: 1px solid $border-primary;
+  flex-shrink: 0;
+  background: $bg-secondary;
 }
 
 .modal-header__title {
@@ -387,6 +391,8 @@
 
 .modal-body {
   padding: 32px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-body__text {
@@ -625,14 +631,15 @@
   border-radius: $border-radius-sm;
 }
 
-// Form Actions
+// Form Actions (Fixed Footer)
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   padding: 24px 32px;
   border-top: 1px solid $border-primary;
-  margin-top: 32px;
+  flex-shrink: 0;
+  background: $bg-secondary;
 }
 
 // Responsive Design
@@ -852,4 +859,17 @@
   margin-top: 2px;
   accent-color: $accent-primary;
   cursor: pointer;
+}
+
+// Info icon for tooltips
+.info-icon {
+  color: $text-secondary;
+  font-size: 14px;
+  margin-left: 6px;
+  cursor: help;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $accent-primary;
+  }
 }

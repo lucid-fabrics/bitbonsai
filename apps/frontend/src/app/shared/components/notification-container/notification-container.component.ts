@@ -64,15 +64,16 @@ export class NotificationContainerComponent implements OnInit {
 
     // Mark as read in backend
     this.notificationService.markAsRead(id).subscribe({
-      error: (err) => console.error('Failed to mark notification as read:', err),
+      error: () => {
+        // Silent fail - notification is already removed from UI
+      },
     });
   }
 
   /**
    * Handle notification action
    */
-  handleAction(notification: Notification): void {
-    console.log('Notification action:', notification);
+  handleAction(_notification: Notification): void {
     // Additional action handling can be added here
   }
 }

@@ -1,5 +1,27 @@
 #!/bin/sh
 
+# Block commits to main branch
+# Policy: ~/git/code-conventions/git-commit-instructions.md
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$BRANCH" = "main" ]; then
+  echo ""
+  echo "❌ ERROR: Direct commits to main branch are PROHIBITED!"
+  echo ""
+  echo "📋 Policy: ~/git/code-conventions/git-commit-instructions.md"
+  echo ""
+  echo "✅ Proper workflow:"
+  echo "   1. Create feature branch: git checkout -b feat/your-feature"
+  echo "   2. Make changes and commit"
+  echo "   3. Push and create Pull Request"
+  echo "   4. Merge via PR after review"
+  echo ""
+  echo "💡 To fix:"
+  echo "   git checkout -b feat/your-feature  # Create branch from current state"
+  echo ""
+  exit 1
+fi
+
 # Run Biome linter and auto-fix
 npx nx check:fix
 

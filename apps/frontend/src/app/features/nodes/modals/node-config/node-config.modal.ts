@@ -15,7 +15,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { OptimalConfig } from '../../../../core/clients/nodes.client';
 import { NodesClient } from '../../../../core/clients/nodes.client';
 import { NodeScheduleEditorComponent } from '../../../../shared/components/node-schedule-editor/node-schedule-editor.component';
-import type { Node } from '../../models/node.model';
+import type { Node, NodeCapabilityTestResult } from '../../models/node.model';
 
 export interface NodeConfigModalData {
   node: Node;
@@ -160,7 +160,7 @@ export class NodeConfigModalComponent implements OnInit {
       .testCapabilities(this.data.node.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (results: any) => {
+        next: (results: NodeCapabilityTestResult) => {
           this.testingCapabilities.set(false);
           this.cdr.markForCheck();
 
@@ -179,7 +179,7 @@ export class NodeConfigModalComponent implements OnInit {
   /**
    * Format capability test results for display
    */
-  private formatCapabilityResults(results: any): string {
+  private formatCapabilityResults(results: NodeCapabilityTestResult): string {
     const lines = [
       'Node Capability Test Results',
       '============================',

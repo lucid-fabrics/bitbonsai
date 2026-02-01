@@ -67,9 +67,8 @@
         <i class="fa fa-plug"></i>
         <span>Integrations</span>
       </a>
-      <!-- Debug tab: Development only -->
-      <!-- DEEP AUDIT P3-1: Convert *ngIf to @if for modern Angular syntax -->
-      @if (showDebugTab) {
+      <!-- Debug tab: Development OR advanced mode in production -->
+      @if (showDebugTab()) {
         <a
           class="tab-button"
           [routerLink]="['/settings', 'debug']"
@@ -77,8 +76,8 @@
           [routerLinkActiveOptions]="{exact: false}"
           tabindex="0"
         >
-          <i class="fa fa-bug"></i>
-          <span>Debug</span>
+          <i class="fa fa-stethoscope"></i>
+          <span>Diagnostics</span>
         </a>
       }
       <a

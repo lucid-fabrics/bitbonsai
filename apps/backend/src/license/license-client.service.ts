@@ -56,8 +56,7 @@ export class LicenseClientService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService
   ) {
-    const configuredUrl =
-      this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
+    const configuredUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
 
     // M4: Enforce HTTPS in production
     if (!configuredUrl.startsWith('https://') && process.env.NODE_ENV === 'production') {

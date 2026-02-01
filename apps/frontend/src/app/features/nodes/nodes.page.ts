@@ -30,6 +30,7 @@ import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.direc
 import {
   ApprovalDialogComponent,
   type ApprovalDialogData,
+  type ApprovalDialogResult,
 } from '../pending-requests/dialogs/approval-dialog.component';
 import {
   RejectionDialogComponent,
@@ -353,9 +354,9 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
-      // Dialog now returns { approved, nodeId, capabilities } instead of boolean
-      if (result?.approved) {
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      const typedResult = result as ApprovalDialogResult | undefined;
+      if (typedResult?.approved) {
         // Clear the highlight
         this.highlightedRequestId.set(null);
         // Reload nodes and pending requests to show the newly paired node
@@ -410,9 +411,10 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
-      // Dialog now returns { approved, nodeId, capabilities } instead of just true
-      if (result?.approved) {
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      // Dialog returns { approved, nodeId, capabilities }
+      const dialogResult = result as ApprovalDialogResult | undefined;
+      if (dialogResult?.approved) {
         // Clear the highlight
         this.highlightedRequestId.set(null);
         // Reload nodes and pending requests to show the newly paired node

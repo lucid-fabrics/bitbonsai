@@ -81,3 +81,52 @@ export interface HardwareDetection {
   platform: string;
   nodeVersion: string;
 }
+
+/**
+ * Registration Request Status
+ *
+ * Status of a node registration request from the main node perspective.
+ */
+export type RegistrationRequestStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED';
+
+/**
+ * Registration Request Response
+ *
+ * Response from the main node when polling registration request status.
+ */
+export interface RegistrationRequestResponse {
+  id: string;
+  childNodeName: string;
+  childVersion: string;
+  ipAddress: string;
+  hostname: string;
+  containerType: string;
+  hardwareSpecs: {
+    cpuCores: number;
+    cpuModel: string;
+    ramGb: number;
+    diskGb: number;
+    gpuModel: string | null;
+  };
+  acceleration: AccelerationType;
+  pairingToken: string;
+  tokenExpiresAt: string;
+  status: RegistrationRequestStatus;
+  requestedAt: string;
+  respondedAt?: string;
+  message?: string;
+  rejectionReason?: string;
+  childNodeId?: string;
+  apiKey?: string;
+  mainNodeId?: string;
+  mainNode?: {
+    id: string;
+    name: string;
+    version: string;
+  };
+}

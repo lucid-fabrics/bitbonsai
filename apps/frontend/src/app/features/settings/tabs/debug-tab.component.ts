@@ -14,8 +14,8 @@ import {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="tab-panel">
-      <h2>Debug & Diagnostics</h2>
-      <p class="tab-description">System monitoring, process management, and performance tuning</p>
+      <h2>Diagnostics</h2>
+      <p class="tab-description">System monitoring and process management for troubleshooting</p>
 
       <!-- System Load Card -->
       <div class="info-card">

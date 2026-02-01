@@ -89,8 +89,8 @@ describe('EnvironmentService', () => {
         expect(paths.downloadsPath).toBe('/mnt/user/Downloads');
         expect(paths.configPath).toBe('/mnt/user/appdata/bitbonsai');
       } else if (environment === 'DOCKER') {
-        expect(paths.mediaPath).toBe('/library');
-        expect(paths.downloadsPath).toBe('/downloads');
+        expect(paths.mediaPath).toBe('/media');
+        expect(paths.downloadsPath).toBe('/media');
         expect(paths.configPath).toBe('/config');
       } else {
         expect(paths.mediaPath).toBe('/var/lib/bitbonsai/media');

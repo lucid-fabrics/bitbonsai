@@ -7,6 +7,7 @@ import type {
   HardwareDetection,
   PairingRequest,
   PairingResponse,
+  RegistrationRequestResponse,
   ScanResult,
 } from '../models/discovery.model';
 import { PairingStatus } from '../models/discovery.model';
@@ -113,8 +114,8 @@ export class DiscoveryService {
       : `${this.apiUrl}/pair/${pairingId}/status`;
 
     return interval(pollIntervalSeconds * 1000).pipe(
-      switchMap(() => this.http.get<any>(pollUrl)),
-      map((response: any): PairingResponse => this.mapToPairingResponse(response)), // Transform to PairingResponse
+      switchMap(() => this.http.get<RegistrationRequestResponse>(pollUrl)),
+      map((response): PairingResponse => this.mapToPairingResponse(response)), // Transform to PairingResponse
       tap((pairingResponse: PairingResponse) => {
         this.pairingStatusSubject.next(pairingResponse.status);
         elapsedSeconds += pollIntervalSeconds;
@@ -143,7 +144,9 @@ export class DiscoveryService {
   /**
    * Map registration request response to pairing response
    */
-  private mapToPairingResponse(registrationRequest: any): PairingResponse {
+  private mapToPairingResponse(
+    registrationRequest: RegistrationRequestResponse | null
+  ): PairingResponse {
     if (!registrationRequest || !registrationRequest.status) {
       return {
         status: PairingStatus.ERROR,
@@ -171,11 +174,13 @@ export class DiscoveryService {
                 name: registrationRequest.mainNode.name,
                 version: registrationRequest.mainNode.version,
               }
-            : {
-                id: registrationRequest.mainNodeId,
-                name: 'Main Node',
-                version: '0.1.0',
-              },
+            : registrationRequest.mainNodeId
+              ? {
+                  id: registrationRequest.mainNodeId,
+                  name: 'Main Node',
+                  version: '0.1.0',
+                }
+              : undefined,
         };
 
       case 'REJECTED':

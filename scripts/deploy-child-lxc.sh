@@ -1,189 +1,278 @@
 #!/bin/bash
-
-# BitBonsai - Deploy to LXC Child Node via Proxmox pct
-# Uses Proxmox pct exec to deploy inside LXC container
 #
-# IMPORTANT: This script also sets up NFS mounts for shared storage.
-# Ensure Unraid NFS exports are configured before running.
+# BitBonsai - Deploy Child Node to LXC Container
+#
+# This script deploys a BitBonsai worker node to an LXC container on Proxmox.
+# The child node connects to the main node's PostgreSQL database via network.
+#
+# Prerequisites:
+# - Proxmox host accessible via SSH
+# - LXC container created with Debian/Ubuntu
+# - NFS exports configured on Unraid for shared media access
+# - Main node running and accessible
+#
+# Usage:
+#   ./scripts/deploy-child-lxc.sh [options]
+#
+# Options:
+#   --proxmox HOST    Proxmox hostname (default: pve-labg5)
+#   --lxc-id ID       LXC container ID (default: 300)
+#   --main-node URL   Main node API URL (default: http://192.168.1.100:3100)
+#   --skip-nfs        Skip NFS mount setup
+#   --rebuild         Force rebuild even if no changes
+#
 
 set -e
 
-PROXMOX_HOST="pve-labg5"
-LXC_ID="300"
-APP_DIR="/opt/bitbonsai"
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
 
-# NFS Configuration - Update these to match your Unraid setup
+PROXMOX_HOST="${PROXMOX_HOST:-pve-labg5}"
+LXC_ID="${LXC_ID:-300}"
+MAIN_NODE_URL="${MAIN_NODE_URL:-http://192.168.1.100:3100}"
+APP_DIR="/opt/bitbonsai"
+SERVICE_NAME="bitbonsai-backend"
+
+# NFS Configuration for shared storage
 UNRAID_IP="192.168.1.100"
-NFS_EXPORTS=(
-  "/mnt/user/media:/media"                      # HOST_PATH:MOUNT_POINT
-  "/mnt/user/Downloads:/downloads"              # Downloads
-  "/mnt/cache/bitbonsai-temp:/cache"            # Shared cache for encoding temp files
-  "/mnt/user/bitbonsai-previews:/previews"      # Shared preview storage (writable)
+NFS_MOUNTS=(
+  "/mnt/user/media:/media:ro"           # Media library (read-only for child)
+  "/mnt/cache/bitbonsai-temp:/cache:rw" # Shared encoding cache (read-write)
 )
 
-echo "🚀 Deploying BitBonsai to LXC Child Node..."
-echo "   Proxmox: $PROXMOX_HOST"
-echo "   LXC ID: $LXC_ID"
-echo ""
+SKIP_NFS=false
+FORCE_REBUILD=false
 
-# Step 0: Setup NFS mounts for shared storage
-echo "🔗 Step 0/9: Setting up NFS shared storage..."
-
-# Install NFS client if not present
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'which mount.nfs >/dev/null 2>&1 || apt-get update && apt-get install -y nfs-common'" || true
-
-for EXPORT in "${NFS_EXPORTS[@]}"; do
-  HOST_PATH="${EXPORT%%:*}"
-  MOUNT_POINT="${EXPORT##*:}"
-
-  echo "   Mounting $UNRAID_IP:$HOST_PATH → $MOUNT_POINT"
-
-  # Create mount point
-  ssh $PROXMOX_HOST "pct exec $LXC_ID -- mkdir -p $MOUNT_POINT"
-
-  # Check if already in fstab
-  FSTAB_ENTRY="$UNRAID_IP:$HOST_PATH $MOUNT_POINT nfs rw,nolock,soft,intr 0 0"
-  ssh $PROXMOX_HOST "pct exec $LXC_ID -- grep -q '$UNRAID_IP:$HOST_PATH' /etc/fstab" || \
-    ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'echo \"$FSTAB_ENTRY\" >> /etc/fstab'"
-
-  # Mount if not already mounted
-  ssh $PROXMOX_HOST "pct exec $LXC_ID -- mountpoint -q $MOUNT_POINT" || \
-    ssh $PROXMOX_HOST "pct exec $LXC_ID -- mount $MOUNT_POINT" || \
-    echo "   ⚠️  Warning: Could not mount $MOUNT_POINT (NFS may not be configured on Unraid)"
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --proxmox) PROXMOX_HOST="$2"; shift 2 ;;
+    --lxc-id) LXC_ID="$2"; shift 2 ;;
+    --main-node) MAIN_NODE_URL="$2"; shift 2 ;;
+    --skip-nfs) SKIP_NFS=true; shift ;;
+    --rebuild) FORCE_REBUILD=true; shift ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
 done
 
-# Verify mounts
-echo "   Verifying NFS mounts..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- df -h | grep -E 'nfs|Filesystem'" || true
-echo "✅ NFS setup complete"
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+log_step() {
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📍 $1"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+pct_exec() {
+  ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- $*"
+}
+
+pct_exec_bash() {
+  ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- bash -c '$*'"
+}
+
+# ============================================================================
+# MAIN SCRIPT
+# ============================================================================
+
+echo ""
+echo "🌳 BitBonsai - LXC Child Node Deployment"
+echo "========================================="
+echo ""
+echo "Configuration:"
+echo "  Proxmox Host:  $PROXMOX_HOST"
+echo "  LXC ID:        $LXC_ID"
+echo "  Main Node:     $MAIN_NODE_URL"
+echo "  App Directory: $APP_DIR"
 echo ""
 
-# Step 1: Sync code files to Proxmox host
-echo "📦 Step 1/8: Syncing code to Proxmox host..."
-ssh $PROXMOX_HOST "mkdir -p /tmp/bitbonsai-deploy"
+# Verify LXC container exists and is running
+log_step "Step 1: Verifying LXC container"
+LXC_STATUS=$(ssh "$PROXMOX_HOST" "pct status $LXC_ID 2>/dev/null | grep -oP 'status: \K\w+'" || echo "error")
+if [[ "$LXC_STATUS" != "running" ]]; then
+  echo "❌ LXC container $LXC_ID is not running (status: $LXC_STATUS)"
+  echo "   Start it with: ssh $PROXMOX_HOST 'pct start $LXC_ID'"
+  exit 1
+fi
+echo "✅ LXC container $LXC_ID is running"
+
+# Setup NFS mounts
+if [[ "$SKIP_NFS" != "true" ]]; then
+  log_step "Step 2: Setting up NFS mounts"
+
+  # Install NFS client if needed
+  pct_exec_bash "which mount.nfs >/dev/null 2>&1 || (apt-get update && apt-get install -y nfs-common)" || true
+
+  for MOUNT_SPEC in "${NFS_MOUNTS[@]}"; do
+    IFS=':' read -r HOST_PATH MOUNT_POINT MOUNT_MODE <<< "$MOUNT_SPEC"
+
+    echo "  Mounting $UNRAID_IP:$HOST_PATH → $MOUNT_POINT ($MOUNT_MODE)"
+
+    # Create mount point
+    pct_exec mkdir -p "$MOUNT_POINT"
+
+    # Add to fstab if not present
+    FSTAB_ENTRY="$UNRAID_IP:$HOST_PATH $MOUNT_POINT nfs $MOUNT_MODE,nolock,soft,intr,timeo=30 0 0"
+    pct_exec_bash "grep -q '$UNRAID_IP:$HOST_PATH' /etc/fstab || echo '$FSTAB_ENTRY' >> /etc/fstab"
+
+    # Mount if not already mounted
+    if ! pct_exec mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+      pct_exec mount "$MOUNT_POINT" 2>/dev/null || echo "  ⚠️  Could not mount $MOUNT_POINT"
+    fi
+  done
+
+  # Verify mounts
+  echo ""
+  echo "  NFS mount status:"
+  pct_exec df -h 2>/dev/null | grep -E 'nfs|Filesystem' || true
+  echo "✅ NFS setup complete"
+else
+  echo "⏭️  Skipping NFS setup (--skip-nfs)"
+fi
+
+# Install system dependencies
+log_step "Step 3: Installing system dependencies"
+pct_exec_bash "apt-get update && apt-get install -y curl ffmpeg nodejs npm git" || {
+  echo "⚠️  Some packages may have failed, continuing..."
+}
+
+# Ensure Node.js 20+
+NODE_VERSION=$(pct_exec node --version 2>/dev/null | grep -oP '\d+' | head -1 || echo "0")
+if [[ "$NODE_VERSION" -lt 20 ]]; then
+  echo "  Upgrading Node.js to v20..."
+  pct_exec_bash "curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs"
+fi
+echo "✅ Node.js $(pct_exec node --version) installed"
+
+# Sync source code
+log_step "Step 4: Syncing source code"
+ssh "$PROXMOX_HOST" "mkdir -p /tmp/bitbonsai-deploy"
+
+# Sync essential files only (not node_modules or dist)
+rsync -az --delete \
+  --exclude 'node_modules' \
+  --exclude 'dist' \
+  --exclude '.nx' \
+  --exclude '.git' \
+  --exclude '*.db' \
+  --exclude 'data/' \
+  ./apps/backend/ "$PROXMOX_HOST:/tmp/bitbonsai-deploy/apps/backend/"
 
 rsync -az --delete \
-    --exclude 'node_modules' \
-    --exclude 'dist' \
-    --exclude '.nx' \
-    --exclude '.git' \
-    --exclude '*.db' \
-    --exclude '*.db-journal' \
-    --exclude 'data/' \
-    ./apps/ $PROXMOX_HOST:/tmp/bitbonsai-deploy/apps/
-
-rsync -az --delete \
-    --exclude 'node_modules' \
-    ./libs/ $PROXMOX_HOST:/tmp/bitbonsai-deploy/libs/
-
-rsync -az --delete \
-    --exclude '*.db' \
-    --exclude '*.db-journal' \
-    ./prisma/ $PROXMOX_HOST:/tmp/bitbonsai-deploy/prisma/
+  --exclude 'node_modules' \
+  ./libs/ "$PROXMOX_HOST:/tmp/bitbonsai-deploy/libs/"
 
 rsync -az \
-    ./angular.json \
-    ./nx.json \
-    ./tsconfig.json \
-    ./package.json \
-    ./package-lock.json \
-    ./.npmrc \
-    $PROXMOX_HOST:/tmp/bitbonsai-deploy/
+  ./prisma/ "$PROXMOX_HOST:/tmp/bitbonsai-deploy/prisma/"
 
-echo "✅ Code synced to Proxmox host"
-echo ""
+rsync -az \
+  ./nx.json \
+  ./tsconfig.json \
+  ./tsconfig.base.json \
+  ./package.json \
+  ./package-lock.json \
+  ./.npmrc \
+  "$PROXMOX_HOST:/tmp/bitbonsai-deploy/"
 
-# Step 2: Copy files into LXC container filesystem
-echo "📋 Step 2/8: Copying files into LXC container..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- mkdir -p $APP_DIR"
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- mkdir -p /data"  # Node ID persistence directory
-ssh $PROXMOX_HOST "rsync -a --delete /tmp/bitbonsai-deploy/ /var/lib/lxc/$LXC_ID/rootfs$APP_DIR/"
-echo "✅ Files copied to LXC container"
-echo ""
+# Copy into LXC container
+pct_exec mkdir -p "$APP_DIR"
+ssh "$PROXMOX_HOST" "rsync -a --delete /tmp/bitbonsai-deploy/ /var/lib/lxc/$LXC_ID/rootfs$APP_DIR/"
+echo "✅ Source code synced"
 
-# Step 3: Install dependencies
-echo "📥 Step 3/8: Installing dependencies (this may take a while)..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'cd $APP_DIR && npm install --legacy-peer-deps --ignore-scripts'" || {
-    echo "⚠️  Warning: npm install had issues"
+# Install npm dependencies
+log_step "Step 5: Installing npm dependencies"
+pct_exec_bash "cd $APP_DIR && npm ci --legacy-peer-deps" || {
+  echo "⚠️  npm ci failed, trying npm install..."
+  pct_exec_bash "cd $APP_DIR && npm install --legacy-peer-deps"
 }
 echo "✅ Dependencies installed"
-echo ""
 
-# Step 4: Clean old build
-echo "🧹 Step 4/8: Cleaning old build..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- rm -rf $APP_DIR/dist/"
-echo "✅ Old build cleaned"
-echo ""
+# Generate Prisma client
+log_step "Step 6: Generating Prisma client"
+pct_exec_bash "cd $APP_DIR && npx prisma generate"
+echo "✅ Prisma client generated"
 
-# Step 5: Rebuild backend
-echo "🔨 Step 5/9: Rebuilding backend (this may take a few minutes)..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'cd $APP_DIR && npx nx build backend --skip-nx-cache'" || {
-    echo "❌ Backend rebuild failed!"
-    exit 1
-}
-echo "✅ Backend rebuilt successfully"
-echo ""
+# Build backend
+log_step "Step 7: Building backend"
+pct_exec_bash "cd $APP_DIR && npx nx build backend --configuration=production --skip-nx-cache"
+echo "✅ Backend built"
 
-# Step 5b: Deploy frontend (built locally, transferred via tar)
-echo "🎨 Step 5b/9: Deploying frontend..."
-# Build frontend locally (faster than building on LXC)
-echo "   Building frontend locally..."
-cd "$(dirname "$0")"
-npx nx build frontend --configuration=production --skip-nx-cache > /dev/null 2>&1 || {
-    echo "❌ Frontend build failed!"
-    exit 1
-}
+# Create systemd service
+log_step "Step 8: Configuring systemd service"
 
-# Transfer via tar (handles many small files efficiently)
-echo "   Transferring frontend to LXC..."
-rsync -az --delete dist/apps/frontend/ $PROXMOX_HOST:/tmp/bitbonsai-frontend/
-ssh $PROXMOX_HOST "cd /tmp && tar czf bitbonsai-frontend.tar.gz bitbonsai-frontend/"
-ssh $PROXMOX_HOST "pct push $LXC_ID /tmp/bitbonsai-frontend.tar.gz /tmp/bitbonsai-frontend.tar.gz"
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'mkdir -p $APP_DIR/dist/apps/frontend && cd /tmp && tar xzf bitbonsai-frontend.tar.gz && cp -r bitbonsai-frontend/* $APP_DIR/dist/apps/frontend/ && rm -rf /tmp/bitbonsai-frontend*'"
-ssh $PROXMOX_HOST "rm -rf /tmp/bitbonsai-frontend*"
-echo "✅ Frontend deployed"
-echo ""
+# Extract host IP from MAIN_NODE_URL for database connection
+MAIN_HOST=$(echo "$MAIN_NODE_URL" | sed -E 's|https?://([^:/]+).*|\1|')
 
-# Step 6: Regenerate Prisma Client
-echo "🔄 Step 6/9: Regenerating Prisma Client..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'cd $APP_DIR && npx prisma generate'"
-echo "✅ Prisma Client regenerated"
-echo ""
+# Generate JWT secret if not provided
+JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 
-# Step 7: Apply migrations
-echo "🗄️  Step 7/9: Applying database migrations..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- bash -c 'cd $APP_DIR && npx prisma migrate deploy'" || {
-    echo "⚠️  Warning: Migration may not be needed"
-}
-echo "✅ Migrations applied"
-echo ""
+# Write service file using pct exec (works regardless of storage backend)
+ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null" << EOF
+[Unit]
+Description=BitBonsai Backend (Child Node)
+After=network.target
 
-# Step 8: Restart service
-echo "♻️  Step 8/9: Restarting backend service..."
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- systemctl restart bitbonsai-backend"
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/bitbonsai
+Environment=NODE_ENV=production
+Environment=NODE_ROLE=LINKED
+Environment=MAIN_NODE_URL=$MAIN_NODE_URL
+Environment=DATABASE_URL=postgresql://bitbonsai:bitbonsai@$MAIN_HOST:5432/bitbonsai
+Environment=JWT_SECRET=$JWT_SECRET
+Environment=ENCODING_TEMP_PATH=/cache
+ExecStart=/usr/bin/node dist/apps/backend/main.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+pct_exec systemctl daemon-reload
+pct_exec systemctl enable "$SERVICE_NAME"
+echo "✅ Systemd service configured"
+
+# Restart service
+log_step "Step 9: Starting service"
+pct_exec systemctl restart "$SERVICE_NAME"
 sleep 3
-ssh $PROXMOX_HOST "pct exec $LXC_ID -- systemctl status bitbonsai-backend --no-pager -l" || true
-echo "✅ Service restarted"
-echo ""
 
-# Cleanup temp files
-echo "🧹 Cleaning up temp files..."
-ssh $PROXMOX_HOST "rm -rf /tmp/bitbonsai-deploy"
-echo "✅ Cleanup complete"
-echo ""
-
-# Step 9: Verify frontend
-echo "✅ Step 9/9: Verifying frontend..."
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.1.170:4210/ 2>/dev/null || echo "000")
-if [ "$HTTP_CODE" = "200" ]; then
-    echo "✅ Frontend verified (HTTP 200)"
+# Check status
+if pct_exec systemctl is-active --quiet "$SERVICE_NAME"; then
+  echo "✅ Service is running"
+  pct_exec systemctl status "$SERVICE_NAME" --no-pager -l | head -20
 else
-    echo "⚠️  Frontend returned HTTP $HTTP_CODE"
+  echo "❌ Service failed to start"
+  pct_exec journalctl -u "$SERVICE_NAME" -n 30 --no-pager
+  exit 1
 fi
-echo ""
 
-echo "🎉 Deployment to LXC child node complete!"
+# Cleanup
+log_step "Step 10: Cleanup"
+ssh "$PROXMOX_HOST" "rm -rf /tmp/bitbonsai-deploy"
+echo "✅ Cleanup complete"
+
+# Get LXC IP
+LXC_IP=$(ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- hostname -I | awk '{print \$1}'" 2>/dev/null || echo "unknown")
+
 echo ""
-echo "📍 Child Node Frontend: http://192.168.1.170:4210"
-echo "📍 Child Node API: http://192.168.1.170:3100/api/v1"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎉 Deployment Complete!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Child Node API: http://$LXC_IP:3000/api/v1"
+echo "Main Node:      $MAIN_NODE_URL"
+echo ""
+echo "Next steps:"
+echo "  1. Open the main node web UI"
+echo "  2. Go to Settings → Nodes"
+echo "  3. Approve the pending node registration"
+echo ""
+echo "Logs: ssh $PROXMOX_HOST 'pct exec $LXC_ID -- journalctl -u $SERVICE_NAME -f'"
 echo ""

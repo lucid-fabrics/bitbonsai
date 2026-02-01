@@ -32,11 +32,16 @@ export class PoliciesService {
       subtitleHandling: 'copy',
     };
 
+    // Derive targetCodec and targetQuality from preset if not provided
+    const presetDefaults = this.getPresetDefaults(createPolicyDto.preset);
+    const targetCodec = createPolicyDto.targetCodec ?? presetDefaults.codec;
+    const targetQuality = createPolicyDto.targetQuality ?? presetDefaults.quality;
+
     const policy = await this.policyRepository.create({
       name: createPolicyDto.name,
       preset: createPolicyDto.preset,
-      targetCodec: createPolicyDto.targetCodec,
-      targetQuality: createPolicyDto.targetQuality,
+      targetCodec,
+      targetQuality,
       deviceProfiles: deviceProfiles as object,
       advancedSettings: advancedSettings as object,
       atomicReplace: createPolicyDto.atomicReplace ?? true,
@@ -48,6 +53,25 @@ export class PoliciesService {
     });
 
     return this.mapPolicyToDto(policy);
+  }
+
+  /**
+   * Get default codec and quality for a preset
+   */
+  private getPresetDefaults(preset: PolicyPreset): { codec: TargetCodec; quality: number } {
+    switch (preset) {
+      case PolicyPreset.BALANCED_HEVC:
+        return { codec: TargetCodec.HEVC, quality: 23 };
+      case PolicyPreset.FAST_HEVC:
+        return { codec: TargetCodec.HEVC, quality: 26 };
+      case PolicyPreset.QUALITY_AV1:
+        return { codec: TargetCodec.AV1, quality: 28 };
+      case PolicyPreset.COPY_IF_COMPLIANT:
+        return { codec: TargetCodec.HEVC, quality: 0 };
+      case PolicyPreset.CUSTOM:
+      default:
+        return { codec: TargetCodec.HEVC, quality: 23 };
+    }
   }
 
   /**

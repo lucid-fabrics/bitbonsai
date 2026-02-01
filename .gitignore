@@ -93,4 +93,6 @@ scripts/release/.version-backup
 # Claude Code CLI (local only)
 .claude/
 .specify/
-CLAUDE.md
+
+# Note: CLAUDE.md is now tracked in git (contains project-specific AI instructions)
+# .github is tracked (contains CI/CD workflows)
