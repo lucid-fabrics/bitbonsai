@@ -797,32 +797,44 @@ export class QueueComponent implements OnInit {
   protected deleteOriginal(job: QueueJob, event: Event): void {
     event.stopPropagation();
 
-    // Confirmation dialog
     const sizeInMB = job.originalSizeBytes
       ? (job.originalSizeBytes / (1024 * 1024)).toFixed(2)
       : '0';
-    const confirmDelete = confirm(
-      `Delete original file (${sizeInMB} MB)?\n\nThis will free up disk space but cannot be undone.`
-    );
 
-    if (!confirmDelete) {
-      return;
-    }
+    const dialogData: ConfirmationDialogData = {
+      title: 'Delete Original File?',
+      itemName: job.fileName || 'Original file',
+      itemType: 'video file',
+      willHappen: [`Free up ${sizeInMB} MB of disk space`, 'Remove the source file permanently'],
+      wontHappen: ['Affect the encoded output file', 'Remove the job from history'],
+      irreversible: true,
+      confirmButtonText: 'Delete Original',
+      cancelButtonText: 'Keep File',
+    };
 
-    this.queueApi
-      .deleteOriginal(job.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          const freedMB = (Number(result.freedSpace) / (1024 * 1024)).toFixed(2);
-          this.toastService.success(`Freed ${freedMB} MB of disk space`);
-          this.refreshQueue();
-        },
-        error: (err) => {
-          const errorMessage = err?.error?.message || 'Failed to delete original';
-          this.toastService.error(errorMessage);
-        },
-      });
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.queueApi
+          .deleteOriginal(job.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (result) => {
+              const freedMB = (Number(result.freedSpace) / (1024 * 1024)).toFixed(2);
+              this.toastService.success(`Freed ${freedMB} MB of disk space`);
+              this.refreshQueue();
+            },
+            error: (err) => {
+              const errorMessage = err?.error?.message || 'Failed to delete original';
+              this.toastService.error(errorMessage);
+            },
+          });
+      }
+    });
   }
 
   protected restoreOriginal(job: QueueJob, event: Event): void {

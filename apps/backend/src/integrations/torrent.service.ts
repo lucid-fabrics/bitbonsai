@@ -173,8 +173,8 @@ export class TorrentIntegrationService {
    * Check if torrent is actively seeding
    */
   private isTorrentSeeding(torrent: TorrentInfo): boolean {
-    // States that indicate active seeding
-    const seedingStates = ['seeding', 'uploading', 'stalledUP', 'forcedUP', 'queuedUP'];
+    // States that indicate active seeding (lowercase for comparison)
+    const seedingStates = ['seeding', 'uploading', 'stalledup', 'forcedup', 'queuedup'];
 
     return seedingStates.includes(torrent.state.toLowerCase());
   }

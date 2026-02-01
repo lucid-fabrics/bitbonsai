@@ -72,15 +72,12 @@ export class DistributionOrchestratorService {
       return null;
     }
 
-    // Score all nodes
-    const scores: NodeScore[] = [];
-    for (const node of nodes) {
-      const score = await this.scorer.calculateScore(
-        node as NodeWithCounts,
-        job as JobWithRelations
-      );
-      scores.push(score);
-    }
+    // Score all nodes in parallel for better performance
+    const scores = await Promise.all(
+      nodes.map((node) =>
+        this.scorer.calculateScore(node as NodeWithCounts, job as JobWithRelations)
+      )
+    );
 
     // Sort by score descending
     scores.sort((a, b) => b.totalScore - a.totalScore);
@@ -218,14 +215,12 @@ export class DistributionOrchestratorService {
       },
     });
 
-    const scores: NodeScore[] = [];
-    for (const node of nodes) {
-      const score = await this.scorer.calculateScore(
-        node as NodeWithCounts,
-        job as JobWithRelations
-      );
-      scores.push(score);
-    }
+    // Score all nodes in parallel for better performance
+    const scores = await Promise.all(
+      nodes.map((node) =>
+        this.scorer.calculateScore(node as NodeWithCounts, job as JobWithRelations)
+      )
+    );
 
     return scores.sort((a, b) => b.totalScore - a.totalScore);
   }
@@ -573,25 +568,26 @@ export class DistributionOrchestratorService {
       },
     });
 
-    // Get job counts per node and stage
-    const jobsPerNode: { nodeId: string; nodeName: string; queued: number; encoding: number }[] =
-      [];
+    // Get job counts per node and stage in parallel for better performance
+    const jobsPerNode = await Promise.all(
+      nodes.map(async (node) => {
+        const [queued, encoding] = await Promise.all([
+          this.prisma.job.count({
+            where: { nodeId: node.id, stage: 'QUEUED' },
+          }),
+          this.prisma.job.count({
+            where: { nodeId: node.id, stage: { in: ['ENCODING', 'VERIFYING'] } },
+          }),
+        ]);
 
-    for (const node of nodes) {
-      const queued = await this.prisma.job.count({
-        where: { nodeId: node.id, stage: 'QUEUED' },
-      });
-      const encoding = await this.prisma.job.count({
-        where: { nodeId: node.id, stage: { in: ['ENCODING', 'VERIFYING'] } },
-      });
-
-      jobsPerNode.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        queued,
-        encoding,
-      });
-    }
+        return {
+          nodeId: node.id,
+          nodeName: node.name,
+          queued,
+          encoding,
+        };
+      })
+    );
 
     return {
       totalNodes: nodes.length,

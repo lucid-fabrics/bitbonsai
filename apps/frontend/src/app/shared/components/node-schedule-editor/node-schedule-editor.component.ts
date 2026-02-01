@@ -1,5 +1,6 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
-import { Component, forwardRef, Input, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, forwardRef, Input, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
@@ -13,6 +14,11 @@ import type {
 import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import { firstValueFrom } from 'rxjs';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../confirmation-dialog/confirmation-dialog.component';
 
 /**
  * Time window interface matching backend schema
@@ -55,6 +61,8 @@ export interface TimeWindow {
   ],
 })
 export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor {
+  private readonly dialog = inject(Dialog);
+
   @ViewChild('calendar') calendarComponent!: FullCalendarComponent;
 
   @Input() disabled = false;
@@ -134,10 +142,27 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
    * Handle event click (delete window)
    * DEEP AUDIT P2-1: Fix any type with proper FullCalendar types
    */
-  handleEventClick(clickInfo: EventClickArg): void {
+  async handleEventClick(clickInfo: EventClickArg): Promise<void> {
     if (this.disabled) return;
 
-    if (confirm('Delete this time window?')) {
+    const dialogData: ConfirmationDialogData = {
+      title: 'Delete Time Window?',
+      itemName: 'this time window',
+      itemType: 'schedule entry',
+      willHappen: ['Remove this encoding time slot'],
+      wontHappen: ['Affect other time windows', 'Change node status'],
+      irreversible: false,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Keep',
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    const confirmed = await firstValueFrom(dialogRef.closed);
+    if (confirmed === true) {
       const eventId = clickInfo.event.id;
       const windowIndex = parseInt(eventId, 10);
 
@@ -272,10 +297,31 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
   /**
    * Clear all windows
    */
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     if (this.disabled) return;
 
-    if (confirm('Clear all time windows?')) {
+    const windowCount = this.windows().length;
+    const dialogData: ConfirmationDialogData = {
+      title: 'Clear All Time Windows?',
+      itemName: `${windowCount} time window${windowCount === 1 ? '' : 's'}`,
+      itemType: 'schedule entries',
+      willHappen: [
+        'Remove all encoding time slots',
+        'Node will be available 24/7 (no restrictions)',
+      ],
+      wontHappen: ["Change the node's active status", 'Affect encoding jobs in progress'],
+      irreversible: false,
+      confirmButtonText: 'Clear All',
+      cancelButtonText: 'Keep Windows',
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    const confirmed = await firstValueFrom(dialogRef.closed);
+    if (confirmed === true) {
       this.windows.set([]);
       this.updateEvents();
       this.emitChange();

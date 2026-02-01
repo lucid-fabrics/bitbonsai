@@ -155,6 +155,7 @@
                   <button
                     class="btn-icon"
                     (click)="openEditForm(policy)"
+                    aria-label="Edit policy {{ policy.name }}"
                     bbTooltip
                     tooltipTitle="Edit Policy"
                     tooltipContent="Modify this policy's settings including codec, quality (CRF), device profiles, and advanced encoding options. Changes only affect future encoding jobs."
@@ -166,6 +167,7 @@
                   <button
                     class="btn-icon btn-danger"
                     (click)="confirmDelete(policy)"
+                    aria-label="Delete policy {{ policy.name }}"
                     bbTooltip
                     tooltipTitle="Delete Policy"
                     tooltipContent="Permanently remove this policy from BitBonsai. Existing encoded videos are not affected. Jobs currently using this policy will complete, but no new jobs can use it."
@@ -189,7 +191,7 @@
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2 class="modal-header__title">{{ isEditMode ? 'Edit Policy' : 'Create Policy' }}</h2>
-          <button class="btn-icon" (click)="closeForm()">
+          <button class="btn-icon" (click)="closeForm()" aria-label="Close form">
             <fa-icon [icon]="icons.times"></fa-icon>
           </button>
         </div>
@@ -293,16 +295,19 @@
             <!-- Library Association -->
             <div class="form-group">
               <label for="library" class="form-group__label">Library (Optional)</label>
-              <input
+              <select
                 id="library"
-                type="text"
                 class="form-group__input"
                 [(ngModel)]="formData.libraryId"
                 name="library"
-                placeholder="Leave empty for all libraries"
-              />
+              >
+                <option value="">All Libraries</option>
+                @for (library of libraries$ | async; track library.id) {
+                  <option [value]="library.id">{{ library.name }}</option>
+                }
+              </select>
               <small class="form-group__help-text">
-                Specify a library ID to apply this policy only to that library
+                Select a specific library or leave as "All Libraries" for global policy
               </small>
             </div>
 
@@ -446,15 +451,15 @@
                       <div class="min-savings-threshold">
                         <label for="minSavingsPercent" class="form-group__label">
                           Minimum Expected Savings
-                          <span
+                          <fa-icon
+                            [icon]="icons.infoCircle"
+                            class="info-icon"
                             bbTooltip
                             tooltipTitle="Minimum Savings Threshold"
                             tooltipContent="Only re-encode same-codec files if the expected file size savings exceeds this percentage. For example, set to 10% to skip re-encoding files that would only save 5% of disk space. Set to 0 to re-encode regardless of expected savings."
                             tooltipWhen="You want to avoid re-encoding files where the space savings wouldn't be worth the time/quality trade-off."
                             tooltipPlacement="right"
-                          >
-                            ℹ️
-                          </span>
+                          ></fa-icon>
                         </label>
                         <div class="min-savings-input-wrapper">
                           <input
@@ -496,17 +501,18 @@
               }
             </div>
 
-            <!-- Form Actions -->
-            <div class="form-actions">
-              <button type="button" class="btn-secondary" (click)="closeForm()">
-                Cancel
-              </button>
-              <button type="submit" class="btn-primary" [disabled]="!isFormValid()">
-                <fa-icon [icon]="icons.check"></fa-icon>
-                {{ isEditMode ? 'Update Policy' : 'Create Policy' }}
-              </button>
-            </div>
           </form>
+        </div>
+
+        <!-- Form Actions (Fixed Footer) -->
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">
+            Cancel
+          </button>
+          <button type="button" class="btn-primary" [disabled]="!isFormValid()" (click)="submitForm()">
+            <fa-icon [icon]="icons.check"></fa-icon>
+            {{ isEditMode ? 'Update Policy' : 'Create Policy' }}
+          </button>
         </div>
       </div>
     </div>

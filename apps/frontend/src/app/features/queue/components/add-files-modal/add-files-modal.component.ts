@@ -28,6 +28,7 @@ import { LibrariesClient } from '../../../../core/clients/libraries.client';
 import type {
   BulkJobCreationResult,
   CreateJobsFromScanDto,
+  CreateJobsFromScanResult,
   ScanPreview,
   VideoFile,
 } from '../../../libraries/models/library.model';
@@ -277,16 +278,16 @@ export class AddFilesModalComponent implements OnDestroy {
       .createJobsFromScan(library.libraryId, dto)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result: any) => {
+        next: (result: CreateJobsFromScanResult) => {
           this.isCreatingJobs$.next(false);
           const bulkResult: BulkJobCreationResult = {
-            jobsCreated: result.jobsCreated || 0,
-            filesSkipped: result.filesSkipped || 0,
-            skippedFiles: result.skippedFiles || [],
+            jobsCreated: result.jobsCreated,
+            filesSkipped: 0,
+            skippedFiles: [],
           };
           this.creationResult$.next(bulkResult);
           this.viewMode$.next('results');
-          this.jobsCreated.emit({ jobsCreated: bulkResult.jobsCreated });
+          this.jobsCreated.emit({ jobsCreated: result.jobsCreated });
         },
         error: (error) => {
           this.isCreatingJobs$.next(false);

@@ -58,5 +58,37 @@ if echo "$AUTHOR_EMAIL" | grep -qiE "(anthropic|openai|ai@|bot@|noreply@anthropi
   exit 1
 fi
 
+# Enforce conventional commit format
+# Policy: ~/git/code-conventions/git-commit-instructions.md
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+FIRST_LINE=$(echo "$COMMIT_MSG" | head -n1)
+
+# Check for conventional commit format: type(scope): subject
+if ! echo "$FIRST_LINE" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\(.+\))?: .+"; then
+  echo ""
+  echo "❌ ERROR: Commit message does not follow Conventional Commits format!"
+  echo ""
+  echo "Found:"
+  echo "  > $FIRST_LINE"
+  echo ""
+  echo "📋 Policy: ~/git/code-conventions/git-commit-instructions.md"
+  echo ""
+  echo "✅ Required format:"
+  echo "   <type>(<scope>): <subject>"
+  echo ""
+  echo "Valid types:"
+  echo "   feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+  echo ""
+  echo "Examples:"
+  echo "   ✅ feat(backend): add video transcoding queue"
+  echo "   ✅ fix(frontend): resolve JWT token expiration"
+  echo "   ✅ chore: update dependencies"
+  echo ""
+  echo "💡 To fix:"
+  echo "   git commit --amend  # Edit commit message"
+  echo ""
+  exit 1
+fi
+
 # All checks passed
 exit 0

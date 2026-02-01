@@ -183,8 +183,8 @@ export class EnvironmentService {
 
       case 'DOCKER':
         return {
-          mediaPath: '/library',
-          downloadsPath: '/downloads',
+          mediaPath: '/media',
+          downloadsPath: '/media', // Single mount point in simplified deployment
           configPath: '/config',
         };
 

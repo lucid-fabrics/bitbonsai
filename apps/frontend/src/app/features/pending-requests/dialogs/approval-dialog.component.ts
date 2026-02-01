@@ -6,12 +6,18 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { of } from 'rxjs';
 import { delay, switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../../core/clients/nodes.client';
-import type { CapabilityTestResult } from '../../../core/models/capability-test.model';
+import type { NodeCapabilities } from '../../nodes/models/node.model';
 import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
 import { ContainerType } from '../../nodes/models/registration-request.model';
 
 export interface ApprovalDialogData {
   request: RegistrationRequest;
+}
+
+export interface ApprovalDialogResult {
+  approved: boolean;
+  nodeId: string | null;
+  capabilities: NodeCapabilities | null;
 }
 
 /**
@@ -246,7 +252,7 @@ export class ApprovalDialogComponent {
   readonly isApproving = signal(false);
   readonly detectingPhase = signal(0);
   readonly detectingMessage = signal('Approving node...');
-  readonly capabilityResults = signal<CapabilityTestResult | null>(null);
+  readonly capabilityResults = signal<NodeCapabilities | null>(null);
   readonly errorMessage = signal<string | null>(null);
   private approvedNodeId: string | null = null;
 
@@ -265,12 +271,11 @@ export class ApprovalDialogComponent {
         // Wait for approval to complete
         delay(500),
         // Extract the approved node ID from response
-        switchMap((response: any) => {
+        switchMap((response: RegistrationRequest) => {
           this.detectingPhase.set(2);
           this.detectingMessage.set('Testing network connection...');
 
           // Get the node ID from the response
-          // The response might have a nodeId field or we need to extract it
           this.approvedNodeId = response.nodeId || response.id;
 
           // Wait a bit before fetching capabilities (give backend time to complete detection)
@@ -291,7 +296,7 @@ export class ApprovalDialogComponent {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (results: any) => {
+        next: (results: NodeCapabilities) => {
           this.detectingPhase.set(4);
           this.detectingMessage.set('Complete!');
           this.capabilityResults.set(results);

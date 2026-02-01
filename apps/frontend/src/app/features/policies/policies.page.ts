@@ -7,6 +7,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
   faCheck,
   faEdit,
+  faInfoCircle,
   faPlus,
   faStar,
   faTimes,
@@ -19,6 +20,8 @@ import {
   type ConfirmationDialogData,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
+import { LibrariesActions } from '../libraries/+state/libraries.actions';
+import { selectAllLibraries } from '../libraries/+state/libraries.selectors';
 import { PoliciesActions } from './+state/policies.actions';
 import { PoliciesSelectors } from './+state/policies.selectors';
 import { ContainerBo } from './bos/container.bo';
@@ -69,6 +72,7 @@ export class PoliciesComponent implements OnInit {
     times: faTimes,
     check: faCheck,
     tv: faTv,
+    infoCircle: faInfoCircle,
   };
 
   // Enums for template
@@ -83,6 +87,7 @@ export class PoliciesComponent implements OnInit {
   readonly presets$ = this.store.select(PoliciesSelectors.selectPresets);
   readonly isLoading$ = this.store.select(PoliciesSelectors.selectIsLoading);
   readonly error$ = this.store.select(PoliciesSelectors.selectError);
+  readonly libraries$ = this.store.select(selectAllLibraries);
 
   // Local Form State
   showFormModal = false;
@@ -95,6 +100,7 @@ export class PoliciesComponent implements OnInit {
   ngOnInit(): void {
     this.store.dispatch(PoliciesActions.loadPolicies());
     this.store.dispatch(PoliciesActions.loadPresets());
+    this.store.dispatch(LibrariesActions.loadLibraries());
   }
 
   selectPreset(preset: PresetInfoModel): void {
@@ -311,7 +317,7 @@ export class PoliciesComponent implements OnInit {
       targetContainer: 'mkv',
       skipReencoding: true,
       allowSameCodec: false,
-      minSavingsPercent: 0,
+      minSavingsPercent: 10,
       libraryId: '',
       deviceProfiles: new Set(),
       ffmpegFlags: '',

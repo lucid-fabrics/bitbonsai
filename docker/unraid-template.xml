@@ -8,67 +8,149 @@
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
   <Support>https://github.com/lucid-fabrics/bitbonsai/issues</Support>
-  <Project>https://bitbonsai.com</Project>
-  <Overview>
-    BitBonsai - Automated video encoding and optimization platform.
+  <Project>https://bitbonsai.app</Project>
+  <Overview>BitBonsai - Automated video transcoding platform.
 
-    Supports hardware acceleration:
-    - NVIDIA GPUs (NVENC)
-    - Intel QuickSync (QSV)
-    - AMD GPUs (AMF)
-    - CPU software encoding
+Converts your media library to modern codecs (HEVC/AV1) to save storage space while maintaining quality.
 
-    Configure GPU passthrough below for hardware acceleration.
-  </Overview>
-  <Category>MediaApp:Video MediaServer:Video</Category>
-  <WebUI>http://[IP]:[PORT:4200]</WebUI>
+Features:
+- Automatic library scanning and queue management
+- Hardware acceleration (NVIDIA NVENC, Intel QSV, AMD AMF)
+- Smart codec detection and skip re-encoding
+- Multi-node support for distributed encoding
+- Integration with Plex, Jellyfin, Radarr, Sonarr
+
+This is an all-in-one container with embedded PostgreSQL database.
+Just point it at your media folder and let it work!</Overview>
+  <Category>MediaApp:Video MediaServer:Video Productivity</Category>
+  <WebUI>http://[IP]:[PORT:8108]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/docker/unraid-template.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/apps/frontend/src/assets/logo.png</Icon>
+  <Icon>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/apps/frontend/src/assets/icon.png</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
   <DateInstalled/>
-  <DonateText/>
-  <DonateLink/>
+  <DonateText>Support BitBonsai Development</DonateText>
+  <DonateLink>https://www.patreon.com/bitbonsai</DonateLink>
   <Requires/>
+  <Beta>False</Beta>
 
-  <!-- Frontend Port -->
-  <Config Name="WebUI Port" Target="4200" Default="4200" Mode="tcp" Description="Web interface port" Type="Port" Display="always" Required="true" Mask="false">4200</Config>
+  <!-- ==================== PORTS ==================== -->
+  <Config
+    Name="WebUI Port"
+    Target="8108"
+    Default="8108"
+    Mode="tcp"
+    Description="Web interface port. Access BitBonsai at http://[IP]:8108"
+    Type="Port"
+    Display="always"
+    Required="true"
+    Mask="false">8108</Config>
 
-  <!-- Backend API Port -->
-  <Config Name="API Port" Target="3000" Default="3000" Mode="tcp" Description="Backend API port" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <!-- ==================== PATHS ==================== -->
+  <Config
+    Name="Media Library"
+    Target="/media"
+    Default="/mnt/user/media"
+    Mode="rw"
+    Description="Path to your media library containing videos to transcode. Can include Movies, TV Shows, etc."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/media</Config>
 
-  <!-- Storage Paths -->
-  <Config Name="Media Library Path" Target="/library" Default="/mnt/user/media" Mode="rw" Description="Path to your media library for scanning and encoding" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media</Config>
+  <Config
+    Name="App Data"
+    Target="/config"
+    Default="/mnt/user/appdata/bitbonsai"
+    Mode="rw"
+    Description="Persistent storage for database and encoding cache. Recommend using cache/SSD for best performance."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/appdata/bitbonsai</Config>
 
-  <Config Name="Downloads Path" Target="/downloads" Default="/mnt/user/Downloads" Mode="rw" Description="Path to downloads folder for automatic processing" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Downloads</Config>
+  <!-- ==================== ENVIRONMENT VARIABLES ==================== -->
+  <Config
+    Name="Timezone"
+    Target="TZ"
+    Default="America/New_York"
+    Mode=""
+    Description="Container timezone for logs and scheduling. Examples: America/Los_Angeles, Europe/London, Asia/Tokyo"
+    Type="Variable"
+    Display="always"
+    Required="false"
+    Mask="false">America/New_York</Config>
 
-  <Config Name="App Data" Target="/config" Default="/mnt/user/appdata/bitbonsai" Mode="rw" Description="Container configuration and database storage" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/bitbonsai</Config>
+  <Config
+    Name="JWT Secret"
+    Target="JWT_SECRET"
+    Default=""
+    Mode=""
+    Description="Secret key for JWT authentication. Leave empty to auto-generate (sessions won't persist across restarts). Set a random 32+ character string for persistent sessions."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="true"/>
 
-  <Config Name="Transcoding Cache" Target="/tmp/bitbonsai" Default="/mnt/cache/bitbonsai-temp" Mode="rw" Description="Temporary transcoding workspace (use cache drive for best performance)" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/cache/bitbonsai-temp</Config>
+  <!-- ==================== HARDWARE ACCELERATION ==================== -->
+  <!-- Intel QuickSync (QSV) -->
+  <Config
+    Name="Intel GPU (QSV)"
+    Target="/dev/dri"
+    Default=""
+    Mode=""
+    Description="Pass through Intel GPU for QuickSync hardware encoding. Set Host Path to '/dev/dri' to enable."
+    Type="Device"
+    Display="always"
+    Required="false"
+    Mask="false"/>
 
-  <!-- Environment Variables -->
-  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions (99 = nobody on Unraid)" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <!-- NVIDIA GPU - requires nvidia-container-toolkit -->
+  <Config
+    Name="NVIDIA_VISIBLE_DEVICES"
+    Target="NVIDIA_VISIBLE_DEVICES"
+    Default=""
+    Mode=""
+    Description="NVIDIA GPU for NVENC encoding. Set to 'all' for all GPUs, or specific GPU UUID. Requires nvidia-container-toolkit plugin."
+    Type="Variable"
+    Display="always"
+    Required="false"
+    Mask="false"/>
 
-  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for file permissions (100 = users on Unraid)" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <!-- AMD GPU -->
+  <Config
+    Name="AMD GPU (Render)"
+    Target="/dev/dri/renderD128"
+    Default=""
+    Mode=""
+    Description="Pass through AMD GPU render device for AMF encoding. Set Host Path to '/dev/dri/renderD128' to enable."
+    Type="Device"
+    Display="always"
+    Required="false"
+    Mask="false"/>
 
-  <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for logging and scheduling" Type="Variable" Display="advanced" Required="true" Mask="false">America/New_York</Config>
+  <!-- ==================== ADVANCED OPTIONS ==================== -->
+  <Config
+    Name="Max Concurrent Jobs"
+    Target="MAX_CONCURRENT_JOBS"
+    Default="2"
+    Mode=""
+    Description="Maximum number of encoding jobs to run simultaneously. Adjust based on your CPU/GPU capabilities."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">2</Config>
 
-  <Config Name="NODE_ENV" Target="NODE_ENV" Default="production" Mode="" Description="Node environment (production/development)" Type="Variable" Display="advanced" Required="true" Mask="false">production</Config>
+  <Config
+    Name="Log Level"
+    Target="LOG_LEVEL"
+    Default="info"
+    Mode=""
+    Description="Logging verbosity: debug, info, warn, error"
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">info</Config>
 
-  <Config Name="DATABASE_URL" Target="DATABASE_URL" Default="file:/config/bitbonsai.db" Mode="" Description="Database connection string (SQLite by default)" Type="Variable" Display="advanced" Required="true" Mask="false">file:/config/bitbonsai.db</Config>
-
-  <!-- Hardware Acceleration - NVIDIA GPU -->
-  <Config Name="NVIDIA GPU" Target="" Default="" Mode="" Description="Enable NVIDIA GPU passthrough for NVENC hardware encoding. Set to 'all' to use all GPUs, or specify GPU UUID (found with: nvidia-smi -L). Leave empty to disable." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <!-- Hardware Acceleration - Intel QuickSync -->
-  <Config Name="Intel QuickSync (QSV)" Target="/dev/dri" Default="" Mode="rw" Description="Enable Intel QuickSync by passing /dev/dri device. Set to '/dev/dri' to enable, leave empty to disable." Type="Device" Display="always" Required="false" Mask="false"/>
-
-  <!-- Hardware Acceleration - AMD GPU -->
-  <Config Name="AMD GPU (Render)" Target="/dev/dri/renderD128" Default="" Mode="rw" Description="Enable AMD GPU by passing render device. Set to '/dev/dri/renderD128' to enable, leave empty to disable." Type="Device" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="AMD GPU (Card)" Target="/dev/dri/card0" Default="" Mode="rw" Description="AMD GPU card device (usually paired with renderD128). Set to '/dev/dri/card0' to enable, leave empty to disable." Type="Device" Display="always" Required="false" Mask="false"/>
-
-  <!-- Extra Parameters for GPU Runtime -->
-  <Config Name="Extra Parameters" Target="" Default="" Mode="" Description="Additional Docker parameters. For NVIDIA: '--runtime=nvidia' or '--gpus all'. Leave empty if not using NVIDIA." Type="Variable" Display="advanced" Required="false" Mask="false"/>
 </Container>

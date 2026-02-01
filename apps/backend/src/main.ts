@@ -181,7 +181,7 @@ async function bootstrap() {
         hostname.startsWith('172.31.');
 
       // Allow private IPs on specific ports (on-premise deployments)
-      const allowedPorts = ['3000', '3100', '4200', '4210'];
+      const allowedPorts = ['3000', '3100', '4200', '4210', '8108'];
       if (isPrivateIP && allowedPorts.includes(port)) {
         callback(null, true);
         return;

@@ -104,22 +104,15 @@ export class JobDelegationDialogComponent implements OnInit {
    * Delegate job to selected node (with schedule conflict check)
    */
   delegateJob(): void {
-    console.log('[JobDelegationDialog] delegateJob() called');
-    console.log('[JobDelegationDialog] selectedNodeId:', this.selectedNodeId);
-    console.log('[JobDelegationDialog] job.id:', this.data.job.id);
-
     if (!this.selectedNodeId) {
       this.error = 'Please select a node';
-      console.error('[JobDelegationDialog] No node selected!');
       return;
     }
 
     // Check if node is outside schedule
     if (this.isOutsideSchedule(this.selectedNodeId)) {
-      console.log('[JobDelegationDialog] Node is outside schedule, showing warning');
       this.showScheduleConflictWarning();
     } else {
-      console.log('[JobDelegationDialog] Proceeding with delegation');
       this.performDelegation();
     }
   }
@@ -154,15 +147,6 @@ export class JobDelegationDialogComponent implements OnInit {
   private performDelegation(): void {
     if (!this.selectedNodeId) return;
 
-    console.log('[JobDelegationDialog] performDelegation() starting...');
-    console.log(
-      '[JobDelegationDialog] Calling API: delegateJob(' +
-        this.data.job.id +
-        ', ' +
-        this.selectedNodeId +
-        ')'
-    );
-
     this.isLoading = true;
     this.error = null;
 
@@ -171,11 +155,9 @@ export class JobDelegationDialogComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          console.log('[JobDelegationDialog] Delegation successful!');
           this.dialogRef.close(true);
         },
         error: (err) => {
-          console.error('[JobDelegationDialog] Delegation failed:', err);
           this.error = err.error?.message || 'Failed to delegate job';
           this.isLoading = false;
         },

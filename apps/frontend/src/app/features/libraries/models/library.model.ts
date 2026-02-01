@@ -118,6 +118,21 @@ export interface BulkJobCreationResult {
   skippedFiles: Array<{ path: string; reason: string }>;
 }
 
+/**
+ * Minimal job info returned from createJobsFromScan
+ */
+export interface CreatedJobSummary {
+  id: string;
+  filePath: string;
+  fileLabel: string;
+  stage: string;
+}
+
+export interface CreateJobsFromScanResult {
+  jobsCreated: number;
+  jobs: CreatedJobSummary[];
+}
+
 export interface LibraryFile {
   filePath: string;
   fileName: string;

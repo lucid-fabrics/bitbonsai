@@ -1477,7 +1477,6 @@ export class QueueService implements OnModuleInit {
         completedAt: new Date(),
         failedAt: new Date(),
         error,
-        // errorDetails, // TODO: Re-enable after Prisma migration applied
         // MEDIUM #14 FIX: DON'T reset priority on failure (preserve for retry)
         // Only reset priority on COMPLETED, not FAILED
         // priority: 0, // REMOVED - keep priority for retry

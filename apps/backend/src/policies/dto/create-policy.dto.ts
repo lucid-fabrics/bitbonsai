@@ -53,25 +53,28 @@ export class CreatePolicyDto {
   @IsEnum(PolicyPreset)
   preset!: PolicyPreset;
 
-  @ApiProperty({
-    description: 'Target video codec for transcoding',
+  @ApiPropertyOptional({
+    description:
+      'Target video codec for transcoding. If not provided, will be derived from the preset.',
     enum: TargetCodec,
     example: TargetCodec.HEVC,
   })
+  @IsOptional()
   @IsEnum(TargetCodec)
-  targetCodec!: TargetCodec;
+  targetCodec?: TargetCodec;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description:
-      'CRF (Constant Rate Factor) quality value. Lower = better quality, higher file size. Range: 0-51',
+      'CRF (Constant Rate Factor) quality value. Lower = better quality, higher file size. Range: 0-51. If not provided, will be derived from the preset.',
     example: 23,
     minimum: 0,
     maximum: 51,
   })
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(51)
-  targetQuality!: number;
+  targetQuality?: number;
 
   @ApiPropertyOptional({
     description:

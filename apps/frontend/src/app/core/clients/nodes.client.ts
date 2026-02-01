@@ -1,7 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { CurrentNode, Node } from '../../features/nodes/models/node.model';
+import type {
+  CurrentNode,
+  Node,
+  NodeCapabilities,
+  NodeCapabilityTestResult,
+} from '../../features/nodes/models/node.model';
 import type { NodeScore } from '../../features/nodes/models/node-score.model';
 import type {
   ApproveRequestDto,
@@ -212,15 +217,18 @@ export class NodesClient {
   /**
    * Test node capabilities (run capability detection)
    */
-  testCapabilities(nodeId: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/${nodeId}/test-capabilities`, {});
+  testCapabilities(nodeId: string): Observable<NodeCapabilityTestResult> {
+    return this.http.post<NodeCapabilityTestResult>(
+      `${this.apiUrl}/${nodeId}/test-capabilities`,
+      {}
+    );
   }
 
   /**
    * Get node capabilities summary
    */
-  getNodeCapabilities(nodeId: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${nodeId}/capabilities`);
+  getNodeCapabilities(nodeId: string): Observable<NodeCapabilities> {
+    return this.http.get<NodeCapabilities>(`${this.apiUrl}/${nodeId}/capabilities`);
   }
 
   // ============================================================================

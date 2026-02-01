@@ -51,30 +51,27 @@ export class NotificationService implements OnDestroy {
     });
 
     this.socket.on('connect', () => {
-      console.log('[Notifications] WebSocket connected');
       this.connectionStatusSubject.next(true);
     });
 
     this.socket.on('disconnect', () => {
-      console.log('[Notifications] WebSocket disconnected');
       this.connectionStatusSubject.next(false);
     });
 
     this.socket.on('notification', (notification: Notification) => {
-      console.log('[Notifications] Received notification:', notification);
       this.notificationSubject.next(notification);
     });
 
-    this.socket.on('notification:read', (data: { id: string }) => {
-      console.log('[Notifications] Notification marked as read:', data.id);
+    this.socket.on('notification:read', () => {
+      // State updated via observable
     });
 
-    this.socket.on('notification:dismissed', (data: { id: string }) => {
-      console.log('[Notifications] Notification dismissed:', data.id);
+    this.socket.on('notification:dismissed', () => {
+      // State updated via observable
     });
 
-    this.socket.on('error', (error: Error) => {
-      console.error('[Notifications] WebSocket error:', error);
+    this.socket.on('error', () => {
+      // Errors handled via connection status
     });
   }
 

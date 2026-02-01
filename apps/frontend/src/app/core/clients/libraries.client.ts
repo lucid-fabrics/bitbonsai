@@ -5,6 +5,7 @@ import type {
   BulkJobCreationResult,
   CreateAllJobsDto,
   CreateJobsFromScanDto,
+  CreateJobsFromScanResult,
   CreateLibraryDto,
   Library,
   LibraryFiles,
@@ -85,14 +86,8 @@ export class LibrariesClient {
   /**
    * Create encoding jobs from scan preview results
    */
-  createJobsFromScan(
-    id: string,
-    dto: CreateJobsFromScanDto
-  ): Observable<{ jobsCreated: number; jobs: any[] }> {
-    return this.http.post<{ jobsCreated: number; jobs: any[] }>(
-      `${this.apiUrl}/${id}/scan/create-jobs`,
-      dto
-    );
+  createJobsFromScan(id: string, dto: CreateJobsFromScanDto): Observable<CreateJobsFromScanResult> {
+    return this.http.post<CreateJobsFromScanResult>(`${this.apiUrl}/${id}/scan/create-jobs`, dto);
   }
 
   /**

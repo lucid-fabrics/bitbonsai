@@ -1,9 +1,10 @@
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PathSelectorComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import {
   type CreateStorageShareRequest,
@@ -12,6 +13,10 @@ import {
   StorageShareStatus,
   StorageSharesClient,
 } from '../../../../core/clients/storage-shares.client';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import type { Node } from '../../models/node.model';
 
 /**
@@ -44,6 +49,7 @@ export interface StorageSharesModalData {
 })
 export class StorageSharesModal implements OnInit, OnDestroy {
   private readonly dialogRef = inject(DialogRef<StorageSharesModal>);
+  private readonly dialog = inject(Dialog);
   private readonly fb = inject(FormBuilder);
   private readonly storageClient = inject(StorageSharesClient);
   readonly data: StorageSharesModalData = inject(DIALOG_DATA);
@@ -306,7 +312,27 @@ export class StorageSharesModal implements OnInit, OnDestroy {
   }
 
   async deleteShare(share: StorageShare) {
-    if (!confirm(`Are you sure you want to delete "${share.name}"? This cannot be undone.`)) {
+    const dialogData: ConfirmationDialogData = {
+      title: 'Delete Storage Share?',
+      itemName: share.name,
+      itemType: 'storage share',
+      willHappen: [
+        'Remove the share configuration from this node',
+        'Unmount the share if currently mounted',
+      ],
+      wontHappen: ['Delete any files on the remote server', 'Affect other nodes using this share'],
+      irreversible: true,
+      confirmButtonText: 'Delete Share',
+      cancelButtonText: 'Keep Share',
+    };
+
+    const confirmDialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
+
+    const confirmed = await firstValueFrom(confirmDialogRef.closed);
+    if (confirmed !== true) {
       return;
     }
 

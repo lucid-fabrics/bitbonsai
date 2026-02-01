@@ -91,3 +91,60 @@ export interface CurrentNode {
   acceleration: AccelerationType;
   mainNodeUrl?: string | null;
 }
+
+/**
+ * Node Capabilities Response
+ *
+ * Returned by GET /nodes/:id/capabilities endpoint
+ */
+export interface NodeCapabilities {
+  nodeId: string;
+  nodeName: string;
+  networkLocation: NetworkLocation | null;
+  hasSharedStorage: boolean;
+  storageBasePath: string | null;
+  latencyMs: number | null;
+  bandwidthMbps: number | null;
+  cpuCores: number | null;
+  ramGB: number | null;
+  maxTransferSizeMB: number | null;
+  lastSpeedTest: string | null;
+  reasoning: string;
+}
+
+/**
+ * Test status for capability tests
+ */
+export type CapabilityTestStatus = 'pending' | 'running' | 'success' | 'warning' | 'error';
+
+/**
+ * Individual capability test result
+ */
+export interface CapabilityTest {
+  status: CapabilityTestStatus;
+  message: string;
+  details?: Record<string, unknown>;
+  durationMs?: number;
+}
+
+/**
+ * Node Capability Test Response
+ *
+ * Returned by POST /nodes/:id/test-capabilities endpoint
+ */
+export interface NodeCapabilityTestResult {
+  nodeId: string;
+  nodeName: string;
+  networkLocation: NetworkLocation;
+  hasSharedStorage: boolean;
+  storageBasePath: string | null;
+  latencyMs: number;
+  isPrivateIP: boolean;
+  reasoning: string;
+  tests: {
+    networkConnection: CapabilityTest;
+    sharedStorage: CapabilityTest;
+    hardwareDetection: CapabilityTest;
+    networkType: CapabilityTest;
+  };
+}

@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { CapabilityTestResult } from '../../core/models/capability-test.model';
 import { NodeBo } from '../nodes/bos/node.bo';
+import type { RegistrationRequest } from '../nodes/models/registration-request.model';
 import { CapabilityResultsComponent } from './components/capability-results/capability-results.component';
 import { CapabilityTestComponent } from './components/capability-test/capability-test.component';
 import type { DiscoveredNode, HardwareDetection } from './models/discovery.model';
@@ -164,10 +165,12 @@ export class NodeSetupWizardComponent implements OnInit {
 
       // Check if the request is still valid (not expired, already approved, or rejected)
       this.http
-        .get<any>(`${pendingMainNodeUrl}/api/v1/nodes/registration-requests/${pendingRequestId}`)
+        .get<RegistrationRequest>(
+          `${pendingMainNodeUrl}/api/v1/nodes/registration-requests/${pendingRequestId}`
+        )
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (request: any) => {
+          next: (request: RegistrationRequest) => {
             if (request.status === 'PENDING') {
               // Valid pending request - resume polling
               this.currentStep.set(WizardStep.Pairing);

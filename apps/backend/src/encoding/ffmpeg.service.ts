@@ -1876,11 +1876,11 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         this.activeEncodings.delete(job.id);
         this.lastPreviewGeneration.delete(job.id);
 
-        let errorMessage = `FFmpeg Process Error: ${error.message}\n\n`;
+        let errorMessage = `FFmpeg Process Error: ${error.message}`;
 
         // Add stderr context if available
         if (encoding?.lastStderr) {
-          errorMessage += 'Last output from ffmpeg:\n';
+          errorMessage += '\n\nLast output from ffmpeg:\n';
           const stderrLines = encoding.lastStderr.trim().split('\n');
           errorMessage += stderrLines.slice(-15).join('\n');
         }

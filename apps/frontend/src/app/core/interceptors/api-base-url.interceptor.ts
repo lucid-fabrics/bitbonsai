@@ -97,14 +97,21 @@ function getApiBaseUrl(nodeConfigService: NodeConfigService): string {
 
   // Priority 3: Fall back to environment configuration
   // DEEP AUDIT FIX: Validate environment fallback too (defense in depth)
-  // Note: In production, environment.apiUrl is typically 'http://localhost:3100' or similar
-  // which is always valid. This check protects against build-time tampering.
-  if (isValidApiUrl(environment.apiUrl)) {
-    return environment.apiUrl;
+  // Note: In production builds served from the same origin (port 8108), apiUrl is '/api/v1'
+  // which is a relative URL and is always valid for same-origin requests.
+  const envApiUrl = environment.apiUrl;
+
+  // Relative URLs (starting with /) are valid for same-origin requests
+  if (envApiUrl.startsWith('/')) {
+    return envApiUrl;
+  }
+
+  // Absolute URLs must be validated
+  if (isValidApiUrl(envApiUrl)) {
+    return envApiUrl;
   }
 
   // Absolute fallback - should never reach here in normal operation
-  console.error('[API Interceptor] Invalid environment.apiUrl detected, using localhost fallback');
   return 'http://localhost:3100';
 }
 
