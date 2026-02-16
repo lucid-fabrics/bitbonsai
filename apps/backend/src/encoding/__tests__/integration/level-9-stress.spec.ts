@@ -133,7 +133,7 @@ describe('Level 9: Stress Testing', () => {
 
       // Process jobs
       for (const _job of jobs) {
-        await encodingProcessor.processNextJob();
+        await encodingProcessor.processNextJob('test-worker-1');
       }
 
       // Wait for all jobs to complete

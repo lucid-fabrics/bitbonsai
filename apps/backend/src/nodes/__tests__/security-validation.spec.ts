@@ -9,15 +9,20 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
+import { NodeDiscoveryService } from '../services/node-discovery.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NodesController } from '../nodes.controller';
 import { NodesService } from '../nodes.service';
+import { JobAttributionService } from '../services/job-attribution.service';
+import { NodeCapabilityDetectorService } from '../services/node-capability-detector.service';
+import { RegistrationRequestService } from '../services/registration-request.service';
+import { SshKeyService } from '../services/ssh-key.service';
 
 describe('Security Validation Tests', () => {
   let controller: NodesController;
   let _service: NodesService;
 
-  const mockNode: Node = {
+  const mockNode = {
     id: 'test-node-1',
     name: 'Test Node',
     role: 'MAIN',
@@ -32,7 +37,7 @@ describe('Security Validation Tests', () => {
     licenseId: 'license-1',
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as unknown as Node;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -51,6 +56,26 @@ describe('Security Validation Tests', () => {
         {
           provide: PrismaService,
           useValue: {},
+        },
+        {
+          provide: NodeDiscoveryService,
+          useValue: { discoverNodes: jest.fn() },
+        },
+        {
+          provide: RegistrationRequestService,
+          useValue: { createRequest: jest.fn() },
+        },
+        {
+          provide: NodeCapabilityDetectorService,
+          useValue: { detectCapabilities: jest.fn() },
+        },
+        {
+          provide: JobAttributionService,
+          useValue: { getScores: jest.fn() },
+        },
+        {
+          provide: SshKeyService,
+          useValue: { getKeys: jest.fn() },
         },
       ],
     }).compile();

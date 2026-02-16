@@ -121,15 +121,15 @@ describe('EncodingProcessorService', () => {
 
   describe('startWorker', () => {
     it('should start a new worker for a node', async () => {
-      await service.startWorker('node-1');
+      await (service as any).startWorker('node-1', 'node-1');
       // Worker is running in background, we can't easily test the loop
       // but we can verify no errors occurred
       expect(service).toBeDefined();
     });
 
     it('should not start duplicate workers for same node', async () => {
-      await service.startWorker('node-1');
-      await service.startWorker('node-1');
+      await (service as any).startWorker('node-1', 'node-1');
+      await (service as any).startWorker('node-1', 'node-1');
       // Should log warning but not crash
       expect(service).toBeDefined();
     });
@@ -137,7 +137,7 @@ describe('EncodingProcessorService', () => {
 
   describe('stopWorker', () => {
     it('should stop a running worker', async () => {
-      await service.startWorker('node-1');
+      await (service as any).startWorker('node-1', 'node-1');
       await service.stopWorker('node-1');
       expect(service).toBeDefined();
     });
@@ -171,15 +171,15 @@ describe('EncodingProcessorService', () => {
         // Mock implementation - no operation needed
       });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockResolvedValue();
-      ffmpegService.verifyFile.mockResolvedValue(true);
+      ffmpegService.verifyFile.mockResolvedValue({ isValid: true });
       librariesService.findOne.mockResolvedValue({
         id: 'library-1',
         totalSizeBytes: BigInt(10000000000),
       } as never);
       librariesService.update.mockResolvedValue({} as never);
-      queueService.completeJob.mockResolvedValue(mockJob);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
 
       const result = await service.processNextJob('node-1');
 
@@ -191,8 +191,8 @@ describe('EncodingProcessorService', () => {
     it('should fail job when source file does not exist', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
-      queueService.failJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.failJob.mockResolvedValue(mockJob as any);
 
       const result = await service.processNextJob('node-1');
 
@@ -207,9 +207,9 @@ describe('EncodingProcessorService', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ size: 1000000000 });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockRejectedValue(new Error('ECONNRESET: Connection reset'));
-      queueService.updateProgress.mockResolvedValue(mockJob);
+      queueService.updateProgress.mockResolvedValue(mockJob as any);
 
       const result = await service.processNextJob('node-1');
 
@@ -235,9 +235,9 @@ describe('EncodingProcessorService', () => {
         totalSizeBytes: BigInt(10000000000),
       } as never);
       librariesService.update.mockResolvedValue({} as never);
-      queueService.completeJob.mockResolvedValue(mockJob);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
 
-      await service.handleJobCompletion(mockJob, result);
+      await service.handleJobCompletion(mockJob as any, result);
 
       expect(queueService.completeJob).toHaveBeenCalledWith('job-123', {
         afterSizeBytes: '750000000',
@@ -257,11 +257,11 @@ describe('EncodingProcessorService', () => {
         savedPercent: 25.0,
       };
 
-      queueService.completeJob.mockResolvedValue(mockJob);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
       librariesService.findOne.mockRejectedValue(new Error('Database error'));
 
       // Should not throw
-      await service.handleJobCompletion(mockJob, result);
+      await service.handleJobCompletion(mockJob as any, result);
 
       expect(queueService.completeJob).toHaveBeenCalled();
     });
@@ -271,9 +271,9 @@ describe('EncodingProcessorService', () => {
     it('should mark job as failed for non-transient errors', async () => {
       const error = new Error('Invalid codec');
 
-      queueService.failJob.mockResolvedValue(mockJob);
+      queueService.failJob.mockResolvedValue(mockJob as any);
 
-      await service.handleJobFailure(mockJob, error);
+      await service.handleJobFailure(mockJob as any, error);
 
       expect(queueService.failJob).toHaveBeenCalledWith('job-123', 'Invalid codec');
     });
@@ -281,9 +281,9 @@ describe('EncodingProcessorService', () => {
     it('should retry job for transient errors', async () => {
       const error = new Error('ETIMEDOUT: Network timeout');
 
-      queueService.updateProgress.mockResolvedValue(mockJob);
+      queueService.updateProgress.mockResolvedValue(mockJob as any);
 
-      await service.handleJobFailure({ ...mockJob, retryCount: 0 }, error);
+      await service.handleJobFailure({ ...mockJob, retryCount: 0 } as any, error);
 
       expect(queueService.updateProgress).toHaveBeenCalledWith('job-123', {
         stage: 'QUEUED',
@@ -294,9 +294,9 @@ describe('EncodingProcessorService', () => {
     it('should not retry after max retries exceeded', async () => {
       const error = new Error('ETIMEDOUT: Network timeout');
 
-      queueService.failJob.mockResolvedValue(mockJob);
+      queueService.failJob.mockResolvedValue(mockJob as any);
 
-      await service.handleJobFailure({ ...mockJob, retryCount: 3 }, error);
+      await service.handleJobFailure({ ...mockJob, retryCount: 3 } as any, error);
 
       expect(queueService.failJob).toHaveBeenCalledWith('job-123', 'ETIMEDOUT: Network timeout');
     });
@@ -314,14 +314,14 @@ describe('EncodingProcessorService', () => {
         // Mock implementation - no operation needed
       });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockResolvedValue();
-      ffmpegService.verifyFile.mockResolvedValue(true);
+      ffmpegService.verifyFile.mockResolvedValue({ isValid: true });
       librariesService.findOne.mockResolvedValue({
         id: 'library-1',
         totalSizeBytes: BigInt(10000000000),
       } as never);
-      queueService.completeJob.mockResolvedValue(mockJob);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
 
       await service.processNextJob('node-1');
 
@@ -352,10 +352,10 @@ describe('EncodingProcessorService', () => {
           // Mock restore backup - no operation needed
         });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockResolvedValue();
-      ffmpegService.verifyFile.mockResolvedValue(true);
-      queueService.failJob.mockResolvedValue(mockJob);
+      ffmpegService.verifyFile.mockResolvedValue({ isValid: true });
+      queueService.failJob.mockResolvedValue(mockJob as any);
 
       await service.processNextJob('node-1');
 
@@ -374,14 +374,14 @@ describe('EncodingProcessorService', () => {
       (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 1000000000 });
       (fs.statSync as jest.Mock).mockReturnValueOnce({ size: 750000000 });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockResolvedValue();
-      ffmpegService.verifyFile.mockResolvedValue(true);
+      ffmpegService.verifyFile.mockResolvedValue({ isValid: true });
       librariesService.findOne.mockResolvedValue({
         id: 'library-1',
         totalSizeBytes: BigInt(10000000000),
       } as never);
-      queueService.completeJob.mockResolvedValue(mockJob);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
 
       await service.processNextJob('node-1');
 
@@ -396,10 +396,10 @@ describe('EncodingProcessorService', () => {
         // Mock implementation - no operation needed
       });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockResolvedValue();
-      ffmpegService.verifyFile.mockResolvedValue(false);
-      queueService.failJob.mockResolvedValue(mockJob);
+      ffmpegService.verifyFile.mockResolvedValue({ isValid: false });
+      queueService.failJob.mockResolvedValue(mockJob as any);
 
       await service.processNextJob('node-1');
 
@@ -443,14 +443,14 @@ describe('EncodingProcessorService', () => {
         // Mock implementation - no operation needed
       });
 
-      queueService.getNextJob.mockResolvedValue(mockJob);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
       ffmpegService.encode.mockResolvedValue();
-      ffmpegService.verifyFile.mockResolvedValue(true);
+      ffmpegService.verifyFile.mockResolvedValue({ isValid: true });
       librariesService.findOne.mockResolvedValue({
         id: 'library-1',
         totalSizeBytes: BigInt(10000000000),
       } as never);
-      queueService.completeJob.mockResolvedValue(mockJob);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
 
       await service.processNextJob('node-1');
 

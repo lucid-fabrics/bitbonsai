@@ -3,7 +3,10 @@ import { join } from 'node:path';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
+import { DataAccessService } from '../../../core/services/data-access.service';
+import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
+import { NodesService } from '../../../nodes/nodes.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
@@ -77,6 +80,18 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
             removeListener: jest.fn(),
             removeAllListeners: jest.fn(),
           },
+        },
+        {
+          provide: NodesService,
+          useValue: { findOne: jest.fn(), findAll: jest.fn(), getCurrentNode: jest.fn() },
+        },
+        {
+          provide: DataAccessService,
+          useValue: { getNextJob: jest.fn(), updateJobProgress: jest.fn() },
+        },
+        {
+          provide: FileRelocatorService,
+          useValue: { relocateFile: jest.fn(), verifyRelocation: jest.fn() },
         },
       ],
     }).compile();

@@ -145,7 +145,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
 
       // Process all jobs
       for (const _job of jobs) {
-        await encodingProcessor.processNextJob();
+        await encodingProcessor.processNextJob('test-worker-1');
       }
 
       // Wait for completion

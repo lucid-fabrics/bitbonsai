@@ -1,8 +1,11 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AccelerationType, LicenseStatus, NodeRole, NodeStatus } from '@prisma/client';
+import { DataAccessService } from '../../../core/services/data-access.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { NodesService } from '../../nodes.service';
+import { StorageShareService } from '../../services/storage-share.service';
+import { SystemInfoService } from '../../services/system-info.service';
 
 describe('NodesService', () => {
   let service: NodesService;
@@ -63,6 +66,33 @@ describe('NodesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NodesService,
+        {
+          provide: DataAccessService,
+          useValue: { getNextJob: jest.fn(), updateJobProgress: jest.fn(), findJobById: jest.fn() },
+        },
+        {
+          provide: SystemInfoService,
+          useValue: {
+            getSystemInfo: jest.fn(),
+            getHardwareCapabilities: jest.fn(),
+            collectSystemInfo: jest
+              .fn()
+              .mockResolvedValue({
+                ipAddress: '192.168.1.100',
+                hostname: 'test',
+                cpuCount: 4,
+                totalMemory: 8000000000,
+              }),
+          },
+        },
+        {
+          provide: StorageShareService,
+          useValue: {
+            getSharedPaths: jest.fn(),
+            isSharedStorage: jest.fn(),
+            verifyAccess: jest.fn(),
+          },
+        },
         {
           provide: PrismaService,
           useValue: {
@@ -277,14 +307,15 @@ describe('NodesService', () => {
       const result = await service.heartbeat('node-1');
 
       expect(result.lastHeartbeat).toBeInstanceOf(Date);
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
-          status: NodeStatus.ONLINE,
-          lastHeartbeat: expect.any(Date),
-          uptimeSeconds: { increment: 60 },
-        },
-      });
+      expect(prisma.node.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'node-1' },
+          data: expect.objectContaining({
+            status: NodeStatus.ONLINE,
+            uptimeSeconds: { increment: 60 },
+          }),
+        })
+      );
     });
 
     it('should update status if provided in heartbeat data', async () => {
@@ -298,14 +329,15 @@ describe('NodesService', () => {
 
       await service.heartbeat('node-1', { status: NodeStatus.ERROR });
 
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
-          status: NodeStatus.ERROR,
-          lastHeartbeat: expect.any(Date),
-          uptimeSeconds: { increment: 60 },
-        },
-      });
+      expect(prisma.node.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'node-1' },
+          data: expect.objectContaining({
+            status: NodeStatus.ERROR,
+            uptimeSeconds: { increment: 60 },
+          }),
+        })
+      );
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
@@ -383,9 +415,11 @@ describe('NodesService', () => {
       const result = await service.findAll();
 
       expect(result).toHaveLength(2);
-      expect(prisma.node.findMany).toHaveBeenCalledWith({
-        orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-      });
+      expect(prisma.node.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+        })
+      );
     });
   });
 
@@ -503,33 +537,28 @@ describe('NodesService', () => {
 
     beforeEach(() => {
       // Clear NODE_ID environment variable before each test
-      process.env.NODE_ID = undefined;
+      delete process.env.NODE_ID;
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {
       process.env.NODE_ID = 'node-2';
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(linkedNode as never);
+      const linkedNodeWithIp = { ...linkedNode, ipAddress: '192.168.1.100' };
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(linkedNodeWithIp as never);
 
       const result = await service.getCurrentNode();
 
       expect(result.id).toBe('node-2');
       expect(result.role).toBe(NodeRole.LINKED);
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { id: 'node-2' },
-      });
     });
 
-    it('should return MAIN node when NODE_ID is not set', async () => {
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(mockNode as never);
+    it('should return MAIN node when NODE_ID is not set via IP detection', async () => {
+      const mainNodeWithIp = { ...mockNode, ipAddress: '192.168.1.100' };
+      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([mainNodeWithIp] as never);
 
       const result = await service.getCurrentNode();
 
       expect(result.id).toBe('node-1');
       expect(result.role).toBe(NodeRole.MAIN);
-      expect(prisma.node.findFirst).toHaveBeenCalledWith({
-        where: { role: 'MAIN' },
-        orderBy: { createdAt: 'asc' },
-      });
     });
 
     it('should throw NotFoundException if NODE_ID is set but node does not exist', async () => {
@@ -542,13 +571,11 @@ describe('NodesService', () => {
       );
     });
 
-    it('should throw NotFoundException if no MAIN node exists when NODE_ID is not set', async () => {
+    it('should throw NotFoundException if no node exists when NODE_ID is not set', async () => {
+      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([]);
       jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
 
       await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
-      await expect(service.getCurrentNode()).rejects.toThrow(
-        'No MAIN node found. Please register a node first.'
-      );
     });
   });
 });

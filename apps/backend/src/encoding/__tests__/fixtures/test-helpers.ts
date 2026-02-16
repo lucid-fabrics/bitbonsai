@@ -1,12 +1,26 @@
+import { HttpService } from '@nestjs/axios';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Job, Library, Node, Policy } from '@prisma/client';
 import { DataAccessService } from '../../../core/services/data-access.service';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
+import { NodeConfigService } from '../../../core/services/node-config.service';
+import { DistributionOrchestratorService } from '../../../distribution/services/distribution-orchestrator.service';
+import { FileWatcherService } from '../../../file-watcher/file-watcher.service';
+import { JellyfinIntegrationService } from '../../../integrations/jellyfin.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
+import { MediaAnalysisService } from '../../../libraries/services/media-analysis.service';
 import { NodesService } from '../../../nodes/nodes.service';
+import { SharedStorageVerifierService } from '../../../nodes/services/shared-storage-verifier.service';
+import { StorageShareService } from '../../../nodes/services/storage-share.service';
+import { SystemInfoService } from '../../../nodes/services/system-info.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
+import { FileTransferService } from '../../../queue/services/file-transfer.service';
+import { JobHistoryService } from '../../../queue/services/job-history.service';
+import { JobRouterService } from '../../../queue/services/job-router.service';
+import { SettingsService } from '../../../settings/settings.service';
+import { EncodingPreviewService } from '../../encoding-preview.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
 import { FfmpegService } from '../../ffmpeg.service';
 
@@ -51,6 +65,62 @@ export async function createTestModule(): Promise<TestingModule> {
           removeListener: jest.fn(),
           removeAllListeners: jest.fn(),
         },
+      },
+      // Additional dependencies for QueueService
+      {
+        provide: MediaAnalysisService,
+        useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+      },
+      { provide: JobHistoryService, useValue: { recordHistory: jest.fn(), getHistory: jest.fn() } },
+      { provide: JobRouterService, useValue: { findOptimalNode: jest.fn(), routeJob: jest.fn() } },
+      {
+        provide: FileTransferService,
+        useValue: { transferFile: jest.fn(), verifyTransfer: jest.fn() },
+      },
+      {
+        provide: NodeConfigService,
+        useValue: {
+          getConfig: jest.fn(),
+          isMainNode: jest.fn(),
+          getMainApiUrl: jest.fn().mockReturnValue(null),
+        },
+      },
+      { provide: HttpService, useValue: { get: jest.fn(), post: jest.fn(), axiosRef: {} } },
+      {
+        provide: SharedStorageVerifierService,
+        useValue: { verify: jest.fn(), isSharedStorage: jest.fn() },
+      },
+      // Additional dependencies for NodesService
+      {
+        provide: SystemInfoService,
+        useValue: {
+          getSystemInfo: jest.fn(),
+          collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }),
+        },
+      },
+      {
+        provide: StorageShareService,
+        useValue: { getSharedPaths: jest.fn(), isSharedStorage: jest.fn() },
+      },
+      // Additional dependencies for LibrariesService
+      {
+        provide: FileWatcherService,
+        useValue: { startWatcher: jest.fn(), stopWatcher: jest.fn() },
+      },
+      { provide: SettingsService, useValue: { get: jest.fn(), set: jest.fn(), getAll: jest.fn() } },
+      {
+        provide: DistributionOrchestratorService,
+        useValue: { distribute: jest.fn(), rebalance: jest.fn() },
+      },
+      // Additional dependencies for FfmpegService
+      {
+        provide: EncodingPreviewService,
+        useValue: { generatePreview: jest.fn(), cleanupPreviews: jest.fn() },
+      },
+      // Additional dependencies for FileRelocatorService
+      {
+        provide: JellyfinIntegrationService,
+        useValue: { notifyLibraryScan: jest.fn(), refreshLibrary: jest.fn() },
       },
     ],
   }).compile();

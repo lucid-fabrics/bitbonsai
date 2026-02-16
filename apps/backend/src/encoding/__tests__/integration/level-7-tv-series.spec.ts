@@ -79,7 +79,7 @@ describe('Level 7: TV Series Processing', () => {
         { num: 3, filename: 'Breaking.Bad.S01E03.720p.mkv' },
       ];
 
-      const jobPromises: Promise<unknown>[] = [];
+      const jobPromises: any[] = [];
 
       for (const episode of episodes) {
         const videoPath = await generateVideo({
@@ -109,7 +109,7 @@ describe('Level 7: TV Series Processing', () => {
 
       // Process all episodes sequentially
       for (const job of jobPromises) {
-        await encodingProcessor.processNextJob();
+        await encodingProcessor.processNextJob('test-worker-1');
         const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
 
         expect(completedJob).toBeDefined();

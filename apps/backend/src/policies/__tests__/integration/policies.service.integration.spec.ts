@@ -90,6 +90,8 @@ describe('PoliciesService Integration Tests', () => {
         preset: 'BALANCED_HEVC' as const,
         targetCodec: 'HEVC' as const,
         targetQuality: 23,
+        deviceProfiles: {},
+        advancedSettings: {},
         libraryId: testLibrary.id,
       };
 
@@ -109,6 +111,8 @@ describe('PoliciesService Integration Tests', () => {
           preset: 'BALANCED_HEVC' as const,
           targetCodec: 'HEVC' as const,
           targetQuality: 23,
+          deviceProfiles: {},
+          advancedSettings: {},
           libraryId: 'non-existent-id',
         })
       ).rejects.toThrow(NotFoundException);
@@ -120,6 +124,8 @@ describe('PoliciesService Integration Tests', () => {
         preset: 'QUALITY_HEVC' as const,
         targetCodec: 'HEVC' as const,
         targetQuality: 20,
+        deviceProfiles: {},
+        advancedSettings: {},
         libraryId: testLibrary.id,
       });
 
@@ -207,12 +213,22 @@ describe('PoliciesService Integration Tests', () => {
             libraryId: testLibrary.id,
             policyId: policy.id,
             filePath: '/test/job1.mp4',
+            fileLabel: 'test.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
+            nodeId: testNode.id,
             stage: 'QUEUED',
           },
           {
             libraryId: testLibrary.id,
             policyId: policy.id,
             filePath: '/test/job2.mp4',
+            fileLabel: 'test.mp4',
+            sourceCodec: 'H.264',
+            targetCodec: 'HEVC',
+            beforeSizeBytes: BigInt(1000000000),
+            nodeId: testNode.id,
             stage: 'COMPLETED',
           },
         ],
@@ -327,6 +343,11 @@ describe('PoliciesService Integration Tests', () => {
           libraryId: testLibrary.id,
           policyId: policy.id,
           filePath: '/test/cascade.mp4',
+          fileLabel: 'test.mp4',
+          sourceCodec: 'H.264',
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1000000000),
+          nodeId: testNode.id,
           stage: 'QUEUED',
         },
       });
