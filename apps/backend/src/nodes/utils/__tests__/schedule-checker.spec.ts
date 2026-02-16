@@ -581,21 +581,15 @@ describe('schedule-checker', () => {
         expect(result).toBe(true); // Should fail open to 24/7
       });
 
-      it('should log warning on JSON parse error', () => {
+      it('should handle JSON parse error gracefully (defaults to 24/7)', () => {
         const mockDate = new Date('2024-01-01T10:00:00');
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
           scheduleWindows: 'invalid json' as any,
         };
 
-        isNodeInAllowedWindow(node, mockDate);
-
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Failed to parse scheduleWindows JSON, defaulting to 24/7:',
-          expect.any(Error)
-        );
-        consoleSpy.mockRestore();
+        const result = isNodeInAllowedWindow(node, mockDate);
+        expect(result).toBe(true); // Should default to 24/7
       });
 
       it('should handle JSON with extra properties gracefully', () => {

@@ -9,7 +9,7 @@ import { ScheduleEnforcementService } from '../schedule-enforcement.service';
 /**
  * Mock data factories
  */
-const createMockNode = (overrides?: Partial<Node>): Node & { _count?: { jobs: number } } => ({
+const createMockNode = (overrides?: Partial<Node>): any => ({
   id: 'node-1',
   name: 'Main Node',
   status: 'ONLINE',
@@ -50,7 +50,7 @@ const createMockNode = (overrides?: Partial<Node>): Node & { _count?: { jobs: nu
   ...overrides,
 });
 
-const createMockJob = (overrides?: Partial<Job>): Job & { node?: Partial<Node> } => ({
+const createMockJob = (overrides?: Partial<Job>): any => ({
   id: 'job-1',
   libraryId: 'lib-1',
   type: 'ENCODE',

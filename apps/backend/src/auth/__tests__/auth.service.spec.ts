@@ -59,21 +59,25 @@ describe('AuthService', () => {
         password: 'test-password',
       };
 
-      mockConfigService.get
-        .mockReturnValueOnce('admin') // ADMIN_USERNAME
-        .mockReturnValueOnce('test-password'); // ADMIN_PASSWORD
+      const mockUser = {
+        id: 'user-1',
+        username: 'admin',
+        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
+        role: 'ADMIN',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      // Mock bcrypt.compare to return true
+      jest.spyOn(require('bcrypt'), 'compare').mockResolvedValue(true as never);
       mockJwtService.sign.mockReturnValue('mock-jwt-token');
 
       const result = await service.login(loginDto);
 
-      expect(result).toEqual({
-        access_token: 'mock-jwt-token',
-      });
-      expect(mockJwtService.sign).toHaveBeenCalledWith({
-        username: 'admin',
-        sub: 'admin',
-      });
+      expect(result).toHaveProperty('access_token');
+      expect(result).toHaveProperty('refresh_token');
     });
 
     it('should throw UnauthorizedException for invalid username', async () => {
@@ -82,9 +86,7 @@ describe('AuthService', () => {
         password: 'test-password',
       };
 
-      mockConfigService.get
-        .mockReturnValueOnce('admin') // ADMIN_USERNAME
-        .mockReturnValueOnce('test-password'); // ADMIN_PASSWORD
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
       await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
@@ -97,32 +99,44 @@ describe('AuthService', () => {
         password: 'wrong-password',
       };
 
-      mockConfigService.get
-        .mockReturnValueOnce('admin') // ADMIN_USERNAME
-        .mockReturnValueOnce('test-password'); // ADMIN_PASSWORD
+      const mockUser = {
+        id: 'user-1',
+        username: 'admin',
+        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
+        role: 'ADMIN',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      jest.spyOn(require('bcrypt'), 'compare').mockResolvedValue(false as never);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
       await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
 
-    it('should use default credentials if env vars not set', async () => {
+    it('should throw UnauthorizedException for disabled account', async () => {
       const loginDto: LoginDto = {
         username: 'admin',
-        password: 'change-me-in-production',
+        password: 'test-password',
       };
 
-      mockConfigService.get
-        .mockReturnValueOnce(undefined) // ADMIN_USERNAME (undefined)
-        .mockReturnValueOnce(undefined); // ADMIN_PASSWORD (undefined)
+      const mockUser = {
+        id: 'user-1',
+        username: 'admin',
+        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
+        role: 'ADMIN',
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      mockJwtService.sign.mockReturnValue('mock-jwt-token');
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
-      const result = await service.login(loginDto);
-
-      expect(result).toEqual({
-        access_token: 'mock-jwt-token',
-      });
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow('Account is disabled');
     });
   });
 

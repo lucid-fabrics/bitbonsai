@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
@@ -10,8 +11,15 @@ import {
   PolicyPreset,
   TargetCodec,
 } from '@prisma/client';
+import { NodeConfigService } from '../../../core/services/node-config.service';
+import { FfmpegService } from '../../../encoding/ffmpeg.service';
+import { MediaAnalysisService } from '../../../libraries/services/media-analysis.service';
+import { SharedStorageVerifierService } from '../../../nodes/services/shared-storage-verifier.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../queue.service';
+import { FileTransferService } from '../../services/file-transfer.service';
+import { JobHistoryService } from '../../services/job-history.service';
+import { JobRouterService } from '../../services/job-router.service';
 
 describe('QueueService', () => {
   let service: QueueService;
@@ -97,6 +105,43 @@ describe('QueueService', () => {
       providers: [
         QueueService,
         {
+          provide: MediaAnalysisService,
+          useValue: { analyze: jest.fn(), getMediaInfo: jest.fn() },
+        },
+        {
+          provide: FfmpegService,
+          useValue: { encode: jest.fn(), probe: jest.fn() },
+        },
+        {
+          provide: JobHistoryService,
+          useValue: { recordHistory: jest.fn(), getHistory: jest.fn() },
+        },
+        {
+          provide: JobRouterService,
+          useValue: { findOptimalNode: jest.fn(), routeJob: jest.fn() },
+        },
+        {
+          provide: FileTransferService,
+          useValue: { transferFile: jest.fn(), verifyTransfer: jest.fn() },
+        },
+        {
+          provide: NodeConfigService,
+          useValue: {
+            getConfig: jest.fn(),
+            isMainNode: jest.fn(),
+            getMainApiUrl: jest.fn().mockReturnValue(null),
+            getNodeRole: jest.fn(),
+          },
+        },
+        {
+          provide: HttpService,
+          useValue: { get: jest.fn(), post: jest.fn(), axiosRef: {} },
+        },
+        {
+          provide: SharedStorageVerifierService,
+          useValue: { verify: jest.fn(), isSharedStorage: jest.fn() },
+        },
+        {
           provide: PrismaService,
           useValue: {
             node: {
@@ -128,6 +173,9 @@ describe('QueueService', () => {
 
     service = module.get<QueueService>(QueueService);
     prisma = module.get<PrismaService>(PrismaService);
+
+    // Skip file path validation since test paths don't exist on disk
+    jest.spyOn(service as any, 'validateFilePath').mockImplementation(() => {});
   });
 
   it('should be defined', () => {
@@ -150,6 +198,7 @@ describe('QueueService', () => {
       jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
       jest.spyOn(prisma.policy, 'findUnique').mockResolvedValue(mockPolicy as never);
+      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
       jest.spyOn(prisma.job, 'create').mockResolvedValue(mockJob as never);
 
       const result = await service.create(createDto);
@@ -204,7 +253,7 @@ describe('QueueService', () => {
 
       const result = await service.findAll();
 
-      expect(result).toEqual(mockJobs);
+      expect(result.jobs).toEqual(mockJobs);
       expect(prisma.job.findMany).toHaveBeenCalledWith({
         where: {},
         include: expect.any(Object),
@@ -220,7 +269,7 @@ describe('QueueService', () => {
 
       const result = await service.findAll(JobStage.QUEUED);
 
-      expect(result).toEqual(mockJobs);
+      expect(result.jobs).toEqual(mockJobs);
       expect(prisma.job.findMany).toHaveBeenCalledWith({
         where: { stage: JobStage.QUEUED },
         include: expect.any(Object),
@@ -236,7 +285,7 @@ describe('QueueService', () => {
 
       const result = await service.findAll(undefined, 'node-1');
 
-      expect(result).toEqual(mockJobs);
+      expect(result.jobs).toEqual(mockJobs);
       expect(prisma.job.findMany).toHaveBeenCalledWith({
         where: { nodeId: 'node-1' },
         include: expect.any(Object),

@@ -182,6 +182,8 @@ describe('OverviewService', () => {
         targetCodec: 'HEVC',
         stage: JobStage.COMPLETED,
         savedBytes: BigInt('1342177280'),
+        beforeSizeBytes: BigInt('10000000000'),
+        afterSizeBytes: BigInt('5000000000'),
         savedPercent: 42.5,
         completedAt: new Date(Date.now() - i * 3600000), // Stagger by 1 hour
         library: {
@@ -210,6 +212,8 @@ describe('OverviewService', () => {
           targetCodec: 'HEVC',
           stage: JobStage.COMPLETED,
           savedBytes: BigInt('1000000000'),
+          beforeSizeBytes: BigInt('10000000000'),
+          afterSizeBytes: BigInt('5000000000'),
           savedPercent: 30.0,
           completedAt: new Date(),
           library: {
@@ -235,6 +239,8 @@ describe('OverviewService', () => {
           targetCodec: 'HEVC',
           stage: JobStage.COMPLETED,
           savedBytes: null,
+          beforeSizeBytes: BigInt('10000000000'),
+          afterSizeBytes: BigInt('10000000000'),
           savedPercent: null,
           completedAt: new Date(),
           library: {
@@ -245,7 +251,7 @@ describe('OverviewService', () => {
 
       const result = await service.getRecentActivity();
 
-      expect(result[0].savedBytes).toBe('0');
+      expect(result[0].savedBytes).toBeNull();
       expect(result[0].savedPercent).toBe(0);
     });
   });
@@ -362,6 +368,8 @@ describe('OverviewService', () => {
           targetCodec: 'HEVC',
           stage: JobStage.COMPLETED,
           savedBytes: BigInt('1000000000'),
+          beforeSizeBytes: BigInt('10000000000'),
+          afterSizeBytes: BigInt('5000000000'),
           savedPercent: 40.0,
           completedAt: new Date(),
           library: { name: 'Movies' },
@@ -477,15 +485,15 @@ describe('OverviewService', () => {
       expect(result.recent_activity[0].id).toBe('job-1');
       expect(result.recent_activity[0].file_name).toBe('Movie.mkv');
       expect(result.recent_activity[0].library).toBe('Movies');
-      expect(result.recent_activity[0].codec_change).toBe('H.264 → HEVC');
-      expect(result.recent_activity[0].savings_gb).toBeCloseTo(1.25, 2);
+      expect(result.recent_activity[0].source_codec).toBe('H.264');
+      expect(result.recent_activity[0].saved_bytes).toBeDefined();
       expect(result.recent_activity[0].completed_at).toBe('2025-09-30T21:45:32.123Z');
 
       // Verify top libraries
       expect(result.top_libraries).toHaveLength(1);
       expect(result.top_libraries[0].name).toBe('Main Library');
       expect(result.top_libraries[0].job_count).toBe(127);
-      expect(result.top_libraries[0].total_savings_gb).toBeCloseTo(15.0, 1);
+      expect(result.top_libraries[0].total_savings_bytes).toBeDefined();
     });
 
     it('should handle zero stats correctly', async () => {

@@ -92,7 +92,7 @@ describe('Level 6: Worker Pool Management', () => {
       });
 
       // Process job (worker pool should handle it)
-      await encodingProcessor.processNextJob();
+      await encodingProcessor.processNextJob('test-worker-1');
 
       // Wait for completion
       const completedJob = await waitForJobCompletion(prisma, job.id, 60000);

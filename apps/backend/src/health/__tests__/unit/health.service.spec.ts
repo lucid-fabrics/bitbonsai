@@ -2,14 +2,18 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthService } from '../../health.service';
 
-// Create mock exec async function
-const mockExecAsync = jest.fn();
+// Mock child_process - must be self-contained since jest.mock is hoisted
+jest.mock('node:child_process', () => {
+  const { promisify } = require('node:util');
+  const mockFn = jest.fn((_cmd: string, callback: Function) => callback(null, '', ''));
+  const mockAsync = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
+  (mockFn as any).__promisify__ = mockAsync;
+  (mockFn as any)[promisify.custom] = mockAsync;
+  return { exec: mockFn };
+});
 
-// Mock node:util module
-jest.mock('node:util', () => ({
-  ...jest.requireActual('node:util'),
-  promisify: () => mockExecAsync,
-}));
+// Get reference to mock exec async
+let mockExecAsync: jest.Mock;
 
 // Mock os module
 jest.mock('node:os', () => ({
@@ -47,6 +51,11 @@ describe('HealthService', () => {
 
     // Reset all mocks
     jest.clearAllMocks();
+
+    // Get reference to the promisified exec mock
+    const childProcess = require('node:child_process');
+    const { promisify } = require('node:util');
+    mockExecAsync = childProcess.exec[promisify.custom] || childProcess.exec.__promisify__;
   });
 
   it('should be defined', () => {
@@ -60,7 +69,7 @@ describe('HealthService', () => {
       const result = await service.getBasicHealth();
 
       expect(result.status).toBe('ok');
-      expect(result.version).toBe('0.1.0');
+      expect(result.version).toBe('1.0.0');
       expect(result.uptime).toBeGreaterThanOrEqual(0);
       expect(result.timestamp).toBeInstanceOf(Date);
     });
@@ -71,7 +80,7 @@ describe('HealthService', () => {
       const result = await service.getBasicHealth();
 
       expect(result.status).toBe('error');
-      expect(result.version).toBe('0.1.0');
+      expect(result.version).toBe('1.0.0');
     });
   });
 
@@ -98,13 +107,14 @@ describe('HealthService', () => {
   });
 
   describe('checkRedisHealth', () => {
-    it('should return undefined when Redis is not configured', async () => {
+    it('should return ok when Redis is not configured', async () => {
       const originalEnv = process.env.REDIS_URL;
       process.env.REDIS_URL = undefined;
 
       const result = await service.checkRedisHealth();
 
-      expect(result).toBeUndefined();
+      expect(result).toBeDefined();
+      expect(result?.status).toBe('ok');
 
       // Restore
       if (originalEnv) {
@@ -132,10 +142,9 @@ describe('HealthService', () => {
 
   describe('checkDiskHealth', () => {
     it('should return ok status for normal disk usage', async () => {
-      // Mock execAsync to return df output with 50% usage
+      // Mock execAsync to return df output with 50% usage (tail -1 output only)
       mockExecAsync.mockResolvedValueOnce({
-        stdout:
-          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
+        stdout: '/dev/sda1      1T    500G   500G  50% /',
         stderr: '',
       });
 
@@ -149,7 +158,7 @@ describe('HealthService', () => {
     it('should return warning status for high disk usage', async () => {
       mockExecAsync.mockResolvedValueOnce({
         stdout:
-          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    850G   150G  85% /',
+          '/dev/sda1      1T    850G   150G  85% /',
         stderr: '',
       });
 
@@ -162,7 +171,7 @@ describe('HealthService', () => {
     it('should return critical status for very high disk usage', async () => {
       mockExecAsync.mockResolvedValueOnce({
         stdout:
-          'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
+          '/dev/sda1      1T    950G    50G  95% /',
         stderr: '',
       });
 
@@ -306,20 +315,16 @@ describe('HealthService', () => {
         .mockResolvedValueOnce(150)
         .mockResolvedValueOnce(3);
 
-      const { exec } = require('node:child_process');
-      exec.mockImplementation(
-        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
-          if (cmd.includes('df')) {
-            callback(
-              null,
-              'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    500G   500G  50% /',
-              ''
-            );
-          } else if (cmd.includes('ffmpeg')) {
-            callback(null, 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', '');
-          }
+      // Mock promisified exec for disk and ffmpeg checks
+      mockExecAsync.mockImplementation((cmd: string) => {
+        if (cmd.includes('df')) {
+          return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
         }
-      );
+        if (cmd.includes('ffmpeg')) {
+          return Promise.resolve({ stdout: 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', stderr: '' });
+        }
+        return Promise.resolve({ stdout: '', stderr: '' });
+      });
     });
 
     it('should return ok status when all checks pass', async () => {
@@ -350,7 +355,7 @@ describe('HealthService', () => {
           if (cmd.includes('df')) {
             callback(
               null,
-              'Filesystem     Size   Used  Avail Use% Mounted\n/dev/sda1      1T    950G    50G  95% /',
+              '/dev/sda1      1T    950G    50G  95% /',
               ''
             );
           } else if (cmd.includes('ffmpeg')) {

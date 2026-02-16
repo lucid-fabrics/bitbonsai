@@ -1194,7 +1194,7 @@ describe('JobAttributionService', () => {
 
   describe('logging and observability', () => {
     it('should log when job not found', async () => {
-      const loggerSpy = jest.spyOn(service.logger, 'warn');
+      const loggerSpy = jest.spyOn((service as any).logger, 'warn');
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(null);
 
       await service.findOptimalNode('non-existent');
@@ -1203,7 +1203,7 @@ describe('JobAttributionService', () => {
     });
 
     it('should log when no nodes available', async () => {
-      const loggerSpy = jest.spyOn(service.logger, 'warn');
+      const loggerSpy = jest.spyOn((service as any).logger, 'warn');
       const job = createMockJob();
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
@@ -1215,7 +1215,7 @@ describe('JobAttributionService', () => {
     });
 
     it('should log when no nodes in schedule', async () => {
-      const loggerSpy = jest.spyOn(service.logger, 'warn');
+      const loggerSpy = jest.spyOn((service as any).logger, 'warn');
       const job = createMockJob();
       const offlineNode = createMockNode({
         scheduleEnabled: true,
@@ -1231,7 +1231,7 @@ describe('JobAttributionService', () => {
     });
 
     it('should log selected optimal node', async () => {
-      const loggerSpy = jest.spyOn(service.logger, 'log');
+      const loggerSpy = jest.spyOn((service as any).logger, 'log');
       const job = createMockJob();
       const node = createMockNode();
 
@@ -1248,11 +1248,11 @@ describe('JobAttributionService', () => {
     });
 
     it('should log cache clear', async () => {
-      const loggerSpy = jest.spyOn(service.logger, 'debug');
+      const loggerSpy = jest.spyOn((service as any).logger, 'debug');
 
       service.clearCache();
 
-      expect(loggerSpy).toHaveBeenCalledWith('Score cache and max speed cache cleared');
+      expect(loggerSpy).toHaveBeenCalledWith('Score cache, locks, and max speed cache cleared');
     });
   });
 });

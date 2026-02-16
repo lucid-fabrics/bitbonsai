@@ -20,6 +20,7 @@ describe('FileWatcherService', () => {
     lastScanAt: null,
     totalFiles: 0,
     totalSizeBytes: BigInt(0),
+    defaultPolicyId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

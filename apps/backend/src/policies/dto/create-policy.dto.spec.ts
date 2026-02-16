@@ -151,7 +151,7 @@ describe('CreatePolicyDto', () => {
       expect(presetErrors.length).toBeGreaterThan(0);
     });
 
-    it('should reject missing targetCodec', async () => {
+    it('should accept missing targetCodec (now optional)', async () => {
       const dto = plainToClass(CreatePolicyDto, {
         ...validPolicyData,
         targetCodec: undefined,
@@ -160,10 +160,10 @@ describe('CreatePolicyDto', () => {
       const errors = await validate(dto);
       const codecErrors = errors.filter((e) => e.property === 'targetCodec');
 
-      expect(codecErrors.length).toBeGreaterThan(0);
+      expect(codecErrors.length).toBe(0);
     });
 
-    it('should reject missing targetQuality', async () => {
+    it('should accept missing targetQuality (now optional)', async () => {
       const dto = plainToClass(CreatePolicyDto, {
         ...validPolicyData,
         targetQuality: undefined,
@@ -172,7 +172,7 @@ describe('CreatePolicyDto', () => {
       const errors = await validate(dto);
       const qualityErrors = errors.filter((e) => e.property === 'targetQuality');
 
-      expect(qualityErrors.length).toBeGreaterThan(0);
+      expect(qualityErrors.length).toBe(0);
     });
   });
 

@@ -1,8 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { License, Node } from '@prisma/client';
+import { DataAccessService } from '../../../core/services/data-access.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { NodesService } from '../../nodes.service';
+import { StorageShareService } from '../../services/storage-share.service';
+import { SystemInfoService } from '../../services/system-info.service';
 
 /**
  * Integration tests for NodesService
@@ -21,7 +24,16 @@ describe('NodesService Integration Tests', () => {
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
-      providers: [NodesService, PrismaService],
+      providers: [
+        NodesService,
+        PrismaService,
+        { provide: DataAccessService, useValue: { getNextJob: jest.fn() } },
+        {
+          provide: SystemInfoService,
+          useValue: { collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }) },
+        },
+        { provide: StorageShareService, useValue: { getSharedPaths: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get<NodesService>(NodesService);
@@ -81,6 +93,9 @@ describe('NodesService Integration Tests', () => {
           licenseId: testLicense.id,
           apiKey: 'test-api-key-1',
           role: 'LINKED',
+          version: '1.0.0',
+          acceleration: 'CPU',
+          lastHeartbeat: new Date(),
           status: 'ONLINE',
         },
       });
@@ -90,6 +105,9 @@ describe('NodesService Integration Tests', () => {
           licenseId: testLicense.id,
           apiKey: 'test-api-key-2',
           role: 'LINKED',
+          version: '1.0.0',
+          acceleration: 'CPU',
+          lastHeartbeat: new Date(),
           status: 'ONLINE',
         },
       });
@@ -107,6 +125,9 @@ describe('NodesService Integration Tests', () => {
           licenseId: testLicense.id,
           apiKey: 'test-api-key-3',
           role: 'LINKED',
+          version: '1.0.0',
+          acceleration: 'CPU',
+          lastHeartbeat: new Date(),
           status: 'ONLINE',
         },
       });

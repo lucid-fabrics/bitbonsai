@@ -135,7 +135,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       expect(completedJob?.startedAt).toBeTruthy();
       expect(completedJob?.completedAt).toBeTruthy();
       expect(completedJob?.completedAt?.getTime()).toBeGreaterThan(
-        completedJob?.startedAt?.getTime()
+        completedJob?.startedAt?.getTime() ?? 0
       );
     }, 120000); // 2 minute timeout
 
