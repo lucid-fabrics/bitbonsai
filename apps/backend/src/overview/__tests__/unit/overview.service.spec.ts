@@ -16,15 +16,22 @@ describe('OverviewService', () => {
           useValue: {
             node: {
               groupBy: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
+              count: jest.fn().mockResolvedValue(0),
             },
             library: {
               aggregate: jest.fn(),
-              findMany: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
+              count: jest.fn().mockResolvedValue(0),
             },
             job: {
               groupBy: jest.fn(),
               aggregate: jest.fn(),
-              findMany: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
+              count: jest.fn().mockResolvedValue(0),
+            },
+            policy: {
+              findMany: jest.fn().mockResolvedValue([]),
             },
           },
         },
@@ -252,41 +259,31 @@ describe('OverviewService', () => {
       const result = await service.getRecentActivity();
 
       expect(result[0].savedBytes).toBeNull();
-      expect(result[0].savedPercent).toBe(0);
+      expect(result[0].savedPercent).toBeNull();
     });
   });
 
   describe('getTopLibraries', () => {
     it('should return top 5 libraries by job count', async () => {
       const mockLibraries = [
-        {
-          id: 'lib-1',
-          name: 'Main Movies',
-          path: '/media/movies',
-          _count: { jobs: 127 },
-          jobs: [
-            { savedBytes: BigInt('5000000000') },
-            { savedBytes: BigInt('3000000000') },
-            { savedBytes: BigInt('2000000000') },
-          ],
-        },
-        {
-          id: 'lib-2',
-          name: 'TV Shows',
-          path: '/media/tv',
-          _count: { jobs: 98 },
-          jobs: [{ savedBytes: BigInt('4000000000') }, { savedBytes: BigInt('1000000000') }],
-        },
-        {
-          id: 'lib-3',
-          name: 'Anime',
-          path: '/media/anime',
-          _count: { jobs: 45 },
-          jobs: [{ savedBytes: BigInt('2500000000') }],
-        },
+        { id: 'lib-1', name: 'Main Movies', path: '/media/movies', mediaType: 'MOVIE', _count: { jobs: 127 } },
+        { id: 'lib-2', name: 'TV Shows', path: '/media/tv', mediaType: 'TV_SHOW', _count: { jobs: 98 } },
+        { id: 'lib-3', name: 'Anime', path: '/media/anime', mediaType: 'ANIME', _count: { jobs: 45 } },
       ];
 
       jest.spyOn(prisma.library, 'findMany').mockResolvedValue(mockLibraries as never);
+      jest.spyOn(prisma.job, 'groupBy')
+        .mockResolvedValueOnce([
+          { libraryId: 'lib-1', _count: { id: 3 } },
+          { libraryId: 'lib-2', _count: { id: 2 } },
+          { libraryId: 'lib-3', _count: { id: 1 } },
+        ] as never) // completedCounts
+        .mockResolvedValueOnce([] as never) // encodingCounts
+        .mockResolvedValueOnce([
+          { libraryId: 'lib-1', _sum: { savedBytes: BigInt('10000000000'), beforeSizeBytes: BigInt('20000000000') } },
+          { libraryId: 'lib-2', _sum: { savedBytes: BigInt('5000000000'), beforeSizeBytes: BigInt('10000000000') } },
+          { libraryId: 'lib-3', _sum: { savedBytes: BigInt('2500000000'), beforeSizeBytes: BigInt('5000000000') } },
+        ] as never); // librarySavings
 
       const result = await service.getTopLibraries();
 
@@ -304,14 +301,12 @@ describe('OverviewService', () => {
 
     it('should handle libraries with no completed jobs', async () => {
       jest.spyOn(prisma.library, 'findMany').mockResolvedValue([
-        {
-          id: 'lib-1',
-          name: 'Empty Library',
-          path: '/media/empty',
-          _count: { jobs: 15 },
-          jobs: [],
-        },
+        { id: 'lib-1', name: 'Empty Library', path: '/media/empty', mediaType: 'MOVIE', _count: { jobs: 15 } },
       ] as never);
+      jest.spyOn(prisma.job, 'groupBy')
+        .mockResolvedValueOnce([] as never) // completedCounts
+        .mockResolvedValueOnce([] as never) // encodingCounts
+        .mockResolvedValueOnce([] as never); // librarySavings
 
       const result = await service.getTopLibraries();
 
@@ -322,14 +317,12 @@ describe('OverviewService', () => {
 
     it('should handle null savedBytes in jobs', async () => {
       jest.spyOn(prisma.library, 'findMany').mockResolvedValue([
-        {
-          id: 'lib-1',
-          name: 'Test Library',
-          path: '/media/test',
-          _count: { jobs: 5 },
-          jobs: [{ savedBytes: null }, { savedBytes: BigInt('1000000000') }],
-        },
+        { id: 'lib-1', name: 'Test Library', path: '/media/test', mediaType: 'MOVIE', _count: { jobs: 5 } },
       ] as never);
+      jest.spyOn(prisma.job, 'groupBy')
+        .mockResolvedValueOnce([{ libraryId: 'lib-1', _count: { id: 2 } }] as never) // completedCounts
+        .mockResolvedValueOnce([] as never) // encodingCounts
+        .mockResolvedValueOnce([{ libraryId: 'lib-1', _sum: { savedBytes: BigInt('1000000000'), beforeSizeBytes: BigInt('2000000000') } }] as never);
 
       const result = await service.getTopLibraries();
 
@@ -414,17 +407,47 @@ describe('OverviewService', () => {
         { status: NodeStatus.ONLINE, _count: { status: 3 } },
         { status: NodeStatus.OFFLINE, _count: { status: 2 } },
       ] as never);
+      const now = new Date();
+      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([
+        { id: 'n1', name: 'Node 1', status: 'ONLINE', role: 'MAIN', acceleration: 'CPU', maxWorkers: 4, lastHeartbeat: now, uptimeSeconds: 3600, currentSystemLoad: 0.5, currentMemoryFreeGB: 8, queuedJobCount: 2, recentFailureCount: 0, failureRate24h: 0 },
+        { id: 'n2', name: 'Node 2', status: 'ONLINE', role: 'LINKED', acceleration: 'NVIDIA', maxWorkers: 2, lastHeartbeat: now, uptimeSeconds: 7200, currentSystemLoad: 0.3, currentMemoryFreeGB: 12, queuedJobCount: 1, recentFailureCount: 0, failureRate24h: 0 },
+        { id: 'n3', name: 'Node 3', status: 'ONLINE', role: 'LINKED', acceleration: 'CPU', maxWorkers: 4, lastHeartbeat: now, uptimeSeconds: 1800, currentSystemLoad: 0.7, currentMemoryFreeGB: 4, queuedJobCount: 0, recentFailureCount: 0, failureRate24h: 0 },
+        { id: 'n4', name: 'Node 4', status: 'OFFLINE', role: 'LINKED', acceleration: 'CPU', maxWorkers: 2, lastHeartbeat: now, uptimeSeconds: 0, currentSystemLoad: null, currentMemoryFreeGB: null, queuedJobCount: 0, recentFailureCount: 0, failureRate24h: 0 },
+        { id: 'n5', name: 'Node 5', status: 'OFFLINE', role: 'LINKED', acceleration: 'CPU', maxWorkers: 2, lastHeartbeat: now, uptimeSeconds: 0, currentSystemLoad: null, currentMemoryFreeGB: null, queuedJobCount: 0, recentFailureCount: 0, failureRate24h: 0 },
+      ] as never);
       jest.spyOn(prisma.library, 'aggregate').mockResolvedValue({
         _sum: { totalSizeBytes: BigInt('2000000000000') },
       } as never);
 
-      // Mock queue stats
-      jest.spyOn(prisma.job, 'groupBy').mockResolvedValue([
-        { stage: JobStage.QUEUED, _count: { stage: 25 } },
-        { stage: JobStage.ENCODING, _count: { stage: 8 } },
-        { stage: JobStage.COMPLETED, _count: { stage: 342 } },
-        { stage: JobStage.FAILED, _count: { stage: 5 } },
-      ] as never);
+      // Mock queue stats + top libraries groupBy (argument-based routing for parallel calls)
+      jest.spyOn(prisma.job, 'groupBy').mockImplementation((args: any) => {
+        // Queue stats: groupBy stage
+        if (args.by?.includes('stage')) {
+          return Promise.resolve([
+            { stage: JobStage.QUEUED, _count: { stage: 25 } },
+            { stage: JobStage.ENCODING, _count: { stage: 8 } },
+            { stage: JobStage.COMPLETED, _count: { stage: 342 } },
+            { stage: JobStage.FAILED, _count: { stage: 5 } },
+          ]) as any;
+        }
+        // Top libraries: groupBy libraryId
+        if (args.by?.includes('libraryId')) {
+          if (args._sum) {
+            // savings query
+            return Promise.resolve([
+              { libraryId: 'lib-1', _sum: { savedBytes: BigInt('16106127360'), beforeSizeBytes: BigInt('32000000000') } },
+            ]) as any;
+          }
+          if (args.where?.stage === JobStage.COMPLETED) {
+            return Promise.resolve([{ libraryId: 'lib-1', _count: { id: 100 } }]) as any;
+          }
+          if (args.where?.stage === JobStage.ENCODING) {
+            return Promise.resolve([{ libraryId: 'lib-1', _count: { id: 5 } }]) as any;
+          }
+          return Promise.resolve([]) as any;
+        }
+        return Promise.resolve([]) as any;
+      });
       jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
         _sum: {
           savedBytes: BigInt('2748779069440'), // ~2.5TB
@@ -440,6 +463,8 @@ describe('OverviewService', () => {
           sourceCodec: 'H.264',
           targetCodec: 'HEVC',
           stage: JobStage.COMPLETED,
+          beforeSizeBytes: BigInt('10000000000'),
+          afterSizeBytes: BigInt('5000000000'),
           savedBytes: BigInt('1342177280'), // ~1.25GB
           savedPercent: 40.0,
           completedAt: new Date('2025-09-30T21:45:32.123Z'),
@@ -453,8 +478,8 @@ describe('OverviewService', () => {
           id: 'lib-1',
           name: 'Main Library',
           path: '/media',
+          mediaType: 'MOVIE',
           _count: { jobs: 127 },
-          jobs: [{ savedBytes: BigInt('5368709120') }, { savedBytes: BigInt('10737418240') }],
         },
       ] as never);
 

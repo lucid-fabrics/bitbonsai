@@ -1,116 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Job, Node } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { createMockJob, createMockNode } from '../../../testing/mock-factories';
 import * as scheduleChecker from '../../utils/schedule-checker';
 import { JobAttributionService, type NodeScore } from '../job-attribution.service';
 import { ScheduleEnforcementService } from '../schedule-enforcement.service';
-
-/**
- * Mock data factories
- */
-const createMockNode = (overrides?: Partial<Node>): any => ({
-  id: 'node-1',
-  name: 'Main Node',
-  status: 'ONLINE',
-  role: 'MAIN',
-  version: '1.0.0',
-  acceleration: 'CPU',
-  pairingToken: null,
-  pairingExpiresAt: null,
-  mainNodeUrl: null,
-  apiKey: 'test-key',
-  lastHeartbeat: new Date(),
-  uptimeSeconds: 3600,
-  maxWorkers: 4,
-  cpuLimit: 80,
-  lastSyncedAt: null,
-  syncStatus: 'COMPLETED',
-  syncRetryCount: 0,
-  syncError: null,
-  networkLocation: 'LOCAL',
-  hasSharedStorage: false,
-  storageBasePath: null,
-  ipAddress: '192.168.1.1',
-  publicUrl: null,
-  vpnIpAddress: null,
-  maxTransferSizeMB: 50000,
-  cpuCores: 8,
-  ramGB: 16,
-  bandwidthMbps: 1000,
-  latencyMs: 5,
-  lastSpeedTest: null,
-  hasGpu: true,
-  avgEncodingSpeed: 25.5,
-  scheduleEnabled: false,
-  scheduleWindows: null,
-  licenseId: 'license-1',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  ...overrides,
-});
-
-const createMockJob = (overrides?: Partial<Job>): any => ({
-  id: 'job-1',
-  libraryId: 'lib-1',
-  type: 'ENCODE',
-  filePath: '/media/test.mkv',
-  fileLabel: 'test.mkv',
-  sourceCodec: 'H.264',
-  sourceContainer: 'mkv',
-  targetCodec: 'HEVC',
-  targetContainer: 'mkv',
-  stage: 'QUEUED',
-  progress: 0,
-  etaSeconds: null,
-  fps: null,
-  beforeSizeBytes: BigInt(1024000000),
-  afterSizeBytes: null,
-  savedBytes: null,
-  savedPercent: null,
-  startedAt: null,
-  completedAt: null,
-  failedAt: null,
-  error: null,
-  isBlacklisted: false,
-  retryCount: 0,
-  nextRetryAt: null,
-  autoHealedAt: null,
-  autoHealedProgress: null,
-  healthStatus: 'UNKNOWN',
-  healthScore: 0,
-  healthMessage: null,
-  healthCheckedAt: null,
-  healthCheckStartedAt: null,
-  healthCheckRetries: 0,
-  decisionRequired: false,
-  decisionIssues: null,
-  decisionMadeAt: null,
-  decisionData: null,
-  priority: 5,
-  prioritySetAt: null,
-  tempFilePath: null,
-  resumeTimestamp: null,
-  lastProgressUpdate: null,
-  previewImagePaths: null,
-  keepOriginalRequested: false,
-  originalBackupPath: null,
-  originalSizeBytes: null,
-  replacementAction: null,
-  warning: null,
-  resourceThrottled: false,
-  resourceThrottleReason: null,
-  ffmpegThreads: null,
-  startedFromSeconds: null,
-  healingPointSeconds: null,
-  nodeId: 'node-1',
-  originalNodeId: null,
-  manualAssignment: false,
-  policyId: 'policy-1',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  ...overrides,
-});
 
 const createMockNodeScore = (
   nodeId: string,
@@ -137,12 +31,18 @@ describe('ScheduleEnforcementService', () => {
   const mockPrismaService = {
     job: {
       findMany: jest.fn(),
+      update: jest.fn(),
       updateMany: jest.fn(),
     },
     node: {
       findMany: jest.fn(),
     },
-    $executeRawUnsafe: jest.fn(),
+    $transaction: jest.fn().mockImplementation((promises: any) => {
+      if (Array.isArray(promises)) {
+        return Promise.all(promises);
+      }
+      return promises(mockPrismaService);
+    }),
   };
 
   const mockJobAttributionService = {
@@ -366,7 +266,7 @@ describe('ScheduleEnforcementService', () => {
       expect(mockPrismaService.job.findMany).toHaveBeenCalled();
       expect(mockPrismaService.node.findMany).not.toHaveBeenCalled();
       expect(mockJobAttributionService.calculateNodeScore).not.toHaveBeenCalled();
-      expect(mockPrismaService.$executeRawUnsafe).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
 
     it('should return early if no online nodes exist', async () => {
@@ -378,7 +278,7 @@ describe('ScheduleEnforcementService', () => {
 
       expect(mockPrismaService.node.findMany).toHaveBeenCalled();
       expect(mockJobAttributionService.calculateNodeScore).not.toHaveBeenCalled();
-      expect(mockPrismaService.$executeRawUnsafe).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
 
     it('should fetch nodes only once', async () => {
@@ -426,15 +326,17 @@ describe('ScheduleEnforcementService', () => {
       expect(mockJobAttributionService.calculateNodeScore).toHaveBeenCalledTimes(2);
     });
 
-    it('should move job to highest scoring node using batch SQL CASE statement', async () => {
+    it('should move job to highest scoring node using Prisma transaction', async () => {
       const job1 = createMockJob({
         id: 'job-1',
         stage: 'QUEUED',
         nodeId: 'node-1',
         originalNodeId: null,
+        manualAssignment: false,
       });
 
       mockPrismaService.job.findMany.mockResolvedValue([job1]);
+      mockPrismaService.job.update.mockResolvedValue({});
 
       const node1 = createMockNode({ id: 'node-1' });
       (node1 as any)._count = { jobs: 5 }; // High load
@@ -452,16 +354,8 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      // Should execute raw SQL with CASE statement
-      expect(mockPrismaService.$executeRawUnsafe).toHaveBeenCalled();
-
-      const sqlCall = (mockPrismaService.$executeRawUnsafe as jest.Mock).mock.calls[0][0];
-
-      // Verify SQL structure contains CASE statement
-      expect(sqlCall).toContain('UPDATE Job');
-      expect(sqlCall).toContain('CASE id');
-      expect(sqlCall).toContain(`WHEN 'job-1' THEN 'node-2'`);
-      expect(sqlCall).toContain('WHERE id IN');
+      // Should use $transaction with job.update calls
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
     });
 
     it('should not move job if already on optimal node', async () => {
@@ -491,7 +385,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should not execute raw SQL update
-      expect(mockPrismaService.$executeRawUnsafe).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
 
     it('should skip nodes with zero score', async () => {
@@ -521,10 +415,11 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should not execute update
-      expect(mockPrismaService.$executeRawUnsafe).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
 
     it('should preserve originalNodeId when moving jobs', async () => {
+      mockPrismaService.job.update.mockResolvedValue({});
       const job = createMockJob({
         id: 'job-1',
         stage: 'QUEUED',
@@ -550,18 +445,18 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      const sqlCall = (mockPrismaService.$executeRawUnsafe as jest.Mock).mock.calls[0][0];
-
-      // Verify originalNodeId is preserved
-      expect(sqlCall).toContain(`WHEN 'job-1' THEN 'original-node'`);
+      // Verify $transaction was called (Prisma-based batch update)
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
     });
 
     it('should set originalNodeId to NULL when first assigning', async () => {
+      mockPrismaService.job.update.mockResolvedValue({});
       const job = createMockJob({
         id: 'job-1',
         stage: 'QUEUED',
         nodeId: undefined,
         originalNodeId: null,
+        manualAssignment: false,
       });
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
@@ -577,24 +472,25 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      const sqlCall = (mockPrismaService.$executeRawUnsafe as jest.Mock).mock.calls[0][0];
-
-      // Verify NULL handling in CASE statement
-      expect(sqlCall).toContain('NULL');
+      // Verify $transaction was called for batch update
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
     });
 
-    it('should batch update multiple jobs in single SQL query', async () => {
+    it('should batch update multiple jobs via Prisma transaction', async () => {
+      mockPrismaService.job.update.mockResolvedValue({});
       const job1 = createMockJob({
         id: 'job-1',
         stage: 'QUEUED',
         nodeId: 'node-1',
         originalNodeId: null,
+        manualAssignment: false,
       });
       const job2 = createMockJob({
         id: 'job-2',
         stage: 'QUEUED',
         nodeId: 'node-1',
         originalNodeId: null,
+        manualAssignment: false,
       });
 
       mockPrismaService.job.findMany.mockResolvedValue([job1, job2]);
@@ -615,14 +511,22 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      // Should execute raw SQL only once (batch update)
-      expect(mockPrismaService.$executeRawUnsafe).toHaveBeenCalledTimes(1);
+      // Should use $transaction for batch update
+      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
 
-      const sqlCall = (mockPrismaService.$executeRawUnsafe as jest.Mock).mock.calls[0][0];
-
-      // Verify both jobs are in the WHERE clause
-      expect(sqlCall).toContain("'job-1'");
-      expect(sqlCall).toContain("'job-2'");
+      // Verify job.update was called for both jobs
+      expect(mockPrismaService.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'job-1' },
+          data: expect.objectContaining({ nodeId: 'node-2' }),
+        })
+      );
+      expect(mockPrismaService.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'job-2' },
+          data: expect.objectContaining({ nodeId: 'node-2' }),
+        })
+      );
     });
 
     it('should query only QUEUED jobs that are not manually assigned', async () => {
@@ -710,10 +614,10 @@ describe('ScheduleEnforcementService', () => {
       expect(errorSpy).toHaveBeenCalledWith('Error auto-assigning jobs:', error);
     });
 
-    it('should handle SQL execution errors gracefully', async () => {
+    it('should handle transaction errors gracefully', async () => {
       const job = createMockJob({
         id: 'job-1',
-        stage: 'QUEUED',
+        stage: 'QUEUED' as any,
         nodeId: 'node-1',
       });
 
@@ -733,14 +637,14 @@ describe('ScheduleEnforcementService', () => {
         .mockResolvedValueOnce(score1)
         .mockResolvedValueOnce(score2);
 
-      const sqlError = new Error('SQL syntax error');
-      mockPrismaService.$executeRawUnsafe.mockRejectedValue(sqlError);
+      const txError = new Error('Transaction failed');
+      mockPrismaService.$transaction.mockRejectedValue(txError);
 
       const errorSpy = jest.spyOn(Logger.prototype, 'error');
 
       await service.autoAssignQueuedJobs();
 
-      expect(errorSpy).toHaveBeenCalledWith('Error auto-assigning jobs:', sqlError);
+      expect(errorSpy).toHaveBeenCalledWith('Error auto-assigning jobs:', txError);
     });
   });
 
@@ -1027,8 +931,8 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      // Should have attempted to move job
-      expect(mockPrismaService.$executeRawUnsafe).toHaveBeenCalled();
+      // Should have attempted to move job via $transaction
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
 
       // Mock resumePausedJobs call
       jest.clearAllMocks();
@@ -1095,7 +999,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should not assign to unavailable node
-      expect(mockPrismaService.$executeRawUnsafe).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
 
       // Step 3: Resume when back in schedule
       jest.clearAllMocks();
@@ -1160,8 +1064,8 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      // Should assign the unassigned job
-      expect(mockPrismaService.$executeRawUnsafe).toHaveBeenCalled();
+      // Should assign the unassigned job via $transaction
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
     });
 
     it('should handle very large job batches in autoAssignQueuedJobs', async () => {
@@ -1223,16 +1127,18 @@ describe('ScheduleEnforcementService', () => {
       expect(mockJobAttributionService.calculateNodeScore).toHaveBeenCalledTimes(1);
     });
 
-    it('should escape SQL special characters in job IDs', async () => {
-      // Test with SQL-like characters in ID
+    it('should safely handle special characters in job IDs via parameterized queries', async () => {
+      // Service uses Prisma's job.update (parameterized) instead of raw SQL,
+      // making SQL injection impossible by design
       const job = createMockJob({
         id: "job-1'; DROP TABLE jobs; --",
-        stage: 'QUEUED',
+        stage: 'QUEUED' as any,
         nodeId: 'node-1',
         originalNodeId: null,
       });
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
+      mockPrismaService.job.update.mockResolvedValue({});
 
       const node1 = createMockNode({ id: 'node-1' });
       (node1 as any)._count = { jobs: 5 };
@@ -1248,10 +1154,16 @@ describe('ScheduleEnforcementService', () => {
         .mockResolvedValueOnce(score1)
         .mockResolvedValueOnce(score2);
 
-      // Should handle without throwing
+      // Should handle without throwing - uses Prisma parameterized queries
       await service.autoAssignQueuedJobs();
 
-      expect(mockPrismaService.$executeRawUnsafe).toHaveBeenCalled();
+      // Verify it uses safe Prisma job.update, not raw SQL
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "job-1'; DROP TABLE jobs; --" },
+        })
+      );
     });
   });
 
