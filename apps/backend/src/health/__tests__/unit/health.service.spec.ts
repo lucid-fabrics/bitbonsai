@@ -2,13 +2,16 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthService } from '../../health.service';
 
-// Mock child_process - must be self-contained since jest.mock is hoisted
+// Shared mock async exec function - must be created inside jest.mock since it's hoisted
+// We store it on globalThis to access it from test code
 jest.mock('node:child_process', () => {
   const { promisify } = require('node:util');
-  const mockFn = jest.fn((_cmd: string, callback: Function) => callback(null, '', ''));
   const mockAsync = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
+  const mockFn = jest.fn((_cmd: string, callback: (...args: unknown[]) => void) => callback(null, '', ''));
   (mockFn as any).__promisify__ = mockAsync;
   (mockFn as any)[promisify.custom] = mockAsync;
+  // Store reference for test access
+  (globalThis as any).__mockExecAsync = mockAsync;
   return { exec: mockFn };
 });
 
@@ -36,6 +39,9 @@ describe('HealthService', () => {
   };
 
   beforeEach(async () => {
+    // Reset all mocks before module creation
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HealthService,
@@ -49,13 +55,13 @@ describe('HealthService', () => {
     service = module.get<HealthService>(HealthService);
     _prisma = module.get<PrismaService>(PrismaService);
 
-    // Reset all mocks
-    jest.clearAllMocks();
+    // Get reference to the promisified exec mock (stable reference via globalThis)
+    mockExecAsync = (globalThis as any).__mockExecAsync;
 
-    // Get reference to the promisified exec mock
-    const childProcess = require('node:child_process');
-    const { promisify } = require('node:util');
-    mockExecAsync = childProcess.exec[promisify.custom] || childProcess.exec.__promisify__;
+    // Restore os mocks to defaults (clearAllMocks clears them)
+    const os = require('node:os');
+    (os.totalmem as jest.Mock).mockReturnValue(16 * 1024 * 1024 * 1024);
+    (os.freemem as jest.Mock).mockReturnValue(8 * 1024 * 1024 * 1024);
   });
 
   it('should be defined', () => {
@@ -349,20 +355,19 @@ describe('HealthService', () => {
     });
 
     it('should return degraded status when non-critical service fails', async () => {
-      const { exec } = require('node:child_process');
-      exec.mockImplementation(
-        (cmd: string, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
-          if (cmd.includes('df')) {
-            callback(
-              null,
-              '/dev/sda1      1T    950G    50G  95% /',
-              ''
-            );
-          } else if (cmd.includes('ffmpeg')) {
-            callback(new Error('Command not found'), '', '');
-          }
+      // Override the promisified exec mock for disk (95% = critical) and ffmpeg (missing)
+      mockExecAsync.mockImplementation((cmd: string) => {
+        if (cmd.includes('df')) {
+          return Promise.resolve({
+            stdout: '/dev/sda1      1T    950G    50G  95% /',
+            stderr: '',
+          });
         }
-      );
+        if (cmd.includes('ffmpeg')) {
+          return Promise.reject(new Error('Command not found'));
+        }
+        return Promise.resolve({ stdout: '', stderr: '' });
+      });
 
       const result = await service.getDetailedHealth();
 
