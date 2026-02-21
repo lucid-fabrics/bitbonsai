@@ -439,7 +439,7 @@ describe('Input Sanitizer', () => {
           expect(escaped).toMatch(/'$/);
           // Any internal single quotes should be escaped
           const inner = escaped.slice(1, -1);
-          expect(inner).not.toMatch(/(?<!\\)'/);  // No unescaped single quotes inside
+          expect(inner).not.toMatch(/(?<!\\)'/); // No unescaped single quotes inside
         });
       });
     });

@@ -260,7 +260,9 @@ describe('EncodingProcessorService', () => {
       prisma.library.findUnique.mockRejectedValue(new Error('Database error'));
 
       // handleJobCompletion re-throws errors from completeJob
-      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow('Database error');
+      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(
+        'Database error'
+      );
     });
   });
 

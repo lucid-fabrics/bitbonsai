@@ -226,7 +226,7 @@ describe('FfmpegService', () => {
         videoCodec: 'hevc_nvenc',
       };
 
-      const args = service.buildFfmpegCommand(mockJob, mockPolicy, hwaccel, "/media/video.mp4.tmp");
+      const args = service.buildFfmpegCommand(mockJob, mockPolicy, hwaccel, '/media/video.mp4.tmp');
 
       expect(args).toContain('-hwaccel');
       expect(args).toContain('cuda');
@@ -261,7 +261,12 @@ describe('FfmpegService', () => {
         videoCodec: 'libx265',
       };
 
-      const args = service.buildFfmpegCommand(mockJob, customPolicy, hwaccel, "/media/video.mp4.tmp");
+      const args = service.buildFfmpegCommand(
+        mockJob,
+        customPolicy,
+        hwaccel,
+        '/media/video.mp4.tmp'
+      );
 
       expect(args).toContain('-c:a');
       expect(args).toContain('aac');
@@ -373,10 +378,7 @@ describe('FfmpegService', () => {
       ffmpegProc.emit('close', 1);
 
       await expect(encodePromise).rejects.toThrow();
-      expect(queueService.failJob).toHaveBeenCalledWith(
-        mockJob.id,
-        expect.any(String)
-      );
+      expect(queueService.failJob).toHaveBeenCalledWith(mockJob.id, expect.any(String));
     });
 
     it('should handle file not found error', async () => {

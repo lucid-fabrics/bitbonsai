@@ -7,7 +7,12 @@ module.exports = {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/integration/', '/__tests__/e2e/', '\\.e2e\\.spec\\.ts$'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/__tests__/integration/',
+    '/__tests__/e2e/',
+    '\\.e2e\\.spec\\.ts$',
+  ],
   coverageDirectory: '../../coverage/apps/backend',
   collectCoverageFrom: [
     'src/**/*.ts',
