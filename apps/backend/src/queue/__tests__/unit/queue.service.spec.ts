@@ -481,13 +481,21 @@ describe('QueueService', () => {
       };
 
       // validateJobOwnership pre-check
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue({ ...mockJob, nodeId: 'node-1', fileLabel: 'Avatar', updatedAt: new Date() } as never);
+      jest
+        .spyOn(prisma.job, 'findUnique')
+        .mockResolvedValue({
+          ...mockJob,
+          nodeId: 'node-1',
+          fileLabel: 'Avatar',
+          updatedAt: new Date(),
+        } as never);
 
       // completeJob now uses $transaction with updateMetrics
       (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
         const tx = {
           job: {
-            findUnique: jest.fn()
+            findUnique: jest
+              .fn()
               .mockResolvedValueOnce({ stage: JobStage.ENCODING }) // First: existence check
               .mockResolvedValue(completedJob), // Second: full fetch
             update: jest.fn().mockResolvedValue(completedJob),

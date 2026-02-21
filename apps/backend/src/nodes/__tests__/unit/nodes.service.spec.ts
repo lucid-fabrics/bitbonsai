@@ -75,14 +75,12 @@ describe('NodesService', () => {
           useValue: {
             getSystemInfo: jest.fn(),
             getHardwareCapabilities: jest.fn(),
-            collectSystemInfo: jest
-              .fn()
-              .mockResolvedValue({
-                ipAddress: '192.168.1.100',
-                hostname: 'test',
-                cpuCount: 4,
-                totalMemory: 8000000000,
-              }),
+            collectSystemInfo: jest.fn().mockResolvedValue({
+              ipAddress: '192.168.1.100',
+              hostname: 'test',
+              cpuCount: 4,
+              totalMemory: 8000000000,
+            }),
           },
         },
         {

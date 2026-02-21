@@ -9,12 +9,12 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
-import { NodeDiscoveryService } from '../services/node-discovery.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NodesController } from '../nodes.controller';
 import { NodesService } from '../nodes.service';
 import { JobAttributionService } from '../services/job-attribution.service';
 import { NodeCapabilityDetectorService } from '../services/node-capability-detector.service';
+import { NodeDiscoveryService } from '../services/node-discovery.service';
 import { RegistrationRequestService } from '../services/registration-request.service';
 import { SshKeyService } from '../services/ssh-key.service';
 

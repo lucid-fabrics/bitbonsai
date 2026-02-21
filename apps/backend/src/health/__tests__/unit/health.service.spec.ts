@@ -7,7 +7,9 @@ import { HealthService } from '../../health.service';
 jest.mock('node:child_process', () => {
   const { promisify } = require('node:util');
   const mockAsync = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
-  const mockFn = jest.fn((_cmd: string, callback: (...args: unknown[]) => void) => callback(null, '', ''));
+  const mockFn = jest.fn((_cmd: string, callback: (...args: unknown[]) => void) =>
+    callback(null, '', '')
+  );
   (mockFn as any).__promisify__ = mockAsync;
   (mockFn as any)[promisify.custom] = mockAsync;
   // Store reference for test access
@@ -163,8 +165,7 @@ describe('HealthService', () => {
 
     it('should return warning status for high disk usage', async () => {
       mockExecAsync.mockResolvedValueOnce({
-        stdout:
-          '/dev/sda1      1T    850G   150G  85% /',
+        stdout: '/dev/sda1      1T    850G   150G  85% /',
         stderr: '',
       });
 
@@ -176,8 +177,7 @@ describe('HealthService', () => {
 
     it('should return critical status for very high disk usage', async () => {
       mockExecAsync.mockResolvedValueOnce({
-        stdout:
-          '/dev/sda1      1T    950G    50G  95% /',
+        stdout: '/dev/sda1      1T    950G    50G  95% /',
         stderr: '',
       });
 
@@ -327,7 +327,10 @@ describe('HealthService', () => {
           return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
         }
         if (cmd.includes('ffmpeg')) {
-          return Promise.resolve({ stdout: 'ffmpeg version 5.1.2 Copyright (c) 2000-2022', stderr: '' });
+          return Promise.resolve({
+            stdout: 'ffmpeg version 5.1.2 Copyright (c) 2000-2022',
+            stderr: '',
+          });
         }
         return Promise.resolve({ stdout: '', stderr: '' });
       });
