@@ -328,17 +328,15 @@ describe('OverviewService', () => {
     });
 
     it('should handle libraries with no completed jobs', async () => {
-      jest
-        .spyOn(prisma.library, 'findMany')
-        .mockResolvedValue([
-          {
-            id: 'lib-1',
-            name: 'Empty Library',
-            path: '/media/empty',
-            mediaType: 'MOVIE',
-            _count: { jobs: 15 },
-          },
-        ] as never);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue([
+        {
+          id: 'lib-1',
+          name: 'Empty Library',
+          path: '/media/empty',
+          mediaType: 'MOVIE',
+          _count: { jobs: 15 },
+        },
+      ] as never);
       jest
         .spyOn(prisma.job, 'groupBy')
         .mockResolvedValueOnce([] as never) // completedCounts
@@ -353,17 +351,15 @@ describe('OverviewService', () => {
     });
 
     it('should handle null savedBytes in jobs', async () => {
-      jest
-        .spyOn(prisma.library, 'findMany')
-        .mockResolvedValue([
-          {
-            id: 'lib-1',
-            name: 'Test Library',
-            path: '/media/test',
-            mediaType: 'MOVIE',
-            _count: { jobs: 5 },
-          },
-        ] as never);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue([
+        {
+          id: 'lib-1',
+          name: 'Test Library',
+          path: '/media/test',
+          mediaType: 'MOVIE',
+          _count: { jobs: 5 },
+        },
+      ] as never);
       jest
         .spyOn(prisma.job, 'groupBy')
         .mockResolvedValueOnce([{ libraryId: 'lib-1', _count: { id: 2 } }] as never) // completedCounts

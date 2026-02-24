@@ -135,6 +135,7 @@ export function createMockPrismaService() {
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       deleteMany: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
     },
     nodeRegistrationRequest: {
       findUnique: jest.fn(),
