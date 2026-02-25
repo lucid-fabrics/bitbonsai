@@ -34,12 +34,16 @@ export class ClipboardBo {
     if (!success) {
       return {
         message: null,
-        clear: () => {},
+        clear: () => {
+          /* no-op */
+        },
       };
     }
 
     const message = `${label} copied to clipboard`;
-    const timeoutId = setTimeout(() => {}, duration);
+    const timeoutId = setTimeout(() => {
+      /* no-op */
+    }, duration);
 
     return {
       message,

@@ -194,7 +194,7 @@ export class StorageSharesClient {
   /**
    * Unmount a storage share
    */
-  unmountShare(id: string, force: boolean = false): Observable<MountResult> {
+  unmountShare(id: string, force = false): Observable<MountResult> {
     return this.http.post<MountResult>(`${this.apiUrl}/${id}/unmount`, { force });
   }
 

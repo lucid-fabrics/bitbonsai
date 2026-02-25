@@ -29,12 +29,12 @@ export class SettingsService {
   backupDatabase(): Observable<{ backupPath: string; timestamp: string }> {
     return this.http.post<{ backupPath: string; timestamp: string }>(
       `${this.apiUrl}/system/backup`,
-      {}
+      null
     );
   }
 
   resetToDefaults(): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/system/reset`, {});
+    return this.http.post<{ message: string }>(`${this.apiUrl}/system/reset`, null);
   }
 
   regenerateApiKey(): Observable<{ apiKey: string }> {

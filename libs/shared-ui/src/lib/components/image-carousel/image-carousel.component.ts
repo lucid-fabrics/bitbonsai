@@ -9,7 +9,7 @@ import {
   Input,
   Output,
   QueryList,
-  ViewChildren,
+  ViewChildren, OnInit,
 } from '@angular/core';
 
 export interface CarouselImage {
@@ -26,7 +26,7 @@ export interface CarouselImage {
   styleUrls: ['./image-carousel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ImageCarouselComponent implements AfterViewInit {
+export class ImageCarouselComponent implements AfterViewInit, OnInit {
   @Input() images: CarouselImage[] = [];
   @Input() initialIndex = 0;
   @Input() showThumbnails = true;

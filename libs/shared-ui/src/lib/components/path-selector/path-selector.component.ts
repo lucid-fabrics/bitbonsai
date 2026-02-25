@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, output, signal, OnInit } from '@angular/core';
 
 interface DirectoryInfo {
   name: string;
@@ -21,7 +21,7 @@ interface BrowseResult {
   templateUrl: './path-selector.component.html',
   styleUrls: ['./path-selector.component.scss'],
 })
-export class PathSelectorComponent {
+export class PathSelectorComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
   readonly apiUrl = input.required<string>();
