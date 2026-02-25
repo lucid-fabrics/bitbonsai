@@ -293,7 +293,7 @@ export class AnalyticsService {
   /**
    * Calculate cost savings estimate
    */
-  async getCostSavings(provider: string = 'AWS S3'): Promise<CostSavingsEstimate> {
+  async getCostSavings(provider = 'AWS S3'): Promise<CostSavingsEstimate> {
     const costPerGB = this.STORAGE_COSTS[provider] || 0.02;
 
     const savingsAgg = await this.prisma.job.aggregate({

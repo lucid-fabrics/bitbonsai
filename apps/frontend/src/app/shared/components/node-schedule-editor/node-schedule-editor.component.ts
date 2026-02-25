@@ -72,8 +72,12 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
   events = signal<EventInput[]>([]);
 
   // ControlValueAccessor callbacks
-  private onChange: (value: TimeWindow[]) => void = () => {};
-  private onTouched: () => void = () => {};
+  private onChange: (value: TimeWindow[]) => void = () => {
+    /* no-op */
+  };
+  private onTouched: () => void = () => {
+    /* no-op */
+  };
 
   calendarOptions = signal<CalendarOptions>({
     plugins: [timeGridPlugin, interactionPlugin],

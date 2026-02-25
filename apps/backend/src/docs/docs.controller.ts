@@ -72,7 +72,7 @@ export class DocsController implements OnModuleInit {
       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
       res.send(content);
-    } catch (error) {
+    } catch (_error) {
       throw new NotFoundException(`Failed to read documentation file "${filename}"`);
     }
   }

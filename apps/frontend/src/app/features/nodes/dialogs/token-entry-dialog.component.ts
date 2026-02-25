@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-export type TokenEntryDialogData = {};
+export type TokenEntryDialogData = object;
 
 @Component({
   selector: 'app-token-entry-dialog',

@@ -176,7 +176,9 @@ export class SystemTabComponent implements OnInit {
         next: (settings) => {
           this.systemSettings.set(settings);
         },
-        error: () => {},
+        error: (err) => {
+          console.error('Failed to load system settings:', err);
+        },
       });
   }
 
