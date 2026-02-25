@@ -11,7 +11,7 @@ concurrency:
 jobs:
   lint:
     name: Lint (auto-fix)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:
@@ -41,7 +41,7 @@ jobs:
 
   test:
     name: Test (retry)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: lint
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test
     steps:
       - uses: actions/checkout@v4
