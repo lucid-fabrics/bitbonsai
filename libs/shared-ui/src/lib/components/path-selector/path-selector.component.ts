@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, input, output, signal, OnInit } from '@angular/core';
+import { Component, inject, input, OnInit, output, signal } from '@angular/core';
 
 interface DirectoryInfo {
   name: string;

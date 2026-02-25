@@ -7,9 +7,10 @@ import {
   EventEmitter,
   HostListener,
   Input,
+  OnInit,
   Output,
   QueryList,
-  ViewChildren, OnInit,
+  ViewChildren,
 } from '@angular/core';
 
 export interface CarouselImage {
