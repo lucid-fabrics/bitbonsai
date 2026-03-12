@@ -70,6 +70,7 @@ describe('Level 9: Stress Testing', () => {
   });
 
   describe('Concurrent Processing', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and 10+ video fixtures
     it.skip('should handle 10 concurrent encoding jobs', async () => {
       // TODO: Generate 10 test videos
       // Create 10 jobs
@@ -78,6 +79,7 @@ describe('Level 9: Stress Testing', () => {
       // Monitor memory usage during execution
     });
 
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and 20+ video fixtures
     it.skip('should handle 20 concurrent encoding jobs', async () => {
       // TODO: Generate 20 test videos
       // Create 20 jobs
@@ -88,6 +90,7 @@ describe('Level 9: Stress Testing', () => {
   });
 
   describe('Large File Handling', () => {
+    // Skipped: unimplemented stub requiring FFmpeg and 100MB+ video fixtures
     it.skip('should process large video files (100MB+)', async () => {
       // TODO: Generate large test videos (100MB each)
       // Process them sequentially
@@ -97,6 +100,7 @@ describe('Level 9: Stress Testing', () => {
   });
 
   describe('System Stability', () => {
+    // Skipped: unimplemented stub requiring extended FFmpeg runtime
     it.skip('should maintain stability under continuous load', async () => {
       // TODO: Run continuous encoding for extended period
       // Monitor system resources
@@ -146,6 +150,7 @@ describe('Level 9: Stress Testing', () => {
   });
 
   describe('Performance Metrics', () => {
+    // Skipped: unimplemented stub requiring FFmpeg and performance monitoring setup
     it.skip('should track encoding performance under load', async () => {
       // TODO: Process multiple jobs
       // Track FPS, bitrate, speed metrics

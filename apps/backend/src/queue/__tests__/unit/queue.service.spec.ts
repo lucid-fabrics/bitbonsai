@@ -1,4 +1,3 @@
-import { HttpService } from '@nestjs/axios';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
@@ -11,19 +10,17 @@ import {
   PolicyPreset,
   TargetCodec,
 } from '@prisma/client';
-import { NodeConfigService } from '../../../core/services/node-config.service';
-import { FfmpegService } from '../../../encoding/ffmpeg.service';
-import { MediaAnalysisService } from '../../../libraries/services/media-analysis.service';
-import { SharedStorageVerifierService } from '../../../nodes/services/shared-storage-verifier.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../queue.service';
-import { FileTransferService } from '../../services/file-transfer.service';
-import { JobHistoryService } from '../../services/job-history.service';
-import { JobRouterService } from '../../services/job-router.service';
+import { QueueDelegationService } from '../../services/queue-delegation.service';
+import { QueueJobCrudService } from '../../services/queue-job-crud.service';
+import { QueueJobStateService } from '../../services/queue-job-state.service';
+import { QueueProcessingService } from '../../services/queue-processing.service';
 
 describe('QueueService', () => {
   let service: QueueService;
-  let prisma: PrismaService;
+  let jobCrudService: Record<string, jest.Mock>;
+  let jobStateService: Record<string, jest.Mock>;
+  let processingService: Record<string, jest.Mock>;
 
   const mockLicense = {
     id: 'license-1',
@@ -101,113 +98,65 @@ describe('QueueService', () => {
   };
 
   beforeEach(async () => {
+    jobCrudService = {
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      getJobStatus: jest.fn(),
+      updateJobRaw: jest.fn(),
+      updateProgress: jest.fn(),
+      updateJobPreview: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      clearJobs: jest.fn(),
+      getJobStats: jest.fn(),
+    };
+
+    jobStateService = {
+      completeJob: jest.fn(),
+      failJob: jest.fn(),
+      cancelJob: jest.fn(),
+      unblacklistJob: jest.fn(),
+      cancelAllQueued: jest.fn(),
+      pauseJob: jest.fn(),
+      resumeJob: jest.fn(),
+      retryJob: jest.fn(),
+      forceStartJob: jest.fn(),
+      recheckHealth: jest.fn(),
+      retryAllCancelled: jest.fn(),
+      retryAllFailed: jest.fn(),
+      skipAllCodecMatch: jest.fn(),
+      forceEncodeAllCodecMatch: jest.fn(),
+      updateJobPriority: jest.fn(),
+      requestKeepOriginal: jest.fn(),
+      deleteOriginalBackup: jest.fn(),
+      restoreOriginal: jest.fn(),
+      recheckFailedJob: jest.fn(),
+      detectAndRequeueIfUncompressed: jest.fn(),
+      resolveDecision: jest.fn(),
+    };
+
+    const delegationService = {
+      delegateJob: jest.fn(),
+      rebalanceJobs: jest.fn(),
+      fixStuckTransfers: jest.fn(),
+    };
+
+    processingService = {
+      getNextJob: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QueueService,
-        {
-          provide: MediaAnalysisService,
-          useValue: { analyze: jest.fn(), getMediaInfo: jest.fn() },
-        },
-        {
-          provide: FfmpegService,
-          useValue: { encode: jest.fn(), probe: jest.fn() },
-        },
-        {
-          provide: JobHistoryService,
-          useValue: { recordHistory: jest.fn(), recordEvent: jest.fn(), getHistory: jest.fn() },
-        },
-        {
-          provide: JobRouterService,
-          useValue: { findOptimalNode: jest.fn(), routeJob: jest.fn() },
-        },
-        {
-          provide: FileTransferService,
-          useValue: { transferFile: jest.fn(), verifyTransfer: jest.fn() },
-        },
-        {
-          provide: NodeConfigService,
-          useValue: {
-            getConfig: jest.fn(),
-            isMainNode: jest.fn().mockReturnValue(true),
-            getMainApiUrl: jest.fn().mockReturnValue(null),
-            getNodeRole: jest.fn().mockReturnValue('MAIN'),
-            getNodeId: jest.fn().mockReturnValue('node-1'),
-            getRole: jest.fn().mockReturnValue('MAIN'),
-          },
-        },
-        {
-          provide: HttpService,
-          useValue: { get: jest.fn(), post: jest.fn(), axiosRef: {} },
-        },
-        {
-          provide: SharedStorageVerifierService,
-          useValue: { verify: jest.fn(), isSharedStorage: jest.fn() },
-        },
-        {
-          provide: PrismaService,
-          useValue: {
-            $transaction: jest.fn().mockImplementation((fn: any) => {
-              if (typeof fn === 'function') {
-                return fn({
-                  $executeRaw: jest.fn(),
-                  $queryRaw: jest.fn(),
-                  job: {
-                    findFirst: jest.fn(),
-                    update: jest.fn(),
-                    updateMany: jest.fn(),
-                    findUnique: jest.fn(),
-                    findMany: jest.fn().mockResolvedValue([]),
-                    count: jest.fn().mockResolvedValue(0),
-                  },
-                  node: {
-                    findUnique: jest.fn(),
-                  },
-                });
-              }
-              return Promise.all(fn);
-            }),
-            node: {
-              findUnique: jest.fn(),
-              findMany: jest.fn().mockResolvedValue([]),
-            },
-            library: {
-              findUnique: jest.fn(),
-            },
-            policy: {
-              findUnique: jest.fn(),
-            },
-            job: {
-              create: jest.fn(),
-              findMany: jest.fn().mockResolvedValue([]),
-              findUnique: jest.fn(),
-              findFirst: jest.fn(),
-              update: jest.fn(),
-              updateMany: jest.fn(),
-              delete: jest.fn(),
-              count: jest.fn().mockResolvedValue(0),
-              aggregate: jest.fn(),
-              groupBy: jest.fn().mockResolvedValue([]),
-            },
-            metric: {
-              upsert: jest.fn(),
-            },
-            license: {
-              findFirst: jest.fn(),
-            },
-            jobHistory: {
-              create: jest.fn(),
-              findMany: jest.fn().mockResolvedValue([]),
-            },
-          },
-        },
+        { provide: QueueJobCrudService, useValue: jobCrudService },
+        { provide: QueueJobStateService, useValue: jobStateService },
+        { provide: QueueDelegationService, useValue: delegationService },
+        { provide: QueueProcessingService, useValue: processingService },
       ],
     }).compile();
 
     service = module.get<QueueService>(QueueService);
-    prisma = module.get<PrismaService>(PrismaService);
-
-    // Skip file path validation since test paths don't exist on disk
-    jest.spyOn(service as any, 'validateFilePath').mockImplementation(() => {});
   });
 
   it('should be defined', () => {
@@ -227,50 +176,36 @@ describe('QueueService', () => {
     };
 
     it('should create a job successfully', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
-      jest.spyOn(prisma.policy, 'findUnique').mockResolvedValue(mockPolicy as never);
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.job, 'create').mockResolvedValue(mockJob as never);
+      jobCrudService.create.mockResolvedValue(mockJob);
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockJob);
-      expect(prisma.job.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            filePath: createDto.filePath,
-            fileLabel: createDto.fileLabel,
-            sourceCodec: createDto.sourceCodec,
-            targetCodec: createDto.targetCodec,
-            beforeSizeBytes: BigInt(createDto.beforeSizeBytes),
-            nodeId: createDto.nodeId,
-            libraryId: createDto.libraryId,
-            policyId: createDto.policyId,
-          }),
-        })
-      );
+      expect(jobCrudService.create).toHaveBeenCalledWith(createDto);
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      jobCrudService.create.mockRejectedValue(
+        new NotFoundException('Node with ID "node-1" not found')
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
       await expect(service.create(createDto)).rejects.toThrow('Node with ID "node-1" not found');
     });
 
     it('should throw NotFoundException if library does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
+      jobCrudService.create.mockRejectedValue(
+        new NotFoundException('Library with ID "lib-1" not found')
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
       await expect(service.create(createDto)).rejects.toThrow('Library with ID "lib-1" not found');
     });
 
     it('should throw NotFoundException if policy does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
-      jest.spyOn(prisma.policy, 'findUnique').mockResolvedValue(null);
+      jobCrudService.create.mockRejectedValue(
+        new NotFoundException('Policy with ID "policy-1" not found')
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
       await expect(service.create(createDto)).rejects.toThrow(
@@ -282,70 +217,90 @@ describe('QueueService', () => {
   describe('findAll', () => {
     it('should return all jobs without filters', async () => {
       const mockJobs = [mockJobWithRelations];
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
-      jest.spyOn(prisma.job, 'count').mockResolvedValue(1);
+      jobCrudService.findAll.mockResolvedValue({
+        jobs: mockJobs,
+        total: 1,
+        page: 1,
+        limit: 50,
+        totalPages: 1,
+      });
 
       const result = await service.findAll();
 
       expect(result.jobs).toEqual(mockJobs);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {},
-          include: expect.any(Object),
-        })
+      expect(jobCrudService.findAll).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
       );
     });
 
     it('should filter jobs by stage', async () => {
       const mockJobs = [mockJobWithRelations];
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
-      jest.spyOn(prisma.job, 'count').mockResolvedValue(1);
+      jobCrudService.findAll.mockResolvedValue({
+        jobs: mockJobs,
+        total: 1,
+        page: 1,
+        limit: 50,
+        totalPages: 1,
+      });
 
       const result = await service.findAll(JobStage.QUEUED);
 
       expect(result.jobs).toEqual(mockJobs);
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { stage: JobStage.QUEUED },
-          include: expect.any(Object),
-        })
+      expect(jobCrudService.findAll).toHaveBeenCalledWith(
+        JobStage.QUEUED,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
       );
     });
 
     it('should filter jobs by node ID', async () => {
       const mockJobs = [mockJobWithRelations];
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(mockJobs as never);
-      jest.spyOn(prisma.job, 'count').mockResolvedValue(1);
+      jobCrudService.findAll.mockResolvedValue({
+        jobs: mockJobs,
+        total: 1,
+        page: 1,
+        limit: 50,
+        totalPages: 1,
+      });
 
       const result = await service.findAll(undefined, 'node-1');
 
       expect(result.jobs).toEqual(mockJobs);
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { nodeId: 'node-1' },
-          include: expect.any(Object),
-        })
+      expect(jobCrudService.findAll).toHaveBeenCalledWith(
+        undefined,
+        'node-1',
+        undefined,
+        undefined,
+        undefined,
+        undefined
       );
     });
   });
 
   describe('findOne', () => {
     it('should return a single job with full details', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJobWithRelations as never);
+      jobCrudService.findOne.mockResolvedValue(mockJobWithRelations);
 
       const result = await service.findOne('job-1');
 
       expect(result).toEqual(mockJobWithRelations);
-      expect(prisma.job.findUnique).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        include: expect.any(Object),
-      });
+      expect(jobCrudService.findOne).toHaveBeenCalledWith('job-1');
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(null);
+      jobCrudService.findOne.mockRejectedValue(
+        new NotFoundException('Job with ID "non-existent" not found')
+      );
 
       await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent')).rejects.toThrow(
@@ -356,11 +311,6 @@ describe('QueueService', () => {
 
   describe('getNextJob', () => {
     it('should return next queued job and update to ENCODING stage', async () => {
-      const nodeWithCapacity = {
-        ...mockNode,
-        maxWorkers: 5,
-        _count: { jobs: 2 },
-      };
       const updatedJob = {
         ...mockJobWithRelations,
         stage: JobStage.ENCODING,
@@ -368,57 +318,17 @@ describe('QueueService', () => {
         policy: mockPolicy,
       };
 
-      // Pre-transaction node lookup
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithCapacity as never);
-
-      // $transaction receives a callback; mock the inner tx operations
-      (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
-        const tx = {
-          $executeRaw: jest.fn(),
-          $queryRaw: jest.fn(),
-          job: {
-            findFirst: jest.fn().mockResolvedValue(mockJobWithRelations),
-            findUnique: jest.fn().mockResolvedValue(updatedJob),
-            update: jest.fn().mockResolvedValue(updatedJob),
-            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-            count: jest.fn().mockResolvedValue(2),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue(nodeWithCapacity),
-          },
-        };
-        return fn(tx);
-      });
+      processingService.getNextJob.mockResolvedValue(updatedJob);
 
       const result = await service.getNextJob('node-1');
 
       expect(result).toBeTruthy();
       expect(result?.stage).toBe(JobStage.ENCODING);
+      expect(processingService.getNextJob).toHaveBeenCalledWith('node-1');
     });
 
     it('should return null if no queued jobs available', async () => {
-      const nodeWithCapacity = {
-        ...mockNode,
-        maxWorkers: 5,
-        _count: { jobs: 0 },
-      };
-
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithCapacity as never);
-
-      (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
-        const tx = {
-          $executeRaw: jest.fn(),
-          $queryRaw: jest.fn(),
-          job: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            count: jest.fn().mockResolvedValue(0),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue(nodeWithCapacity),
-          },
-        };
-        return fn(tx);
-      });
+      processingService.getNextJob.mockResolvedValue(null);
 
       const result = await service.getNextJob('node-1');
 
@@ -426,7 +336,7 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      processingService.getNextJob.mockRejectedValue(new NotFoundException('Node not found'));
 
       await expect(service.getNextJob('non-existent')).rejects.toThrow(NotFoundException);
     });
@@ -440,20 +350,16 @@ describe('QueueService', () => {
 
     it('should update job progress successfully', async () => {
       const updatedJob = { ...mockJob, ...updateDto };
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(updatedJob as never);
+      jobCrudService.updateProgress.mockResolvedValue(updatedJob);
 
       const result = await service.updateProgress('job-1', updateDto);
 
       expect(result).toEqual(updatedJob);
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: updateDto,
-      });
+      expect(jobCrudService.updateProgress).toHaveBeenCalledWith('job-1', updateDto);
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(null);
+      jobCrudService.updateProgress.mockRejectedValue(new NotFoundException('Job not found'));
 
       await expect(service.updateProgress('non-existent', updateDto)).rejects.toThrow(
         NotFoundException
@@ -480,42 +386,13 @@ describe('QueueService', () => {
         node: { ...mockNode, license: mockLicense },
       };
 
-      // validateJobOwnership pre-check
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue({
-        ...mockJob,
-        nodeId: 'node-1',
-        fileLabel: 'Avatar',
-        updatedAt: new Date(),
-      } as never);
-
-      // completeJob now uses $transaction with updateMetrics
-      (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
-        const tx = {
-          job: {
-            findUnique: jest
-              .fn()
-              .mockResolvedValueOnce({ stage: JobStage.ENCODING }) // First: existence check
-              .mockResolvedValue(completedJob), // Second: full fetch
-            update: jest.fn().mockResolvedValue(completedJob),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue({ ...mockNode, license: mockLicense }),
-          },
-          metric: {
-            upsert: jest.fn().mockResolvedValue({}),
-          },
-          metricsProcessedJob: {
-            findUnique: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue({}),
-          },
-        };
-        return fn(tx);
-      });
+      jobStateService.completeJob.mockResolvedValue(completedJob);
 
       const result = await service.completeJob('job-1', completeDto);
 
       expect(result.stage).toBe(JobStage.COMPLETED);
       expect(result.progress).toBe(100);
+      expect(jobStateService.completeJob).toHaveBeenCalledWith('job-1', completeDto);
     });
   });
 
@@ -531,22 +408,13 @@ describe('QueueService', () => {
         failedAt: new Date(),
       };
 
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(failedJob as never);
+      jobStateService.failJob.mockResolvedValue(failedJob);
 
       const result = await service.failJob('job-1', errorMessage);
 
       expect(result.stage).toBe(JobStage.FAILED);
       expect(result.error).toBe(errorMessage);
-      expect(prisma.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'job-1' },
-          data: expect.objectContaining({
-            stage: JobStage.FAILED,
-            error: errorMessage,
-          }),
-        })
-      );
+      expect(jobStateService.failJob).toHaveBeenCalledWith('job-1', errorMessage);
     });
   });
 
@@ -558,31 +426,24 @@ describe('QueueService', () => {
         completedAt: new Date(),
       };
 
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue(cancelledJob as never);
+      jobStateService.cancelJob.mockResolvedValue(cancelledJob);
 
       const result = await service.cancelJob('job-1');
 
       expect(result.stage).toBe(JobStage.CANCELLED);
-      expect(prisma.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'job-1' },
-          data: expect.objectContaining({
-            stage: JobStage.CANCELLED,
-          }),
-        })
-      );
+      expect(jobStateService.cancelJob).toHaveBeenCalledWith('job-1', false);
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(null);
+      jobStateService.cancelJob.mockRejectedValue(new NotFoundException('Job not found'));
 
       await expect(service.cancelJob('non-existent')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if job is already completed', async () => {
-      const completedJob = { ...mockJob, stage: JobStage.COMPLETED };
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(completedJob as never);
+      jobStateService.cancelJob.mockRejectedValue(
+        new BadRequestException('Cannot cancel a completed job')
+      );
 
       await expect(service.cancelJob('job-1')).rejects.toThrow(BadRequestException);
       await expect(service.cancelJob('job-1')).rejects.toThrow('Cannot cancel a completed job');
@@ -591,18 +452,15 @@ describe('QueueService', () => {
 
   describe('remove', () => {
     it('should delete a job successfully', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(mockJob as never);
-      jest.spyOn(prisma.job, 'delete').mockResolvedValue(mockJob as never);
+      jobCrudService.remove.mockResolvedValue(undefined);
 
       await service.remove('job-1');
 
-      expect(prisma.job.delete).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-      });
+      expect(jobCrudService.remove).toHaveBeenCalledWith('job-1');
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(null);
+      jobCrudService.remove.mockRejectedValue(new NotFoundException('Job not found'));
 
       await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
     });
@@ -610,24 +468,21 @@ describe('QueueService', () => {
 
   describe('getJobStats', () => {
     it('should return job statistics without node filter', async () => {
-      // 10 count calls (detected, healthCheck, needsDecision, queued, transferring, encoding, verifying, completed, failed, cancelled)
-      jest
-        .spyOn(prisma.job, 'count')
-        .mockResolvedValueOnce(0) // detected
-        .mockResolvedValueOnce(0) // healthCheck
-        .mockResolvedValueOnce(0) // needsDecision
-        .mockResolvedValueOnce(42) // queued
-        .mockResolvedValueOnce(0) // transferring
-        .mockResolvedValueOnce(3) // encoding
-        .mockResolvedValueOnce(0) // verifying
-        .mockResolvedValueOnce(150) // completed
-        .mockResolvedValueOnce(5) // failed
-        .mockResolvedValueOnce(0); // cancelled
+      const mockStats = {
+        detected: 0,
+        healthCheck: 0,
+        needsDecision: 0,
+        queued: 42,
+        transferring: 0,
+        encoding: 3,
+        verifying: 0,
+        completed: 150,
+        failed: 5,
+        cancelled: 0,
+        totalSavedBytes: '536870912000',
+      };
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([] as never);
-      jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
-        _sum: { savedBytes: BigInt(536870912000) },
-      } as never);
+      jobCrudService.getJobStats.mockResolvedValue(mockStats);
 
       const result = await service.getJobStats();
 
@@ -636,26 +491,25 @@ describe('QueueService', () => {
       expect(result.encoding).toBe(3);
       expect(result.queued).toBe(42);
       expect(result.totalSavedBytes).toBe('536870912000');
+      expect(jobCrudService.getJobStats).toHaveBeenCalledWith(undefined);
     });
 
     it('should return job statistics filtered by node', async () => {
-      jest
-        .spyOn(prisma.job, 'count')
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(10) // queued
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(1) // encoding
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(50) // completed
-        .mockResolvedValueOnce(2) // failed
-        .mockResolvedValueOnce(0);
+      const mockStats = {
+        detected: 0,
+        healthCheck: 0,
+        needsDecision: 0,
+        queued: 10,
+        transferring: 0,
+        encoding: 1,
+        verifying: 0,
+        completed: 50,
+        failed: 2,
+        cancelled: 0,
+        totalSavedBytes: '100000000000',
+      };
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([] as never);
-      jest.spyOn(prisma.job, 'aggregate').mockResolvedValue({
-        _sum: { savedBytes: BigInt(100000000000) },
-      } as never);
+      jobCrudService.getJobStats.mockResolvedValue(mockStats);
 
       const result = await service.getJobStats('node-1');
 
@@ -664,6 +518,7 @@ describe('QueueService', () => {
       expect(result.encoding).toBe(1);
       expect(result.queued).toBe(10);
       expect(result.totalSavedBytes).toBe('100000000000');
+      expect(jobCrudService.getJobStats).toHaveBeenCalledWith('node-1');
     });
   });
 });

@@ -10,7 +10,7 @@ describe('SavingsTrendBO', () => {
     });
 
     it('should create from DTO using fromDto', () => {
-      const dto = { date: '2025-01-15', savingsGB: 125.5 };
+      const dto = { date: '2025-01-15', savedGB: 125.5 };
       const bo = SavingsTrendBO.fromDto(dto);
 
       expect(bo.date).toBe('2025-01-15');

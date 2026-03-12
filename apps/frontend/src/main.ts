@@ -1,11 +1,13 @@
 import 'zone.js';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
+import { provideTransloco, TranslocoLoader } from '@ngneat/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
+import { Observable } from 'rxjs';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { CurrentNodeEffects } from './app/core/+state/current-node.effects';
@@ -31,6 +33,13 @@ import { SettingsEffects } from './app/features/settings/+state/settings.effects
 import { settingsReducer } from './app/features/settings/+state/settings.reducer';
 import { environment } from './environments/environment';
 
+class TranslocoHttpLoader implements TranslocoLoader {
+  constructor(private http: HttpClient) {}
+  getTranslation(lang: string): Observable<Record<string, any>> {
+    return this.http.get<Record<string, any>>(`/assets/i18n/${lang}.json`);
+  }
+}
+
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
@@ -38,6 +47,15 @@ bootstrapApplication(AppComponent, {
       withInterceptors([apiBaseUrlInterceptor, authInterceptor, apiErrorInterceptor])
     ),
     provideAnimations(),
+    provideTransloco({
+      config: {
+        availableLangs: ['en'],
+        defaultLang: 'en',
+        reRenderOnLangChange: true,
+        prodMode: environment.production,
+      },
+      loader: TranslocoHttpLoader,
+    }),
     provideStore({
       // Core state
       currentNode: currentNodeReducer,

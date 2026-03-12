@@ -1,11 +1,10 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'bb-privacy',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RouterModule],
   template: `
     <div class="legal">
       <section class="legal-header">

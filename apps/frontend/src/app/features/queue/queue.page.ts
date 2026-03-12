@@ -1,12 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { AsyncPipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CarouselImage, ImageCarouselComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import {
   BehaviorSubject,
@@ -26,6 +27,7 @@ import { DistributionClient, type NodeCapacity } from '../../core/clients/distri
 import { NodesClient } from '../../core/clients/nodes.client';
 import { QueueClient } from '../../core/clients/queue.client';
 import { SettingsClient } from '../../core/clients/settings.client';
+import { ErrorLoggerService } from '../../core/services/error-logger.service';
 import { ToastService } from '../../core/services/toast.service';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import {
@@ -63,9 +65,12 @@ import { StatusClassPipe } from './pipes/status-class.pipe';
   selector: 'app-queue',
   standalone: true,
   imports: [
-    CommonModule,
+    AsyncPipe,
+    DecimalPipe,
+    KeyValuePipe,
     FormsModule,
     FontAwesomeModule,
+    TranslocoModule,
     DiskSpaceWarningBannerComponent,
     RichTooltipDirective,
     AddFilesModalComponent,
@@ -87,6 +92,7 @@ export class QueueComponent implements OnInit {
   private readonly settingsApi = inject(SettingsClient);
   private readonly distributionApi = inject(DistributionClient);
   private readonly toastService = inject(ToastService);
+  private readonly errorLogger = inject(ErrorLoggerService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -104,7 +110,9 @@ export class QueueComponent implements OnInit {
   };
 
   // Observables for reactive state
-  private readonly refreshTrigger$ = new BehaviorSubject<{ showLoading: boolean }>({
+  private readonly refreshTrigger$ = new BehaviorSubject<{
+    showLoading: boolean;
+  }>({
     showLoading: true,
   });
   private readonly loadingSubject$ = new BehaviorSubject<boolean>(true);
@@ -117,7 +125,7 @@ export class QueueComponent implements OnInit {
   >;
   protected readonly isMainNode$: Observable<boolean>;
   protected readonly nodeCapacity$: Observable<NodeCapacity[]>;
-  protected readonly advancedMode$: Observable<boolean>;
+  protected readonly advancedMode: ReturnType<typeof toSignal<boolean>>;
 
   // State
   protected expandedJobId: string | null = null;
@@ -288,9 +296,9 @@ export class QueueComponent implements OnInit {
     );
 
     // Advanced mode from settings store
-    this.advancedMode$ = this.store
-      .select(SettingsSelectors.selectAdvancedMode)
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
+      initialValue: false,
+    });
   }
 
   ngOnInit(): void {
@@ -325,9 +333,8 @@ export class QueueComponent implements OnInit {
             this.selectedStatus = settings.defaultQueueView as JobStatus | 'ALL';
           }
         },
-        error: (err) => {
+        error: () => {
           // If settings can't be loaded, fallback to ENCODING (default behavior)
-          console.warn('Failed to load default queue view setting:', err);
         },
       });
 
@@ -410,8 +417,8 @@ export class QueueComponent implements OnInit {
       .updateDefaultQueueView(status)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        error: (err) => {
-          console.warn('Failed to save default queue view preference:', err);
+        error: () => {
+          // Silent failure - preference save is non-critical
         },
       });
   }
@@ -494,7 +501,7 @@ export class QueueComponent implements OnInit {
             this.jobHistoryCache.set(jobId, history);
           },
           error: (error) => {
-            console.error(`Failed to fetch job history for ${jobId}:`, error);
+            this.errorLogger.error(`Failed to fetch job history for ${jobId}`, error);
             // Set empty array to prevent retrying on every expand
             this.maintainCacheSize();
             this.jobHistoryCache.set(jobId, []);
@@ -1106,7 +1113,7 @@ export class QueueComponent implements OnInit {
             this.showJobHistoryModal = true;
           },
           error: (error) => {
-            console.error(`Failed to fetch job history for ${job.id}:`, error);
+            this.errorLogger.error(`Failed to fetch job history for ${job.id}`, error);
             this.toastService.error('Failed to load job history');
             this.maintainCacheSize();
             this.jobHistoryCache.set(job.id, []);
@@ -1275,7 +1282,7 @@ export class QueueComponent implements OnInit {
           typeof issue.message === 'string'
       );
     } catch (error) {
-      console.error('Failed to parse decision issues:', error);
+      this.errorLogger.error('Failed to parse decision issues', error);
       return [];
     }
   }
@@ -1316,7 +1323,7 @@ export class QueueComponent implements OnInit {
       // Refresh the queue to show updated job status
       this.refreshQueue();
     } catch (error) {
-      console.error('Failed to resolve decision:', error);
+      this.errorLogger.error('Failed to resolve decision', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.toastService.error(`Failed to apply fix: ${errorMessage}`);
     }
@@ -1780,7 +1787,10 @@ export class QueueComponent implements OnInit {
     return `~${this.formatBytes(savedBytes)} (${compressionPercent}%)`;
   }
 
-  protected calculateEstimatedTime(totalSizeBytes: number): { hours: number; minutes: number } {
+  protected calculateEstimatedTime(totalSizeBytes: number): {
+    hours: number;
+    minutes: number;
+  } {
     const avgEncodingSpeed = 50 * 1024 * 1024; // 50 MB/s
     const estimatedSeconds = totalSizeBytes / avgEncodingSpeed;
     const hours = Math.floor(estimatedSeconds / 3600);

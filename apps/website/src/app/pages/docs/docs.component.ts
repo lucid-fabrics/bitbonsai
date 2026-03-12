@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -26,7 +25,7 @@ interface DocItem {
 @Component({
   selector: 'bb-docs',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, ScrollRevealDirective],
+  imports: [FontAwesomeModule, ScrollRevealDirective],
   template: `
     <div class="docs">
       <!-- Header -->
@@ -86,18 +85,22 @@ interface DocItem {
 
           <!-- Documentation Sections -->
           <div class="doc-sections">
-            <div class="doc-section" *ngFor="let section of docSections; let i = index" bbScrollReveal [delay]="i * 120" animation="fade-in-up">
-              <div class="doc-section__header">
-                <fa-icon [icon]="section.faIcon" class="doc-section__icon"></fa-icon>
-                <h2 class="doc-section__title">{{ section.title }}</h2>
-              </div>
-              <div class="doc-section__items">
-                <div class="doc-item" *ngFor="let item of section.items">
-                  <h3 class="doc-item__title">{{ item.title }}</h3>
-                  <p class="doc-item__description">{{ item.description }}</p>
+            @for (section of docSections; track section.title; let i = $index) {
+              <div class="doc-section" bbScrollReveal [delay]="i * 120" animation="fade-in-up">
+                <div class="doc-section__header">
+                  <fa-icon [icon]="section.faIcon" class="doc-section__icon"></fa-icon>
+                  <h2 class="doc-section__title">{{ section.title }}</h2>
+                </div>
+                <div class="doc-section__items">
+                  @for (item of section.items; track item.title) {
+                    <div class="doc-item">
+                      <h3 class="doc-item__title">{{ item.title }}</h3>
+                      <p class="doc-item__description">{{ item.description }}</p>
+                    </div>
+                  }
                 </div>
               </div>
-            </div>
+            }
           </div>
         </div>
       </section>

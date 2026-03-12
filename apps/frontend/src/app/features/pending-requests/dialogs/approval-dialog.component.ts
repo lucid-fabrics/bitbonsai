@@ -1,11 +1,12 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { of } from 'rxjs';
 import { delay, switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../../core/clients/nodes.client';
+import { ErrorLoggerService } from '../../../core/services/error-logger.service';
 import type { NodeCapabilities } from '../../nodes/models/node.model';
 import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
 import { ContainerType } from '../../nodes/models/registration-request.model';
@@ -34,7 +35,7 @@ export interface ApprovalDialogResult {
 @Component({
   selector: 'app-approval-dialog',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   styleUrls: ['./approval-dialog.component.scss'],
   template: `
     <div class="dialog-container">
@@ -54,27 +55,39 @@ export interface ApprovalDialogResult {
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-item__label">Name:</span>
-                <span class="info-item__value">{{ data.request.childNodeName }}</span>
+                <span class="info-item__value">{{
+                  data.request.childNodeName
+                }}</span>
               </div>
               <div class="info-item">
                 <span class="info-item__label">IP Address:</span>
-                <span class="info-item__value">{{ data.request.ipAddress }}</span>
+                <span class="info-item__value">{{
+                  data.request.ipAddress
+                }}</span>
               </div>
               <div class="info-item">
                 <span class="info-item__label">Hostname:</span>
-                <span class="info-item__value">{{ data.request.hostname }}</span>
+                <span class="info-item__value">{{
+                  data.request.hostname
+                }}</span>
               </div>
               <div class="info-item">
                 <span class="info-item__label">Container Type:</span>
-                <span class="info-item__value">{{ getContainerTypeLabel(data.request.containerType) }}</span>
+                <span class="info-item__value">{{
+                  getContainerTypeLabel(data.request.containerType)
+                }}</span>
               </div>
               <div class="info-item">
                 <span class="info-item__label">Version:</span>
-                <span class="info-item__value">{{ data.request.childVersion }}</span>
+                <span class="info-item__value">{{
+                  data.request.childVersion
+                }}</span>
               </div>
               <div class="info-item">
                 <span class="info-item__label">Acceleration:</span>
-                <span class="info-item__value">{{ data.request.acceleration }}</span>
+                <span class="info-item__value">{{
+                  data.request.acceleration
+                }}</span>
               </div>
             </div>
           </div>
@@ -85,20 +98,29 @@ export interface ApprovalDialogResult {
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-item__label">CPU:</span>
-                <span class="info-item__value">{{ data.request.hardwareSpecs.cpuCores }} cores - {{ data.request.hardwareSpecs.cpuModel }}</span>
+                <span class="info-item__value"
+                  >{{ data.request.hardwareSpecs.cpuCores }} cores -
+                  {{ data.request.hardwareSpecs.cpuModel }}</span
+                >
               </div>
               <div class="info-item">
                 <span class="info-item__label">RAM:</span>
-                <span class="info-item__value">{{ data.request.hardwareSpecs.ramGb }} GB</span>
+                <span class="info-item__value"
+                  >{{ data.request.hardwareSpecs.ramGb }} GB</span
+                >
               </div>
               <div class="info-item">
                 <span class="info-item__label">Disk:</span>
-                <span class="info-item__value">{{ data.request.hardwareSpecs.diskGb }} GB</span>
+                <span class="info-item__value"
+                  >{{ data.request.hardwareSpecs.diskGb }} GB</span
+                >
               </div>
               @if (data.request.hardwareSpecs.gpuModel) {
                 <div class="info-item">
                   <span class="info-item__label">GPU:</span>
-                  <span class="info-item__value">{{ data.request.hardwareSpecs.gpuModel }}</span>
+                  <span class="info-item__value">{{
+                    data.request.hardwareSpecs.gpuModel
+                  }}</span>
                 </div>
               }
             </div>
@@ -115,10 +137,17 @@ export interface ApprovalDialogResult {
           <!-- Note about configuration -->
           <div class="info-section note-section">
             <div class="note-box">
-              <fa-icon [icon]="['fas', 'info-circle']" class="note-box__icon"></fa-icon>
+              <fa-icon
+                [icon]="['fas', 'info-circle']"
+                class="note-box__icon"
+              ></fa-icon>
               <div>
                 <strong class="note-box__title">Node Configuration</strong>
-                <p class="note-box__message">After approval, BitBonsai will automatically detect the node's network location and storage capabilities to optimize job routing.</p>
+                <p class="note-box__message">
+                  After approval, BitBonsai will automatically detect the node's
+                  network location and storage capabilities to optimize job
+                  routing.
+                </p>
               </div>
             </div>
           </div>
@@ -127,24 +156,47 @@ export interface ApprovalDialogResult {
         <!-- Step 2: Approving and detecting capabilities -->
         @if (isApproving() && !capabilityResults()) {
           <div class="capability-detecting">
-            <fa-icon [icon]="['fas', 'circle-notch']" class="capability-detecting__spinner-icon fa-spin"></fa-icon>
-            <h3 class="capability-detecting__title">Detecting Node Capabilities</h3>
-            <p class="capability-detecting__message">{{ detectingMessage() }}</p>
+            <fa-icon
+              [icon]="['fas', 'circle-notch']"
+              class="capability-detecting__spinner-icon fa-spin"
+            ></fa-icon>
+            <h3 class="capability-detecting__title">
+              Detecting Node Capabilities
+            </h3>
+            <p class="capability-detecting__message">
+              {{ detectingMessage() }}
+            </p>
             <div class="detecting-phases">
               <div class="phase">
-                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 1"></fa-icon>
+                <fa-icon
+                  [icon]="['fas', 'check-circle']"
+                  class="phase__icon"
+                  [class.active]="detectingPhase() >= 1"
+                ></fa-icon>
                 <span class="phase__label">Approving node registration</span>
               </div>
               <div class="phase">
-                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 2"></fa-icon>
+                <fa-icon
+                  [icon]="['fas', 'check-circle']"
+                  class="phase__icon"
+                  [class.active]="detectingPhase() >= 2"
+                ></fa-icon>
                 <span class="phase__label">Testing network connection</span>
               </div>
               <div class="phase">
-                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 3"></fa-icon>
+                <fa-icon
+                  [icon]="['fas', 'check-circle']"
+                  class="phase__icon"
+                  [class.active]="detectingPhase() >= 3"
+                ></fa-icon>
                 <span class="phase__label">Scanning for shared storage</span>
               </div>
               <div class="phase">
-                <fa-icon [icon]="['fas', 'check-circle']" class="phase__icon" [class.active]="detectingPhase() >= 4"></fa-icon>
+                <fa-icon
+                  [icon]="['fas', 'check-circle']"
+                  class="phase__icon"
+                  [class.active]="detectingPhase() >= 4"
+                ></fa-icon>
                 <span class="phase__label">Classifying network location</span>
               </div>
             </div>
@@ -155,26 +207,52 @@ export interface ApprovalDialogResult {
         @if (capabilityResults()) {
           <div class="capability-results">
             <!-- Summary Banner -->
-            <div class="results-banner" [class.optimal]="capabilityResults()!.hasSharedStorage && capabilityResults()!.networkLocation === 'LOCAL'">
-              <fa-icon [icon]="['fas', 'check-circle']" class="results-banner__icon"></fa-icon>
+            <div
+              class="results-banner"
+              [class.optimal]="
+                capabilityResults()!.hasSharedStorage &&
+                capabilityResults()!.networkLocation === 'LOCAL'
+              "
+            >
+              <fa-icon
+                [icon]="['fas', 'check-circle']"
+                class="results-banner__icon"
+              ></fa-icon>
               <div>
-                <strong class="results-banner__title">{{ getResultsSummary() }}</strong>
-                <p class="results-banner__message">{{ capabilityResults()!.reasoning }}</p>
+                <strong class="results-banner__title">{{
+                  getResultsSummary()
+                }}</strong>
+                <p class="results-banner__message">
+                  {{ capabilityResults()!.reasoning }}
+                </p>
               </div>
             </div>
 
             <!-- Network Location -->
             <div class="result-section">
               <h3 class="result-section__heading">
-                <fa-icon [icon]="['fas', 'network-wired']" class="result-section__icon"></fa-icon>
+                <fa-icon
+                  [icon]="['fas', 'network-wired']"
+                  class="result-section__icon"
+                ></fa-icon>
                 Network Location
               </h3>
               <div class="result-value">
-                <span class="badge" [class.badge-success]="capabilityResults()!.networkLocation === 'LOCAL'" [class.badge-warning]="capabilityResults()!.networkLocation === 'REMOTE'">
+                <span
+                  class="badge"
+                  [class.badge-success]="
+                    capabilityResults()!.networkLocation === 'LOCAL'
+                  "
+                  [class.badge-warning]="
+                    capabilityResults()!.networkLocation === 'REMOTE'
+                  "
+                >
                   {{ capabilityResults()!.networkLocation }}
                 </span>
                 @if (capabilityResults()!.latencyMs !== null) {
-                  <span class="latency">{{ capabilityResults()!.latencyMs }}ms latency</span>
+                  <span class="latency"
+                    >{{ capabilityResults()!.latencyMs }}ms latency</span
+                  >
                 }
               </div>
             </div>
@@ -182,28 +260,46 @@ export interface ApprovalDialogResult {
             <!-- Shared Storage -->
             <div class="result-section">
               <h3 class="result-section__heading">
-                <fa-icon [icon]="['fas', 'hdd']" class="result-section__icon"></fa-icon>
+                <fa-icon
+                  [icon]="['fas', 'hdd']"
+                  class="result-section__icon"
+                ></fa-icon>
                 Shared Storage Access
               </h3>
               <div class="result-value">
                 @if (capabilityResults()!.hasSharedStorage) {
                   <span class="badge badge-success">Available</span>
                   @if (capabilityResults()!.storageBasePath) {
-                    <span class="storage-path">{{ capabilityResults()!.storageBasePath }}</span>
+                    <span class="storage-path">{{
+                      capabilityResults()!.storageBasePath
+                    }}</span>
                   }
                 } @else {
                   <span class="badge badge-secondary">Not Available</span>
-                  <span class="note">Files will be transferred over network</span>
+                  <span class="note"
+                    >Files will be transferred over network</span
+                  >
                 }
               </div>
             </div>
 
             <!-- Performance Impact -->
             <div class="info-section note-section">
-              <div class="note-box" [class.note-optimal]="capabilityResults()!.hasSharedStorage && capabilityResults()!.networkLocation === 'LOCAL'">
-                <fa-icon [icon]="['fas', 'info-circle']" class="note-box__icon"></fa-icon>
+              <div
+                class="note-box"
+                [class.note-optimal]="
+                  capabilityResults()!.hasSharedStorage &&
+                  capabilityResults()!.networkLocation === 'LOCAL'
+                "
+              >
+                <fa-icon
+                  [icon]="['fas', 'info-circle']"
+                  class="note-box__icon"
+                ></fa-icon>
                 <div>
-                  <strong class="note-box__title">{{ getPerformanceTitle() }}</strong>
+                  <strong class="note-box__title">{{
+                    getPerformanceTitle()
+                  }}</strong>
                   <p class="note-box__message">{{ getPerformanceMessage() }}</p>
                 </div>
               </div>
@@ -214,7 +310,10 @@ export interface ApprovalDialogResult {
         <!-- Error State -->
         @if (errorMessage()) {
           <div class="error-section">
-            <fa-icon [icon]="['fas', 'exclamation-triangle']" class="error-section__icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'exclamation-triangle']"
+              class="error-section__icon"
+            ></fa-icon>
             <div>
               <strong class="error-section__title">Error</strong>
               <p class="error-section__message">{{ errorMessage() }}</p>
@@ -225,15 +324,15 @@ export interface ApprovalDialogResult {
 
       <div class="dialog-footer">
         @if (!isApproving() && !capabilityResults()) {
-          <button class="btn btn-secondary" (click)="dialogRef.close()">Cancel</button>
+          <button class="btn btn-secondary" (click)="dialogRef.close()">
+            Cancel
+          </button>
           <button class="btn btn-primary" (click)="approve()">
             Approve & Add Node
           </button>
         }
         @if (capabilityResults() || errorMessage()) {
-          <button class="btn btn-primary" (click)="finish()">
-            Finish
-          </button>
+          <button class="btn btn-primary" (click)="finish()">Finish</button>
         }
       </div>
     </div>
@@ -243,6 +342,7 @@ export class ApprovalDialogComponent {
   readonly data: ApprovalDialogData = inject(DIALOG_DATA);
   readonly dialogRef = inject(DialogRef);
   private readonly nodesClient = inject(NodesClient);
+  private readonly errorLogger = inject(ErrorLoggerService);
   private readonly destroyRef = inject(DestroyRef);
 
   // Expose enum to template
@@ -303,7 +403,7 @@ export class ApprovalDialogComponent {
           this.dialogTitle.set('Node Capabilities Detected');
         },
         error: (err) => {
-          console.error('Error during approval/capability detection:', err);
+          this.errorLogger.error('Error during approval/capability detection', err);
           this.errorMessage.set(
             err?.error?.message || 'Failed to approve node or detect capabilities'
           );

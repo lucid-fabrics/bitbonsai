@@ -1,5 +1,4 @@
 import { animate, style, transition, trigger } from '@angular/animations';
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -11,6 +10,7 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { SetupService } from '../../core/services/setup.service';
 
 /**
@@ -61,7 +61,7 @@ enum NodeType {
 @Component({
   selector: 'app-setup',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FontAwesomeModule],
+  imports: [ReactiveFormsModule, FontAwesomeModule, TranslocoModule],
   templateUrl: './setup.page.html',
   styleUrls: ['./setup.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

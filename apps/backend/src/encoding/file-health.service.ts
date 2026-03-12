@@ -158,7 +158,10 @@ export class FileHealthService {
           // Parse JSON output
           if (stdout.trim()) {
             // MEDIUM #8 FIX: Safe JSON parsing with try-catch
-            let json: any;
+            let json: {
+              format?: { duration?: string; bit_rate?: string };
+              streams?: Array<{ codec_type?: string; codec_name?: string }>;
+            };
             try {
               json = JSON.parse(stdout);
             } catch (parseError) {
@@ -170,19 +173,15 @@ export class FileHealthService {
               return;
             }
 
-            const format = json.format || {};
-            const streams = json.streams || [];
+            const format = json.format ?? {};
+            const streams = json.streams ?? [];
 
-            const videoStream = streams.find(
-              (s: { codec_type: string }) => s.codec_type === 'video'
-            );
-            const audioStream = streams.find(
-              (s: { codec_type: string }) => s.codec_type === 'audio'
-            );
+            const videoStream = streams.find((s) => s.codec_type === 'video');
+            const audioStream = streams.find((s) => s.codec_type === 'audio');
 
             Object.assign(result, {
-              duration: parseFloat(format.duration) || undefined,
-              bitrate: parseInt(format.bit_rate, 10) || undefined,
+              duration: parseFloat(format.duration ?? '') || undefined,
+              bitrate: parseInt(format.bit_rate ?? '', 10) || undefined,
               hasVideo: !!videoStream,
               hasAudio: !!audioStream,
               videoCodec: videoStream?.codec_name,

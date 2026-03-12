@@ -512,7 +512,10 @@ describe('NodesService', () => {
 
       const now = Date.now();
       jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      const futureExpiration = new Date(now + 10 * 60 * 1000);
+      jest
+        .spyOn(prisma.node, 'create')
+        .mockResolvedValue({ ...mockNode, pairingExpiresAt: futureExpiration } as never);
 
       const result = await service.registerNode(registerDto);
 

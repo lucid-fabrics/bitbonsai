@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,6 +9,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { CapabilityTestResult } from '../../../../core/models/capability-test.model';
 import { NetworkLocation } from '../../../../core/models/capability-test.model';
 
@@ -22,11 +22,15 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
 @Component({
   selector: 'app-capability-results',
   standalone: true,
-  imports: [CommonModule, FormsModule, FontAwesomeModule],
+  imports: [FormsModule, FontAwesomeModule, TranslocoModule],
   template: `
     <div class="capability-results-container">
       <!-- Results Header -->
-      <div class="results-header" [class.local]="isLocal()" [class.remote]="isRemote()">
+      <div
+        class="results-header"
+        [class.local]="isLocal()"
+        [class.remote]="isRemote()"
+      >
         @if (isLocal()) {
           <div class="header-badge local">
             <i class="fas fa-bolt"></i>
@@ -55,7 +59,11 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       <div class="capabilities-grid">
         <!-- Network Location -->
         <div class="capability-card">
-          <div class="card-icon" [class.local]="isLocal()" [class.remote]="isRemote()">
+          <div
+            class="card-icon"
+            [class.local]="isLocal()"
+            [class.remote]="isRemote()"
+          >
             <i class="fas fa-network-wired"></i>
           </div>
           <div class="card-content">
@@ -71,7 +79,9 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
           </div>
           <div class="card-content">
             <div class="card-label">Shared Storage</div>
-            <div class="card-value">{{ results().hasSharedStorage ? 'Enabled' : 'Disabled' }}</div>
+            <div class="card-value">
+              {{ results().hasSharedStorage ? 'Enabled' : 'Disabled' }}
+            </div>
             @if (results().storageBasePath) {
               <div class="card-detail">{{ results().storageBasePath }}</div>
             }
@@ -81,7 +91,10 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
         <!-- Latency -->
         @if (results().latencyMs !== null) {
           <div class="capability-card">
-            <div class="card-icon" [class.low-latency]="results().latencyMs! < 50">
+            <div
+              class="card-icon"
+              [class.low-latency]="results().latencyMs! < 50"
+            >
               <i class="fas fa-tachometer-alt"></i>
             </div>
             <div class="card-content">
@@ -98,7 +111,9 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
           </div>
           <div class="card-content">
             <div class="card-label">IP Address Type</div>
-            <div class="card-value">{{ results().isPrivateIP ? 'Private' : 'Public' }}</div>
+            <div class="card-value">
+              {{ results().isPrivateIP ? 'Private' : 'Public' }}
+            </div>
           </div>
         </div>
       </div>
@@ -115,7 +130,9 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       <!-- Configuration Settings -->
       <div class="settings-section">
         <h3>Node Configuration</h3>
-        <p class="settings-subtitle">Customize performance settings for this node</p>
+        <p class="settings-subtitle">
+          Customize performance settings for this node
+        </p>
 
         <div class="settings-grid">
           <!-- Max Concurrent Jobs -->
@@ -129,7 +146,9 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
               [(ngModel)]="maxWorkers"
               class="form-input"
             />
-            <div class="field-help">Number of encoding jobs this node can handle simultaneously</div>
+            <div class="field-help">
+              Number of encoding jobs this node can handle simultaneously
+            </div>
           </div>
 
           <!-- CPU Limit -->
@@ -144,7 +163,9 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
               [(ngModel)]="cpuLimit"
               class="form-input"
             />
-            <div class="field-help">Maximum CPU usage allowed for encoding tasks</div>
+            <div class="field-help">
+              Maximum CPU usage allowed for encoding tasks
+            </div>
           </div>
         </div>
       </div>
@@ -158,12 +179,18 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
           </div>
           <div class="warning-content">
             <p>
-              <strong>File Transfer Overhead:</strong> This node will need to download source files
-              before encoding and upload results after completion.
+              <strong>File Transfer Overhead:</strong> This node will need to
+              download source files before encoding and upload results after
+              completion.
             </p>
             <ul>
-              <li>Estimated transfer time for 10GB file: ~15-30 minutes (depending on bandwidth)</li>
-              <li>Consider using VPN or shared storage for better performance</li>
+              <li>
+                Estimated transfer time for 10GB file: ~15-30 minutes (depending
+                on bandwidth)
+              </li>
+              <li>
+                Consider using VPN or shared storage for better performance
+              </li>
               <li>Jobs will be routed to local nodes when available</li>
             </ul>
           </div>
@@ -179,8 +206,8 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
           </div>
           <div class="success-content">
             <p>
-              This node can access files directly from the main node's storage. No file transfers
-              required - encoding will start immediately!
+              This node can access files directly from the main node's storage.
+              No file transfers required - encoding will start immediately!
             </p>
           </div>
         </div>
@@ -562,7 +589,10 @@ export class CapabilityResultsComponent {
   }
 
   @Output() back = new EventEmitter<void>();
-  @Output() complete = new EventEmitter<{ maxWorkers: number; cpuLimit: number }>();
+  @Output() complete = new EventEmitter<{
+    maxWorkers: number;
+    cpuLimit: number;
+  }>();
 
   readonly results = signal<CapabilityTestResult>({} as CapabilityTestResult);
 

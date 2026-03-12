@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { BehaviorSubject, interval, map, switchMap, takeWhile, tap } from 'rxjs';
+import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
 import type {
   DiscoveredNode,
   HardwareDetection,
@@ -258,6 +259,35 @@ export class DiscoveryService {
    */
   setMainNodeUrl(url: string): void {
     this.mainNodeUrl = url;
+  }
+
+  /**
+   * Get a registration request by ID from a specific main node
+   *
+   * Used to validate pending pairing requests on component init.
+   *
+   * @param mainNodeUrl - URL of the main node
+   * @param requestId - Registration request ID
+   */
+  getRegistrationRequest(mainNodeUrl: string, requestId: string): Observable<RegistrationRequest> {
+    return this.http.get<RegistrationRequest>(
+      `${mainNodeUrl}/api/v1/nodes/registration-requests/${requestId}`
+    );
+  }
+
+  /**
+   * Update a node's configuration on the main node
+   *
+   * @param mainNodeUrl - URL of the main node
+   * @param nodeId - Node ID to update
+   * @param config - Configuration to apply
+   */
+  updateNodeConfig(
+    mainNodeUrl: string,
+    nodeId: string,
+    config: { maxWorkers: number; cpuLimit: number }
+  ): Observable<unknown> {
+    return this.http.patch(`${mainNodeUrl}/api/v1/nodes/${nodeId}`, config);
   }
 
   /**

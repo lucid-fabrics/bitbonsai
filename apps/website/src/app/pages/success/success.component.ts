@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -7,7 +6,7 @@ import { faCheckCircle, faDownload, faEnvelope } from '@fortawesome/free-solid-s
 @Component({
   selector: 'bb-success',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule],
+  imports: [RouterModule, FontAwesomeModule],
   template: `
     <div class="success">
       <div class="success__container">

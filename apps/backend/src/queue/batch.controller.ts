@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Logger, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiOperation,
   ApiProperty,
@@ -92,6 +93,9 @@ export class BatchController {
       },
     },
   })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to pause jobs',
+  })
   async pauseAll(@Query('nodeId') nodeId?: string): Promise<BatchOperationResult> {
     this.logger.log(`Batch pause requested${nodeId ? ` for node ${nodeId}` : ''}`);
     return this.batchOperations.pauseAll(nodeId);
@@ -113,6 +117,9 @@ export class BatchController {
   })
   @ApiOkResponse({
     description: 'Jobs resumed successfully',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to resume jobs',
   })
   async resumeAll(@Query('nodeId') nodeId?: string): Promise<BatchOperationResult> {
     this.logger.log(`Batch resume requested${nodeId ? ` for node ${nodeId}` : ''}`);
@@ -136,6 +143,9 @@ export class BatchController {
   @ApiOkResponse({
     description: 'Jobs cancelled successfully',
   })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to cancel jobs',
+  })
   async cancelAll(@Query('nodeId') nodeId?: string): Promise<BatchOperationResult> {
     this.logger.log(`Batch cancel requested${nodeId ? ` for node ${nodeId}` : ''}`);
     return this.batchOperations.cancelAll(nodeId);
@@ -153,6 +163,9 @@ export class BatchController {
   @ApiOkResponse({
     description: 'Jobs queued for retry',
   })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retry jobs',
+  })
   async retryAllFailed(@Body() dto: BatchRetryDto): Promise<BatchOperationResult> {
     this.logger.log(
       `Batch retry requested${dto.nodeId ? ` for node ${dto.nodeId}` : ''}, maxRetries: ${dto.maxRetries || 3}`
@@ -169,7 +182,10 @@ export class BatchController {
     description: 'Deletes completed jobs older than the specified number of days.',
   })
   @ApiOkResponse({
-    description: 'Jobs deleted successfully',
+    description: 'Completed jobs deleted',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to delete completed jobs',
   })
   async deleteCompleted(@Body() dto: BatchDeleteDto): Promise<BatchOperationResult> {
     const days = dto.olderThanDays || 30;
@@ -193,7 +209,10 @@ export class BatchController {
     description: 'Only delete failed jobs for this node',
   })
   @ApiOkResponse({
-    description: 'Jobs deleted successfully',
+    description: 'Failed jobs deleted',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to delete failed jobs',
   })
   async deleteFailed(@Query('nodeId') nodeId?: string): Promise<BatchOperationResult> {
     this.logger.log(`Batch delete failed jobs${nodeId ? ` for node ${nodeId}` : ''}`);
@@ -220,6 +239,9 @@ export class BatchController {
       additionalProperties: { type: 'number' },
     },
   })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retrieve queue stats',
+  })
   async getStats(@Query('nodeId') nodeId?: string): Promise<Record<string, number>> {
     return this.batchOperations.getStats(nodeId);
   }
@@ -238,6 +260,9 @@ export class BatchController {
   })
   @ApiOkResponse({
     description: 'Queue cleared successfully',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to clear queue',
   })
   async clearAll(@Body() dto: ClearAllDto): Promise<BatchOperationResult> {
     this.logger.warn('Clear all jobs requested!');

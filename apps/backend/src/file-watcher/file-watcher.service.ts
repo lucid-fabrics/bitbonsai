@@ -1,8 +1,13 @@
 import { basename, extname } from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import type { FSWatcher } from 'chokidar';
 import * as chokidar from 'chokidar';
+import {
+  LibraryWatcherDisableEvent,
+  LibraryWatcherEnableEvent,
+  LibraryWatcherStopEvent,
+} from '../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface WatcherInstance {
@@ -280,5 +285,22 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
       path: instance.path,
       active: true,
     }));
+  }
+
+  // ─── Event Listeners (from LibrariesService via EventEmitter) ───────
+
+  @OnEvent(LibraryWatcherEnableEvent.event)
+  async handleWatcherEnable(event: LibraryWatcherEnableEvent): Promise<void> {
+    await this.enableWatcher(event.libraryId);
+  }
+
+  @OnEvent(LibraryWatcherDisableEvent.event)
+  async handleWatcherDisable(event: LibraryWatcherDisableEvent): Promise<void> {
+    await this.disableWatcher(event.libraryId);
+  }
+
+  @OnEvent(LibraryWatcherStopEvent.event)
+  async handleWatcherStop(event: LibraryWatcherStopEvent): Promise<void> {
+    await this.stopWatcher(event.libraryId);
   }
 }

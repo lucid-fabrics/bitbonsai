@@ -2,8 +2,8 @@
   <div class="page-header">
     <div class="header-content">
       <div>
-        <h1>Insights</h1>
-        <p class="subtitle">Analytics and performance metrics</p>
+        <h1>{{ 'insights.title' | transloco }}</h1>
+        <p class="subtitle">{{ 'insights.subtitle' | transloco }}</p>
       </div>
 
       <div class="time-range-selector">
@@ -34,24 +34,23 @@
 
   <!-- Loading State -->
   @if (loading) {
-    <div class="loading-skeleton">
-      <div class="skeleton-chart large"></div>
-      <div class="skeleton-grid">
-        <div class="skeleton-chart"></div>
-        <div class="skeleton-chart"></div>
-      </div>
-      <div class="skeleton-metrics">
-        @for (i of [1,2,3,4]; track i) {
-          <div class="skeleton-metric"></div>
-        }
-      </div>
+  <div class="loading-skeleton">
+    <div class="skeleton-chart large"></div>
+    <div class="skeleton-grid">
+      <div class="skeleton-chart"></div>
+      <div class="skeleton-chart"></div>
     </div>
+    <div class="skeleton-metrics">
+      @for (i of [1,2,3,4]; track i) {
+      <div class="skeleton-metric"></div>
+      }
+    </div>
+  </div>
   }
 
   <!-- Main Content -->
   @if (!loading) {
-    <div class="charts-container">
-
+  <div class="charts-container">
     <!-- Savings Trend Chart (Full Width) -->
     <div class="chart-card full-width">
       <div class="chart-header">
@@ -59,51 +58,53 @@
           <fa-icon [icon]="faChartLine"></fa-icon>
           Storage Savings Trend
         </h3>
-        <span class="chart-subtitle">Daily savings over the last {{ selectedTimeRange }} days</span>
+        <span class="chart-subtitle"
+          >Daily savings over the last {{ selectedTimeRange }} days</span
+        >
       </div>
       <div class="chart-content">
         @if (savingsTrendData.labels && savingsTrendData.labels!.length === 0) {
-          <div class="empty-state">
-            <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
-            <p>No savings data available yet</p>
-            <span>Start processing media files to see your savings trend</span>
-          </div>
-        }
-        @if (savingsTrendData.labels && savingsTrendData.labels!.length > 0) {
-          <canvas
-            baseChart
-            [data]="savingsTrendData"
-            [options]="savingsTrendOptions"
-            type="line"
-          ></canvas>
+        <div class="empty-state">
+          <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
+          <p>No savings data available yet</p>
+          <span>Start processing media files to see your savings trend</span>
+        </div>
+        } @if (savingsTrendData.labels && savingsTrendData.labels!.length > 0) {
+        <canvas
+          baseChart
+          [data]="savingsTrendData"
+          [options]="savingsTrendOptions"
+          type="line"
+        ></canvas>
         }
       </div>
     </div>
 
     <!-- Codec Distribution & Node Performance -->
     <div class="chart-grid">
-
       <!-- Codec Distribution Chart -->
       <div class="chart-card">
         <div class="chart-header">
-          <h3>Codec Distribution</h3>
-          <span class="chart-subtitle">Usage breakdown by codec type</span>
+          <h3>{{ 'insights.codecDistribution' | transloco }}</h3>
+          <span class="chart-subtitle"
+            >{{ 'insights.codecBreakdown' | transloco }}</span
+          >
         </div>
         <div class="chart-content">
           @if (codecDistributionData.labels?.length === 0) {
-            <div class="empty-state">
-              <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
-              <p>No codec data available</p>
-              <span>Process files to see codec distribution</span>
-            </div>
-          }
-          @if (codecDistributionData.labels && codecDistributionData.labels!.length > 0) {
-            <canvas
-              baseChart
-              [data]="codecDistributionData"
-              [options]="codecDistributionOptions"
-              type="doughnut"
-            ></canvas>
+          <div class="empty-state">
+            <fa-icon [icon]="faChartLine" size="3x"></fa-icon>
+            <p>{{ 'insights.noCodecData' | transloco }}</p>
+            <span>{{ 'insights.processFiles' | transloco }}</span>
+          </div>
+          } @if (codecDistributionData.labels &&
+          codecDistributionData.labels!.length > 0) {
+          <canvas
+            baseChart
+            [data]="codecDistributionData"
+            [options]="codecDistributionOptions"
+            type="doughnut"
+          ></canvas>
           }
         </div>
       </div>
@@ -111,24 +112,26 @@
       <!-- Node Performance Chart -->
       <div class="chart-card">
         <div class="chart-header">
-          <h3>Node Performance</h3>
-          <span class="chart-subtitle">Jobs completed by node</span>
+          <h3>{{ 'insights.nodePerformance' | transloco }}</h3>
+          <span class="chart-subtitle"
+            >{{ 'insights.jobsByNode' | transloco }}</span
+          >
         </div>
         <div class="chart-content">
           @if (nodePerformanceData.labels.length === 0) {
-            <div class="empty-state">
-              <fa-icon [icon]="faGauge" size="3x"></fa-icon>
-              <p>No node data available</p>
-              <span>Add worker nodes to see performance metrics</span>
-            </div>
-          }
-          @if (nodePerformanceData.labels && nodePerformanceData.labels!.length > 0) {
-            <canvas
-              baseChart
-              [data]="nodePerformanceData"
-              [options]="nodePerformanceOptions"
-              type="bar"
-            ></canvas>
+          <div class="empty-state">
+            <fa-icon [icon]="faGauge" size="3x"></fa-icon>
+            <p>{{ 'insights.noNodeData' | transloco }}</p>
+            <span>{{ 'insights.addNodes' | transloco }}</span>
+          </div>
+          } @if (nodePerformanceData.labels &&
+          nodePerformanceData.labels!.length > 0) {
+          <canvas
+            baseChart
+            [data]="nodePerformanceData"
+            [options]="nodePerformanceOptions"
+            type="bar"
+          ></canvas>
           }
         </div>
       </div>
@@ -136,15 +139,16 @@
 
     <!-- Key Metrics Cards -->
     <div class="metrics-grid">
-
       <div class="metric-card">
         <div class="metric-icon jobs">
           <fa-icon [icon]="faCheckCircle"></fa-icon>
         </div>
         <div class="metric-content">
-          <h4>Total Jobs</h4>
+          <h4>{{ 'insights.totalJobs' | transloco }}</h4>
           <p class="metric-value">{{ stats.totalJobsCompleted | number }}</p>
-          <span class="metric-label">Completed</span>
+          <span class="metric-label"
+            >{{ 'insights.completed' | transloco }}</span
+          >
         </div>
       </div>
 
@@ -153,9 +157,13 @@
           <fa-icon [icon]="faSave"></fa-icon>
         </div>
         <div class="metric-content">
-          <h4>Storage Saved</h4>
-          <p class="metric-value">{{ formatStorageSize(stats.totalStorageSavedGB) }}</p>
-          <span class="metric-label">Total savings</span>
+          <h4>{{ 'insights.storageSaved' | transloco }}</h4>
+          <p class="metric-value">
+            {{ formatStorageSize(stats.totalStorageSavedGB) }}
+          </p>
+          <span class="metric-label"
+            >{{ 'insights.totalSavings' | transloco }}</span
+          >
         </div>
       </div>
 
@@ -164,9 +172,13 @@
           <fa-icon [icon]="faCheckCircle"></fa-icon>
         </div>
         <div class="metric-content">
-          <h4>Success Rate</h4>
-          <p class="metric-value">{{ stats.averageSuccessRate | number:'1.1-1' }}%</p>
-          <span class="metric-label">Average across nodes</span>
+          <h4>{{ 'insights.successRate' | transloco }}</h4>
+          <p class="metric-value">
+            {{ stats.averageSuccessRate | number:'1.1-1' }}%
+          </p>
+          <span class="metric-label"
+            >{{ 'insights.averageAcrossNodes' | transloco }}</span
+          >
         </div>
       </div>
 
@@ -175,12 +187,16 @@
           <fa-icon [icon]="faGauge"></fa-icon>
         </div>
         <div class="metric-content">
-          <h4>Throughput</h4>
-          <p class="metric-value">{{ stats.averageThroughput | number:'1.1-1' }}</p>
-          <span class="metric-label">Files per hour</span>
+          <h4>{{ 'insights.throughput' | transloco }}</h4>
+          <p class="metric-value">
+            {{ stats.averageThroughput | number:'1.1-1' }}
+          </p>
+          <span class="metric-label"
+            >{{ 'insights.filesPerHour' | transloco }}</span
+          >
         </div>
       </div>
     </div>
-    </div>
+  </div>
   }
 </div>

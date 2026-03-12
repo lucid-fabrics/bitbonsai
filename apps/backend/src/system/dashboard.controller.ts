@@ -1,5 +1,10 @@
 import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { HealthDashboardService, type SystemDashboard } from './health-dashboard.service';
 
@@ -120,6 +125,7 @@ export class DashboardController {
       },
     },
   })
+  @ApiInternalServerErrorResponse({ description: 'Failed to build dashboard' })
   async getDashboard(): Promise<SystemDashboard> {
     this.logger.debug('Dashboard data requested');
     return this.dashboardService.getDashboard();
@@ -133,9 +139,8 @@ export class DashboardController {
     summary: 'Get health checks',
     description: 'Returns only health check results without full dashboard data.',
   })
-  @ApiOkResponse({
-    description: 'Health check results',
-  })
+  @ApiOkResponse({ description: 'Health check results' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to run health checks' })
   async getHealthChecks() {
     return this.dashboardService.runHealthChecks();
   }

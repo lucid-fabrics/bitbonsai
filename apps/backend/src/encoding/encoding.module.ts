@@ -2,8 +2,8 @@ import { forwardRef, Module } from '@nestjs/common';
 import { CoreModule } from '../core/core.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { NodesModule } from '../nodes/nodes.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
-import { QueueModule } from '../queue/queue.module';
 import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
 import { EncodingHistoryService } from './encoding-history.service';
@@ -19,6 +19,7 @@ import { FileHealthService } from './file-health.service';
  * Provides encoding job processing with FFmpeg integration.
  * Handles worker orchestration, queue management, and file operations.
  * Uses EventEmitter2 for real-time progress tracking (registered globally in AppModule).
+ * FfmpegService communicates with QueueService via events (no direct dependency).
  * Includes FileHealthService for pre-encoding file validation.
  * Includes EncodingPreviewService for live encoding preview generation.
  * Includes EncodingHistoryService for ETA improvements with historical data.
@@ -26,7 +27,7 @@ import { FileHealthService } from './file-health.service';
 @Module({
   imports: [
     CoreModule,
-    forwardRef(() => QueueModule),
+    PrismaModule,
     forwardRef(() => LibrariesModule),
     forwardRef(() => NodesModule),
   ],

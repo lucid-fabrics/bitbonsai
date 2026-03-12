@@ -23,7 +23,7 @@ export const TIER_LIMITS: Record<LicenseTier, { maxNodes: number; maxConcurrentJ
  * Get feature flags for a license tier
  */
 export function getTierFeatures(tier: LicenseTier): LicenseFeatures {
-  const isPatreon = tier.startsWith('PATREON');
+  const _isPatreon = tier.startsWith('PATREON');
   const isCommercial = tier.startsWith('COMMERCIAL');
   const isPatreonProOrHigher =
     tier === LicenseTier.PATREON_PRO || tier === LicenseTier.PATREON_ULTIMATE;

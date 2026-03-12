@@ -1,12 +1,13 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiBadRequestResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { FolderFilesDto } from './dto/file-info.dto';
@@ -31,9 +32,8 @@ export class MediaStatsController {
       '- **Potential Savings**: Estimated space savings from H.265 re-encoding\n\n' +
       '**Note**: Paths are automatically derived from configured libraries in the database.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Successfully retrieved media library statistics',
+  @ApiOkResponse({
+    description: 'Media statistics retrieved',
     type: MediaStatsDto,
   })
   @ApiInternalServerErrorResponse({
@@ -55,10 +55,7 @@ export class MediaStatsController {
       '4. **Updates** the statistics cache for the GET `/media-stats` endpoint\n\n' +
       '**Note**: Paths are automatically derived from configured libraries in the database.',
   })
-  @ApiResponse({
-    status: 202,
-    description: 'Media library scan completed successfully.',
-  })
+  @ApiAcceptedResponse({ description: 'Media scan initiated' })
   @ApiBadRequestResponse({
     description: 'No media paths configured or paths are inaccessible',
   })
@@ -89,9 +86,8 @@ export class MediaStatsController {
     example: 'h264',
     required: false,
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Successfully retrieved file list',
+  @ApiOkResponse({
+    description: 'File list retrieved',
     type: FolderFilesDto,
   })
   @ApiNotFoundResponse({

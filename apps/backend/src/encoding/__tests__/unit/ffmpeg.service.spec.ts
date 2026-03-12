@@ -2,8 +2,9 @@ import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { EncodingCancelledEvent, EncodingFailedEvent } from '../../../common/events';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
-import { QueueService } from '../../../queue/queue.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import { FfmpegService } from '../../ffmpeg.service';
 
@@ -44,8 +45,7 @@ function createMockChildProcess(): ChildProcess {
 
 describe('FfmpegService', () => {
   let service: FfmpegService;
-  let queueService: jest.Mocked<QueueService>;
-  let eventEmitter: EventEmitter2;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
   let mockSpawn: jest.Mock;
   let mockExistsSync: jest.Mock;
   let mockFs: {
@@ -93,12 +93,14 @@ describe('FfmpegService', () => {
       unlink: fs.promises.unlink as jest.Mock,
     };
 
-    // Create mock services
-    const mockQueueService = {
-      updateProgress: jest.fn().mockResolvedValue(mockJob),
-      completeJob: jest.fn().mockResolvedValue(mockJob),
-      failJob: jest.fn().mockResolvedValue(mockJob),
-      cancelJob: jest.fn().mockResolvedValue(mockJob),
+    // Create mock PrismaService
+    const mockPrismaService = {
+      job: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        update: jest.fn().mockResolvedValue(mockJob),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      $transaction: jest.fn().mockImplementation((fn: any) => fn(mockPrismaService)),
     };
 
     const mockEventEmitterInstance = {
@@ -113,8 +115,8 @@ describe('FfmpegService', () => {
       providers: [
         FfmpegService,
         {
-          provide: QueueService,
-          useValue: mockQueueService,
+          provide: PrismaService,
+          useValue: mockPrismaService,
         },
         {
           provide: EventEmitter2,
@@ -131,11 +133,7 @@ describe('FfmpegService', () => {
     }).compile();
 
     service = module.get<FfmpegService>(FfmpegService);
-    queueService = module.get(QueueService) as jest.Mocked<QueueService>;
-    eventEmitter = module.get(EventEmitter2);
-
-    // Spy on eventEmitter methods
-    jest.spyOn(eventEmitter, 'emit');
+    eventEmitter = module.get(EventEmitter2) as jest.Mocked<EventEmitter2>;
 
     // Default mock implementations
     mockExistsSync.mockReturnValue(true);
@@ -305,27 +303,20 @@ describe('FfmpegService', () => {
 
   describe('encodeFile', () => {
     it('should start encoding and register active encoding', async () => {
-      // Mock hardware acceleration detection
       jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
         type: 'CPU',
         flags: [],
         videoCodec: 'libx265',
       });
-
-      // Mock getVideoDuration to avoid ffprobe spawns
       jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
 
-      // Create mock ffmpeg process
       const ffmpegProc = createMockChildProcess();
       mockSpawn.mockReturnValue(ffmpegProc);
 
-      // Start encoding (don't await - we want it running)
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Verify encoding is tracked
       const activeJobs = service.getActiveEncodings();
       expect(activeJobs).toContain(mockJob.id);
 
@@ -347,10 +338,8 @@ describe('FfmpegService', () => {
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Verify stderr listener is attached
       expect((ffmpegProc.stderr as EventEmitter).listenerCount('data')).toBeGreaterThan(0);
 
       // Clean up
@@ -371,14 +360,16 @@ describe('FfmpegService', () => {
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Simulate ffmpeg failure
       ffmpegProc.emit('close', 1);
 
       await expect(encodePromise).rejects.toThrow();
-      expect(queueService.failJob).toHaveBeenCalledWith(mockJob.id, expect.any(String));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        EncodingFailedEvent.event,
+        expect.any(EncodingFailedEvent)
+      );
     });
 
     it('should handle file not found error', async () => {
@@ -402,16 +393,15 @@ describe('FfmpegService', () => {
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Simulate spawn error
       ffmpegProc.emit('error', new Error('spawn ffmpeg ENOENT'));
 
       await expect(encodePromise).rejects.toThrow('spawn ffmpeg ENOENT');
-      expect(queueService.failJob).toHaveBeenCalledWith(
-        mockJob.id,
-        expect.stringContaining('spawn ffmpeg ENOENT')
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        EncodingFailedEvent.event,
+        expect.any(EncodingFailedEvent)
       );
     });
   });
@@ -421,7 +411,6 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(true);
       mockFs.stat.mockResolvedValue({ size: 500000000 } as never);
 
-      // Mock hardware acceleration detection
       jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
         type: 'CPU',
         flags: [],
@@ -432,16 +421,12 @@ describe('FfmpegService', () => {
       const ffmpegProc = createMockChildProcess();
       mockSpawn.mockReturnValue(ffmpegProc);
 
-      // Start encoding (don't await - we want it running in background)
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start and be registered
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Cancel the encoding
       const cancelPromise = service.cancelEncoding(mockJob.id);
 
-      // Simulate process killed after SIGTERM
       setTimeout(() => {
         (ffmpegProc as any).killed = true;
       }, 10);
@@ -450,9 +435,12 @@ describe('FfmpegService', () => {
 
       expect(result).toBe(true);
       expect((ffmpegProc as any).kill).toHaveBeenCalledWith('SIGTERM');
-      expect(queueService.cancelJob).toHaveBeenCalledWith(mockJob.id);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        EncodingCancelledEvent.event,
+        expect.any(EncodingCancelledEvent)
+      );
 
-      // Clean up the encoding promise by making it complete
+      // Clean up the encoding promise
       setTimeout(() => ffmpegProc.emit('close', 1), 10);
       await encodePromise.catch(() => {
         // Ignore error from cancelled job
@@ -484,7 +472,6 @@ describe('FfmpegService', () => {
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start and be registered
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const activeJobs = service.getActiveEncodings();
@@ -515,7 +502,6 @@ describe('FfmpegService', () => {
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
-      // Wait for encoding to start and be registered
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const status = service.getEncodingStatus(mockJob.id);

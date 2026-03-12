@@ -1,8 +1,6 @@
 import * as fs from 'node:fs';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
-import { DataAccessService } from '../../../core/services/data-access.service';
-import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -199,7 +197,7 @@ describe('EncodingProcessorService', () => {
       queueService.completeJob.mockResolvedValue(mockJob as any);
       queueService.update.mockResolvedValue(mockJob as any);
 
-      const result = await service.processNextJob('node-1');
+      const _result = await service.processNextJob('node-1');
 
       // Job should be processed (returned or null depending on internal flow)
       // The important thing is no errors thrown
@@ -312,8 +310,9 @@ describe('EncodingProcessorService', () => {
   });
 
   describe('progress tracking', () => {
+    // Skipped: progress tracking relies on FFmpeg event streams, better covered by integration tests
     it.skip('should update job progress on ffmpeg events', async () => {
-      // Progress tracking is better tested through integration tests
+      // Placeholder: progress tracking relies on FFmpeg event streams
     });
   });
 });

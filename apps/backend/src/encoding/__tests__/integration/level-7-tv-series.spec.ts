@@ -127,6 +127,7 @@ describe('Level 7: TV Series Processing', () => {
   });
 
   describe('Season-wide Encoding', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and 10 video fixtures
     it.skip('should process an entire season of episodes', async () => {
       // TODO: Implement full season processing (10 episodes)
       // Generate all episodes for a season
@@ -137,6 +138,7 @@ describe('Level 7: TV Series Processing', () => {
   });
 
   describe('Episode Naming Conventions', () => {
+    // Skipped: unimplemented stub requiring FFmpeg and video fixtures
     it.skip('should handle various episode naming formats', async () => {
       // TODO: Test different naming conventions:
       // - Show.Name.S01E01.mkv
@@ -147,6 +149,7 @@ describe('Level 7: TV Series Processing', () => {
   });
 
   describe('Progress Tracking', () => {
+    // Skipped: unimplemented stub requiring FFmpeg and progress monitoring
     it.skip('should track progress across multiple episodes', async () => {
       // TODO: Implement progress tracking
       // Process multiple episodes

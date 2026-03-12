@@ -1,12 +1,12 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { FileInfoBo } from '../bos/file-info.bo';
 
 @Component({
   selector: 'app-files-dialog',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './files-dialog.modal.html',
   styleUrls: ['./files-dialog.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

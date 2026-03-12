@@ -3,13 +3,23 @@
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1>Discover MAIN Nodes</h1>
-        <p class="subtitle">Find and connect to an existing BitBonsai MAIN node on your network</p>
+        <h1>{{ 'discovery.title' | transloco }}</h1>
+        <p class="subtitle">{{ 'discovery.subtitle' | transloco }}</p>
       </div>
       <div class="header-right">
-        <button class="btn btn-secondary" (click)="searchForMainNodes()" [disabled]="isSearching">
-          <i class="fas" [class.fa-spinner]="isSearching" [class.fa-spin]="isSearching" [class.fa-search]="!isSearching"></i>
-          {{ isSearching ? 'Searching...' : 'Search Again' }}
+        <button
+          class="btn btn-secondary"
+          (click)="searchForMainNodes()"
+          [disabled]="isSearching"
+        >
+          <i
+            class="fas"
+            [class.fa-spinner]="isSearching"
+            [class.fa-spin]="isSearching"
+            [class.fa-search]="!isSearching"
+          ></i>
+          {{ isSearching ? ('common.loading' | transloco) : ('common.refresh' |
+          transloco) }}
         </button>
       </div>
     </div>
@@ -17,56 +27,103 @@
 
   <!-- Error Alert -->
   @if (error) {
-    <div class="error-alert">
-      <i class="fas fa-exclamation-circle"></i>
-      <span>{{ error }}</span>
-      <button class="close-btn" (click)="error = null">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
+  <div class="error-alert">
+    <i class="fas fa-exclamation-circle"></i>
+    <span>{{ error }}</span>
+    <button class="close-btn" (click)="error = null">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
   }
 
   <!-- Current Registration Request Status -->
-  @if (currentRequest && currentRequest.status === RegistrationRequestStatus.PENDING) {
-    <div class="pending-request-card">
-      <div class="card-header">
-        <div class="status-indicator pulsing"></div>
-        <div class="header-content">
-          <h2>Registration Request Pending</h2>
-          <p>Waiting for MAIN node approval</p>
+  @if (currentRequest && currentRequest.status ===
+  RegistrationRequestStatus.PENDING) {
+  <div class="pending-request-card">
+    <div class="card-header">
+      <div class="status-indicator pulsing"></div>
+      <div class="header-content">
+        <h2>{{ 'discovery.pendingRequests' | transloco }}</h2>
+        <p>{{ 'discovery.pendingSubtitle' | transloco }}</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="request-info">
+        <div class="info-row">
+          <span class="label">Pairing Token:</span>
+          <span class="value token">{{ currentRequest.pairingToken }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Requested:</span>
+          <span class="value"
+            >{{ formatTimestamp(currentRequest.requestedAt) }}</span
+          >
+        </div>
+        <div class="info-row">
+          <span class="label">Expires:</span>
+          <span class="value">{{ getTimeRemaining(currentRequest) }}</span>
         </div>
       </div>
 
-      <div class="card-body">
-        <div class="request-info">
-          <div class="info-row">
-            <span class="label">Pairing Token:</span>
-            <span class="value token">{{ currentRequest.pairingToken }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">Requested:</span>
-            <span class="value">{{ formatTimestamp(currentRequest.requestedAt) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">Expires:</span>
-            <span class="value">{{ getTimeRemaining(currentRequest) }}</span>
-          </div>
-        </div>
-
-        <div class="help-text">
-          <i class="fas fa-info-circle"></i>
-          <p>
-            Your registration request has been sent to the MAIN node. The MAIN node administrator will
-            review your request and approve or reject it. You can also share the 6-digit pairing token
-            above with the MAIN node administrator for manual approval.
-          </p>
-        </div>
+      <div class="help-text">
+        <i class="fas fa-info-circle"></i>
+        <p>
+          Your registration request has been sent to the MAIN node. The MAIN
+          node administrator will review your request and approve or reject it.
+          You can also share the 6-digit pairing token above with the MAIN node
+          administrator for manual approval.
+        </p>
       </div>
+    </div>
 
-      <div class="card-footer">
-        <button class="btn btn-danger" (click)="onCancelRequest()" [disabled]="isLoadingRequest">
-          <i class="fas fa-times"></i>
-          Cancel Request
+    <div class="card-footer">
+      <button
+        class="btn btn-danger"
+        (click)="onCancelRequest()"
+        [disabled]="isLoadingRequest"
+      >
+        <i class="fas fa-times"></i>
+        Cancel Request
+      </button>
+      <button class="btn btn-secondary" (click)="onBecomeMainNode()">
+        <i class="fas fa-crown"></i>
+        Become MAIN Node Instead
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Discovered MAIN Nodes -->
+  @if (!currentRequest) {
+  <div class="discovered-nodes-section">
+    <div class="section-header">
+      <h2>Discovered MAIN Nodes</h2>
+      @if (discoveredMainNodes.length > 0) {
+      <span class="count-badge">{{ discoveredMainNodes.length }} found</span>
+      }
+    </div>
+
+    <!-- Empty State -->
+    @if (discoveredMainNodes.length === 0 && !isSearching) {
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i class="fas fa-satellite-dish"></i>
+      </div>
+      <h3>No MAIN Nodes Found</h3>
+      <p class="empty-description">
+        No BitBonsai MAIN nodes were detected on your network. Make sure:
+      </p>
+      <ul class="empty-checklist">
+        <li>The MAIN node is running and accessible on your network</li>
+        <li>You're on the same network or subnet as the MAIN node</li>
+        <li>Network firewalls aren't blocking mDNS discovery</li>
+      </ul>
+
+      <div class="empty-actions">
+        <button class="btn btn-primary" (click)="searchForMainNodes()">
+          <i class="fas fa-search"></i>
+          Search Again
         </button>
         <button class="btn btn-secondary" (click)="onBecomeMainNode()">
           <i class="fas fa-crown"></i>
@@ -74,121 +131,84 @@
         </button>
       </div>
     </div>
-  }
+    }
 
-  <!-- Discovered MAIN Nodes -->
-  @if (!currentRequest) {
-    <div class="discovered-nodes-section">
-      <div class="section-header">
-        <h2>Discovered MAIN Nodes</h2>
-        @if (discoveredMainNodes.length > 0) {
-          <span class="count-badge">{{ discoveredMainNodes.length }} found</span>
-        }
-      </div>
+    <!-- Loading State -->
+    @if (isSearching) {
+    <div class="loading-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Searching for MAIN nodes on your network...</p>
+      <p class="loading-subtext">This may take a few seconds</p>
+    </div>
+    }
 
-      <!-- Empty State -->
-      @if (discoveredMainNodes.length === 0 && !isSearching) {
-        <div class="empty-state">
-          <div class="empty-icon">
-            <i class="fas fa-satellite-dish"></i>
-          </div>
-          <h3>No MAIN Nodes Found</h3>
-          <p class="empty-description">
-            No BitBonsai MAIN nodes were detected on your network. Make sure:
-          </p>
-          <ul class="empty-checklist">
-            <li>The MAIN node is running and accessible on your network</li>
-            <li>You're on the same network or subnet as the MAIN node</li>
-            <li>Network firewalls aren't blocking mDNS discovery</li>
-          </ul>
-
-          <div class="empty-actions">
-            <button class="btn btn-primary" (click)="searchForMainNodes()">
-              <i class="fas fa-search"></i>
-              Search Again
-            </button>
-            <button class="btn btn-secondary" (click)="onBecomeMainNode()">
-              <i class="fas fa-crown"></i>
-              Become MAIN Node Instead
-            </button>
-          </div>
+    <!-- Discovered Nodes Grid -->
+    @if (discoveredMainNodes.length > 0 && !isSearching) {
+    <div class="nodes-grid">
+      @for (node of discoveredMainNodes; track node.nodeId) {
+      <div class="node-card">
+        <div class="card-badge">
+          <i class="fas fa-crown"></i>
+          MAIN NODE
         </div>
-      }
 
-      <!-- Loading State -->
-      @if (isSearching) {
-        <div class="loading-state">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>Searching for MAIN nodes on your network...</p>
-          <p class="loading-subtext">This may take a few seconds</p>
+        <div class="card-header">
+          <h3>{{ node.nodeName }}</h3>
+          <p class="node-version">v{{ node.version }}</p>
         </div>
-      }
 
-      <!-- Discovered Nodes Grid -->
-      @if (discoveredMainNodes.length > 0 && !isSearching) {
-        <div class="nodes-grid">
-          @for (node of discoveredMainNodes; track node.nodeId) {
-            <div class="node-card">
-              <div class="card-badge">
-                <i class="fas fa-crown"></i>
-                MAIN NODE
-              </div>
-
-              <div class="card-header">
-                <h3>{{ node.nodeName }}</h3>
-                <p class="node-version">v{{ node.version }}</p>
-              </div>
-
-              <div class="card-body">
-                <div class="node-details">
-                  <div class="detail-row">
-                    <i class="fas fa-network-wired"></i>
-                    <div class="detail-content">
-                      <span class="detail-label">Network</span>
-                      <span class="detail-value">{{ node.ipAddress }}</span>
-                    </div>
-                  </div>
-                  <div class="detail-row">
-                    <i class="fas fa-server"></i>
-                    <div class="detail-content">
-                      <span class="detail-label">API Endpoint</span>
-                      <span class="detail-value">{{ node.apiUrl }}</span>
-                    </div>
-                  </div>
-                  <div class="detail-row">
-                    <i class="fas fa-plug"></i>
-                    <div class="detail-content">
-                      <span class="detail-label">Port</span>
-                      <span class="detail-value">{{ node.port }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card-footer">
-                <button
-                  class="btn btn-primary btn-block"
-                  (click)="onRegisterWithMainNode(node)"
-                  [disabled]="isLoadingRequest">
-                  <i class="fas fa-link"></i>
-                  Connect to this MAIN Node
-                </button>
+        <div class="card-body">
+          <div class="node-details">
+            <div class="detail-row">
+              <i class="fas fa-network-wired"></i>
+              <div class="detail-content">
+                <span class="detail-label">Network</span>
+                <span class="detail-value">{{ node.ipAddress }}</span>
               </div>
             </div>
-          }
+            <div class="detail-row">
+              <i class="fas fa-server"></i>
+              <div class="detail-content">
+                <span class="detail-label">API Endpoint</span>
+                <span class="detail-value">{{ node.apiUrl }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <i class="fas fa-plug"></i>
+              <div class="detail-content">
+                <span class="detail-label">Port</span>
+                <span class="detail-value">{{ node.port }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="alternative-section">
-          <p class="alternative-text">
-            <strong>Don't see your MAIN node?</strong> Try searching again or enter a pairing token manually
-            in the MAIN node's interface (Nodes → Register New Node).
-          </p>
-          <button class="btn btn-secondary btn-small" (click)="onBecomeMainNode()">
-            <i class="fas fa-crown"></i>
-            Or become a MAIN node instead
+        <div class="card-footer">
+          <button
+            class="btn btn-primary btn-block"
+            (click)="onRegisterWithMainNode(node)"
+            [disabled]="isLoadingRequest"
+          >
+            <i class="fas fa-link"></i>
+            Connect to this MAIN Node
           </button>
         </div>
+      </div>
       }
     </div>
+
+    <div class="alternative-section">
+      <p class="alternative-text">
+        <strong>Don't see your MAIN node?</strong> Try searching again or enter
+        a pairing token manually in the MAIN node's interface (Nodes → Register
+        New Node).
+      </p>
+      <button class="btn btn-secondary btn-small" (click)="onBecomeMainNode()">
+        <i class="fas fa-crown"></i>
+        Or become a MAIN node instead
+      </button>
+    </div>
+    }
+  </div>
   }
 </div>

@@ -1,9 +1,14 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Put } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  ApiInternalServerErrorResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AssignJobDto, UpdateConfigDto } from './dto/distribution.dto';
 import { DistributionOrchestratorService } from './services/distribution-orchestrator.service';
-import { LoadMonitorService } from './services/load-monitor.service';
 import { ReliabilityTrackerService } from './services/reliability-tracker.service';
 
 /**
@@ -25,9 +30,7 @@ import { ReliabilityTrackerService } from './services/reliability-tracker.servic
 @Controller('distribution')
 export class DistributionController {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly orchestrator: DistributionOrchestratorService,
-    private readonly loadMonitor: LoadMonitorService,
     private readonly reliabilityTracker: ReliabilityTrackerService
   ) {}
 
@@ -38,8 +41,8 @@ export class DistributionController {
       'Returns scores for all online nodes for the specified job, sorted by score descending.',
   })
   @ApiParam({ name: 'jobId', description: 'Job ID to score' })
-  @ApiResponse({ status: 200, description: 'Node scores returned successfully' })
-  @ApiResponse({ status: 404, description: 'Job not found' })
+  @ApiOkResponse({ description: 'Node scores retrieved' })
+  @ApiNotFoundResponse({ description: 'Job not found' })
   async getNodeScores(@Param('jobId') jobId: string) {
     const scores = await this.orchestrator.getAllNodeScores(jobId);
 
@@ -67,6 +70,8 @@ export class DistributionController {
   })
   @ApiParam({ name: 'jobId', description: 'Job ID' })
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
+  @ApiOkResponse({ description: 'Detailed score retrieved' })
+  @ApiNotFoundResponse({ description: 'Node score not found' })
   async getNodeScoreDetail(@Param('jobId') jobId: string, @Param('nodeId') nodeId: string) {
     const scores = await this.orchestrator.getAllNodeScores(jobId);
     const nodeScore = scores.find((s) => s.nodeId === nodeId);
@@ -92,8 +97,8 @@ export class DistributionController {
     description: 'Assigns a job to the optimal node, or to a specific node if nodeId is provided.',
   })
   @ApiParam({ name: 'jobId', description: 'Job ID to assign' })
-  @ApiResponse({ status: 200, description: 'Job assigned successfully' })
-  @ApiResponse({ status: 404, description: 'Job or node not found' })
+  @ApiOkResponse({ description: 'Job assigned successfully' })
+  @ApiNotFoundResponse({ description: 'Job or node not found' })
   async assignJob(@Param('jobId') jobId: string, @Body() dto: AssignJobDto) {
     const result = await this.orchestrator.assignJob(jobId, dto.nodeId);
 
@@ -110,7 +115,8 @@ export class DistributionController {
     description:
       'Analyzes all queued jobs and migrates them to better nodes if significant score improvement is possible.',
   })
-  @ApiResponse({ status: 200, description: 'Rebalance complete' })
+  @ApiOkResponse({ description: 'Rebalance complete' })
+  @ApiInternalServerErrorResponse({ description: 'Rebalance failed' })
   async rebalanceJobs() {
     const result = await this.orchestrator.rebalanceJobs();
 
@@ -126,18 +132,9 @@ export class DistributionController {
     summary: 'Get distribution configuration',
     description: 'Returns current scoring weights and behavior settings.',
   })
+  @ApiOkResponse({ description: 'Distribution config retrieved' })
   async getConfig() {
-    let config = await this.prisma.distributionConfig.findFirst({
-      where: { isActive: true },
-    });
-
-    if (!config) {
-      config = await this.prisma.distributionConfig.create({
-        data: { id: 'default' },
-      });
-    }
-
-    return config;
+    return this.orchestrator.getActiveConfig();
   }
 
   @Put('config')
@@ -145,24 +142,10 @@ export class DistributionController {
     summary: 'Update distribution configuration',
     description: 'Update scoring weights and behavior settings.',
   })
-  @ApiResponse({ status: 200, description: 'Config updated successfully' })
+  @ApiOkResponse({ description: 'Config updated' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to update config' })
   async updateConfig(@Body() dto: UpdateConfigDto) {
-    let config = await this.prisma.distributionConfig.findFirst({
-      where: { isActive: true },
-    });
-
-    if (!config) {
-      config = await this.prisma.distributionConfig.create({
-        data: { id: 'default' },
-      });
-    }
-
-    const updated = await this.prisma.distributionConfig.update({
-      where: { id: config.id },
-      data: dto,
-    });
-
-    return updated;
+    return this.orchestrator.updateConfig(dto as unknown as Record<string, unknown>);
   }
 
   @Get('summary')
@@ -170,6 +153,7 @@ export class DistributionController {
     summary: 'Get distribution summary',
     description: 'Returns summary of job distribution across nodes for dashboard.',
   })
+  @ApiOkResponse({ description: 'Distribution summary retrieved' })
   async getSummary() {
     return this.orchestrator.getDistributionSummary();
   }
@@ -180,6 +164,8 @@ export class DistributionController {
     description: 'Returns failure statistics for the specified node.',
   })
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
+  @ApiOkResponse({ description: 'Reliability stats retrieved' })
+  @ApiNotFoundResponse({ description: 'Node not found' })
   async getNodeReliability(@Param('nodeId') nodeId: string) {
     const summary = await this.reliabilityTracker.getFailureSummary(nodeId);
     const isUnreliable = this.reliabilityTracker.isUnreliable(
@@ -199,21 +185,9 @@ export class DistributionController {
     summary: 'Get capacity status for all nodes',
     description: 'Returns current capacity and load status for all online nodes.',
   })
+  @ApiOkResponse({ description: 'Node capacity status' })
   async getNodesCapacity() {
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      select: { id: true, name: true },
-    });
-
-    const capacities = [];
-    for (const node of nodes) {
-      const capacity = await this.loadMonitor.getNodeCapacity(node.id);
-      if (capacity) {
-        capacities.push(capacity);
-      }
-    }
-
-    return { nodes: capacities };
+    return this.orchestrator.getNodesCapacity();
   }
 
   @Post('simulate/:jobId')
@@ -222,6 +196,8 @@ export class DistributionController {
     description: 'Returns what node would be selected for a job without actually assigning it.',
   })
   @ApiParam({ name: 'jobId', description: 'Job ID to simulate' })
+  @ApiOkResponse({ description: 'Simulation result' })
+  @ApiNotFoundResponse({ description: 'No eligible nodes found' })
   async simulateAssignment(@Param('jobId') jobId: string) {
     const result = await this.orchestrator.findOptimalNode(jobId);
 

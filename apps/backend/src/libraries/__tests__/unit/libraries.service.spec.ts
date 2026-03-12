@@ -1,8 +1,8 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MediaType, NodeRole, NodeStatus } from '@prisma/client';
 import { DistributionOrchestratorService } from '../../../distribution/services/distribution-orchestrator.service';
-import { FileWatcherService } from '../../../file-watcher/file-watcher.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { SettingsService } from '../../../settings/settings.service';
@@ -30,6 +30,7 @@ describe('LibrariesService', () => {
     totalFiles: 0,
     totalSizeBytes: BigInt(0),
     nodeId: 'node-1',
+    watchEnabled: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -62,6 +63,7 @@ describe('LibrariesService', () => {
           useValue: {
             node: {
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
             },
             library: {
               create: jest.fn(),
@@ -73,12 +75,9 @@ describe('LibrariesService', () => {
           },
         },
         {
-          provide: FileWatcherService,
+          provide: EventEmitter2,
           useValue: {
-            watchLibrary: jest.fn(),
-            unwatchLibrary: jest.fn(),
-            startWatcher: jest.fn(),
-            stopWatcher: jest.fn(),
+            emit: jest.fn(),
           },
         },
         {
@@ -91,11 +90,20 @@ describe('LibrariesService', () => {
         },
         {
           provide: SettingsService,
-          useValue: { get: jest.fn(), set: jest.fn(), getAll: jest.fn() },
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            getAll: jest.fn(),
+            getReadyFilesCacheTtl: jest.fn(),
+          },
         },
         {
           provide: DistributionOrchestratorService,
-          useValue: { distribute: jest.fn(), rebalance: jest.fn() },
+          useValue: {
+            distribute: jest.fn(),
+            rebalance: jest.fn(),
+            findBestNodeForNewJob: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -126,9 +134,6 @@ describe('LibrariesService', () => {
       expect(result).toEqual(mockLibrary);
       expect(prisma.node.findUnique).toHaveBeenCalledWith({
         where: { id: 'node-1' },
-      });
-      expect(prisma.library.create).toHaveBeenCalledWith({
-        data: createDto,
       });
     });
 

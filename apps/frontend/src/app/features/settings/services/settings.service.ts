@@ -4,6 +4,7 @@ import type { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { EnvironmentInfo } from '../models/environment-info.model';
 import type { SecuritySettings } from '../models/security-settings.model';
+import type { SystemResources } from '../models/system-resources.model';
 import type { SystemSettings } from '../models/system-settings.model';
 import type { UpdateSystemSettings } from '../models/update-system-settings.model';
 
@@ -47,6 +48,10 @@ export class SettingsService {
 
   updateSecuritySettings(settings: SecuritySettings): Observable<SecuritySettings> {
     return this.http.patch<SecuritySettings>(`${this.apiUrl}/security`, settings);
+  }
+
+  getSystemResources(): Observable<SystemResources> {
+    return this.http.get<SystemResources>(`${environment.apiUrl}/system/resources`);
   }
 
   // Note: Advanced mode methods are in SettingsClient to avoid duplication

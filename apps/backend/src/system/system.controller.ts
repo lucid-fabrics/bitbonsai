@@ -1,5 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SystemService } from './system.service';
 
 @ApiTags('system')
@@ -14,9 +19,8 @@ export class SystemController {
       'Returns CPU, memory, and optimal worker configuration based on hardware. ' +
       'Includes scenarios for different safety margins (conservative, balanced, aggressive).',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'System resources and worker capacity calculations',
+  @ApiOkResponse({
+    description: 'System resources and worker capacity',
     schema: {
       type: 'object',
       properties: {
@@ -65,6 +69,7 @@ export class SystemController {
       },
     },
   })
+  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve resources' })
   getSystemResources() {
     return this.systemService.getSystemResources();
   }

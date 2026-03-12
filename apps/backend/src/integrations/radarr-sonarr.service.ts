@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { testIntegrationConnection } from './test-connection.util';
 
 /**
  * Media server type
@@ -367,28 +368,24 @@ export class RadarrSonarrIntegrationService {
    * Test connection to *arr
    */
   async testConnection(
-    type: MediaServerType,
+    _type: MediaServerType,
     url: string,
     apiKey: string
   ): Promise<{ success: boolean; version?: string; error?: string }> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${url.replace(/\/$/, '')}/api/v3/system/status`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout: 10000,
-        })
-      );
+    const result = await testIntegrationConnection(this.httpService, {
+      url,
+      path: '/api/v3/system/status',
+      headers: { 'X-Api-Key': apiKey },
+    });
 
-      return {
-        success: true,
-        version: response.data?.version,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Connection failed',
-      };
+    if (!result.success) {
+      return { success: false, error: result.error };
     }
+
+    return {
+      success: true,
+      version: result.data?.version as string | undefined,
+    };
   }
 
   /**

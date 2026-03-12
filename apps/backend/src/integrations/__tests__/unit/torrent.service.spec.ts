@@ -6,7 +6,7 @@ import { TorrentClient, TorrentIntegrationService } from '../../torrent.service'
 
 describe('TorrentIntegrationService', () => {
   let service: TorrentIntegrationService;
-  let httpService: jest.Mocked<HttpService>;
+  let _httpService: jest.Mocked<HttpService>;
 
   const mockPrismaService = {
     settings: {
@@ -37,7 +37,7 @@ describe('TorrentIntegrationService', () => {
     }).compile();
 
     service = module.get<TorrentIntegrationService>(TorrentIntegrationService);
-    httpService = module.get(HttpService);
+    _httpService = module.get(HttpService);
   });
 
   describe('constructor', () => {

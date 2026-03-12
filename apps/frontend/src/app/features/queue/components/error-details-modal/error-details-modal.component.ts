@@ -1,10 +1,10 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { TranslocoModule } from '@ngneat/transloco';
 
 @Component({
   selector: 'app-error-details-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   templateUrl: './error-details-modal.component.html',
   styleUrls: ['./error-details-modal.component.scss'],
 })

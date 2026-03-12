@@ -1,5 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import {
   faTrash,
   faTv,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import {
   ConfirmationDialogComponent,
@@ -53,7 +54,7 @@ interface PolicyFormData {
 @Component({
   selector: 'app-policies',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, FormsModule, RichTooltipDirective],
+  imports: [AsyncPipe, FontAwesomeModule, FormsModule, TranslocoModule, RichTooltipDirective],
   templateUrl: './policies.page.html',
   styleUrls: ['./policies.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

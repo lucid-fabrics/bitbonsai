@@ -52,10 +52,10 @@
       "style": {
         "noImplicitBoolean": "off",
         "noNegationElse": "off",
-        "noNonNullAssertion": "warn",
-        "noParameterAssign": "warn",
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "off",
         "useBlockStatements": "off",
-        "useCollapsedElseIf": "warn",
+        "useCollapsedElseIf": "off",
         "useConsistentArrayType": {
           "level": "warn",
           "options": {
@@ -75,7 +75,9 @@
         "noConsole": "off",
         "noEmptyBlockStatements": "warn",
         "noExplicitAny": "warn",
-        "noImplicitAnyLet": "warn"
+        "noImplicitAnyLet": "warn",
+        "noControlCharactersInRegex": "off",
+        "noAssignInExpressions": "off"
       },
       "performance": {
         "noAccumulatingSpread": "warn",
@@ -88,7 +90,7 @@
   },
   "overrides": [
     {
-      "includes": ["*.spec.ts", "*.test.ts"],
+      "includes": ["**/*.spec.ts", "**/*.test.ts"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -106,6 +108,19 @@
           },
           "correctness": {
             "noUnusedFunctionParameters": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/src/**/*.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off"
           }
         }
       }

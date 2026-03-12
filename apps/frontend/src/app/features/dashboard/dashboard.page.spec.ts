@@ -1,3 +1,4 @@
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import {
@@ -8,6 +9,7 @@ import {
   faSync,
   faTimes,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoTestingModule } from '@ngneat/transloco';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { MediaStatsClient } from '../../core/clients/media-stats.client';
@@ -51,7 +53,8 @@ describe('DashboardComponent', () => {
     } as unknown as jest.Mocked<MediaStatsClient>;
 
     await TestBed.configureTestingModule({
-      imports: [DashboardComponent],
+      imports: [DashboardComponent, TranslocoTestingModule.forRoot({})],
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [
         provideMockStore({ initialState }),
         { provide: MediaStatsClient, useValue: mediaStatsClientMock },

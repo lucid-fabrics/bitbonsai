@@ -6,7 +6,7 @@
         Encoding Schedule
       </h3>
       <p class="schedule-editor__subtitle">
-        Click and drag on the calendar to create time windows. The node will only encode during these times.
+        {{ 'nodeSchedule.addTimeDesc' | transloco }}
       </p>
       <p class="schedule-editor__summary">{{ getSummary() }}</p>
     </div>
@@ -22,32 +22,44 @@
   </div>
 
   <div class="schedule-editor__calendar">
-    <full-calendar
-      #calendar
-      [options]="calendarOptions()"
-    ></full-calendar>
+    <full-calendar #calendar [options]="calendarOptions()"></full-calendar>
   </div>
 
   <div class="schedule-editor__instructions">
     <h4 class="schedule-editor__instructions-title">
       <fa-icon [icon]="['fas', 'lightbulb']"></fa-icon>
-      Quick Guide
+      {{ 'nodeSchedule.quickGuide' | transloco }}
     </h4>
     <ul class="schedule-editor__instructions-list">
       <li>
-        <strong>Add time:</strong> Click and drag on the calendar to create a window
+        <strong>{{ 'nodeSchedule.addTime' | transloco }}</strong>
+        {{ 'nodeSchedule.addTimeDesc' | transloco }}
       </li>
       <li>
-        <strong>Resize:</strong> Drag the edges of a window to adjust start/end times
+        <strong>{{ 'nodeSchedule.resize' | transloco }}</strong>
+        {{ 'nodeSchedule.resizeDesc' | transloco }}
       </li>
       <li>
-        <strong>Move:</strong> Drag a window to change its day or time
+        <strong>{{ 'nodeSchedule.move' | transloco }}</strong>
+        {{ 'nodeSchedule.moveDesc' | transloco }}
       </li>
       <li>
-        <strong>Remove:</strong> Click any window to delete it
+        <strong>{{ 'nodeSchedule.remove' | transloco }}</strong>
+        {{ 'nodeSchedule.removeDesc' | transloco }}
       </li>
       <li>
-        <strong>Always on:</strong> Leave empty for 24/7 encoding (no restrictions)
+        <strong>{{ 'nodeSchedule.alwaysOn' | transloco }}</strong>
+        {{ 'nodeSchedule.alwaysOnDesc' | transloco }}
+      </li>
+      <li>
+        <strong>Resize:</strong> Drag the edges of a window to adjust start/end
+        times
+      </li>
+      <li><strong>Move:</strong> Drag a window to change its day or time</li>
+      <li><strong>Remove:</strong> Click any window to delete it</li>
+      <li>
+        <strong>Always on:</strong> Leave empty for 24/7 encoding (no
+        restrictions)
       </li>
     </ul>
   </div>

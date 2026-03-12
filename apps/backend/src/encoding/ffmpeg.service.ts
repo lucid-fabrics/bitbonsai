@@ -1,16 +1,17 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
-import {
-  forwardRef,
-  Inject,
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AccelerationType, Job, Policy } from '@prisma/client';
-import { QueueService } from '../queue/queue.service';
+import {
+  EncodingCancelledEvent,
+  EncodingFailedEvent,
+  EncodingPreviewUpdateEvent,
+  EncodingProcessMarkedEvent,
+  EncodingProgressUpdateEvent,
+} from '../common/events';
+import { normalizeCodec as normalizeCodecUtil } from '../common/utils/codec.util';
+import { PrismaService } from '../prisma/prisma.service';
 import type { EncodingProgressDto } from './dto/encoding-progress.dto';
 import { EncodingPreviewService } from './encoding-preview.service';
 
@@ -203,8 +204,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   ]);
 
   constructor(
-    @Inject(forwardRef(() => QueueService))
-    private readonly queueService: QueueService,
+    private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly previewService: EncodingPreviewService
   ) {}
@@ -770,43 +770,6 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Retry helper with exponential backoff
-   *
-   * Retries an async function up to maxAttempts times with exponential backoff.
-   * Used for transient database lock errors during high-frequency progress updates.
-   *
-   * @param fn - Async function to retry
-   * @param maxAttempts - Maximum number of attempts (default: 3)
-   * @param baseDelayMs - Base delay in milliseconds (default: 100ms)
-   * @returns Promise that resolves when operation succeeds or all retries exhausted
-   */
-  private async retryWithBackoff<T>(
-    fn: () => Promise<T>,
-    maxAttempts = 3,
-    baseDelayMs = 100
-  ): Promise<T> {
-    let lastError: Error | undefined;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-
-        if (attempt < maxAttempts) {
-          const delayMs = baseDelayMs * 2 ** (attempt - 1); // Exponential backoff
-          this.logger.debug(
-            `Retry attempt ${attempt}/${maxAttempts} failed, waiting ${delayMs}ms: ${lastError.message}`
-          );
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-      }
-    }
-
-    throw lastError;
-  }
-
-  /**
    * Parse ffmpeg progress line
    *
    * Extracts progress information from ffmpeg stderr output:
@@ -892,7 +855,15 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     resumeFromPercent = 0
   ): Promise<void> {
     // CRITICAL #1 FIX: Check for pause/cancel requests before processing progress
-    const jobStatus = await this.queueService.getJobStatus(job.id);
+    const jobStatus = await this.prisma.job.findUnique({
+      where: { id: job.id },
+      select: {
+        pauseRequestedAt: true,
+        pauseProcessedAt: true,
+        cancelRequestedAt: true,
+        cancelProcessedAt: true,
+      },
+    });
     if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
       this.logger.warn(`[${job.id}] Pause requested, killing FFmpeg gracefully...`);
       await this.killProcess(job.id);
@@ -960,24 +931,17 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug(
         `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)${isFirstProgressEvent ? ' [FIRST]' : ''}`
       );
-      // CRITICAL: Retry progress updates with exponential backoff to handle transient database locks
-      // MEDIUM #3 FIX: Enhanced error handling for failed progress updates
-      this.retryWithBackoff(() =>
-        this.queueService.updateProgress(job.id, {
-          progress: Math.round(adjustedProgress * 100) / 100, // Round to 2 decimal places
+      // Fire-and-forget: emit event for QueueService to persist progress
+      this.eventEmitter.emit(
+        EncodingProgressUpdateEvent.event,
+        new EncodingProgressUpdateEvent(job.id, {
+          progress: Math.round(adjustedProgress * 100) / 100,
           etaSeconds: eta,
           fps: progressData.fps,
-          // TRUE RESUME: Save resume state for crash recovery
           resumeTimestamp: progressData.currentTime,
           tempFilePath: tempOutput,
         })
-      ).catch((error) => {
-        // MEDIUM #3 FIX: Log as warning instead of error (doesn't kill encoding)
-        // Next progress update will retry with fresh data
-        this.logger.warn(
-          `[${job.id}] Progress update failed after 3 retries at ${adjustedProgress.toFixed(2)}% - will retry on next checkpoint: ${error.message}`
-        );
-      });
+      );
       activeEncoding.lastProgress = adjustedProgress;
 
       // ENCODING PREVIEW: Generate preview screenshots (throttled to 30 seconds)
@@ -998,12 +962,11 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           .generatePreviews(job.id, tempOutput, estimatedDurationSeconds, adjustedProgress)
           .then((previewPaths) => {
             if (previewPaths.length > 0) {
-              // Update job with preview paths
-              this.queueService.updateJobPreview(job.id, previewPaths).catch((err) => {
-                this.logger.warn(
-                  `Failed to update preview paths for job ${job.id}: ${err.message}`
-                );
-              });
+              // Fire-and-forget: emit event to update preview paths
+              this.eventEmitter.emit(
+                EncodingPreviewUpdateEvent.event,
+                new EncodingPreviewUpdateEvent(job.id, previewPaths)
+              );
               this.logger.debug(`[${job.id}] Generated ${previewPaths.length} preview screenshots`);
             }
           })
@@ -1106,7 +1069,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Keeping temp file for resume: ${tempOutput}`);
     }
 
-    await this.queueService.failJob(job.id, errorMessage);
+    this.eventEmitter.emit(
+      EncodingFailedEvent.event,
+      new EncodingFailedEvent(job.id, errorMessage)
+    );
   }
 
   /**
@@ -1381,41 +1347,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Normalize codec name to standard format
-   * Maps various codec names to standardized identifiers
+   * Delegates to shared utility for consistency across modules.
    */
   normalizeCodec(codec: string): string {
-    // MEDIUM #6 FIX: Enhanced codec normalization with more variants
-    const codecMap: Record<string, string> = {
-      // HEVC / H.265 variants
-      hevc: 'hevc',
-      h265: 'hevc',
-      'h.265': 'hevc',
-      hvc1: 'hevc',
-      x265: 'hevc',
-      // H.264 / AVC variants
-      h264: 'h264',
-      'h.264': 'h264',
-      avc: 'h264',
-      avc1: 'h264',
-      x264: 'h264',
-      // VP9 variants
-      vp9: 'vp9',
-      'vp 9': 'vp9',
-      vp09: 'vp9',
-      // AV1 variants
-      av1: 'av1',
-      av01: 'av1',
-      // VP8
-      vp8: 'vp8',
-      vp08: 'vp8',
-      // MPEG variants
-      mpeg2: 'mpeg2',
-      'mpeg-2': 'mpeg2',
-      mpeg4: 'mpeg4',
-      'mpeg-4': 'mpeg4',
-    };
-    const normalized = codec.toLowerCase().trim();
-    return codecMap[normalized] || normalized;
+    return normalizeCodecUtil(codec);
   }
 
   /**
@@ -1682,12 +1617,15 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         } catch {
           // Ignore
         }
-        // Clear resume state
-        await this.queueService.updateProgress(job.id, {
-          tempFilePath: undefined,
-          resumeTimestamp: undefined,
-          progress: 0,
-        });
+        // Clear resume state via event
+        this.eventEmitter.emit(
+          EncodingProgressUpdateEvent.event,
+          new EncodingProgressUpdateEvent(job.id, {
+            progress: 0,
+            etaSeconds: 0,
+            fps: 0,
+          })
+        );
       }
     }
 
@@ -1910,7 +1848,15 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     try {
       // CRITICAL #1 FIX: Mark pause/cancel as processed before killing
       if (markProcessed) {
-        const jobStatus = await this.queueService.getJobStatus(jobId);
+        const jobStatus = await this.prisma.job.findUnique({
+          where: { id: jobId },
+          select: {
+            pauseRequestedAt: true,
+            pauseProcessedAt: true,
+            cancelRequestedAt: true,
+            cancelProcessedAt: true,
+          },
+        });
         const updateData: Record<string, Date> = {};
         if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
           updateData.pauseProcessedAt = new Date();
@@ -1919,7 +1865,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           updateData.cancelProcessedAt = new Date();
         }
         if (Object.keys(updateData).length > 0) {
-          await this.queueService.updateJobRaw(jobId, updateData);
+          this.eventEmitter.emit(
+            EncodingProcessMarkedEvent.event,
+            new EncodingProcessMarkedEvent(jobId, updateData)
+          );
         }
       }
 
@@ -2286,8 +2235,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         activeEncoding.process.kill('SIGKILL');
       }
 
-      // Mark job as cancelled
-      await this.queueService.cancelJob(jobId);
+      // Mark job as cancelled via event
+      this.eventEmitter.emit(EncodingCancelledEvent.event, new EncodingCancelledEvent(jobId));
 
       // Cache stderr before removing from active encodings
       if (activeEncoding.lastStderr) {

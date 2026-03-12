@@ -5,29 +5,29 @@
       <div class="brand-logo">
         <i class="fa-solid fa-tree"></i>
       </div>
-      <h1 class="brand-title">BitBonsai</h1>
-      <p class="brand-tagline">Intelligent Media Encoding Platform</p>
+      <h1 class="brand-title">{{ 'app.name' | transloco }}</h1>
+      <p class="brand-tagline">{{ 'app.tagline' | transloco }}</p>
     </div>
 
     <!-- Login Form Card -->
     <div class="login-card">
-      <h2 class="login-title">Sign In</h2>
-      <p class="login-subtitle">Enter your credentials to access your account</p>
+      <h2 class="login-title">{{ 'auth.login' | transloco }}</h2>
+      <p class="login-subtitle">{{ 'auth.loginSubtitle' | transloco }}</p>
 
       <!-- Success Message -->
       @if (successMessage()) {
-        <div class="alert alert-success">
-          <i class="fa-solid fa-check-circle"></i>
-          <span>{{ successMessage() }}</span>
-        </div>
+      <div class="alert alert-success">
+        <i class="fa-solid fa-check-circle"></i>
+        <span>{{ successMessage() }}</span>
+      </div>
       }
 
       <!-- Error Message -->
       @if (errorMessage()) {
-        <div class="alert alert-error">
-          <i class="fa-solid fa-exclamation-circle"></i>
-          <span>{{ errorMessage() }}</span>
-        </div>
+      <div class="alert alert-error">
+        <i class="fa-solid fa-exclamation-circle"></i>
+        <span>{{ errorMessage() }}</span>
+      </div>
       }
 
       <!-- Login Form -->
@@ -36,7 +36,7 @@
         <div class="form-group">
           <label for="username" class="form-label">
             <i class="fa-solid fa-user"></i>
-            Username
+            {{ 'auth.username' | transloco }}
           </label>
           <div class="input-wrapper">
             <input
@@ -45,15 +45,15 @@
               formControlName="username"
               class="form-input"
               [class.input-error]="hasError('username')"
-              placeholder="Enter your username"
+              placeholder="{{ 'auth.enterUsername' | transloco }}"
               autocomplete="username"
             />
           </div>
           @if (hasError('username')) {
-            <div class="error-message">
-              <i class="fa-solid fa-exclamation-triangle"></i>
-              {{ getErrorMessage('username') }}
-            </div>
+          <div class="error-message">
+            <i class="fa-solid fa-exclamation-triangle"></i>
+            {{ getErrorMessage('username') }}
+          </div>
           }
         </div>
 
@@ -61,7 +61,7 @@
         <div class="form-group">
           <label for="password" class="form-label">
             <i class="fa-solid fa-lock"></i>
-            Password
+            {{ 'auth.password' | transloco }}
           </label>
           <div class="input-wrapper password-wrapper">
             <input
@@ -70,7 +70,7 @@
               formControlName="password"
               class="form-input"
               [class.input-error]="hasError('password')"
-              placeholder="Enter your password"
+              placeholder="{{ 'auth.enterPassword' | transloco }}"
               autocomplete="current-password"
             />
             <button
@@ -79,14 +79,16 @@
               (click)="togglePasswordVisibility()"
               [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
             >
-              <i [class]="showPassword() ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+              <i
+                [class]="showPassword() ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"
+              ></i>
             </button>
           </div>
           @if (hasError('password')) {
-            <div class="error-message">
-              <i class="fa-solid fa-exclamation-triangle"></i>
-              {{ getErrorMessage('password') }}
-            </div>
+          <div class="error-message">
+            <i class="fa-solid fa-exclamation-triangle"></i>
+            {{ getErrorMessage('password') }}
+          </div>
           }
         </div>
 
@@ -98,11 +100,11 @@
           [class.loading]="isLoading()"
         >
           @if (isLoading()) {
-            <span class="spinner"></span>
-            <span>Signing In...</span>
+          <span class="spinner"></span>
+          <span>{{ 'auth.signIn' | transloco }}...</span>
           } @else {
-            <i class="fa-solid fa-right-to-bracket"></i>
-            <span>Sign In</span>
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>{{ 'auth.signIn' | transloco }}</span>
           }
         </button>
       </form>

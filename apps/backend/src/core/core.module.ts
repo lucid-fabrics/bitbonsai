@@ -1,5 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DataAccessService } from './services/data-access.service';
@@ -20,7 +20,7 @@ import { StorageInitService } from './services/storage-init.service';
  * - NodeConfigService for node configuration management
  * - DockerVolumeDetectorService for detecting Docker volume mounts
  * - NFSAutoExportService for auto-exporting Docker volumes as NFS shares
- * - StorageInitService for initializing storage on app startup
+ * - StorageInitService for initializing storage on app startup (uses events for cross-module comms)
  * - EncryptionService for encrypting sensitive data (passwords, API keys)
  */
 @Module({
@@ -31,11 +31,6 @@ import { StorageInitService } from './services/storage-init.service';
     }),
     PrismaModule,
     IntegrationsModule,
-    // Use forwardRef to break circular dependency with NodesModule
-    forwardRef(() => {
-      const { NodesModule } = require('../nodes/nodes.module');
-      return NodesModule;
-    }),
   ],
   providers: [
     NodeConfigService,

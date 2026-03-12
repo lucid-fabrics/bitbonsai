@@ -42,6 +42,7 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.8",
+    "@ngneat/transloco": "^6.0.4",
     "@ngrx/effects": "^20.1.0",
     "@ngrx/store": "^20.1.0",
     "@ngrx/store-devtools": "^20.1.0",

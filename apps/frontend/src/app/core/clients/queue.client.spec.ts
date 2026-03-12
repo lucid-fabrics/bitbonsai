@@ -27,6 +27,17 @@ describe('QueueClient', () => {
     expect(client).toBeTruthy();
   });
 
+  /** Helper to build a paginated response matching the backend format */
+  function paginatedResponse(jobs: QueueJobApiModel[], total?: number) {
+    return {
+      jobs,
+      total: total ?? jobs.length,
+      page: 1,
+      limit: 50,
+      totalPages: 1,
+    };
+  }
+
   describe('getQueue', () => {
     it('should fetch queue data without filters', () => {
       const mockJobs: QueueJobApiModel[] = [
@@ -63,7 +74,7 @@ describe('QueueClient', () => {
 
       const jobsReq = httpMock.expectOne('/api/v1/queue');
       expect(jobsReq.request.method).toBe('GET');
-      jobsReq.flush(mockJobs);
+      jobsReq.flush(paginatedResponse(mockJobs));
 
       const statsReq = httpMock.expectOne('/api/v1/queue/stats');
       expect(statsReq.request.method).toBe('GET');
@@ -109,7 +120,7 @@ describe('QueueClient', () => {
         (req) => req.url === '/api/v1/queue' && req.params.get('stage') === JobStatus.ENCODING
       );
       expect(jobsReq.request.method).toBe('GET');
-      jobsReq.flush(mockJobs);
+      jobsReq.flush(paginatedResponse(mockJobs));
 
       const statsReq = httpMock.expectOne('/api/v1/queue/stats');
       statsReq.flush(mockStats);
@@ -120,7 +131,6 @@ describe('QueueClient', () => {
         nodeId: 'node-1',
       };
 
-      const mockJobs: QueueJobApiModel[] = [];
       const mockStats: QueueStats = {
         total: 0,
         queued: 0,
@@ -136,9 +146,11 @@ describe('QueueClient', () => {
         (req) => req.url === '/api/v1/queue' && req.params.get('nodeId') === 'node-1'
       );
       expect(jobsReq.request.method).toBe('GET');
-      jobsReq.flush(mockJobs);
+      jobsReq.flush(paginatedResponse([]));
 
-      const statsReq = httpMock.expectOne('/api/v1/queue/stats');
+      const statsReq = httpMock.expectOne(
+        (req) => req.url === '/api/v1/queue/stats' && req.params.get('nodeId') === 'node-1'
+      );
       statsReq.flush(mockStats);
     });
 
@@ -147,7 +159,6 @@ describe('QueueClient', () => {
         search: 'movie',
       };
 
-      const mockJobs: QueueJobApiModel[] = [];
       const mockStats: QueueStats = {
         total: 0,
         queued: 0,
@@ -163,7 +174,7 @@ describe('QueueClient', () => {
         (req) => req.url === '/api/v1/queue' && req.params.get('search') === 'movie'
       );
       expect(jobsReq.request.method).toBe('GET');
-      jobsReq.flush(mockJobs);
+      jobsReq.flush(paginatedResponse([]));
 
       const statsReq = httpMock.expectOne('/api/v1/queue/stats');
       statsReq.flush(mockStats);
@@ -176,7 +187,6 @@ describe('QueueClient', () => {
         search: 'tv',
       };
 
-      const mockJobs: QueueJobApiModel[] = [];
       const mockStats: QueueStats = {
         total: 0,
         queued: 0,
@@ -196,9 +206,11 @@ describe('QueueClient', () => {
           req.params.get('search') === 'tv'
         );
       });
-      jobsReq.flush(mockJobs);
+      jobsReq.flush(paginatedResponse([]));
 
-      const statsReq = httpMock.expectOne('/api/v1/queue/stats');
+      const statsReq = httpMock.expectOne(
+        (req) => req.url === '/api/v1/queue/stats' && req.params.get('nodeId') === 'node-2'
+      );
       statsReq.flush(mockStats);
     });
 
@@ -235,7 +247,7 @@ describe('QueueClient', () => {
       });
 
       const jobsReq = httpMock.expectOne('/api/v1/queue');
-      jobsReq.flush(mockJobs);
+      jobsReq.flush(paginatedResponse(mockJobs, 1));
 
       const statsReq = httpMock.expectOne('/api/v1/queue/stats');
       statsReq.flush(mockStats);
@@ -270,7 +282,7 @@ describe('QueueClient', () => {
 
       const req = httpMock.expectOne('/api/v1/queue/job-1/cancel');
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({});
+      expect(req.request.body).toEqual({ blacklist: false });
       req.flush(null);
     });
 

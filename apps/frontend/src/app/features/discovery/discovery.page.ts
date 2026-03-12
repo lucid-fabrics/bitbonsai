@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -9,6 +8,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { TranslocoModule } from '@ngneat/transloco';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../core/clients/nodes.client';
@@ -24,7 +24,7 @@ import {
 @Component({
   selector: 'app-discovery',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   templateUrl: './discovery.page.html',
   styleUrls: ['./discovery.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe, NgClass } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,6 +9,7 @@ import {
   Output,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoModule } from '@ngneat/transloco';
 import { BehaviorSubject, catchError, of } from 'rxjs';
 import { LibrariesClient } from '../../../../core/clients/libraries.client';
 import { BytesBo } from '../../../nodes/bos/bytes.bo';
@@ -18,7 +19,7 @@ import type { LibraryFile, LibraryFiles } from '../../models/library.model';
 @Component({
   selector: 'app-library-files-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [AsyncPipe, NgClass, TranslocoModule],
   templateUrl: './library-files-modal.component.html',
   styleUrls: ['./library-files-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -275,7 +275,9 @@ export class MediaStatsService {
       }
 
       // MEDIUM #8 FIX: Safe JSON parsing with try-catch
-      let data: any;
+      let data: {
+        streams?: Array<{ codec_name?: string; bit_rate?: string }>;
+      };
       try {
         data = JSON.parse(result.stdout);
       } catch (parseError) {
@@ -284,8 +286,8 @@ export class MediaStatsService {
         );
       }
 
-      const codec = data.streams?.[0]?.codec_name?.toLowerCase() || 'unknown';
-      const bitrate = parseInt(data.streams?.[0]?.bit_rate || '0', 10);
+      const codec = data.streams?.[0]?.codec_name?.toLowerCase() ?? 'unknown';
+      const bitrate = parseInt(data.streams?.[0]?.bit_rate ?? '0', 10);
       const size = statSync(filePath).size;
 
       return { codec, bitrate, size };

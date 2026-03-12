@@ -6,7 +6,7 @@
         <div class="header-content">
           <i class="fas fa-history"></i>
           <div>
-            <h3>Job Event History</h3>
+            <h3>{{ 'jobHistory.title' | transloco }}</h3>
             <span class="file-name">{{ fileName }}</span>
           </div>
         </div>
@@ -20,7 +20,7 @@
         @if (history.length === 0) {
           <div class="empty-history">
             <i class="fas fa-inbox"></i>
-            <p>No event history available for this job</p>
+            <p>{{ 'jobHistory.noHistory' | transloco }}</p>
           </div>
         } @else {
           <div class="history-timeline">
@@ -28,10 +28,18 @@
               <div
                 class="timeline-event"
                 [class.event-failed]="event.eventType === JobEventType.FAILED"
-                [class.event-cancelled]="event.eventType === JobEventType.CANCELLED"
-                [class.event-restarted]="event.eventType === JobEventType.RESTARTED"
-                [class.event-auto-healed]="event.eventType === JobEventType.AUTO_HEALED"
-                [class.event-backend-restart]="event.eventType === JobEventType.BACKEND_RESTART"
+                [class.event-cancelled]="
+                  event.eventType === JobEventType.CANCELLED
+                "
+                [class.event-restarted]="
+                  event.eventType === JobEventType.RESTARTED
+                "
+                [class.event-auto-healed]="
+                  event.eventType === JobEventType.AUTO_HEALED
+                "
+                [class.event-backend-restart]="
+                  event.eventType === JobEventType.BACKEND_RESTART
+                "
                 [class.event-timeout]="event.eventType === JobEventType.TIMEOUT"
               >
                 <!-- Event Icon -->
@@ -47,13 +55,20 @@
                       {{ getErrorSummary(event) }}
                     </div>
                     <div class="event-time">
-                      <span class="relative-time">{{ getRelativeTime(event.createdAt) }}</span>
-                      <span class="absolute-time">{{ formatTimestamp(event.createdAt) }}</span>
+                      <span class="relative-time">{{
+                        getRelativeTime(event.createdAt)
+                      }}</span>
+                      <span class="absolute-time">{{
+                        formatTimestamp(event.createdAt)
+                      }}</span>
                     </div>
                   </div>
 
                   <!-- System Message (if different from summary) -->
-                  @if (event.systemMessage && event.systemMessage !== getErrorSummary(event)) {
+                  @if (
+                    event.systemMessage &&
+                    event.systemMessage !== getErrorSummary(event)
+                  ) {
                     <div class="event-system-message">
                       <i class="fas fa-info-circle"></i>
                       <span>{{ event.systemMessage }}</span>
@@ -76,7 +91,10 @@
                         {{ event.fps }} FPS
                       </span>
                     }
-                    @if (event.retryNumber !== undefined && event.retryNumber !== null) {
+                    @if (
+                      event.retryNumber !== undefined &&
+                      event.retryNumber !== null
+                    ) {
                       <span class="meta-pill">
                         <i class="fas fa-redo"></i>
                         Attempt #{{ event.retryNumber }}
@@ -93,16 +111,32 @@
                   <!-- Technical Details (collapsible) -->
                   @if (event.errorMessage || event.errorDetails) {
                     <div class="event-error">
-                      <button class="toggle-details-btn" (click)="toggleEventDetails(event.id); $event.stopPropagation()">
-                        <i class="fas" [class.fa-chevron-down]="!isEventExpanded(event.id)" [class.fa-chevron-up]="isEventExpanded(event.id)"></i>
-                        {{ isEventExpanded(event.id) ? 'Hide' : 'Show' }} Technical Details
+                      <button
+                        class="toggle-details-btn"
+                        (click)="
+                          toggleEventDetails(event.id); $event.stopPropagation()
+                        "
+                      >
+                        <i
+                          class="fas"
+                          [class.fa-chevron-down]="!isEventExpanded(event.id)"
+                          [class.fa-chevron-up]="isEventExpanded(event.id)"
+                        ></i>
+                        {{
+                          isEventExpanded(event.id)
+                            ? ('common.hide' | transloco)
+                            : ('common.show' | transloco)
+                        }}
+                        {{ 'errorDetails.technicalDetails' | transloco }}
                       </button>
 
                       @if (isEventExpanded(event.id)) {
                         <div class="error-details">
                           @if (event.errorMessage) {
                             <div class="error-section">
-                              <div class="error-section-title">Error Message</div>
+                              <div class="error-section-title">
+                                Error Message
+                              </div>
                               <pre>{{ event.errorMessage }}</pre>
                             </div>
                           }
@@ -127,9 +161,11 @@
       <div class="dialog-footer">
         <button class="btn btn-secondary" (click)="copyToClipboard()">
           <i class="fas fa-copy"></i>
-          Copy History
+          {{ 'errorDetails.copyDetails' | transloco }}
         </button>
-        <button class="btn btn-primary" (click)="close()">Close</button>
+        <button class="btn btn-primary" (click)="close()">
+          {{ 'common.close' | transloco }}
+        </button>
       </div>
     </div>
   </div>

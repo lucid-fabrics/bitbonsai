@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
+import { ErrorLoggerService } from '../services/error-logger.service';
 import { SetupService } from '../services/setup.service';
 
 /**
@@ -26,6 +27,7 @@ import { SetupService } from '../services/setup.service';
 export const setupGuard: CanActivateFn = (route) => {
   const setupService = inject(SetupService);
   const router = inject(Router);
+  const errorLogger = inject(ErrorLoggerService);
 
   const isSetupRoute = route.routeConfig?.path === 'setup';
 
@@ -50,7 +52,7 @@ export const setupGuard: CanActivateFn = (route) => {
     catchError((error) => {
       // On error, allow navigation (fail-open approach)
       // This prevents the app from being locked out if the API is temporarily unavailable
-      console.error('Setup guard error:', error);
+      errorLogger.error('Setup guard error', error);
       return of(true);
     })
   );

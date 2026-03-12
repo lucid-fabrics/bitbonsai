@@ -78,13 +78,39 @@ export class StorageShareRepository implements IStorageShareRepository {
     status: StorageShareStatus,
     errorMessage?: string
   ): Promise<StorageShare> {
+    const data: Record<string, unknown> = { status };
+
+    if (status === Status.MOUNTED) {
+      data.isMounted = true;
+      data.lastMountAt = new Date();
+      data.errorCount = 0;
+      data.lastError = null;
+
+      // AUTO-FIX: Set hasSharedStorage=true on node when NFS mounts
+      const share = await this.prisma.storageShare.findUnique({
+        where: { id },
+        select: { nodeId: true },
+      });
+      if (share) {
+        await this.prisma.node.update({
+          where: { id: share.nodeId },
+          data: { hasSharedStorage: true, networkLocation: 'LOCAL' },
+        });
+      }
+    } else if (status === Status.UNMOUNTED) {
+      data.isMounted = false;
+      data.lastUnmountAt = new Date();
+    } else if (status === Status.ERROR) {
+      data.isMounted = false;
+      data.errorCount = { increment: 1 };
+      if (errorMessage) {
+        data.lastError = errorMessage;
+      }
+    }
+
     return this.prisma.storageShare.update({
       where: { id },
-      data: {
-        status,
-        isMounted: status === Status.MOUNTED,
-        lastError: errorMessage || null,
-      },
+      data: data as any,
     });
   }
 

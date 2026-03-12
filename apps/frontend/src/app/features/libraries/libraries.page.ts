@@ -1,8 +1,9 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import {
   ConfirmationDialogComponent,
@@ -25,8 +26,9 @@ import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/libra
   selector: 'app-libraries',
   standalone: true,
   imports: [
-    CommonModule,
+    AsyncPipe,
     FontAwesomeModule,
+    TranslocoModule,
     LibraryCardComponent,
     LibraryFormComponent,
     LibraryFilesModalComponent,

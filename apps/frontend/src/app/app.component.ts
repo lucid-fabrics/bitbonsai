@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -16,6 +16,7 @@ import { selectIsMainNode } from './core/+state/current-node.selectors';
 import { AuthService } from './core/auth/auth.service';
 import { configureFontAwesome } from './core/config/font-awesome.config';
 import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
+import { ErrorLoggerService } from './core/services/error-logger.service';
 import { NodeService } from './core/services/node.service';
 import { NodeConfigService } from './core/services/node-config.service';
 import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
@@ -26,7 +27,7 @@ import { NotificationContainerComponent } from './shared/components/notification
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule,
+    AsyncPipe,
     RouterOutlet,
     SidebarComponent,
     ApiConnectionErrorComponent,
@@ -121,6 +122,7 @@ export class AppComponent implements OnInit {
   private readonly nodeConfigService = inject(NodeConfigService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly store = inject(Store);
+  private readonly errorLogger = inject(ErrorLoggerService);
 
   // Track if we should show the app layout (sidebar + main content)
   // Hide layout on login and setup pages - using signal for reactivity with OnPush
@@ -172,7 +174,7 @@ export class AppComponent implements OnInit {
           }
         },
         error: (err) => {
-          console.error('Failed to fetch current node information:', err);
+          this.errorLogger.error('Failed to fetch current node information', err);
           // If no nodes are registered, the app will still work
           // The user will need to register a node first
         },

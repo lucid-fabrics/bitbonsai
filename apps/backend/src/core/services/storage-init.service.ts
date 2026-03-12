@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { StorageShareService } from '../../nodes/services/storage-share.service';
+import { StorageAutoDetectMountEvent } from '../../common/events';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NFSAutoExportService } from './nfs-auto-export.service';
 
@@ -24,7 +25,7 @@ export class StorageInitService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly nfsAutoExport: NFSAutoExportService,
-    private readonly storageShareService: StorageShareService
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async onModuleInit() {
@@ -81,30 +82,13 @@ export class StorageInitService implements OnModuleInit {
             },
           });
 
-          // Try to auto-detect and mount shares from main node
+          // Try to auto-detect and mount shares from main node (via event)
           if (currentNode.mainNodeUrl) {
-            this.logger.log('Attempting to fetch share info from main node...');
-            const result = await this.storageShareService.autoDetectAndMount(currentNode.id);
-
-            this.logger.log(
-              `Auto-detect result: ${result.detected} detected, ${result.mounted} mounted`
+            this.logger.log('Emitting auto-detect-mount event for linked node...');
+            this.eventEmitter.emit(
+              StorageAutoDetectMountEvent.event,
+              new StorageAutoDetectMountEvent(currentNode.id)
             );
-
-            if (result.mounted > 0) {
-              // Re-verify mounts after auto-mount attempt
-              const mountsNow = await this.verifyNFSMounts();
-              if (mountsNow) {
-                await this.prisma.node.update({
-                  where: { id: currentNode.id },
-                  data: { hasSharedStorage: true, networkLocation: 'LOCAL' },
-                });
-                this.logger.log('✅ NFS mounts now working - shared storage enabled');
-              }
-            }
-
-            if (result.errors.length > 0) {
-              this.logger.warn(`Mount errors: ${result.errors.join(', ')}`);
-            }
           } else {
             this.logger.warn('No mainNodeUrl configured - cannot fetch share info');
           }

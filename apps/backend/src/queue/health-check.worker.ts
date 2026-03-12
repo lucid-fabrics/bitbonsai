@@ -328,12 +328,12 @@ export class HealthCheckWorker implements OnModuleInit {
     // Formula: min(60, 10 + (sizeGB / 2)) minutes
     // Examples: 5GB=12.5min, 10GB=15min, 50GB=35min, 100GB=60min (capped)
     // Old: 10min for <10GB, 20min for >=10GB (too rigid)
-    const tenGB = BigInt(10 * 1024 * 1024 * 1024);
+    const _tenGB = BigInt(10 * 1024 * 1024 * 1024);
 
     // We'll use the old timeouts as fallback for the WHERE clause
     // Actual timeout validation happens per-job in the check loop
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
+    const _tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const _twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
 
     // Find jobs that need health checking
     // Include both DETECTED and HEALTH_CHECK stages:

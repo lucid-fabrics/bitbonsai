@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 export type ButtonVariant = 'primary' | 'outline' | 'danger';
@@ -6,7 +5,7 @@ export type ButtonVariant = 'primary' | 'outline' | 'danger';
 @Component({
   selector: 'bb-button',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <button
       [type]="type"

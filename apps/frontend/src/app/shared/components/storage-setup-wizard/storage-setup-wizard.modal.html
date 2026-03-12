@@ -1,7 +1,7 @@
 <div class="storage-wizard">
   <!-- Header -->
   <div class="wizard-header">
-    <h2>Storage Configuration Wizard</h2>
+    <h2>{{ 'storage.title' | transloco }}</h2>
     <button class="close-btn" (click)="close()">
       <fa-icon [icon]="['fas', 'xmark']"></fa-icon>
     </button>
@@ -43,18 +43,18 @@
 
         <div class="info-grid">
           <div class="info-card">
-            <div class="info-label">Source Node</div>
+            <div class="info-label">{{ 'storage.sourceNode' | transloco }}</div>
             <div class="info-value">{{ sourceNodeName }}</div>
           </div>
 
           <div class="info-card">
-            <div class="info-label">Target Node</div>
+            <div class="info-label">{{ 'storage.targetNode' | transloco }}</div>
             <div class="info-value">{{ targetNodeName }}</div>
           </div>
 
           @if (targetEnvironment) {
             <div class="info-card">
-              <div class="info-label">Container Type</div>
+              <div class="info-label">{{ 'storage.containerType' | transloco }}</div>
               <div class="info-value">
                 <span class="badge badge-secondary">
                   {{ targetEnvironment.containerType }}
@@ -65,14 +65,14 @@
 
           @if (targetEnvironment) {
             <div class="info-card">
-              <div class="info-label">Can Mount NFS</div>
+              <div class="info-label">{{ 'storage.canMountNfs' | transloco }}</div>
               <div class="info-value">
                 <fa-icon
                   [icon]="['fas', canMountNFS ? 'check-circle' : 'times-circle']"
                   [class.text-success]="canMountNFS"
                   [class.text-danger]="!canMountNFS"
                   class="me-2"></fa-icon>
-                {{ canMountNFS ? 'Yes' : 'No' }}
+                {{ canMountNFS ? ('common.yes' | transloco) : ('common.no' | transloco) }}
               </div>
             </div>
           }
@@ -81,7 +81,7 @@
         <div class="recommendation-box">
           <fa-icon [icon]="['fas', 'lightbulb']" class="recommendation-icon"></fa-icon>
           <div>
-            <strong>Recommended Method: {{ recommendation.recommended }}</strong>
+            <strong>{{ 'storage.recommendedMethod' | transloco : { method: recommendation.recommended } }}</strong>
             <p>{{ recommendation.reason }}</p>
           </div>
         </div>
@@ -90,7 +90,7 @@
           <div class="warning-box">
             <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-icon"></fa-icon>
             <div>
-              <strong>Warning</strong>
+              <strong>{{ 'storage.warning' | transloco }}</strong>
               <p>{{ recommendation.warning }}</p>
             </div>
           </div>
@@ -106,9 +106,9 @@
                 You have three options:
               </p>
               <ul>
-                <li><strong>Option 1:</strong> Enable privileged mode on the LXC container</li>
-                <li><strong>Option 2:</strong> Mount NFS on the Proxmox host and bind-mount into container</li>
-                <li><strong>Option 3:</strong> Use rsync file transfer (automatic, no setup needed)</li>
+                <li><strong>{{ 'storage.option1' | transloco }}</strong></li>
+                <li><strong>{{ 'storage.option2' | transloco }}</strong></li>
+                <li><strong>{{ 'storage.option3' | transloco }}</strong></li>
               </ul>
               <p>
                 See <a href="/docs/unraid#lxc-container-configuration" target="_blank">LXC Configuration Guide</a>
@@ -129,20 +129,20 @@
         </h3>
 
         <div class="instruction-section">
-          <h4>Step 1: Enable NFS on Main Node</h4>
+          <h4>{{ 'storage.step1Title' | transloco }}</h4>
           <div class="code-block">
-            <p>On Unraid (Main Node):</p>
+            <p>{{ 'storage.step1Desc' | transloco }}</p>
             <ol>
-              <li>Go to <strong>Settings</strong> → <strong>NFS</strong></li>
-              <li>Enable <strong>NFS Server</strong>: Yes</li>
-              <li>Add media shares to exports</li>
-              <li>Click <strong>Apply</strong></li>
+              <li>{{ 'storage.step1Item1' | transloco }}</li>
+              <li>{{ 'storage.step1Item2' | transloco }}</li>
+              <li>{{ 'storage.step1Item3' | transloco }}</li>
+              <li>{{ 'storage.step1Item4' | transloco }}</li>
             </ol>
           </div>
         </div>
 
         <div class="instruction-section">
-          <h4>Step 2: Verify NFS Exports</h4>
+          <h4>{{ 'storage.step2Title' | transloco }}</h4>
           <div class="code-block">
             <code>showmount -e 192.168.1.100</code>
             <p class="code-output">
@@ -155,7 +155,7 @@
 
         @if (isLXCContainer && !isPrivileged) {
           <div class="instruction-section">
-            <h4>Step 3: Enable LXC Privileged Mode</h4>
+            <h4>{{ 'storage.step3Title' | transloco }}</h4>
             <div class="code-block">
               <code># Stop container</code><br>
               <code>pct stop &lt;container-id&gt;</code><br>
@@ -171,7 +171,7 @@
             </div>
             <div class="alert alert-warning">
               <fa-icon [icon]="['fas', 'shield-alt']"></fa-icon>
-              <strong>Security Note:</strong> Privileged mode gives the container root access.
+              <strong>{{ 'storage.securityNote' | transloco }}</strong>
               Only use for trusted encoding nodes on isolated networks.
             </div>
           </div>
@@ -188,25 +188,25 @@
         </h3>
 
         <div class="instruction-section">
-          <h4>Create Storage Shares</h4>
-          <p>BitBonsai will create and mount NFS shares automatically.</p>
+          <h4>{{ 'storage.createShares' | transloco }}</h4>
+          <p>{{ 'storage.createSharesDesc' | transloco }}</p>
           <div class="action-buttons">
             <button class="btn btn-primary btn-lg">
               <fa-icon [icon]="['fas', 'plus']" class="me-2"></fa-icon>
-              Auto-Create Shares
+              {{ 'storage.autoCreateShares' | transloco }}
             </button>
           </div>
         </div>
 
         <div class="instruction-section">
-          <h4>Manual Configuration</h4>
-          <p>Or configure shares manually:</p>
+          <h4>{{ 'storage.manualConfig' | transloco }}</h4>
+          <p>{{ 'storage.manualConfigDesc' | transloco }}</p>
           <ol>
-            <li>Go to <strong>Nodes</strong> page</li>
-            <li>Click on <strong>{{ targetNodeName }}</strong></li>
-            <li>Click <strong>Storage</strong> tab</li>
-            <li>Click <strong>Auto-Detect Shares</strong></li>
-            <li>Click <strong>Mount</strong> on each detected share</li>
+            <li>{{ 'storage.manualItem1' | transloco }}</li>
+            <li>{{ 'storage.manualItem2' | transloco : { node: targetNodeName } }}</li>
+            <li>{{ 'storage.manualItem3' | transloco }}</li>
+            <li>{{ 'storage.manualItem4' | transloco }}</li>
+            <li>{{ 'storage.manualItem5' | transloco }}</li>
           </ol>
         </div>
       </div>
@@ -226,28 +226,28 @@
         </div>
 
         <div class="instruction-section">
-          <h4>How It Works</h4>
+          <h4>{{ 'storage.howItWorks' | transloco }}</h4>
           <ol>
             <li>
-              <strong>Job Assigned:</strong> When a job is assigned to {{ targetNodeName }}
+              <strong>{{ 'storage.jobAssigned' | transloco : { node: targetNodeName } }}</strong>
             </li>
             <li>
-              <strong>File Transfer:</strong> Source file is transferred via rsync (~1-2 min for 10GB)
+              <strong>{{ 'storage.fileTransfer' | transloco }}</strong>
             </li>
             <li>
-              <strong>Encoding:</strong> FFmpeg processes the file locally on {{ targetNodeName }}
+              <strong>{{ 'storage.encoding' | transloco : { node: targetNodeName } }}</strong>
             </li>
             <li>
-              <strong>Result Transfer:</strong> Encoded file is transferred back to {{ sourceNodeName }}
+              <strong>{{ 'storage.resultTransfer' | transloco : { source: sourceNodeName } }}</strong>
             </li>
             <li>
-              <strong>Cleanup:</strong> Temp files are automatically removed
+              <strong>{{ 'storage.cleanup' | transloco }}</strong>
             </li>
           </ol>
         </div>
 
         <div class="instruction-section">
-          <h4>Performance</h4>
+          <h4>{{ 'storage.performance' | transloco }}</h4>
           <div class="info-grid">
             <div class="info-card">
               <div class="info-label">5GB File</div>
@@ -258,19 +258,19 @@
               <div class="info-value">~90 seconds</div>
             </div>
             <div class="info-card">
-              <div class="info-label">Total Overhead</div>
+              <div class="info-label">{{ 'storage.totalOverhead' | transloco }}</div>
               <div class="info-value">3-5%</div>
             </div>
           </div>
         </div>
 
         <div class="instruction-section">
-          <h4>Enable rsync Mode</h4>
-          <p>Set the target node to use file transfers:</p>
+          <h4>{{ 'storage.enableRsync' | transloco }}</h4>
+          <p>{{ 'storage.enableRsyncDesc' | transloco }}</p>
           <div class="action-buttons">
             <button class="btn btn-primary btn-lg">
               <fa-icon [icon]="['fas', 'toggle-on']" class="me-2"></fa-icon>
-              Enable File Transfer Mode
+              {{ 'storage.enableFileTransfer' | transloco }}
             </button>
           </div>
         </div>
@@ -282,29 +282,29 @@
       <div class="step-content">
         <h3>
           <fa-icon [icon]="['fas', 'check-circle']" class="me-2"></fa-icon>
-          Verify Configuration
+          {{ 'storage.verifyConfig' | transloco }}
         </h3>
 
         <div class="instruction-section">
-          <h4>Test Storage Access</h4>
+          <h4>{{ 'storage.testStorage' | transloco }}</h4>
           <div class="test-grid">
             <div class="test-card">
               <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
               <div class="test-info">
-                <strong>Checking Environment</strong>
-                <p>Detecting container type and capabilities...</p>
+                <strong>{{ 'storage.checkingEnv' | transloco }}</strong>
+                <p>{{ 'storage.checkingEnvDesc' | transloco }}</p>
               </div>
-              <button class="btn btn-sm btn-outline">Test</button>
+              <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
             </div>
 
             @if (recommendation.recommended === StorageMethod.NFS) {
               <div class="test-card">
                 <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
                 <div class="test-info">
-                  <strong>Testing NFS Mounts</strong>
-                  <p>Verifying file access on {{ targetNodeName }}...</p>
+                  <strong>{{ 'storage.testingNfs' | transloco }}</strong>
+                  <p>{{ 'storage.testingNfsDesc' | transloco : { node: targetNodeName } }}</p>
                 </div>
-                <button class="btn btn-sm btn-outline">Test</button>
+                <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
               </div>
             }
 
@@ -312,20 +312,20 @@
               <div class="test-card">
                 <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
                 <div class="test-info">
-                  <strong>Testing rsync Transfer</strong>
-                  <p>Verifying SSH access and file transfer...</p>
+                  <strong>{{ 'storage.testingRsync' | transloco }}</strong>
+                  <p>{{ 'storage.testingRsyncDesc' | transloco }}</p>
                 </div>
-                <button class="btn btn-sm btn-outline">Test</button>
+                <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
               </div>
             }
 
             <div class="test-card">
               <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
               <div class="test-info">
-                <strong>Test Encoding Job</strong>
-                <p>Run a small test job on {{ targetNodeName }}...</p>
+                <strong>{{ 'storage.testEncoding' | transloco }}</strong>
+                <p>{{ 'storage.testEncodingDesc' | transloco : { node: targetNodeName } }}</p>
               </div>
-              <button class="btn btn-sm btn-outline">Test</button>
+              <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
             </div>
           </div>
         </div>
@@ -333,7 +333,7 @@
         <div class="success-banner">
           <fa-icon [icon]="['fas', 'check-circle']" class="success-icon"></fa-icon>
           <div>
-            <strong>Configuration Complete!</strong>
+            <strong>{{ 'storage.configComplete' | transloco }}</strong>
             <p>
               Storage is configured for {{ recommendation.recommended }} mode.
               You can now assign encoding jobs to {{ targetNodeName }}.
@@ -351,20 +351,20 @@
       (click)="previousStep()"
       [disabled]="isFirstStep">
       <fa-icon [icon]="['fas', 'arrow-left']" class="me-2"></fa-icon>
-      Previous
+      {{ 'common.back' | transloco }}
     </button>
 
     <button
       class="btn btn-secondary"
       (click)="close()">
-      Cancel
+      {{ 'common.cancel' | transloco }}
     </button>
 
     @if (!isLastStep) {
       <button
         class="btn btn-primary"
         (click)="nextStep()">
-        Next
+        {{ 'common.next' | transloco }}
         <fa-icon [icon]="['fas', 'arrow-right']" class="ms-2"></fa-icon>
       </button>
     }
@@ -374,7 +374,7 @@
         class="btn btn-success"
         (click)="complete()">
         <fa-icon [icon]="['fas', 'check']" class="me-2"></fa-icon>
-        Complete Setup
+        {{ 'setup.complete' | transloco }}
       </button>
     }
   </div>

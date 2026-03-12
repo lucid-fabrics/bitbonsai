@@ -2,7 +2,9 @@
   <div class="token-dialog" (click)="$event.stopPropagation()">
     <!-- Header -->
     <div class="token-dialog__header">
-      <h2 class="token-dialog__title">Register New Node</h2>
+      <h2 class="token-dialog__title">
+        {{ 'nodes.registerFirstNode' | transloco }}
+      </h2>
       <button class="token-dialog__close-btn" (click)="onClose()" type="button">
         ×
       </button>
@@ -15,9 +17,12 @@
         <div class="token-dialog__icon-wrapper">
           <div class="token-dialog__icon">🔗</div>
         </div>
-        <h3 class="token-dialog__info-title">Enter Pairing Token</h3>
+        <h3 class="token-dialog__info-title">
+          {{ 'nodes.enterPairingToken' | transloco }}
+        </h3>
         <p class="token-dialog__info-description">
-          Enter the 6-digit pairing token from your child node to complete the registration.
+          Enter the 6-digit pairing token from your child node to complete the
+          registration.
         </p>
       </div>
 
@@ -25,7 +30,8 @@
       <div class="token-dialog__form">
         <div class="token-dialog__form-group">
           <label for="token" class="token-dialog__label">
-            6-Digit Pairing Token<span class="token-dialog__label-required">*</span>:
+            {{ 'nodes.pairingToken' | transloco
+            }}<span class="token-dialog__label-required">*</span>:
           </label>
           <input
             type="text"
@@ -35,7 +41,9 @@
             maxlength="6"
             pattern="[0-9]*"
             class="token-dialog__input"
-            [class.token-dialog__input--error]="showError && (!token || token.length !== 6)"
+            [class.token-dialog__input--error]="
+              showError && (!token || token.length !== 6)
+            "
             (input)="onTokenInput($event)"
             (keydown.enter)="submit()"
             autocomplete="off"
@@ -50,10 +58,13 @@
 
         <!-- Help Section -->
         <div class="token-dialog__help">
-          <h4 class="token-dialog__help-title">Where to find the token:</h4>
+          <h4 class="token-dialog__help-title">
+            {{ 'nodes.whereFindToken' | transloco }}
+          </h4>
           <ol class="token-dialog__help-list">
             <li class="token-dialog__help-item">
-              On your child node, create a registration request via the discovery page
+              On your child node, create a registration request via the
+              discovery page
             </li>
             <li class="token-dialog__help-item">
               The system will generate a 6-digit pairing token
@@ -70,8 +81,9 @@
         <!-- Alternative Section -->
         <div class="token-dialog__alternative">
           <p class="token-dialog__alternative-text">
-            <strong>Alternative:</strong> You can also wait for the child node to send a registration request,
-            which will appear in your pending requests (check the bell icon 🔔).
+            <strong>Alternative:</strong> You can also wait for the child node
+            to send a registration request, which will appear in your pending
+            requests (check the bell icon 🔔).
           </p>
         </div>
       </div>
@@ -79,14 +91,19 @@
 
     <!-- Footer -->
     <div class="token-dialog__footer">
-      <button class="token-dialog__btn token-dialog__btn--secondary" (click)="onClose()" type="button">
-        Cancel
+      <button
+        class="token-dialog__btn token-dialog__btn--secondary"
+        (click)="onClose()"
+        type="button"
+      >
+        {{ 'common.cancel' | transloco }}
       </button>
       <button
         class="token-dialog__btn token-dialog__btn--primary"
         (click)="submit()"
         [disabled]="!token || token.length !== 6"
-        type="button">
+        type="button"
+      >
         Find & Pair Node
       </button>
     </div>

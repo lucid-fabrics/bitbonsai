@@ -1,14 +1,15 @@
-import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Component, inject, type OnInit, signal } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { TranslocoModule } from '@ngneat/transloco';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import { ErrorLoggerService } from '../../../core/services/error-logger.service';
+import { DocsService } from '../services/docs.service';
 
 @Component({
   selector: 'app-docs-tab',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   template: `
     <div class="tab-panel">
       <h2>Documentation</h2>
@@ -222,7 +223,11 @@ import { marked } from 'marked';
       }
 
       .markdown-content table th {
-        background: linear-gradient(135deg, var(--primary-color) 0%, #1976d2 100%);
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          #1976d2 100%
+        );
         color: white;
         padding: 1.25rem 1.5rem;
         text-align: left;
@@ -266,7 +271,12 @@ import { marked } from 'marked';
       .markdown-content hr {
         border: none;
         height: 2px;
-        background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--border-color),
+          transparent
+        );
         margin: 3rem 0;
       }
 
@@ -284,17 +294,14 @@ import { marked } from 'marked';
   ],
 })
 export class DocsTabComponent implements OnInit {
-  private http = inject(HttpClient);
-  private sanitizer = inject(DomSanitizer);
+  private readonly docsService = inject(DocsService);
+  private readonly errorLogger = inject(ErrorLoggerService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   selectedDoc = signal<string>('rebalancing');
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
   renderedContent = signal<SafeHtml>('');
-
-  private docUrls: Record<string, string> = {
-    rebalancing: '/api/v1/docs/REBALANCING',
-  };
 
   ngOnInit() {
     this.loadDocument('rebalancing');
@@ -305,14 +312,14 @@ export class DocsTabComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    const url = this.docUrls[docName];
-    if (!url) {
+    const doc$ = this.docsService.getDocument(docName);
+    if (!doc$) {
       this.error.set(`Documentation "${docName}" not found`);
       this.loading.set(false);
       return;
     }
 
-    this.http.get(url, { responseType: 'text' }).subscribe({
+    doc$.subscribe({
       next: (markdown) => {
         try {
           const html = marked(markdown);
@@ -321,7 +328,7 @@ export class DocsTabComponent implements OnInit {
           const sanitizedHtml = DOMPurify.sanitize(html as string);
           this.renderedContent.set(this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml));
           this.loading.set(false);
-        } catch (err) {
+        } catch (_err) {
           this.error.set('Failed to render documentation');
           this.loading.set(false);
         }
@@ -329,7 +336,7 @@ export class DocsTabComponent implements OnInit {
       error: (err) => {
         this.error.set('Failed to load documentation. Please try again later.');
         this.loading.set(false);
-        console.error('Failed to load documentation:', err);
+        this.errorLogger.error('Failed to load documentation', err);
       },
     });
   }

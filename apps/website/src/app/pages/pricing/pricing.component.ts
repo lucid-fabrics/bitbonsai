@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -21,24 +20,28 @@ interface ViewPricingTier {
 @Component({
   selector: 'bb-pricing',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule, ScrollRevealDirective],
+  imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
     <div class="pricing">
       <!-- Loading State -->
-      <div *ngIf="loading" class="pricing-loader">
-        <div class="spinner"></div>
-        <p>Loading pricing...</p>
-      </div>
+      @if (loading) {
+        <div class="pricing-loader">
+          <div class="spinner"></div>
+          <p>Loading pricing...</p>
+        </div>
+      }
 
       <!-- Error State -->
-      <div *ngIf="error" class="pricing-error">
-        <h2>Unable to Load Pricing</h2>
-        <p>{{ error }}</p>
-        <p>Please try again later.</p>
-      </div>
+      @if (error) {
+        <div class="pricing-error">
+          <h2>Unable to Load Pricing</h2>
+          <p>{{ error }}</p>
+          <p>Please try again later.</p>
+        </div>
+      }
 
       <!-- Content -->
-      <ng-container *ngIf="!loading && !error">
+      @if (!loading && !error) {
         <!-- Header -->
         <section class="pricing-header">
         <div class="pricing-header__container">
@@ -53,30 +56,36 @@ interface ViewPricingTier {
       <section class="tiers">
         <div class="tiers__container">
           <div class="tiers__grid">
-            <div class="tier-card" *ngFor="let tier of tiers; let i = index" [class.tier-card--popular]="tier.popular" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-              <div class="tier-card__badge" *ngIf="tier.popular">Most Popular</div>
+            @for (tier of tiers; track tier.name; let i = $index) {
+              <div class="tier-card" [class.tier-card--popular]="tier.popular" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+                @if (tier.popular) {
+                  <div class="tier-card__badge">Most Popular</div>
+                }
 
-              <div class="tier-card__header">
-                <h3 class="tier-card__name">{{ tier.name }}</h3>
-                <div class="tier-card__price">
-                  <span class="tier-card__currency">$</span>
-                  <span class="tier-card__amount">{{ tier.price }}</span>
-                  <span class="tier-card__period">/{{ tier.period }}</span>
+                <div class="tier-card__header">
+                  <h3 class="tier-card__name">{{ tier.name }}</h3>
+                  <div class="tier-card__price">
+                    <span class="tier-card__currency">$</span>
+                    <span class="tier-card__amount">{{ tier.price }}</span>
+                    <span class="tier-card__period">/{{ tier.period }}</span>
+                  </div>
+                  <p class="tier-card__description">{{ tier.description }}</p>
                 </div>
-                <p class="tier-card__description">{{ tier.description }}</p>
+
+                <ul class="tier-card__features">
+                  @for (feature of tier.features; track feature) {
+                    <li>
+                      <fa-icon [icon]="faCheckCircle" class="tier-card__check"></fa-icon>
+                      {{ feature }}
+                    </li>
+                  }
+                </ul>
+
+                <a [href]="tier.cta" class="tier-card__button" [class.tier-card__button--primary]="tier.popular">
+                  Get Started
+                </a>
               </div>
-
-              <ul class="tier-card__features">
-                <li *ngFor="let feature of tier.features">
-                  <fa-icon [icon]="faCheckCircle" class="tier-card__check"></fa-icon>
-                  {{ feature }}
-                </li>
-              </ul>
-
-              <a [href]="tier.cta" class="tier-card__button" [class.tier-card__button--primary]="tier.popular">
-                Get Started
-              </a>
-            </div>
+            }
           </div>
         </div>
       </section>
@@ -87,10 +96,12 @@ interface ViewPricingTier {
           <h2 class="faq__title">Frequently Asked Questions</h2>
 
           <div class="faq__grid">
-            <div class="faq-item" *ngFor="let item of faqs; let i = index" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
-              <h3 class="faq-item__question">{{ item.question }}</h3>
-              <p class="faq-item__answer">{{ item.answer }}</p>
-            </div>
+            @for (item of faqs; track item.question; let i = $index) {
+              <div class="faq-item" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
+                <h3 class="faq-item__question">{{ item.question }}</h3>
+                <p class="faq-item__answer">{{ item.answer }}</p>
+              </div>
+            }
           </div>
         </div>
       </section>
@@ -103,7 +114,7 @@ interface ViewPricingTier {
           <a routerLink="/download" class="pricing-cta__button">Download Now</a>
         </div>
       </section>
-      </ng-container>
+      }
     </div>
   `,
   styleUrls: ['./pricing.component.scss'],
@@ -123,16 +134,13 @@ export class PricingComponent implements OnInit {
     this.pricingApi.getActiveTiers().subscribe({
       next: (apiTiers) => {
         if (!apiTiers || apiTiers.length === 0) {
-          console.warn('API returned empty pricing tiers');
           this.tiers = this.getFallbackTiers();
         } else {
           this.tiers = apiTiers.map((tier) => this.mapTierToView(tier));
         }
         this.loading = false;
       },
-      error: (err) => {
-        console.error('Failed to load pricing:', err);
-
+      error: () => {
         // Use fallback tiers instead of showing error
         this.tiers = this.getFallbackTiers();
         this.loading = false;
@@ -141,49 +149,43 @@ export class PricingComponent implements OnInit {
   }
 
   private mapTierToView(tier: PricingTier): ViewPricingTier {
-    try {
-      // Validate required fields
-      if (!tier.name || !tier.displayName || tier.maxNodes == null) {
-        console.error('Invalid tier data:', tier);
-        throw new Error('Invalid tier data');
-      }
-
-      // Convert cents to dollars
-      const priceInDollars = Math.max(0, (tier.priceMonthly || 0) / 100);
-
-      // Build features list
-      const features = this.buildFeaturesForTier(tier);
-
-      // Determine CTA - use Stripe checkout for paid tiers
-      let cta: string;
-      if (tier.name === 'FREE') {
-        cta = '/download';
-      } else if (tier.stripePriceIdMonthly) {
-        // Use Stripe checkout with price ID
-        cta = `/checkout?tier=${encodeURIComponent(tier.displayName)}&priceId=${tier.stripePriceIdMonthly}&price=${priceInDollars}`;
-      } else {
-        // Fallback to Patreon if no Stripe price configured
-        cta = 'https://patreon.com/bitbonsai';
-      }
-
-      // Mark middle tier as popular (Plus)
-      const popular = tier.name === 'PLUS';
-
-      return {
-        name: tier.displayName,
-        price: priceInDollars,
-        period: priceInDollars === 0 ? 'forever' : 'month',
-        description: tier.description || '',
-        features,
-        cta,
-        popular,
-        maxNodes: tier.maxNodes,
-        maxConcurrent: tier.maxConcurrentJobs,
-      };
-    } catch (error) {
-      console.error('Failed to map tier:', tier, error);
-      throw error;
+    // Validate required fields
+    if (!tier.name || !tier.displayName || tier.maxNodes == null) {
+      throw new Error('Invalid tier data');
     }
+
+    // Convert cents to dollars
+    const priceInDollars = Math.max(0, (tier.priceMonthly || 0) / 100);
+
+    // Build features list
+    const features = this.buildFeaturesForTier(tier);
+
+    // Determine CTA - use Stripe checkout for paid tiers
+    let cta: string;
+    if (tier.name === 'FREE') {
+      cta = '/download';
+    } else if (tier.stripePriceIdMonthly) {
+      // Use Stripe checkout with price ID
+      cta = `/checkout?tier=${encodeURIComponent(tier.displayName)}&priceId=${tier.stripePriceIdMonthly}&price=${priceInDollars}`;
+    } else {
+      // Fallback to Patreon if no Stripe price configured
+      cta = 'https://patreon.com/bitbonsai';
+    }
+
+    // Mark middle tier as popular (Plus)
+    const popular = tier.name === 'PLUS';
+
+    return {
+      name: tier.displayName,
+      price: priceInDollars,
+      period: priceInDollars === 0 ? 'forever' : 'month',
+      description: tier.description || '',
+      features,
+      cta,
+      popular,
+      maxNodes: tier.maxNodes,
+      maxConcurrent: tier.maxConcurrentJobs,
+    };
   }
 
   private buildFeaturesForTier(tier: PricingTier): string[] {

@@ -1,6 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiInternalServerErrorResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CreateNotificationDto, NotificationDto } from './dto/notification.dto';
 import { NotificationsService } from './notifications.service';
 
@@ -32,12 +42,8 @@ export class NotificationsController {
     type: Boolean,
     description: 'Include read notifications (default: true)',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'List of notifications',
-    type: [NotificationDto],
-  })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiOkResponse({ description: 'Notifications retrieved', type: [NotificationDto] })
+  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve notifications' })
   async getNotifications(@Query('includeRead') includeRead = 'true'): Promise<NotificationDto[]> {
     const include = includeRead === 'true';
     return this.notificationsService.getNotifications(include);
@@ -51,12 +57,11 @@ export class NotificationsController {
     summary: 'Get unread notification count',
     description: 'Returns the number of unread notifications',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Unread notification count',
+  @ApiOkResponse({
+    description: 'Unread count retrieved',
     schema: { type: 'object', properties: { count: { type: 'number' } } },
   })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to count notifications' })
   async getUnreadCount(): Promise<{ count: number }> {
     const count = await this.notificationsService.getUnreadCount();
     return { count };
@@ -70,13 +75,9 @@ export class NotificationsController {
     summary: 'Get notification by ID',
     description: 'Retrieves a specific notification by its ID',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Notification found',
-    type: NotificationDto,
-  })
-  @ApiResponse({ status: 404, description: 'Notification not found' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiOkResponse({ description: 'Notification found', type: NotificationDto })
+  @ApiNotFoundResponse({ description: 'Notification not found' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve notification' })
   async getNotificationById(@Param('id') id: string): Promise<NotificationDto | undefined> {
     return this.notificationsService.getNotificationById(id);
   }
@@ -89,13 +90,9 @@ export class NotificationsController {
     summary: 'Create a new notification',
     description: 'Creates a new notification and broadcasts it to connected clients',
   })
-  @ApiResponse({
-    status: 201,
-    description: 'Notification created',
-    type: NotificationDto,
-  })
-  @ApiResponse({ status: 400, description: 'Invalid request' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiCreatedResponse({ description: 'Notification created', type: NotificationDto })
+  @ApiBadRequestResponse({ description: 'Invalid request' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to create notification' })
   async createNotification(@Body() dto: CreateNotificationDto): Promise<NotificationDto> {
     const notification = await this.notificationsService.createNotification(dto);
 
@@ -113,9 +110,9 @@ export class NotificationsController {
     summary: 'Mark notification as read',
     description: 'Marks a notification as read',
   })
-  @ApiResponse({ status: 200, description: 'Notification marked as read' })
-  @ApiResponse({ status: 404, description: 'Notification not found' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiOkResponse({ description: 'Notification marked as read' })
+  @ApiNotFoundResponse({ description: 'Notification not found' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to mark as read' })
   async markAsRead(@Param('id') id: string): Promise<void> {
     await this.notificationsService.markAsRead(id);
 
@@ -131,9 +128,9 @@ export class NotificationsController {
     summary: 'Dismiss notification',
     description: 'Deletes a notification',
   })
-  @ApiResponse({ status: 200, description: 'Notification dismissed' })
-  @ApiResponse({ status: 404, description: 'Notification not found' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiOkResponse({ description: 'Notification dismissed' })
+  @ApiNotFoundResponse({ description: 'Notification not found' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to dismiss notification' })
   async dismiss(@Param('id') id: string): Promise<void> {
     await this.notificationsService.dismiss(id);
 

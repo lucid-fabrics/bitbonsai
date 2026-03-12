@@ -1,6 +1,6 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, input, Output } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import {
   HealthCheckIssue,
   HealthCheckIssueSeverity,
@@ -10,7 +10,7 @@ import {
 @Component({
   selector: 'app-decision-issue-card',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './decision-issue-card.component.html',
   styleUrls: ['./decision-issue-card.component.scss'],
 })

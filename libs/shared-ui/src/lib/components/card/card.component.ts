@@ -1,10 +1,10 @@
-import { CommonModule } from '@angular/common';
+import { NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 @Component({
   selector: 'bb-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [NgIf],
   template: `
     <div class="bb-card">
       <div class="bb-card__header" *ngIf="title">

@@ -18,18 +18,31 @@
     <!-- Actions for NODE_DISCOVERED -->
     @if (hasActions()) {
       <div class="notification-actions">
-        <button type="button" class="btn-action btn-primary" (click)="navigateToDiscovery()">
-          View Discovery
+        <button
+          type="button"
+          class="btn-action btn-primary"
+          (click)="navigateToDiscovery()"
+        >
+          {{ 'discovery.title' | transloco }}
         </button>
-        <button type="button" class="btn-action btn-secondary" (click)="dismissToast()">
-          Dismiss
+        <button
+          type="button"
+          class="btn-action btn-secondary"
+          (click)="dismissToast()"
+        >
+          {{ 'common.close' | transloco }}
         </button>
       </div>
     }
   </div>
 
   <!-- Close button -->
-  <button type="button" class="notification-close" (click)="dismissToast()" aria-label="Dismiss notification">
+  <button
+    type="button"
+    class="notification-close"
+    (click)="dismissToast()"
+    aria-label="Dismiss notification"
+  >
     <fa-icon [icon]="faXmark" />
   </button>
 </div>

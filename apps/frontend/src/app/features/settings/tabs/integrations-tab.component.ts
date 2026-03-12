@@ -1,7 +1,7 @@
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { TranslocoModule } from '@ngneat/transloco';
 import {
   JellyfinSettings,
   JellyfinTestResult,
@@ -11,11 +11,13 @@ import {
 @Component({
   selector: 'app-integrations-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, TranslocoModule],
   template: `
     <div class="tab-panel">
       <h2>Integrations</h2>
-      <p class="tab-description">Connect BitBonsai with external services for enhanced automation</p>
+      <p class="tab-description">
+        Connect BitBonsai with external services for enhanced automation
+      </p>
 
       <!-- Jellyfin Integration Card -->
       <div class="info-card">
@@ -25,7 +27,9 @@ import {
           </div>
           <div class="integration-title">
             <h3>Jellyfin</h3>
-            <p>Auto-relocate renamed files and refresh library after encoding</p>
+            <p>
+              Auto-relocate renamed files and refresh library after encoding
+            </p>
           </div>
           @if (connectionStatus() === 'connected') {
             <span class="status-badge success">
@@ -49,7 +53,9 @@ import {
             [(ngModel)]="jellyfinUrl"
             placeholder="http://192.168.1.100:8096"
           />
-          <p class="help-text">Full URL including port (e.g., http://192.168.1.100:8096)</p>
+          <p class="help-text">
+            Full URL including port (e.g., http://192.168.1.100:8096)
+          </p>
         </div>
 
         <div class="form-group">
@@ -62,8 +68,14 @@ import {
               [(ngModel)]="jellyfinApiKey"
               placeholder="Enter Jellyfin API key"
             />
-            <button type="button" class="btn-icon" (click)="toggleApiKeyVisibility()">
-              <i [class]="apiKeyVisible() ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+            <button
+              type="button"
+              class="btn-icon"
+              (click)="toggleApiKeyVisibility()"
+            >
+              <i
+                [class]="apiKeyVisible() ? 'fa fa-eye-slash' : 'fa fa-eye'"
+              ></i>
             </button>
           </div>
           <p class="help-text">
@@ -77,10 +89,7 @@ import {
             <p>Trigger Jellyfin library scan after each encoding job</p>
           </div>
           <label class="switch">
-            <input
-              type="checkbox"
-              [(ngModel)]="refreshOnComplete"
-            />
+            <input type="checkbox" [(ngModel)]="refreshOnComplete" />
             <span class="slider"></span>
           </label>
         </div>
@@ -156,19 +165,31 @@ import {
 
       <!-- How It Works Section -->
       <div class="info-card help-card">
-        <h3><i class="fa fa-info-circle"></i> How Jellyfin Integration Works</h3>
+        <h3>
+          <i class="fa fa-info-circle"></i> How Jellyfin Integration Works
+        </h3>
         <ul class="feature-list">
           <li>
             <i class="fa fa-search"></i>
-            <span><strong>Auto-Relocate:</strong> When a file is not found, BitBonsai queries Jellyfin to find the renamed file</span>
+            <span
+              ><strong>Auto-Relocate:</strong> When a file is not found,
+              BitBonsai queries Jellyfin to find the renamed file</span
+            >
           </li>
           <li>
             <i class="fa fa-sync"></i>
-            <span><strong>Library Refresh:</strong> After encoding completes, triggers a Jellyfin library scan so new files appear immediately</span>
+            <span
+              ><strong>Library Refresh:</strong> After encoding completes,
+              triggers a Jellyfin library scan so new files appear
+              immediately</span
+            >
           </li>
           <li>
             <i class="fa fa-shield-alt"></i>
-            <span><strong>Fallback:</strong> If Jellyfin is unavailable, falls back to filesystem-based file matching</span>
+            <span
+              ><strong>Fallback:</strong> If Jellyfin is unavailable, falls back
+              to filesystem-based file matching</span
+            >
           </li>
         </ul>
       </div>

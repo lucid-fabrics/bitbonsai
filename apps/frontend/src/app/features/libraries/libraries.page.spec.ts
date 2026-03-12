@@ -1,7 +1,12 @@
 import { Dialog, type DialogRef } from '@angular/cdk/dialog';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { faFolderOpen } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoTestingModule } from '@ngneat/transloco';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
@@ -32,13 +37,24 @@ describe('LibrariesComponent', () => {
   const initialState = {};
 
   beforeEach(async () => {
+    // Mock FaIconLibrary to register icons for tests
+    const mockIconLibrary = {
+      addIcons: jest.fn().mockImplementation((..._icons) => {
+        // Register icons so fontawesome doesn't complain
+      }),
+      getIconDefinition: jest.fn().mockReturnValue(faFolderOpen),
+    } as unknown as FaIconLibrary;
+
     await TestBed.configureTestingModule({
-      imports: [LibrariesComponent],
+      imports: [LibrariesComponent, TranslocoTestingModule.forRoot({})],
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [
         provideMockStore({ initialState }),
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: Dialog, useValue: mockDialog },
+        { provide: FaIconLibrary, useValue: mockIconLibrary },
       ],
     }).compileComponents();
 

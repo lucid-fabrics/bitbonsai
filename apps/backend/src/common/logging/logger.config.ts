@@ -1,6 +1,8 @@
 import type { WinstonModuleOptions } from 'nest-winston';
 import * as winston from 'winston';
-import { version as APP_VERSION } from '../../../../../package.json';
+
+// Use environment variable for version, fallback to default
+const APP_VERSION = process.env.APP_VERSION || '1.0.0';
 
 /**
  * Winston logger configuration for BitBonsai
@@ -33,7 +35,7 @@ const developmentFormat = winston.format.combine(
   winston.format.printf(({ timestamp, level, message, context, ...meta }) => {
     const contextStr = context ? `[${context}]` : '';
     const metaStr = Object.keys(meta).length ? `\n${JSON.stringify(meta, null, 2)}` : '';
-    return `${timestamp} ${level} ${contextStr} ${message}${metaStr}`;
+    return `${timestamp} ${level} ${message} ${contextStr} ${metaStr}`;
   })
 );
 

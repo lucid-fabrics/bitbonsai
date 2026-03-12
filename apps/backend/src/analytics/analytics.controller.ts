@@ -1,5 +1,11 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AnalyticsService, TimePeriod } from './analytics.service';
 
 @ApiTags('Analytics')
@@ -10,10 +16,8 @@ export class AnalyticsController {
   @Get('space-savings')
   @ApiOperation({ summary: 'Get space savings over time' })
   @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d', '90d', 'all'], required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Space savings statistics',
-  })
+  @ApiOkResponse({ description: 'Space savings statistics' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute savings' })
   async getSpaceSavings(@Query('period') period?: TimePeriod) {
     return this.analyticsService.getSpaceSavingsOverTime(period || '30d');
   }
@@ -21,10 +25,8 @@ export class AnalyticsController {
   @Get('encoding-speed')
   @ApiOperation({ summary: 'Get encoding speed trends' })
   @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d', '90d', 'all'], required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Encoding speed statistics by codec',
-  })
+  @ApiOkResponse({ description: 'Encoding speed statistics' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute speed trends' })
   async getEncodingSpeed(@Query('period') period?: TimePeriod) {
     return this.analyticsService.getEncodingSpeedTrends(period || '30d');
   }
@@ -32,10 +34,8 @@ export class AnalyticsController {
   @Get('cost-savings')
   @ApiOperation({ summary: 'Calculate storage cost savings' })
   @ApiQuery({ name: 'provider', required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Cost savings by storage provider',
-  })
+  @ApiOkResponse({ description: 'Cost savings by provider' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute cost savings' })
   async getCostSavings(@Query('provider') provider?: string) {
     return this.analyticsService.getCostSavings(provider || 'AWS S3');
   }
@@ -43,10 +43,8 @@ export class AnalyticsController {
   @Get('node-performance')
   @ApiOperation({ summary: 'Get node performance metrics' })
   @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d', '90d', 'all'], required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Performance metrics per node',
-  })
+  @ApiOkResponse({ description: 'Node performance metrics' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute performance' })
   async getNodePerformance(@Query('period') period?: TimePeriod) {
     return this.analyticsService.getNodePerformance(period || '30d');
   }
@@ -54,10 +52,8 @@ export class AnalyticsController {
   @Get('codec-performance')
   @ApiOperation({ summary: 'Get codec performance metrics' })
   @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d', '90d', 'all'], required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Performance metrics per codec',
-  })
+  @ApiOkResponse({ description: 'Codec performance metrics' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute codec metrics' })
   async getCodecPerformance(@Query('period') period?: TimePeriod) {
     return this.analyticsService.getCodecPerformance(period || '30d');
   }
@@ -65,10 +61,8 @@ export class AnalyticsController {
   @Get('summary')
   @ApiOperation({ summary: 'Get analytics summary dashboard' })
   @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d', '90d', 'all'], required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Complete analytics summary',
-  })
+  @ApiOkResponse({ description: 'Complete analytics summary' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to build summary' })
   async getSummary(@Query('period') period?: TimePeriod) {
     const [spaceSavings, encodingSpeed, costSavings, nodePerformance, codecPerformance] =
       await Promise.all([

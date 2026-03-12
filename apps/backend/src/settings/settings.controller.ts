@@ -1,5 +1,11 @@
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { version as APP_VERSION } from '../../../../package.json';
 import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
@@ -31,11 +37,11 @@ export class SettingsController {
     description:
       'Detect runtime environment and return system capabilities, hardware acceleration options, and default paths. Used by setup wizard to provide environment-specific configuration.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Environment information retrieved successfully',
+  @ApiOkResponse({
+    description: 'Environment info retrieved',
     type: EnvironmentInfoDto,
   })
+  @ApiInternalServerErrorResponse({ description: 'Failed to detect environment' })
   async getEnvironmentInfo(): Promise<EnvironmentInfoDto> {
     return this.environmentService.getEnvironmentInfo();
   }
@@ -46,11 +52,11 @@ export class SettingsController {
     description:
       'Retrieve current system settings including database info, FFmpeg path, log level, and API configuration. Used by settings UI to display and manage system configuration.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'System settings retrieved successfully',
+  @ApiOkResponse({
+    description: 'System settings retrieved',
     type: SystemSettingsDto,
   })
+  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve settings' })
   async getSystemSettings(): Promise<SystemSettingsDto> {
     return {
       version: APP_VERSION, // Read from package.json
@@ -75,15 +81,11 @@ export class SettingsController {
     description:
       'Update system settings such as FFmpeg path, log level, analytics toggle, and webhook URL. Only provided fields will be updated.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'System settings updated successfully',
+  @ApiOkResponse({
+    description: 'System settings updated',
     type: SystemSettingsDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid settings provided',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid settings provided' })
   async updateSystemSettings(
     @Body() updateDto: UpdateSystemSettingsDto
   ): Promise<SystemSettingsDto> {
@@ -110,8 +112,7 @@ export class SettingsController {
     description:
       'Create a backup of the current database. Returns the backup file path and timestamp.',
   })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Database backed up successfully',
     schema: {
       type: 'object',
@@ -121,6 +122,7 @@ export class SettingsController {
       },
     },
   })
+  @ApiInternalServerErrorResponse({ description: 'Backup failed' })
   @ApiBadRequestResponse({
     description: 'Backup directory not writable or insufficient disk space',
   })
@@ -138,10 +140,7 @@ export class SettingsController {
     description:
       'Reset system settings to default values. This does not delete user data or libraries, only resets configuration settings.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'System settings reset successfully',
-  })
+  @ApiOkResponse({ description: 'Settings reset to defaults' })
   @ApiBadRequestResponse({
     description: 'Cannot reset settings while jobs are running',
   })
@@ -155,9 +154,8 @@ export class SettingsController {
     description:
       'Generate a new API key for external integrations. The old API key will be invalidated immediately.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'API key regenerated successfully',
+  @ApiOkResponse({
+    description: 'API key regenerated',
     schema: {
       type: 'object',
       properties: {
@@ -165,6 +163,7 @@ export class SettingsController {
       },
     },
   })
+  @ApiInternalServerErrorResponse({ description: 'Failed to regenerate key' })
   @ApiBadRequestResponse({
     description: 'Invalid request or API key regeneration not allowed',
   })
@@ -180,11 +179,11 @@ export class SettingsController {
     description:
       'Retrieve current security settings including local network authentication bypass configuration. This endpoint is public to allow the frontend to check if authentication is required.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Security settings retrieved successfully',
+  @ApiOkResponse({
+    description: 'Security settings retrieved',
     type: SecuritySettingsDto,
   })
+  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve security settings' })
   async getSecuritySettings(): Promise<SecuritySettingsDto> {
     return this.settingsService.getSecuritySettings();
   }
@@ -195,15 +194,11 @@ export class SettingsController {
     description:
       'Update security settings such as local network authentication bypass. Use with caution as this affects authentication behavior.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Security settings updated successfully',
+  @ApiOkResponse({
+    description: 'Security settings updated',
     type: SecuritySettingsDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid security settings provided',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid security settings' })
   async updateSecuritySettings(
     @Body() updateDto: SecuritySettingsDto
   ): Promise<SecuritySettingsDto> {
@@ -216,9 +211,8 @@ export class SettingsController {
     description:
       "Retrieve the user's preferred default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)",
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Default queue view preference retrieved successfully',
+  @ApiOkResponse({
+    description: 'Queue view preference retrieved',
     type: DefaultQueueViewDto,
   })
   async getDefaultQueueView(): Promise<DefaultQueueViewDto> {
@@ -231,15 +225,11 @@ export class SettingsController {
     description:
       "Update the user's preferred default queue filter view. This setting will be applied when the queue page loads.",
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Default queue view preference updated successfully',
+  @ApiOkResponse({
+    description: 'Queue view preference updated',
     type: DefaultQueueViewDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid queue view provided',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid queue view provided' })
   async updateDefaultQueueView(
     @Body() updateDto: DefaultQueueViewDto
   ): Promise<DefaultQueueViewDto> {
@@ -252,9 +242,8 @@ export class SettingsController {
     description:
       'Retrieve the cache TTL (Time To Live) in minutes for the /api/v1/libraries/ready endpoint. This setting controls how long library scan results are cached.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Cache TTL retrieved successfully',
+  @ApiOkResponse({
+    description: 'Cache TTL retrieved',
     type: ReadyFilesCacheTtlDto,
   })
   async getReadyFilesCacheTtl(): Promise<ReadyFilesCacheTtlDto> {
@@ -267,15 +256,11 @@ export class SettingsController {
     description:
       'Update the cache TTL (Time To Live) in minutes for the /api/v1/libraries/ready endpoint. Minimum value is 5 minutes to prevent excessive file system scans.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Cache TTL updated successfully',
+  @ApiOkResponse({
+    description: 'Cache TTL updated',
     type: ReadyFilesCacheTtlDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid TTL value (must be at least 5 minutes)',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid TTL value' })
   async updateReadyFilesCacheTtl(
     @Body() updateDto: ReadyFilesCacheTtlDto
   ): Promise<ReadyFilesCacheTtlDto> {
@@ -288,9 +273,8 @@ export class SettingsController {
     description:
       'Retrieve the maximum retry count for auto-heal to resurrect failed jobs. Jobs exceeding this limit will not be automatically healed on backend restart.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Auto-heal retry limit retrieved successfully',
+  @ApiOkResponse({
+    description: 'Auto-heal retry limit retrieved',
     type: AutoHealRetryLimitDto,
   })
   async getAutoHealRetryLimit(): Promise<AutoHealRetryLimitDto> {
@@ -303,15 +287,11 @@ export class SettingsController {
     description:
       'Update the maximum retry count for auto-heal. Minimum value is 3 to prevent overly aggressive auto-healing. Recommended: 10-20 for high-load systems.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Auto-heal retry limit updated successfully',
+  @ApiOkResponse({
+    description: 'Auto-heal retry limit updated',
     type: AutoHealRetryLimitDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid retry limit (must be at least 3)',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid retry limit' })
   async updateAutoHealRetryLimit(
     @Body() updateDto: AutoHealRetryLimitDto
   ): Promise<AutoHealRetryLimitDto> {
@@ -328,9 +308,8 @@ export class SettingsController {
     description:
       'Retrieve whether advanced UI controls should be shown. Default is false (minimal mode) for simpler UX.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Advanced mode setting retrieved successfully',
+  @ApiOkResponse({
+    description: 'Advanced mode setting retrieved',
     schema: {
       type: 'object',
       properties: {
@@ -348,9 +327,8 @@ export class SettingsController {
     description:
       'Toggle visibility of advanced UI controls (bulk actions, node filters, debug info, etc.).',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Advanced mode setting updated successfully',
+  @ApiOkResponse({
+    description: 'Advanced mode setting updated',
     schema: {
       type: 'object',
       properties: {
@@ -371,9 +349,8 @@ export class SettingsController {
     summary: 'Get Jellyfin integration settings',
     description: 'Retrieve Jellyfin server URL and configuration. API key is masked for security.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Jellyfin settings retrieved successfully',
+  @ApiOkResponse({
+    description: 'Jellyfin settings retrieved',
     type: JellyfinSettingsDto,
   })
   async getJellyfinSettings(): Promise<JellyfinSettingsDto> {
@@ -391,15 +368,11 @@ export class SettingsController {
     description:
       'Update Jellyfin server URL, API key, or library refresh setting. Leave API key undefined to keep existing value.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Jellyfin settings updated successfully',
+  @ApiOkResponse({
+    description: 'Jellyfin settings updated',
     type: JellyfinSettingsDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid settings provided',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid Jellyfin settings' })
   async updateJellyfinSettings(
     @Body() updateDto: JellyfinSettingsDto
   ): Promise<JellyfinSettingsDto> {
@@ -417,11 +390,11 @@ export class SettingsController {
     description:
       'Test connectivity to Jellyfin server using provided or stored credentials. Returns server name and version if successful.',
   })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Connection test completed',
     type: JellyfinTestResultDto,
   })
+  @ApiBadRequestResponse({ description: 'Missing URL or API key' })
   async testJellyfinConnection(
     @Body() testDto: JellyfinSettingsDto
   ): Promise<JellyfinTestResultDto> {

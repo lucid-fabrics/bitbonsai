@@ -5,6 +5,7 @@ import { JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import type { SystemSettings } from '../common/interfaces/system-settings.interface';
 import { PrismaService } from '../prisma/prisma.service';
+import { testIntegrationConnection } from './test-connection.util';
 
 /**
  * Plex session information
@@ -289,25 +290,21 @@ export class PlexIntegrationService {
     url: string,
     token: string
   ): Promise<{ success: boolean; serverName?: string; error?: string }> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${url.replace(/\/$/, '')}`, {
-          headers: { 'X-Plex-Token': token },
-          timeout: 10000,
-        })
-      );
+    const result = await testIntegrationConnection(this.httpService, {
+      url,
+      path: '',
+      headers: { 'X-Plex-Token': token },
+    });
 
-      const serverName = response.data?.MediaContainer?.friendlyName;
-
-      return {
-        success: true,
-        serverName,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Connection failed',
-      };
+    if (!result.success) {
+      return { success: false, error: result.error };
     }
+
+    const container = result.data?.MediaContainer as Record<string, unknown> | undefined;
+
+    return {
+      success: true,
+      serverName: container?.friendlyName as string | undefined,
+    };
   }
 }

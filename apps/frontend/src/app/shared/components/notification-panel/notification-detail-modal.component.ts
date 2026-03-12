@@ -1,5 +1,4 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -11,6 +10,7 @@ import {
   faTimes,
   faTimesCircle,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { Notification } from '../../../core/models/notification.model';
 import { NotificationType } from '../../../core/models/notification.model';
 
@@ -22,30 +22,45 @@ interface ModalData {
 @Component({
   selector: 'app-notification-detail-modal',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   styleUrls: ['./notification-detail-modal.component.scss'],
   template: `
-    <div class="notification-detail-modal" [style.--accent-color]="getAccentColor()">
+    <div
+      class="notification-detail-modal"
+      [style.--accent-color]="getAccentColor()"
+    >
       <div class="notification-detail-modal__header">
         <div class="notification-detail-modal__icon">
           <fa-icon [icon]="getIcon()" size="lg"></fa-icon>
         </div>
         <div class="notification-detail-modal__header-content">
-          <h2 class="notification-detail-modal__title">{{ getCleanTitle(notification.title) }}</h2>
+          <h2 class="notification-detail-modal__title">
+            {{ getCleanTitle(notification.title) }}
+          </h2>
           <div class="notification-detail-modal__meta">
-            <span class="notification-detail-modal__priority notification-detail-modal__priority--{{ notification.priority.toLowerCase() }}">
+            <span
+              class="notification-detail-modal__priority notification-detail-modal__priority--{{
+                notification.priority.toLowerCase()
+              }}"
+            >
               {{ notification.priority }}
             </span>
             <span>{{ getRelativeTime(notification.createdAt) }}</span>
           </div>
         </div>
-        <button class="notification-detail-modal__close-btn" (click)="onClose()" type="button">
+        <button
+          class="notification-detail-modal__close-btn"
+          (click)="onClose()"
+          type="button"
+        >
           <fa-icon [icon]="icons.close"></fa-icon>
         </button>
       </div>
 
       <div class="notification-detail-modal__body">
-        <p class="notification-detail-modal__message">{{ notification.message }}</p>
+        <p class="notification-detail-modal__message">
+          {{ notification.message }}
+        </p>
 
         @if (notification.data && Object.keys(notification.data).length > 0) {
           <div class="notification-detail-modal__data">
@@ -64,11 +79,19 @@ interface ModalData {
 
       <div class="notification-detail-modal__footer">
         @if (requiresAction()) {
-          <button class="notification-detail-modal__btn notification-detail-modal__btn--primary" (click)="onTakeAction()" type="button">
+          <button
+            class="notification-detail-modal__btn notification-detail-modal__btn--primary"
+            (click)="onTakeAction()"
+            type="button"
+          >
             Take Action
           </button>
         }
-        <button class="notification-detail-modal__btn notification-detail-modal__btn--secondary" (click)="onClose()" type="button">
+        <button
+          class="notification-detail-modal__btn notification-detail-modal__btn--secondary"
+          (click)="onClose()"
+          type="button"
+        >
           Close
         </button>
       </div>

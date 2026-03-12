@@ -104,12 +104,14 @@ describe('Level 6: Worker Pool Management', () => {
   });
 
   describe('Worker Crash/Failure Scenarios', () => {
+    // Skipped: unimplemented stub requiring worker crash simulation infrastructure
     it.skip('should recover from worker crashes', async () => {
       // TODO: Implement worker crash simulation and recovery testing
       // This would involve simulating process crashes and verifying
       // that jobs are properly reset and retried
     });
 
+    // Skipped: unimplemented stub requiring shutdown lifecycle simulation
     it.skip('should handle graceful shutdown', async () => {
       // TODO: Implement graceful shutdown testing
       // Verify that in-progress jobs are paused and can resume
@@ -117,11 +119,13 @@ describe('Level 6: Worker Pool Management', () => {
   });
 
   describe('Node Offline Scenarios', () => {
+    // Skipped: unimplemented stub requiring multi-node simulation
     it.skip('should handle node going offline', async () => {
       // TODO: Implement node offline testing
       // Mark node as offline and verify jobs are reassigned
     });
 
+    // Skipped: unimplemented stub requiring multi-node simulation
     it.skip('should resume jobs when node comes back online', async () => {
       // TODO: Implement node reconnection testing
       // Bring offline node back and verify job resumption

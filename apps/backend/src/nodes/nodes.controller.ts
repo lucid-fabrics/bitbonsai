@@ -22,11 +22,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { Node as PrismaNode } from '@prisma/client';
 import { Public } from '../auth/guards/public.decorator';
 import { CurrentNodeDto } from './dto/current-node.dto';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
-import { NodeCapabilitiesDto } from './dto/node-capabilities.dto';
 import { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import { NodeResponseDto } from './dto/node-response.dto';
 import { NodeStatsDto } from './dto/node-stats.dto';

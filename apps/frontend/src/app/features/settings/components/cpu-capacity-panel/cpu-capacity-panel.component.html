@@ -17,8 +17,8 @@
         </svg>
       </div>
       <div class="header-content">
-        <h3>CPU Capacity Management</h3>
-        <p class="subtitle">Intelligent resource allocation for optimal performance</p>
+        <h3>{{ 'cpuCapacity.title' | transloco }}</h3>
+        <p class="subtitle">{{ 'cpuCapacity.subtitle' | transloco }}</p>
       </div>
     </div>
 
@@ -27,14 +27,14 @@
       <div class="card-row">
         <div class="card-label">
           <span class="label-icon">🖥️</span>
-          <span>CPU Model</span>
+          <span>{{ 'cpuCapacity.cpuModel' | transloco }}</span>
         </div>
         <div class="card-value">{{ resources.cpu.model }}</div>
       </div>
       <div class="card-row">
         <div class="card-label">
           <span class="label-icon">⚡</span>
-          <span>CPU Threads</span>
+          <span>{{ 'cpuCapacity.cpuThreads' | transloco }}</span>
         </div>
         <div class="card-value">{{ resources.cpu.cores }} threads ({{ resources.cpu.cores / 2 }} physical cores)</div>
       </div>
@@ -43,8 +43,8 @@
     <!-- Worker Calculation Visualization -->
     <div class="calculation-card">
       <div class="calc-header">
-        <h4>Active Configuration</h4>
-        <div class="calc-badge balanced">Balanced Mode</div>
+        <h4>{{ 'cpuCapacity.activeConfig' | transloco }}</h4>
+        <div class="calc-badge balanced">{{ 'cpuCapacity.balancedMode' | transloco }}</div>
       </div>
 
       <div class="worker-visual">
@@ -57,18 +57,18 @@
           </div>
           <div class="worker-labels">
             <span class="label-min">{{ resources.cpu.minWorkers }}</span>
-            <span class="label-current">{{ resources.cpu.configuredWorkers }} workers</span>
+            <span class="label-current">{{ resources.cpu.configuredWorkers }} {{ 'cpuCapacity.workers' | transloco }}</span>
             <span class="label-max">{{ resources.cpu.theoreticalMaxWorkers }}</span>
           </div>
         </div>
 
         <div class="calc-formula">
           <div class="formula-step">
-            <span class="formula-label">Theoretical Max:</span>
+            <span class="formula-label">{{ 'cpuCapacity.theoreticalMax' | transloco }}</span>
             <span class="formula-value">{{ resources.cpu.cores }} threads ÷ {{ resources.cpu.coresPerJob }} threads/job = {{ resources.cpu.theoreticalMaxWorkers }}</span>
           </div>
           <div class="formula-step">
-            <span class="formula-label">Safety Margin:</span>
+            <span class="formula-label">{{ 'cpuCapacity.safetyMargin' | transloco }}</span>
             <span class="formula-value">{{ resources.cpu.theoreticalMaxWorkers }} × {{ resources.cpu.safetyMargin * 100 }}% = {{ resources.cpu.configuredWorkers }}</span>
           </div>
         </div>
@@ -77,7 +77,7 @@
       <div class="recommendation">
         <div class="recommendation-icon">💡</div>
         <div class="recommendation-text">
-          <strong>Why this matters:</strong>
+          <strong>{{ 'cpuCapacity.whyThisMatters' | transloco }}</strong>
           {{ resources.recommendation.reason }}
         </div>
       </div>
@@ -86,7 +86,7 @@
     <!-- Scenarios Comparison -->
     <div class="scenarios-section">
       <button class="toggle-details" (click)="toggleDetails()">
-        <span>{{ showDetails ? 'Hide' : 'Show' }} Alternative Configurations</span>
+        <span>{{ showDetails ? ('cpuCapacity.hideAlternative' | transloco) : ('cpuCapacity.showAlternative' | transloco) }}</span>
         <svg
           class="chevron"
           [class.rotated]="showDetails"
@@ -114,7 +114,7 @@
 
               <div class="scenario-workers">
                 <span class="worker-count">{{ scenario.workers }}</span>
-                <span class="worker-label">concurrent workers</span>
+                <span class="worker-label">{{ 'cpuCapacity.concurrentWorkers' | transloco }}</span>
               </div>
 
               <p class="scenario-description">{{ scenario.description }}</p>
@@ -124,7 +124,7 @@
                   <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  <span>Active Configuration</span>
+                  <span>{{ 'cpuCapacity.activeConfiguration' | transloco }}</span>
                 </div>
               }
             </div>
@@ -136,7 +136,7 @@
     <!-- Memory Info (Compact) -->
     <div class="memory-info">
       <div class="memory-row">
-        <span class="memory-label">Memory Usage</span>
+        <span class="memory-label">{{ 'cpuCapacity.memoryUsage' | transloco }}</span>
         <span class="memory-value">{{ formatBytes(resources.memory.used) }} / {{ formatBytes(resources.memory.total) }}</span>
       </div>
       <div class="memory-bar">
@@ -149,6 +149,6 @@
 @if (loading()) {
   <div class="loading-state">
     <div class="spinner"></div>
-    <p>Loading system resources...</p>
+    <p>{{ 'cpuCapacity.loadingResources' | transloco }}</p>
   </div>
 }

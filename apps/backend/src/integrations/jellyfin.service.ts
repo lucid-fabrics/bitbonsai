@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import type { SystemSettings } from '../common/interfaces/system-settings.interface';
 import { PrismaService } from '../prisma/prisma.service';
+import { testIntegrationConnection } from './test-connection.util';
 
 /**
  * Jellyfin media item from API
@@ -233,27 +234,21 @@ export class JellyfinIntegrationService {
     url: string,
     apiKey: string
   ): Promise<{ success: boolean; serverName?: string; version?: string; error?: string }> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${url.replace(/\/$/, '')}/System/Info`, {
-          headers: {
-            'X-Emby-Token': apiKey,
-          },
-          timeout: 10000,
-        })
-      );
+    const result = await testIntegrationConnection(this.httpService, {
+      url,
+      path: '/System/Info',
+      headers: { 'X-Emby-Token': apiKey },
+    });
 
-      return {
-        success: true,
-        serverName: response.data?.ServerName,
-        version: response.data?.Version,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Connection failed',
-      };
+    if (!result.success) {
+      return { success: false, error: result.error };
     }
+
+    return {
+      success: true,
+      serverName: result.data?.ServerName as string | undefined,
+      version: result.data?.Version as string | undefined,
+    };
   }
 
   /**

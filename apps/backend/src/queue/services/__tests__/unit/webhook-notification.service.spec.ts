@@ -1,6 +1,5 @@
 import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { of, throwError } from 'rxjs';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { createMockPrismaService } from '../../../../testing/mock-providers';
 import { WebhookEventType, WebhookNotificationService } from '../../webhook-notification.service';

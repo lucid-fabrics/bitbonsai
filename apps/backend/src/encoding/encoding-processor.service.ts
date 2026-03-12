@@ -1107,7 +1107,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
         try {
           await Promise.race([existingLock.promise, timeoutPromise]);
-        } catch (error) {
+        } catch (_error) {
           attempt++;
           if (attempt >= maxRetries) {
             throw new Error(
@@ -1159,22 +1159,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     if (lockHolder) {
       lockHolder.release();
       this.poolLocks.delete(nodeId);
-    }
-  }
-
-  /**
-   * DEEP AUDIT P0: Refresh lock heartbeat to indicate operation is still active
-   *
-   * Call this periodically during long-running operations to prevent
-   * false positive stale lock detection.
-   *
-   * @param nodeId - Node unique identifier
-   * @private
-   */
-  private refreshLockHeartbeat(nodeId: string): void {
-    const lock = this.poolLocks.get(nodeId);
-    if (lock) {
-      lock.lastHeartbeat = Date.now();
     }
   }
 
@@ -2802,7 +2786,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           }
           this.crossFsSafeRenameSync(originalBackupPath, originalPath);
           this.logger.log(`KEEP ORIGINAL: Successfully rolled back to original`);
-        } catch (rollbackError) {
+        } catch (_rollbackError) {
           this.logger.error(`KEEP ORIGINAL: Rollback failed! Backup at: ${originalBackupPath}`);
         }
 
@@ -3016,78 +3000,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         }
       }
       throw error;
-    }
-  }
-
-  /**
-   * Atomically replace file with backup on failure (legacy - no post-verification)
-   *
-   * CRITICAL FIX: Proper rollback and cleanup logic with comprehensive error handling
-   *
-   * @private
-   * @deprecated Use atomicReplaceFileWithVerification instead
-   */
-  private atomicReplaceFile(originalPath: string, tmpPath: string): void {
-    const backupPath = `${originalPath}.backup`;
-
-    try {
-      // Step 1: Create backup of original file
-      this.crossFsSafeRenameSync(originalPath, backupPath);
-
-      // Step 2: Move temp file to original location
-      try {
-        this.crossFsSafeRenameSync(tmpPath, originalPath);
-
-        // Step 3: Delete backup on success
-        try {
-          fs.unlinkSync(backupPath);
-        } catch (cleanupError) {
-          // Non-fatal: Log warning but don't fail the operation
-          this.logger.warn(`Failed to cleanup backup file ${backupPath}: ${cleanupError}`);
-        }
-      } catch (replaceError) {
-        // ROLLBACK: Restore backup on failure
-        this.logger.error(`Failed to replace file, rolling back: ${replaceError}`);
-
-        try {
-          if (fs.existsSync(backupPath)) {
-            // Delete failed temp file if it exists
-            if (fs.existsSync(originalPath)) {
-              fs.unlinkSync(originalPath);
-            }
-
-            // Restore backup
-            this.crossFsSafeRenameSync(backupPath, originalPath);
-            this.logger.log(`Successfully rolled back to backup for ${originalPath}`);
-          } else {
-            this.logger.error(`Backup file missing during rollback: ${backupPath}`);
-          }
-        } catch (rollbackError) {
-          this.logger.error(`CRITICAL: Rollback failed for ${originalPath}: ${rollbackError}`);
-          // Re-throw with context about both errors
-          throw new Error(
-            `Atomic replacement failed and rollback also failed. ` +
-              `Replace error: ${replaceError}. Rollback error: ${rollbackError}. ` +
-              `Backup may still exist at: ${backupPath}`
-          );
-        }
-
-        // Re-throw original error after successful rollback
-        throw replaceError;
-      }
-    } catch (backupError) {
-      // Failed to create backup - clean up temp file
-      this.logger.error(`Failed to create backup: ${backupError}`);
-
-      try {
-        if (fs.existsSync(tmpPath)) {
-          fs.unlinkSync(tmpPath);
-        }
-      } catch (cleanupError) {
-        this.logger.warn(`Failed to cleanup temp file after backup error: ${cleanupError}`);
-      }
-
-      throw backupError;
     }
   }
 

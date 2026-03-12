@@ -1,5 +1,4 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -10,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoModule } from '@ngneat/transloco';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -18,7 +18,7 @@ import { NotificationPanelComponent } from '../notification-panel/notification-p
 @Component({
   selector: 'app-notification-bell',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   template: `
     <button
       class="notification-bell"

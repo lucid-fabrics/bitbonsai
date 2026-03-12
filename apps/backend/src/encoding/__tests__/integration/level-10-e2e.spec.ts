@@ -72,6 +72,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
   });
 
   describe('Mixed Content Types', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
     it.skip('should process movies, TV series, and anime together', async () => {
       // TODO: Generate mix of:
       // - 5 movies (various codecs, resolutions)
@@ -84,6 +85,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
   });
 
   describe('All Codecs and Resolutions', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
     it.skip('should handle all supported codec conversions', async () => {
       // TODO: Test conversions:
       // - H.264 → HEVC
@@ -166,6 +168,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
   });
 
   describe('Edge Cases and Error Handling', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
     it.skip('should handle edge cases in production scenario', async () => {
       // TODO: Include edge cases:
       // - Corrupted files
@@ -177,6 +180,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
   });
 
   describe('Auto-Heal Integration', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
     it.skip('should integrate with auto-heal system', async () => {
       // TODO: Simulate system crash during encoding
       // Verify auto-heal kicks in
@@ -186,6 +190,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
   });
 
   describe('Quality Verification', () => {
+    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
     it.skip('should verify quality across all processed files', async () => {
       // TODO: Process various files
       // Run quality checks on all outputs

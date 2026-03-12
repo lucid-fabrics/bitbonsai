@@ -291,7 +291,7 @@ describe('EncodingSchedulerService', () => {
     it('should resume jobs when inside schedule window', async () => {
       const now = new Date();
       const currentDay = now.getDay();
-      const currentHour = now.getHours();
+      const _currentHour = now.getHours();
 
       prisma.node.findMany.mockResolvedValue([
         {

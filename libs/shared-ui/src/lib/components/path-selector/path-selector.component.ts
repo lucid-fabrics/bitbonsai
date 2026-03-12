@@ -1,28 +1,15 @@
-import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Component, inject, input, OnInit, output, signal } from '@angular/core';
-
-interface DirectoryInfo {
-  name: string;
-  path: string;
-  isAccessible: boolean;
-}
-
-interface BrowseResult {
-  currentPath: string;
-  parentPath: string | null;
-  directories: DirectoryInfo[];
-}
+import { DirectoryInfo, FileBrowserService } from '../../services/file-browser.service';
 
 @Component({
   selector: 'app-path-selector',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './path-selector.component.html',
   styleUrls: ['./path-selector.component.scss'],
 })
 export class PathSelectorComponent implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly fileBrowser = inject(FileBrowserService);
 
   readonly apiUrl = input.required<string>();
   readonly pathSelected = output<string>();
@@ -42,23 +29,19 @@ export class PathSelectorComponent implements OnInit {
     this.isLoading.set(true);
     this.error.set(null);
 
-    this.http
-      .get<BrowseResult>(`${this.apiUrl()}/filesystem/browse`, {
-        params: { path },
-      })
-      .subscribe({
-        next: (result) => {
-          this.currentPath.set(result.currentPath);
-          this.parentPath.set(result.parentPath);
-          this.directories.set(result.directories);
-          this.isLoading.set(false);
-        },
-        error: (err) => {
-          console.error('Failed to browse directory:', err);
-          this.error.set('Failed to load directory contents');
-          this.isLoading.set(false);
-        },
-      });
+    this.fileBrowser.browse(this.apiUrl(), path).subscribe({
+      next: (result) => {
+        this.currentPath.set(result.currentPath);
+        this.parentPath.set(result.parentPath);
+        this.directories.set(result.directories);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to browse directory:', err);
+        this.error.set('Failed to load directory contents');
+        this.isLoading.set(false);
+      },
+    });
   }
 
   selectDirectory(dir: DirectoryInfo): void {

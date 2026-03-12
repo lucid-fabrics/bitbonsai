@@ -17,18 +17,10 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { execFile } from 'child_process';
-import { Response } from 'express';
-import { createReadStream, existsSync } from 'fs';
-import * as fs from 'fs/promises';
-import { firstValueFrom } from 'rxjs';
-import { promisify } from 'util';
-
-const execFileAsync = promisify(execFile);
-
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -36,9 +28,13 @@ import {
   ApiParam,
   ApiQuery,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { type Job, JobStage, Prisma } from '@prisma/client';
+import { Response } from 'express';
+import { createReadStream, existsSync } from 'fs';
+import { firstValueFrom } from 'rxjs';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NodeConfigService } from '../core/services/node-config.service';
 import { EncodingPreviewService } from '../encoding/encoding-preview.service';
@@ -587,107 +583,17 @@ export class QueueController {
       throw new BadRequestException('Cannot capture preview. Missing progress information');
     }
 
-    // Get duration from source file using ffprobe
-    let durationSeconds: number;
+    // Delegate ffprobe + ffmpeg work to EncodingPreviewService
+    let manualPreviewPath: string;
     try {
-      const { stdout } = await execFileAsync(
-        'ffprobe',
-        [
-          '-v',
-          'error',
-          '-show_entries',
-          'format=duration',
-          '-of',
-          'default=noprint_wrappers=1:nokey=1',
-          job.filePath,
-        ],
-        {
-          timeout: 5000,
-        }
+      manualPreviewPath = await this._previewService.captureManualPreview(
+        job.id,
+        job.filePath,
+        job.progress
       );
-      durationSeconds = parseFloat(stdout.trim());
-
-      if (Number.isNaN(durationSeconds) || durationSeconds <= 0) {
-        throw new Error('Invalid duration');
-      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error('Failed to get file duration', {
-        jobId: job.id,
-        filePath: job.filePath,
-        error: errorMessage,
-      });
-      throw new BadRequestException('Failed to get file duration for preview capture');
-    }
-
-    // Calculate timestamp based on current encoding progress
-    // Extract frame from original source file at this timestamp
-    const timestampSeconds = (job.progress / 100) * durationSeconds;
-
-    // Generate manual preview path
-    const manualPreviewPath = `/tmp/bitbonsai-previews/${job.id}/manual-${Date.now()}.jpg`;
-
-    // Create job preview directory if it doesn't exist
-    const jobPreviewDir = `/tmp/bitbonsai-previews/${job.id}`;
-    await fs.mkdir(jobPreviewDir, { recursive: true });
-
-    // Extract a frame from the source file at current encoding progress
-    // Much more reliable than reading from temp file during encoding
-    try {
-      await execFileAsync(
-        'ffmpeg',
-        [
-          '-y', // Overwrite existing
-          '-ss',
-          timestampSeconds.toString(), // Seek to current progress position
-          '-i',
-          job.filePath, // Use original source file
-          '-vf',
-          'scale=640:-1', // Scale down for fast loading
-          '-frames:v',
-          '1',
-          '-q:v',
-          '2', // High quality JPEG
-          manualPreviewPath,
-        ],
-        {
-          timeout: 10000, // 10 second timeout (seeking can take time on large files)
-        }
-      );
-
-      // BUGFIX: Verify file exists before saving path to database
-      // This prevents empty placeholders from appearing in the UI
-      if (!existsSync(manualPreviewPath)) {
-        this.logger.error('Manual preview file not found after FFmpeg extraction', {
-          jobId: job.id,
-          manualPreviewPath,
-          timestampSeconds,
-        });
-        throw new BadRequestException('Preview file not created. FFmpeg may have failed silently.');
-      }
-
-      this.logger.log(
-        `Preview captured successfully for job ${job.id} at ${timestampSeconds.toFixed(1)}s (${job.progress}%)`
-      );
-    } catch (error: unknown) {
-      // Log full error details for debugging
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const execError = error as { stderr?: string; stdout?: string; code?: number };
-      this.logger.error('Failed to capture preview frame', {
-        jobId: job.id,
-        sourceFilePath: job.filePath,
-        timestampSeconds,
-        progress: job.progress,
-        duration: durationSeconds,
-        manualPreviewPath,
-        errorMessage,
-        errorStderr: execError.stderr,
-        errorStdout: execError.stdout,
-        errorCode: execError.code,
-        fullError: error,
-      });
-
-      throw new BadRequestException(`Failed to capture preview: ${errorMessage}`);
+      throw new BadRequestException(errorMessage);
     }
 
     // MEDIUM #8 FIX: Safe JSON parsing for existing preview paths
@@ -842,6 +748,9 @@ export class QueueController {
   })
   @ApiNotFoundResponse({
     description: 'Job not found',
+  })
+  @ApiForbiddenResponse({
+    description: 'Node does not own this job',
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while updating job',
@@ -1862,6 +1771,9 @@ export class QueueController {
   @ApiBadRequestResponse({
     description: 'Invalid target node (offline, not available, etc.)',
   })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+  })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while delegating job',
   })
@@ -1885,6 +1797,9 @@ export class QueueController {
   })
   @ApiOkResponse({
     description: 'List of jobs in TRANSFERRING stage (paginated)',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
   })
   async getActiveTransfers() {
     return this.queueService.findAll('TRANSFERRING');
@@ -1918,6 +1833,9 @@ export class QueueController {
   @ApiNotFoundResponse({
     description: 'Job not found',
   })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+  })
   async getTransferProgress(@Param('id') id: string) {
     return this.fileTransferService.getTransferProgress(id);
   }
@@ -1947,6 +1865,9 @@ export class QueueController {
   })
   @ApiNotFoundResponse({
     description: 'Job not found or no active transfer',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
   })
   async cancelTransfer(@Param('id') id: string): Promise<void> {
     return this.fileTransferService.cancelTransfer(id);

@@ -36,8 +36,6 @@ export function mapExternalTier(
     const msg = `Unknown license tier "${externalTier}" - defaulting to FREE`;
     if (logger) {
       logger.warn(msg);
-    } else {
-      console.warn(`[tier-mapping] ${msg}`);
     }
     return LicenseTier.FREE;
   }

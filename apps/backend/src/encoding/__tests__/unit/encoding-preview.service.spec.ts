@@ -1,8 +1,15 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+
+// Mock util before importing the service
+jest.mock('util', () => ({
+  promisify: jest.fn((fn) => fn),
+}));
+
 import { EncodingPreviewService } from '../../encoding-preview.service';
 
 jest.mock('child_process', () => ({
   spawn: jest.fn(),
+  execFile: jest.fn(),
 }));
 
 jest.mock('fs', () => ({

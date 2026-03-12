@@ -68,7 +68,6 @@ export class PoliciesService {
         return { codec: TargetCodec.AV1, quality: 28 };
       case PolicyPreset.COPY_IF_COMPLIANT:
         return { codec: TargetCodec.HEVC, quality: 0 };
-      case PolicyPreset.CUSTOM:
       default:
         return { codec: TargetCodec.HEVC, quality: 23 };
     }

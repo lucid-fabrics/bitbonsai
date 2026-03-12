@@ -1,5 +1,4 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -10,6 +9,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { SettingsClient } from '../../../core/clients/settings.client';
 import {
@@ -25,11 +25,13 @@ import { SettingsService } from '../services/settings.service';
 @Component({
   selector: 'app-advanced-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, TranslocoModule],
   template: `
     <div class="tab-panel">
       <h2>Advanced Settings</h2>
-      <p class="tab-description">Configure security, caching, logging, and API integration settings</p>
+      <p class="tab-description">
+        Configure security, caching, logging, and API integration settings
+      </p>
 
       @if (systemSettings()) {
         <!-- Settings Grid - 2 columns -->
@@ -50,7 +52,7 @@ import { SettingsService } from '../services/settings.service';
                   id="advancedMode"
                   [ngModel]="advancedModeEnabled()"
                   (ngModelChange)="onAdvancedModeToggle($event)"
-                  [ngModelOptions]="{standalone: true}"
+                  [ngModelOptions]="{ standalone: true }"
                 />
                 <span class="slider"></span>
               </label>
@@ -58,7 +60,8 @@ import { SettingsService } from '../services/settings.service';
             <div class="setting-note">
               <i class="fa fa-info-circle"></i>
               @if (advancedModeEnabled()) {
-                Showing bulk actions, node filters, debug info, and technical details
+                Showing bulk actions, node filters, debug info, and technical
+                details
               } @else {
                 Minimal interface with essential controls only
               }
@@ -80,8 +83,11 @@ import { SettingsService } from '../services/settings.service';
                   type="checkbox"
                   id="localNetworkBypass"
                   [ngModel]="localNetworkBypassEnabled()"
-                  (ngModelChange)="localNetworkBypassEnabled.set($event); onLocalNetworkBypassToggle()"
-                  [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="
+                    localNetworkBypassEnabled.set($event);
+                    onLocalNetworkBypassToggle()
+                  "
+                  [ngModelOptions]="{ standalone: true }"
                 />
                 <span class="slider"></span>
               </label>
@@ -109,7 +115,7 @@ import { SettingsService } from '../services/settings.service';
                 class="form-control setting-input-inline"
                 [ngModel]="readyFilesCacheTtl()"
                 (ngModelChange)="readyFilesCacheTtl.set($event)"
-                [ngModelOptions]="{standalone: true}"
+                [ngModelOptions]="{ standalone: true }"
                 min="5"
                 (change)="saveReadyFilesCacheTtl()"
               />
@@ -135,7 +141,7 @@ import { SettingsService } from '../services/settings.service';
                 class="form-control setting-input-inline"
                 [ngModel]="maxAutoHealRetries()"
                 (ngModelChange)="maxAutoHealRetries.set($event)"
-                [ngModelOptions]="{standalone: true}"
+                [ngModelOptions]="{ standalone: true }"
                 min="3"
                 (change)="saveAutoHealRetryLimit()"
               />
@@ -186,17 +192,25 @@ import { SettingsService } from '../services/settings.service';
                   class="form-control"
                   formControlName="ffmpegPath"
                   placeholder="/usr/bin/ffmpeg"
-                  [class.invalid]="ffmpegPathControl?.invalid && ffmpegPathControl?.touched"
+                  [class.invalid]="
+                    ffmpegPathControl?.invalid && ffmpegPathControl?.touched
+                  "
                 />
                 @if (ffmpegPathControl?.invalid && ffmpegPathControl?.touched) {
-                  <span class="error-message">Path must be absolute (start with /)</span>
+                  <span class="error-message"
+                    >Path must be absolute (start with /)</span
+                  >
                 }
               </div>
 
               <!-- Log Level -->
               <div class="form-group">
                 <label for="logLevel">Log Level</label>
-                <select id="logLevel" class="form-control" formControlName="logLevel">
+                <select
+                  id="logLevel"
+                  class="form-control"
+                  formControlName="logLevel"
+                >
                   <option [value]="LogLevel.DEBUG">Debug</option>
                   <option [value]="LogLevel.INFO">Info</option>
                   <option [value]="LogLevel.WARN">Warning</option>
@@ -213,12 +227,16 @@ import { SettingsService } from '../services/settings.service';
                   class="form-control"
                   formControlName="webhookUrl"
                   placeholder="https://example.com/webhook"
-                  [class.invalid]="webhookUrlControl?.invalid && webhookUrlControl?.touched"
+                  [class.invalid]="
+                    webhookUrlControl?.invalid && webhookUrlControl?.touched
+                  "
                 />
                 @if (webhookUrlControl?.invalid && webhookUrlControl?.touched) {
                   <span class="error-message">Webhook URL must use HTTPS</span>
                 }
-                <p class="help-text">Receive notifications for job completions and errors</p>
+                <p class="help-text">
+                  Receive notifications for job completions and errors
+                </p>
               </div>
             </div>
 
@@ -238,16 +256,27 @@ import { SettingsService } from '../services/settings.service';
           <div class="api-key-header">
             <div>
               <h3>API Key</h3>
-              <p class="description">Use this key for external integrations and API access</p>
+              <p class="description">
+                Use this key for external integrations and API access
+              </p>
             </div>
-            <button type="button" class="btn-secondary btn-sm" (click)="regenerateApiKey()" [disabled]="loading()">
+            <button
+              type="button"
+              class="btn-secondary btn-sm"
+              (click)="regenerateApiKey()"
+              [disabled]="loading()"
+            >
               <i class="fa fa-refresh"></i>
               Regenerate
             </button>
           </div>
           <div class="api-key-display">
             <code class="api-key-value">
-              {{ apiKeyRevealed() ? systemSettings()!.apiKey : '**********************' }}
+              {{
+                apiKeyRevealed()
+                  ? systemSettings()!.apiKey
+                  : '**********************'
+              }}
             </code>
             <button
               type="button"
@@ -255,7 +284,9 @@ import { SettingsService } from '../services/settings.service';
               (click)="toggleApiKeyVisibility()"
               [title]="apiKeyRevealed() ? 'Hide' : 'Reveal'"
             >
-              <i [class]="apiKeyRevealed() ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+              <i
+                [class]="apiKeyRevealed() ? 'fa fa-eye-slash' : 'fa fa-eye'"
+              ></i>
             </button>
             <button
               type="button"
@@ -570,7 +601,10 @@ export class AdvancedTabComponent implements OnInit {
             next: (result: { apiKey: string }) => {
               const currentSettings = this.systemSettings();
               if (currentSettings) {
-                this.systemSettings.set({ ...currentSettings, apiKey: result.apiKey });
+                this.systemSettings.set({
+                  ...currentSettings,
+                  apiKey: result.apiKey,
+                });
               }
               this.loading.set(false);
               this.successMessage.set('API key regenerated successfully!');

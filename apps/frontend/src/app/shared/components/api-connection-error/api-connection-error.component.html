@@ -5,50 +5,58 @@
         <div class="header-icon">
           <i class="fas fa-exclamation-triangle"></i>
         </div>
-        <h2>Unable to Connect to Server</h2>
+        <h2>{{ 'connectionError.title' | transloco }}</h2>
       </div>
 
       <div class="error-body">
         <p class="error-message">
-          The application cannot connect to the BitBonsai server. This could be due to:
+          The application cannot connect to the BitBonsai server. This could be
+          due to:
         </p>
 
         <div class="troubleshooting-section">
-          <h3><i class="fas fa-wrench"></i> Troubleshooting Steps</h3>
+          <h3>
+            <i class="fas fa-wrench"></i>
+            {{ 'connectionError.troubleshooting' | transloco }}
+          </h3>
           <ul class="troubleshooting-list">
             <li>
-              <strong>Check if the server is running</strong>
-              <p>Make sure the BitBonsai server application is started and running</p>
+              <strong>{{
+                'connectionError.checkServerRunning' | transloco
+              }}</strong>
+              <p>{{ 'connectionError.serverRunningDesc' | transloco }}</p>
             </li>
             <li>
-              <strong>Verify network connection</strong>
-              <p>Ensure your device is connected to the same network as the server</p>
+              <strong>{{ 'connectionError.verifyNetwork' | transloco }}</strong>
+              <p>{{ 'connectionError.networkDesc' | transloco }}</p>
             </li>
             <li>
-              <strong>Check server configuration</strong>
-              <p>Verify the server is listening on the correct port and address</p>
+              <strong>{{ 'connectionError.checkConfig' | transloco }}</strong>
+              <p>{{ 'connectionError.configDesc' | transloco }}</p>
             </li>
             <li>
-              <strong>Review firewall settings</strong>
-              <p>Ensure your firewall allows connections to the BitBonsai server</p>
+              <strong>{{
+                'connectionError.reviewFirewall' | transloco
+              }}</strong>
+              <p>{{ 'connectionError.firewallDesc' | transloco }}</p>
             </li>
           </ul>
         </div>
 
         <div class="help-banner">
           <i class="fas fa-info-circle"></i>
-          <span>For detailed setup instructions, please refer to the BitBonsai documentation</span>
+          <span>{{ 'connectionError.docsLink' | transloco }}</span>
         </div>
       </div>
 
       <div class="error-footer">
         <button class="btn btn-secondary" (click)="dismiss()">
           <i class="fas fa-times"></i>
-          Dismiss
+          {{ 'connectionError.dismiss' | transloco }}
         </button>
         <button class="btn btn-primary" (click)="reload()">
           <i class="fas fa-sync-alt"></i>
-          Retry Connection
+          {{ 'connectionError.retry' | transloco }}
         </button>
       </div>
     </div>

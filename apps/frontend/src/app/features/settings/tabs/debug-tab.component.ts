@@ -1,7 +1,7 @@
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { TranslocoModule } from '@ngneat/transloco';
 import {
   DebugClient,
   type FfmpegProcessesResponse,
@@ -11,11 +11,13 @@ import {
 @Component({
   selector: 'app-debug-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, TranslocoModule],
   template: `
     <div class="tab-panel">
       <h2>Diagnostics</h2>
-      <p class="tab-description">System monitoring and process management for troubleshooting</p>
+      <p class="tab-description">
+        System monitoring and process management for troubleshooting
+      </p>
 
       <!-- System Load Card -->
       <div class="info-card">
@@ -30,21 +32,32 @@ import {
           <div class="load-grid">
             <div class="load-stat">
               <span class="load-label">1m Load</span>
-              <span class="load-value" [class.overloaded]="systemLoadInfo()!.loadAvg1m > systemLoadInfo()!.loadThreshold">
+              <span
+                class="load-value"
+                [class.overloaded]="
+                  systemLoadInfo()!.loadAvg1m > systemLoadInfo()!.loadThreshold
+                "
+              >
                 {{ systemLoadInfo()!.loadAvg1m.toFixed(2) }}
               </span>
             </div>
             <div class="load-stat">
               <span class="load-label">5m Load</span>
-              <span class="load-value">{{ systemLoadInfo()!.loadAvg5m.toFixed(2) }}</span>
+              <span class="load-value">{{
+                systemLoadInfo()!.loadAvg5m.toFixed(2)
+              }}</span>
             </div>
             <div class="load-stat">
               <span class="load-label">15m Load</span>
-              <span class="load-value">{{ systemLoadInfo()!.loadAvg15m.toFixed(2) }}</span>
+              <span class="load-value">{{
+                systemLoadInfo()!.loadAvg15m.toFixed(2)
+              }}</span>
             </div>
             <div class="load-stat">
               <span class="load-label">Threshold</span>
-              <span class="load-value threshold">{{ systemLoadInfo()!.loadThreshold.toFixed(0) }}</span>
+              <span class="load-value threshold">{{
+                systemLoadInfo()!.loadThreshold.toFixed(0)
+              }}</span>
             </div>
             <div class="load-stat">
               <span class="load-label">CPU Cores</span>
@@ -52,7 +65,9 @@ import {
             </div>
             <div class="load-stat">
               <span class="load-label">Free Memory</span>
-              <span class="load-value">{{ systemLoadInfo()!.freeMemoryGB.toFixed(1) }} GB</span>
+              <span class="load-value"
+                >{{ systemLoadInfo()!.freeMemoryGB.toFixed(1) }} GB</span
+              >
             </div>
           </div>
 
@@ -81,7 +96,8 @@ import {
         <div class="info-card">
           <h3><i class="fa fa-sliders-h"></i> Load Threshold Override</h3>
           <p class="setting-description">
-            Override automatic load management. Only adjust if encoding is being throttled unnecessarily.
+            Override automatic load management. Only adjust if encoding is being
+            throttled unnecessarily.
           </p>
 
           <div class="threshold-setting">
@@ -103,8 +119,13 @@ import {
               <div class="threshold-preview">
                 <span class="preview-label">New Threshold:</span>
                 <span class="preview-value">
-                  {{ systemLoadInfo()!.cpuCount }} cores × {{ loadThresholdMultiplier() }} =
-                  <strong>{{ (systemLoadInfo()!.cpuCount * loadThresholdMultiplier()).toFixed(0) }}</strong>
+                  {{ systemLoadInfo()!.cpuCount }} cores ×
+                  {{ loadThresholdMultiplier() }} =
+                  <strong>{{
+                    (
+                      systemLoadInfo()!.cpuCount * loadThresholdMultiplier()
+                    ).toFixed(0)
+                  }}</strong>
                 </span>
               </div>
             }
@@ -126,7 +147,11 @@ import {
         <div class="card-header-row">
           <h3><i class="fa fa-film"></i> FFmpeg Processes</h3>
           <div class="header-actions">
-            <button class="btn-icon" (click)="loadFfmpegProcesses()" title="Refresh">
+            <button
+              class="btn-icon"
+              (click)="loadFfmpegProcesses()"
+              title="Refresh"
+            >
               <i class="fa fa-sync" [class.fa-spin]="loadingProcesses()"></i>
             </button>
           </div>
@@ -134,14 +159,19 @@ import {
         @if (ffmpegData()?.zombieCount) {
           <div class="auto-cleanup-notice">
             <i class="fa fa-broom"></i>
-            <span>{{ ffmpegData()!.zombieCount }} zombie process(es) detected - auto-cleanup runs every 60s</span>
+            <span
+              >{{ ffmpegData()!.zombieCount }} zombie process(es) detected -
+              auto-cleanup runs every 60s</span
+            >
           </div>
         }
 
         @if (ffmpegData()) {
           <!-- Tracked Encodings -->
           <div class="process-section">
-            <h4>Tracked Encodings ({{ ffmpegData()!.trackedEncodings.length }})</h4>
+            <h4>
+              Tracked Encodings ({{ ffmpegData()!.trackedEncodings.length }})
+            </h4>
             @if (ffmpegData()!.trackedEncodings.length === 0) {
               <p class="no-data">No active encoding jobs</p>
             } @else {
@@ -156,9 +186,14 @@ import {
                     </tr>
                   </thead>
                   <tbody>
-                    @for (enc of ffmpegData()!.trackedEncodings; track enc.jobId) {
+                    @for (
+                      enc of ffmpegData()!.trackedEncodings;
+                      track enc.jobId
+                    ) {
                       <tr>
-                        <td class="job-id">{{ enc.jobId.substring(0, 8) }}...</td>
+                        <td class="job-id">
+                          {{ enc.jobId.substring(0, 8) }}...
+                        </td>
                         <td>{{ enc.pid || 'N/A' }}</td>
                         <td>{{ enc.lastProgress.toFixed(1) }}%</td>
                         <td>{{ formatDuration(enc.runtimeSeconds) }}</td>
@@ -173,9 +208,13 @@ import {
           <!-- System Processes -->
           <div class="process-section">
             <h4>
-              System FFmpeg Processes ({{ ffmpegData()!.systemProcesses.length }})
+              System FFmpeg Processes ({{
+                ffmpegData()!.systemProcesses.length
+              }})
               @if (ffmpegData()!.zombieCount > 0) {
-                <span class="zombie-badge">{{ ffmpegData()!.zombieCount }} zombies</span>
+                <span class="zombie-badge"
+                  >{{ ffmpegData()!.zombieCount }} zombies</span
+                >
               }
             </h4>
             @if (ffmpegData()!.systemProcesses.length === 0) {
@@ -194,7 +233,10 @@ import {
                     </tr>
                   </thead>
                   <tbody>
-                    @for (proc of ffmpegData()!.systemProcesses; track proc.pid) {
+                    @for (
+                      proc of ffmpegData()!.systemProcesses;
+                      track proc.pid
+                    ) {
                       <tr [class.zombie-row]="proc.isZombie">
                         <td>{{ proc.pid }}</td>
                         <td>

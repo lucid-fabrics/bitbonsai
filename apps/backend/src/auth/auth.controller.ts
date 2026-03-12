@@ -1,5 +1,13 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Request, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -22,19 +30,9 @@ export class AuthController {
     summary: 'User login',
     description: 'Authenticate with username and password to receive JWT access and refresh tokens',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Login successful, tokens returned',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Invalid credentials',
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'Too many login attempts - rate limit exceeded',
-  })
+  @ApiOkResponse({ description: 'Login successful', type: AuthResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(loginDto);
   }
@@ -46,15 +44,8 @@ export class AuthController {
     summary: 'Refresh access token',
     description: 'Use refresh token to obtain a new access token and refresh token',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Token refreshed successfully',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Invalid or expired refresh token',
-  })
+  @ApiOkResponse({ description: 'Token refreshed', type: AuthResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
     return this.authService.refreshToken(refreshTokenDto);
   }
@@ -67,14 +58,8 @@ export class AuthController {
     summary: 'Logout user',
     description: 'Invalidate refresh token and logout user',
   })
-  @ApiResponse({
-    status: 204,
-    description: 'Logout successful',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
+  @ApiNoContentResponse({ description: 'Logout successful' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   async logout(@Request() req: { user: { userId: string } }): Promise<void> {
     return this.authService.logout(req.user.userId);
   }

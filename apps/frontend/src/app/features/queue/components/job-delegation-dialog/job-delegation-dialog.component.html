@@ -4,7 +4,7 @@
     <div class="dialog-header">
       <h2 class="dialog-title">
         <fa-icon [icon]="['fas', 'paper-plane']"></fa-icon>
-        Send Job to Node
+        {{ 'nodes.sendToNode' | transloco }}
       </h2>
       <button class="close-button" (click)="onClose()">
         <fa-icon [icon]="['fas', 'times']"></fa-icon>
@@ -15,7 +15,7 @@
     <div class="dialog-body">
       <!-- Job Info -->
       <div class="job-info">
-        <h3>Job:</h3>
+        <h3>{{ 'jobDelegation.job' | transloco }}</h3>
         <p>{{ data.job.fileName }}</p>
       </div>
 
@@ -31,21 +31,22 @@
       @if (isLoading && nodes.length === 0) {
         <div class="loading-state">
           <fa-icon [icon]="['fas', 'spinner']" class="fa-spin"></fa-icon>
-          <p>Loading nodes...</p>
+          <p>{{ 'jobDelegation.loadingNodes' | transloco }}</p>
         </div>
       }
 
       <!-- Node Selection -->
       @if (!isLoading || nodes.length > 0) {
         <div class="node-selection">
-          <h3>Select Target Node:</h3>
+          <h3>{{ 'jobDelegation.selectTargetNode' | transloco }}</h3>
           <div class="nodes-list">
             @for (node of nodes; track node.id) {
               <div
                 class="node-card"
                 [class.selected]="selectedNodeId === node.id"
                 [class.outside-schedule]="isOutsideSchedule(node.id)"
-                (click)="selectNode(node.id)">
+                (click)="selectNode(node.id)"
+              >
                 <!-- Node Header -->
                 <div class="node-header">
                   <div class="node-info">
@@ -53,22 +54,33 @@
                     <span class="node-name">{{ node.name }}</span>
                   </div>
                   @if (selectedNodeId === node.id) {
-                    <fa-icon [icon]="['fas', 'check-circle']" class="selected-icon"></fa-icon>
+                    <fa-icon
+                      [icon]="['fas', 'check-circle']"
+                      class="selected-icon"
+                    ></fa-icon>
                   }
                 </div>
 
                 <!-- Node Score -->
                 @if (getNodeScore(node.id); as score) {
                   <div class="node-score">
-                    <div class="score-label">Job Attribution Score:</div>
-                    <div class="score-value">{{ score.totalScore.toFixed(1) }}/100</div>
+                    <div class="score-label">
+                      {{ 'jobDelegation.jobAttributionScore' | transloco }}
+                    </div>
+                    <div class="score-value">
+                      {{ score.totalScore.toFixed(1) }}/100
+                    </div>
                   </div>
 
                   <!-- Schedule Warning -->
                   @if (!score.breakdown.scheduleAvailable) {
                     <div class="schedule-warning">
-                      <fa-icon [icon]="['fas', 'exclamation-triangle']"></fa-icon>
-                      <span>This node is currently outside its encoding schedule window</span>
+                      <fa-icon
+                        [icon]="['fas', 'exclamation-triangle']"
+                      ></fa-icon>
+                      <span>{{
+                        'jobDelegation.outsideSchedule' | transloco
+                      }}</span>
                     </div>
                   }
                 }
@@ -77,7 +89,10 @@
                 <div class="node-stats">
                   <div class="stat">
                     <fa-icon [icon]="['fas', 'tasks']"></fa-icon>
-                    <span>{{ node.activeJobCount || 0 }} / {{ node.maxWorkers }} jobs</span>
+                    <span
+                      >{{ node.activeJobCount || 0 }} /
+                      {{ node.maxWorkers }} jobs</span
+                    >
                   </div>
                   <div class="stat">
                     <fa-icon [icon]="['fas', 'microchip']"></fa-icon>
@@ -90,7 +105,7 @@
             @if (nodes.length === 0) {
               <div class="empty-state">
                 <fa-icon [icon]="['fas', 'server']"></fa-icon>
-                <p>No online nodes available</p>
+                <p>{{ 'jobDelegation.noOnlineNodes' | transloco }}</p>
               </div>
             }
           </div>
@@ -100,19 +115,24 @@
 
     <!-- Dialog Footer -->
     <div class="dialog-footer">
-      <button class="btn btn-secondary" (click)="onClose()" [disabled]="isLoading">
-        Cancel
+      <button
+        class="btn btn-secondary"
+        (click)="onClose()"
+        [disabled]="isLoading"
+      >
+        {{ 'common.cancel' | transloco }}
       </button>
       <button
         class="btn btn-primary"
         (click)="delegateJob()"
-        [disabled]="!selectedNodeId || isLoading">
+        [disabled]="!selectedNodeId || isLoading"
+      >
         @if (isLoading) {
           <fa-icon [icon]="['fas', 'spinner']" class="fa-spin"></fa-icon>
-          Delegating...
+          {{ 'nodes.sending' | transloco }}
         } @else {
           <fa-icon [icon]="['fas', 'paper-plane']"></fa-icon>
-          Send to Node
+          {{ 'nodes.sendToNode' | transloco }}
         }
       </button>
     </div>

@@ -1,9 +1,10 @@
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PathSelectorComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import {
@@ -43,7 +44,13 @@ export interface StorageSharesModalData {
 @Component({
   selector: 'bb-storage-shares-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FontAwesomeModule, PathSelectorComponent],
+  imports: [
+    NgClass,
+    ReactiveFormsModule,
+    FontAwesomeModule,
+    PathSelectorComponent,
+    TranslocoModule,
+  ],
   templateUrl: './storage-shares.modal.html',
   styleUrls: ['./storage-shares.modal.scss'],
 })

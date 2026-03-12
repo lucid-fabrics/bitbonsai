@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,6 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import type {
   CapabilityTestProgress,
   CapabilityTestResult,
@@ -29,13 +29,15 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
 @Component({
   selector: 'app-capability-test',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   template: `
     <div class="capability-test-container">
       <!-- Progress Header -->
       <div class="test-header">
         <h2>Detecting Node Capabilities</h2>
-        <p class="test-subtitle">Running comprehensive compatibility tests...</p>
+        <p class="test-subtitle">
+          Running comprehensive compatibility tests...
+        </p>
       </div>
 
       <!-- Progress Bar -->
@@ -53,7 +55,11 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
       <!-- Test Phases -->
       <div class="test-phases">
         <!-- Phase 1: Network Connection -->
-        <div class="test-phase" [class.active]="currentPhase() >= 1" [class.complete]="currentPhase() > 1">
+        <div
+          class="test-phase"
+          [class.active]="currentPhase() >= 1"
+          [class.complete]="currentPhase() > 1"
+        >
           <div class="phase-icon">
             @if (currentPhase() < 1) {
               <i class="far fa-circle"></i>
@@ -65,12 +71,18 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
           </div>
           <div class="phase-content">
             <div class="phase-title">Network Connection</div>
-            <div class="phase-description">Measuring latency and connectivity</div>
+            <div class="phase-description">
+              Measuring latency and connectivity
+            </div>
           </div>
         </div>
 
         <!-- Phase 2: Shared Storage -->
-        <div class="test-phase" [class.active]="currentPhase() >= 2" [class.complete]="currentPhase() > 2">
+        <div
+          class="test-phase"
+          [class.active]="currentPhase() >= 2"
+          [class.complete]="currentPhase() > 2"
+        >
           <div class="phase-icon">
             @if (currentPhase() < 2) {
               <i class="far fa-circle"></i>
@@ -87,7 +99,11 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
         </div>
 
         <!-- Phase 3: Hardware Detection -->
-        <div class="test-phase" [class.active]="currentPhase() >= 3" [class.complete]="currentPhase() > 3">
+        <div
+          class="test-phase"
+          [class.active]="currentPhase() >= 3"
+          [class.complete]="currentPhase() > 3"
+        >
           <div class="phase-icon">
             @if (currentPhase() < 3) {
               <i class="far fa-circle"></i>
@@ -104,7 +120,11 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
         </div>
 
         <!-- Phase 4: Network Type -->
-        <div class="test-phase" [class.active]="currentPhase() >= 4" [class.complete]="currentPhase() > 4">
+        <div
+          class="test-phase"
+          [class.active]="currentPhase() >= 4"
+          [class.complete]="currentPhase() > 4"
+        >
           <div class="phase-icon">
             @if (currentPhase() < 4) {
               <i class="far fa-circle"></i>
@@ -299,7 +319,8 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
       }
 
       @keyframes pulse {
-        0%, 100% {
+        0%,
+        100% {
           opacity: 1;
         }
         50% {

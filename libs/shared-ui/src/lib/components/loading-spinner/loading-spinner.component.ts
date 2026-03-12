@@ -1,10 +1,9 @@
-import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 @Component({
   selector: 'bb-loading-spinner',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="spinner-container" [style.width.px]="size" [style.height.px]="size">
       <div class="spinner"></div>

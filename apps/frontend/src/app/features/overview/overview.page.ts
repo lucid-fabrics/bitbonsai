@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,6 +18,7 @@ import {
   faSpinner,
   faTimes,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { distinctUntilChanged } from 'rxjs';
 import { OverviewActions } from './+state/overview.actions';
@@ -89,7 +90,7 @@ import {
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [AsyncPipe, FontAwesomeModule, TranslocoModule],
   templateUrl: './overview.page.html',
   styleUrls: ['./overview.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

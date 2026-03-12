@@ -1,6 +1,6 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import {
   ContainerType,
   StorageMethod,
@@ -10,7 +10,7 @@ import {
 @Component({
   selector: 'app-storage-recommendation-banner',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './storage-recommendation-banner.component.html',
   styleUrls: ['./storage-recommendation-banner.component.scss'],
 })

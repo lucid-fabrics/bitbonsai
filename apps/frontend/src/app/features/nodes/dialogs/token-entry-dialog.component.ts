@@ -1,19 +1,21 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslocoModule } from '@ngneat/transloco';
 
 export type TokenEntryDialogData = object;
 
 @Component({
   selector: 'app-token-entry-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, TranslocoModule],
   templateUrl: './token-entry-dialog.component.html',
   styleUrls: ['./token-entry-dialog.component.scss'],
 })
 export class TokenEntryDialogComponent {
-  readonly data: TokenEntryDialogData | null = inject(DIALOG_DATA, { optional: true });
+  readonly data: TokenEntryDialogData | null = inject(DIALOG_DATA, {
+    optional: true,
+  });
   readonly dialogRef = inject(DialogRef);
 
   token = '';

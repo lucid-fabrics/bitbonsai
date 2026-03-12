@@ -1,7 +1,7 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import {
   ContainerType,
   EnvironmentInfo,
@@ -27,7 +27,7 @@ export interface StorageSetupWizardData {
 @Component({
   selector: 'app-storage-setup-wizard',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './storage-setup-wizard.modal.html',
   styleUrls: ['./storage-setup-wizard.modal.scss'],
 })

@@ -1,7 +1,7 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 
 export interface ScheduleConflictDialogData {
   nodeName: string;
@@ -11,7 +11,7 @@ export interface ScheduleConflictDialogData {
 @Component({
   selector: 'app-schedule-conflict-dialog',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './schedule-conflict-dialog.component.html',
   styleUrls: ['./schedule-conflict-dialog.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

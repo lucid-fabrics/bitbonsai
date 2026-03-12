@@ -1,5 +1,4 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -12,6 +11,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { OptimalConfig } from '../../../../core/clients/nodes.client';
 import { NodesClient } from '../../../../core/clients/nodes.client';
 import { NodeScheduleEditorComponent } from '../../../../shared/components/node-schedule-editor/node-schedule-editor.component';
@@ -34,7 +34,7 @@ export interface NodeConfigModalData {
 @Component({
   selector: 'app-node-config-modal',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, ReactiveFormsModule, NodeScheduleEditorComponent],
+  imports: [FontAwesomeModule, ReactiveFormsModule, NodeScheduleEditorComponent, TranslocoModule],
   templateUrl: './node-config.modal.html',
   styleUrls: ['./node-config.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

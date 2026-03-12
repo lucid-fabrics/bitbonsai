@@ -1,8 +1,10 @@
 import { Dialog, type DialogRef } from '@angular/cdk/dialog';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { TranslocoTestingModule } from '@ngneat/transloco';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { configureFontAwesome } from '../../core/config/font-awesome.config';
@@ -60,7 +62,8 @@ describe('PoliciesComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PoliciesComponent],
+      imports: [PoliciesComponent, TranslocoTestingModule.forRoot({})],
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [
         provideMockStore({ initialState }),
         provideHttpClient(),

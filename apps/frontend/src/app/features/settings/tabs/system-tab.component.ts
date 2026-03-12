@@ -1,12 +1,14 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { selectIsLinkedNode, selectMainNode } from '../../../core/+state/current-node.selectors';
 import { NodesClient } from '../../../core/clients/nodes.client';
+import { ErrorLoggerService } from '../../../core/services/error-logger.service';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -17,7 +19,7 @@ import { SettingsService } from '../services/settings.service';
 @Component({
   selector: 'app-system-tab',
   standalone: true,
-  imports: [CommonModule],
+  imports: [AsyncPipe, TranslocoModule],
   template: `
     <div class="tab-panel">
       <h2>System Configuration</h2>
@@ -33,7 +35,9 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Version</span>
-                <span class="compact-value">v{{ systemSettings()!.version }}</span>
+                <span class="compact-value"
+                  >v{{ systemSettings()!.version }}</span
+                >
               </div>
             </div>
 
@@ -44,7 +48,9 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Database</span>
-                <span class="compact-value">{{ systemSettings()!.databaseType }}</span>
+                <span class="compact-value">{{
+                  systemSettings()!.databaseType
+                }}</span>
               </div>
             </div>
 
@@ -55,7 +61,11 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Storage Used</span>
-                <span class="compact-value">{{ systemSettings()!.storageInfo.usagePercent.toFixed(1) }}%</span>
+                <span class="compact-value"
+                  >{{
+                    systemSettings()!.storageInfo.usagePercent.toFixed(1)
+                  }}%</span
+                >
               </div>
             </div>
 
@@ -66,14 +76,21 @@ import { SettingsService } from '../services/settings.service';
               </div>
               <div class="compact-details">
                 <span class="compact-label">Database Path</span>
-                <code class="compact-value path-value">{{ systemSettings()!.databasePath }}</code>
+                <code class="compact-value path-value">{{
+                  systemSettings()!.databasePath
+                }}</code>
               </div>
             </div>
           </div>
 
           <!-- Inline actions -->
           <div class="compact-actions">
-            <button type="button" class="btn-secondary btn-sm" (click)="backupDatabase()" [disabled]="loading()">
+            <button
+              type="button"
+              class="btn-secondary btn-sm"
+              (click)="backupDatabase()"
+              [disabled]="loading()"
+            >
               <i class="fa fa-download"></i>
               Backup Database
             </button>
@@ -84,19 +101,33 @@ import { SettingsService } from '../services/settings.service';
         <div class="info-card storage-card">
           <div class="storage-header">
             <h3>Storage Usage</h3>
-            <span class="storage-percentage">{{ systemSettings()!.storageInfo.usagePercent.toFixed(1) }}%</span>
+            <span class="storage-percentage"
+              >{{
+                systemSettings()!.storageInfo.usagePercent.toFixed(1)
+              }}%</span
+            >
           </div>
           <div class="storage-bar-container">
             <div
               class="storage-bar-fill"
               [style.width.%]="systemSettings()!.storageInfo.usagePercent"
-              [class.storage-warning]="systemSettings()!.storageInfo.usagePercent > 80"
-              [class.storage-critical]="systemSettings()!.storageInfo.usagePercent > 90"
+              [class.storage-warning]="
+                systemSettings()!.storageInfo.usagePercent > 80
+              "
+              [class.storage-critical]="
+                systemSettings()!.storageInfo.usagePercent > 90
+              "
             ></div>
           </div>
           <div class="storage-details">
-            <span>{{ systemSettings()!.storageInfo.usedGb.toFixed(1) }} GB used</span>
-            <span>{{ systemSettings()!.storageInfo.totalGb.toFixed(1) }} GB total</span>
+            <span
+              >{{ systemSettings()!.storageInfo.usedGb.toFixed(1) }} GB
+              used</span
+            >
+            <span
+              >{{ systemSettings()!.storageInfo.totalGb.toFixed(1) }} GB
+              total</span
+            >
           </div>
         </div>
 
@@ -116,14 +147,20 @@ import { SettingsService } from '../services/settings.service';
                   }
                 </p>
               </div>
-              <button type="button" class="btn-danger btn-compact" (click)="unregisterNode()" [disabled]="loading()">
+              <button
+                type="button"
+                class="btn-danger btn-compact"
+                (click)="unregisterNode()"
+                [disabled]="loading()"
+              >
                 <i class="fa fa-unlink"></i>
                 Unregister
               </button>
             </div>
             <div class="unregister-note">
               <i class="fa fa-info-circle"></i>
-              Unregistering will disconnect this node and reset it to unconfigured state.
+              Unregistering will disconnect this node and reset it to
+              unconfigured state.
             </div>
           </div>
         }
@@ -136,9 +173,16 @@ import { SettingsService } from '../services/settings.service';
                 <i class="fa fa-exclamation-triangle"></i>
                 Danger Zone
               </h3>
-              <p class="description">Irreversible actions that reset system configuration</p>
+              <p class="description">
+                Irreversible actions that reset system configuration
+              </p>
             </div>
-            <button type="button" class="btn-danger btn-compact" (click)="resetToDefaults()" [disabled]="loading()">
+            <button
+              type="button"
+              class="btn-danger btn-compact"
+              (click)="resetToDefaults()"
+              [disabled]="loading()"
+            >
               <i class="fa fa-undo"></i>
               Reset to Defaults
             </button>
@@ -151,6 +195,7 @@ import { SettingsService } from '../services/settings.service';
 export class SystemTabComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
   private readonly nodesClient = inject(NodesClient);
+  private readonly errorLogger = inject(ErrorLoggerService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly store = inject(Store);
@@ -177,7 +222,7 @@ export class SystemTabComponent implements OnInit {
           this.systemSettings.set(settings);
         },
         error: (err) => {
-          console.error('Failed to load system settings:', err);
+          this.errorLogger.error('Failed to load system settings', err);
         },
       });
   }
