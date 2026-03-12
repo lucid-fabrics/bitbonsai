@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { CoreModule } from '../core/core.module';
 import { EncodingModule } from '../encoding/encoding.module';
 import { LibrariesModule } from '../libraries/libraries.module';
+import { NodesModule } from '../nodes/nodes.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
 import { BatchController } from './batch.controller';
@@ -15,6 +16,10 @@ import { FileTransferService } from './services/file-transfer.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { JobHistoryService } from './services/job-history.service';
 import { JobRouterService } from './services/job-router.service';
+import { QueueDelegationService } from './services/queue-delegation.service';
+import { QueueJobCrudService } from './services/queue-job-crud.service';
+import { QueueJobStateService } from './services/queue-job-state.service';
+import { QueueProcessingService } from './services/queue-processing.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
 import { WebhookNotificationService } from './services/webhook-notification.service';
 import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
@@ -37,16 +42,17 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
 @Module({
   imports: [
     CoreModule,
-    forwardRef(() => EncodingModule),
+    EncodingModule,
     forwardRef(() => LibrariesModule),
-    forwardRef(() => {
-      const { NodesModule } = require('../nodes/nodes.module');
-      return NodesModule;
-    }),
+    forwardRef(() => NodesModule),
   ],
   controllers: [QueueController, BatchController],
   providers: [
     QueueService,
+    QueueJobCrudService,
+    QueueJobStateService,
+    QueueDelegationService,
+    QueueProcessingService,
     JobCleanupService,
     JobHistoryService,
     JobRouterService,
@@ -63,6 +69,10 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   ],
   exports: [
     QueueService,
+    QueueJobCrudService,
+    QueueJobStateService,
+    QueueDelegationService,
+    QueueProcessingService,
     JobHistoryService,
     JobRouterService,
     FileTransferService,

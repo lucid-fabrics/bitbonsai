@@ -6,7 +6,7 @@
 
     <div class="banner-content">
       <div class="banner-header">
-        <h3>Storage Configuration</h3>
+        <h3>{{ 'storage.title' | transloco }}</h3>
         <span class="method-badge" [class]="methodBadgeClass">
           {{ recommendation.recommended }}
         </span>
@@ -36,7 +36,10 @@
 
         @if (recommendation.warning) {
           <div class="warning-section">
-            <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'exclamation-triangle']"
+              class="warning-icon"
+            ></fa-icon>
             <span class="warning-text">{{ recommendation.warning }}</span>
           </div>
         }
@@ -44,7 +47,10 @@
         @if (recommendation.actionRequired) {
           <div class="action-section">
             <div class="action-box">
-              <fa-icon [icon]="['fas', 'lightbulb']" class="action-icon"></fa-icon>
+              <fa-icon
+                [icon]="['fas', 'lightbulb']"
+                class="action-icon"
+              ></fa-icon>
               <div class="action-content">
                 <strong>Action Required:</strong>
                 <p>{{ recommendation.actionRequired }}</p>
@@ -55,16 +61,12 @@
       </div>
 
       <div class="banner-actions">
-        <button
-          class="btn btn-primary"
-          (click)="onConfigure()">
+        <button class="btn btn-primary" (click)="onConfigure()">
           <fa-icon [icon]="['fas', 'cog']" class="me-2"></fa-icon>
-          Configure Storage
+          {{ 'nodes.configure' | transloco }}
         </button>
-        <button
-          class="btn btn-outline-secondary"
-          (click)="onDismiss()">
-          Dismiss
+        <button class="btn btn-outline-secondary" (click)="onDismiss()">
+          {{ 'common.close' | transloco }}
         </button>
       </div>
     </div>

@@ -1,7 +1,7 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, inject, type OnInit, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { environment } from '../../../environments/environment';
 import { SettingsActions } from './+state/settings.actions';
@@ -10,7 +10,7 @@ import { SettingsSelectors } from './+state/settings.selectors';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslocoModule],
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
   encapsulation: ViewEncapsulation.None,

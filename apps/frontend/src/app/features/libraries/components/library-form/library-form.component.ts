@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,6 +18,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { PathSelectorComponent } from '@bitbonsai/shared-ui';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { environment } from '../../../../../environments/environment';
 import type { Node } from '../../../nodes/models/node.model';
@@ -38,7 +39,7 @@ interface LibraryFormControls {
 @Component({
   selector: 'app-library-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PathSelectorComponent],
+  imports: [AsyncPipe, ReactiveFormsModule, PathSelectorComponent, TranslocoModule],
   templateUrl: './library-form.component.html',
   styleUrls: ['./library-form.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -118,8 +119,12 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
         nonNullable: true,
       }),
       enabled: this.fb.control(lib?.enabled ?? true, { nonNullable: true }),
-      watchEnabled: this.fb.control(lib?.watchEnabled ?? false, { nonNullable: true }),
-      defaultPolicyId: this.fb.control(lib?.defaultPolicyId ?? null, { nonNullable: true }),
+      watchEnabled: this.fb.control(lib?.watchEnabled ?? false, {
+        nonNullable: true,
+      }),
+      defaultPolicyId: this.fb.control(lib?.defaultPolicyId ?? null, {
+        nonNullable: true,
+      }),
     });
   }
 

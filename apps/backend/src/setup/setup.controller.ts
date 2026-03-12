@@ -1,5 +1,13 @@
 import { Body, Controller, Delete, Get, Post } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/guards/public.decorator';
 import { InitializeSetupDto } from './dto/initialize-setup.dto';
@@ -18,11 +26,7 @@ export class SetupController {
     description:
       'Check if the initial setup has been completed. Setup is considered complete if at least one user exists in the database. This endpoint is public and does not require authentication.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Setup status retrieved successfully',
-    type: SetupStatusDto,
-  })
+  @ApiOkResponse({ description: 'Setup status retrieved', type: SetupStatusDto })
   async getSetupStatus(): Promise<SetupStatusDto> {
     return this.setupService.getSetupStatus();
   }
@@ -35,20 +39,8 @@ export class SetupController {
     description:
       'Initialize the system with the first admin user and security settings. This endpoint can only be called once when no users exist. It creates the first admin user with a hashed password and configures the initial security settings. This endpoint is public and does not require authentication. Rate limited to 5 attempts per hour per IP to prevent brute force attacks.',
   })
-  @ApiResponse({
-    status: 201,
-    description: 'Setup initialized successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Setup completed successfully' },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input or setup already completed',
-  })
+  @ApiCreatedResponse({ description: 'Setup initialized successfully' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   @ApiBadRequestResponse({
     description: 'Setup has already been completed or validation failed',
   })
@@ -66,23 +58,8 @@ export class SetupController {
       'This endpoint will throw an error if called in production. ' +
       'This endpoint is public and does not require authentication.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Setup reset successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example: 'Setup reset successfully. You can now run first-time setup again.',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Not allowed in production environment',
-  })
+  @ApiOkResponse({ description: 'Setup reset successfully' })
+  @ApiForbiddenResponse({ description: 'Not allowed in production' })
   async resetSetup(): Promise<{ message: string }> {
     return this.setupService.resetSetup();
   }

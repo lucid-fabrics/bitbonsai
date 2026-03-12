@@ -1,8 +1,8 @@
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { NodesClient } from '../../../../core/clients/nodes.client';
 import { QueueClient } from '../../../../core/clients/queue.client';
 import {
@@ -20,7 +20,7 @@ export interface JobDelegationDialogData {
 @Component({
   selector: 'app-job-delegation-dialog',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './job-delegation-dialog.component.html',
   styleUrls: ['./job-delegation-dialog.component.scss'],
 })

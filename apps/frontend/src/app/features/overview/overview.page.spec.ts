@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { TranslocoTestingModule } from '@ngneat/transloco';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { OverviewClient } from '../../core/clients/overview.client';
 import { configureFontAwesome } from '../../core/config/font-awesome.config';
@@ -36,7 +38,8 @@ describe('OverviewComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [OverviewComponent],
+      imports: [OverviewComponent, TranslocoTestingModule.forRoot({})],
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [
         provideMockStore({ initialState }),
         provideHttpClient(),
@@ -162,10 +165,10 @@ describe('OverviewComponent', () => {
   });
 
   describe('formatDuration', () => {
-    it('should format seconds to minutes and seconds', () => {
-      expect(component.formatDuration(125)).toBe('2m 5s');
-      expect(component.formatDuration(60)).toBe('1m 0s');
-      expect(component.formatDuration(45)).toBe('0m 45s');
+    it('should format seconds to human-readable duration', () => {
+      expect(component.formatDuration(125)).toBe('2m');
+      expect(component.formatDuration(60)).toBe('1m');
+      expect(component.formatDuration(45)).toBe('45s');
     });
   });
 

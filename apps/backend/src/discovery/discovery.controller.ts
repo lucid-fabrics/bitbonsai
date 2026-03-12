@@ -398,7 +398,7 @@ export class DiscoveryController {
 
     // Trigger automatic sync (runs asynchronously)
     // Don't await - let it run in background
-    this.syncService.syncToChildNode(nodeId).catch((error) => {
+    this.syncService.syncToChildNode(nodeId).catch(() => {
       // Error is already logged by syncService
     });
 

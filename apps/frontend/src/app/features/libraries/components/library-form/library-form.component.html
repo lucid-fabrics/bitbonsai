@@ -1,6 +1,6 @@
 <form [formGroup]="libraryForm" (ngSubmit)="onSubmit()" class="library-form">
   <div class="form-header">
-    <h2>{{ isEditMode ? 'Edit Library' : 'Add New Library' }}</h2>
+    <h2>{{ isEditMode ? ('libraries.editLibrary' | transloco) : ('libraries.addNewLibrary' | transloco) }}</h2>
   </div>
 
   <div class="form-body">
@@ -8,7 +8,7 @@
     <div class="form-group">
       <label for="name">
         <i class="fas fa-tag"></i>
-        Library Name *
+        {{ 'libraryForm.libraryNameStar' | transloco }}
       </label>
       <input
         id="name"
@@ -20,10 +20,10 @@
       @if (nameControl?.invalid && nameControl?.touched) {
         <div class="validation-error">
           @if (nameControl?.errors?.['required']) {
-            <span>Library name is required</span>
+            <span>{{ 'library.nameRequired' | transloco }}</span>
           }
           @if (nameControl?.errors?.['maxlength']) {
-            <span>Name must be less than 255 characters</span>
+            <span>{{ 'library.nameMaxLength' | transloco }}</span>
           }
         </div>
       }
@@ -33,7 +33,7 @@
     <div class="form-group">
       <label for="path">
         <i class="fas fa-folder-open"></i>
-        Library Path *
+        {{ 'libraryForm.libraryPathStar' | transloco }}
       </label>
       <div class="path-input-wrapper" #pathWrapper (click)="onWrapperClick($event)">
         <input
@@ -53,14 +53,14 @@
           />
         }
       </div>
-      <div class="field-hint">Absolute path to the media folder on the node filesystem</div>
+      <div class="field-hint">{{ 'library.pathHint' | transloco }}</div>
       @if (pathControl?.invalid && pathControl?.touched) {
         <div class="validation-error">
           @if (pathControl?.errors?.['required']) {
-            <span>Path is required</span>
+            <span>{{ 'library.pathRequired' | transloco }}</span>
           }
           @if (pathControl?.errors?.['pattern']) {
-            <span>Path must be an absolute path (start with /)</span>
+            <span>{{ 'library.pathAbsolute' | transloco }}</span>
           }
         </div>
       }
@@ -70,7 +70,7 @@
     <div class="form-group">
       <label for="mediaType">
         <i class="fas fa-film"></i>
-        Media Type *
+        {{ 'libraryForm.mediaTypeStar' | transloco }}
       </label>
       <select
         id="mediaType"
@@ -83,20 +83,20 @@
           </option>
         }
       </select>
-      <div class="field-hint">Type of media content in this library</div>
+      <div class="field-hint">{{ 'library.contentType' | transloco }}</div>
     </div>
 
     <!-- Default Policy Field -->
     <div class="form-group">
       <label for="defaultPolicyId">
         <i class="fas fa-cog"></i>
-        Default Encoding Policy
+        {{ 'libraryForm.defaultEncodingPolicy' | transloco }}
       </label>
       @if (policies$ | async; as policies) {
         <select
           id="defaultPolicyId"
           formControlName="defaultPolicyId">
-          <option [value]="null">No Default Policy</option>
+          <option [value]="null">{{ 'libraryForm.noDefaultPolicy' | transloco }}</option>
           @for (policy of policies; track policy.id) {
             <option [value]="policy.id">
               {{ policy.name }} ({{ policy.targetCodec }})
@@ -106,7 +106,7 @@
       }
       <div class="field-hint">
         <i class="fas fa-info-circle"></i>
-        The default policy will be automatically selected when creating encoding jobs for this library. You can always override it when creating jobs manually.
+        {{ 'libraryForm.defaultPolicyHint' | transloco }}
       </div>
     </div>
 
@@ -114,7 +114,7 @@
     <div class="form-group toggle-group">
       <label for="enabled">
         <i class="fas fa-power-off"></i>
-        Enable Library
+        {{ 'libraryForm.enableLibrary' | transloco }}
       </label>
       <div class="toggle-wrapper">
         <input
@@ -126,12 +126,12 @@
         <label for="enabled" class="toggle-label">
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-status">{{ enabledControl?.value ? 'Enabled' : 'Disabled' }}</span>
+        <span class="toggle-status">{{ enabledControl?.value ? ('libraries.enabled' | transloco) : ('libraries.disabled' | transloco) }}</span>
       </div>
       <div class="field-hint">
         <i class="fas fa-info-circle"></i>
-        <strong>When enabled:</strong> This library will be scanned for media files and encoding jobs will be created based on your policies.
-        <strong>When disabled:</strong> The library is completely ignored by BitBonsai - no scanning, no jobs, no processing. Use this to temporarily pause a library without deleting it.
+        <strong>{{ 'library.whenEnabled' | transloco }}</strong> {{ 'library.scanEnabledDesc' | transloco }}
+        <strong>{{ 'library.whenDisabled' | transloco }}</strong> {{ 'library.scanDisabledDesc' | transloco }}
       </div>
     </div>
 
@@ -139,7 +139,7 @@
     <div class="form-group toggle-group">
       <label for="watchEnabled">
         <i class="fas fa-eye"></i>
-        Auto-Detect New Files
+        {{ 'libraries.autoDetectNewFiles' | transloco }}
       </label>
       <div class="toggle-wrapper">
         <input
@@ -151,12 +151,12 @@
         <label for="watchEnabled" class="toggle-label">
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-status">{{ watchEnabledControl?.value ? 'Watching' : 'Not Watching' }}</span>
+        <span class="toggle-status">{{ watchEnabledControl?.value ? ('libraries.watching' | transloco) : ('libraries.notWatching' | transloco) }}</span>
       </div>
       <div class="field-hint">
         <i class="fas fa-info-circle"></i>
-        <strong>When enabled:</strong> BitBonsai automatically detects new files added to this library in real-time using file system monitoring (inotify). New files are immediately queued for processing without needing to manually scan.
-        <strong>When disabled:</strong> You need to manually click "Scan" to detect new files. This uses less system resources but requires manual action.
+        <strong>{{ 'library.whenEnabled' | transloco }}</strong> {{ 'library.watchEnabledDesc' | transloco }}
+        <strong>{{ 'library.whenDisabled' | transloco }}</strong> {{ 'library.watchDisabledDesc' | transloco }}
       </div>
     </div>
   </div>
@@ -164,11 +164,11 @@
   <div class="form-footer">
     <button type="button" class="btn btn-secondary" (click)="onCancel()">
       <i class="fas fa-times"></i>
-      Cancel
+      {{ 'common.cancel' | transloco }}
     </button>
     <button type="submit" class="btn btn-primary" [disabled]="libraryForm.invalid">
       <i class="fas fa-check"></i>
-      {{ isEditMode ? 'Update Library' : 'Create Library' }}
+      {{ isEditMode ? ('libraries.updateLibrary' | transloco) : ('libraries.createLibrary' | transloco) }}
     </button>
   </div>
 </form>

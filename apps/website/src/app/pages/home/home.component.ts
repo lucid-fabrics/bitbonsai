@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -21,7 +20,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 @Component({
   selector: 'bb-home',
   standalone: true,
-  imports: [RouterModule, CommonModule, FontAwesomeModule, ScrollRevealDirective],
+  imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
     <div class="home">
       <!-- Hero Section -->
@@ -69,11 +68,13 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 
           <div class="hero__visual">
             <div class="stats-grid">
-              <div class="stat-card" *ngFor="let stat of stats">
-                <fa-icon [icon]="stat.faIcon" class="stat-card__icon"></fa-icon>
-                <div class="stat-card__value">{{ stat.value }}</div>
-                <div class="stat-card__label">{{ stat.label }}</div>
-              </div>
+              @for (stat of stats; track stat.label) {
+                <div class="stat-card">
+                  <fa-icon [icon]="stat.faIcon" class="stat-card__icon"></fa-icon>
+                  <div class="stat-card__value">{{ stat.value }}</div>
+                  <div class="stat-card__label">{{ stat.label }}</div>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -90,11 +91,13 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="features__grid">
-            <div class="feature" *ngFor="let feature of keyFeatures; let i = index" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-              <fa-icon [icon]="feature.faIcon" class="feature__icon"></fa-icon>
-              <h3 class="feature__title">{{ feature.title }}</h3>
-              <p class="feature__description">{{ feature.description }}</p>
-            </div>
+            @for (feature of keyFeatures; track feature.title; let i = $index) {
+              <div class="feature" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+                <fa-icon [icon]="feature.faIcon" class="feature__icon"></fa-icon>
+                <h3 class="feature__title">{{ feature.title }}</h3>
+                <p class="feature__description">{{ feature.description }}</p>
+              </div>
+            }
           </div>
         </div>
       </section>
@@ -110,13 +113,15 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="steps">
-            <div class="step" *ngFor="let step of steps; let i = index">
-              <div class="step__number">{{ i + 1 }}</div>
-              <div class="step__content">
-                <h3 class="step__title">{{ step.title }}</h3>
-                <p class="step__description">{{ step.description }}</p>
+            @for (step of steps; track step.title; let i = $index) {
+              <div class="step">
+                <div class="step__number">{{ i + 1 }}</div>
+                <div class="step__content">
+                  <h3 class="step__title">{{ step.title }}</h3>
+                  <p class="step__description">{{ step.description }}</p>
+                </div>
               </div>
-            </div>
+            }
           </div>
         </div>
       </section>
@@ -125,10 +130,12 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
       <section class="social-proof">
         <div class="social-proof__container">
           <div class="social-proof__grid">
-            <div class="social-proof-card" *ngFor="let stat of socialProofStats; let i = index" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-              <div class="social-proof-card__value">{{ stat.value }}</div>
-              <div class="social-proof-card__label">{{ stat.label }}</div>
-            </div>
+            @for (stat of socialProofStats; track stat.label; let i = $index) {
+              <div class="social-proof-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+                <div class="social-proof-card__value">{{ stat.value }}</div>
+                <div class="social-proof-card__label">{{ stat.label }}</div>
+              </div>
+            }
           </div>
         </div>
       </section>
@@ -144,18 +151,20 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="testimonials__grid">
-            <div class="testimonial-card" *ngFor="let testimonial of testimonials; let i = index" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
-              <div class="testimonial-card__content">
-                <p class="testimonial-card__quote">"{{ testimonial.quote }}"</p>
-              </div>
-              <div class="testimonial-card__author">
-                <div class="testimonial-card__avatar">{{ testimonial.avatar }}</div>
-                <div class="testimonial-card__info">
-                  <div class="testimonial-card__name">{{ testimonial.name }}</div>
-                  <div class="testimonial-card__title">{{ testimonial.title }}</div>
+            @for (testimonial of testimonials; track testimonial.name; let i = $index) {
+              <div class="testimonial-card" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
+                <div class="testimonial-card__content">
+                  <p class="testimonial-card__quote">"{{ testimonial.quote }}"</p>
+                </div>
+                <div class="testimonial-card__author">
+                  <div class="testimonial-card__avatar">{{ testimonial.avatar }}</div>
+                  <div class="testimonial-card__info">
+                    <div class="testimonial-card__name">{{ testimonial.name }}</div>
+                    <div class="testimonial-card__title">{{ testimonial.title }}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            }
           </div>
         </div>
       </section>
@@ -171,11 +180,13 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="integrations__grid">
-            <div class="integration-card" *ngFor="let integration of integrations; let i = index" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
-              <fa-icon [icon]="integration.faIcon" class="integration-card__icon"></fa-icon>
-              <div class="integration-card__name">{{ integration.name }}</div>
-              <div class="integration-card__status">{{ integration.status }}</div>
-            </div>
+            @for (integration of integrations; track integration.name; let i = $index) {
+              <div class="integration-card" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
+                <fa-icon [icon]="integration.faIcon" class="integration-card__icon"></fa-icon>
+                <div class="integration-card__name">{{ integration.name }}</div>
+                <div class="integration-card__status">{{ integration.status }}</div>
+              </div>
+            }
           </div>
         </div>
       </section>
@@ -189,17 +200,19 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="pain-grid">
-            <div class="pain-card" *ngFor="let pain of painPoints; let i = index" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-              <div class="pain-card__problem">
-                <div class="pain-card__icon pain-card__icon--bad">Traditional</div>
-                <div class="pain-card__text">{{ pain.problem }}</div>
+            @for (pain of painPoints; track pain.problem; let i = $index) {
+              <div class="pain-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+                <div class="pain-card__problem">
+                  <div class="pain-card__icon pain-card__icon--bad">Traditional</div>
+                  <div class="pain-card__text">{{ pain.problem }}</div>
+                </div>
+                <div class="pain-card__arrow">→</div>
+                <div class="pain-card__solution">
+                  <div class="pain-card__icon pain-card__icon--good">BitBonsai</div>
+                  <div class="pain-card__text">{{ pain.solution }}</div>
+                </div>
               </div>
-              <div class="pain-card__arrow">→</div>
-              <div class="pain-card__solution">
-                <div class="pain-card__icon pain-card__icon--good">BitBonsai</div>
-                <div class="pain-card__text">{{ pain.solution }}</div>
-              </div>
-            </div>
+            }
           </div>
         </div>
       </section>

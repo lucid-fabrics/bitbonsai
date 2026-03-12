@@ -1,7 +1,7 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
 
 export interface RejectionDialogData {
@@ -11,7 +11,7 @@ export interface RejectionDialogData {
 @Component({
   selector: 'app-rejection-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, TranslocoModule],
   styleUrls: ['./rejection-dialog.component.scss'],
   template: `
     <div class="dialog-container">
@@ -41,7 +41,9 @@ export interface RejectionDialogData {
         </div>
 
         <div class="form-group">
-          <label for="reason">Rejection Reason<span class="required">*</span>:</label>
+          <label for="reason"
+            >Rejection Reason<span class="required">*</span>:</label
+          >
           <textarea
             id="reason"
             [(ngModel)]="rejectionReason"
@@ -51,19 +53,20 @@ export interface RejectionDialogData {
             [class.error]="showError && !rejectionReason.trim()"
           ></textarea>
           @if (showError && !rejectionReason.trim()) {
-            <small class="error-text">
-              Rejection reason is required
-            </small>
+            <small class="error-text"> Rejection reason is required </small>
           }
         </div>
 
         <p class="info-text">
-          The child node will be notified of the rejection and will not be added to the network.
+          The child node will be notified of the rejection and will not be added
+          to the network.
         </p>
       </div>
 
       <div class="dialog-footer">
-        <button class="btn btn-secondary" (click)="dialogRef.close()">Cancel</button>
+        <button class="btn btn-secondary" (click)="dialogRef.close()">
+          Cancel
+        </button>
         <button class="btn btn-danger" (click)="reject()">
           Reject Request
         </button>

@@ -1,5 +1,14 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ActivateLicenseDto } from './dto/activate-license.dto';
 import type { CreateLicenseDto } from './dto/create-license.dto';
@@ -37,36 +46,8 @@ export class LicenseController {
     description:
       'Generates a new license with tier-specific configuration (FREE, PATREON, or COMMERCIAL)',
   })
-  @ApiResponse({
-    status: 201,
-    description: 'License created successfully',
-    schema: {
-      example: {
-        id: 'clx1a2b3c4d5e6f7g8h9i0',
-        key: 'FRE-x8k2p9m4n7',
-        tier: 'FREE',
-        status: 'ACTIVE',
-        email: 'user@example.com',
-        maxNodes: 1,
-        maxConcurrentJobs: 2,
-        features: {
-          multiNode: false,
-          advancedPresets: false,
-          api: false,
-          priorityQueue: false,
-          cloudStorage: false,
-          webhooks: false,
-        },
-        validUntil: null,
-        createdAt: '2025-10-01T15:30:00.000Z',
-        updatedAt: '2025-10-01T15:30:00.000Z',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-  })
+  @ApiCreatedResponse({ description: 'License created successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
   async create(@Body() createLicenseDto: CreateLicenseDto) {
     return this.licenseService.createLicense(createLicenseDto);
   }
@@ -84,42 +65,9 @@ export class LicenseController {
     description:
       'Checks if the license is valid, active, and not expired. Returns license details with node capacity.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'License is valid',
-    schema: {
-      example: {
-        id: 'clx1a2b3c4d5e6f7g8h9i0',
-        key: 'FRE-x8k2p9m4n7',
-        tier: 'FREE',
-        status: 'ACTIVE',
-        validUntil: null,
-        maxNodes: 1,
-        maxConcurrentJobs: 2,
-        features: {
-          multiNode: false,
-          advancedPresets: false,
-          api: false,
-          priorityQueue: false,
-          cloudStorage: false,
-          webhooks: false,
-        },
-        email: 'user@example.com',
-        createdAt: '2025-10-01T15:30:00.000Z',
-        updatedAt: '2025-10-01T15:30:00.000Z',
-        canAddNode: true,
-        activeNodes: 0,
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'License is not active or has expired',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'License not found',
-  })
+  @ApiOkResponse({ description: 'License is valid' })
+  @ApiBadRequestResponse({ description: 'License inactive or expired' })
+  @ApiNotFoundResponse({ description: 'License not found' })
   async validate(@Body() validateLicenseDto: ValidateLicenseDto) {
     return this.licenseService.validateLicense(validateLicenseDto.key);
   }
@@ -139,19 +87,8 @@ export class LicenseController {
     description: 'License ID',
     example: 'clx1a2b3c4d5e6f7g8h9i0',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns boolean indicating if a node can be added',
-    schema: {
-      example: {
-        canAddNode: true,
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'License not found',
-  })
+  @ApiOkResponse({ description: 'Node limit check result' })
+  @ApiNotFoundResponse({ description: 'License not found' })
   async canAddNode(@Param('id') id: string) {
     const canAdd = await this.licenseService.checkCanAddNode(id);
     return { canAddNode: canAdd };
@@ -169,6 +106,8 @@ export class LicenseController {
     summary: 'Get current license information',
     description: 'Returns license verification status and limits for this BitBonsai instance',
   })
+  @ApiOkResponse({ description: 'Current license info' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async getCurrentLicense() {
     return this.licenseClient.verifyLicense();
   }
@@ -185,6 +124,8 @@ export class LicenseController {
     summary: 'Get current license limits',
     description: 'Returns node and job limits based on license tier',
   })
+  @ApiOkResponse({ description: 'Current license limits' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async getCurrentLimits() {
     return this.licenseClient.getCurrentLimits();
   }
@@ -201,6 +142,9 @@ export class LicenseController {
     summary: 'Set license key',
     description: 'Updates the license key and immediately verifies it',
   })
+  @ApiOkResponse({ description: 'License key updated' })
+  @ApiBadRequestResponse({ description: 'Invalid license key' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async setLicenseKey(@Body() dto: SetLicenseKeyDto) {
     await this.licenseClient.setLicenseKey(dto.key);
     return { success: true, message: 'License key updated and verified' };
@@ -220,29 +164,9 @@ export class LicenseController {
     description:
       'Verifies the license key with the central licensing service and stores it locally',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'License activated successfully',
-    schema: {
-      example: {
-        key: 'BITBONSAI-SUP-xxxx',
-        email: 'user@example.com',
-        tier: 'PATREON_SUPPORTER',
-        status: 'ACTIVE',
-        maxNodes: 2,
-        maxConcurrentJobs: 3,
-        expiresAt: null,
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid license key',
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'Too many requests - rate limit exceeded',
-  })
+  @ApiOkResponse({ description: 'License activated' })
+  @ApiBadRequestResponse({ description: 'Invalid license key' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async activateLicense(@Body() dto: ActivateLicenseDto) {
     return this.licenseClient.activateLicense(dto.key, dto.email);
   }
@@ -261,26 +185,8 @@ export class LicenseController {
     description:
       'Find an active license associated with an email address (for post-checkout flows)',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'License lookup result',
-    schema: {
-      example: {
-        found: true,
-        license: {
-          tier: 'PATREON_SUPPORTER',
-          maxNodes: 2,
-          maxConcurrentJobs: 3,
-          maskedKey: 'BITBONSAI-SUP-****xxxx',
-          expiresAt: null,
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'Too many requests - rate limit exceeded',
-  })
+  @ApiOkResponse({ description: 'License lookup result' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async lookupLicense(@Body() dto: LookupLicenseDto): Promise<LookupLicenseResponse> {
     return this.licenseClient.lookupLicenseByEmail(dto.email);
   }

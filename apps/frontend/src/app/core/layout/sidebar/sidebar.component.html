@@ -1,8 +1,12 @@
 <aside class="sidebar">
   <div class="sidebar-header">
     <div class="logo">
-      <img src="assets/images/logo.svg" alt="BitBonsai Logo" class="logo-icon" />
-      <span class="logo-text">BitBonsai</span>
+      <img
+        src="assets/images/logo.svg"
+        alt="BitBonsai Logo"
+        class="logo-icon"
+      />
+      <span class="logo-text">{{ 'app.name' | transloco }}</span>
     </div>
     @if (currentNode$ | async; as currentNode) {
       <div class="node-name">{{ currentNode.name }}</div>
@@ -12,11 +16,17 @@
         [class.child-node]="isLinkedNode$ | async"
       >
         <div class="role-label">
-          {{ (isMainNode$ | async) ? '⭐ MAIN NODE' : '🔗 CHILD NODE' }}
+          {{
+            (isMainNode$ | async)
+              ? ('sidebar.mainNode' | transloco)
+              : ('sidebar.childNode' | transloco)
+          }}
         </div>
         @if (isLinkedNode$ | async) {
           @if (mainNode$ | async; as mainNode) {
-            <div class="main-node-info">Connected to: {{ mainNode.name }}</div>
+            <div class="main-node-info">
+              {{ 'sidebar.connectedTo' | transloco }} {{ mainNode.name }}
+            </div>
           }
         }
       </div>
@@ -34,9 +44,14 @@
 
   <div class="sidebar-footer">
     @if (isAuthenticationRequired$ | async) {
-      <button class="logout-btn" (click)="onLogout()" type="button" title="Logout">
+      <button
+        class="logout-btn"
+        (click)="onLogout()"
+        type="button"
+        [title]="'sidebar.logout' | transloco"
+      >
         <fa-icon [icon]="logoutIcon" class="logout-icon"></fa-icon>
-        <span class="logout-label">Logout</span>
+        <span class="logout-label">{{ 'sidebar.logout' | transloco }}</span>
       </button>
     }
     <div class="version">v{{ appVersion }}</div>

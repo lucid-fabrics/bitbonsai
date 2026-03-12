@@ -31,8 +31,9 @@ export class DocsController implements OnModuleInit {
     try {
       const files = readdirSync(this.docsPath);
       this.logger.log(`📚 Available docs: ${files.join(', ')}`);
-    } catch (err: any) {
-      this.logger.error(`📚 Failed to read docs directory: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`📚 Failed to read docs directory: ${message}`);
     }
   }
 

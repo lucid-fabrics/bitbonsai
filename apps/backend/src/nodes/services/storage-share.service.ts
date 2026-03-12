@@ -1,14 +1,9 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  BadRequestException,
-  forwardRef,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import { StorageAutoDetectMountEvent } from '../../common/events';
 import { EncryptionService } from '../../core/services/encryption.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { type IStorageShareRepository } from '../repositories/storage-share.repository.interface';
@@ -77,7 +72,6 @@ export class StorageShareService {
     private readonly repository: IStorageShareRepository,
     private readonly prisma: PrismaService, // For accessing Node entity
     private readonly encryptionService: EncryptionService,
-    @Inject(forwardRef(() => StorageMountService))
     private readonly mountService: StorageMountService,
     private readonly httpService: HttpService
   ) {}
@@ -662,6 +656,25 @@ export class StorageShareService {
         error instanceof Error ? error.message : 'unknown error'
       );
       return [];
+    }
+  }
+
+  // ─── Event Listeners (from StorageInitService via EventEmitter) ─────
+
+  @OnEvent(StorageAutoDetectMountEvent.event)
+  async handleAutoDetectMount(event: StorageAutoDetectMountEvent): Promise<void> {
+    try {
+      const result = await this.autoDetectAndMount(event.nodeId);
+      this.logger.log(
+        `Auto-detect mount result for node ${event.nodeId}: ${result.detected} detected, ${result.mounted} mounted`
+      );
+      if (result.errors.length > 0) {
+        this.logger.warn(`Mount errors: ${result.errors.join(', ')}`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Auto-detect mount failed for node ${event.nodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

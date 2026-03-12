@@ -277,7 +277,7 @@ export class NFSAutoExportService {
       }
 
       return ip;
-    } catch (_error) {
+    } catch {
       this.logger.warn('Failed to get main node IP, using localhost');
       return 'localhost';
     }

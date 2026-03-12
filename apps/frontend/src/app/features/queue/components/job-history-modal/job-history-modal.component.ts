@@ -1,11 +1,11 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { TranslocoModule } from '@ngneat/transloco';
 import { JobEventType, type JobHistoryEvent } from '../../models/job-history-event.model';
 
 @Component({
   selector: 'app-job-history-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   templateUrl: './job-history-modal.component.html',
   styleUrls: ['./job-history-modal.component.scss'],
 })

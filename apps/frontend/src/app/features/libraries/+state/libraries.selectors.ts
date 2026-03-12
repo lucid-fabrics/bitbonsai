@@ -3,14 +3,17 @@ import type { LibrariesState } from './libraries.reducer';
 
 export const selectLibrariesState = createFeatureSelector<LibrariesState>('libraries');
 
-export const selectAllLibraries = createSelector(selectLibrariesState, (state) => state.libraries);
+export const selectAllLibraries = createSelector(
+  selectLibrariesState,
+  (state) => state?.libraries ?? []
+);
 
 export const selectLibrariesLoading = createSelector(
   selectLibrariesState,
-  (state) => state.isLoading
+  (state) => state?.isLoading ?? false
 );
 
-export const selectLibrariesError = createSelector(selectLibrariesState, (state) => state.error);
+export const selectLibrariesError = createSelector(selectLibrariesState, (state) => state?.error);
 
 export const selectLibraryById = (id: string) =>
   createSelector(selectAllLibraries, (libraries) => libraries.find((library) => library.id === id));

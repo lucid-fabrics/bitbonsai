@@ -2,19 +2,24 @@
   <!-- Header -->
   <header class="header">
     <div class="brand">
-      <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px">
         <div class="brand-logo">
           <fa-icon [icon]="['fas', 'chart-line']"></fa-icon>
         </div>
         <div class="brand-text">
-          <h1 class="brand-title">BitBonsai Analytics</h1>
+          <h1 class="brand-title">
+            {{ 'app.name' | transloco }} {{ 'dashboard.title' | transloco }}
+          </h1>
         </div>
       </div>
       <div class="header-meta">
         @if (stats$ | async; as stats) {
-          <div class="last-scan">
-            <strong class="last-scan__value">Last Scan:</strong> {{ stats.scanTimestampFormatted }}
-          </div>
+        <div class="last-scan">
+          <strong class="last-scan__value"
+            >{{ 'dashboard.lastScan' | transloco: {timestamp:
+            stats.scanTimestampFormatted} }}</strong
+          >
+        </div>
         }
         <button
           class="refresh-btn"
@@ -24,169 +29,203 @@
           tooltipTitle="Refresh Analytics"
           tooltipContent="Scans all media libraries and updates statistics. This will analyze file codecs, sizes, bitrates, and calculate potential space savings."
           tooltipWhen="Your library has changed or you want to see the latest encoding progress."
-          tooltipPlacement="bottom">
+          tooltipPlacement="bottom"
+        >
           @if (isLoading$ | async) {
-            <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> Scanning...
+            <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> {{ 'dashboard.scanning' | transloco }}
           } @else {
-            <fa-icon [icon]="['fas', 'sync']"></fa-icon> Refresh
+            <fa-icon [icon]="['fas', 'sync']"></fa-icon> {{ 'dashboard.refresh' | transloco }}
           }
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Error State -->
-  @if (error$ | async; as error) {
-    <div class="error-message">
-      <h2><fa-icon [icon]="['fas', 'exclamation-circle']"></fa-icon> Error loading statistics</h2>
-      <p>{{ error }}</p>
-    </div>
-  }
-
   <!-- Loading State -->
   @if (isLoading$ | async) {
-    <div class="loading">
-      <div class="loading-spinner"></div>
-      <h2>Analyzing your media library...</h2>
-      <p>This may take a few moments for large collections</p>
-    </div>
+  <div class="loading">
+    <div class="loading-spinner"></div>
+    <h2>{{ 'dashboard.analyzing' | transloco }}</h2>
+    <p>{{ 'dashboard.mayTakeMoments' | transloco }}</p>
+  </div>
   }
 
   <!-- Main Content -->
   @if (stats$ | async; as stats) {
-    <div class="content">
-      <!-- Library Overview Summary -->
-      <div class="summary-card">
-        <h2 class="summary-card__heading"><fa-icon class="summary-card__icon" [icon]="['fas', 'chart-line']"></fa-icon> Library Overview</h2>
-        <div class="summary-stats">
-          <div class="summary-item">
-            <div class="summary-number">{{ stats.totalFiles.toLocaleString() }}</div>
-            <div class="summary-label">Total Files</div>
+  <div class="content">
+    <!-- Library Overview Summary -->
+    <div class="summary-card">
+      <h2 class="summary-card__heading">
+        <fa-icon
+          class="summary-card__icon"
+          [icon]="['fas', 'chart-line']"
+        ></fa-icon>
+        Library Overview
+      </h2>
+      <div class="summary-stats">
+        <div class="summary-item">
+          <div class="summary-number">
+            {{ stats.totalFiles.toLocaleString() }}
           </div>
-          <div class="summary-item">
-            <div class="summary-number">{{ stats.codecDistribution.hevc.toLocaleString() }}</div>
-            <div class="summary-label">H.265/HEVC Encoded</div>
+          <div class="summary-label">{{ 'dashboard.totalFiles' | transloco }}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">
+            {{ stats.codecDistribution.hevc.toLocaleString() }}
           </div>
-          <div class="summary-item">
-            <div class="summary-number">{{ stats.h264RemainingCount.toLocaleString() }}</div>
-            <div class="summary-label">H.264 Remaining</div>
+          <div class="summary-label">H.265/HEVC Encoded</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">
+            {{ stats.h264RemainingCount.toLocaleString() }}
           </div>
-          <div class="summary-item">
-            <div class="summary-number">{{ stats.completionPercentage }}%</div>
-            <div class="summary-label">Completion</div>
+          <div class="summary-label">H.264 Remaining</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">{{ stats.completionPercentage }}%</div>
+          <div class="summary-label">{{ 'dashboard.completion' | transloco }}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">{{ stats.totalSizeFormattedLarge }}</div>
+          <div class="summary-label">{{ 'dashboard.totalSize' | transloco }}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">
+            {{ stats.averageBitrateMbps.toFixed(1) }} Mbps
           </div>
-          <div class="summary-item">
-            <div class="summary-number">{{ stats.totalSizeFormattedLarge }}</div>
-            <div class="summary-label">Total Size</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-number">{{ stats.averageBitrateMbps.toFixed(1) }} Mbps</div>
-            <div class="summary-label">Avg Bitrate</div>
-          </div>
+          <div class="summary-label">{{ 'dashboard.avgBitrate' | transloco }}</div>
         </div>
       </div>
+    </div>
 
-      <!-- Folder Statistics Grid -->
-      <div class="stats-grid">
-        @for (folder of stats.folders; track folder.path) {
-          <div class="stat-card">
-            <div class="stat-card-header">
-              <h3 class="stat-card-header__title">{{ folder.name }}</h3>
-              <span
-                class="badge"
-                [class]="folder.badge.class"
-                bbTooltip
-                tooltipTitle="Encoding Status"
-                tooltipContent="Indicates the progress of H.265 encoding for this library."
-                [tooltipWhen]="getBadgeExplanation(folder.badge.text)"
-                tooltipPlacement="top">
-                {{ folder.badge.text }}
-              </span>
-            </div>
+    <!-- Folder Statistics Grid -->
+    <div class="stats-grid">
+      @for (folder of stats.folders; track folder.path) {
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <h3 class="stat-card-header__title">{{ folder.name }}</h3>
+          <span
+            class="badge"
+            [class]="folder.badge.class"
+            bbTooltip
+            tooltipTitle="Encoding Status"
+            tooltipContent="Indicates the progress of H.265 encoding for this library."
+            [tooltipWhen]="getBadgeExplanation(folder.badge.text)"
+            tooltipPlacement="top"
+          >
+            {{ folder.badge.text }}
+          </span>
+        </div>
 
-            <div class="stat-row">
-              <span class="stat-label">Total Files</span>
-              <span class="stat-value">{{ folder.fileCount.toLocaleString() }}</span>
-            </div>
+        <div class="stat-row">
+          <span class="stat-label">Total Files</span>
+          <span class="stat-value"
+            >{{ folder.fileCount.toLocaleString() }}</span
+          >
+        </div>
 
-            <div class="stat-row">
-              <span class="stat-label">H.265/HEVC</span>
-              <span class="stat-value">{{ folder.codecDistribution.hevc.toLocaleString() }}</span>
-            </div>
+        <div class="stat-row">
+          <span class="stat-label">H.265/HEVC</span>
+          <span class="stat-value"
+            >{{ folder.codecDistribution.hevc.toLocaleString() }}</span
+          >
+        </div>
 
-            <div class="stat-row">
-              <span class="stat-label">H.264 (to encode)</span>
-              <span class="stat-value">{{ folder.codecDistribution.h264.toLocaleString() }}</span>
-            </div>
+        <div class="stat-row">
+          <span class="stat-label">H.264 (to encode)</span>
+          <span class="stat-value"
+            >{{ folder.codecDistribution.h264.toLocaleString() }}</span
+          >
+        </div>
 
-            <div class="stat-row">
-              <span class="stat-label">AV1</span>
-              <span class="stat-value">{{ folder.codecDistribution.av1.toLocaleString() }}</span>
-            </div>
+        <div class="stat-row">
+          <span class="stat-label">AV1</span>
+          <span class="stat-value"
+            >{{ folder.codecDistribution.av1.toLocaleString() }}</span
+          >
+        </div>
 
-            <!-- Progress Bar -->
-            <div class="progress-container">
-              <div class="progress-header">
-                <span class="progress-label">
-                  H.265 Encoding Progress
-                  <small class="progress-detail">
-                    {{ folder.codecDistribution.hevc }} of {{ folder.fileCount }} files encoded
-                  </small>
-                </span>
-                <span class="progress-percentage" [title]="'Completion: ' + folder.percentH265 + '%'">
-                  {{ folder.percentH265 }}%
-                </span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="folder.percentH265">
-                  <div class="progress-fill__shine"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Info Grid -->
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-value">{{ folder.totalSizeFormatted }}</div>
-                <div class="info-label">Total Size</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value">{{ folder.avgBitrateMbps.toFixed(1) }} Mbps</div>
-                <div class="info-label">Avg Bitrate</div>
-              </div>
-              @if (folder.spaceSavedEstimateGb > 0) {
-                <div class="info-item">
-                  <div class="info-value">{{ folder.spaceSavedFormatted }}</div>
-                  <div class="info-label">Potential Savings</div>
-                </div>
-              }
-            </div>
-
-            <div class="sampled-note">
-              <fa-icon class="sampled-note__icon" [icon]="['fas', 'database']"></fa-icon> Based on {{ folder.sampled }} sampled files
-            </div>
-
-            @if (folder.codecDistribution.h264 > 0) {
-              <button
-                class="view-files-btn"
-                (click)="viewFilesToEncode(folder)"
-                bbTooltip
-                tooltipTitle="View Encodable Files"
-                tooltipContent="Shows a detailed list of all H.264 files that can be re-encoded to H.265 for better compression."
-                tooltipWhen="You want to see which specific files are candidates for encoding and their current sizes."
-                tooltipPlacement="top">
-                <fa-icon [icon]="['fas', 'list']"></fa-icon> View {{ folder.codecDistribution.h264 }} Files to Encode
-              </button>
-            }
+        <!-- Progress Bar -->
+        <div class="progress-container">
+          <div class="progress-header">
+            <span class="progress-label">
+              H.265 Encoding Progress
+              <small class="progress-detail">
+                {{ folder.codecDistribution.hevc }} of {{ folder.fileCount }}
+                files encoded
+              </small>
+            </span>
+            <span
+              class="progress-percentage"
+              [title]="'Completion: ' + folder.percentH265 + '%'"
+            >
+              {{ folder.percentH265 }}%
+            </span>
           </div>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="folder.percentH265">
+              <div class="progress-fill__shine"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-value">{{ folder.totalSizeFormatted }}</div>
+            <div class="info-label">Total Size</div>
+          </div>
+          <div class="info-item">
+            <div class="info-value">
+              {{ folder.avgBitrateMbps.toFixed(1) }} Mbps
+            </div>
+            <div class="info-label">Avg Bitrate</div>
+          </div>
+          @if (folder.spaceSavedEstimateGb > 0) {
+          <div class="info-item">
+            <div class="info-value">{{ folder.spaceSavedFormatted }}</div>
+            <div class="info-label">Potential Savings</div>
+          </div>
+          }
+        </div>
+
+        <div class="sampled-note">
+          <fa-icon
+            class="sampled-note__icon"
+            [icon]="['fas', 'database']"
+          ></fa-icon>
+          Based on {{ folder.sampled }} sampled files
+        </div>
+
+        @if (folder.codecDistribution.h264 > 0) {
+        <button
+          class="view-files-btn"
+          (click)="viewFilesToEncode(folder)"
+          bbTooltip
+          tooltipTitle="View Encodable Files"
+          tooltipContent="Shows a detailed list of all H.264 files that can be re-encoded to H.265 for better compression."
+          tooltipWhen="You want to see which specific files are candidates for encoding and their current sizes."
+          tooltipPlacement="top"
+        >
+          <fa-icon [icon]="['fas', 'list']"></fa-icon> View {{
+          folder.codecDistribution.h264 }} Files to Encode
+        </button>
         }
       </div>
+      }
     </div>
+  </div>
   }
 
   <!-- Footer -->
   <div class="footer">
-    <p>Powered by <a class="footer__link" href="https://lucid-fabrics.com" target="_blank">Lucid Fabrics</a> • Professional Media Analytics</p>
+    <p>
+      Powered by
+      <a class="footer__link" href="https://lucid-fabrics.com" target="_blank"
+        >Lucid Fabrics</a
+      >
+      • Professional Media Analytics
+    </p>
   </div>
 
   <!-- Files Dialog -->

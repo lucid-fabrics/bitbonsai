@@ -4,7 +4,7 @@
       <div class="dialog-icon warning">
         <i class="fas fa-exclamation-triangle"></i>
       </div>
-      <h2 class="dialog-title">Schedule Conflict Warning</h2>
+      <h2 class="dialog-title">{{ 'scheduleConflict.title' | transloco }}</h2>
       <button class="dialog-close" (click)="onCancel()">
         <i class="fas fa-times"></i>
       </button>
@@ -12,14 +12,14 @@
 
     <div class="dialog-body">
       <div class="warning-message">
-        <p><strong>{{ data.nodeName }}</strong> is currently outside its scheduled encoding window.</p>
+        <p><strong>{{ data.nodeName }}</strong> {{ 'scheduleConflict.outsideWindow' | transloco : { nodeName: '' } }}</p>
         <p class="conflict-details">{{ data.message }}</p>
       </div>
 
       <div class="info-box">
         <i class="fas fa-info-circle"></i>
         <div class="info-content">
-          <p>The job will be assigned to this node, but it may not start encoding until the node's schedule window begins.</p>
+          <p>{{ 'scheduleConflict.description' | transloco }}</p>
         </div>
       </div>
     </div>
@@ -27,11 +27,11 @@
     <div class="dialog-footer">
       <button class="btn btn-secondary" (click)="onCancel()">
         <i class="fas fa-times"></i>
-        Cancel
+        {{ 'common.cancel' | transloco }}
       </button>
       <button class="btn btn-warning" (click)="onConfirm()">
         <i class="fas fa-check"></i>
-        Delegate Anyway
+        {{ 'scheduleConflict.delegateAnyway' | transloco }}
       </button>
     </div>
   </div>

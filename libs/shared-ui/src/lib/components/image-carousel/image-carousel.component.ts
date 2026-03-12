@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -22,7 +21,7 @@ export interface CarouselImage {
 @Component({
   selector: 'bb-image-carousel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './image-carousel.component.html',
   styleUrls: ['./image-carousel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

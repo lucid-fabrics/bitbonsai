@@ -5,8 +5,8 @@
       <div class="brand-logo">
         <i class="fa-solid fa-tree"></i>
       </div>
-      <h1 class="brand-title">BitBonsai</h1>
-      <p class="brand-tagline">Intelligent Media Encoding Platform</p>
+      <h1 class="brand-title">{{ 'app.name' | transloco }}</h1>
+      <p class="brand-tagline">{{ 'app.tagline' | transloco }}</p>
     </div>
 
     <!-- Setup Wizard Card -->
@@ -23,284 +23,325 @@
 
       <!-- Success Message -->
       @if (successMessage()) {
-        <div class="alert alert-success">
-          <i class="fa-solid fa-check-circle"></i>
-          <span>{{ successMessage() }}</span>
-        </div>
+      <div class="alert alert-success">
+        <i class="fa-solid fa-check-circle"></i>
+        <span>{{ successMessage() }}</span>
+      </div>
       }
 
       <!-- Error Message -->
       @if (errorMessage()) {
-        <div class="alert alert-error">
-          <i class="fa-solid fa-exclamation-circle"></i>
-          <span>{{ errorMessage() }}</span>
-        </div>
+      <div class="alert alert-error">
+        <i class="fa-solid fa-exclamation-circle"></i>
+        <span>{{ errorMessage() }}</span>
+      </div>
       }
 
       <!-- Step 1: Welcome -->
       @if (currentStep() === SetupStep.Welcome) {
-        <div class="step-content" [@stepTransition]>
-          <div class="welcome-step">
-            <div class="step-icon">
-              <i class="fa-solid fa-rocket"></i>
-            </div>
-            <h2 class="step-title">Welcome to BitBonsai</h2>
-            <p class="step-subtitle">Let's get you set up in just a few steps</p>
-            <p class="step-description">
-              This wizard will help you configure your BitBonsai instance and create your admin account.
-              It will only take a minute!
-            </p>
-            <button type="button" class="btn btn-primary btn-large" (click)="nextStep()">
-              <span>Get Started</span>
-              <i class="fa-solid fa-arrow-right"></i>
-            </button>
+      <div class="step-content" [@stepTransition]>
+        <div class="welcome-step">
+          <div class="step-icon">
+            <i class="fa-solid fa-rocket"></i>
           </div>
+          <h2 class="step-title">{{ 'setup.welcomeTitle' | transloco }}</h2>
+          <p class="step-subtitle">{{ 'setup.welcomeSubtitle' | transloco }}</p>
+          <p class="step-description">
+            This wizard will help you configure your BitBonsai instance and
+            create your admin account. It will only take a minute!
+          </p>
+          <button
+            type="button"
+            class="btn btn-primary btn-large"
+            (click)="nextStep()"
+          >
+            <span>{{ 'setup.getStarted' | transloco }}</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
         </div>
+      </div>
       }
 
       <!-- Step 2: Node Type Selection -->
       @if (currentStep() === SetupStep.NodeType) {
-        <div class="step-content" [@stepTransition]>
-          <div class="config-step">
-            <div class="step-icon">
-              <i class="fa-solid fa-server"></i>
-            </div>
-            <h2 class="step-title">Node Type</h2>
-            <p class="step-subtitle">Is this a main node or child node?</p>
+      <div class="step-content" [@stepTransition]>
+        <div class="config-step">
+          <div class="step-icon">
+            <i class="fa-solid fa-server"></i>
+          </div>
+          <h2 class="step-title">{{ 'setup.nodeType' | transloco }}</h2>
+          <p class="step-subtitle">
+            {{ 'setup.nodeTypeSubtitle' | transloco }}
+          </p>
 
-            <form [formGroup]="nodeTypeForm" class="config-form">
-              <div class="node-type-options">
-                <!-- Main Node Option -->
-                <label class="node-type-card" [class.selected]="nodeTypeForm.get('nodeType')?.value === NodeType.Main">
-                  <input
-                    type="radio"
-                    formControlName="nodeType"
-                    [value]="NodeType.Main"
-                    class="node-type-radio"
-                  />
-                  <div class="node-type-content">
-                    <div class="node-type-icon">
-                      <i class="fa-solid fa-crown"></i>
-                    </div>
-                    <h3 class="node-type-title">Main Node</h3>
-                    <p class="node-type-description">
-                      This is the primary node that manages the cluster and stores configuration.
-                      You'll create an admin account to access the web interface.
-                    </p>
+          <form [formGroup]="nodeTypeForm" class="config-form">
+            <div class="node-type-options">
+              <!-- Main Node Option -->
+              <label
+                class="node-type-card"
+                [class.selected]="nodeTypeForm.get('nodeType')?.value === NodeType.Main"
+              >
+                <input
+                  type="radio"
+                  formControlName="nodeType"
+                  [value]="NodeType.Main"
+                  class="node-type-radio"
+                />
+                <div class="node-type-content">
+                  <div class="node-type-icon">
+                    <i class="fa-solid fa-crown"></i>
                   </div>
-                </label>
+                  <h3 class="node-type-title">
+                    {{ 'setup.mainNode' | transloco }}
+                  </h3>
+                  <p class="node-type-description">
+                    {{ 'setup.mainNodeDesc' | transloco }}
+                  </p>
+                </div>
+              </label>
 
-                <!-- Child Node Option -->
-                <label class="node-type-card" [class.selected]="nodeTypeForm.get('nodeType')?.value === NodeType.Child">
-                  <input
-                    type="radio"
-                    formControlName="nodeType"
-                    [value]="NodeType.Child"
-                    class="node-type-radio"
-                  />
-                  <div class="node-type-content">
-                    <div class="node-type-icon">
-                      <i class="fa-solid fa-link"></i>
-                    </div>
-                    <h3 class="node-type-title">Child Node</h3>
-                    <p class="node-type-description">
-                      This node will be paired with a main node. After setup, you'll enter a pairing token
-                      on the main node to complete the pairing.
-                    </p>
+              <!-- Child Node Option -->
+              <label
+                class="node-type-card"
+                [class.selected]="nodeTypeForm.get('nodeType')?.value === NodeType.Child"
+              >
+                <input
+                  type="radio"
+                  formControlName="nodeType"
+                  [value]="NodeType.Child"
+                  class="node-type-radio"
+                />
+                <div class="node-type-content">
+                  <div class="node-type-icon">
+                    <i class="fa-solid fa-link"></i>
                   </div>
-                </label>
-              </div>
-            </form>
-
-            <div class="step-actions">
-              <button type="button" class="btn btn-secondary" (click)="previousStep()">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span>Back</span>
-              </button>
-              <button type="button" class="btn btn-primary" (click)="nextStep()">
-                <span>Next</span>
-                <i class="fa-solid fa-arrow-right"></i>
-              </button>
+                  <h3 class="node-type-title">
+                    {{ 'setup.childNode' | transloco }}
+                  </h3>
+                  <p class="node-type-description">
+                    {{ 'setup.childNodeDesc' | transloco }}
+                  </p>
+                </div>
+              </label>
             </div>
+          </form>
+
+          <div class="step-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="previousStep()"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>{{ 'setup.back' | transloco }}</span>
+            </button>
+            <button type="button" class="btn btn-primary" (click)="nextStep()">
+              <span>{{ 'setup.next' | transloco }}</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
           </div>
         </div>
+      </div>
       }
 
       <!-- Step 3: Local Network Access -->
       @if (currentStep() === SetupStep.LocalNetworkAccess) {
-        <div class="step-content" [@stepTransition]>
-          <div class="config-step">
-            <div class="step-icon">
-              <i class="fa-solid fa-network-wired"></i>
-            </div>
-            <h2 class="step-title">Local Network Access</h2>
-            <p class="step-subtitle">Configure network security settings</p>
+      <div class="step-content" [@stepTransition]>
+        <div class="config-step">
+          <div class="step-icon">
+            <i class="fa-solid fa-network-wired"></i>
+          </div>
+          <h2 class="step-title">
+            {{ 'setup.localNetworkAccess' | transloco }}
+          </h2>
+          <p class="step-subtitle">
+            {{ 'setup.localNetworkSubtitle' | transloco }}
+          </p>
 
-            <form [formGroup]="networkForm" class="config-form">
-              <div class="config-option">
-                <div class="config-header">
-                  <h3 class="config-question">
-                    Do you want to allow access without login from your local network?
-                  </h3>
-                  <label class="toggle-switch">
-                    <input
-                      type="checkbox"
-                      formControlName="allowLocalNetworkWithoutAuth"
-                    />
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-                <div class="config-explanation">
-                  <i class="fa-solid fa-info-circle"></i>
-                  <p>
-                    This allows devices on your home network (192.168.x.x, 10.x.x.x) to access
-                    BitBonsai without entering credentials. You can change this later in settings.
-                  </p>
-                </div>
+          <form [formGroup]="networkForm" class="config-form">
+            <div class="config-option">
+              <div class="config-header">
+                <h3 class="config-question">
+                  Do you want to allow access without login from your local
+                  network?
+                </h3>
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    formControlName="allowLocalNetworkWithoutAuth"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-            </form>
-
-            <div class="step-actions">
-              <button type="button" class="btn btn-secondary" (click)="previousStep()">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span>Back</span>
-              </button>
-              <button type="button" class="btn btn-primary" (click)="nextStep()">
-                <span>Next</span>
-                <i class="fa-solid fa-arrow-right"></i>
-              </button>
+              <div class="config-explanation">
+                <i class="fa-solid fa-info-circle"></i>
+                <p>
+                  This allows devices on your home network (192.168.x.x,
+                  10.x.x.x) to access BitBonsai without entering credentials.
+                  You can change this later in settings.
+                </p>
+              </div>
             </div>
+          </form>
+
+          <div class="step-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="previousStep()"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>{{ 'setup.back' | transloco }}</span>
+            </button>
+            <button type="button" class="btn btn-primary" (click)="nextStep()">
+              <span>{{ 'setup.next' | transloco }}</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
           </div>
         </div>
+      </div>
       }
 
       <!-- Step 3: Create Admin Account -->
       @if (currentStep() === SetupStep.AdminAccount) {
-        <div class="step-content" [@stepTransition]>
-          <div class="account-step">
-            <div class="step-icon">
-              <i class="fa-solid fa-user-shield"></i>
-            </div>
-            <h2 class="step-title">Create Your Admin Account</h2>
-            <p class="step-subtitle">This account will have full system access</p>
-
-            <form [formGroup]="adminForm" (ngSubmit)="submitSetup()" class="admin-form">
-              <!-- Username Field -->
-              <div class="form-group">
-                <label for="username" class="form-label">
-                  <i class="fa-solid fa-user"></i>
-                  Username
-                </label>
-                <div class="input-wrapper">
-                  <input
-                    type="text"
-                    id="username"
-                    formControlName="username"
-                    class="form-input"
-                    [class.input-error]="hasError('username')"
-                    placeholder="Enter admin username (min 3 characters)"
-                    autocomplete="username"
-                  />
-                </div>
-                @if (hasError('username')) {
-                  <div class="error-message">
-                    <i class="fa-solid fa-exclamation-triangle"></i>
-                    {{ getErrorMessage('username') }}
-                  </div>
-                }
-              </div>
-
-              <!-- Password Field -->
-              <div class="form-group">
-                <label for="password" class="form-label">
-                  <i class="fa-solid fa-lock"></i>
-                  Password
-                </label>
-                <div class="input-wrapper password-wrapper">
-                  <input
-                    [type]="showPassword() ? 'text' : 'password'"
-                    id="password"
-                    formControlName="password"
-                    class="form-input"
-                    [class.input-error]="hasError('password')"
-                    placeholder="Enter password (min 8 characters)"
-                    autocomplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    class="password-toggle"
-                    (click)="togglePasswordVisibility()"
-                    [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-                  >
-                    <i [class]="showPassword() ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
-                  </button>
-                </div>
-                @if (hasError('password')) {
-                  <div class="error-message">
-                    <i class="fa-solid fa-exclamation-triangle"></i>
-                    {{ getErrorMessage('password') }}
-                  </div>
-                }
-              </div>
-
-              <!-- Confirm Password Field -->
-              <div class="form-group">
-                <label for="confirmPassword" class="form-label">
-                  <i class="fa-solid fa-lock"></i>
-                  Confirm Password
-                </label>
-                <div class="input-wrapper password-wrapper">
-                  <input
-                    [type]="showConfirmPassword() ? 'text' : 'password'"
-                    id="confirmPassword"
-                    formControlName="confirmPassword"
-                    class="form-input"
-                    [class.input-error]="hasError('confirmPassword') || (adminForm.touched && !passwordsMatch)"
-                    placeholder="Re-enter your password"
-                    autocomplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    class="password-toggle"
-                    (click)="toggleConfirmPasswordVisibility()"
-                    [attr.aria-label]="showConfirmPassword() ? 'Hide password' : 'Show password'"
-                  >
-                    <i [class]="showConfirmPassword() ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
-                  </button>
-                </div>
-                @if (hasError('confirmPassword') || (adminForm.touched && !passwordsMatch)) {
-                  <div class="error-message">
-                    <i class="fa-solid fa-exclamation-triangle"></i>
-                    {{ getErrorMessage('confirmPassword') }}
-                  </div>
-                }
-              </div>
-
-              <div class="step-actions">
-                <button type="button" class="btn btn-secondary" (click)="previousStep()" [disabled]="isLoading()">
-                  <i class="fa-solid fa-arrow-left"></i>
-                  <span>Back</span>
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  [disabled]="isLoading() || adminForm.invalid"
-                  [class.loading]="isLoading()"
-                >
-                  @if (isLoading()) {
-                    <span class="spinner"></span>
-                    <span>Setting Up...</span>
-                  } @else {
-                    <i class="fa-solid fa-check"></i>
-                    <span>Complete Setup</span>
-                  }
-                </button>
-              </div>
-            </form>
+      <div class="step-content" [@stepTransition]>
+        <div class="account-step">
+          <div class="step-icon">
+            <i class="fa-solid fa-user-shield"></i>
           </div>
-        </div>
-      }
+          <h2 class="step-title">{{ 'setup.createAdmin' | transloco }}</h2>
+          <p class="step-subtitle">{{ 'setup.adminSubtitle' | transloco }}</p>
 
+          <form
+            [formGroup]="adminForm"
+            (ngSubmit)="submitSetup()"
+            class="admin-form"
+          >
+            <!-- Username Field -->
+            <div class="form-group">
+              <label for="username" class="form-label">
+                <i class="fa-solid fa-user"></i>
+                {{ 'setup.adminUsername' | transloco }}
+              </label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="username"
+                  formControlName="username"
+                  class="form-input"
+                  [class.input-error]="hasError('username')"
+                  placeholder="Enter admin username (min 3 characters)"
+                  autocomplete="username"
+                />
+              </div>
+              @if (hasError('username')) {
+              <div class="error-message">
+                <i class="fa-solid fa-exclamation-triangle"></i>
+                {{ getErrorMessage('username') }}
+              </div>
+              }
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+              <label for="password" class="form-label">
+                <i class="fa-solid fa-lock"></i>
+                {{ 'setup.adminPassword' | transloco }}
+              </label>
+              <div class="input-wrapper password-wrapper">
+                <input
+                  [type]="showPassword() ? 'text' : 'password'"
+                  id="password"
+                  formControlName="password"
+                  class="form-input"
+                  [class.input-error]="hasError('password')"
+                  placeholder="Enter password (min 8 characters)"
+                  autocomplete="new-password"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  (click)="togglePasswordVisibility()"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                >
+                  <i
+                    [class]="showPassword() ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"
+                  ></i>
+                </button>
+              </div>
+              @if (hasError('password')) {
+              <div class="error-message">
+                <i class="fa-solid fa-exclamation-triangle"></i>
+                {{ getErrorMessage('password') }}
+              </div>
+              }
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div class="form-group">
+              <label for="confirmPassword" class="form-label">
+                <i class="fa-solid fa-lock"></i>
+                {{ 'setup.confirmPassword' | transloco }}
+              </label>
+              <div class="input-wrapper password-wrapper">
+                <input
+                  [type]="showConfirmPassword() ? 'text' : 'password'"
+                  id="confirmPassword"
+                  formControlName="confirmPassword"
+                  class="form-input"
+                  [class.input-error]="hasError('confirmPassword') || (adminForm.touched && !passwordsMatch)"
+                  placeholder="Re-enter your password"
+                  autocomplete="new-password"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  (click)="toggleConfirmPasswordVisibility()"
+                  [attr.aria-label]="showConfirmPassword() ? 'Hide password' : 'Show password'"
+                >
+                  <i
+                    [class]="showConfirmPassword() ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"
+                  ></i>
+                </button>
+              </div>
+              @if (hasError('confirmPassword') || (adminForm.touched &&
+              !passwordsMatch)) {
+              <div class="error-message">
+                <i class="fa-solid fa-exclamation-triangle"></i>
+                {{ getErrorMessage('confirmPassword') }}
+              </div>
+              }
+            </div>
+
+            <div class="step-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="previousStep()"
+                [disabled]="isLoading()"
+              >
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>{{ 'setup.back' | transloco }}</span>
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="isLoading() || adminForm.invalid"
+                [class.loading]="isLoading()"
+              >
+                @if (isLoading()) {
+                <span class="spinner"></span>
+                <span>{{ 'setup.settingUp' | transloco }}</span>
+                } @else {
+                <i class="fa-solid fa-check"></i>
+                <span>{{ 'setup.complete' | transloco }}</span>
+                }
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      }
     </div>
 
     <!-- Footer -->

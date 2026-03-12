@@ -1,7 +1,8 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { MediaStatsClient } from '../../core/clients/media-stats.client';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
@@ -17,7 +18,13 @@ interface FolderInfo {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, FilesDialogComponent, RichTooltipDirective],
+  imports: [
+    AsyncPipe,
+    FontAwesomeModule,
+    TranslocoModule,
+    FilesDialogComponent,
+    RichTooltipDirective,
+  ],
   templateUrl: './dashboard.page.html',
   styleUrls: ['./dashboard.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

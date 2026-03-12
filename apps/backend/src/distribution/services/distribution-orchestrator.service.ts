@@ -547,6 +547,55 @@ export class DistributionOrchestratorService {
   }
 
   /**
+   * Get or create the active distribution config
+   */
+  async getActiveConfig() {
+    let config = await this.prisma.distributionConfig.findFirst({
+      where: { isActive: true },
+    });
+
+    if (!config) {
+      config = await this.prisma.distributionConfig.create({
+        data: { id: 'default' },
+      });
+    }
+
+    return config;
+  }
+
+  /**
+   * Update distribution config weights
+   */
+  async updateConfig(dto: Record<string, unknown>) {
+    const config = await this.getActiveConfig();
+
+    return this.prisma.distributionConfig.update({
+      where: { id: config.id },
+      data: dto,
+    });
+  }
+
+  /**
+   * Get capacity status for all online nodes
+   */
+  async getNodesCapacity(): Promise<{ nodes: unknown[] }> {
+    const nodes = await this.prisma.node.findMany({
+      where: { status: 'ONLINE' },
+      select: { id: true, name: true },
+    });
+
+    const capacities = [];
+    for (const node of nodes) {
+      const capacity = await this._loadMonitor.getNodeCapacity(node.id);
+      if (capacity) {
+        capacities.push(capacity);
+      }
+    }
+
+    return { nodes: capacities };
+  }
+
+  /**
    * Get distribution summary for dashboard
    */
   async getDistributionSummary(): Promise<{

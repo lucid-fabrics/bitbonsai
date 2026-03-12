@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -8,6 +7,7 @@ import {
   type OnInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoModule } from '@ngneat/transloco';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../../core/clients/nodes.client';
@@ -16,7 +16,7 @@ import type { RegistrationRequest } from '../../../features/nodes/models/registr
 @Component({
   selector: 'app-pending-requests-bell',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   templateUrl: './pending-requests-bell.component.html',
   styleUrls: ['./pending-requests-bell.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

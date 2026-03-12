@@ -1,58 +1,29 @@
-import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
-import { environment } from '../../../../../environments/environment';
-
-interface SystemResources {
-  cpu: {
-    model: string;
-    cores: number;
-    coresPerJob: number;
-    theoreticalMaxWorkers: number;
-    safetyMargin: number;
-    configuredWorkers: number;
-    minWorkers: number;
-    maxWorkers: number;
-  };
-  memory: {
-    total: number;
-    free: number;
-    used: number;
-    usedPercent: number;
-  };
-  scenarios: Array<{
-    margin: number;
-    label: string;
-    workers: number;
-    risk: string;
-    description: string;
-  }>;
-  recommendation: {
-    current: string;
-    reason: string;
-  };
-}
+import { NgClass } from '@angular/common';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { TranslocoModule } from '@ngneat/transloco';
+import type { SystemResources } from '../../models/system-resources.model';
+import { SettingsService } from '../../services/settings.service';
 
 @Component({
   selector: 'app-cpu-capacity-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [NgClass, TranslocoModule],
   templateUrl: './cpu-capacity-panel.component.html',
   styleUrls: ['./cpu-capacity-panel.component.scss'],
 })
 export class CpuCapacityPanelComponent implements OnInit {
+  private readonly settingsService = inject(SettingsService);
+
   resources?: SystemResources;
   loading = signal(true);
   showDetails = false;
-
-  constructor(private http: HttpClient) {}
 
   ngOnInit() {
     this.loadSystemResources();
   }
 
   loadSystemResources() {
-    this.http.get<SystemResources>(`${environment.apiUrl}/system/resources`).subscribe({
+    this.settingsService.getSystemResources().subscribe({
       next: (data) => {
         this.resources = data;
         this.loading.set(false);

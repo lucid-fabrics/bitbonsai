@@ -35,12 +35,7 @@ import { SystemInfoService } from './services/system-info.service';
  * - System information collection (hardware, network, container type)
  */
 @Module({
-  imports: [
-    CoreModule,
-    NotificationsModule,
-    forwardRef(() => DistributionModule),
-    forwardRef(() => LibrariesModule),
-  ],
+  imports: [CoreModule, NotificationsModule, DistributionModule, forwardRef(() => LibrariesModule)],
   controllers: [NodesController, StorageSharesController],
   providers: [
     NodesService,

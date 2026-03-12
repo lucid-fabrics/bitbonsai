@@ -1,5 +1,6 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { StorageShareService } from '../../../../nodes/services/storage-share.service';
+import { StorageAutoDetectMountEvent } from '../../../../common/events';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { NFSAutoExportService } from '../../nfs-auto-export.service';
 import { StorageInitService } from '../../storage-init.service';
@@ -31,21 +32,19 @@ describe('StorageInitService', () => {
   let service: StorageInitService;
   let prisma: ReturnType<typeof createMockPrisma>;
   let nfsAutoExport: { autoExportDockerVolumes: jest.Mock };
-  let storageShareService: { autoDetectAndMount: jest.Mock };
+  let eventEmitter: { emit: jest.Mock };
 
   beforeEach(async () => {
     prisma = createMockPrisma();
     nfsAutoExport = { autoExportDockerVolumes: jest.fn().mockResolvedValue(undefined) };
-    storageShareService = {
-      autoDetectAndMount: jest.fn().mockResolvedValue({ detected: 0, mounted: 0, errors: [] }),
-    };
+    eventEmitter = { emit: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StorageInitService,
         { provide: PrismaService, useValue: prisma },
         { provide: NFSAutoExportService, useValue: nfsAutoExport },
-        { provide: StorageShareService, useValue: storageShareService },
+        { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
 
@@ -162,7 +161,7 @@ describe('StorageInitService', () => {
       );
     });
 
-    it('should attempt auto-detect for LINKED node with mainNodeUrl', async () => {
+    it('should emit auto-detect event for LINKED node with mainNodeUrl', async () => {
       prisma.node.findFirst.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
@@ -176,15 +175,13 @@ describe('StorageInitService', () => {
           callback(null, { stdout: '', stderr: '' });
         }
       );
-      storageShareService.autoDetectAndMount.mockResolvedValue({
-        detected: 2,
-        mounted: 1,
-        errors: [],
-      });
 
       await callInit(service);
 
-      expect(storageShareService.autoDetectAndMount).toHaveBeenCalledWith('node-2');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        StorageAutoDetectMountEvent.event,
+        expect.any(StorageAutoDetectMountEvent)
+      );
     });
 
     it('should handle errors gracefully', async () => {
@@ -193,7 +190,7 @@ describe('StorageInitService', () => {
       await expect(callInit(service)).resolves.not.toThrow();
     });
 
-    it('should log mount errors', async () => {
+    it('should emit event for LINKED node needing auto-detect', async () => {
       prisma.node.findFirst.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
@@ -207,16 +204,13 @@ describe('StorageInitService', () => {
           callback(null, { stdout: '', stderr: '' });
         }
       );
-      storageShareService.autoDetectAndMount.mockResolvedValue({
-        detected: 1,
-        mounted: 0,
-        errors: ['Permission denied'],
-      });
 
       await callInit(service);
 
-      expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Permission denied')
+      // Event is emitted; error handling happens in the event listener (StorageShareService)
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        StorageAutoDetectMountEvent.event,
+        expect.objectContaining({ nodeId: 'node-2' })
       );
     });
   });

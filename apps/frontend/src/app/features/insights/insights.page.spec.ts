@@ -1,5 +1,6 @@
-import { ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectorRef, NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslocoTestingModule } from '@ngneat/transloco';
 import { of } from 'rxjs';
 import { InsightsStatsBO } from './bos/insights-stats.bo';
 import { SavingsTrendBO } from './bos/savings-trend.bo';
@@ -13,8 +14,8 @@ describe('InsightsComponent', () => {
   let _cdr: jest.Mocked<ChangeDetectorRef>;
 
   const mockSavingsTrend = [
-    SavingsTrendBO.fromDto({ date: '2025-01-01', savingsGB: 100 }),
-    SavingsTrendBO.fromDto({ date: '2025-01-02', savingsGB: 200 }),
+    SavingsTrendBO.fromDto({ date: '2025-01-01', savedGB: 100 }),
+    SavingsTrendBO.fromDto({ date: '2025-01-02', savedGB: 200 }),
   ];
 
   const mockStats = new InsightsStatsBO(100, 500, 95, 50);
@@ -33,7 +34,8 @@ describe('InsightsComponent', () => {
     } as unknown as jest.Mocked<ChangeDetectorRef>;
 
     await TestBed.configureTestingModule({
-      imports: [InsightsComponent],
+      imports: [InsightsComponent, TranslocoTestingModule.forRoot({})],
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [
         { provide: InsightsService, useValue: insightsServiceMock },
         { provide: ChangeDetectorRef, useValue: cdrMock },

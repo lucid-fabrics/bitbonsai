@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -7,25 +6,30 @@ import { PricingApiService } from '../../services/pricing-api.service';
 @Component({
   selector: 'bb-checkout',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   template: `
     <div class="checkout">
       <div class="checkout__container">
         <!-- Loading State -->
-        <div *ngIf="loading" class="checkout__loader">
-          <div class="spinner"></div>
-          <p>Redirecting to payment...</p>
-        </div>
+        @if (loading) {
+          <div class="checkout__loader">
+            <div class="spinner"></div>
+            <p>Redirecting to payment...</p>
+          </div>
+        }
 
         <!-- Error State -->
-        <div *ngIf="error" class="checkout__error">
-          <h2>Checkout Error</h2>
-          <p>{{ error }}</p>
-          <button (click)="goBack()" class="checkout__button">Go Back</button>
-        </div>
+        @if (error) {
+          <div class="checkout__error">
+            <h2>Checkout Error</h2>
+            <p>{{ error }}</p>
+            <button (click)="goBack()" class="checkout__button">Go Back</button>
+          </div>
+        }
 
         <!-- Form -->
-        <div *ngIf="!loading && !error" class="checkout__content">
+        @if (!loading && !error) {
+          <div class="checkout__content">
           <h1 class="checkout__title">Complete Your Purchase</h1>
           <p class="checkout__subtitle">
             {{ tierName }} - \${{ price }}/{{ period }}
@@ -70,7 +74,8 @@ import { PricingApiService } from '../../services/pricing-api.service';
               You'll be redirected to Stripe's secure checkout page
             </p>
           </div>
-        </div>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -128,9 +133,9 @@ export class CheckoutComponent implements OnInit {
       } else {
         throw new Error('No checkout URL returned');
       }
-    } catch (err: any) {
-      console.error('Checkout failed:', err);
-      this.error = err.error?.message || 'Failed to create checkout session. Please try again.';
+    } catch (err: unknown) {
+      this.error =
+        err instanceof Error ? err.message : 'Failed to create checkout session. Please try again.';
       this.submitting = false;
     }
   }

@@ -7,9 +7,9 @@
       <div class="header-content">
         <i class="fas fa-folder-open header-icon"></i>
         <div class="header-text">
-          <h2>Library Files</h2>
+          <h2>{{ 'libraryFiles.title' | transloco }}</h2>
           @if (libraryFiles$ | async; as files) {
-            <p class="subtitle">{{ files.libraryName }} - {{ files.totalFiles }} files</p>
+            <p class="subtitle">{{ files.libraryName }} - {{ files.totalFiles }} {{ 'common.files' | transloco }}</p>
           }
         </div>
       </div>
@@ -25,7 +25,7 @@
         <i class="fas fa-search search-icon"></i>
         <input
           type="text"
-          placeholder="Search files..."
+          placeholder="{{ 'libraryFiles.search' | transloco }}"
           [value]="searchTerm$ | async"
           (input)="onSearchChange($event)"
           class="search-input"
@@ -39,7 +39,7 @@
       <div class="stats-summary">
         <span class="stat">
           <i class="fas fa-file-video"></i>
-          {{ (libraryFiles$ | async)?.totalFiles || 0 }} files
+          {{ (libraryFiles$ | async)?.totalFiles || 0 }} {{ 'common.files' | transloco }}
         </span>
         <span class="stat">
           <i class="fas fa-database"></i>
@@ -55,8 +55,8 @@
       @if (isLoading$ | async) {
       <div class="loading-state">
         <i class="fas fa-spinner fa-spin"></i>
-        <p>Scanning library and analyzing files...</p>
-        <p class="loading-note">This may take a few minutes for large libraries</p>
+        <p>{{ 'libraryFiles.scanning' | transloco }}</p>
+        <p class="loading-note">{{ 'libraryFiles.mayTakeMinutes' | transloco }}</p>
       </div>
       }
 
@@ -64,11 +64,11 @@
       @else if (error$ | async; as error) {
       <div class="error-state">
         <i class="fas fa-exclamation-triangle error-icon"></i>
-        <h3>Failed to Load Files</h3>
+        <h3>{{ 'libraryFiles.failedToLoad' | transloco }}</h3>
         <p>{{ error }}</p>
         <button class="btn btn-primary" (click)="closeModal()">
           <i class="fas fa-times"></i>
-          Close
+          {{ 'common.close' | transloco }}
         </button>
       </div>
       }
@@ -80,16 +80,16 @@
         <div class="empty-state">
           @if (searchTerm$ | async) {
           <i class="fas fa-search empty-icon"></i>
-          <h3>No Files Found</h3>
-          <p>No files match your search term "{{ searchTerm$ | async }}"</p>
+          <h3>{{ 'libraryFiles.noFilesFound' | transloco }}</h3>
+          <p>{{ 'libraryFiles.noFilesMatch' | transloco }} "{{ searchTerm$ | async }}"</p>
           <button class="btn btn-secondary" (click)="clearSearch()">
             <i class="fas fa-times"></i>
-            Clear Search
+            {{ 'libraryFiles.clearSearch' | transloco }}
           </button>
           } @else {
           <i class="fas fa-folder-open empty-icon"></i>
-          <h3>No Files</h3>
-          <p>This library doesn't contain any video files.</p>
+          <h3>{{ 'libraryFiles.noFiles' | transloco }}</h3>
+          <p>{{ 'libraryFiles.noVideoFiles' | transloco }}</p>
           }
         </div>
         } @else {
@@ -99,23 +99,23 @@
             <thead>
               <tr>
                 <th class="sortable" (click)="setSortBy('name')">
-                  <span>File Name</span>
+                  <span>{{ 'libraryFilesModal.fileName' | transloco }}</span>
                   <i class="fas sort-icon" [ngClass]="getSortIcon('name')"></i>
                 </th>
                 <th class="sortable" (click)="setSortBy('codec')">
-                  <span>Codec</span>
+                  <span>{{ 'libraryFilesModal.codec' | transloco }}</span>
                   <i class="fas sort-icon" [ngClass]="getSortIcon('codec')"></i>
                 </th>
                 <th class="sortable" (click)="setSortBy('resolution')">
-                  <span>Resolution</span>
+                  <span>{{ 'libraryFilesModal.resolution' | transloco }}</span>
                   <i class="fas sort-icon" [ngClass]="getSortIcon('resolution')"></i>
                 </th>
                 <th class="sortable" (click)="setSortBy('size')">
-                  <span>Size</span>
+                  <span>{{ 'libraryFilesModal.size' | transloco }}</span>
                   <i class="fas sort-icon" [ngClass]="getSortIcon('size')"></i>
                 </th>
-                <th>Duration</th>
-                <th>Health</th>
+                <th>{{ 'libraryFilesModal.duration' | transloco }}</th>
+                <th>{{ 'libraryFilesModal.health' | transloco }}</th>
               </tr>
             </thead>
             <tbody>
@@ -157,7 +157,7 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" (click)="closeModal()">
         <i class="fas fa-times"></i>
-        Close
+        {{ 'common.close' | transloco }}
       </button>
     </div>
     }

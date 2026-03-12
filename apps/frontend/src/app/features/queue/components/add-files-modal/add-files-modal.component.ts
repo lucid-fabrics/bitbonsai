@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { TranslocoModule } from '@ngneat/transloco';
 import {
   BehaviorSubject,
   catchError,
@@ -39,7 +40,7 @@ type ViewMode = 'library-selection' | 'file-selection' | 'creating-jobs' | 'resu
 @Component({
   selector: 'app-add-files-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [AsyncPipe, DecimalPipe, FormsModule, TranslocoModule],
   templateUrl: './add-files-modal.component.html',
   styleUrls: ['./add-files-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

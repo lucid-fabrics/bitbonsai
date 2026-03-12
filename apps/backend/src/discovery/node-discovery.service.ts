@@ -86,7 +86,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       } else {
         this.logger.log('💡 LINKED node - ready to scan for MAIN nodes');
       }
-    } catch (_error) {
+    } catch {
       // Node doesn't exist yet (e.g., during initial setup)
       // Bonjour is already initialized, so scanning will work
       this.logger.log('🔍 Discovery service initialized - no node configured yet');
@@ -277,7 +277,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
                 } else {
                   this.logger.log(`   ✓ Found: ${name} (${ipAddress}:${apiPort})`);
                 }
-              } catch (_fetchError) {
+              } catch {
                 // Hardware fetch failed, but node is still valid
                 this.logger.log(`   ✓ Found: ${name} (${ipAddress}:${apiPort})`);
               }
@@ -372,9 +372,6 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`🔗 Requesting pairing with MAIN node: ${mainNodeUrl}`);
 
     try {
-      // Get current node info
-      const _currentNode = await this.nodesService.getCurrentNode();
-
       // Make HTTP request to MAIN node to request pairing
       const response = await fetch(`${mainNodeUrl}/api/v1/nodes/${mainNodeId}/pairing-token`, {
         method: 'POST',

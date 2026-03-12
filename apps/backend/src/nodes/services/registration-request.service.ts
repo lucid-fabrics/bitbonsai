@@ -1,8 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  forwardRef,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -79,7 +77,6 @@ export class RegistrationRequestService {
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly sshKeyService: SshKeyService,
-    @Inject(forwardRef(() => StorageShareService))
     private readonly storageShareService: StorageShareService
   ) {}
 

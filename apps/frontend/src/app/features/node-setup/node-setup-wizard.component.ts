@@ -1,5 +1,3 @@
-import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,9 +11,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { CapabilityTestResult } from '../../core/models/capability-test.model';
 import { NodeBo } from '../nodes/bos/node.bo';
-import type { RegistrationRequest } from '../nodes/models/registration-request.model';
 import { CapabilityResultsComponent } from './components/capability-results/capability-results.component';
 import { CapabilityTestComponent } from './components/capability-test/capability-test.component';
 import type { DiscoveredNode, HardwareDetection } from './models/discovery.model';
@@ -68,9 +66,9 @@ enum WizardStep {
   selector: 'app-node-setup-wizard',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     FontAwesomeModule,
+    TranslocoModule,
     CapabilityTestComponent,
     CapabilityResultsComponent,
   ],
@@ -82,7 +80,6 @@ export class NodeSetupWizardComponent implements OnInit {
   private readonly discoveryService = inject(DiscoveryService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly http = inject(HttpClient);
 
   // Expose enums and BOs to template
   readonly WizardStep = WizardStep;
@@ -164,13 +161,11 @@ export class NodeSetupWizardComponent implements OnInit {
       this.discoveryService.setMainNodeUrl(pendingMainNodeUrl);
 
       // Check if the request is still valid (not expired, already approved, or rejected)
-      this.http
-        .get<RegistrationRequest>(
-          `${pendingMainNodeUrl}/api/v1/nodes/registration-requests/${pendingRequestId}`
-        )
+      this.discoveryService
+        .getRegistrationRequest(pendingMainNodeUrl, pendingRequestId)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (request: RegistrationRequest) => {
+          next: (request) => {
             if (request.status === 'PENDING') {
               // Valid pending request - resume polling
               this.currentStep.set(WizardStep.Pairing);
@@ -575,10 +570,8 @@ export class NodeSetupWizardComponent implements OnInit {
     }
 
     // Save maxWorkers and cpuLimit to the node via MAIN node's backend
-    const updateUrl = `${mainNodeUrl}/api/v1/nodes/${nodeId}`;
-
-    this.http
-      .patch(updateUrl, {
+    this.discoveryService
+      .updateNodeConfig(mainNodeUrl, nodeId, {
         maxWorkers: config.maxWorkers,
         cpuLimit: config.cpuLimit,
       })
@@ -620,7 +613,10 @@ export class NodeSetupWizardComponent implements OnInit {
    */
   private handleError(error: unknown, defaultMessage: string): void {
     if (error && typeof error === 'object' && 'status' in error) {
-      const httpError = error as { status: number; error?: { message?: string } };
+      const httpError = error as {
+        status: number;
+        error?: { message?: string };
+      };
 
       if (httpError.status === 0) {
         this.errorMessage.set('Unable to connect to server. Please check your network connection.');

@@ -9,6 +9,7 @@
 
 import { Logger } from '@nestjs/common';
 import type { Node } from '@prisma/client';
+import type { JsonValue } from '@prisma/client/runtime/library';
 
 const logger = new Logger('ScheduleChecker');
 
@@ -77,9 +78,10 @@ export function isNodeInAllowedWindow(
   // Parse JSON windows (stored as JSONB in database)
   let windows: TimeWindow[];
   try {
-    windows = Array.isArray(node.scheduleWindows)
-      ? (node.scheduleWindows as unknown as TimeWindow[])
-      : (JSON.parse(node.scheduleWindows as unknown as string) as TimeWindow[]);
+    const raw: JsonValue = node.scheduleWindows as JsonValue;
+    windows = Array.isArray(raw)
+      ? (raw as unknown[] as TimeWindow[])
+      : (JSON.parse(String(raw)) as TimeWindow[]);
   } catch (error) {
     // Invalid JSON = treat as 24/7 (fail open for availability)
     logger.warn('Failed to parse scheduleWindows JSON, defaulting to 24/7', error);
@@ -150,9 +152,10 @@ export function getScheduleDescription(
   }
 
   try {
-    const windows = Array.isArray(node.scheduleWindows)
-      ? (node.scheduleWindows as unknown as TimeWindow[])
-      : (JSON.parse(node.scheduleWindows as unknown as string) as TimeWindow[]);
+    const raw: JsonValue = node.scheduleWindows as JsonValue;
+    const windows = Array.isArray(raw)
+      ? (raw as unknown[] as TimeWindow[])
+      : (JSON.parse(String(raw)) as TimeWindow[]);
 
     if (windows.length === 0) {
       return 'Available 24/7 (empty windows)';

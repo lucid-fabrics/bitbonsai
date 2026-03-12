@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { NgClass, NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 
@@ -10,7 +10,7 @@ export interface TrendData {
 @Component({
   selector: 'bb-stat-card',
   standalone: true,
-  imports: [CommonModule, CardComponent],
+  imports: [NgIf, NgClass, CardComponent],
   template: `
     <bb-card>
       <div class="stat-card">

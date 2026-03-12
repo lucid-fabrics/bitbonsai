@@ -1,5 +1,6 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe, NgClass } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
+import { TranslocoModule } from '@ngneat/transloco';
 import { interval, type Observable, startWith, switchMap } from 'rxjs';
 import { HealthClient } from '../../../core/clients/health.client';
 import type { DiskSpaceMonitoringModel } from '../../../core/models/disk-space-monitoring.model';
@@ -7,7 +8,7 @@ import type { DiskSpaceMonitoringModel } from '../../../core/models/disk-space-m
 @Component({
   selector: 'app-disk-space-warning-banner',
   standalone: true,
-  imports: [CommonModule],
+  imports: [AsyncPipe, NgClass, TranslocoModule],
   templateUrl: './disk-space-warning-banner.component.html',
   styleUrl: './disk-space-warning-banner.component.scss',
 })

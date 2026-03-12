@@ -1,5 +1,4 @@
 import { Dialog, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -23,6 +22,7 @@ import {
   faTimes,
   faTimesCircle,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { Notification } from '../../../core/models/notification.model';
 import { NotificationType } from '../../../core/models/notification.model';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -31,7 +31,7 @@ import { NotificationDetailModalComponent } from './notification-detail-modal.co
 @Component({
   selector: 'app-notification-panel',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule],
+  imports: [FontAwesomeModule, TranslocoModule],
   templateUrl: './notification-panel.component.html',
   styleUrls: ['./notification-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

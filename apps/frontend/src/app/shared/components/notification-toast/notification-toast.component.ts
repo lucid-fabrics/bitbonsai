@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -20,13 +19,14 @@ import {
   faSatelliteDish,
   faXmark,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import { timer } from 'rxjs';
 import type { Notification } from '../../../core/models/notification.model';
 
 @Component({
   selector: 'app-notification-toast',
   standalone: true,
-  imports: [CommonModule, FaIconComponent],
+  imports: [FaIconComponent, TranslocoModule],
   templateUrl: './notification-toast.component.html',
   styleUrl: './notification-toast.component.scss',
 })

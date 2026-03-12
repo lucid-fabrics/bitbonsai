@@ -43,7 +43,7 @@ describe('NodeConfigService', () => {
 
     // Reset env
     process.env = { ...originalEnv };
-    delete process.env.NODE_ID;
+    process.env.NODE_ID = undefined;
 
     // Default fs mocks
     mockExistsSync.mockReturnValue(false);
@@ -176,10 +176,12 @@ describe('NodeConfigService', () => {
         if (where.id === 'fallback-main') return Promise.resolve(mockNode);
         return Promise.resolve(null);
       });
-      prisma.node.findFirst.mockImplementation(({ where }: { where: { role?: NodeRole; ipAddress?: string } }) => {
-        if (where.role === NodeRole.MAIN) return Promise.resolve(mockNode);
-        return Promise.resolve(null);
-      });
+      prisma.node.findFirst.mockImplementation(
+        ({ where }: { where: { role?: NodeRole; ipAddress?: string } }) => {
+          if (where.role === NodeRole.MAIN) return Promise.resolve(mockNode);
+          return Promise.resolve(null);
+        }
+      );
 
       await service.loadConfig();
 
@@ -198,11 +200,7 @@ describe('NodeConfigService', () => {
 
       await service.loadConfig();
 
-      expect(mockWriteFileSync).toHaveBeenCalledWith(
-        expect.any(String),
-        'node-1',
-        'utf-8'
-      );
+      expect(mockWriteFileSync).toHaveBeenCalledWith(expect.any(String), 'node-1', 'utf-8');
     });
 
     it('should detect node by IP address', async () => {
@@ -216,10 +214,12 @@ describe('NodeConfigService', () => {
         apiKey: 'key',
         name: 'IP Node',
       };
-      prisma.node.findFirst.mockImplementation(({ where }: { where: { ipAddress?: string; role?: NodeRole } }) => {
-        if (where.ipAddress === '192.168.1.100') return Promise.resolve(mockNode);
-        return Promise.resolve(null);
-      });
+      prisma.node.findFirst.mockImplementation(
+        ({ where }: { where: { ipAddress?: string; role?: NodeRole } }) => {
+          if (where.ipAddress === '192.168.1.100') return Promise.resolve(mockNode);
+          return Promise.resolve(null);
+        }
+      );
       prisma.node.findUnique.mockResolvedValue(mockNode);
 
       await service.loadConfig();

@@ -1,5 +1,11 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { LicenseTier } from '@prisma/client';
 import { LicenseGuardService } from '../license/license-guard.service';
@@ -32,11 +38,7 @@ export class LicensesController {
     description:
       'Retrieve current license tier, limits, features, and validity period. Used by settings UI to display license status and upgrade options.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'License information retrieved successfully',
-    type: LicenseDto,
-  })
+  @ApiOkResponse({ description: 'License info retrieved', type: LicenseDto })
   async getCurrentLicense(): Promise<LicenseDto> {
     const capabilities = await this.licenseGuard.getCapabilities();
 
@@ -65,6 +67,7 @@ export class LicensesController {
     summary: 'Get license capabilities and usage',
     description: 'Returns current license limits, usage, and whether upgrades are recommended.',
   })
+  @ApiOkResponse({ description: 'Capabilities and usage retrieved' })
   async getCapabilities() {
     const capabilities = await this.licenseGuard.getCapabilities();
     const upgradeRecommendation = await this.licenseGuard.getUpgradeRecommendation();
@@ -80,6 +83,7 @@ export class LicensesController {
     summary: 'Get available license tiers',
     description: 'Returns all available license tiers with their limits and features.',
   })
+  @ApiOkResponse({ description: 'Available tiers retrieved' })
   async getAvailableTiers() {
     return {
       tiers: [
@@ -167,19 +171,9 @@ export class LicensesController {
     description:
       'Validate and activate a new license key. Upgrades the current license tier and updates feature access.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'License activated successfully',
-    type: LicenseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid license key format or activation failed',
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'Too many requests - rate limited',
-  })
+  @ApiOkResponse({ description: 'License activated', type: LicenseDto })
+  @ApiBadRequestResponse({ description: 'Invalid license key' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async activateLicense(@Body() activateDto: ActivateLicenseDto): Promise<LicenseDto> {
     const result = await this.licensesService.activateLicense(activateDto);
 
@@ -221,10 +215,8 @@ export class LicensesController {
     summary: 'Lookup license by email',
     description: 'Find license associated with an email address (for post-Stripe checkout flow).',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'License lookup result',
-  })
+  @ApiOkResponse({ description: 'License lookup result' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async lookupLicense(@Body() dto: LookupLicenseDto): Promise<{
     found: boolean;
     license?: {
@@ -243,7 +235,7 @@ export class LicensesController {
   private maskLicenseKey(key: string): string {
     if (key.length <= 20) return '****';
     const prefixMatch = key.match(/^(BITBONSAI-[A-Z]+-)/);
-    const prefix = prefixMatch ? prefixMatch[1] : key.slice(0, 12) + '-';
+    const prefix = prefixMatch ? prefixMatch[1] : `${key.slice(0, 12)}-`;
     return `${prefix}****${key.slice(-4)}`;
   }
 }

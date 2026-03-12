@@ -3,9 +3,13 @@
     <div class="notification-panel__header">
       <h2 class="notification-panel__title">
         <fa-icon [icon]="icons.bell"></fa-icon>
-        Notifications
+        {{ 'notifications.notifications' | transloco }}
       </h2>
-      <button class="notification-panel__close-btn" (click)="onClose()" type="button">
+      <button
+        class="notification-panel__close-btn"
+        (click)="onClose()"
+        type="button"
+      >
         <fa-icon [icon]="icons.close"></fa-icon>
       </button>
     </div>
@@ -33,29 +37,45 @@
       @if (isLoading) {
         <div class="notification-panel__loading-state">
           <fa-icon [icon]="icons.loading" [animation]="'spin'"></fa-icon>
-          <p>Loading notifications...</p>
+          <p>{{ 'notifications.loading' | transloco }}</p>
         </div>
       } @else if (displayedNotifications.length === 0) {
         <div class="notification-panel__empty-state">
           <fa-icon [icon]="icons.bellSlash"></fa-icon>
-          <p>{{ activeTab === 'active' ? 'No new notifications' : 'No archived notifications' }}</p>
+          <p>
+            {{
+              activeTab === 'active'
+                ? 'No new notifications'
+                : 'No archived notifications'
+            }}
+          </p>
         </div>
       } @else {
         <div class="notification-panel__list">
           @for (notification of displayedNotifications; track notification.id) {
             <div
-              class="notification-panel__item notification-panel__item--{{ getNotificationColor(notification) }}"
+              class="notification-panel__item notification-panel__item--{{
+                getNotificationColor(notification)
+              }}"
               [class.notification-panel__item--unread]="!notification.read"
             >
               <div class="notification-panel__item-icon">
-                <fa-icon [icon]="getNotificationIcon(notification.type)"></fa-icon>
+                <fa-icon
+                  [icon]="getNotificationIcon(notification.type)"
+                ></fa-icon>
               </div>
               <div class="notification-panel__item-content">
                 <div class="notification-panel__item-header">
-                  <h3 class="notification-panel__item-title">{{ getCleanTitle(notification.title) }}</h3>
-                  <span class="notification-panel__item-time">{{ getRelativeTime(notification.createdAt) }}</span>
+                  <h3 class="notification-panel__item-title">
+                    {{ getCleanTitle(notification.title) }}
+                  </h3>
+                  <span class="notification-panel__item-time">{{
+                    getRelativeTime(notification.createdAt)
+                  }}</span>
                 </div>
-                <p class="notification-panel__item-message">{{ getShortDescription(notification) }}</p>
+                <p class="notification-panel__item-message">
+                  {{ getShortDescription(notification) }}
+                </p>
               </div>
               <div class="notification-panel__item-actions">
                 <button

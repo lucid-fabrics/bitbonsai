@@ -1,6 +1,7 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { TranslocoModule } from '@ngneat/transloco';
 import { BytesBo } from '../../bos/bytes.bo';
 import { NodeBo } from '../../bos/node.bo';
 import { AccelerationType, NodeRole, NodeStatus } from '../../models/node.model';
@@ -13,7 +14,7 @@ export interface NodeStatsModalData {
 @Component({
   selector: 'app-node-stats-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [NgClass, TranslocoModule],
   templateUrl: './node-stats.modal.html',
   styleUrls: ['./node-stats.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

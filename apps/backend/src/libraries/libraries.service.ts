@@ -9,11 +9,16 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Job, Library } from '@prisma/client';
 import { JobStage } from '@prisma/client';
+import {
+  LibraryWatcherDisableEvent,
+  LibraryWatcherEnableEvent,
+  LibraryWatcherStopEvent,
+} from '../common/events';
 import { DistributionOrchestratorService } from '../distribution/services/distribution-orchestrator.service';
-import { FileWatcherService } from '../file-watcher/file-watcher.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { SettingsService } from '../settings/settings.service';
@@ -69,8 +74,7 @@ export class LibrariesService {
 
   constructor(
     private prisma: PrismaService,
-    @Inject(forwardRef(() => FileWatcherService))
-    private fileWatcher: FileWatcherService,
+    private eventEmitter: EventEmitter2,
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => QueueService))
     private queueService: QueueService,
@@ -429,9 +433,15 @@ export class LibrariesService {
         updateLibraryDto.watchEnabled !== existingLibrary.watchEnabled
       ) {
         if (updateLibraryDto.watchEnabled) {
-          await this.fileWatcher.enableWatcher(id);
+          this.eventEmitter.emit(
+            LibraryWatcherEnableEvent.event,
+            new LibraryWatcherEnableEvent(id)
+          );
         } else {
-          await this.fileWatcher.disableWatcher(id);
+          this.eventEmitter.emit(
+            LibraryWatcherDisableEvent.event,
+            new LibraryWatcherDisableEvent(id)
+          );
         }
       }
 
@@ -483,9 +493,9 @@ export class LibrariesService {
     }
 
     try {
-      // Stop file watcher if active
+      // Stop file watcher if active (fire-and-forget via event)
       if (existingLibrary.watchEnabled) {
-        await this.fileWatcher.stopWatcher(id);
+        this.eventEmitter.emit(LibraryWatcherStopEvent.event, new LibraryWatcherStopEvent(id));
       }
 
       await this.prisma.library.delete({

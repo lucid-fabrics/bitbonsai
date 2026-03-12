@@ -1,5 +1,4 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
 import { Component, forwardRef, Input, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -14,6 +13,7 @@ import type {
 import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import { TranslocoModule } from '@ngneat/transloco';
 import { firstValueFrom } from 'rxjs';
 import {
   ConfirmationDialogComponent,
@@ -49,7 +49,7 @@ export interface TimeWindow {
 @Component({
   selector: 'app-node-schedule-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, FontAwesomeModule, FullCalendarModule],
+  imports: [FormsModule, FontAwesomeModule, FullCalendarModule, TranslocoModule],
   templateUrl: './node-schedule-editor.component.html',
   styleUrl: './node-schedule-editor.component.scss',
   providers: [

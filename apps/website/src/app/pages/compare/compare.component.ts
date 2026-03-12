@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -20,7 +19,7 @@ interface ComparisonSection {
 @Component({
   selector: 'bb-compare',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule, ScrollRevealDirective],
+  imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
     <div class="compare">
       <!-- Header -->
@@ -72,41 +71,50 @@ interface ComparisonSection {
         <div class="comparison__container">
           <h2 class="comparison__title">Feature Comparison</h2>
 
-          <div class="comparison-table" *ngFor="let section of comparisonSections; let i = index" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
-            <h3 class="comparison-table__section">{{ section.title }}</h3>
+          @for (section of comparisonSections; track section.title; let i = $index) {
+            <div class="comparison-table" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
+              <h3 class="comparison-table__section">{{ section.title }}</h3>
 
-            <div class="comparison-table__header">
-              <div class="comparison-table__cell comparison-table__cell--feature">Feature</div>
-              <div class="comparison-table__cell comparison-table__cell--bitbonsai">BitBonsai</div>
-              <div class="comparison-table__cell comparison-table__cell--tdarr">Tdarr</div>
-            </div>
+              <div class="comparison-table__header">
+                <div class="comparison-table__cell comparison-table__cell--feature">Feature</div>
+                <div class="comparison-table__cell comparison-table__cell--bitbonsai">BitBonsai</div>
+                <div class="comparison-table__cell comparison-table__cell--tdarr">Tdarr</div>
+              </div>
 
-            <div
-              class="comparison-table__row"
-              *ngFor="let row of section.rows"
-              [class.comparison-table__row--highlight]="row.highlight"
-            >
-              <div class="comparison-table__cell comparison-table__cell--feature">{{ row.feature }}</div>
-              <div class="comparison-table__cell comparison-table__cell--bitbonsai">
-                <ng-container *ngIf="typeof row.bitbonsai === 'boolean'">
-                  <span class="check" *ngIf="row.bitbonsai">✓</span>
-                  <span class="cross" *ngIf="!row.bitbonsai">✗</span>
-                </ng-container>
-                <ng-container *ngIf="typeof row.bitbonsai === 'string'">
-                  {{ row.bitbonsai }}
-                </ng-container>
-              </div>
-              <div class="comparison-table__cell comparison-table__cell--tdarr">
-                <ng-container *ngIf="typeof row.tdarr === 'boolean'">
-                  <span class="check" *ngIf="row.tdarr">✓</span>
-                  <span class="cross" *ngIf="!row.tdarr">✗</span>
-                </ng-container>
-                <ng-container *ngIf="typeof row.tdarr === 'string'">
-                  {{ row.tdarr }}
-                </ng-container>
-              </div>
+              @for (row of section.rows; track row.feature) {
+                <div
+                  class="comparison-table__row"
+                  [class.comparison-table__row--highlight]="row.highlight"
+                >
+                  <div class="comparison-table__cell comparison-table__cell--feature">{{ row.feature }}</div>
+                  <div class="comparison-table__cell comparison-table__cell--bitbonsai">
+                    @if (typeof(row.bitbonsai) === 'boolean') {
+                      @if (row.bitbonsai) {
+                        <span class="check">✓</span>
+                      } @else {
+                        <span class="cross">✗</span>
+                      }
+                    }
+                    @if (typeof(row.bitbonsai) === 'string') {
+                      {{ row.bitbonsai }}
+                    }
+                  </div>
+                  <div class="comparison-table__cell comparison-table__cell--tdarr">
+                    @if (typeof(row.tdarr) === 'boolean') {
+                      @if (row.tdarr) {
+                        <span class="check">✓</span>
+                      } @else {
+                        <span class="cross">✗</span>
+                      }
+                    }
+                    @if (typeof(row.tdarr) === 'string') {
+                      {{ row.tdarr }}
+                    }
+                  </div>
+                </div>
+              }
             </div>
-          </div>
+          }
         </div>
       </section>
 

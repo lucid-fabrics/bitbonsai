@@ -199,9 +199,9 @@ export class MediaAnalysisService {
       );
 
       // MEDIUM #8 FIX: Safe JSON parsing with try-catch
-      let probeData: any;
+      let probeData: FFprobeResponse;
       try {
-        probeData = JSON.parse(stdout);
+        probeData = JSON.parse(stdout) as FFprobeResponse;
       } catch (parseError) {
         this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
         return null;
@@ -213,7 +213,7 @@ export class MediaAnalysisService {
       }
 
       const videoStream = probeData.streams[0];
-      const format = probeData.format;
+      const format = probeData.format ?? {};
 
       // Normalize codec names
       let codec = videoStream.codec_name?.toUpperCase() || 'UNKNOWN';
@@ -223,9 +223,9 @@ export class MediaAnalysisService {
       return {
         filePath,
         codec,
-        resolution: `${videoStream.width || 0}x${videoStream.height || 0}`,
-        duration: parseFloat(format.duration || '0'),
-        sizeBytes: parseInt(format.size || '0', 10),
+        resolution: `${videoStream.width ?? 0}x${videoStream.height ?? 0}`,
+        duration: parseFloat(format.duration ?? '0'),
+        sizeBytes: parseInt(format.size ?? '0', 10),
         healthStatus: healthResult.status,
         healthMessage: healthResult.message,
       };

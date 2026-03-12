@@ -161,7 +161,7 @@ export class EnvironmentDetectorService {
       }
 
       return false;
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -211,7 +211,7 @@ export class EnvironmentDetectorService {
       }
 
       return cidr;
-    } catch (_error) {
+    } catch {
       return null;
     }
   }

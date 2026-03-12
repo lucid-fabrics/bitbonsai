@@ -1,21 +1,32 @@
 @if (diskSpaceData$ | async; as diskSpace) {
   <!-- Only show banner if there are warnings or critical status -->
-  @if (diskSpace.overallStatus !== 'ok' || diskSpace.globalWarnings.length > 0) {
-    <div class="disk-space-banner" [ngClass]="getStatusClass(diskSpace.overallStatus)">
+  @if (
+    diskSpace.overallStatus !== 'ok' || diskSpace.globalWarnings.length > 0
+  ) {
+    <div
+      class="disk-space-banner"
+      [ngClass]="getStatusClass(diskSpace.overallStatus)"
+    >
       <div class="banner-header" (click)="toggleDetails()">
         <div class="banner-header__content">
-          <i [class]="getStatusIcon(diskSpace.overallStatus)" class="banner-header__icon"></i>
+          <i
+            [class]="getStatusIcon(diskSpace.overallStatus)"
+            class="banner-header__icon"
+          ></i>
           <div class="banner-header__text">
             <h3 class="banner-header__title">
               @if (diskSpace.overallStatus === 'critical') {
-                Critical: Insufficient Disk Space
+                {{ 'common.critical' | transloco }}:
+                {{ 'diskSpace.insufficientDiskSpace' | transloco }}
               } @else {
-                Warning: Low Disk Space
+                {{ 'diskSpace.warning' | transloco }}:
+                {{ 'diskSpace.lowDiskSpace' | transloco }}
               }
             </h3>
             <p class="banner-header__subtitle">
               @if (!diskSpace.canAccommodateQueue) {
-                Not enough space to complete {{ diskSpace.totalQueuedJobs }} queued jobs
+                Not enough space to complete
+                {{ diskSpace.totalQueuedJobs }} queued jobs
               } @else if (hasLibrariesWithWarnings(diskSpace)) {
                 Some libraries are running low on disk space
               }
@@ -23,7 +34,9 @@
           </div>
         </div>
         <button class="banner-header__toggle" type="button">
-          <i [class]="showDetails ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+          <i
+            [class]="showDetails ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
+          ></i>
         </button>
       </div>
 
@@ -32,7 +45,9 @@
           <!-- Global Warnings -->
           @if (diskSpace.globalWarnings.length > 0) {
             <div class="banner-section">
-              <h4 class="banner-section__title">Global Warnings</h4>
+              <h4 class="banner-section__title">
+                {{ 'diskSpace.globalWarnings' | transloco }}
+              </h4>
               <ul class="banner-section__list">
                 @for (warning of diskSpace.globalWarnings; track warning) {
                   <li>{{ warning }}</li>
@@ -43,32 +58,62 @@
 
           <!-- Per-Library Breakdown -->
           <div class="banner-section">
-            <h4 class="banner-section__title">Library Disk Space</h4>
+            <h4 class="banner-section__title">
+              {{ 'diskSpace.libraryDiskSpace' | transloco }}
+            </h4>
             <div class="library-grid">
               @for (library of diskSpace.libraries; track library.libraryId) {
                 @if (library.status !== 'ok') {
-                  <div class="library-card" [ngClass]="getStatusClass(library.status)">
+                  <div
+                    class="library-card"
+                    [ngClass]="getStatusClass(library.status)"
+                  >
                     <div class="library-card__header">
-                      <i [class]="getStatusIcon(library.status)" class="library-card__icon"></i>
-                      <h5 class="library-card__title">{{ library.libraryName }}</h5>
+                      <i
+                        [class]="getStatusIcon(library.status)"
+                        class="library-card__icon"
+                      ></i>
+                      <h5 class="library-card__title">
+                        {{ library.libraryName }}
+                      </h5>
                     </div>
                     <div class="library-card__body">
                       <div class="library-card__stat">
-                        <span class="library-card__stat-label">Path:</span>
-                        <span class="library-card__stat-value library-card__stat-value--path">{{ library.path }}</span>
+                        <span class="library-card__stat-label">{{
+                          'diskSpace.path' | transloco
+                        }}</span>
+                        <span
+                          class="library-card__stat-value library-card__stat-value--path"
+                          >{{ library.path }}</span
+                        >
                       </div>
                       <div class="library-card__stat">
-                        <span class="library-card__stat-label">Used:</span>
-                        <span class="library-card__stat-value">{{ library.usedPercent.toFixed(1) }}% ({{ library.availableFormatted }} available)</span>
+                        <span class="library-card__stat-label">{{
+                          'diskSpace.used' | transloco
+                        }}</span>
+                        <span class="library-card__stat-value"
+                          >{{ library.usedPercent.toFixed(1) }}% ({{
+                            library.availableFormatted
+                          }}
+                          available)</span
+                        >
                       </div>
                       <div class="library-card__stat">
-                        <span class="library-card__stat-label">Queued Jobs:</span>
-                        <span class="library-card__stat-value">{{ library.queuedJobsCount }}</span>
+                        <span class="library-card__stat-label">{{
+                          'diskSpace.queuedJobs' | transloco
+                        }}</span>
+                        <span class="library-card__stat-value">{{
+                          library.queuedJobsCount
+                        }}</span>
                       </div>
                       @if (library.estimatedSpaceNeededBytes) {
                         <div class="library-card__stat">
-                          <span class="library-card__stat-label">Estimated Needed:</span>
-                          <span class="library-card__stat-value">{{ formatBytes(library.estimatedSpaceNeededBytes) }}</span>
+                          <span class="library-card__stat-label">{{
+                            'diskSpace.estimatedNeeded' | transloco
+                          }}</span>
+                          <span class="library-card__stat-value">{{
+                            formatBytes(library.estimatedSpaceNeededBytes)
+                          }}</span>
                         </div>
                       }
                       @if (library.warningMessage) {
@@ -88,18 +133,33 @@
           <div class="banner-section banner-summary">
             <div class="banner-summary__stats">
               <div class="banner-summary__stat">
-                <span class="banner-summary__stat-label">Total Queued Jobs:</span>
-                <span class="banner-summary__stat-value">{{ diskSpace.totalQueuedJobs }}</span>
+                <span class="banner-summary__stat-label">{{
+                  'diskSpace.totalQueuedJobs' | transloco
+                }}</span>
+                <span class="banner-summary__stat-value">{{
+                  diskSpace.totalQueuedJobs
+                }}</span>
               </div>
               @if (diskSpace.totalEstimatedSpaceNeeded) {
                 <div class="banner-summary__stat">
-                  <span class="banner-summary__stat-label">Total Estimated Space Needed:</span>
-                  <span class="banner-summary__stat-value">{{ formatBytes(diskSpace.totalEstimatedSpaceNeeded) }}</span>
+                  <span class="banner-summary__stat-label">{{
+                    'diskSpace.totalEstimatedSpace' | transloco
+                  }}</span>
+                  <span class="banner-summary__stat-value">{{
+                    formatBytes(diskSpace.totalEstimatedSpaceNeeded)
+                  }}</span>
                 </div>
               }
               <div class="banner-summary__stat">
-                <span class="banner-summary__stat-label">Can Accommodate Queue:</span>
-                <span class="banner-summary__stat-value" [class.banner-summary__stat-value--error]="!diskSpace.canAccommodateQueue">
+                <span class="banner-summary__stat-label">{{
+                  'diskSpace.canAccommodateQueue' | transloco
+                }}</span>
+                <span
+                  class="banner-summary__stat-value"
+                  [class.banner-summary__stat-value--error]="
+                    !diskSpace.canAccommodateQueue
+                  "
+                >
                   {{ diskSpace.canAccommodateQueue ? 'Yes' : 'No' }}
                 </span>
               </div>

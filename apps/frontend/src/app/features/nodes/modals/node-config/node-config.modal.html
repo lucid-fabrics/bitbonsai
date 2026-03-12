@@ -1,7 +1,7 @@
 <div class="modal-backdrop" (click)="onCancel()">
   <div class="modal-container" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2 class="modal-header__title">Configure Node</h2>
+      <h2 class="modal-header__title">{{ 'nodeConfig.title' | transloco }}</h2>
       <button class="modal-header__close-btn" (click)="onCancel()" type="button">
         <fa-icon [icon]="['fas', 'times']"></fa-icon>
       </button>
@@ -11,30 +11,30 @@
       <div class="modal-body">
         <!-- Node Name -->
         <div class="form-group">
-          <label for="name" class="form-group__label">Node Name</label>
+          <label for="name" class="form-group__label">{{ 'nodeConfig.nodeName' | transloco }}</label>
           <input
             id="name"
             type="text"
             class="form-group__control"
             formControlName="name"
-            placeholder="Enter node name"
+            placeholder="{{ 'nodeConfig.enterNodeName' | transloco }}"
           />
           @if (nameControl?.touched && nameControl?.hasError('required')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              Node name is required
+              {{ 'nodeConfig.nodeNameRequired' | transloco }}
             </div>
           }
           @if (nameControl?.touched && nameControl?.hasError('minlength')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              Node name must be at least 1 character
+              {{ 'nodeConfig.nodeNameMinLength' | transloco }}
             </div>
           }
           @if (nameControl?.touched && nameControl?.hasError('maxlength')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              Node name cannot exceed 255 characters
+              {{ 'nodeConfig.nodeNameMaxLength' | transloco }}
             </div>
           }
         </div>
@@ -42,7 +42,7 @@
         <!-- Max Workers -->
         <div class="form-group">
           <label for="maxWorkers" class="form-group__label">
-            Concurrent Workers
+            {{ 'nodeConfig.concurrentWorkers' | transloco }}
             <span class="form-group__hint">(1-20)</span>
           </label>
 
@@ -51,14 +51,14 @@
             <div class="recommendation-box">
               <div class="recommendation-header">
                 <fa-icon [icon]="['fas', 'lightbulb']" class="recommendation-header__icon"></fa-icon>
-                <strong>Auto-Detected Recommendation</strong>
+                <strong>{{ 'nodeConfig.autoDetectedRecommendation' | transloco }}</strong>
               </div>
               <div class="recommendation-content">
                 <div class="recommendation-summary">{{ optimalConfig.summary }}</div>
                 <div class="recommendation-details">
-                  <span><strong>CPU Cores:</strong> {{ optimalConfig.totalCpuCores }}</span>
-                  <span><strong>Recommended:</strong> {{ optimalConfig.recommendedMaxWorkers }} workers</span>
-                  <span><strong>Cores per job:</strong> {{ optimalConfig.cpuCoresPerJob }}</span>
+                  <span><strong>{{ 'nodeConfig.cpuCores' | transloco }}</strong> {{ optimalConfig.totalCpuCores }}</span>
+                  <span><strong>{{ 'nodeConfig.recommended' | transloco }}</strong> {{ optimalConfig.recommendedMaxWorkers }} {{ 'cpuCapacity.workers' | transloco }}</span>
+                  <span><strong>{{ 'nodeConfig.coresPerJob' | transloco }}</strong> {{ optimalConfig.cpuCoresPerJob }}</span>
                 </div>
                 <button
                   type="button"
@@ -66,7 +66,7 @@
                   (click)="applyRecommended()"
                 >
                   <fa-icon [icon]="['fas', 'wand-magic-sparkles']" class="btn-recommendation__icon"></fa-icon>
-                  Apply Recommended Settings
+                  {{ 'nodeConfig.applyRecommended' | transloco }}
                 </button>
               </div>
             </div>
@@ -82,7 +82,7 @@
           />
           <div class="form-help">
             <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
-            Number of concurrent encoding jobs this node can handle
+            {{ 'nodeConfig.concurrentJobsHelp' | transloco }}
           </div>
 
           <!-- Dynamic Warning -->
@@ -96,19 +96,19 @@
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('required')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              Max workers is required
+              {{ 'nodeConfig.maxWorkersRequired' | transloco }}
             </div>
           }
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('min')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              Max workers must be at least 1
+              {{ 'nodeConfig.maxWorkersMin' | transloco }}
             </div>
           }
           @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('max')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              Max workers cannot exceed 20
+              {{ 'nodeConfig.maxWorkersMax' | transloco }}
             </div>
           }
         </div>
@@ -116,7 +116,7 @@
         <!-- CPU Limit -->
         <div class="form-group">
           <label for="cpuLimit" class="form-group__label">
-            CPU Limit
+            {{ 'nodeConfig.cpuLimit' | transloco }}
             <span class="form-group__hint">(10-100%)</span>
           </label>
           <div class="range-input-group">
@@ -140,40 +140,40 @@
           </div>
           <div class="form-help">
             <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
-            Maximum CPU usage to reserve resources for host system
+            {{ 'nodeConfig.cpuLimitHelp' | transloco }}
           </div>
           @if (showCpuWarning) {
             <div class="warning-message">
               <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-message__icon"></fa-icon>
-              High CPU usage may impact host system performance
+              {{ 'nodeConfig.cpuLimitHighWarning' | transloco }}
             </div>
           }
           @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('required')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              CPU limit is required
+              {{ 'nodeConfig.cpuLimitRequired' | transloco }}
             </div>
           }
           @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('min')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              CPU limit must be at least 10%
+              {{ 'nodeConfig.cpuLimitMin' | transloco }}
             </div>
           }
           @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('max')) {
             <div class="error-message">
               <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              CPU limit cannot exceed 100%
+              {{ 'nodeConfig.cpuLimitMax' | transloco }}
             </div>
           }
         </div>
 
         <!-- Schedule Configuration -->
         <div class="form-group">
-          <label class="form-group__label">Encoding Schedule</label>
+          <label class="form-group__label">{{ 'nodeConfig.encodingSchedule' | transloco }}</label>
           <div class="form-help">
             <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
-            Define time windows when this node is allowed to encode (24/7 if disabled)
+            {{ 'nodeConfig.scheduleHelp' | transloco }}
           </div>
 
           <!-- Schedule Enable Toggle -->
@@ -187,7 +187,7 @@
               <span class="toggle-switch__slider"></span>
             </label>
             <span class="toggle-switch__label">
-              Enable Time-Based Scheduling
+              {{ 'nodeConfig.enableScheduling' | transloco }}
             </span>
           </div>
 
@@ -211,20 +211,20 @@
         >
           @if (testingCapabilities()) {
             <fa-icon [icon]="['fas', 'circle-notch']" class="btn__icon fa-spin"></fa-icon>
-            Testing...
+            {{ 'nodeConfig.testing' | transloco }}
           } @else {
             <fa-icon [icon]="['fas', 'network-wired']" class="btn__icon"></fa-icon>
-            Test Capabilities
+            {{ 'nodeConfig.testCapabilities' | transloco }}
           }
         </button>
         <div class="footer-spacer"></div>
         <button type="button" class="btn btn-secondary" (click)="onCancel()">
           <fa-icon [icon]="['fas', 'times']" class="btn__icon"></fa-icon>
-          Cancel
+          {{ 'common.cancel' | transloco }}
         </button>
         <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
           <fa-icon [icon]="['fas', 'save']" class="btn__icon"></fa-icon>
-          Save Configuration
+          {{ 'nodeConfig.saveConfiguration' | transloco }}
         </button>
       </div>
     </form>

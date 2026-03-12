@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, HostListener } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -7,7 +6,7 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
 @Component({
   selector: 'bb-header',
   standalone: true,
-  imports: [RouterModule, CommonModule, FontAwesomeModule],
+  imports: [RouterModule, FontAwesomeModule],
   template: `
     <header class="header" [class.scrolled]="isScrolled">
       <div class="header__container">

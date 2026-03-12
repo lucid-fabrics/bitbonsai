@@ -74,15 +74,8 @@ export class LicenseClientService {
   private maskLicenseKey(key: string): string {
     if (!key || key.length < 8) return '****';
     const lastFour = key.slice(-4);
-    const prefix = key.includes('-') ? key.split('-').slice(0, -1).join('-') + '-' : '';
+    const prefix = key.includes('-') ? `${key.split('-').slice(0, -1).join('-')}-` : '';
     return `${prefix}****${lastFour}`;
-  }
-
-  /**
-   * Hash a license key for secure storage comparison
-   */
-  private hashLicenseKey(key: string): string {
-    return crypto.createHash('sha256').update(key).digest('hex');
   }
 
   async getLicenseKey(): Promise<string | null> {

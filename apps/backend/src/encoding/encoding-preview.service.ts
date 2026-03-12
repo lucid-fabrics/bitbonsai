@@ -1,8 +1,12 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * EncodingPreviewService
@@ -140,6 +144,120 @@ export class EncodingPreviewService {
       this.logger.error(`Failed to generate previews for job ${jobId}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Capture a manual preview frame from source file at the given progress percentage.
+   *
+   * Uses ffprobe to get duration, then ffmpeg to extract a frame at the calculated timestamp.
+   *
+   * @param jobId - Job ID
+   * @param filePath - Source file path
+   * @param progress - Current encoding progress (0-100)
+   * @returns Path to the captured preview image
+   * @throws Error if ffprobe or ffmpeg fails
+   */
+  async captureManualPreview(jobId: string, filePath: string, progress: number): Promise<string> {
+    // Get duration from source file using ffprobe
+    let durationSeconds: number;
+    try {
+      const { stdout } = await execFileAsync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-show_entries',
+          'format=duration',
+          '-of',
+          'default=noprint_wrappers=1:nokey=1',
+          filePath,
+        ],
+        {
+          timeout: 5000,
+        }
+      );
+      durationSeconds = parseFloat(stdout.trim());
+
+      if (Number.isNaN(durationSeconds) || durationSeconds <= 0) {
+        throw new Error('Invalid duration');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to get file duration', {
+        jobId,
+        filePath,
+        error: errorMessage,
+      });
+      throw new Error('Failed to get file duration for preview capture');
+    }
+
+    // Calculate timestamp based on current encoding progress
+    const timestampSeconds = (progress / 100) * durationSeconds;
+
+    // Generate manual preview path
+    const manualPreviewPath = `/tmp/bitbonsai-previews/${jobId}/manual-${Date.now()}.jpg`;
+
+    // Create job preview directory if it doesn't exist
+    const jobPreviewDir = `/tmp/bitbonsai-previews/${jobId}`;
+    await fs.mkdir(jobPreviewDir, { recursive: true });
+
+    // Extract a frame from the source file at current encoding progress
+    try {
+      await execFileAsync(
+        'ffmpeg',
+        [
+          '-y', // Overwrite existing
+          '-ss',
+          timestampSeconds.toString(), // Seek to current progress position
+          '-i',
+          filePath, // Use original source file
+          '-vf',
+          `scale=${this.PREVIEW_WIDTH}:-1`, // Scale down for fast loading
+          '-frames:v',
+          '1',
+          '-q:v',
+          '2', // High quality JPEG
+          manualPreviewPath,
+        ],
+        {
+          timeout: 10000, // 10 second timeout (seeking can take time on large files)
+        }
+      );
+
+      // Verify file exists before returning path
+      if (!existsSync(manualPreviewPath)) {
+        this.logger.error('Manual preview file not found after FFmpeg extraction', {
+          jobId,
+          manualPreviewPath,
+          timestampSeconds,
+        });
+        throw new Error('Preview file not created. FFmpeg may have failed silently.');
+      }
+
+      this.logger.log(
+        `Preview captured successfully for job ${jobId} at ${timestampSeconds.toFixed(1)}s (${progress}%)`
+      );
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const execError = error as { stderr?: string; stdout?: string; code?: number };
+      this.logger.error('Failed to capture preview frame', {
+        jobId,
+        sourceFilePath: filePath,
+        timestampSeconds,
+        progress,
+        duration: durationSeconds,
+        manualPreviewPath,
+        errorMessage,
+        errorStderr: execError.stderr,
+        errorStdout: execError.stdout,
+        errorCode: execError.code,
+        fullError: error,
+      });
+
+      throw new Error(`Failed to capture preview: ${errorMessage}`);
+    }
+
+    return manualPreviewPath;
   }
 
   /**

@@ -1,5 +1,12 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { FilesystemService } from './filesystem.service';
 
 @ApiTags('filesystem')
@@ -19,9 +26,8 @@ export class FilesystemController {
     description: 'Directory path to browse (defaults to /)',
     example: '/media',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'List of directories at the specified path',
+  @ApiOkResponse({
+    description: 'Directory listing retrieved',
     schema: {
       example: {
         currentPath: '/media',
@@ -34,6 +40,8 @@ export class FilesystemController {
       },
     },
   })
+  @ApiBadRequestResponse({ description: 'Invalid path' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to browse directory' })
   async browseDirectories(@Query('path') path?: string) {
     return this.filesystemService.listDirectories(path || '/');
   }

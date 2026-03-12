@@ -8,5 +8,9 @@ export * from './lib/components/loading-spinner/loading-spinner.component';
 export * from './lib/components/path-selector/path-selector.component';
 export * from './lib/components/stat-card/stat-card.component';
 
+// Services
+
+export * from './lib/services/file-browser.service';
+
 // Legacy export for compatibility
 export * from './lib/shared-ui/shared-ui.component';

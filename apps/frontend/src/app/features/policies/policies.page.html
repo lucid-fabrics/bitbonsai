@@ -1,21 +1,23 @@
 <div class="policies-container">
   <div class="page-header">
-    <h1 class="page-header__title">Policies</h1>
-    <p class="page-header__subtitle">Create and manage encoding policy templates</p>
+    <h1 class="page-header__title">{{ 'policies.title' | transloco }}</h1>
+    <p class="page-header__subtitle">{{ 'policies.subtitle' | transloco }}</p>
   </div>
 
   <!-- Error Banner -->
   @if (error$ | async; as error) {
-    <div class="error-banner">
-      <fa-icon [icon]="icons.times"></fa-icon>
-      <span>{{ error }}</span>
-    </div>
+  <div class="error-banner">
+    <fa-icon [icon]="icons.times"></fa-icon>
+    <span>{{ error }}</span>
+  </div>
   }
 
   <!-- Preset Gallery -->
   <div class="presets-section">
     <div class="section-header">
-      <h2 class="section-header__title">Quick Start Templates</h2>
+      <h2 class="section-header__title">
+        {{ 'policies.quickStart' | transloco }}
+      </h2>
       <button
         class="btn-secondary"
         (click)="openCreateForm()"
@@ -23,498 +25,580 @@
         tooltipTitle="Create Custom Policy"
         tooltipContent="Start from scratch to create a fully customized encoding policy. Choose your own codec, quality settings, device profiles, and advanced FFmpeg options."
         tooltipWhen="You need specific encoding settings that don't match any preset template, or you want complete control over all encoding parameters."
-        tooltipPlacement="bottom">
+        tooltipPlacement="bottom"
+      >
         <fa-icon [icon]="icons.plus"></fa-icon>
-        Custom Policy
+        {{ 'policies.createCustom' | transloco }}
       </button>
     </div>
 
     @if (isLoading$ | async) {
-      <div class="loading-state">Loading presets...</div>
+    <div class="loading-state">{{ 'common.loading' | transloco }}</div>
     } @else {
-      <div class="preset-gallery">
-        @for (preset of (presets$ | async) || []; track preset.preset) {
-          <div
-            class="preset-card"
-            [class.preset-card--recommended]="preset.recommended"
-            (click)="selectPreset(preset)"
-            bbTooltip
-            [tooltipTitle]="preset.name"
-            [tooltipContent]="preset.description"
-            [tooltipWhen]="preset.use_case"
-            tooltipPlacement="top"
-            [tooltipDelay]="300"
-          >
-            @if (preset.recommended) {
-              <div class="preset-card__recommended-badge">
-                <fa-icon [icon]="icons.star"></fa-icon>
-                Recommended
-              </div>
-            }
-
-            <div class="preset-card__icon">{{ getPresetIcon(preset.preset) }}</div>
-            <h3 class="preset-card__title">{{ preset.name }}</h3>
-
-            <div class="preset-card__details">
-              <div class="preset-card__detail-row">
-                <span class="preset-card__detail-label">Codec:</span>
-                <span class="preset-card__detail-value">{{ preset.codec }}</span>
-              </div>
-              <div class="preset-card__detail-row">
-                <span class="preset-card__detail-label">Quality:</span>
-                <span class="preset-card__detail-value">CRF {{ preset.crf }}</span>
-              </div>
-            </div>
-
-            <p class="preset-card__use-case">{{ preset.use_case }}</p>
-            <p class="preset-card__description">{{ preset.description }}</p>
-          </div>
+    <div class="preset-gallery">
+      @for (preset of (presets$ | async) || []; track preset.preset) {
+      <div
+        class="preset-card"
+        [class.preset-card--recommended]="preset.recommended"
+        (click)="selectPreset(preset)"
+        bbTooltip
+        [tooltipTitle]="preset.name"
+        [tooltipContent]="preset.description"
+        [tooltipWhen]="preset.use_case"
+        tooltipPlacement="top"
+        [tooltipDelay]="300"
+      >
+        @if (preset.recommended) {
+        <div class="preset-card__recommended-badge">
+          <fa-icon [icon]="icons.star"></fa-icon>
+          {{ 'policies.recommended' | transloco }}
+        </div>
         }
+
+        <div class="preset-card__icon">{{ getPresetIcon(preset.preset) }}</div>
+        <h3 class="preset-card__title">{{ preset.name }}</h3>
+
+        <div class="preset-card__details">
+          <div class="preset-card__detail-row">
+            <span class="preset-card__detail-label">Codec:</span>
+            <span class="preset-card__detail-value">{{ preset.codec }}</span>
+          </div>
+          <div class="preset-card__detail-row">
+            <span class="preset-card__detail-label">Quality:</span>
+            <span class="preset-card__detail-value">CRF {{ preset.crf }}</span>
+          </div>
+        </div>
+
+        <p class="preset-card__use-case">{{ preset.use_case }}</p>
+        <p class="preset-card__description">{{ preset.description }}</p>
       </div>
+      }
+    </div>
     }
   </div>
 
   <!-- Active Policies Table -->
   <div class="policies-section">
     <div class="section-header">
-      <h2 class="section-header__title">Active Policies</h2>
+      <h2 class="section-header__title">
+        {{ 'policies.activePolicies' | transloco }}
+      </h2>
     </div>
 
     @if (isLoading$ | async) {
-      <div class="loading-state">Loading policies...</div>
+    <div class="loading-state">{{ 'common.loading' | transloco }}</div>
     } @else if ((policies$ | async)?.length === 0) {
-      <div class="empty-state">
-        <div class="empty-icon">
-          <fa-icon icon="file-contract"></fa-icon>
-        </div>
-        <h2>No Policies Yet</h2>
-        <p class="empty-description">
-          Policies define how your media files should be encoded. They control the codec,
-          quality, and device compatibility for your video files.
+    <div class="empty-state">
+      <div class="empty-icon">
+        <fa-icon icon="file-contract"></fa-icon>
+      </div>
+      <h2>{{ 'policies.noPolicies' | transloco }}</h2>
+      <p class="empty-description">
+        Policies define how your media files should be encoded. They control the
+        codec, quality, and device compatibility for your video files.
+      </p>
+
+      <div class="getting-started">
+        <h3>{{ 'policies.gettingStarted' | transloco }}</h3>
+        <ol>
+          <li>
+            Browse the "Quick Start Templates" above to see preset options
+          </li>
+          <li>
+            Click on a recommended template (like "Balanced HEVC") to get
+            started
+          </li>
+          <li>Give your policy a memorable name</li>
+          <li>
+            Adjust quality settings if needed (lower CRF = better quality)
+          </li>
+          <li>Select which devices should play your encoded files</li>
+        </ol>
+        <p class="help-tip">
+          <fa-icon icon="lightbulb"></fa-icon>
+          <strong>Tip:</strong> Start with "Balanced HEVC" for a great mix of
+          quality and file size savings!
         </p>
-
-        <div class="getting-started">
-          <h3>Getting Started:</h3>
-          <ol>
-            <li>Browse the "Quick Start Templates" above to see preset options</li>
-            <li>Click on a recommended template (like "Balanced HEVC") to get started</li>
-            <li>Give your policy a memorable name</li>
-            <li>Adjust quality settings if needed (lower CRF = better quality)</li>
-            <li>Select which devices should play your encoded files</li>
-          </ol>
-          <p class="help-tip">
-            <fa-icon icon="lightbulb"></fa-icon>
-            <strong>Tip:</strong> Start with "Balanced HEVC" for a great mix of quality and file size savings!
-          </p>
-        </div>
-
-        <button
-          class="btn btn-primary btn-large"
-          (click)="openCreateForm()"
-          bbTooltip
-          tooltipTitle="Create Your First Policy"
-          tooltipContent="Policies define how your media should be encoded. Start by choosing a preset template above, or create a custom policy from scratch with your own settings."
-          tooltipWhen="You're ready to set up encoding rules for your media library. Choose 'Balanced HEVC' preset for a great starting point."
-          tooltipPlacement="top">
-          <fa-icon icon="plus"></fa-icon>
-          Create Your First Policy
-        </button>
       </div>
+
+      <button
+        class="btn btn-primary btn-large"
+        (click)="openCreateForm()"
+        bbTooltip
+        tooltipTitle="Create Your First Policy"
+        tooltipContent="Policies define how your media should be encoded. Start by choosing a preset template above, or create a custom policy from scratch with your own settings."
+        tooltipWhen="You're ready to set up encoding rules for your media library. Choose 'Balanced HEVC' preset for a great starting point."
+        tooltipPlacement="top"
+      >
+        <fa-icon icon="plus"></fa-icon>
+        {{ 'policies.createFirst' | transloco }}
+      </button>
+    </div>
     } @else {
-      <div class="table-container">
-        <table class="policies-table">
-          <thead>
-            <tr>
-              <th class="policies-table__header">Name</th>
-              <th class="policies-table__header">Preset</th>
-              <th class="policies-table__header">Codec</th>
-              <th class="policies-table__header">Quality (CRF)</th>
-              <th class="policies-table__header">Library</th>
-              <th class="policies-table__header">Completed Jobs</th>
-              <th class="policies-table__header">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (policy of (policies$ | async) || []; track policy.id) {
-              <tr>
-                <td class="policies-table__cell--policy-name">
-                  <span class="policies-table__preset-icon">{{ getPresetIcon(policy.preset) }}</span>
-                  {{ policy.name }}
-                </td>
-                <td class="policies-table__cell">{{ policy.preset }}</td>
-                <td class="policies-table__cell">
-                  <span class="policies-table__codec-badge">{{ policy.targetCodec }}</span>
-                </td>
-                <td class="policies-table__cell">
-                  <span class="policies-table__crf-value">{{ policy.targetQuality }}</span>
-                  <span class="policies-table__crf-label">({{ getCRFLabel(policy.targetQuality) }})</span>
-                </td>
-                <td class="policies-table__cell">{{ policy.libraryId || 'All Libraries' }}</td>
-                <td class="policies-table__cell text-center">{{ policy.completedJobs }}</td>
-                <td class="policies-table__actions-cell">
-                  <button
-                    class="btn-icon"
-                    (click)="openEditForm(policy)"
-                    aria-label="Edit policy {{ policy.name }}"
-                    bbTooltip
-                    tooltipTitle="Edit Policy"
-                    tooltipContent="Modify this policy's settings including codec, quality (CRF), device profiles, and advanced encoding options. Changes only affect future encoding jobs."
-                    tooltipWhen="You need to adjust encoding quality, change target devices, or update advanced FFmpeg settings for this policy."
-                    tooltipPlacement="top"
-                  >
-                    <fa-icon [icon]="icons.edit"></fa-icon>
-                  </button>
-                  <button
-                    class="btn-icon btn-danger"
-                    (click)="confirmDelete(policy)"
-                    aria-label="Delete policy {{ policy.name }}"
-                    bbTooltip
-                    tooltipTitle="Delete Policy"
-                    tooltipContent="Permanently remove this policy from BitBonsai. Existing encoded videos are not affected. Jobs currently using this policy will complete, but no new jobs can use it."
-                    tooltipWhen="This policy is no longer needed or you want to consolidate your encoding strategies. Cannot be undone."
-                    tooltipPlacement="top"
-                  >
-                    <fa-icon [icon]="icons.trash"></fa-icon>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+    <div class="table-container">
+      <table class="policies-table">
+        <thead>
+          <tr>
+            <th class="policies-table__header">
+              {{ 'policies.name' | transloco }}
+            </th>
+            <th class="policies-table__header">
+              {{ 'policies.preset' | transloco }}
+            </th>
+            <th class="policies-table__header">
+              {{ 'policies.codec' | transloco }}
+            </th>
+            <th class="policies-table__header">
+              {{ 'policies.quality' | transloco }}
+            </th>
+            <th class="policies-table__header">
+              {{ 'policies.library' | transloco }}
+            </th>
+            <th class="policies-table__header">
+              {{ 'policies.completedJobs' | transloco }}
+            </th>
+            <th class="policies-table__header">
+              {{ 'policies.actions' | transloco }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (policy of (policies$ | async) || []; track policy.id) {
+          <tr>
+            <td class="policies-table__cell--policy-name">
+              <span class="policies-table__preset-icon"
+                >{{ getPresetIcon(policy.preset) }}</span
+              >
+              {{ policy.name }}
+            </td>
+            <td class="policies-table__cell">{{ policy.preset }}</td>
+            <td class="policies-table__cell">
+              <span class="policies-table__codec-badge"
+                >{{ policy.targetCodec }}</span
+              >
+            </td>
+            <td class="policies-table__cell">
+              <span class="policies-table__crf-value"
+                >{{ policy.targetQuality }}</span
+              >
+              <span class="policies-table__crf-label"
+                >({{ getCRFLabel(policy.targetQuality) }})</span
+              >
+            </td>
+            <td class="policies-table__cell">
+              {{ policy.libraryId || 'All Libraries' }}
+            </td>
+            <td class="policies-table__cell text-center">
+              {{ policy.completedJobs }}
+            </td>
+            <td class="policies-table__actions-cell">
+              <button
+                class="btn-icon"
+                (click)="openEditForm(policy)"
+                aria-label="Edit policy {{ policy.name }}"
+                bbTooltip
+                tooltipTitle="Edit Policy"
+                tooltipContent="Modify this policy's settings including codec, quality (CRF), device profiles, and advanced encoding options. Changes only affect future encoding jobs."
+                tooltipWhen="You need to adjust encoding quality, change target devices, or update advanced FFmpeg settings for this policy."
+                tooltipPlacement="top"
+              >
+                <fa-icon [icon]="icons.edit"></fa-icon>
+              </button>
+              <button
+                class="btn-icon btn-danger"
+                (click)="confirmDelete(policy)"
+                aria-label="Delete policy {{ policy.name }}"
+                bbTooltip
+                tooltipTitle="Delete Policy"
+                tooltipContent="Permanently remove this policy from BitBonsai. Existing encoded videos are not affected. Jobs currently using this policy will complete, but no new jobs can use it."
+                tooltipWhen="This policy is no longer needed or you want to consolidate your encoding strategies. Cannot be undone."
+                tooltipPlacement="top"
+              >
+                <fa-icon [icon]="icons.trash"></fa-icon>
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
     }
   </div>
 
   <!-- Create/Edit Form Modal -->
   @if (showFormModal) {
-    <div class="modal-overlay" (click)="closeForm()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h2 class="modal-header__title">{{ isEditMode ? 'Edit Policy' : 'Create Policy' }}</h2>
-          <button class="btn-icon" (click)="closeForm()" aria-label="Close form">
-            <fa-icon [icon]="icons.times"></fa-icon>
-          </button>
-        </div>
+  <div class="modal-overlay" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-header__title">
+          {{ isEditMode ? 'Edit Policy' : 'Create Policy' }}
+        </h2>
+        <button class="btn-icon" (click)="closeForm()" aria-label="Close form">
+          <fa-icon [icon]="icons.times"></fa-icon>
+        </button>
+      </div>
 
-        <div class="modal-body">
-          <form (ngSubmit)="submitForm()">
-            <!-- Name Input -->
-            <div class="form-group">
-              <label for="name" class="form-group__label">Policy Name *</label>
+      <div class="modal-body">
+        <form (ngSubmit)="submitForm()">
+          <!-- Name Input -->
+          <div class="form-group">
+            <label for="name" class="form-group__label">Policy Name *</label>
+            <input
+              id="name"
+              type="text"
+              class="form-group__input"
+              [(ngModel)]="formData.name"
+              name="name"
+              placeholder="e.g., My Custom HEVC Policy"
+              maxlength="50"
+              [class.error]="formErrors['name']"
+            />
+            @if (formErrors['name']) {
+            <span class="form-group__error-message"
+              >{{ formErrors['name'] }}</span
+            >
+            }
+          </div>
+
+          <!-- Preset Selector -->
+          <div class="form-group">
+            <label for="preset" class="form-group__label"
+              >Preset Template</label
+            >
+            <select
+              id="preset"
+              class="form-group__input"
+              [(ngModel)]="formData.preset"
+              name="preset"
+              [disabled]="isEditMode"
+            >
+              <option [value]="PolicyPreset.BALANCED_HEVC">
+                Balanced HEVC
+              </option>
+              <option [value]="PolicyPreset.FAST_HEVC">Fast HEVC</option>
+              <option [value]="PolicyPreset.QUALITY_AV1">Quality AV1</option>
+              <option [value]="PolicyPreset.COPY_IF_COMPLIANT">
+                Copy If Compliant
+              </option>
+              <option [value]="PolicyPreset.CUSTOM">Custom</option>
+            </select>
+          </div>
+
+          <!-- Target Codec -->
+          <div class="form-group">
+            <label for="codec" class="form-group__label">Target Codec *</label>
+            <select
+              id="codec"
+              class="form-group__input"
+              [(ngModel)]="formData.targetCodec"
+              name="codec"
+            >
+              <option [value]="TargetCodec.HEVC">HEVC (H.265)</option>
+              <option [value]="TargetCodec.AV1">AV1</option>
+              <option [value]="TargetCodec.VP9">VP9</option>
+              <option [value]="TargetCodec.H264">H.264</option>
+            </select>
+          </div>
+
+          <!-- Quality Slider -->
+          <div class="form-group">
+            <label for="targetQuality" class="form-group__label">
+              Quality (CRF) *
+              <span
+                class="form-group__label-quality-indicator"
+                bbTooltip
+                tooltipTitle="CRF Quality Scale"
+                tooltipContent="CRF (Constant Rate Factor) ranges from 0-51. Lower = better quality but larger files. Higher = smaller files but lower quality. Sweet spot is usually 18-23 for near-lossless quality with good compression."
+                tooltipWhen="You need to balance file size vs quality. Use 18-20 for archival, 21-23 for streaming, 24-28 for fast/low-priority encoding."
+                tooltipPlacement="right"
+              >
+                {{ getCRFLabel(formData.targetQuality) }}
+              </span>
+            </label>
+            <div class="field-hint">
+              <fa-icon icon="info-circle"></fa-icon>
+              CRF (Constant Rate Factor) controls video quality.
+              <strong>Lower values = better quality + larger files.</strong>
+              Higher values = smaller files + lower quality. Most users should
+              use 18-23 for excellent quality with good compression.
+            </div>
+            <div class="slider-container">
               <input
-                id="name"
-                type="text"
-                class="form-group__input"
-                [(ngModel)]="formData.name"
-                name="name"
-                placeholder="e.g., My Custom HEVC Policy"
-                maxlength="50"
-                [class.error]="formErrors['name']"
+                id="targetQuality"
+                type="range"
+                min="0"
+                max="51"
+                [(ngModel)]="formData.targetQuality"
+                name="targetQuality"
+                class="quality-slider"
               />
-              @if (formErrors['name']) {
-                <span class="form-group__error-message">{{ formErrors['name'] }}</span>
+              <div class="slider-labels">
+                <span>0 (Best)</span>
+                <span>18 (Excellent)</span>
+                <span>23 (Good)</span>
+                <span>28 (Fast)</span>
+                <span>51 (Worst)</span>
+              </div>
+            </div>
+            <div class="crf-value-display">
+              Current: {{ formData.targetQuality }}
+            </div>
+            @if (formErrors['targetQuality']) {
+            <span class="form-group__error-message"
+              >{{ formErrors['targetQuality'] }}</span
+            >
+            }
+          </div>
+
+          <!-- Library Association -->
+          <div class="form-group">
+            <label for="library" class="form-group__label"
+              >Library (Optional)</label
+            >
+            <select
+              id="library"
+              class="form-group__input"
+              [(ngModel)]="formData.libraryId"
+              name="library"
+            >
+              <option value="">All Libraries</option>
+              @for (library of libraries$ | async; track library.id) {
+              <option [value]="library.id">{{ library.name }}</option>
               }
-            </div>
+            </select>
+            <small class="form-group__help-text">
+              Select a specific library or leave as "All Libraries" for global
+              policy
+            </small>
+          </div>
 
-            <!-- Preset Selector -->
-            <div class="form-group">
-              <label for="preset" class="form-group__label">Preset Template</label>
-              <select
-                id="preset"
-                class="form-group__input"
-                [(ngModel)]="formData.preset"
-                name="preset"
-                [disabled]="isEditMode"
-              >
-                <option [value]="PolicyPreset.BALANCED_HEVC">Balanced HEVC</option>
-                <option [value]="PolicyPreset.FAST_HEVC">Fast HEVC</option>
-                <option [value]="PolicyPreset.QUALITY_AV1">Quality AV1</option>
-                <option [value]="PolicyPreset.COPY_IF_COMPLIANT">Copy If Compliant</option>
-                <option [value]="PolicyPreset.CUSTOM">Custom</option>
-              </select>
+          <!-- Device Profiles -->
+          <div class="form-group">
+            <label class="form-group__label">Device Profiles *</label>
+            <div class="field-hint">
+              <fa-icon icon="info-circle"></fa-icon>
+              Select which devices should be able to play your encoded videos.
+              BitBonsai will ensure compatibility with all selected devices. At
+              least one device profile is required.
             </div>
-
-            <!-- Target Codec -->
-            <div class="form-group">
-              <label for="codec" class="form-group__label">Target Codec *</label>
-              <select
-                id="codec"
-                class="form-group__input"
-                [(ngModel)]="formData.targetCodec"
-                name="codec"
-              >
-                <option [value]="TargetCodec.HEVC">HEVC (H.265)</option>
-                <option [value]="TargetCodec.AV1">AV1</option>
-                <option [value]="TargetCodec.VP9">VP9</option>
-                <option [value]="TargetCodec.H264">H.264</option>
-              </select>
-            </div>
-
-            <!-- Quality Slider -->
-            <div class="form-group">
-              <label for="targetQuality" class="form-group__label">
-                Quality (CRF) *
-                <span
-                  class="form-group__label-quality-indicator"
-                  bbTooltip
-                  tooltipTitle="CRF Quality Scale"
-                  tooltipContent="CRF (Constant Rate Factor) ranges from 0-51. Lower = better quality but larger files. Higher = smaller files but lower quality. Sweet spot is usually 18-23 for near-lossless quality with good compression."
-                  tooltipWhen="You need to balance file size vs quality. Use 18-20 for archival, 21-23 for streaming, 24-28 for fast/low-priority encoding."
-                  tooltipPlacement="right">
-                  {{ getCRFLabel(formData.targetQuality) }}
-                </span>
-              </label>
-              <div class="field-hint">
-                <fa-icon icon="info-circle"></fa-icon>
-                CRF (Constant Rate Factor) controls video quality. <strong>Lower values = better quality + larger files.</strong> Higher values = smaller files + lower quality. Most users should use 18-23 for excellent quality with good compression.
-              </div>
-              <div class="slider-container">
-                <input
-                  id="targetQuality"
-                  type="range"
-                  min="0"
-                  max="51"
-                  [(ngModel)]="formData.targetQuality"
-                  name="targetQuality"
-                  class="quality-slider"
-                />
-                <div class="slider-labels">
-                  <span>0 (Best)</span>
-                  <span>18 (Excellent)</span>
-                  <span>23 (Good)</span>
-                  <span>28 (Fast)</span>
-                  <span>51 (Worst)</span>
-                </div>
-              </div>
-              <div class="crf-value-display">Current: {{ formData.targetQuality }}</div>
-              @if (formErrors['targetQuality']) {
-                <span class="form-group__error-message">{{ formErrors['targetQuality'] }}</span>
-              }
-            </div>
-
-            <!-- Library Association -->
-            <div class="form-group">
-              <label for="library" class="form-group__label">Library (Optional)</label>
-              <select
-                id="library"
-                class="form-group__input"
-                [(ngModel)]="formData.libraryId"
-                name="library"
-              >
-                <option value="">All Libraries</option>
-                @for (library of libraries$ | async; track library.id) {
-                  <option [value]="library.id">{{ library.name }}</option>
-                }
-              </select>
-              <small class="form-group__help-text">
-                Select a specific library or leave as "All Libraries" for global policy
-              </small>
-            </div>
-
-            <!-- Device Profiles -->
-            <div class="form-group">
-              <label class="form-group__label">Device Profiles *</label>
-              <div class="field-hint">
-                <fa-icon icon="info-circle"></fa-icon>
-                Select which devices should be able to play your encoded videos. BitBonsai will ensure compatibility with all selected devices. At least one device profile is required.
-              </div>
-              <div class="device-profiles">
-                @for (profile of [
-                  DeviceProfile.APPLE_TV,
-                  DeviceProfile.ROKU,
-                  DeviceProfile.WEB,
-                  DeviceProfile.CHROMECAST
-                ]; track profile) {
-                  <button
-                    type="button"
-                    class="device-profile-btn"
-                    [class.active]="formData.deviceProfiles.has(profile)"
-                    (click)="toggleDeviceProfile(profile)"
-                    bbTooltip
-                    [tooltipTitle]="getDeviceLabel(profile)"
-                    [tooltipContent]="getDeviceProfileExplanation(profile)"
-                    tooltipWhen="Your encoded files will be played on this device type."
-                    tooltipPlacement="top"
-                  >
-                    <fa-icon [icon]="getDeviceIcon(profile)"></fa-icon>
-                    <span>{{ getDeviceLabel(profile) }}</span>
-                    @if (formData.deviceProfiles.has(profile)) {
-                      <fa-icon [icon]="icons.check" class="device-profile-btn__check-icon"></fa-icon>
-                    }
-                  </button>
-                }
-              </div>
-              @if (formErrors['deviceProfiles']) {
-                <span class="form-group__error-message">{{ formErrors['deviceProfiles'] }}</span>
-              }
-            </div>
-
-            <!-- Advanced Settings (Collapsible) -->
-            <div class="form-group">
+            <div class="device-profiles">
+              @for (profile of [ DeviceProfile.APPLE_TV, DeviceProfile.ROKU,
+              DeviceProfile.WEB, DeviceProfile.CHROMECAST ]; track profile) {
               <button
                 type="button"
-                class="advanced-toggle"
-                (click)="showAdvancedSettings = !showAdvancedSettings"
+                class="device-profile-btn"
+                [class.active]="formData.deviceProfiles.has(profile)"
+                (click)="toggleDeviceProfile(profile)"
+                bbTooltip
+                [tooltipTitle]="getDeviceLabel(profile)"
+                [tooltipContent]="getDeviceProfileExplanation(profile)"
+                tooltipWhen="Your encoded files will be played on this device type."
+                tooltipPlacement="top"
               >
-                {{ showAdvancedSettings ? '▼' : '▶' }} Advanced Settings
+                <fa-icon [icon]="getDeviceIcon(profile)"></fa-icon>
+                <span>{{ getDeviceLabel(profile) }}</span>
+                @if (formData.deviceProfiles.has(profile)) {
+                <fa-icon
+                  [icon]="icons.check"
+                  class="device-profile-btn__check-icon"
+                ></fa-icon>
+                }
               </button>
-
-              @if (showAdvancedSettings) {
-                <div class="advanced-settings">
-                  <!-- Audio Handling -->
-                  <div class="form-group">
-                    <label for="audio" class="form-group__label">Audio Handling</label>
-                    <select
-                      id="audio"
-                      class="form-group__input"
-                      [(ngModel)]="formData.audioHandling"
-                      name="audio"
-                    >
-                      <option [value]="AudioHandling.COPY">Copy Original</option>
-                      <option [value]="AudioHandling.TRANSCODE_AAC">Transcode to AAC</option>
-                      <option [value]="AudioHandling.TRANSCODE_AC3">Transcode to AC3</option>
-                    </select>
-                  </div>
-
-                  <!-- Container Format -->
-                  <div class="form-group">
-                    <label for="targetContainer" class="form-group__label">Container Format</label>
-                    <select
-                      id="targetContainer"
-                      class="form-group__input"
-                      [(ngModel)]="formData.targetContainer"
-                      name="targetContainer"
-                      bbTooltip
-                      tooltipTitle="Container Format Selection"
-                      tooltipContent="The container (wrapper) format for encoded files. MKV supports all features, MP4 is best for streaming, WebM is web-optimized. Choose 'Keep Original' to preserve source container."
-                      tooltipWhen="You want universal compatibility (MKV), streaming optimization (MP4), web delivery (WebM), or to preserve original format."
-                      tooltipPlacement="right"
-                    >
-                      @for (format of ContainerBo.FORMATS; track format.value) {
-                        <option [value]="format.value">{{ format.label }} - {{ format.description }}</option>
-                      }
-                    </select>
-                    <small class="form-group__help-text">
-                      Container wraps video/audio streams. Change only if needed for compatibility.
-                    </small>
-                  </div>
-
-                  <!-- Smart Remux Toggle -->
-                  <div class="form-group">
-                    <label class="form-group__checkbox-label">
-                      <input
-                        type="checkbox"
-                        [(ngModel)]="formData.skipReencoding"
-                        name="skipReencoding"
-                        class="form-group__checkbox"
-                      />
-                      <span
-                        bbTooltip
-                        tooltipTitle="Smart Remux Mode"
-                        tooltipContent="When enabled, files already in the target codec will only have their container changed (fast remux, seconds) instead of being fully re-encoded (slow transcode, hours). This preserves original quality and saves significant time. Example: H.264 → H.264 with MP4 → MKV container change completes in seconds."
-                        tooltipWhen="You want to save time and preserve quality when source codec matches target codec. Highly recommended for most use cases."
-                        tooltipPlacement="right"
-                      >
-                        Enable Smart Remux (Skip re-encoding when codec matches)
-                      </span>
-                    </label>
-                    <small class="form-group__help-text">
-                      Recommended: When source codec = target codec, only change container (fast) instead of re-encoding (slow)
-                    </small>
-                  </div>
-
-                  <!-- Allow Same Codec Re-encoding Toggle -->
-                  <div class="form-group">
-                    <label class="form-group__checkbox-label">
-                      <input
-                        type="checkbox"
-                        [(ngModel)]="formData.allowSameCodec"
-                        name="allowSameCodec"
-                        class="form-group__checkbox"
-                      />
-                      <span
-                        bbTooltip
-                        tooltipTitle="Allow Same Codec Re-encoding"
-                        tooltipContent="When enabled, jobs will proceed directly to encoding even if the source file is already in the target codec (e.g., HEVC → HEVC). Normally, this would pause the job to confirm since re-encoding the same codec usually increases file size. Enable this if you want to re-compress files at a different quality setting without confirmation."
-                        tooltipWhen="You want to re-compress files at a different CRF/quality without being asked to confirm each time."
-                        tooltipPlacement="right"
-                      >
-                        Allow same codec re-encoding (skip confirmation)
-                      </span>
-                    </label>
-                    <small class="form-group__help-text">
-                      Enable to re-encode files already in target codec without "Needs Decision" prompt
-                    </small>
-
-                    <!-- Min Savings Threshold (only shown when allowSameCodec is enabled) -->
-                    @if (formData.allowSameCodec) {
-                      <div class="min-savings-threshold">
-                        <label for="minSavingsPercent" class="form-group__label">
-                          Minimum Expected Savings
-                          <fa-icon
-                            [icon]="icons.infoCircle"
-                            class="info-icon"
-                            bbTooltip
-                            tooltipTitle="Minimum Savings Threshold"
-                            tooltipContent="Only re-encode same-codec files if the expected file size savings exceeds this percentage. For example, set to 10% to skip re-encoding files that would only save 5% of disk space. Set to 0 to re-encode regardless of expected savings."
-                            tooltipWhen="You want to avoid re-encoding files where the space savings wouldn't be worth the time/quality trade-off."
-                            tooltipPlacement="right"
-                          ></fa-icon>
-                        </label>
-                        <div class="min-savings-input-wrapper">
-                          <input
-                            id="minSavingsPercent"
-                            type="number"
-                            class="form-group__input min-savings-input"
-                            [(ngModel)]="formData.minSavingsPercent"
-                            name="minSavingsPercent"
-                            min="0"
-                            max="100"
-                            step="1"
-                            placeholder="0"
-                          />
-                          <span class="min-savings-suffix">%</span>
-                        </div>
-                        <small class="form-group__help-text">
-                          Only re-encode if expected savings exceeds this % (0 = always re-encode)
-                        </small>
-                      </div>
-                    }
-                  </div>
-
-                  <!-- FFmpeg Flags -->
-                  <div class="form-group">
-                    <label for="ffmpeg" class="form-group__label">Custom FFmpeg Flags</label>
-                    <textarea
-                      id="ffmpeg"
-                      class="form-group__textarea"
-                      [(ngModel)]="formData.ffmpegFlags"
-                      name="ffmpeg"
-                      placeholder="-preset slow -tune film"
-                      rows="3"
-                    ></textarea>
-                    <small class="form-group__help-text">
-                      Advanced: Custom FFmpeg command-line flags
-                    </small>
-                  </div>
-                </div>
               }
             </div>
+            @if (formErrors['deviceProfiles']) {
+            <span class="form-group__error-message"
+              >{{ formErrors['deviceProfiles'] }}</span
+            >
+            }
+          </div>
 
-          </form>
-        </div>
+          <!-- Advanced Settings (Collapsible) -->
+          <div class="form-group">
+            <button
+              type="button"
+              class="advanced-toggle"
+              (click)="showAdvancedSettings = !showAdvancedSettings"
+            >
+              {{ showAdvancedSettings ? '▼' : '▶' }} Advanced Settings
+            </button>
 
-        <!-- Form Actions (Fixed Footer) -->
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" (click)="closeForm()">
-            Cancel
-          </button>
-          <button type="button" class="btn-primary" [disabled]="!isFormValid()" (click)="submitForm()">
-            <fa-icon [icon]="icons.check"></fa-icon>
-            {{ isEditMode ? 'Update Policy' : 'Create Policy' }}
-          </button>
-        </div>
+            @if (showAdvancedSettings) {
+            <div class="advanced-settings">
+              <!-- Audio Handling -->
+              <div class="form-group">
+                <label for="audio" class="form-group__label"
+                  >Audio Handling</label
+                >
+                <select
+                  id="audio"
+                  class="form-group__input"
+                  [(ngModel)]="formData.audioHandling"
+                  name="audio"
+                >
+                  <option [value]="AudioHandling.COPY">Copy Original</option>
+                  <option [value]="AudioHandling.TRANSCODE_AAC">
+                    Transcode to AAC
+                  </option>
+                  <option [value]="AudioHandling.TRANSCODE_AC3">
+                    Transcode to AC3
+                  </option>
+                </select>
+              </div>
+
+              <!-- Container Format -->
+              <div class="form-group">
+                <label for="targetContainer" class="form-group__label"
+                  >Container Format</label
+                >
+                <select
+                  id="targetContainer"
+                  class="form-group__input"
+                  [(ngModel)]="formData.targetContainer"
+                  name="targetContainer"
+                  bbTooltip
+                  tooltipTitle="Container Format Selection"
+                  tooltipContent="The container (wrapper) format for encoded files. MKV supports all features, MP4 is best for streaming, WebM is web-optimized. Choose 'Keep Original' to preserve source container."
+                  tooltipWhen="You want universal compatibility (MKV), streaming optimization (MP4), web delivery (WebM), or to preserve original format."
+                  tooltipPlacement="right"
+                >
+                  @for (format of ContainerBo.FORMATS; track format.value) {
+                  <option [value]="format.value">
+                    {{ format.label }} - {{ format.description }}
+                  </option>
+                  }
+                </select>
+                <small class="form-group__help-text">
+                  Container wraps video/audio streams. Change only if needed for
+                  compatibility.
+                </small>
+              </div>
+
+              <!-- Smart Remux Toggle -->
+              <div class="form-group">
+                <label class="form-group__checkbox-label">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="formData.skipReencoding"
+                    name="skipReencoding"
+                    class="form-group__checkbox"
+                  />
+                  <span
+                    bbTooltip
+                    tooltipTitle="Smart Remux Mode"
+                    tooltipContent="When enabled, files already in the target codec will only have their container changed (fast remux, seconds) instead of being fully re-encoded (slow transcode, hours). This preserves original quality and saves significant time. Example: H.264 → H.264 with MP4 → MKV container change completes in seconds."
+                    tooltipWhen="You want to save time and preserve quality when source codec matches target codec. Highly recommended for most use cases."
+                    tooltipPlacement="right"
+                  >
+                    Enable Smart Remux (Skip re-encoding when codec matches)
+                  </span>
+                </label>
+                <small class="form-group__help-text">
+                  Recommended: When source codec = target codec, only change
+                  container (fast) instead of re-encoding (slow)
+                </small>
+              </div>
+
+              <!-- Allow Same Codec Re-encoding Toggle -->
+              <div class="form-group">
+                <label class="form-group__checkbox-label">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="formData.allowSameCodec"
+                    name="allowSameCodec"
+                    class="form-group__checkbox"
+                  />
+                  <span
+                    bbTooltip
+                    tooltipTitle="Allow Same Codec Re-encoding"
+                    tooltipContent="When enabled, jobs will proceed directly to encoding even if the source file is already in the target codec (e.g., HEVC → HEVC). Normally, this would pause the job to confirm since re-encoding the same codec usually increases file size. Enable this if you want to re-compress files at a different quality setting without confirmation."
+                    tooltipWhen="You want to re-compress files at a different CRF/quality without being asked to confirm each time."
+                    tooltipPlacement="right"
+                  >
+                    Allow same codec re-encoding (skip confirmation)
+                  </span>
+                </label>
+                <small class="form-group__help-text">
+                  Enable to re-encode files already in target codec without
+                  "Needs Decision" prompt
+                </small>
+
+                <!-- Min Savings Threshold (only shown when allowSameCodec is enabled) -->
+                @if (formData.allowSameCodec) {
+                <div class="min-savings-threshold">
+                  <label for="minSavingsPercent" class="form-group__label">
+                    Minimum Expected Savings
+                    <fa-icon
+                      [icon]="icons.infoCircle"
+                      class="info-icon"
+                      bbTooltip
+                      tooltipTitle="Minimum Savings Threshold"
+                      tooltipContent="Only re-encode same-codec files if the expected file size savings exceeds this percentage. For example, set to 10% to skip re-encoding files that would only save 5% of disk space. Set to 0 to re-encode regardless of expected savings."
+                      tooltipWhen="You want to avoid re-encoding files where the space savings wouldn't be worth the time/quality trade-off."
+                      tooltipPlacement="right"
+                    ></fa-icon>
+                  </label>
+                  <div class="min-savings-input-wrapper">
+                    <input
+                      id="minSavingsPercent"
+                      type="number"
+                      class="form-group__input min-savings-input"
+                      [(ngModel)]="formData.minSavingsPercent"
+                      name="minSavingsPercent"
+                      min="0"
+                      max="100"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <span class="min-savings-suffix">%</span>
+                  </div>
+                  <small class="form-group__help-text">
+                    Only re-encode if expected savings exceeds this % (0 =
+                    always re-encode)
+                  </small>
+                </div>
+                }
+              </div>
+
+              <!-- FFmpeg Flags -->
+              <div class="form-group">
+                <label for="ffmpeg" class="form-group__label"
+                  >Custom FFmpeg Flags</label
+                >
+                <textarea
+                  id="ffmpeg"
+                  class="form-group__textarea"
+                  [(ngModel)]="formData.ffmpegFlags"
+                  name="ffmpeg"
+                  placeholder="-preset slow -tune film"
+                  rows="3"
+                ></textarea>
+                <small class="form-group__help-text">
+                  Advanced: Custom FFmpeg command-line flags
+                </small>
+              </div>
+            </div>
+            }
+          </div>
+        </form>
+      </div>
+
+      <!-- Form Actions (Fixed Footer) -->
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="closeForm()">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!isFormValid()"
+          (click)="submitForm()"
+        >
+          <fa-icon [icon]="icons.check"></fa-icon>
+          {{ isEditMode ? 'Update Policy' : 'Create Policy' }}
+        </button>
       </div>
     </div>
+  </div>
   }
 </div>

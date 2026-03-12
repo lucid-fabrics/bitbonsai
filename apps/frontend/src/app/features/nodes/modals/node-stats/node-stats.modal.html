@@ -7,7 +7,7 @@
           <i class="fas fa-chart-line"></i>
         </div>
         <div class="header-text">
-          <h2>Node Statistics</h2>
+          <h2>{{ 'nodeStats.title' | transloco }}</h2>
           <p class="header-subtitle">{{ stats.name }}</p>
         </div>
       </div>
@@ -22,7 +22,7 @@
         <div class="section-header">
           <h3>
             <i class="fas fa-server"></i>
-            Node Overview
+            {{ 'nodeStats.nodeOverview' | transloco }}
           </h3>
         </div>
         <div class="stats-grid">
@@ -31,7 +31,7 @@
               <i class="fas fa-circle"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-label">Status</div>
+              <div class="stat-label">{{ 'nodeStats.status' | transloco }}</div>
               <div class="stat-value">
                 <span class="status-badge" [ngClass]="stats.status.toLowerCase()">
                   {{ stats.status }}
@@ -50,7 +50,7 @@
               }
             </div>
             <div class="stat-content">
-              <div class="stat-label">Role</div>
+              <div class="stat-label">{{ 'nodeStats.role' | transloco }}</div>
               <div class="stat-value">
                 <span class="role-badge" [attr.data-role]="stats.role">
                   {{ stats.role }}
@@ -64,7 +64,7 @@
               <i class="fas fa-microchip"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-label">Hardware Acceleration</div>
+              <div class="stat-label">{{ 'nodeStats.hardwareAcceleration' | transloco }}</div>
               <div class="stat-value">{{ NodeBo.getAccelerationLabel(stats.acceleration) }}</div>
             </div>
           </div>
@@ -74,7 +74,7 @@
               <i class="fas fa-code-branch"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-label">Version</div>
+              <div class="stat-label">{{ 'nodeStats.version' | transloco }}</div>
               <div class="stat-value">v{{ stats.version }}</div>
             </div>
           </div>
@@ -84,7 +84,7 @@
               <i class="fas fa-clock"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-label">Uptime</div>
+              <div class="stat-label">{{ 'nodeStats.uptime' | transloco }}</div>
               <div class="stat-value">{{ NodeBo.formatUptime(stats.uptimeSeconds) }}</div>
             </div>
           </div>
@@ -94,7 +94,7 @@
               <i class="fas fa-heartbeat"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-label">Last Heartbeat</div>
+              <div class="stat-label">{{ 'nodeStats.lastHeartbeat' | transloco }}</div>
               <div class="stat-value">{{ NodeBo.formatLastHeartbeat(stats.lastHeartbeat) }}</div>
             </div>
           </div>
@@ -106,7 +106,7 @@
         <div class="section-header">
           <h3>
             <i class="fas fa-tasks"></i>
-            Encoding Activity
+            {{ 'nodeStats.encodingActivity' | transloco }}
           </h3>
         </div>
         <div class="activity-showcase">
@@ -116,17 +116,17 @@
             </div>
             <div class="activity-content">
               <div class="activity-value">{{ stats.activeJobCount || 0 }}</div>
-              <div class="activity-label">Active Jobs</div>
+              <div class="activity-label">{{ 'nodeStats.activeJobs' | transloco }}</div>
               <div class="activity-description">
                 @if ((stats.activeJobCount || 0) > 0) {
                   <span class="encoding-indicator">
                     <i class="fas fa-spinner fa-spin"></i>
-                    Currently encoding
+                    {{ 'nodeStats.currentlyEncoding' | transloco }}
                   </span>
                 } @else {
                   <span class="idle-indicator">
                     <i class="fas fa-check-circle"></i>
-                    Ready for work
+                    {{ 'nodeStats.readyForWork' | transloco }}
                   </span>
                 }
               </div>
@@ -140,9 +140,9 @@
               </div>
               <div class="activity-content">
                 <div class="activity-value">{{ stats.license.maxConcurrentJobs }}</div>
-                <div class="activity-label">Max Concurrent Jobs</div>
+                <div class="activity-label">{{ 'nodeStats.maxConcurrentJobs' | transloco }}</div>
                 <div class="activity-description">
-                  <span>License capacity</span>
+                  <span>{{ 'nodeStats.licenseCapacity' | transloco }}</span>
                 </div>
               </div>
             </div>
@@ -156,7 +156,7 @@
           <div class="section-header">
             <h3>
               <i class="fas fa-key"></i>
-              License Information
+              {{ 'nodeStats.licenseInformation' | transloco }}
             </h3>
           </div>
           <div class="license-card">
@@ -189,7 +189,7 @@
           <div class="section-header">
             <h3>
               <i class="fas fa-folder"></i>
-              Managed Libraries
+              {{ 'nodeStats.managedLibraries' | transloco }}
               <span class="count-badge">{{ stats.libraries.length }}</span>
             </h3>
           </div>
@@ -209,7 +209,7 @@
                   <div class="metric">
                     <i class="fas fa-file-video"></i>
                     <span class="metric-value">{{ library.totalFiles }}</span>
-                    <span class="metric-label">files</span>
+                    <span class="metric-label">{{ 'common.files' | transloco }}</span>
                   </div>
                   <div class="metric-divider"></div>
                   <div class="metric">
@@ -226,7 +226,7 @@
           <div class="section-header">
             <h3>
               <i class="fas fa-folder"></i>
-              Managed Libraries
+              {{ 'nodeStats.managedLibraries' | transloco }}
             </h3>
           </div>
           <div class="empty-state-enhanced">
@@ -234,8 +234,8 @@
               <i class="fas fa-folder-open"></i>
             </div>
             <div class="empty-text">
-              <h4>No libraries assigned</h4>
-              <p>This node is not currently managing any media libraries</p>
+              <h4>{{ 'nodeStats.noLibrariesAssigned' | transloco }}</h4>
+              <p>{{ 'nodeStats.noLibrariesDesc' | transloco }}</p>
             </div>
           </div>
         </section>
@@ -245,7 +245,7 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-primary" (click)="onClose()">
         <i class="fas fa-check"></i>
-        Close
+        {{ 'common.close' | transloco }}
       </button>
     </div>
   </div>

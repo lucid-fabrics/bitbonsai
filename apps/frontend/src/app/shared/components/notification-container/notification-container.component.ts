@@ -1,6 +1,6 @@
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoModule } from '@ngneat/transloco';
 import type { Notification } from '../../../core/models/notification.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { NotificationToastComponent } from '../notification-toast/notification-toast.component';
@@ -14,7 +14,7 @@ import { NotificationToastComponent } from '../notification-toast/notification-t
 @Component({
   selector: 'app-notification-container',
   standalone: true,
-  imports: [CommonModule, NotificationToastComponent],
+  imports: [NotificationToastComponent, TranslocoModule],
   templateUrl: './notification-container.component.html',
   styleUrl: './notification-container.component.scss',
 })

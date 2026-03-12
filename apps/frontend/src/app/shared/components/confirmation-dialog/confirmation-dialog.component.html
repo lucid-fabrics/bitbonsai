@@ -2,21 +2,29 @@
   <div class="dialog-container dangerous">
     <div class="dialog-header">
       <div class="dialog-header__icon-wrapper">
-        <fa-icon [icon]="['fas', 'exclamation-triangle']" class="dialog-header__icon"></fa-icon>
+        <fa-icon
+          [icon]="['fas', 'exclamation-triangle']"
+          class="dialog-header__icon"
+        ></fa-icon>
       </div>
       <h2 class="dialog-header__title">{{ data.title }}</h2>
     </div>
 
     <div class="dialog-body">
       <div class="item-name-section">
-        <p class="item-name-section__context">You are about to delete:</p>
+        <p class="item-name-section__context">
+          {{ 'confirmation.confirmDelete' | transloco }}
+        </p>
         <p class="item-name-section__name">{{ data.itemName }}</p>
       </div>
 
       <div class="consequences-section">
         <div class="will-happen">
           <h3 class="consequences__heading will-happen">
-            <fa-icon [icon]="['fas', 'check-circle']" class="consequences__icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'check-circle']"
+              class="consequences__icon"
+            ></fa-icon>
             What WILL happen:
           </h3>
           <ul class="consequences-list">
@@ -28,7 +36,10 @@
 
         <div class="wont-happen">
           <h3 class="consequences__heading wont-happen">
-            <fa-icon [icon]="['fas', 'shield-alt']" class="consequences__icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'shield-alt']"
+              class="consequences__icon"
+            ></fa-icon>
             What WON'T happen:
           </h3>
           <ul class="consequences-list">
@@ -41,8 +52,13 @@
 
       @if (data.irreversible) {
         <div class="warning-banner">
-          <fa-icon [icon]="['fas', 'exclamation-circle']" class="warning-banner__icon"></fa-icon>
-          <span class="warning-banner__text">This action cannot be undone</span>
+          <fa-icon
+            [icon]="['fas', 'exclamation-circle']"
+            class="warning-banner__icon"
+          ></fa-icon>
+          <span class="warning-banner__text">{{
+            'confirmation.cannotUndo' | transloco
+          }}</span>
         </div>
       }
     </div>

@@ -172,7 +172,7 @@ export class AuthService {
   async validateToken(token: string): Promise<{ userId: string; username: string; role: string }> {
     try {
       return this.jwtService.verify(token);
-    } catch (_error) {
+    } catch {
       throw new UnauthorizedException('Invalid token');
     }
   }

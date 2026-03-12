@@ -1,5 +1,4 @@
-import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { AsyncPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -14,10 +13,12 @@ import {
   faSignOutAlt,
   faSliders,
 } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
+import { SettingsService } from '../../../features/settings/services/settings.service';
 import { CurrentNodeActions } from '../../+state/current-node.actions';
 import {
   selectCurrentNode,
@@ -37,7 +38,7 @@ interface MenuItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule],
+  imports: [AsyncPipe, RouterModule, FontAwesomeModule, TranslocoModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,7 +47,7 @@ export class SidebarComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly http = inject(HttpClient);
+  private readonly settingsService = inject(SettingsService);
 
   readonly logoutIcon = faSignOutAlt;
   readonly appVersion = environment.version;
@@ -55,8 +56,8 @@ export class SidebarComponent implements OnInit {
    * Check if authentication is required (local network bypass disabled)
    * Only show logout button if authentication is required
    */
-  readonly isAuthenticationRequired$: Observable<boolean> = this.http
-    .get<{ allowLocalNetworkWithoutAuth: boolean }>('/api/v1/settings/security')
+  readonly isAuthenticationRequired$: Observable<boolean> = this.settingsService
+    .getSecuritySettings()
     .pipe(
       map((settings) => !settings.allowLocalNetworkWithoutAuth)
       // Default to true (require auth) on error for security
@@ -66,11 +67,26 @@ export class SidebarComponent implements OnInit {
   private readonly allMenuItems: MenuItem[] = [
     { label: 'Overview', icon: faChartLine, route: '/overview' },
     { label: 'Queue', icon: faListCheck, route: '/queue' },
-    { label: 'Libraries', icon: faFolderOpen, route: '/libraries', mainNodeOnly: true },
-    { label: 'Policies', icon: faSliders, route: '/policies', mainNodeOnly: true },
+    {
+      label: 'Libraries',
+      icon: faFolderOpen,
+      route: '/libraries',
+      mainNodeOnly: true,
+    },
+    {
+      label: 'Policies',
+      icon: faSliders,
+      route: '/policies',
+      mainNodeOnly: true,
+    },
     { label: 'Nodes', icon: faServer, route: '/nodes', mainNodeOnly: true },
     // Discovery removed - only accessible during setup or via direct URL for CHILD nodes
-    { label: 'Insights', icon: faChartBar, route: '/insights', mainNodeOnly: true },
+    {
+      label: 'Insights',
+      icon: faChartBar,
+      route: '/insights',
+      mainNodeOnly: true,
+    },
     { label: 'Settings', icon: faGear, route: '/settings' },
   ];
 

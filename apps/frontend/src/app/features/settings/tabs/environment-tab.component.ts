@@ -1,13 +1,14 @@
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoModule } from '@ngneat/transloco';
+import { ErrorLoggerService } from '../../../core/services/error-logger.service';
 import type { EnvironmentInfo } from '../models/environment-info.model';
 import { SettingsService } from '../services/settings.service';
 
 @Component({
   selector: 'app-environment-tab',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TranslocoModule],
   template: `
     <div class="tab-panel">
       <h2>Environment Information</h2>
@@ -16,12 +17,17 @@ import { SettingsService } from '../services/settings.service';
         <!-- Environment Type -->
         <div class="info-card">
           <h3>Detected Environment</h3>
-          <div class="env-badge env-{{ environmentInfo()!.environment.toLowerCase() }}">
+          <div
+            class="env-badge env-{{
+              environmentInfo()!.environment.toLowerCase()
+            }}"
+          >
             {{ environmentInfo()!.environment }}
           </div>
           <p class="env-description">
             @if (environmentInfo()!.isUnraid) {
-              Running on Unraid OS {{ environmentInfo()!.systemInfo.unraidVersion || '' }}
+              Running on Unraid OS
+              {{ environmentInfo()!.systemInfo.unraidVersion || '' }}
             } @else if (environmentInfo()!.isDocker) {
               Running in Docker container
             } @else {
@@ -36,19 +42,27 @@ import { SettingsService } from '../services/settings.service';
           <div class="info-grid">
             <div class="info-item">
               <span class="label">Platform:</span>
-              <span class="value">{{ environmentInfo()!.systemInfo.platform }}</span>
+              <span class="value">{{
+                environmentInfo()!.systemInfo.platform
+              }}</span>
             </div>
             <div class="info-item">
               <span class="label">Architecture:</span>
-              <span class="value">{{ environmentInfo()!.systemInfo.architecture }}</span>
+              <span class="value">{{
+                environmentInfo()!.systemInfo.architecture
+              }}</span>
             </div>
             <div class="info-item">
               <span class="label">CPU Cores:</span>
-              <span class="value">{{ environmentInfo()!.systemInfo.cpuCores }}</span>
+              <span class="value">{{
+                environmentInfo()!.systemInfo.cpuCores
+              }}</span>
             </div>
             <div class="info-item">
               <span class="label">Memory:</span>
-              <span class="value">{{ environmentInfo()!.systemInfo.totalMemoryGb }} GB</span>
+              <span class="value"
+                >{{ environmentInfo()!.systemInfo.totalMemoryGb }} GB</span
+              >
             </div>
           </div>
         </div>
@@ -57,24 +71,75 @@ import { SettingsService } from '../services/settings.service';
         <div class="info-card">
           <h3>Hardware Acceleration</h3>
           <p class="env-description">
-            Detected hardware acceleration capabilities on this node. Configure which hardware to use in your <strong>Encoding Policies</strong>.
+            Detected hardware acceleration capabilities on this node. Configure
+            which hardware to use in your <strong>Encoding Policies</strong>.
           </p>
           @if (environmentInfo()) {
             <div class="hw-accel-list">
-              <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.nvidia">
-                <i class="fas" [class.fa-check-circle]="environmentInfo()!.hardwareAcceleration.nvidia" [class.fa-times-circle]="!environmentInfo()!.hardwareAcceleration.nvidia"></i>
+              <div
+                class="hw-accel-item"
+                [class.available]="
+                  environmentInfo()!.hardwareAcceleration.nvidia
+                "
+              >
+                <i
+                  class="fas"
+                  [class.fa-check-circle]="
+                    environmentInfo()!.hardwareAcceleration.nvidia
+                  "
+                  [class.fa-times-circle]="
+                    !environmentInfo()!.hardwareAcceleration.nvidia
+                  "
+                ></i>
                 NVIDIA NVENC
               </div>
-              <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.intelQsv">
-                <i class="fas" [class.fa-check-circle]="environmentInfo()!.hardwareAcceleration.intelQsv" [class.fa-times-circle]="!environmentInfo()!.hardwareAcceleration.intelQsv"></i>
+              <div
+                class="hw-accel-item"
+                [class.available]="
+                  environmentInfo()!.hardwareAcceleration.intelQsv
+                "
+              >
+                <i
+                  class="fas"
+                  [class.fa-check-circle]="
+                    environmentInfo()!.hardwareAcceleration.intelQsv
+                  "
+                  [class.fa-times-circle]="
+                    !environmentInfo()!.hardwareAcceleration.intelQsv
+                  "
+                ></i>
                 Intel QuickSync
               </div>
-              <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.amd">
-                <i class="fas" [class.fa-check-circle]="environmentInfo()!.hardwareAcceleration.amd" [class.fa-times-circle]="!environmentInfo()!.hardwareAcceleration.amd"></i>
+              <div
+                class="hw-accel-item"
+                [class.available]="environmentInfo()!.hardwareAcceleration.amd"
+              >
+                <i
+                  class="fas"
+                  [class.fa-check-circle]="
+                    environmentInfo()!.hardwareAcceleration.amd
+                  "
+                  [class.fa-times-circle]="
+                    !environmentInfo()!.hardwareAcceleration.amd
+                  "
+                ></i>
                 AMD AMF
               </div>
-              <div class="hw-accel-item" [class.available]="environmentInfo()!.hardwareAcceleration.appleVideoToolbox">
-                <i class="fas" [class.fa-check-circle]="environmentInfo()!.hardwareAcceleration.appleVideoToolbox" [class.fa-times-circle]="!environmentInfo()!.hardwareAcceleration.appleVideoToolbox"></i>
+              <div
+                class="hw-accel-item"
+                [class.available]="
+                  environmentInfo()!.hardwareAcceleration.appleVideoToolbox
+                "
+              >
+                <i
+                  class="fas"
+                  [class.fa-check-circle]="
+                    environmentInfo()!.hardwareAcceleration.appleVideoToolbox
+                  "
+                  [class.fa-times-circle]="
+                    !environmentInfo()!.hardwareAcceleration.appleVideoToolbox
+                  "
+                ></i>
                 Apple VideoToolbox
               </div>
             </div>
@@ -83,11 +148,21 @@ import { SettingsService } from '../services/settings.service';
             <div class="unraid-gpu-help" style="margin-top: 16px;">
               <i class="fas fa-info-circle"></i>
               <div class="help-content">
-                <strong>Unraid GPU Setup:</strong> To enable GPU encoding, pass through your GPU device to the container:
+                <strong>Unraid GPU Setup:</strong> To enable GPU encoding, pass
+                through your GPU device to the container:
                 <ul>
-                  <li><strong>NVIDIA:</strong> Add <code>--runtime=nvidia</code> to Extra Parameters</li>
-                  <li><strong>Intel:</strong> Add <code>/dev/dri</code> device mapping</li>
-                  <li><strong>AMD:</strong> Add <code>/dev/dri</code> and <code>/dev/kfd</code> device mappings</li>
+                  <li>
+                    <strong>NVIDIA:</strong> Add
+                    <code>--runtime=nvidia</code> to Extra Parameters
+                  </li>
+                  <li>
+                    <strong>Intel:</strong> Add <code>/dev/dri</code> device
+                    mapping
+                  </li>
+                  <li>
+                    <strong>AMD:</strong> Add <code>/dev/dri</code> and
+                    <code>/dev/kfd</code> device mappings
+                  </li>
                 </ul>
               </div>
             </div>
@@ -105,7 +180,12 @@ import { SettingsService } from '../services/settings.service';
                 <button
                   type="button"
                   class="btn-icon"
-                  (click)="copyToClipboard(environmentInfo()!.defaultPaths.mediaPath, 'Media path')"
+                  (click)="
+                    copyToClipboard(
+                      environmentInfo()!.defaultPaths.mediaPath,
+                      'Media path'
+                    )
+                  "
                 >
                   <i class="fa fa-copy"></i>
                 </button>
@@ -118,7 +198,12 @@ import { SettingsService } from '../services/settings.service';
                 <button
                   type="button"
                   class="btn-icon"
-                  (click)="copyToClipboard(environmentInfo()!.defaultPaths.downloadsPath, 'Downloads path')"
+                  (click)="
+                    copyToClipboard(
+                      environmentInfo()!.defaultPaths.downloadsPath,
+                      'Downloads path'
+                    )
+                  "
                 >
                   <i class="fa fa-copy"></i>
                 </button>
@@ -131,7 +216,12 @@ import { SettingsService } from '../services/settings.service';
                 <button
                   type="button"
                   class="btn-icon"
-                  (click)="copyToClipboard(environmentInfo()!.defaultPaths.configPath, 'Config path')"
+                  (click)="
+                    copyToClipboard(
+                      environmentInfo()!.defaultPaths.configPath,
+                      'Config path'
+                    )
+                  "
                 >
                   <i class="fa fa-copy"></i>
                 </button>
@@ -152,7 +242,11 @@ import { SettingsService } from '../services/settings.service';
                 </li>
               }
             </ul>
-            <a [href]="environmentInfo()!.docsLink" target="_blank" class="btn-link">
+            <a
+              [href]="environmentInfo()!.docsLink"
+              target="_blank"
+              class="btn-link"
+            >
               <i class="fa fa-book"></i>
               View Documentation
             </a>
@@ -164,6 +258,7 @@ import { SettingsService } from '../services/settings.service';
 })
 export class EnvironmentTabComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
+  private readonly errorLogger = inject(ErrorLoggerService);
   private readonly destroyRef = inject(DestroyRef);
 
   environmentInfo = signal<EnvironmentInfo | null>(null);
@@ -182,7 +277,7 @@ export class EnvironmentTabComponent implements OnInit {
           this.environmentInfo.set(info);
         },
         error: (err) => {
-          console.error('Failed to load environment info:', err);
+          this.errorLogger.error('Failed to load environment info', err);
         },
       });
   }

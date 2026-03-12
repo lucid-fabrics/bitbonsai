@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info';
@@ -6,7 +5,7 @@ export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info';
 @Component({
   selector: 'bb-badge',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <span [class]="'bb-badge bb-badge--' + variant">
       <ng-content></ng-content>

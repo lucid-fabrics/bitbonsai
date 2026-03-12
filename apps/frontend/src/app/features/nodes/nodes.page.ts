@@ -1,5 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslocoModule } from '@ngneat/transloco';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../core/clients/nodes.client';
@@ -53,9 +54,10 @@ import type { EnvironmentInfo, StorageRecommendation } from './models/storage-re
   selector: 'app-nodes',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
     FormsModule,
     FontAwesomeModule,
+    TranslocoModule,
     RichTooltipDirective,
     StorageRecommendationBannerComponent,
   ],

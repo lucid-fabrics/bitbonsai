@@ -43,7 +43,7 @@ function isValidApiUrl(url: string): boolean {
     const octets = ipParts.map((s) => parseInt(s, 10));
 
     // Validate all octets are numbers in range 0-255
-    if (octets.some((n) => isNaN(n) || n < 0 || n > 255)) {
+    if (octets.some((n) => Number.isNaN(n) || n < 0 || n > 255)) {
       return false;
     }
 

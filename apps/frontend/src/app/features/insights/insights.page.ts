@@ -1,7 +1,8 @@
-import { CommonModule } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, type OnInit } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-solid-svg-icons';
+import { TranslocoModule } from '@ngneat/transloco';
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { lastValueFrom } from 'rxjs';
@@ -28,7 +29,7 @@ interface NodePerformanceDataset {
 @Component({
   selector: 'app-insights',
   standalone: true,
-  imports: [CommonModule, BaseChartDirective, FontAwesomeModule],
+  imports: [DecimalPipe, BaseChartDirective, FontAwesomeModule, TranslocoModule],
   templateUrl: './insights.page.html',
   styleUrls: ['./insights.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -172,7 +173,10 @@ export class InsightsComponent implements OnInit {
   };
 
   // Node Performance Chart
-  nodePerformanceData: { labels: string[]; datasets: NodePerformanceDataset[] } = {
+  nodePerformanceData: {
+    labels: string[];
+    datasets: NodePerformanceDataset[];
+  } = {
     labels: [],
     datasets: [
       {

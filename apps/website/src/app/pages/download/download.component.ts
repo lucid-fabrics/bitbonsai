@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -26,7 +25,7 @@ interface Platform {
 @Component({
   selector: 'bb-download',
   standalone: true,
-  imports: [CommonModule, RouterModule, FontAwesomeModule, ScrollRevealDirective],
+  imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
     <div class="download">
       <!-- Header -->
@@ -45,25 +44,29 @@ interface Platform {
           <h2 class="platforms__title">Choose Your Platform</h2>
 
           <div class="platforms__grid">
-            <div class="platform-card" *ngFor="let platform of platforms; let i = index" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-              <fa-icon [icon]="platform.faIcon" class="platform-card__icon"></fa-icon>
-              <h3 class="platform-card__name">{{ platform.name }}</h3>
-              <p class="platform-card__description">{{ platform.description }}</p>
+            @for (platform of platforms; track platform.name; let i = $index) {
+              <div class="platform-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+                <fa-icon [icon]="platform.faIcon" class="platform-card__icon"></fa-icon>
+                <h3 class="platform-card__name">{{ platform.name }}</h3>
+                <p class="platform-card__description">{{ platform.description }}</p>
 
-              <div class="code-block">
-                <div class="code-block__header">
-                  <span class="code-block__label">Installation</span>
-                  <button class="code-block__copy" (click)="copyCommand(platform.command)">
-                    {{ copiedCommand === platform.command ? 'Copied!' : 'Copy' }}
-                  </button>
+                <div class="code-block">
+                  <div class="code-block__header">
+                    <span class="code-block__label">Installation</span>
+                    <button class="code-block__copy" (click)="copyCommand(platform.command)">
+                      {{ copiedCommand === platform.command ? 'Copied!' : 'Copy' }}
+                    </button>
+                  </div>
+                  <pre class="code-block__content"><code>{{ platform.command }}</code></pre>
                 </div>
-                <pre class="code-block__content"><code>{{ platform.command }}</code></pre>
-              </div>
 
-              <p class="platform-card__notes" *ngIf="platform.notes">
-                {{ platform.notes }}
-              </p>
-            </div>
+                @if (platform.notes) {
+                  <p class="platform-card__notes">
+                    {{ platform.notes }}
+                  </p>
+                }
+              </div>
+            }
           </div>
         </div>
       </section>

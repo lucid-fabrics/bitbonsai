@@ -1,12 +1,13 @@
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { TranslocoModule } from '@ngneat/transloco';
 import { RichTooltipDirective } from '../../../../shared/directives/rich-tooltip.directive';
 import type { Library } from '../../models/library.model';
 
 @Component({
   selector: 'app-library-card',
   standalone: true,
-  imports: [CommonModule, RichTooltipDirective],
+  imports: [NgClass, RichTooltipDirective, TranslocoModule],
   templateUrl: './library-card.component.html',
   styleUrls: ['./library-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

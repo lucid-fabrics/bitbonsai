@@ -1,162 +1,238 @@
 <div class="overview-container">
   <div class="page-header">
-    <h1>Overview</h1>
-    <p class="subtitle">Dashboard with system health and queue statistics</p>
+    <h1>{{ 'overview.title' | transloco }}</h1>
+    <p class="subtitle">{{ 'overview.subtitle' | transloco }}</p>
   </div>
 
   <!-- Loading State -->
   @if (isLoading$ | async) {
-    <div class="loading-state">
-      <fa-icon [icon]="icons.queueStatus" [animation]="'spin'" size="2x"></fa-icon>
-      <p>Loading dashboard...</p>
-    </div>
+  <div class="loading-state">
+    <fa-icon
+      [icon]="icons.queueStatus"
+      [animation]="'spin'"
+      size="2x"
+    ></fa-icon>
+    <p>{{ 'common.loading' | transloco }}</p>
+  </div>
   }
 
   <!-- Error State -->
   @if ((error$ | async) && !(hasData$ | async)) {
-    <div class="error-state">
-      <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
-      <p>{{ error$ | async }}</p>
-    </div>
+  <div class="error-state">
+    <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
+    <p>{{ error$ | async }}</p>
+  </div>
   }
 
   <!-- Main Dashboard Content -->
   @if (overviewData$ | async; as overviewData) {
-    <div class="dashboard-grid">
-        <!-- Node Status Section -->
-        <section class="node-status-section">
-          <h2 class="section-title">Encoding Nodes</h2>
-          <div class="node-status-grid">
-            @for (node of overviewData.node_status; track node.id) {
-              <div class="node-tile-square" [class.node-tile-square--offline]="node.status !== 'ONLINE'">
-                <!-- Header -->
-                <div class="node-square__header">
-                  <div class="node-square__title">
-                    <span class="node-square__name">{{ node.name }}</span>
-                    @if (node.status === 'ONLINE') {
-                      <i class="fas fa-circle node-square__status-dot node-square__status-dot--online"></i>
-                    } @else {
-                      <i class="fas fa-circle node-square__status-dot node-square__status-dot--offline"></i>
-                    }
-                  </div>
-                  @if (node.role === 'MAIN') {
-                    <span class="node-square__badge">MAIN</span>
-                  }
-                </div>
-
-                @if (node.status === 'ONLINE') {
-                  <!-- Stats Grid -->
-                  <div class="node-square__stats">
-                    <!-- Row 1: Encoding + Failed -->
-                    <div class="node-square__stat">
-                      <fa-icon [icon]="icons.queueStatus" [animation]="node.encoding_count > 0 ? 'spin' : undefined" class="stat-icon stat-icon--encoding"></fa-icon>
-                      <span class="stat-value">{{ node.encoding_count }}</span>
-                      <span class="stat-label">Encoding</span>
-                    </div>
-                    <div class="node-square__stat">
-                      <fa-icon [icon]="icons.failed" class="stat-icon stat-icon--failed"></fa-icon>
-                      <span class="stat-value">{{ node.failed_count }}</span>
-                      <span class="stat-label">Failed</span>
-                    </div>
-
-                    <!-- Row 2: Success Rate + Saved -->
-                    <div class="node-square__stat">
-                      <fa-icon [icon]="icons.successRate" class="stat-icon stat-icon--success"></fa-icon>
-                      <span class="stat-value">{{ node.success_rate }}%</span>
-                      <span class="stat-label">Success</span>
-                    </div>
-                    <div class="node-square__stat">
-                      <fa-icon [icon]="icons.storageSaved" class="stat-icon stat-icon--saved"></fa-icon>
-                      <span class="stat-value">{{ formatSizeBytesCompact(node.total_saved_bytes) }}</span>
-                      <span class="stat-label">Saved</span>
-                    </div>
-                  </div>
-
-                  <!-- Footer: Queue Time + HW Icon + CPU -->
-                  <div class="node-square__footer">
-                    @if (node.total_queue_time_seconds !== null && node.total_queue_time_seconds > 0) {
-                      <div class="node-square__queue-time">
-                        <i class="fas fa-hourglass-half"></i>
-                        <span>Queue: {{ formatDuration(node.total_queue_time_seconds) }}</span>
-                      </div>
-                    } @else {
-                      <div class="node-square__queue-time node-square__queue-time--idle">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Queue Empty</span>
-                      </div>
-                    }
-
-                    <div class="node-square__hw-cpu">
-                      @if (node.acceleration === 'NVIDIA') {
-                        <i class="fas fa-bolt node-square__accel node-square__accel--nvidia" title="NVIDIA"></i>
-                      } @else if (node.acceleration === 'INTEL_QSV') {
-                        <i class="fas fa-server node-square__accel node-square__accel--intel" title="Intel QSV"></i>
-                      } @else if (node.acceleration === 'AMD') {
-                        <i class="fas fa-fire node-square__accel node-square__accel--amd" title="AMD"></i>
-                      } @else if (node.acceleration === 'APPLE_M') {
-                        <i class="fab fa-apple node-square__accel node-square__accel--apple" title="Apple"></i>
-                      } @else {
-                        <i class="fas fa-microchip node-square__accel node-square__accel--cpu" title="CPU"></i>
-                      }
-                      @if (node.cpu_usage !== null) {
-                        <span class="node-square__cpu">{{ node.cpu_usage }}%</span>
-                      }
-                    </div>
-                  </div>
-                } @else {
-                  <!-- Offline State -->
-                  <div class="node-square__offline">
-                    <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
-                    <span>OFFLINE</span>
-                    <span class="node-square__offline-time">{{ formatTime(node.last_heartbeat) }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </section>
-
-        <!-- Recent Activity (Second Row - Full Width) -->
-        <section class="recent-activity">
-          <h2 class="section-title">Recent Activity</h2>
-          <div class="activity-list">
-            @if (overviewData.recent_activity.length === 0) {
-              <div class="empty-state">
-                <fa-icon [icon]="icons.queueStatus" size="lg"></fa-icon>
-                <p>No recent activity</p>
-              </div>
-            } @else {
-              @for (activity of overviewData.recent_activity; track trackByActivityId($index, activity)) {
-                <div class="activity-item-compact" [class.activity-item-compact--encoding]="activity.stage === 'ENCODING'">
-                  <div class="activity-compact__main">
-                    <div class="activity-compact__title-row">
-                      @if (activity.stage === 'ENCODING') {
-                        <fa-icon [icon]="icons.encoding" [animation]="'spin'" class="activity-compact__status-icon activity-compact__status-icon--encoding"></fa-icon>
-                      } @else {
-                        <fa-icon [icon]="icons.completed" class="activity-compact__status-icon activity-compact__status-icon--completed"></fa-icon>
-                      }
-                      <span class="activity-compact__filename">{{ activity.file_name }}</span>
-                      <span class="activity-compact__codecs">{{ activity.source_codec }} → {{ activity.target_codec }}</span>
-                    </div>
-                    <div class="activity-compact__details">
-                      @if (activity.stage === 'ENCODING' && activity.progress !== null) {
-                        <div class="activity-compact__progress-bar">
-                          <div class="activity-compact__progress-fill" [style.width.%]="activity.progress"></div>
-                        </div>
-                        <span class="activity-compact__stat">{{ activity.progress.toFixed(0) }}%</span>
-                      } @else if (activity.stage === 'COMPLETED' && activity.saved_percent !== null) {
-                        <span class="activity-compact__stat activity-compact__stat--savings" [class.activity-compact__stat--negative]="activity.saved_percent < 0">
-                          {{ activity.saved_percent > 0 ? '-' : '+' }}{{ Math.abs(activity.saved_percent).toFixed(0) }}%
-                        </span>
-                      }
-                      <span class="activity-compact__library">{{ activity.library }}</span>
-                    </div>
-                  </div>
-                </div>
+  <div class="dashboard-grid">
+    <!-- Node Status Section -->
+    <section class="node-status-section">
+      <h2 class="section-title">{{ 'overview.nodes' | transloco }}</h2>
+      <div class="node-status-grid">
+        @for (node of overviewData.node_status; track node.id) {
+        <div
+          class="node-tile-square"
+          [class.node-tile-square--offline]="node.status !== 'ONLINE'"
+        >
+          <!-- Header -->
+          <div class="node-square__header">
+            <div class="node-square__title">
+              <span class="node-square__name">{{ node.name }}</span>
+              @if (node.status === 'ONLINE') {
+              <i
+                class="fas fa-circle node-square__status-dot node-square__status-dot--online"
+              ></i>
+              } @else {
+              <i
+                class="fas fa-circle node-square__status-dot node-square__status-dot--offline"
+              ></i>
               }
+            </div>
+            @if (node.role === 'MAIN') {
+            <span class="node-square__badge">MAIN</span>
             }
           </div>
-        </section>
+
+          @if (node.status === 'ONLINE') {
+          <!-- Stats Grid -->
+          <div class="node-square__stats">
+            <!-- Row 1: Encoding + Failed -->
+            <div class="node-square__stat">
+              <fa-icon
+                [icon]="icons.queueStatus"
+                [animation]="node.encoding_count > 0 ? 'spin' : undefined"
+                class="stat-icon stat-icon--encoding"
+              ></fa-icon>
+              <span class="stat-value">{{ node.encoding_count }}</span>
+              <span class="stat-label"
+                >{{ 'queue.processing' | transloco }}</span
+              >
+            </div>
+            <div class="node-square__stat">
+              <fa-icon
+                [icon]="icons.failed"
+                class="stat-icon stat-icon--failed"
+              ></fa-icon>
+              <span class="stat-value">{{ node.failed_count }}</span>
+              <span class="stat-label">{{ 'queue.failed' | transloco }}</span>
+            </div>
+
+            <!-- Row 2: Success Rate + Saved -->
+            <div class="node-square__stat">
+              <fa-icon
+                [icon]="icons.successRate"
+                class="stat-icon stat-icon--success"
+              ></fa-icon>
+              <span class="stat-value">{{ node.success_rate }}%</span>
+              <span class="stat-label"
+                >{{ 'overview.success' | transloco }}</span
+              >
+            </div>
+            <div class="node-square__stat">
+              <fa-icon
+                [icon]="icons.storageSaved"
+                class="stat-icon stat-icon--saved"
+              ></fa-icon>
+              <span class="stat-value"
+                >{{ formatSizeBytesCompact(node.total_saved_bytes) }}</span
+              >
+              <span class="stat-label">{{ 'overview.saved' | transloco }}</span>
+            </div>
+          </div>
+
+          <!-- Footer: Queue Time + HW Icon + CPU -->
+          <div class="node-square__footer">
+            @if (node.total_queue_time_seconds !== null &&
+            node.total_queue_time_seconds > 0) {
+            <div class="node-square__queue-time">
+              <i class="fas fa-hourglass-half"></i>
+              <span
+                >Queue: {{ formatDuration(node.total_queue_time_seconds)
+                }}</span
+              >
+            </div>
+            } @else {
+            <div class="node-square__queue-time node-square__queue-time--idle">
+              <i class="fas fa-check-circle"></i>
+              <span>{{ 'overview.queueEmpty' | transloco }}</span>
+            </div>
+            }
+
+            <div class="node-square__hw-cpu">
+              @if (node.acceleration === 'NVIDIA') {
+              <i
+                class="fas fa-bolt node-square__accel node-square__accel--nvidia"
+                title="NVIDIA"
+              ></i>
+              } @else if (node.acceleration === 'INTEL_QSV') {
+              <i
+                class="fas fa-server node-square__accel node-square__accel--intel"
+                title="Intel QSV"
+              ></i>
+              } @else if (node.acceleration === 'AMD') {
+              <i
+                class="fas fa-fire node-square__accel node-square__accel--amd"
+                title="AMD"
+              ></i>
+              } @else if (node.acceleration === 'APPLE_M') {
+              <i
+                class="fab fa-apple node-square__accel node-square__accel--apple"
+                title="Apple"
+              ></i>
+              } @else {
+              <i
+                class="fas fa-microchip node-square__accel node-square__accel--cpu"
+                title="CPU"
+              ></i>
+              } @if (node.cpu_usage !== null) {
+              <span class="node-square__cpu">{{ node.cpu_usage }}%</span>
+              }
+            </div>
+          </div>
+          } @else {
+          <!-- Offline State -->
+          <div class="node-square__offline">
+            <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
+            <span>{{ 'overview.offline' | transloco }}</span>
+            <span class="node-square__offline-time"
+              >{{ formatTime(node.last_heartbeat) }}</span
+            >
+          </div>
+          }
+        </div>
+        }
       </div>
-    }
+    </section>
+
+    <!-- Recent Activity (Second Row - Full Width) -->
+    <section class="recent-activity">
+      <h2 class="section-title">{{ 'overview.recentActivity' | transloco }}</h2>
+      <div class="activity-list">
+        @if (overviewData.recent_activity.length === 0) {
+        <div class="empty-state">
+          <fa-icon [icon]="icons.queueStatus" size="lg"></fa-icon>
+          <p>{{ 'overview.noRecentActivity' | transloco }}</p>
+        </div>
+        } @else { @for (activity of overviewData.recent_activity; track
+        trackByActivityId($index, activity)) {
+        <div
+          class="activity-item-compact"
+          [class.activity-item-compact--encoding]="activity.stage === 'ENCODING'"
+        >
+          <div class="activity-compact__main">
+            <div class="activity-compact__title-row">
+              @if (activity.stage === 'ENCODING') {
+              <fa-icon
+                [icon]="icons.encoding"
+                [animation]="'spin'"
+                class="activity-compact__status-icon activity-compact__status-icon--encoding"
+              ></fa-icon>
+              } @else {
+              <fa-icon
+                [icon]="icons.completed"
+                class="activity-compact__status-icon activity-compact__status-icon--completed"
+              ></fa-icon>
+              }
+              <span class="activity-compact__filename"
+                >{{ activity.file_name }}</span
+              >
+              <span class="activity-compact__codecs"
+                >{{ activity.source_codec }} → {{ activity.target_codec }}</span
+              >
+            </div>
+            <div class="activity-compact__details">
+              @if (activity.stage === 'ENCODING' && activity.progress !== null)
+              {
+              <div class="activity-compact__progress-bar">
+                <div
+                  class="activity-compact__progress-fill"
+                  [style.width.%]="activity.progress"
+                ></div>
+              </div>
+              <span class="activity-compact__stat"
+                >{{ activity.progress.toFixed(0) }}%</span
+              >
+              } @else if (activity.stage === 'COMPLETED' &&
+              activity.saved_percent !== null) {
+              <span
+                class="activity-compact__stat activity-compact__stat--savings"
+                [class.activity-compact__stat--negative]="activity.saved_percent < 0"
+              >
+                {{ activity.saved_percent > 0 ? '-' : '+' }}{{
+                Math.abs(activity.saved_percent).toFixed(0) }}%
+              </span>
+              }
+              <span class="activity-compact__library"
+                >{{ activity.library }}</span
+              >
+            </div>
+          </div>
+        </div>
+        } }
+      </div>
+    </section>
+  </div>
+  }
 </div>

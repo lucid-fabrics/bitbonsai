@@ -1,11 +1,11 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { AccelerationType, JobStage } from '@prisma/client';
+import { AccelerationType } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { EncodingHistoryService } from '../../encoding-history.service';
 
 describe('EncodingHistoryService', () => {
   let service: EncodingHistoryService;
-  let prisma: jest.Mocked<PrismaService>;
+  let _prisma: jest.Mocked<PrismaService>;
 
   const mockPrismaService = {
     job: {
@@ -27,7 +27,7 @@ describe('EncodingHistoryService', () => {
     }).compile();
 
     service = module.get<EncodingHistoryService>(EncodingHistoryService);
-    prisma = module.get(PrismaService);
+    _prisma = module.get(PrismaService);
   });
 
   describe('constructor', () => {

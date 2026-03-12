@@ -1,8 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectorRef } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { ChangeDetectorRef, NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@ngneat/transloco';
 import { of } from 'rxjs';
 import { NodesClient } from '../../core/clients/nodes.client';
+import { EnvironmentDetectionService } from '../../core/services/environment-detection.service';
+import { NodeBo } from './bos/node.bo';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import { NodesComponent } from './nodes.page';
 
@@ -10,7 +15,6 @@ describe('NodesComponent', () => {
   let component: NodesComponent;
   let fixture: ComponentFixture<NodesComponent>;
   let nodesClient: jest.Mocked<NodesClient>;
-  let _cdr: jest.Mocked<ChangeDetectorRef>;
 
   const mockNodes = [
     {
@@ -27,6 +31,8 @@ describe('NodesComponent', () => {
   beforeEach(async () => {
     const nodesClientMock = {
       getNodes: jest.fn().mockReturnValue(of(mockNodes)),
+      getPendingRequests: jest.fn().mockReturnValue(of([])),
+      getNodeScores: jest.fn().mockReturnValue(of([])),
       register: jest.fn().mockReturnValue(of({ command: 'test command' })),
       pair: jest.fn().mockReturnValue(of({ success: true, node: mockNodes[0] })),
       deleteNode: jest.fn().mockReturnValue(of(void 0)),
@@ -43,19 +49,27 @@ describe('NodesComponent', () => {
       }),
     };
 
+    const environmentServiceMock = {
+      getStorageRecommendation: jest.fn().mockReturnValue(of({})),
+      detectEnvironment: jest.fn().mockReturnValue(of({})),
+    };
+
     await TestBed.configureTestingModule({
-      imports: [NodesComponent],
+      imports: [NodesComponent, TranslocoTestingModule.forRoot({})],
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [
+        provideHttpClient(),
+        provideRouter([]),
         { provide: NodesClient, useValue: nodesClientMock },
         { provide: ChangeDetectorRef, useValue: cdrMock },
         { provide: Dialog, useValue: dialogMock },
+        { provide: EnvironmentDetectionService, useValue: environmentServiceMock },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NodesComponent);
     component = fixture.componentInstance;
     nodesClient = TestBed.inject(NodesClient) as jest.Mocked<NodesClient>;
-    _cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
   });
 
   it('should create', () => {
@@ -93,21 +107,24 @@ describe('NodesComponent', () => {
     });
   });
 
-  describe('user interactions', () => {
-    it('should initiate registration when onRegisterNode is called', () => {
-      component.onRegisterNode();
-      expect(nodesClient.register).toHaveBeenCalled();
-    });
-
+  describe('NodeBo utilities', () => {
     it('should format uptime correctly', () => {
-      expect(component.formatUptime(30)).toBe('30s');
-      expect(component.formatUptime(3600)).toBe('1h 0m');
-      expect(component.formatUptime(86400)).toBe('1d 0h');
+      expect(NodeBo.formatUptime(30)).toBe('30s');
+      expect(NodeBo.formatUptime(3600)).toBe('1h 0m');
+      expect(NodeBo.formatUptime(86400)).toBe('1d 0h');
     });
 
     it('should get acceleration label', () => {
-      expect(component.getAccelerationLabel(AccelerationType.NVIDIA)).toBe('NVIDIA GPU');
-      expect(component.getAccelerationLabel(AccelerationType.CPU)).toBe('CPU Only');
+      expect(NodeBo.getAccelerationLabel(AccelerationType.NVIDIA)).toBe('NVIDIA GPU');
+      expect(NodeBo.getAccelerationLabel(AccelerationType.CPU)).toBe('CPU Only');
+    });
+  });
+
+  describe('user interactions', () => {
+    it('should open dialog when onRegisterNode is called', () => {
+      const dialog = TestBed.inject(Dialog);
+      component.onRegisterNode();
+      expect(dialog.open).toHaveBeenCalled();
     });
   });
 });

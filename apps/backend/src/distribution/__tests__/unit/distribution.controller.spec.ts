@@ -1,10 +1,8 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { DistributionOrchestratorService } from '../../services/distribution-orchestrator.service';
-import { LoadMonitorService } from '../../services/load-monitor.service';
-import { ReliabilityTrackerService } from '../../services/reliability-tracker.service';
 import { DistributionController } from '../../distribution.controller';
+import { DistributionOrchestratorService } from '../../services/distribution-orchestrator.service';
+import { ReliabilityTrackerService } from '../../services/reliability-tracker.service';
 
 describe('DistributionController', () => {
   let controller: DistributionController;
@@ -15,13 +13,11 @@ describe('DistributionController', () => {
     rebalanceJobs: jest.Mock;
     getDistributionSummary: jest.Mock;
     findOptimalNode: jest.Mock;
+    getActiveConfig: jest.Mock;
+    updateConfig: jest.Mock;
+    getNodesCapacity: jest.Mock;
   };
-  let loadMonitor: { getNodeCapacity: jest.Mock };
   let reliabilityTracker: { getFailureSummary: jest.Mock; isUnreliable: jest.Mock };
-  let prisma: {
-    distributionConfig: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
-    node: { findMany: jest.Mock };
-  };
 
   beforeEach(async () => {
     orchestrator = {
@@ -31,24 +27,16 @@ describe('DistributionController', () => {
       rebalanceJobs: jest.fn(),
       getDistributionSummary: jest.fn(),
       findOptimalNode: jest.fn(),
+      getActiveConfig: jest.fn(),
+      updateConfig: jest.fn(),
+      getNodesCapacity: jest.fn(),
     };
-    loadMonitor = { getNodeCapacity: jest.fn() };
     reliabilityTracker = { getFailureSummary: jest.fn(), isUnreliable: jest.fn() };
-    prisma = {
-      distributionConfig: {
-        findFirst: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-      },
-      node: { findMany: jest.fn().mockResolvedValue([]) },
-    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DistributionController],
       providers: [
-        { provide: PrismaService, useValue: prisma },
         { provide: DistributionOrchestratorService, useValue: orchestrator },
-        { provide: LoadMonitorService, useValue: loadMonitor },
         { provide: ReliabilityTrackerService, useValue: reliabilityTracker },
       ],
     }).compile();
@@ -154,47 +142,22 @@ describe('DistributionController', () => {
   describe('getConfig', () => {
     it('should return existing config', async () => {
       const mockConfig = { id: 'default', isActive: true };
-      prisma.distributionConfig.findFirst.mockResolvedValue(mockConfig);
+      orchestrator.getActiveConfig.mockResolvedValue(mockConfig);
 
       const result = await controller.getConfig();
 
       expect(result).toEqual(mockConfig);
-    });
-
-    it('should create default config when none exists', async () => {
-      prisma.distributionConfig.findFirst.mockResolvedValue(null);
-      const mockConfig = { id: 'default', isActive: true };
-      prisma.distributionConfig.create.mockResolvedValue(mockConfig);
-
-      const result = await controller.getConfig();
-
-      expect(result).toEqual(mockConfig);
-      expect(prisma.distributionConfig.create).toHaveBeenCalled();
     });
   });
 
   describe('updateConfig', () => {
     it('should update existing config', async () => {
-      const existingConfig = { id: 'default', isActive: true };
-      prisma.distributionConfig.findFirst.mockResolvedValue(existingConfig);
-      const updatedConfig = { ...existingConfig, weightRealTimeLoad: 3 };
-      prisma.distributionConfig.update.mockResolvedValue(updatedConfig);
+      const updatedConfig = { id: 'default', isActive: true, weightRealTimeLoad: 3 };
+      orchestrator.updateConfig.mockResolvedValue(updatedConfig);
 
       const result = await controller.updateConfig({ weightRealTimeLoad: 3 });
 
       expect(result.weightRealTimeLoad).toBe(3);
-    });
-
-    it('should create default config then update when none exists', async () => {
-      prisma.distributionConfig.findFirst.mockResolvedValue(null);
-      const createdConfig = { id: 'default', isActive: true };
-      prisma.distributionConfig.create.mockResolvedValue(createdConfig);
-      prisma.distributionConfig.update.mockResolvedValue({ ...createdConfig, weightQueueDepth: 2 });
-
-      await controller.updateConfig({ weightQueueDepth: 2 });
-
-      expect(prisma.distributionConfig.create).toHaveBeenCalled();
-      expect(prisma.distributionConfig.update).toHaveBeenCalled();
     });
   });
 
@@ -238,22 +201,20 @@ describe('DistributionController', () => {
 
   describe('getNodesCapacity', () => {
     it('should return capacity for all online nodes', async () => {
-      prisma.node.findMany.mockResolvedValue([
-        { id: 'node-1', name: 'Main' },
-        { id: 'node-2', name: 'Worker' },
-      ]);
-      loadMonitor.getNodeCapacity.mockImplementation((nodeId: string) =>
-        Promise.resolve({ nodeId, cpuLoad: 50 })
-      );
+      orchestrator.getNodesCapacity.mockResolvedValue({
+        nodes: [
+          { nodeId: 'node-1', cpuLoad: 50 },
+          { nodeId: 'node-2', cpuLoad: 30 },
+        ],
+      });
 
       const result = await controller.getNodesCapacity();
 
       expect(result.nodes).toHaveLength(2);
     });
 
-    it('should skip nodes with no capacity data', async () => {
-      prisma.node.findMany.mockResolvedValue([{ id: 'node-1', name: 'Main' }]);
-      loadMonitor.getNodeCapacity.mockResolvedValue(null);
+    it('should return empty when no capacity data', async () => {
+      orchestrator.getNodesCapacity.mockResolvedValue({ nodes: [] });
 
       const result = await controller.getNodesCapacity();
 

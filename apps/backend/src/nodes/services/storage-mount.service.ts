@@ -1,16 +1,16 @@
 import {
-  forwardRef,
   Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { StorageProtocol, StorageShare, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import { promisify } from 'util';
+import { type IStorageShareRepository } from '../repositories/storage-share.repository.interface';
 import { escapeShellArg, sanitizePath, sanitizeServerAddress } from '../utils/input-sanitizer';
-import { StorageShareService } from './storage-share.service';
 import { MountStrategyFactory } from './strategies/mount-strategy.factory';
 
 const execAsync = promisify(exec);
@@ -31,7 +31,8 @@ export interface ShareConnectivityTest {
 
 /**
  * Service to handle physical mounting and unmounting of network shares
- * Executes system commands to mount NFS/SMB shares
+ * Executes system commands to mount NFS/SMB shares.
+ * Uses IStorageShareRepository directly to avoid circular dependency with StorageShareService.
  */
 @Injectable()
 export class StorageMountService {
@@ -39,8 +40,8 @@ export class StorageMountService {
 
   constructor(
     private readonly strategyFactory: MountStrategyFactory,
-    @Inject(forwardRef(() => StorageShareService))
-    private readonly storageShareService: StorageShareService
+    @Inject('IStorageShareRepository')
+    private readonly repository: IStorageShareRepository
   ) {}
 
   /**
@@ -49,7 +50,7 @@ export class StorageMountService {
   async mount(shareId: string): Promise<MountResult> {
     this.logger.log(`Mounting storage share: ${shareId}`);
 
-    const share = await this.storageShareService.findOne(shareId);
+    const share = await this.findShareOrThrow(shareId);
 
     // Check if already mounted
     if (share.isMounted) {
@@ -85,8 +86,8 @@ export class StorageMountService {
         throw new Error('Mount verification failed - share not accessible');
       }
 
-      // Update share status
-      await this.storageShareService.updateStatus(shareId, StorageShareStatus.MOUNTED);
+      // Update share status via repository
+      await this.repository.updateStatus(shareId, StorageShareStatus.MOUNTED);
 
       // Add to fstab if configured
       if (share.addToFstab) {
@@ -103,8 +104,8 @@ export class StorageMountService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during mount';
       this.logger.error(`Failed to mount ${share.name}: ${errorMessage}`);
 
-      // Update share status to error
-      await this.storageShareService.updateStatus(shareId, StorageShareStatus.ERROR, errorMessage);
+      // Update share status to error via repository
+      await this.repository.updateStatus(shareId, StorageShareStatus.ERROR, errorMessage);
 
       return {
         success: false,
@@ -120,7 +121,7 @@ export class StorageMountService {
   async unmount(shareId: string, force = false): Promise<MountResult> {
     this.logger.log(`Unmounting storage share: ${shareId}`);
 
-    const share = await this.storageShareService.findOne(shareId);
+    const share = await this.findShareOrThrow(shareId);
 
     // Check if already unmounted
     if (!share.isMounted) {
@@ -153,8 +154,8 @@ export class StorageMountService {
         throw new Error('Unmount verification failed - share still mounted');
       }
 
-      // Update share status
-      await this.storageShareService.updateStatus(shareId, StorageShareStatus.UNMOUNTED);
+      // Update share status via repository
+      await this.repository.updateStatus(shareId, StorageShareStatus.UNMOUNTED);
 
       // Remove from fstab if it was added
       if (share.addToFstab) {
@@ -406,5 +407,17 @@ export class StorageMountService {
         `Failed to remove from fstab: ${error instanceof Error ? error.message : 'unknown error'}`
       );
     }
+  }
+
+  /**
+   * Find a storage share by ID or throw NotFoundException.
+   * Uses the repository directly to avoid circular dependency with StorageShareService.
+   */
+  private async findShareOrThrow(shareId: string): Promise<StorageShare> {
+    const share = await this.repository.findById(shareId);
+    if (!share) {
+      throw new NotFoundException(`Storage share ${shareId} not found`);
+    }
+    return share;
   }
 }
