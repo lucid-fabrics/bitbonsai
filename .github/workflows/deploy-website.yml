@@ -31,10 +31,6 @@ jobs:
         run: npx nx build website --configuration=production
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: bitbonsai-website
-          directory: dist/apps/website/browser
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        run: npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
+        env:
+          CLOUDFLARE_ACCOUNT_ID: eab661fba6c6a4d2e11c090abd0a811b
