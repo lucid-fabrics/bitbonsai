@@ -36,10 +36,10 @@ export class EncodingFileService {
   private readonly logger = new Logger(EncodingFileService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    readonly _prisma: PrismaService,
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService,
-    private readonly fileRelocatorService: FileRelocatorService,
+    readonly _fileRelocatorService: FileRelocatorService,
     private readonly systemResourceService: SystemResourceService,
     private readonly queueService: QueueService
   ) {}
