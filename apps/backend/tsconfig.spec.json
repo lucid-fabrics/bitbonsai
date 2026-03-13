@@ -5,7 +5,12 @@
     "module": "commonjs",
     "types": ["jest", "node"],
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"],
+      "@bitbonsai/prisma-types": ["prisma/types.ts"],
+      "@bitbonsai/version": ["apps/backend/__mocks__/@bitbonsai/version.js"]
+    }
   },
   "include": [
     "src/**/*.ts",
