@@ -1,6 +1,6 @@
+import { version as APP_VERSION } from '@bitbonsai/version';
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { version as APP_VERSION } from '../../../../package.json';
 import { Public } from '../auth/guards/public.decorator';
 import type { BasicHealthDto } from './dto/basic-health.dto';
 import type { DetailedHealthDto } from './dto/detailed-health.dto';

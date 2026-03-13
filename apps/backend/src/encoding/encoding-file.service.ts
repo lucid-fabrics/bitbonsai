@@ -7,6 +7,7 @@ import { LibrariesService } from '../libraries/libraries.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
+import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
 
 export interface JobWithPolicy extends Job {
@@ -36,12 +37,13 @@ export class EncodingFileService {
   private readonly logger = new Logger(EncodingFileService.name);
 
   constructor(
-    readonly _prisma: PrismaService,
+    private readonly prisma: PrismaService,
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService,
     readonly _fileRelocatorService: FileRelocatorService,
     private readonly systemResourceService: SystemResourceService,
-    private readonly queueService: QueueService
+    private readonly queueService: QueueService,
+    private readonly qualityMetricsService: QualityMetricsService
   ) {}
 
   /**
@@ -251,6 +253,9 @@ export class EncodingFileService {
             `The original file will NOT be replaced to prevent data loss.`
         );
       }
+
+      // Calculate quality metrics if enabled (before replacement, while both files exist)
+      await this.calculateQualityMetricsIfEnabled(job, job.filePath, tmpPath);
 
       // Replace original file with encoded version (with Keep Original support)
       await this.replaceFile(job, tmpPath, policy.atomicReplace);
@@ -914,6 +919,39 @@ export class EncodingFileService {
    * @param libraryId - Library ID to update
    * @param savedBytes - Bytes saved by encoding
    */
+  private async calculateQualityMetricsIfEnabled(
+    job: JobWithPolicy,
+    originalPath: string,
+    encodedPath: string
+  ): Promise<void> {
+    try {
+      const settings = await this.prisma.settings.findFirst();
+      if (!settings?.qualityMetricsEnabled) return;
+
+      this.logger.log(`Calculating quality metrics for job ${job.id}...`);
+      const metrics = await this.qualityMetricsService.calculateAllQualityMetrics(
+        originalPath,
+        encodedPath
+      );
+
+      await this.prisma.job.update({
+        where: { id: job.id },
+        data: {
+          qualityMetrics: {
+            vmaf: metrics.vmaf,
+            psnr: metrics.psnr,
+            ssim: metrics.ssim,
+          },
+          qualityMetricsAt: metrics.calculatedAt,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Quality metrics calculation failed for job ${job.id}, continuing: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
   async updateLibraryStats(libraryId: string, savedBytes: bigint): Promise<void> {
     try {
       const library = await this.librariesService.findOne(libraryId);

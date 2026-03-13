@@ -63,11 +63,7 @@ export class PolicySyncService {
         `📦 Syncing ${policies.length} policies, ${libraries.length} libraries, and settings to ${childNode.name}`
       );
 
-      // TODO: Send data to child node via HTTP
-      // For now, we'll just mark as completed since we don't have child node HTTP endpoints yet
-      // In production, this would make HTTP requests to the child node's sync endpoints
-
-      // Simulate successful sync
+      // Stub: child node HTTP sync endpoints not yet implemented — returns simulated success
       const result: SyncResultDto = {
         nodeId: childNodeId,
         status: SyncStatus.COMPLETED,

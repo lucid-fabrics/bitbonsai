@@ -127,7 +127,7 @@ describe('NodeCapabilityDetectorService', () => {
       expect(result.storageBasePath).toBeNull();
     });
 
-    it('should set bandwidthMbps to null (TODO)', async () => {
+    it('should set bandwidthMbps to null (not yet implemented)', async () => {
       mockLibrariesService.getAllLibraryPaths.mockResolvedValue([]);
 
       const result = await service.detectCapabilities('node-1', '192.168.1.170');

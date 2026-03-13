@@ -13,7 +13,8 @@
     "baseUrl": ".",
     "paths": {
       "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"],
-      "@bitbonsai/shared-ui": ["libs/shared-ui/src/index.ts"]
+      "@bitbonsai/shared-ui": ["libs/shared-ui/src/index.ts"],
+      "@bitbonsai/version": ["package.json"]
     }
   }
 }

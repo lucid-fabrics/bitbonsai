@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { NodeRole } from '@prisma/client';
+import { type Node, NodeRole } from '@prisma/client';
 import { Bonjour, Browser, Service } from 'bonjour-service';
 import { NodesService } from '../nodes/nodes.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -449,7 +449,8 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       };
 
       for (const [key, value] of Object.entries(updates)) {
-        const regex = new RegExp(`^${key}=.*$`, 'm');
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
         if (regex.test(envContent)) {
           envContent = envContent.replace(regex, `${key}=${value}`);
         } else {
@@ -458,7 +459,16 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Write updated .env
-      fs.writeFileSync(envPath, envContent);
+      try {
+        fs.writeFileSync(envPath, envContent);
+      } catch (writeError) {
+        this.logger.error(
+          `Failed to write .env file at ${envPath}: ${writeError instanceof Error ? writeError.message : String(writeError)}`
+        );
+        throw new Error(
+          `Failed to write configuration file: ${writeError instanceof Error ? writeError.message : String(writeError)}`
+        );
+      }
       this.logger.log(`✅ Configuration written successfully`);
 
       // Return success response and trigger restart after 2 seconds
@@ -488,7 +498,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    * @param nodeId ID of the node to approve
    * @returns Approved node details
    */
-  async approveNode(nodeId: string): Promise<any> {
+  async approveNode(nodeId: string): Promise<Node> {
     // For now, just return the node from the nodes service
     // In a real implementation, this would update a DiscoveredNode status
     return this.nodesService.findOne(nodeId);

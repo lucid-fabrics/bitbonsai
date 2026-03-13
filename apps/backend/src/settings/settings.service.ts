@@ -362,6 +362,37 @@ export class SettingsService {
   }
 
   // ============================================================================
+  // QUALITY METRICS SETTING
+  // ============================================================================
+
+  async getQualityMetrics(): Promise<{ qualityMetricsEnabled: boolean }> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+      if (!s) {
+        s = await tx.settings.create({ data: { qualityMetricsEnabled: false } });
+      }
+      return s;
+    });
+    return { qualityMetricsEnabled: settings.qualityMetricsEnabled };
+  }
+
+  async updateQualityMetrics(enabled: boolean): Promise<{ qualityMetricsEnabled: boolean }> {
+    const settings = await this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+      if (!s) {
+        s = await tx.settings.create({ data: { qualityMetricsEnabled: enabled } });
+      } else {
+        s = await tx.settings.update({
+          where: { id: s.id },
+          data: { qualityMetricsEnabled: enabled },
+        });
+      }
+      return s;
+    });
+    return { qualityMetricsEnabled: settings.qualityMetricsEnabled };
+  }
+
+  // ============================================================================
   // JELLYFIN INTEGRATION SETTINGS
   // ============================================================================
 

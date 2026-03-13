@@ -1,3 +1,4 @@
+import { version as APP_VERSION } from '@bitbonsai/version';
 import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -6,7 +7,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { version as APP_VERSION } from '../../../../package.json';
 import { Public } from '../auth/guards/public.decorator';
 import { EnvironmentInfoDto } from '../common/dto/environment-info.dto';
 import { DatabaseType, LogLevel } from '../common/enums';
@@ -16,6 +16,7 @@ import { AdvancedModeDto } from './dto/advanced-mode.dto';
 import { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import { DefaultQueueViewDto } from './dto/default-queue-view.dto';
 import { JellyfinSettingsDto, JellyfinTestResultDto } from './dto/jellyfin-settings.dto';
+import { QualityMetricsDto } from './dto/quality-metrics.dto';
 import { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import { SecuritySettingsDto } from './dto/security-settings.dto';
 import { SystemSettingsDto } from './dto/system-settings.dto';
@@ -338,6 +339,32 @@ export class SettingsController {
   })
   async updateAdvancedMode(@Body() updateDto: AdvancedModeDto): Promise<AdvancedModeDto> {
     return this.settingsService.updateAdvancedMode(updateDto.advancedModeEnabled);
+  }
+
+  // ============================================================================
+  // QUALITY METRICS
+  // ============================================================================
+
+  @Get('quality-metrics')
+  @ApiOperation({
+    summary: 'Get quality metrics setting',
+    description:
+      'Retrieve whether quality metrics (VMAF/PSNR/SSIM) are calculated after encoding. Default is false (disabled) as this is CPU-intensive.',
+  })
+  @ApiOkResponse({ description: 'Quality metrics setting retrieved', type: QualityMetricsDto })
+  async getQualityMetrics(): Promise<QualityMetricsDto> {
+    return this.settingsService.getQualityMetrics();
+  }
+
+  @Patch('quality-metrics')
+  @ApiOperation({
+    summary: 'Update quality metrics setting',
+    description:
+      'Toggle calculation of VMAF/PSNR/SSIM quality metrics after encoding. This adds significant CPU overhead to each job.',
+  })
+  @ApiOkResponse({ description: 'Quality metrics setting updated', type: QualityMetricsDto })
+  async updateQualityMetrics(@Body() updateDto: QualityMetricsDto): Promise<QualityMetricsDto> {
+    return this.settingsService.updateQualityMetrics(updateDto.qualityMetricsEnabled);
   }
 
   // ============================================================================

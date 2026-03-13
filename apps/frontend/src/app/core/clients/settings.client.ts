@@ -31,6 +31,10 @@ export interface AdvancedModeSettings {
   advancedModeEnabled: boolean;
 }
 
+export interface QualityMetricsSettings {
+  qualityMetricsEnabled: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -89,6 +93,17 @@ export class SettingsClient {
   updateAdvancedMode(enabled: boolean): Observable<AdvancedModeSettings> {
     return this.http.patch<AdvancedModeSettings>(`${this.apiUrl}/advanced-mode`, {
       advancedModeEnabled: enabled,
+    });
+  }
+
+  // Quality Metrics (VMAF/PSNR/SSIM)
+  getQualityMetrics(): Observable<QualityMetricsSettings> {
+    return this.http.get<QualityMetricsSettings>(`${this.apiUrl}/quality-metrics`);
+  }
+
+  updateQualityMetrics(enabled: boolean): Observable<QualityMetricsSettings> {
+    return this.http.patch<QualityMetricsSettings>(`${this.apiUrl}/quality-metrics`, {
+      qualityMetricsEnabled: enabled,
     });
   }
 }

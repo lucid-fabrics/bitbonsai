@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   Patch,
   Post,
@@ -55,6 +56,8 @@ import {
 @ApiBearerAuth('JWT-auth')
 @Controller('nodes')
 export class NodesController {
+  private readonly logger = new Logger(NodesController.name);
+
   constructor(
     private readonly nodesService: NodesService,
     private readonly nodeDiscoveryService: NodeDiscoveryService,
@@ -408,19 +411,22 @@ export class NodesController {
     const sourceSubnet = sourceNode.networkLocation ? String(sourceNode.networkLocation) : null;
     const targetSubnet = targetNode.networkLocation ? String(targetNode.networkLocation) : null;
 
+    // Prisma ContainerType enum values match EnvironmentDetector ContainerType
+    const containerValues = Object.values(ContainerType) as string[];
+    const toContainerType = (val: string | null) =>
+      val && containerValues.includes(val)
+        ? (val as (typeof ContainerType)[keyof typeof ContainerType])
+        : ContainerType.UNKNOWN;
+
     const sourceInfo = {
       subnet: sourceSubnet,
-      containerType:
-        (sourceNode.containerType as unknown as (typeof ContainerType)[keyof typeof ContainerType]) ||
-        ContainerType.UNKNOWN,
+      containerType: toContainerType(sourceNode.containerType),
       canMountNFS: sourceNode.canMountNFS || false,
     };
 
     const targetInfo = {
       subnet: targetSubnet,
-      containerType:
-        (targetNode.containerType as unknown as (typeof ContainerType)[keyof typeof ContainerType]) ||
-        ContainerType.UNKNOWN,
+      containerType: toContainerType(targetNode.containerType),
       canMountNFS: targetNode.canMountNFS || false,
     };
 
@@ -972,8 +978,10 @@ export class NodesController {
         try {
           const url = new URL(urlToUse);
           nodeIp = url.hostname;
-        } catch (_error) {
-          // Silent fallback to localhost
+        } catch (error) {
+          this.logger.warn(
+            `Failed to parse node URL "${urlToUse}", falling back to localhost: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
     }

@@ -78,7 +78,7 @@ export class NodeCapabilityDetectorService {
         : { hasSharedStorage: false, storageBasePath: null };
 
     // Measure bandwidth (only if useful)
-    const bandwidthMbps = null; // TODO: Implement bandwidth test
+    const bandwidthMbps = null; // Stub: bandwidth test not yet implemented
 
     // Generate reasoning
     const reasoning = this.generateReasoning({
@@ -348,12 +348,7 @@ export class NodeCapabilityDetectorService {
   async testBandwidth(nodeId: string, nodeUrl: string): Promise<number> {
     this.logger.log(`📊 Testing bandwidth to node ${nodeId} at ${nodeUrl}`);
 
-    // TODO: Implement bandwidth test
-    // - Upload a test file (e.g., 10MB)
-    // - Measure time taken
-    // - Calculate Mbps
-
-    // Placeholder: return null for now
+    // Stub: bandwidth test not yet implemented (upload test file, measure time, calculate Mbps)
     return 0;
   }
 

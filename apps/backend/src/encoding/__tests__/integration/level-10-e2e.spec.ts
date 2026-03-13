@@ -71,30 +71,8 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
     await cleanupTestJobs(prisma, testLibraryId);
   });
 
-  describe('Mixed Content Types', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
-    it.skip('should process movies, TV series, and anime together', async () => {
-      // TODO: Generate mix of:
-      // - 5 movies (various codecs, resolutions)
-      // - 1 TV season (10 episodes)
-      // - 3 anime episodes (various formats)
-      // Process all concurrently
-      // Verify all complete successfully
-      // Check quality metrics for each type
-    });
-  });
-
-  describe('All Codecs and Resolutions', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
-    it.skip('should handle all supported codec conversions', async () => {
-      // TODO: Test conversions:
-      // - H.264 → HEVC
-      // - VP9 → HEVC
-      // - MPEG-2 → HEVC
-      // - AV1 → HEVC
-      // Across all resolutions: 480p, 720p, 1080p, 4K
-    });
-  });
+  // Future: Mixed content types (movies + TV + anime, requires heavy fixtures)
+  // Future: All codec/resolution combinations (H.264/VP9/MPEG-2/AV1 → HEVC @ 480p-4K)
 
   describe('Complete Workflow', () => {
     it('should execute basic end-to-end workflow', async () => {
@@ -167,36 +145,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
     }, 300000);
   });
 
-  describe('Edge Cases and Error Handling', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
-    it.skip('should handle edge cases in production scenario', async () => {
-      // TODO: Include edge cases:
-      // - Corrupted files
-      // - Missing files
-      // - Permission errors
-      // - Disk space issues
-      // Verify system handles gracefully
-    });
-  });
-
-  describe('Auto-Heal Integration', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
-    it.skip('should integrate with auto-heal system', async () => {
-      // TODO: Simulate system crash during encoding
-      // Verify auto-heal kicks in
-      // Check jobs resume correctly
-      // Validate no data corruption
-    });
-  });
-
-  describe('Quality Verification', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and video fixtures
-    it.skip('should verify quality across all processed files', async () => {
-      // TODO: Process various files
-      // Run quality checks on all outputs
-      // Verify codecs match target
-      // Check resolutions preserved
-      // Validate PSNR/SSIM metrics
-    });
-  });
+  // Future: Edge cases (corrupted/missing files, permission errors, disk space)
+  // Future: Auto-heal integration (crash simulation + recovery verification)
+  // Future: Quality verification (PSNR/SSIM validation across outputs)
 });

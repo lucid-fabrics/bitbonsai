@@ -72,6 +72,9 @@ export class QueueJobBo {
   corruptedRequeueCount: number;
   stuckRecoveryCount: number;
   isBlacklisted: boolean;
+  // Quality Metrics Feature (VMAF/PSNR/SSIM)
+  qualityMetrics?: { vmaf?: number; psnr?: number; ssim?: number } | null;
+  qualityMetricsAt?: string;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -141,6 +144,9 @@ export class QueueJobBo {
     this.corruptedRequeueCount = model.corruptedRequeueCount ?? 0;
     this.stuckRecoveryCount = model.stuckRecoveryCount ?? 0;
     this.isBlacklisted = model.isBlacklisted ?? false;
+    // Quality Metrics Feature
+    this.qualityMetrics = model.qualityMetrics ?? null;
+    this.qualityMetricsAt = model.qualityMetricsAt;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

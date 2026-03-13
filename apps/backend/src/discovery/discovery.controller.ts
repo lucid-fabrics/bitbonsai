@@ -219,7 +219,7 @@ export class DiscoveryController {
           return {
             status: PairingStatus.APPROVED,
             message: 'Pairing approved successfully',
-            // TODO: Return actual connection token and main node info
+            // Stub: connection token generation not yet implemented
           };
 
         case 'REJECTED':

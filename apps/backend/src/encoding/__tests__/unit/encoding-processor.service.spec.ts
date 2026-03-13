@@ -363,10 +363,5 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  describe('progress tracking', () => {
-    // Skipped: progress tracking relies on FFmpeg event streams, better covered by integration tests
-    it.skip('should update job progress on ffmpeg events', async () => {
-      // Placeholder: progress tracking relies on FFmpeg event streams
-    });
-  });
+  // Future: progress tracking tests (relies on FFmpeg event streams, covered by integration tests)
 });

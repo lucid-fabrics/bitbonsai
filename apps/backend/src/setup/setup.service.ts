@@ -1,6 +1,6 @@
+import { version } from '@bitbonsai/version';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { version } from '../../../../package.json';
 import { PrismaService } from '../prisma/prisma.service';
 import { InitializeSetupDto, NodeType } from './dto/initialize-setup.dto';
 import type { SetupStatusDto } from './dto/setup-status.dto';

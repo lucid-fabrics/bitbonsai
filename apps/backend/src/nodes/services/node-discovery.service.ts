@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { NodeRole } from '@prisma/client';
 import Bonjour, { Service } from 'bonjour-service';
-import { version as APP_VERSION } from '../../../../../package.json';
 import { PrismaService } from '../../prisma/prisma.service';
+import { version as APP_VERSION } from '../@bitbonsai/version';
 
 export interface DiscoveredMainNode {
   nodeId: string;

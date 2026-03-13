@@ -14,6 +14,7 @@ import { EncodingSchedulerService } from './encoding-scheduler.service';
 import { FfmpegService } from './ffmpeg.service';
 import { FileHealthService } from './file-health.service';
 import { PoolLockService } from './pool-lock.service';
+import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
 
 /**
@@ -45,6 +46,7 @@ import { SystemResourceService } from './system-resource.service';
     EncodingHistoryService,
     EncodingSchedulerService,
     PoolLockService,
+    QualityMetricsService,
     SystemResourceService,
     PrismaService,
   ],
@@ -56,6 +58,7 @@ import { SystemResourceService } from './system-resource.service';
     EncodingPreviewService,
     EncodingHistoryService,
     EncodingSchedulerService,
+    QualityMetricsService,
   ],
 })
 export class EncodingModule {}

@@ -1,3 +1,4 @@
+import { version as APP_VERSION } from '@bitbonsai/version';
 import {
   BadRequestException,
   ConflictException,
@@ -10,7 +11,6 @@ import { Interval } from '@nestjs/schedule';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
-import { version as APP_VERSION } from '../../../../package.json';
 import { DataAccessService } from '../core/services/data-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';

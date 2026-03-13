@@ -2557,6 +2557,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       corruptedRequeueCount: 0,
       stuckRecoveryCount: 0,
       contentFingerprint: null,
+      qualityMetrics: null,
+      qualityMetricsAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

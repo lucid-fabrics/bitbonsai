@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 /**
  * Quality metrics interface for VMAF/PSNR/SSIM results
@@ -24,6 +24,7 @@ export interface QualityMetrics {
  *
  * These methods can be used to validate encoding quality after transcoding.
  */
+@Injectable()
 export class QualityMetricsService {
   private readonly logger = new Logger(QualityMetricsService.name);
 
