@@ -12,8 +12,11 @@ import {
   mockEventEmitterProvider,
   mockFileRelocatorProvider,
 } from '../../../testing/mock-providers';
+import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
 import { FfmpegService } from '../../ffmpeg.service';
+import { PoolLockService } from '../../pool-lock.service';
+import { SystemResourceService } from '../../system-resource.service';
 
 // Mock fs module
 jest.mock('node:fs');
@@ -100,6 +103,57 @@ describe('EncodingProcessorService', () => {
             findAll: jest.fn().mockResolvedValue([]),
             update: jest.fn(),
             getCurrentNode: jest.fn().mockResolvedValue({ id: 'node-1', maxWorkers: 4 }),
+          },
+        },
+        {
+          provide: SystemResourceService,
+          useValue: {
+            defaultWorkersPerNode: 4,
+            maxWorkersPerNode: 12,
+            calculateOptimalWorkers: jest.fn().mockReturnValue(4),
+            checkSystemLoad: jest
+              .fn()
+              .mockReturnValue({ isOverloaded: false, reason: '', details: '' }),
+            waitForSystemLoad: jest.fn().mockResolvedValue(undefined),
+            performResourcePreflightChecks: jest.fn().mockResolvedValue(undefined),
+            reloadLoadThreshold: jest.fn().mockResolvedValue(undefined),
+            getLoadThresholdMultiplier: jest.fn().mockReturnValue(2.0),
+            getEncodingTempPath: jest.fn().mockReturnValue(null),
+            getSystemLoadInfo: jest.fn().mockReturnValue({
+              loadAvg1m: 0,
+              loadAvg5m: 0,
+              loadAvg15m: 0,
+              cpuCount: 8,
+              loadThreshold: 16,
+              loadThresholdMultiplier: 2.0,
+              freeMemoryGB: 16,
+              totalMemoryGB: 32,
+              isOverloaded: false,
+              reason: '',
+            }),
+          },
+        },
+        {
+          provide: PoolLockService,
+          useValue: {
+            initialize: jest.fn(),
+            acquire: jest.fn().mockResolvedValue(undefined),
+            release: jest.fn(),
+            withLock: jest.fn().mockImplementation((_nodeId, _holder, fn) => fn()),
+          },
+        },
+        {
+          provide: EncodingFileService,
+          useValue: {
+            encodeFile: jest.fn().mockResolvedValue({
+              beforeSizeBytes: BigInt(1000000000),
+              afterSizeBytes: BigInt(750000000),
+              savedBytes: BigInt(250000000),
+              savedPercent: 25.0,
+            }),
+            checkTempFileWithRetry: jest.fn().mockResolvedValue(false),
+            updateLibraryStats: jest.fn().mockResolvedValue(undefined),
+            sleep: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

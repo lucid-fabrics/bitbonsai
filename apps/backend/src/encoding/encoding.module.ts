@@ -6,12 +6,15 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
+import { EncodingFileService } from './encoding-file.service';
 import { EncodingHistoryService } from './encoding-history.service';
 import { EncodingPreviewService } from './encoding-preview.service';
 import { EncodingProcessorService } from './encoding-processor.service';
 import { EncodingSchedulerService } from './encoding-scheduler.service';
 import { FfmpegService } from './ffmpeg.service';
 import { FileHealthService } from './file-health.service';
+import { PoolLockService } from './pool-lock.service';
+import { SystemResourceService } from './system-resource.service';
 
 /**
  * EncodingModule
@@ -33,6 +36,7 @@ import { FileHealthService } from './file-health.service';
   ],
   controllers: [EncodingController],
   providers: [
+    EncodingFileService,
     EncodingProcessorService,
     FfmpegService,
     FileHealthService,
@@ -40,6 +44,8 @@ import { FileHealthService } from './file-health.service';
     EncodingPreviewService,
     EncodingHistoryService,
     EncodingSchedulerService,
+    PoolLockService,
+    SystemResourceService,
     PrismaService,
   ],
   exports: [
