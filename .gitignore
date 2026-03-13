@@ -83,7 +83,11 @@ PRISMA_SCHEMA_COMPLETE.md
 # Prisma / Database
 *.db
 *.db-journal
+
+# Environment files
 .env
+.env.*
+!.env.example
 
 # Release scripts (version backup for rollback)
 scripts/release/.version-backup
@@ -96,3 +100,4 @@ scripts/release/.version-backup
 
 # Note: CLAUDE.md is now tracked in git (contains project-specific AI instructions)
 # .github is tracked (contains CI/CD workflows)
+output.json

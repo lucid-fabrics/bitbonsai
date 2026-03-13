@@ -46,8 +46,16 @@
             [src]="images[currentIndex].src"
             [alt]="images[currentIndex].alt"
             class="carousel-image"
+            [class.image-error]="failedIndexes.has(currentIndex)"
             [style.transform]="fullscreen ? getImageTransform() : 'none'"
-            (click)="onImageClick()" />
+            (click)="onImageClick()"
+            (error)="onImageError(currentIndex)" />
+          @if (failedIndexes.has(currentIndex)) {
+            <div class="image-error-overlay">
+              <i class="fas fa-image"></i>
+              <span>Preview unavailable</span>
+            </div>
+          }
         </div>
       } @else {
         <div class="no-images">
@@ -80,9 +88,10 @@
           #thumbnail
           class="thumbnail"
           [class.active]="currentIndex === $index"
+          [class.image-error]="failedIndexes.has($index)"
           (click)="goToIndex($index)"
           [attr.aria-label]="'Go to image ' + ($index + 1)">
-          <img [src]="image.src" [alt]="image.alt" />
+          <img [src]="image.src" [alt]="image.alt" (error)="onImageError($index)" />
         </button>
       }
     </div>

@@ -421,3 +421,39 @@
     font-size: 1.125rem;
   }
 }
+
+.image-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.5);
+
+  i {
+    font-size: 2rem;
+  }
+
+  span {
+    font-size: 0.8rem;
+  }
+}
+
+.carousel-image-wrapper {
+  position: relative;
+}
+
+.carousel-image.image-error {
+  opacity: 0;
+}
+
+.thumbnail.image-error {
+  opacity: 0.3;
+
+  img {
+    visibility: hidden;
+  }
+}

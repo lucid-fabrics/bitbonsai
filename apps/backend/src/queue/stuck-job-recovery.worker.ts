@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 
 /**
  * StuckJobRecoveryWorker
@@ -45,9 +46,15 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     10
   );
 
+  // Max times a stuck ENCODING job can be recovered before permanent FAIL
+  private readonly MAX_STUCK_RECOVERY = 5;
+  // Max times a stuck TRANSFERRING job can be retried before permanent FAIL
+  private readonly MAX_TRANSFER_RETRIES = 3;
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ffmpegService: FfmpegService
+    private readonly ffmpegService: FfmpegService,
+    private readonly fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -155,9 +162,13 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       select: {
         id: true,
         fileLabel: true,
+        filePath: true,
+        libraryId: true,
         updatedAt: true,
         lastProgressUpdate: true,
         progress: true,
+        stuckRecoveryCount: true,
+        contentFingerprint: true,
       },
     });
 
@@ -167,6 +178,45 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckEncoding) {
+        // Check if this job has exceeded recovery cap
+        if (job.stuckRecoveryCount >= this.MAX_STUCK_RECOVERY) {
+          this.logger.warn(
+            `✗ Stuck recovery cap reached: ${job.fileLabel} (${job.stuckRecoveryCount}/${this.MAX_STUCK_RECOVERY}) → FAILED permanently`
+          );
+
+          // Kill process if active before failing
+          if (this.ffmpegService.hasActiveProcess(job.id)) {
+            await this.ffmpegService.killProcess(job.id);
+          }
+
+          const errorMsg = `Encoding repeatedly gets stuck - recovered ${job.stuckRecoveryCount} times without completing. File may be problematic. Manual intervention required.`;
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.FAILED,
+              failedAt: new Date(),
+              error: errorMsg,
+            },
+          });
+
+          // Record in cross-job failure tracking for auto-blacklist
+          try {
+            await this.fileFailureTracking.recordFailure(
+              job.filePath,
+              job.libraryId,
+              errorMsg,
+              job.contentFingerprint ?? undefined
+            );
+          } catch (trackingErr) {
+            this.logger.error(
+              `Failed to record failure tracking for ${job.fileLabel}`,
+              trackingErr instanceof Error ? trackingErr.stack : String(trackingErr)
+            );
+          }
+
+          continue;
+        }
+
         // SMART DETECTION: Check if FFmpeg is actively processing this job
         const hasActiveProcess = this.ffmpegService.hasActiveProcess(job.id);
 
@@ -212,8 +262,9 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
           where: { id: job.id },
           data: {
             stage: JobStage.QUEUED,
+            stuckRecoveryCount: { increment: 1 },
             // Keep progress, tempFilePath, resumeTimestamp intact for resume capability
-            error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min). Frozen FFmpeg process killed. Job will resume from ${job.progress}%.`,
+            error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}). Job will resume from ${job.progress}%.`,
           },
         });
 
@@ -221,7 +272,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         const lastUpdate = job.lastProgressUpdate || job.updatedAt;
         const stuckMinutes = Math.round((now.getTime() - lastUpdate.getTime()) / 1000 / 60);
         this.logger.log(
-          `🔄 Recovered stuck ENCODING job: ${job.fileLabel} (progress: ${job.progress}%, no progress for ${stuckMinutes}min) → QUEUED`
+          `🔄 Recovered stuck ENCODING job: ${job.fileLabel} (progress: ${job.progress}%, no progress for ${stuckMinutes}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}) → QUEUED`
         );
       }
     }
@@ -305,16 +356,15 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         const lastProgress = job.transferLastProgressAt || job.transferStartedAt || now;
         const stuckMinutes = Math.round((now.getTime() - lastProgress.getTime()) / 1000 / 60);
         const retryCount = job.transferRetryCount + 1;
-        const maxRetries = 3;
 
-        if (retryCount >= maxRetries) {
+        if (retryCount >= this.MAX_TRANSFER_RETRIES) {
           // Max retries reached, mark as failed
           await this.prisma.job.update({
             where: { id: job.id },
             data: {
               stage: JobStage.FAILED,
               failedAt: new Date(),
-              error: `File transfer stalled after ${maxRetries} attempts (last progress: ${job.transferProgress}% at ${stuckMinutes}min ago)`,
+              error: `File transfer stalled after ${this.MAX_TRANSFER_RETRIES} attempts (last progress: ${job.transferProgress}% at ${stuckMinutes}min ago)`,
               transferError: `Transfer stalled - no progress for ${stuckMinutes} minutes`,
             },
           });
@@ -335,7 +385,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
             },
           });
           this.logger.log(
-            `🔄 Recovered stuck TRANSFERRING job: ${job.fileLabel} (progress: ${job.transferProgress}%, no progress for ${stuckMinutes}min, retry ${retryCount}/${maxRetries}) → DETECTED`
+            `🔄 Recovered stuck TRANSFERRING job: ${job.fileLabel} (progress: ${job.transferProgress}%, no progress for ${stuckMinutes}min, retry ${retryCount}/${this.MAX_TRANSFER_RETRIES}) → DETECTED`
           );
         }
       }

@@ -295,12 +295,17 @@ export class HealthDashboardService {
    * Get queue statistics
    */
   private async getQueueStats(): Promise<QueueStats> {
-    // Count by stage
+    // Count by stage (single query instead of N+1)
+    const stageCounts = await this.prisma.job.groupBy({
+      by: ['stage'],
+      _count: true,
+    });
     const byStage: Record<string, number> = {};
     for (const stage of Object.values(JobStage)) {
-      byStage[stage] = await this.prisma.job.count({
-        where: { stage },
-      });
+      byStage[stage] = 0;
+    }
+    for (const row of stageCounts) {
+      byStage[row.stage] = row._count;
     }
 
     // Active workers (jobs currently encoding)

@@ -14,6 +14,7 @@ import { NodeConfigService } from '../../core/services/node-config.service';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CompleteJobDto } from '../dto/complete-job.dto';
+import { FileFailureTrackingService } from './file-failure-tracking.service';
 import { FileTransferService } from './file-transfer.service';
 import { JobHistoryService } from './job-history.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
@@ -36,7 +37,8 @@ export class QueueJobStateService {
     private fileTransferService: FileTransferService,
     private nodeConfig: NodeConfigService,
     private httpService: HttpService,
-    private jobCrudService: QueueJobCrudService
+    private jobCrudService: QueueJobCrudService,
+    private fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -107,6 +109,27 @@ export class QueueJobStateService {
         });
 
         await this.updateMetrics(completedJob, tx);
+
+        // Record processed file fingerprint for rename detection
+        if (completedJob.contentFingerprint) {
+          await tx.processedFileRecord.upsert({
+            where: { contentFingerprint: completedJob.contentFingerprint },
+            create: {
+              contentFingerprint: completedJob.contentFingerprint,
+              filePath: completedJob.filePath,
+              libraryId: completedJob.libraryId,
+              completedAt: new Date(),
+              resultCodec: completedJob.targetCodec,
+              savedPercent: completeJobDto.savedPercent,
+            },
+            update: {
+              filePath: completedJob.filePath,
+              completedAt: new Date(),
+              resultCodec: completedJob.targetCodec,
+              savedPercent: completeJobDto.savedPercent,
+            },
+          });
+        }
 
         return completedJob;
       });
@@ -179,6 +202,26 @@ export class QueueJobStateService {
       retryNumber: existingJob.retryCount,
       triggeredBy: 'SYSTEM',
     });
+
+    // Cross-job failure tracking: record failure for auto-blacklist detection
+    try {
+      const wasBlacklisted = await this.fileFailureTracking.recordFailure(
+        existingJob.filePath,
+        existingJob.libraryId,
+        error,
+        existingJob.contentFingerprint ?? undefined
+      );
+
+      if (wasBlacklisted) {
+        this.logger.warn(`File auto-blacklisted after repeated failures: ${existingJob.fileLabel}`);
+      }
+    } catch (trackingError) {
+      // Non-critical: don't let tracking failure break the main flow
+      this.logger.error(
+        'Failed to record file failure tracking',
+        trackingError instanceof Error ? trackingError.stack : String(trackingError)
+      );
+    }
 
     this.logger.log(`Job failed: ${id} (${error})`);
     return job;
@@ -302,8 +345,29 @@ export class QueueJobStateService {
       where: { id },
       data: {
         isBlacklisted: false,
+        // Reset retry caps so the job can actually be retried
+        corruptedRequeueCount: 0,
+        stuckRecoveryCount: 0,
       },
     });
+
+    // Clear cross-job failure tracking so the file can be retried fresh
+    try {
+      await this.fileFailureTracking.clearBlacklist(existingJob.filePath, existingJob.libraryId);
+    } catch (trackingError) {
+      this.logger.error('Failed to clear file failure tracking', trackingError);
+    }
+
+    // Clear ProcessedFileRecord so re-encoding is possible
+    try {
+      if (existingJob.contentFingerprint) {
+        await this.prisma.processedFileRecord.deleteMany({
+          where: { contentFingerprint: existingJob.contentFingerprint },
+        });
+      }
+    } catch (recordError) {
+      this.logger.error('Failed to clear processed file record', recordError);
+    }
 
     this.logger.log(`Job unblacklisted: ${id}`);
     return job;
@@ -498,6 +562,9 @@ export class QueueJobStateService {
         retryCount: existingJob.retryCount + 1,
         resumeTimestamp: canResume ? existingJob.resumeTimestamp : null,
         tempFilePath: canResume ? existingJob.tempFilePath : null,
+        // Reset retry caps on manual retry so the job gets fresh attempts
+        corruptedRequeueCount: 0,
+        stuckRecoveryCount: 0,
       },
     });
 

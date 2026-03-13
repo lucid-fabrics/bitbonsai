@@ -63,7 +63,8 @@ export class FileTransferService implements OnModuleInit {
   private validateRsyncPath(path: string): void {
     // CRITICAL #4 FIX: Reject ALL control chars including newlines (\n, \r)
     // Newlines allow injecting arbitrary rsync arguments
-    if (/[\x00-\x1F\x7F\n\r]/.test(path)) {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional security validation — rejecting control chars in paths
+    if (/[\x00-\x1f\x7f]/.test(path)) {
       throw new Error('Path contains control characters or newlines');
     }
 

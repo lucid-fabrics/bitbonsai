@@ -2553,6 +2553,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // DEEP AUDIT P2: Auto-heal claim fields
       autoHealClaimedAt: null,
       autoHealClaimedBy: null,
+      // Resilience fields
+      corruptedRequeueCount: 0,
+      stuckRecoveryCount: 0,
+      contentFingerprint: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

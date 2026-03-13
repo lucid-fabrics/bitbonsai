@@ -6,6 +6,7 @@ import { FfmpegService } from '../../../encoding/ffmpeg.service';
 import { FileHealthService } from '../../../encoding/file-health.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthCheckWorker } from '../../health-check.worker';
+import { FileFailureTrackingService } from '../../services/file-failure-tracking.service';
 
 describe('HealthCheckWorker', () => {
   let worker: HealthCheckWorker;
@@ -14,6 +15,7 @@ describe('HealthCheckWorker', () => {
   let containerCompatibilityService: Record<string, jest.Mock>;
   let ffmpegService: Record<string, jest.Mock>;
   let fileRelocatorService: Record<string, jest.Mock>;
+  let fileFailureTrackingService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     prisma = {
@@ -42,6 +44,12 @@ describe('HealthCheckWorker', () => {
       relocateFile: jest.fn(),
     };
 
+    fileFailureTrackingService = {
+      recordFailure: jest.fn(),
+      isBlacklisted: jest.fn(),
+      clearBlacklist: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HealthCheckWorker,
@@ -50,6 +58,7 @@ describe('HealthCheckWorker', () => {
         { provide: ContainerCompatibilityService, useValue: containerCompatibilityService },
         { provide: FfmpegService, useValue: ffmpegService },
         { provide: FileRelocatorService, useValue: fileRelocatorService },
+        { provide: FileFailureTrackingService, useValue: fileFailureTrackingService },
       ],
     }).compile();
 
@@ -75,12 +84,29 @@ describe('HealthCheckWorker', () => {
   describe('autoRequeueCorruptedJobs', () => {
     it('should reset CORRUPTED jobs to DETECTED for re-validation', async () => {
       const corruptedJobs = [
-        { id: 'j1', fileLabel: 'file1.mkv', healthMessage: 'corrupt', healthCheckedAt: new Date() },
-        { id: 'j2', fileLabel: 'file2.mkv', healthMessage: 'corrupt', healthCheckedAt: new Date() },
+        {
+          id: 'j1',
+          fileLabel: 'file1.mkv',
+          healthMessage: 'corrupt',
+          healthCheckedAt: new Date(),
+          corruptedRequeueCount: 0,
+          filePath: '/path/file1.mkv',
+          libraryId: 'lib1',
+        },
+        {
+          id: 'j2',
+          fileLabel: 'file2.mkv',
+          healthMessage: 'corrupt',
+          healthCheckedAt: new Date(),
+          corruptedRequeueCount: 1,
+          filePath: '/path/file2.mkv',
+          libraryId: 'lib1',
+        },
       ];
 
-      prisma.job.findMany.mockResolvedValue(corruptedJobs);
-      prisma.job.updateMany.mockResolvedValue({ count: 2 });
+      // First findMany: eligible jobs, second findMany: exhausted jobs
+      prisma.job.findMany.mockResolvedValueOnce(corruptedJobs).mockResolvedValueOnce([]);
+      prisma.job.update.mockResolvedValue({});
 
       await worker.autoRequeueCorruptedJobs();
 
@@ -92,23 +118,27 @@ describe('HealthCheckWorker', () => {
         })
       );
 
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      // Now uses individual update calls per job with corruptedRequeueCount increment
+      expect(prisma.job.update).toHaveBeenCalledTimes(2);
+      expect(prisma.job.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: { in: ['j1', 'j2'] } },
+          where: { id: 'j1' },
           data: expect.objectContaining({
             stage: JobStage.DETECTED,
             healthStatus: FileHealthStatus.UNKNOWN,
+            corruptedRequeueCount: { increment: 1 },
           }),
         })
       );
     });
 
     it('should skip when no CORRUPTED jobs found', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      // First findMany: eligible jobs, second findMany: exhausted jobs
+      prisma.job.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       await worker.autoRequeueCorruptedJobs();
 
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(prisma.job.update).not.toHaveBeenCalled();
     });
 
     it('should prevent overlapping executions', async () => {

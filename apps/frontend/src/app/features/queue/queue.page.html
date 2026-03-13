@@ -59,12 +59,12 @@
   <!-- Disk Space Warning Banner -->
   <app-disk-space-warning-banner></app-disk-space-warning-banner>
 
-  <!-- Node Status Bar (Advanced Mode Only) -->
-  @if (advancedMode()) {
-    @if (nodeCapacity$ | async; as nodes) {
-      @if (nodes.length > 0) {
-        <div class="node-status-bar">
-          @for (node of nodes; track node.nodeId) {
+  <!-- Node Status Bar -->
+  @if (nodeCapacity$ | async; as nodes) {
+    @if (nodes.length > 0) {
+      <div class="node-status-bar">
+        @for (node of nodes; track node.nodeId) {
+          @if (advancedMode()) {
             <div class="node-status" [class]="getNodeStatusClass(node)"
                  bbTooltip
                  [tooltipTitle]="node.nodeName + ' Details'"
@@ -82,9 +82,19 @@
                 <span class="workers-max">/ {{ node.maxWorkers }}</span>
               </div>
             </div>
+          } @else {
+            <div class="node-status node-status--simple" [class]="getNodeStatusClass(node)">
+              <div class="node-status__indicator">
+                <i class="fas fa-circle" style="font-size: 8px"></i>
+              </div>
+              <div class="node-status__info">
+                <span class="node-status__name">{{ node.nodeName }}</span>
+                <span class="node-status__label">{{ getNodeStatusLabel(node) }}</span>
+              </div>
+            </div>
           }
-        </div>
-      }
+        }
+      </div>
     }
   }
 
@@ -340,7 +350,7 @@
                     <span class="auto-heal-badge warning"
                           bbTooltip
                           tooltipTitle="Auto-Healed (Fresh Start)"
-                          [tooltipContent]="'Temp file was missing. Job restarted from scratch (was at ' + (job.autoHealedProgress || 0).toFixed(1) + '%)'"
+                          [tooltipContent]="'Temp file was missing. Job restarted from scratch (was at ' + (job.autoHealedProgress || 0).toFixed(1) + '%)' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
                           tooltipPlacement="top">
                       <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.restarted' | transloco }}
                     </span>
@@ -348,7 +358,7 @@
                     <span class="auto-heal-badge"
                           bbTooltip
                           tooltipTitle="Auto-Healed (Resumed)"
-                          [tooltipContent]="'System auto-recovered this job and resumed from ' + (job.autoHealedProgress || 0).toFixed(1) + '%'"
+                          [tooltipContent]="'System auto-recovered this job and resumed from ' + (job.autoHealedProgress || 0).toFixed(1) + '%' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
                           tooltipPlacement="top">
                       <i class="fas fa-shield-alt"></i> {{ 'queue2.resumed' | transloco }}
                     </span>
@@ -356,7 +366,7 @@
                     <span class="auto-heal-badge"
                           bbTooltip
                           tooltipTitle="Auto-Healed"
-                          [tooltipContent]="'System auto-recovered this job on restart'"
+                          [tooltipContent]="'System auto-recovered this job on restart' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
                           tooltipPlacement="top">
                       <i class="fas fa-shield-alt"></i> {{ 'queue2.autoHealed' | transloco }}
                     </span>
@@ -365,10 +375,59 @@
                     <span class="file-missing-badge"
                           bbTooltip
                           tooltipTitle="File Missing"
-                          tooltipContent="Source file no longer exists at original location. File may have been moved, renamed, or deleted by media server."
+                          tooltipContent="Source file no longer exists at original location. Try re-scanning the library, or cancel the job if the file was intentionally removed."
                           tooltipPlacement="top">
                       <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.fileMissing' | transloco }}
                     </span>
+                  }
+                  @if (job.isBlacklisted) {
+                    <span class="auto-blocked-badge"
+                          bbTooltip
+                          tooltipTitle="Auto-Blocked"
+                          tooltipContent="This file has failed repeatedly and won't be retried automatically. Click Unblock to try again."
+                          tooltipPlacement="top">
+                      <i class="fas fa-ban"></i> Auto-Blocked
+                      <button class="unblock-btn" (click)="unblockJob(job.id, $event)" title="Unblock this file">
+                        <i class="fas fa-unlock"></i> Unblock
+                      </button>
+                    </span>
+                  }
+                  @if (advancedMode() && hasRecoveryHistory(job)) {
+                    <span class="recovery-count-badge"
+                          bbTooltip
+                          tooltipTitle="Recovery History"
+                          [tooltipContent]="getRecoveryTooltip(job)"
+                          tooltipPlacement="top">
+                      <i class="fas fa-history"></i> Recovered {{ (job.stuckRecoveryCount || 0) + (job.corruptedRequeueCount || 0) }}x
+                    </span>
+                  }
+                  @if (job.status === JobStatus.FAILED && isApproachingBlacklist(job)) {
+                    <span class="approaching-blacklist-badge"
+                          bbTooltip
+                          tooltipTitle="Repeated Failures"
+                          tooltipContent="This file has failed multiple times across retries. If failures continue, it may be automatically blocked."
+                          tooltipPlacement="top">
+                      <i class="fas fa-exclamation-circle"></i> Repeated failures
+                    </span>
+                  }
+                  @if (job.status === JobStatus.FAILED && (job.retryCount || 0) > 0) {
+                    @if ((job.retryCount || 0) >= 3) {
+                      <span class="retry-limit-badge maxed"
+                            bbTooltip
+                            tooltipTitle="Max Retries Reached"
+                            tooltipContent="This job has exhausted all automatic retry attempts. You can manually retry or delegate to a different node."
+                            tooltipPlacement="top">
+                        <i class="fas fa-times-circle"></i> Max retries reached
+                      </span>
+                    } @else {
+                      <span class="retry-limit-badge"
+                            bbTooltip
+                            tooltipTitle="Retry Attempt"
+                            tooltipContent="This job has been retried automatically. More attempts remain before reaching the limit."
+                            tooltipPlacement="top">
+                        <i class="fas fa-redo"></i> Attempt {{ (job.retryCount || 0) + 1 }}/3
+                      </span>
+                    }
                   }
                 </td>
                 @if (advancedMode()) {
@@ -426,7 +485,7 @@
                               class="stuck-warning-container"
                               bbTooltip
                               tooltipTitle="Job Appears Stuck"
-                              [tooltipContent]="getStuckJobMessage(job)"
+                              [tooltipContent]="getStuckJobMessage(job, !!advancedMode())"
                               tooltipPlacement="top">
                               <i class="fas fa-exclamation-triangle stuck-warning"></i>
                             </span>

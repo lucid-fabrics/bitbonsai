@@ -62,5 +62,9 @@ export interface QueueJob {
   transferError?: string; // Error message if transfer failed
   remoteTempPath?: string; // Path on remote node where file is being transferred
   transferRetryCount?: number; // Number of transfer retry attempts
+  // Resilience Feature
+  corruptedRequeueCount?: number;
+  stuckRecoveryCount?: number;
+  isBlacklisted?: boolean;
   originalNodeId?: string | null; // ID of the node where the file originally exists (for delegated jobs)
 }

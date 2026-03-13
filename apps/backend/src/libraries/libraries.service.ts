@@ -21,6 +21,7 @@ import {
 import { DistributionOrchestratorService } from '../distribution/services/distribution-orchestrator.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
+import { FileFailureTrackingService } from '../queue/services/file-failure-tracking.service';
 import { SettingsService } from '../settings/settings.service';
 import type { CacheMetadataDto } from './dto/cache-metadata.dto';
 import type { CreateLibraryDto } from './dto/create-library.dto';
@@ -80,7 +81,8 @@ export class LibrariesService {
     private queueService: QueueService,
     private settingsService: SettingsService,
     @Inject(forwardRef(() => DistributionOrchestratorService))
-    private distributionOrchestrator: DistributionOrchestratorService
+    private distributionOrchestrator: DistributionOrchestratorService,
+    private fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -861,6 +863,12 @@ export class LibrariesService {
 
     const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
 
+    // Cross-job failure tracking: batch check auto-blacklisted files
+    const autoBlacklistedPaths = await this.fileFailureTracking.getBlacklistedPaths(
+      filesToEncode,
+      library.id
+    );
+
     // PERFORMANCE OPTIMIZATION: Parallelize job creation with batching
     // Process 100 files at a time to avoid overwhelming the database
     const jobs: Job[] = [];
@@ -871,6 +879,12 @@ export class LibrariesService {
 
       const results = await Promise.allSettled(
         batch.map(async (filePath) => {
+          // Skip auto-blacklisted files (cross-job failure tracking)
+          if (autoBlacklistedPaths.has(filePath)) {
+            this.logger.debug(`Skipping auto-blacklisted file: ${filePath}`);
+            return null;
+          }
+
           // Skip blacklisted files
           if (blacklistedPaths.has(filePath)) {
             this.logger.log(`Skipping blacklisted file: ${filePath}`);
@@ -1162,6 +1176,12 @@ export class LibrariesService {
       existingJobs.filter((job) => job.isBlacklisted).map((job) => job.filePath)
     );
 
+    // Cross-job failure tracking: batch check auto-blacklisted files
+    const autoBlacklistedPaths = await this.fileFailureTracking.getBlacklistedPaths(
+      videoFiles,
+      library.id
+    );
+
     const result: BulkJobCreationResultDto = {
       jobsCreated: 0,
       filesSkipped: 0,
@@ -1171,6 +1191,16 @@ export class LibrariesService {
     // Process each file
     for (const filePath of videoFiles) {
       try {
+        // Skip if auto-blacklisted by cross-job failure tracking
+        if (autoBlacklistedPaths.has(filePath)) {
+          result.filesSkipped++;
+          result.skippedFiles.push({
+            path: filePath,
+            reason: 'Auto-blacklisted (repeated failures)',
+          });
+          continue;
+        }
+
         // Skip if already in queue or blacklisted
         if (existingPaths.has(filePath)) {
           const reason = blacklistedPaths.has(filePath) ? 'Blacklisted' : 'Already in queue';

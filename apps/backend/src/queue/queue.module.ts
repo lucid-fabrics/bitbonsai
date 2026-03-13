@@ -12,6 +12,7 @@ import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
 import { BatchOperationsService } from './services/batch-operations.service';
+import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { FileTransferService } from './services/file-transfer.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { JobHistoryService } from './services/job-history.service';
@@ -49,6 +50,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   controllers: [QueueController, BatchController],
   providers: [
     QueueService,
+    FileFailureTrackingService,
     QueueJobCrudService,
     QueueJobStateService,
     QueueDelegationService,
@@ -69,6 +71,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   ],
   exports: [
     QueueService,
+    FileFailureTrackingService,
     QueueJobCrudService,
     QueueJobStateService,
     QueueDelegationService,

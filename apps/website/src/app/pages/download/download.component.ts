@@ -247,6 +247,8 @@ pct enter 300`,
   copyCommand(command: string) {
     navigator.clipboard.writeText(command);
     this.copiedCommand = command;
-    setTimeout(() => (this.copiedCommand = null), 2000);
+    setTimeout(() => {
+      this.copiedCommand = null;
+    }, 2000);
   }
 }

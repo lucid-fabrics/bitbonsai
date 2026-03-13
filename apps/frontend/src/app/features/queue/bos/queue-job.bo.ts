@@ -68,6 +68,10 @@ export class QueueJobBo {
   // Decision Feature (Phase 3)
   decisionRequired?: boolean;
   decisionIssues?: string | null; // JSON string of HealthCheckIssue[]
+  // Resilience Feature
+  corruptedRequeueCount: number;
+  stuckRecoveryCount: number;
+  isBlacklisted: boolean;
 
   constructor(model: QueueJobApiModel) {
     this.id = model.id;
@@ -133,6 +137,10 @@ export class QueueJobBo {
     // Decision Feature (Phase 3)
     this.decisionRequired = model.decisionRequired ?? false;
     this.decisionIssues = model.decisionIssues ?? null;
+    // Resilience Feature
+    this.corruptedRequeueCount = model.corruptedRequeueCount ?? 0;
+    this.stuckRecoveryCount = model.stuckRecoveryCount ?? 0;
+    this.isBlacklisted = model.isBlacklisted ?? false;
   }
 
   private extractFileName(model: QueueJobApiModel): string {

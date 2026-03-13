@@ -88,6 +88,42 @@ export class ErrorDetailsModalComponent {
     return 'Review the technical details below to diagnose the issue. You can retry the job if this was a temporary problem.';
   }
 
+  getActionableSteps(): { icon: string; text: string }[] {
+    const errorLower = (this.error || '').toLowerCase();
+    const steps: { icon: string; text: string }[] = [];
+
+    if (errorLower.includes('not found') || errorLower.includes('enoent')) {
+      steps.push({ icon: 'fa-search', text: 'Re-scan the library to detect file changes' });
+    } else if (
+      errorLower.includes('segmentation fault') ||
+      errorLower.includes('exit code 13') ||
+      errorLower.includes('exit code 139')
+    ) {
+      steps.push({ icon: 'fa-share', text: 'Try retrying on a different node' });
+    } else if (errorLower.includes('stuck') || errorLower.includes('no progress')) {
+      steps.push({
+        icon: 'fa-cog',
+        text: 'File may be problematic — try a different encoding policy',
+      });
+    } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
+      steps.push({ icon: 'fa-sliders-h', text: 'Try with different quality settings' });
+    } else if (errorLower.includes('permission') || errorLower.includes('eacces')) {
+      steps.push({ icon: 'fa-lock', text: 'Check file permissions on the storage volume' });
+    } else if (errorLower.includes('corrupt')) {
+      steps.push({
+        icon: 'fa-play-circle',
+        text: 'File may be damaged — try playing it in VLC to verify',
+      });
+    } else {
+      steps.push({
+        icon: 'fa-redo',
+        text: 'Try retrying. If it keeps failing, the file may need inspection',
+      });
+    }
+
+    return steps;
+  }
+
   copyToClipboard() {
     const errorText = `Job ID: ${this.jobId}
 File: ${this.fileName}
