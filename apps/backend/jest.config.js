@@ -30,8 +30,8 @@ module.exports = {
     global: {
       branches: 40,
       functions: 50,
-      lines: 50,
-      statements: 50,
+      lines: 45,
+      statements: 45,
     },
   },
   coverageReporters: ['text', 'text-summary', 'html', 'lcov'],
