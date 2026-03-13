@@ -33,4 +33,5 @@ jobs:
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
         env:
-          CLOUDFLARE_ACCOUNT_ID: eab661fba6c6a4d2e11c090abd0a811b
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
