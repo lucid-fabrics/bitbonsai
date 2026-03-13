@@ -19,7 +19,8 @@
     "allowJs": true,
     "paths": {
       "@bitbonsai/shared-models": ["libs/shared-models/src/index.ts"],
-      "@bitbonsai/prisma-types": ["prisma/types.ts"]
+      "@bitbonsai/prisma-types": ["prisma/types.ts"],
+      "@bitbonsai/version": ["package.json"]
     }
   },
   "exclude": ["**/*.spec.ts", "**/__tests__/**"]
