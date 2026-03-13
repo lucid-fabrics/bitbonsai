@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { FfmpegService } from '../../../encoding/ffmpeg.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { FileFailureTrackingService } from '../../services/file-failure-tracking.service';
 import { StuckJobRecoveryWorker } from '../../stuck-job-recovery.worker';
 
 /**
@@ -19,6 +20,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
   let worker: StuckJobRecoveryWorker;
   let prismaService: PrismaService;
   let ffmpegService: FfmpegService;
+  let fileFailureTrackingService: FileFailureTrackingService;
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
@@ -38,6 +40,14 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
           useValue: {
             hasActiveProcess: jest.fn(),
             killProcess: jest.fn(),
+            isProcessTrulyStuck: jest.fn().mockReturnValue(true),
+            getLastOutputTime: jest.fn().mockReturnValue(null),
+          },
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: {
+            recordFailure: jest.fn().mockResolvedValue(false),
           },
         },
       ],
@@ -46,6 +56,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
     worker = module.get<StuckJobRecoveryWorker>(StuckJobRecoveryWorker);
     prismaService = module.get<PrismaService>(PrismaService);
     ffmpegService = module.get<FfmpegService>(FfmpegService);
+    fileFailureTrackingService = module.get<FileFailureTrackingService>(FileFailureTrackingService);
   });
 
   afterEach(async () => {
@@ -502,6 +513,134 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
           error: expect.stringContaining('will resume from 45%'),
         }),
       });
+    });
+  });
+
+  describe('Recovery Cap', () => {
+    it('should permanently fail a job when stuckRecoveryCount reaches MAX_STUCK_RECOVERY (5)', async () => {
+      const stuckJob = {
+        id: 'cap-job-1',
+        fileLabel: 'Cap Test Video.mkv',
+        filePath: '/test/video.mkv',
+        libraryId: 'lib-1',
+        stage: JobStage.ENCODING,
+        progress: 50.0,
+        stuckRecoveryCount: 5,
+        contentFingerprint: 'abc123',
+        updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+        lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
+      };
+
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
+      jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
+
+      await (worker as any).recoverStuckJobs();
+
+      expect(prismaService.job.update).toHaveBeenCalledWith({
+        where: { id: 'cap-job-1' },
+        data: {
+          stage: JobStage.FAILED,
+          failedAt: expect.any(Date),
+          error: expect.stringContaining('repeatedly gets stuck'),
+        },
+      });
+
+      expect(fileFailureTrackingService.recordFailure).toHaveBeenCalledWith(
+        '/test/video.mkv',
+        'lib-1',
+        expect.stringContaining('repeatedly gets stuck'),
+        'abc123'
+      );
+    });
+
+    it('should kill active FFmpeg process before failing at recovery cap', async () => {
+      const stuckJob = {
+        id: 'cap-job-2',
+        fileLabel: 'Kill Before Fail.mkv',
+        filePath: '/test/kill.mkv',
+        libraryId: 'lib-1',
+        stage: JobStage.ENCODING,
+        progress: 30.0,
+        stuckRecoveryCount: 5,
+        contentFingerprint: null,
+        updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+        lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
+      };
+
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
+      jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
+      jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
+
+      await (worker as any).recoverStuckJobs();
+
+      expect(ffmpegService.killProcess).toHaveBeenCalledWith('cap-job-2');
+      expect(prismaService.job.update).toHaveBeenCalledWith({
+        where: { id: 'cap-job-2' },
+        data: {
+          stage: JobStage.FAILED,
+          failedAt: expect.any(Date),
+          error: expect.stringContaining('repeatedly gets stuck'),
+        },
+      });
+    });
+
+    it('should increment stuckRecoveryCount on normal recovery (below cap)', async () => {
+      const stuckJob = {
+        id: 'cap-job-3',
+        fileLabel: 'Below Cap.mkv',
+        filePath: '/test/below.mkv',
+        libraryId: 'lib-1',
+        stage: JobStage.ENCODING,
+        progress: 20.0,
+        stuckRecoveryCount: 2,
+        contentFingerprint: null,
+        updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+        lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
+      };
+
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
+      jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
+
+      await (worker as any).recoverStuckJobs();
+
+      expect(prismaService.job.update).toHaveBeenCalledWith({
+        where: { id: 'cap-job-3' },
+        data: expect.objectContaining({
+          stage: JobStage.QUEUED,
+          stuckRecoveryCount: { increment: 1 },
+        }),
+      });
+    });
+
+    it('should pass contentFingerprint to recordFailure when failing permanently', async () => {
+      const stuckJob = {
+        id: 'cap-job-4',
+        fileLabel: 'Fingerprint Test.mkv',
+        filePath: '/test/fingerprint.mkv',
+        libraryId: 'lib-2',
+        stage: JobStage.ENCODING,
+        progress: 10.0,
+        stuckRecoveryCount: 5,
+        contentFingerprint: 'fingerprint123',
+        updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+        lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
+      };
+
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
+      jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
+
+      await (worker as any).recoverStuckJobs();
+
+      expect(fileFailureTrackingService.recordFailure).toHaveBeenCalledWith(
+        '/test/fingerprint.mkv',
+        'lib-2',
+        expect.stringContaining('repeatedly gets stuck'),
+        'fingerprint123'
+      );
     });
   });
 

@@ -340,6 +340,45 @@
   }
 }
 
+.what-to-do {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+
+  .help-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #3b82f6;
+    font-size: 13px;
+  }
+
+  .what-to-do-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+
+    i {
+      color: #3b82f6;
+      font-size: 12px;
+      width: 16px;
+      text-align: center;
+    }
+  }
+}
+
 // Quick Actions
 .quick-actions {
   display: flex;

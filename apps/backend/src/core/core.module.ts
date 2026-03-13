@@ -2,6 +2,7 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ContentFingerprintService } from './services/content-fingerprint.service';
 import { DataAccessService } from './services/data-access.service';
 import { DockerVolumeDetectorService } from './services/docker-volume-detector.service';
 import { EncryptionService } from './services/encryption.service';
@@ -34,6 +35,7 @@ import { StorageInitService } from './services/storage-init.service';
   ],
   providers: [
     NodeConfigService,
+    ContentFingerprintService,
     DataAccessService,
     DockerVolumeDetectorService,
     EncryptionService,
@@ -44,6 +46,7 @@ import { StorageInitService } from './services/storage-init.service';
   ],
   exports: [
     NodeConfigService,
+    ContentFingerprintService,
     DataAccessService,
     DockerVolumeDetectorService,
     EncryptionService,

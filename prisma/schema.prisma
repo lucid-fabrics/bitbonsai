@@ -615,6 +615,10 @@ model Library {
   policies Policy[] @relation("LibraryPolicies")
   jobs     Job[]
 
+  // Resilience relations
+  fileFailureRecords  FileFailureRecord[]
+  processedFileRecords ProcessedFileRecord[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -781,6 +785,11 @@ model Job {
   estimatedStartAt    DateTime? // When job is estimated to start encoding
   estimatedCompleteAt DateTime? // When job is estimated to complete
 
+  // Resilience: Retry loop caps (prevents infinite requeue of genuinely broken files)
+  corruptedRequeueCount Int @default(0) // Times auto-requeued from CORRUPTED (cap: 3)
+  stuckRecoveryCount    Int @default(0) // Times recovered from stuck ENCODING (cap: 5)
+  contentFingerprint    String? // xxHash fingerprint for rename detection (Phase 3)
+
   // Distribution scoring (for debugging/visibility)
   lastScoreBreakdown  Json?    // Last scoring breakdown when assigned: {load: 24, hw: 25, ...}
   assignmentReason    String?  // Why job was assigned to this node (human-readable)
@@ -840,12 +849,56 @@ model Job {
   @@index([lastHeartbeat]) // PERF AUDIT ROUND 4: For heartbeat validation queries
   @@index([autoHealClaimedAt, autoHealClaimedBy]) // DEEP AUDIT P2: For auto-heal claim queries
   @@index([stage, transferLastProgressAt]) // DEEP AUDIT P0: Composite for TRANSFERRING stall detection
+  @@index([contentFingerprint])
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
   // NOTE: Partial unique index implemented via raw SQL migration (20251029000000_add_unique_active_job_per_file)
   // Cannot be expressed in Prisma schema syntax, handled by migration SQL directly
   @@map("jobs")
+}
+
+// ============================================================================
+// FILE FAILURE RECORD (Cross-Job Failure Tracking - Phase 2)
+// ============================================================================
+
+model FileFailureRecord {
+  id              String   @id @default(cuid())
+  filePath        String
+  libraryId       String
+  library         Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  contentFingerprint String?
+  totalFailures   Int      @default(0)
+  lastFailedAt    DateTime
+  lastError       String?
+  autoBlacklisted Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([filePath, libraryId])
+  @@index([libraryId, autoBlacklisted])
+  @@index([contentFingerprint])
+  @@map("file_failure_records")
+}
+
+// ============================================================================
+// PROCESSED FILE RECORD (Content Fingerprinting - Phase 3)
+// ============================================================================
+
+model ProcessedFileRecord {
+  id                 String   @id @default(cuid())
+  contentFingerprint String   @unique
+  filePath           String
+  libraryId          String
+  library            Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  completedAt        DateTime
+  resultCodec        String
+  savedPercent       Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([libraryId])
+  @@map("processed_file_records")
 }
 
 // ============================================================================

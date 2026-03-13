@@ -97,7 +97,7 @@
                     ) {
                       <span class="meta-pill">
                         <i class="fas fa-redo"></i>
-                        Attempt #{{ event.retryNumber }}
+                        Attempt {{ event.retryNumber + 1 }}/3
                       </span>
                     }
                     @if (event.triggeredBy) {

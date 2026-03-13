@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
@@ -465,7 +466,7 @@ export class QueueController {
 
         // Forward the image
         res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
-        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Cache-Control', 'no-store');
         res.send(Buffer.from(response.data));
         return;
       } catch (error) {
@@ -514,24 +515,45 @@ export class QueueController {
         `Preview image ${previewIndex} not available for job ${id} (path: ${previewPath || 'undefined'})`
       );
 
-      // BUGFIX: Clear stale preview paths from DB if ALL files are missing
-      // This happens when /tmp is cleared on container restart
-      if (previewPaths.length > 0 && previewPaths.every((path) => !existsSync(path))) {
-        this.logger.debug(`Clearing stale preview paths for job ${id} (files deleted from /tmp)`);
-        this.queueService.updateJobPreview(id, []).catch((err) => {
-          this.logger.warn(`Failed to clear stale preview paths for job ${id}:`, err);
-        });
+      // Clean up only the missing paths from DB (not all of them)
+      // This handles stale /tmp paths from older versions while preserving valid NFS paths
+      if (previewPaths.length > 0) {
+        const validPaths = previewPaths.filter((p) => existsSync(p));
+        if (validPaths.length !== previewPaths.length) {
+          this.logger.debug(
+            `Cleaning ${previewPaths.length - validPaths.length} stale preview paths for job ${id} (keeping ${validPaths.length} valid)`
+          );
+          this.queueService.updateJobPreview(id, validPaths).catch((err) => {
+            this.logger.warn(`Failed to clean stale preview paths for job ${id}:`, err);
+          });
+        }
       }
 
       res.status(204).send();
       return;
     }
 
-    // Serve the image file
+    // Path traversal protection: verify resolved path is within preview directory
+    const previewDir = process.env.PREVIEW_DIR || '/previews';
+    const resolvedPath = path.resolve(previewPath);
+    const resolvedPreviewDir = path.resolve(previewDir);
+    if (!resolvedPath.startsWith(resolvedPreviewDir)) {
+      this.logger.warn(`Path traversal attempt blocked for job ${id}: ${previewPath}`);
+      res.status(204).send();
+      return;
+    }
+
+    // Serve the image file with stream error handling
     res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-store');
 
     const fileStream = createReadStream(previewPath);
+    fileStream.on('error', (err) => {
+      this.logger.debug(`Failed to stream preview for job ${id}: ${err.message}`);
+      if (!res.headersSent) {
+        res.status(204).send();
+      }
+    });
     fileStream.pipe(res);
   }
 

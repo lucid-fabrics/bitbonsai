@@ -5,6 +5,7 @@ import { MediaType, NodeRole, NodeStatus } from '@prisma/client';
 import { DistributionOrchestratorService } from '../../../distribution/services/distribution-orchestrator.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
+import { FileFailureTrackingService } from '../../../queue/services/file-failure-tracking.service';
 import { SettingsService } from '../../../settings/settings.service';
 import { LibrariesService } from '../../libraries.service';
 import { MediaAnalysisService } from '../../services/media-analysis.service';
@@ -103,6 +104,15 @@ describe('LibrariesService', () => {
             distribute: jest.fn(),
             rebalance: jest.fn(),
             findBestNodeForNewJob: jest.fn(),
+          },
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: {
+            recordFailure: jest.fn().mockResolvedValue(false),
+            isBlacklisted: jest.fn().mockResolvedValue(false),
+            getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+            clearBlacklist: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

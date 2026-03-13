@@ -38,6 +38,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
 
   protected currentIndex = 0;
   protected zoomLevel = 1;
+  protected failedIndexes = new Set<number>();
   protected readonly minZoom = 0.5;
   protected readonly maxZoom = 3;
   protected readonly zoomStep = 0.25;
@@ -124,6 +125,10 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
         inline: 'center',
       });
     }
+  }
+
+  protected onImageError(index: number): void {
+    this.failedIndexes.add(index);
   }
 
   protected onImageClick(): void {

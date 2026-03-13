@@ -268,6 +268,8 @@ export class DocsComponent {
   copyDockerCommand() {
     navigator.clipboard.writeText(this.dockerCommand);
     this.copied = true;
-    setTimeout(() => (this.copied = false), 2000);
+    setTimeout(() => {
+      this.copied = false;
+    }, 2000);
   }
 }

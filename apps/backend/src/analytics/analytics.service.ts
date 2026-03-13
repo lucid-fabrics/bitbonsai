@@ -245,6 +245,7 @@ export class AnalyticsService {
         targetCodec: true,
       },
       orderBy: { completedAt: 'asc' },
+      take: 10000,
     });
 
     // Group by date and codec
@@ -353,6 +354,7 @@ export class AnalyticsService {
         completedAt: true,
         node: { select: { name: true } },
       },
+      take: 10000,
     });
 
     const failedByNode = await this.prisma.job.groupBy({
@@ -441,6 +443,7 @@ export class AnalyticsService {
         startedAt: true,
         completedAt: true,
       },
+      take: 10000,
     });
 
     const codecData = new Map<
@@ -494,6 +497,7 @@ export class AnalyticsService {
         completedAt: dateFilter,
       },
       select: { startedAt: true },
+      take: 10000,
     });
 
     const hourCounts = new Array(24).fill(0);

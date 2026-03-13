@@ -98,6 +98,22 @@
           </div>
         }
 
+        <!-- What to Do -->
+        <div class="what-to-do">
+          <div class="help-header">
+            <i class="fas fa-tasks"></i>
+            <span>What to Do</span>
+          </div>
+          <div class="what-to-do-steps">
+            @for (step of getActionableSteps(); track step.text) {
+              <div class="step-item">
+                <i class="fas {{ step.icon }}"></i>
+                <span>{{ step.text }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="quick-actions">
           <button class="action-btn secondary" (click)="close()">

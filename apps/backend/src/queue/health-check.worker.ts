@@ -13,6 +13,7 @@ import {
   HealthCheckIssueSeverity,
   HealthCheckSuggestedAction,
 } from './models/health-check-issue.model';
+import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 
 /**
  * HealthCheckWorker
@@ -57,7 +58,8 @@ export class HealthCheckWorker implements OnModuleInit {
     private readonly fileHealthService: FileHealthService,
     private readonly containerCompatibilityService: ContainerCompatibilityService,
     private readonly ffmpegService: FfmpegService,
-    private readonly fileRelocatorService: FileRelocatorService
+    private readonly fileRelocatorService: FileRelocatorService,
+    private readonly fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -111,14 +113,22 @@ export class HealthCheckWorker implements OnModuleInit {
     }
   }
 
+  // Max times a CORRUPTED job can be auto-requeued before permanent FAIL
+  private readonly MAX_CORRUPTED_REQUEUE = 3;
+
   private async _autoRequeueCorruptedJobsImpl(): Promise<void> {
     try {
       // Find CORRUPTED jobs that are stuck (not actively being processed)
+      // Only requeue jobs that haven't exceeded the requeue cap
+      // Only requeue QUEUED and DETECTED jobs (not FAILED - those were explicitly failed)
       const corruptedJobs = await this.prisma.job.findMany({
         where: {
           healthStatus: FileHealthStatus.CORRUPTED,
           stage: {
-            in: [JobStage.QUEUED, JobStage.FAILED, JobStage.DETECTED],
+            in: [JobStage.QUEUED, JobStage.DETECTED],
+          },
+          corruptedRequeueCount: {
+            lt: this.MAX_CORRUPTED_REQUEUE,
           },
         },
         select: {
@@ -126,11 +136,73 @@ export class HealthCheckWorker implements OnModuleInit {
           fileLabel: true,
           healthMessage: true,
           healthCheckedAt: true,
+          corruptedRequeueCount: true,
+          filePath: true,
+          libraryId: true,
         },
       });
 
+      // Also find jobs that have hit the cap - permanently fail them
+      const exhaustedJobs = await this.prisma.job.findMany({
+        where: {
+          healthStatus: FileHealthStatus.CORRUPTED,
+          stage: {
+            in: [JobStage.QUEUED, JobStage.DETECTED],
+          },
+          corruptedRequeueCount: {
+            gte: this.MAX_CORRUPTED_REQUEUE,
+          },
+        },
+        select: {
+          id: true,
+          fileLabel: true,
+          corruptedRequeueCount: true,
+          filePath: true,
+          libraryId: true,
+          contentFingerprint: true,
+        },
+      });
+
+      // Permanently fail exhausted jobs
+      if (exhaustedJobs.length > 0) {
+        this.logger.warn(
+          `Auto-requeue: ${exhaustedJobs.length} job(s) exceeded max requeue count (${this.MAX_CORRUPTED_REQUEUE}) - marking FAILED permanently`
+        );
+
+        for (const job of exhaustedJobs) {
+          const errorMsg = `File is genuinely corrupted - auto-requeued ${job.corruptedRequeueCount} times without recovery. Manual intervention required.`;
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.FAILED,
+              failedAt: new Date(),
+              error: errorMsg,
+            },
+          });
+
+          // Record in cross-job failure tracking for auto-blacklist
+          try {
+            await this.fileFailureTracking.recordFailure(
+              job.filePath,
+              job.libraryId,
+              errorMsg,
+              job.contentFingerprint ?? undefined
+            );
+          } catch (trackingErr) {
+            this.logger.error(
+              `Failed to record failure tracking for ${job.fileLabel}`,
+              trackingErr instanceof Error ? trackingErr.stack : String(trackingErr)
+            );
+          }
+
+          this.logger.warn(
+            `✗ Auto-requeue cap reached: ${job.fileLabel} (${job.corruptedRequeueCount}/${this.MAX_CORRUPTED_REQUEUE}) → FAILED permanently`
+          );
+        }
+      }
+
       if (corruptedJobs.length === 0) {
-        this.logger.debug('Auto-requeue: No CORRUPTED jobs found');
+        this.logger.debug('Auto-requeue: No eligible CORRUPTED jobs found');
         return;
       }
 
@@ -139,22 +211,22 @@ export class HealthCheckWorker implements OnModuleInit {
       );
 
       // Reset jobs to DETECTED with UNKNOWN health status for re-check
-      // Note: healthScore, healthMessage, healthCheckedAt will be updated by health check worker
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: { in: corruptedJobs.map((j) => j.id) },
-        },
-        data: {
-          stage: JobStage.DETECTED,
-          healthStatus: FileHealthStatus.UNKNOWN,
-          error:
-            'Auto-requeued for re-validation (previous health check may have been a false positive)',
-        },
-      });
+      // Increment corruptedRequeueCount for each job individually
+      let resetCount = 0;
+      for (const job of corruptedJobs) {
+        await this.prisma.job.update({
+          where: { id: job.id },
+          data: {
+            stage: JobStage.DETECTED,
+            healthStatus: FileHealthStatus.UNKNOWN,
+            corruptedRequeueCount: { increment: 1 },
+            error: `Auto-requeued for re-validation (attempt ${job.corruptedRequeueCount + 1}/${this.MAX_CORRUPTED_REQUEUE})`,
+          },
+        });
+        resetCount++;
+      }
 
-      this.logger.log(
-        `✅ Auto-requeue: Reset ${result.count} job(s) to DETECTED for re-validation`
-      );
+      this.logger.log(`✅ Auto-requeue: Reset ${resetCount} job(s) to DETECTED for re-validation`);
 
       // Log sample of affected files for debugging
       const sampleFiles = corruptedJobs.slice(0, 5).map((j) => j.fileLabel);

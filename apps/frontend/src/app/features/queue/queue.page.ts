@@ -598,6 +598,47 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  protected unblockJob(jobId: string, event: Event): void {
+    event.stopPropagation();
+    this.queueApi
+      .unblacklistJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.toastService.success('File unblocked — it can now be retried');
+          this.refreshQueue(false);
+        },
+        error: () => {
+          this.toastService.error('Failed to unblock job');
+        },
+      });
+  }
+
+  protected hasRecoveryHistory(job: QueueJob): boolean {
+    return (job.stuckRecoveryCount || 0) > 0 || (job.corruptedRequeueCount || 0) > 0;
+  }
+
+  protected getRecoveryTooltip(job: QueueJob): string {
+    const parts: string[] = [];
+    if ((job.stuckRecoveryCount || 0) > 0) {
+      parts.push(
+        `${job.stuckRecoveryCount} stuck ${job.stuckRecoveryCount === 1 ? 'recovery' : 'recoveries'}`
+      );
+    }
+    if ((job.corruptedRequeueCount || 0) > 0) {
+      parts.push(
+        `${job.corruptedRequeueCount} corruption ${job.corruptedRequeueCount === 1 ? 'requeue' : 'requeues'}`
+      );
+    }
+    return parts.join(', ');
+  }
+
+  protected isApproachingBlacklist(job: QueueJob): boolean {
+    const totalFailures =
+      (job.retryCount || 0) + (job.corruptedRequeueCount || 0) + (job.stuckRecoveryCount || 0);
+    return totalFailures >= 3;
+  }
+
   protected recheckJob(jobId: string, event: Event): void {
     event.stopPropagation();
     this.queueApi
@@ -1825,11 +1866,15 @@ export class QueueComponent implements OnInit {
   /**
    * Get stuck job warning message
    */
-  protected getStuckJobMessage(job: QueueJob): string {
+  protected getStuckJobMessage(job: QueueJob, advanced = false): string {
     if (!job.startedAt) return 'Job may be stuck';
 
     const elapsedTime = this.getElapsedTime(job.startedAt);
-    return `Job appears stuck - no progress after ${elapsedTime}. The encoding process may have crashed or frozen. Check the error details or retry the job.`;
+    let message = `No progress for ${elapsedTime}. The system is monitoring this job and will auto-recover it if needed.`;
+    if (advanced && (job.stuckRecoveryCount || 0) > 0) {
+      message += ` Recovery count: ${job.stuckRecoveryCount}/5`;
+    }
+    return message;
   }
 
   /**
