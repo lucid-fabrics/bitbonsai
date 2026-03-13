@@ -267,24 +267,26 @@ describe('LicenseClientService', () => {
         })
       );
 
-      mockPrismaService.$transaction.mockImplementation(async (fn: () => Promise<unknown>) => {
-        const tx = {
-          license: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue({
-              key: 'BB-ACTIVATE-KEY',
-              email: 'user@test.com',
-              tier: 'PATREON_SUPPORTER',
-              status: LicenseStatus.ACTIVE,
-              maxNodes: 2,
-              maxConcurrentJobs: 3,
-              validUntil: null,
-            }),
-            update: jest.fn(),
-          },
-        };
-        return fn(tx);
-      });
+      mockPrismaService.$transaction.mockImplementation(
+        async (fn: (tx: unknown) => Promise<unknown>) => {
+          const tx = {
+            license: {
+              findFirst: jest.fn().mockResolvedValue(null),
+              create: jest.fn().mockResolvedValue({
+                key: 'BB-ACTIVATE-KEY',
+                email: 'user@test.com',
+                tier: 'PATREON_SUPPORTER',
+                status: LicenseStatus.ACTIVE,
+                maxNodes: 2,
+                maxConcurrentJobs: 3,
+                validUntil: null,
+              }),
+              update: jest.fn(),
+            },
+          };
+          return fn(tx);
+        }
+      );
 
       const result = await service.activateLicense('BB-ACTIVATE-KEY', 'user@test.com');
 

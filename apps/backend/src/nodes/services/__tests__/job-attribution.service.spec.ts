@@ -200,22 +200,27 @@ describe('JobAttributionService', () => {
 
       it('should return null if all nodes are outside schedule window', async () => {
         const job = createMockJob();
+        // Use a fixed past time (Tuesday Jan 1 2019 12:00) to make day-of-week deterministic
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2019-01-01T12:00:00Z')); // Tuesday = dayOfWeek 2
         const node1 = createMockNode({
           id: 'node-1',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 5, startHour: 9, endHour: 17 }] as any, // Friday only
+          scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
         });
         const node2 = createMockNode({
           id: 'node-2',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
+          scheduleWindows: [{ dayOfWeek: 0, startHour: 9, endHour: 17 }] as any, // Sunday only
         });
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
+        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
+        jest.useRealTimers();
         expect(result).toBeNull();
       });
 
@@ -1217,16 +1222,21 @@ describe('JobAttributionService', () => {
     it('should log when no nodes in schedule', async () => {
       const loggerSpy = jest.spyOn((service as any).logger, 'warn');
       const job = createMockJob();
+      // Use a fixed past time (Tuesday Jan 1 2019 12:00) to make day-of-week deterministic
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2019-01-01T12:00:00Z')); // Tuesday = dayOfWeek 2
       const offlineNode = createMockNode({
         scheduleEnabled: true,
-        scheduleWindows: [{ dayOfWeek: 5, startHour: 9, endHour: 17 }] as any,
+        scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
       });
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([offlineNode]);
+      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
 
       await service.findOptimalNode('job-1');
 
+      jest.useRealTimers();
       expect(loggerSpy).toHaveBeenCalledWith('No nodes available within their schedule windows');
     });
 

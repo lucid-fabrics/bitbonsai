@@ -77,7 +77,7 @@ describe('HealthService', () => {
       const result = await service.getBasicHealth();
 
       expect(result.status).toBe('ok');
-      expect(result.version).toBe('1.0.0');
+      expect(result.version).toBe('0.0.0-test');
       expect(result.uptime).toBeGreaterThanOrEqual(0);
       expect(result.timestamp).toBeInstanceOf(Date);
     });
@@ -88,7 +88,7 @@ describe('HealthService', () => {
       const result = await service.getBasicHealth();
 
       expect(result.status).toBe('error');
-      expect(result.version).toBe('1.0.0');
+      expect(result.version).toBe('0.0.0-test');
     });
   });
 
