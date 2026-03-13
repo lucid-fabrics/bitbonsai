@@ -14,8 +14,11 @@ import { AutoHealingService } from './services/auto-healing.service';
 import { BatchOperationsService } from './services/batch-operations.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { FileTransferService } from './services/file-transfer.service';
+import { JobBulkOperationsService } from './services/job-bulk-operations.service';
 import { JobCleanupService } from './services/job-cleanup.service';
+import { JobFileOperationsService } from './services/job-file-operations.service';
 import { JobHistoryService } from './services/job-history.service';
+import { JobMetricsService } from './services/job-metrics.service';
 import { JobRouterService } from './services/job-router.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
 import { QueueJobCrudService } from './services/queue-job-crud.service';
@@ -53,6 +56,9 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     FileFailureTrackingService,
     QueueJobCrudService,
     QueueJobStateService,
+    JobMetricsService,
+    JobBulkOperationsService,
+    JobFileOperationsService,
     QueueDelegationService,
     QueueProcessingService,
     JobCleanupService,
