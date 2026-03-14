@@ -235,7 +235,6 @@ export class EtaCalculatorService {
 
     const workers = node?.maxWorkers || 1;
     const currentTime = new Date();
-    const _activeSlots = 0;
 
     // Track when each slot becomes free
     const slotFreeTimes: Date[] = new Array(workers).fill(currentTime);

@@ -51,7 +51,7 @@ export class SharedStorageVerifierService {
       try {
         const result = await execAsync('mount');
         mountOutput = result.stdout;
-      } catch (_error) {
+      } catch {
         this.logger.error('Failed to get system mounts, skipping health check');
         return;
       }

@@ -35,14 +35,14 @@ export class EncodingPreviewService {
    * @param jobId - Job ID
    * @param tempFilePath - Path to temp encoded file
    * @param durationSeconds - Total video duration
-   * @param currentProgress - Current encoding progress (0-100)
+   * @param _currentProgress - Current encoding progress (0-100) - reserved for future use
    * @returns Array of preview image paths
    */
   async generatePreviews(
     jobId: string,
     tempFilePath: string,
     durationSeconds: number,
-    currentProgress: number
+    _currentProgress: number
   ): Promise<string[]> {
     try {
       // Create preview directory for this job

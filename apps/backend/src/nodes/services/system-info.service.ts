@@ -291,7 +291,7 @@ export class SystemInfoService {
       }
 
       return null;
-    } catch (_error) {
+    } catch {
       this.logger.debug('No GPU detected');
       return null;
     }

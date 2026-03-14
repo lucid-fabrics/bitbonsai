@@ -179,7 +179,7 @@ export class SystemResourceService {
     try {
       await fs.promises.access(filePath, fs.constants.R_OK);
       checks.push('File readable');
-    } catch (_error) {
+    } catch {
       throw new Error(
         `Cannot read source file: ${filePath}\n\n` +
           `Possible causes:\n` +

@@ -2072,7 +2072,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       if (encoding.process.pid === pid) {
         return {
           success: false,
-          message: `PID ${pid} is tracked by job ${Array.from(this.activeEncodings.entries()).find(([_, e]) => e.process.pid === pid)?.[0]}. Use cancel endpoint instead.`,
+          message: `PID ${pid} is tracked by job ${Array.from(this.activeEncodings.entries()).find(([, e]) => e.process.pid === pid)?.[0]}. Use cancel endpoint instead.`,
         };
       }
     }

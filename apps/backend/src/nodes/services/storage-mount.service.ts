@@ -297,7 +297,7 @@ export class StorageMountService {
       // Use grep with fixed-string mode (-F) to prevent regex injection
       const { stdout } = await execAsync(`mount | grep -F ${escapeShellArg(safeMountPoint)}`);
       return stdout.includes(safeMountPoint);
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -308,7 +308,7 @@ export class StorageMountService {
   private async ensureMountPoint(mountPoint: string): Promise<void> {
     try {
       await fs.access(mountPoint);
-    } catch (_error) {
+    } catch {
       // Directory doesn't exist, create it
       this.logger.debug(`Creating mount point directory: ${mountPoint}`);
       await fs.mkdir(mountPoint, { recursive: true, mode: 0o755 });
@@ -326,7 +326,7 @@ export class StorageMountService {
       let fstabContent = '';
       try {
         fstabContent = await fs.readFile(fstabPath, 'utf-8');
-      } catch (_error) {
+      } catch {
         // fstab doesn't exist, will create it
         this.logger.debug('/etc/fstab does not exist, will create it');
       }

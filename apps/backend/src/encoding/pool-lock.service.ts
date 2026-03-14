@@ -95,7 +95,7 @@ export class PoolLockService implements OnModuleDestroy {
 
         try {
           await Promise.race([existingLock.promise, timeoutPromise]);
-        } catch (_error) {
+        } catch {
           attempt++;
           if (attempt >= maxRetries) {
             throw new Error(

@@ -178,7 +178,6 @@ export class HealthService {
 
       const usedPercent = Number.parseFloat(parts[4]?.replace('%', '') || '0');
       const available = parts[3] || 'Unknown';
-      const _used = parts[2] || 'Unknown';
 
       let status: 'ok' | 'warning' | 'critical' = 'ok';
       if (usedPercent > 90) {

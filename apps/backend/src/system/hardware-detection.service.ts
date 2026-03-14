@@ -146,7 +146,7 @@ export class HardwareDetectionService {
           driverVersion,
         };
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('NVIDIA GPU not detected');
     }
 
@@ -191,7 +191,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('Intel Quick Sync not detected');
     }
 
@@ -225,7 +225,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('AMD GPU not detected');
     }
 
@@ -254,7 +254,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('Apple Silicon not detected');
     }
 

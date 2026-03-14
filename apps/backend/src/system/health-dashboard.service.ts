@@ -490,7 +490,7 @@ export class HealthDashboardService {
         gpuDetected: gpus.length > 0,
         gpuModel: gpus.length > 0 ? gpus[0].model : undefined,
       };
-    } catch (_error) {
+    } catch {
       return {
         accelerationType: 'CPU',
         cpuCores: os.cpus().length,
