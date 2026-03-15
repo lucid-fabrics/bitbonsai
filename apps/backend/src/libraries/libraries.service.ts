@@ -922,7 +922,7 @@ export class LibrariesService {
 
       // Collect successful job creations
       const successful = results.filter(
-        (r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null
+        (r): r is PromiseFulfilledResult<Job> => r.status === 'fulfilled' && r.value !== null
       );
 
       jobs.push(...successful.map((r) => r.value));
