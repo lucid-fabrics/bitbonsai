@@ -1,0 +1,175 @@
+---
+title: Get Help
+description: Support channels and community resources
+icon: life-ring
+---
+
+Need help with BitBonsai? Here's where to find answers and connect with the community.
+
+---
+
+## Community Support
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/bitbonsai">
+    Chat with users and developers in real-time. Best for quick questions and troubleshooting.
+  </Card>
+
+  <Card title="GitHub Discussions" icon="github" href="https://github.com/bitbonsai/bitbonsai/discussions">
+    Ask questions, share setups, and discuss features. Searchable for future reference.
+  </Card>
+</CardGroup>
+
+---
+
+## Report Issues
+
+<CardGroup cols={2}>
+  <Card title="Bug Reports" icon="bug" href="https://github.com/bitbonsai/bitbonsai/issues/new?template=bug_report.md">
+    Found a bug? Report it on GitHub with details about your setup.
+  </Card>
+
+  <Card title="Feature Requests" icon="lightbulb" href="https://github.com/bitbonsai/bitbonsai/issues/new?template=feature_request.md">
+    Have an idea? Suggest new features or improvements.
+  </Card>
+</CardGroup>
+
+---
+
+## Before Asking for Help
+
+<Steps>
+  <Step title="Check the FAQ">
+    Most common questions are answered in the [FAQ](/faq). Check there first.
+  </Step>
+
+  <Step title="Review the Glossary">
+    Unfamiliar terms? See the [Glossary](/glossary) for simple explanations.
+  </Step>
+
+  <Step title="Check Logs">
+    Include relevant error messages from Docker logs when asking for help:
+
+    ```bash
+    docker compose logs bitbonsai-backend
+    docker compose logs bitbonsai-frontend
+    ```
+  </Step>
+
+  <Step title="Share Your Setup">
+    When asking for help, include:
+    - Operating system (Unraid, Ubuntu, Windows WSL2, etc.)
+    - Docker version (`docker --version`)
+    - BitBonsai version (see Settings → About in UI)
+    - Relevant docker-compose.yml configuration
+  </Step>
+</Steps>
+
+---
+
+## Self-Service Resources
+
+<AccordionGroup>
+  <Accordion title="Installation Problems" icon="download">
+    **Common issues:**
+    - Container won't start → Check [Docker Installation Troubleshooting](/installation/docker#troubleshooting)
+    - Permission errors → See [Volume Mount Setup](/installation/docker#volume-mounts)
+    - GPU not detected → Review [Hardware Acceleration Guide](/installation/requirements#hardware-transcoding-optional)
+
+    **Where to get help:**
+    - Discord #installation-help channel
+    - GitHub Discussions → Installation category
+  </Accordion>
+
+  <Accordion title="Encoding Issues" icon="film">
+    **Common issues:**
+    - Jobs stuck in QUEUED → Check [Understanding Jobs](/guides/understanding-jobs)
+    - Slow encoding speed → See [Performance Optimization](/advanced/troubleshooting)
+    - Corrupted output files → Review [Self-Healing Systems](/guides/understanding-jobs#self-healing-recovery)
+
+    **Where to get help:**
+    - Discord #encoding-help channel
+    - GitHub Discussions → Encoding category
+  </Accordion>
+
+  <Accordion title="Multi-Node Setup" icon="server">
+    **Common issues:**
+    - Child node won't connect → Check [Multi-Node Setup Guide](/advanced/multi-node)
+    - NFS mount errors → See [Shared Storage Configuration](/advanced/multi-node#shared-storage-setup)
+    - Load balancing not working → Review [Distribution System](/advanced/multi-node#job-distribution)
+
+    **Where to get help:**
+    - Discord #multi-node channel
+    - GitHub Discussions → Multi-Node category
+  </Accordion>
+
+  <Accordion title="GPU Problems" icon="microchip">
+    **Common issues:**
+    - GPU not detected by container → See [Docker GPU Passthrough](/installation/requirements#docker-gpu-passthrough)
+    - FFmpeg not using GPU → Check [Hardware Encoding Verification](/installation/requirements#hardware-transcoding-optional)
+    - Poor GPU encoding quality → Review [Codec Selection Guide](/advanced/codec-selection)
+
+    **Where to get help:**
+    - Discord #gpu-help channel
+    - GitHub Discussions → Hardware category
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Contribution & Development
+
+Want to contribute to BitBonsai?
+
+<CardGroup cols={2}>
+  <Card title="Contributing Guide" icon="code-pull-request" href="https://github.com/bitbonsai/bitbonsai/blob/main/CONTRIBUTING.md">
+    Learn how to contribute code, documentation, or bug fixes.
+  </Card>
+
+  <Card title="Development Setup" icon="code" href="https://github.com/bitbonsai/bitbonsai#development">
+    Set up local development environment for backend and frontend.
+  </Card>
+</CardGroup>
+
+---
+
+## Response Times
+
+<Note>
+**Expected response times:**
+
+- **Discord**: Usually within hours during business hours (EST timezone)
+- **GitHub Issues**: 1-3 business days
+- **GitHub Discussions**: 1-2 business days
+
+BitBonsai is maintained by a small team. For urgent production issues, use Discord for fastest response.
+</Note>
+
+---
+
+## Commercial Support
+
+BitBonsai is open source and free to use. For organizations requiring dedicated support, contact us via:
+
+- **Email**: support@bitbonsai.io
+- **GitHub Sponsors**: [Support the project](https://github.com/sponsors/bitbonsai)
+
+Commercial support includes:
+- Priority issue resolution
+- Custom feature development
+- Multi-node cluster setup assistance
+- Performance tuning for large libraries (10k+ videos)
+
+---
+
+## Stay Updated
+
+<CardGroup cols={2}>
+  <Card title="Release Notes" icon="rocket" href="https://github.com/bitbonsai/bitbonsai/releases">
+    Follow releases to see what's new in each version.
+  </Card>
+
+  <Card title="Roadmap" icon="map" href="https://github.com/bitbonsai/bitbonsai/projects">
+    See planned features and vote on priorities.
+  </Card>
+</CardGroup>
