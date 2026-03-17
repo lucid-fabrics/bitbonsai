@@ -1,0 +1,381 @@
+<div class="storage-wizard">
+  <!-- Header -->
+  <div class="wizard-header">
+    <h2>{{ 'storage.title' | transloco }}</h2>
+    <button class="close-btn" (click)="close()">
+      <fa-icon [icon]="['fas', 'xmark']"></fa-icon>
+    </button>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="wizard-progress">
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="progressPercentage"></div>
+    </div>
+    <div class="progress-steps">
+      @for (step of steps; track $index; let i = $index) {
+        <div
+          class="progress-step"
+          [class.active]="i === currentStep"
+          [class.completed]="step.completed">
+          <div class="step-circle">
+            @if (step.completed) {
+              <fa-icon [icon]="['fas', 'check']"></fa-icon>
+            } @else {
+              <span>{{ i + 1 }}</span>
+            }
+          </div>
+          <span class="step-label">{{ step.title }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Step Content -->
+  <div class="wizard-content">
+    <!-- Step 1: Environment Check -->
+    @if (currentStepData.id === 'environment') {
+      <div class="step-content">
+        <h3>
+          <fa-icon [icon]="['fas', 'server']" class="me-2"></fa-icon>
+          Environment Detection
+        </h3>
+
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-label">{{ 'storage.sourceNode' | transloco }}</div>
+            <div class="info-value">{{ sourceNodeName }}</div>
+          </div>
+
+          <div class="info-card">
+            <div class="info-label">{{ 'storage.targetNode' | transloco }}</div>
+            <div class="info-value">{{ targetNodeName }}</div>
+          </div>
+
+          @if (targetEnvironment) {
+            <div class="info-card">
+              <div class="info-label">{{ 'storage.containerType' | transloco }}</div>
+              <div class="info-value">
+                <span class="badge badge-secondary">
+                  {{ targetEnvironment.containerType }}
+                </span>
+              </div>
+            </div>
+          }
+
+          @if (targetEnvironment) {
+            <div class="info-card">
+              <div class="info-label">{{ 'storage.canMountNfs' | transloco }}</div>
+              <div class="info-value">
+                <fa-icon
+                  [icon]="['fas', canMountNFS ? 'check-circle' : 'times-circle']"
+                  [class.text-success]="canMountNFS"
+                  [class.text-danger]="!canMountNFS"
+                  class="me-2"></fa-icon>
+                {{ canMountNFS ? ('common.yes' | transloco) : ('common.no' | transloco) }}
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="recommendation-box">
+          <fa-icon [icon]="['fas', 'lightbulb']" class="recommendation-icon"></fa-icon>
+          <div>
+            <strong>{{ 'storage.recommendedMethod' | transloco : { method: recommendation.recommended } }}</strong>
+            <p>{{ recommendation.reason }}</p>
+          </div>
+        </div>
+
+        @if (recommendation.warning) {
+          <div class="warning-box">
+            <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-icon"></fa-icon>
+            <div>
+              <strong>{{ 'storage.warning' | transloco }}</strong>
+              <p>{{ recommendation.warning }}</p>
+            </div>
+          </div>
+        }
+
+        @if (needsPrivilegedMode) {
+          <div class="action-box">
+            <fa-icon [icon]="['fas', 'info-circle']" class="action-icon"></fa-icon>
+            <div>
+              <strong>LXC Container Detected</strong>
+              <p>
+                Your child node is running in an LXC container without privileged mode.
+                You have three options:
+              </p>
+              <ul>
+                <li><strong>{{ 'storage.option1' | transloco }}</strong></li>
+                <li><strong>{{ 'storage.option2' | transloco }}</strong></li>
+                <li><strong>{{ 'storage.option3' | transloco }}</strong></li>
+              </ul>
+              <p>
+                See <a href="/docs/unraid#lxc-container-configuration" target="_blank">LXC Configuration Guide</a>
+                for detailed instructions.
+              </p>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Step 2: NFS Configuration -->
+    @if (currentStepData.id === 'nfs-config') {
+      <div class="step-content">
+        <h3>
+          <fa-icon [icon]="['fas', 'network-wired']" class="me-2"></fa-icon>
+          NFS Configuration
+        </h3>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.step1Title' | transloco }}</h4>
+          <div class="code-block">
+            <p>{{ 'storage.step1Desc' | transloco }}</p>
+            <ol>
+              <li>{{ 'storage.step1Item1' | transloco }}</li>
+              <li>{{ 'storage.step1Item2' | transloco }}</li>
+              <li>{{ 'storage.step1Item3' | transloco }}</li>
+              <li>{{ 'storage.step1Item4' | transloco }}</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.step2Title' | transloco }}</h4>
+          <div class="code-block">
+            <code>showmount -e 192.168.1.100</code>
+            <p class="code-output">
+              Expected output:<br>
+              /mnt/user/media *<br>
+              /mnt/user/Downloads *
+            </p>
+          </div>
+        </div>
+
+        @if (isLXCContainer && !isPrivileged) {
+          <div class="instruction-section">
+            <h4>{{ 'storage.step3Title' | transloco }}</h4>
+            <div class="code-block">
+              <code># Stop container</code><br>
+              <code>pct stop &lt;container-id&gt;</code><br>
+              <br>
+              <code># Edit config</code><br>
+              <code>nano /etc/pve/lxc/&lt;container-id&gt;.conf</code><br>
+              <br>
+              <code># Add this line:</code><br>
+              <code>unprivileged: 0</code><br>
+              <br>
+              <code># Save and start</code><br>
+              <code>pct start &lt;container-id&gt;</code>
+            </div>
+            <div class="alert alert-warning">
+              <fa-icon [icon]="['fas', 'shield-alt']"></fa-icon>
+              <strong>{{ 'storage.securityNote' | transloco }}</strong>
+              Only use for trusted encoding nodes on isolated networks.
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Step 3: Mount Shares -->
+    @if (currentStepData.id === 'mount-shares') {
+      <div class="step-content">
+        <h3>
+          <fa-icon [icon]="['fas', 'folder-open']" class="me-2"></fa-icon>
+          Mount NFS Shares
+        </h3>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.createShares' | transloco }}</h4>
+          <p>{{ 'storage.createSharesDesc' | transloco }}</p>
+          <div class="action-buttons">
+            <button class="btn btn-primary btn-lg">
+              <fa-icon [icon]="['fas', 'plus']" class="me-2"></fa-icon>
+              {{ 'storage.autoCreateShares' | transloco }}
+            </button>
+          </div>
+        </div>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.manualConfig' | transloco }}</h4>
+          <p>{{ 'storage.manualConfigDesc' | transloco }}</p>
+          <ol>
+            <li>{{ 'storage.manualItem1' | transloco }}</li>
+            <li>{{ 'storage.manualItem2' | transloco : { node: targetNodeName } }}</li>
+            <li>{{ 'storage.manualItem3' | transloco }}</li>
+            <li>{{ 'storage.manualItem4' | transloco }}</li>
+            <li>{{ 'storage.manualItem5' | transloco }}</li>
+          </ol>
+        </div>
+      </div>
+    }
+
+    <!-- Step 4: rsync Configuration -->
+    @if (currentStepData.id === 'rsync-config') {
+      <div class="step-content">
+        <h3>
+          <fa-icon [icon]="['fas', 'sync-alt']" class="me-2"></fa-icon>
+          rsync File Transfer
+        </h3>
+
+        <div class="info-banner success">
+          <fa-icon [icon]="['fas', 'check-circle']" class="me-2"></fa-icon>
+          Good news! rsync file transfer requires no configuration.
+        </div>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.howItWorks' | transloco }}</h4>
+          <ol>
+            <li>
+              <strong>{{ 'storage.jobAssigned' | transloco : { node: targetNodeName } }}</strong>
+            </li>
+            <li>
+              <strong>{{ 'storage.fileTransfer' | transloco }}</strong>
+            </li>
+            <li>
+              <strong>{{ 'storage.encoding' | transloco : { node: targetNodeName } }}</strong>
+            </li>
+            <li>
+              <strong>{{ 'storage.resultTransfer' | transloco : { source: sourceNodeName } }}</strong>
+            </li>
+            <li>
+              <strong>{{ 'storage.cleanup' | transloco }}</strong>
+            </li>
+          </ol>
+        </div>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.performance' | transloco }}</h4>
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-label">5GB File</div>
+              <div class="info-value">~45 seconds</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">10GB File</div>
+              <div class="info-value">~90 seconds</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">{{ 'storage.totalOverhead' | transloco }}</div>
+              <div class="info-value">3-5%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.enableRsync' | transloco }}</h4>
+          <p>{{ 'storage.enableRsyncDesc' | transloco }}</p>
+          <div class="action-buttons">
+            <button class="btn btn-primary btn-lg">
+              <fa-icon [icon]="['fas', 'toggle-on']" class="me-2"></fa-icon>
+              {{ 'storage.enableFileTransfer' | transloco }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Step 5: Verify & Test -->
+    @if (currentStepData.id === 'verify') {
+      <div class="step-content">
+        <h3>
+          <fa-icon [icon]="['fas', 'check-circle']" class="me-2"></fa-icon>
+          {{ 'storage.verifyConfig' | transloco }}
+        </h3>
+
+        <div class="instruction-section">
+          <h4>{{ 'storage.testStorage' | transloco }}</h4>
+          <div class="test-grid">
+            <div class="test-card">
+              <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+              <div class="test-info">
+                <strong>{{ 'storage.checkingEnv' | transloco }}</strong>
+                <p>{{ 'storage.checkingEnvDesc' | transloco }}</p>
+              </div>
+              <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
+            </div>
+
+            @if (recommendation.recommended === StorageMethod.NFS) {
+              <div class="test-card">
+                <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+                <div class="test-info">
+                  <strong>{{ 'storage.testingNfs' | transloco }}</strong>
+                  <p>{{ 'storage.testingNfsDesc' | transloco : { node: targetNodeName } }}</p>
+                </div>
+                <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
+              </div>
+            }
+
+            @if (recommendation.recommended === StorageMethod.RSYNC) {
+              <div class="test-card">
+                <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+                <div class="test-info">
+                  <strong>{{ 'storage.testingRsync' | transloco }}</strong>
+                  <p>{{ 'storage.testingRsyncDesc' | transloco }}</p>
+                </div>
+                <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
+              </div>
+            }
+
+            <div class="test-card">
+              <fa-icon [icon]="['fas', 'spinner']" spin class="test-icon"></fa-icon>
+              <div class="test-info">
+                <strong>{{ 'storage.testEncoding' | transloco }}</strong>
+                <p>{{ 'storage.testEncodingDesc' | transloco : { node: targetNodeName } }}</p>
+              </div>
+              <button class="btn btn-sm btn-outline">{{ 'common.test' | transloco }}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="success-banner">
+          <fa-icon [icon]="['fas', 'check-circle']" class="success-icon"></fa-icon>
+          <div>
+            <strong>{{ 'storage.configComplete' | transloco }}</strong>
+            <p>
+              Storage is configured for {{ recommendation.recommended }} mode.
+              You can now assign encoding jobs to {{ targetNodeName }}.
+            </p>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Footer Actions -->
+  <div class="wizard-footer">
+    <button
+      class="btn btn-outline-secondary"
+      (click)="previousStep()"
+      [disabled]="isFirstStep">
+      <fa-icon [icon]="['fas', 'arrow-left']" class="me-2"></fa-icon>
+      {{ 'common.back' | transloco }}
+    </button>
+
+    <button
+      class="btn btn-secondary"
+      (click)="close()">
+      {{ 'common.cancel' | transloco }}
+    </button>
+
+    @if (!isLastStep) {
+      <button
+        class="btn btn-primary"
+        (click)="nextStep()">
+        {{ 'common.next' | transloco }}
+        <fa-icon [icon]="['fas', 'arrow-right']" class="ms-2"></fa-icon>
+      </button>
+    }
+
+    @if (isLastStep) {
+      <button
+        class="btn btn-success"
+        (click)="complete()">
+        <fa-icon [icon]="['fas', 'check']" class="me-2"></fa-icon>
+        {{ 'setup.complete' | transloco }}
+      </button>
+    }
+  </div>
+</div>

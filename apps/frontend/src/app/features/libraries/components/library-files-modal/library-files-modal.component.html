@@ -1,0 +1,166 @@
+<!-- Modal Overlay -->
+@if (isOpen) {
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="header-content">
+        <i class="fas fa-folder-open header-icon"></i>
+        <div class="header-text">
+          <h2>{{ 'libraryFiles.title' | transloco }}</h2>
+          @if (libraryFiles$ | async; as files) {
+            <p class="subtitle">{{ files.libraryName }} - {{ files.totalFiles }} {{ 'common.files' | transloco }}</p>
+          }
+        </div>
+      </div>
+      <button class="close-btn" (click)="closeModal()" [disabled]="isLoading$ | async">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Search and Filters Bar -->
+    @if ((libraryFiles$ | async) && !(isLoading$ | async) && !(error$ | async)) {
+    <div class="filters-bar">
+      <div class="search-box">
+        <i class="fas fa-search search-icon"></i>
+        <input
+          type="text"
+          placeholder="{{ 'libraryFiles.search' | transloco }}"
+          [value]="searchTerm$ | async"
+          (input)="onSearchChange($event)"
+          class="search-input"
+        />
+        @if ((searchTerm$ | async)) {
+        <button class="clear-search-btn" (click)="clearSearch()">
+          <i class="fas fa-times"></i>
+        </button>
+        }
+      </div>
+      <div class="stats-summary">
+        <span class="stat">
+          <i class="fas fa-file-video"></i>
+          {{ (libraryFiles$ | async)?.totalFiles || 0 }} {{ 'common.files' | transloco }}
+        </span>
+        <span class="stat">
+          <i class="fas fa-database"></i>
+          {{ BytesBo.formatBytes(+(libraryFiles$ | async)?.totalSizeBytes! || 0) }}
+        </span>
+      </div>
+    </div>
+    }
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <!-- Loading State -->
+      @if (isLoading$ | async) {
+      <div class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>{{ 'libraryFiles.scanning' | transloco }}</p>
+        <p class="loading-note">{{ 'libraryFiles.mayTakeMinutes' | transloco }}</p>
+      </div>
+      }
+
+      <!-- Error State -->
+      @else if (error$ | async; as error) {
+      <div class="error-state">
+        <i class="fas fa-exclamation-triangle error-icon"></i>
+        <h3>{{ 'libraryFiles.failedToLoad' | transloco }}</h3>
+        <p>{{ error }}</p>
+        <button class="btn btn-primary" (click)="closeModal()">
+          <i class="fas fa-times"></i>
+          {{ 'common.close' | transloco }}
+        </button>
+      </div>
+      }
+
+      <!-- Files Table -->
+      @else if (libraryFiles$ | async; as libraryData) {
+        @if (getFilteredFiles().length === 0) {
+        <!-- Empty State -->
+        <div class="empty-state">
+          @if (searchTerm$ | async) {
+          <i class="fas fa-search empty-icon"></i>
+          <h3>{{ 'libraryFiles.noFilesFound' | transloco }}</h3>
+          <p>{{ 'libraryFiles.noFilesMatch' | transloco }} "{{ searchTerm$ | async }}"</p>
+          <button class="btn btn-secondary" (click)="clearSearch()">
+            <i class="fas fa-times"></i>
+            {{ 'libraryFiles.clearSearch' | transloco }}
+          </button>
+          } @else {
+          <i class="fas fa-folder-open empty-icon"></i>
+          <h3>{{ 'libraryFiles.noFiles' | transloco }}</h3>
+          <p>{{ 'libraryFiles.noVideoFiles' | transloco }}</p>
+          }
+        </div>
+        } @else {
+        <!-- Files Table -->
+        <div class="files-table-container">
+          <table class="files-table">
+            <thead>
+              <tr>
+                <th class="sortable" (click)="setSortBy('name')">
+                  <span>{{ 'libraryFilesModal.fileName' | transloco }}</span>
+                  <i class="fas sort-icon" [ngClass]="getSortIcon('name')"></i>
+                </th>
+                <th class="sortable" (click)="setSortBy('codec')">
+                  <span>{{ 'libraryFilesModal.codec' | transloco }}</span>
+                  <i class="fas sort-icon" [ngClass]="getSortIcon('codec')"></i>
+                </th>
+                <th class="sortable" (click)="setSortBy('resolution')">
+                  <span>{{ 'libraryFilesModal.resolution' | transloco }}</span>
+                  <i class="fas sort-icon" [ngClass]="getSortIcon('resolution')"></i>
+                </th>
+                <th class="sortable" (click)="setSortBy('size')">
+                  <span>{{ 'libraryFilesModal.size' | transloco }}</span>
+                  <i class="fas sort-icon" [ngClass]="getSortIcon('size')"></i>
+                </th>
+                <th>{{ 'libraryFilesModal.duration' | transloco }}</th>
+                <th>{{ 'libraryFilesModal.health' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (file of getFilteredFiles(); track file.filePath) {
+              <tr class="file-row">
+                <td class="file-name">
+                  <i class="fas fa-file-video file-icon"></i>
+                  <span [title]="file.fileName">{{ file.fileName }}</span>
+                </td>
+                <td>
+                  <span class="codec-badge" [ngClass]="getFileCodecBadgeClass(file.codec)">
+                    {{ file.codec }}
+                  </span>
+                </td>
+                <td class="resolution">{{ file.resolution }}</td>
+                <td class="size">{{ BytesBo.formatBytes(file.sizeBytes) }}</td>
+                <td class="duration">{{ DurationBo.formatDuration(file.duration) }}</td>
+                <td>
+                  <span
+                    class="health-badge"
+                    [ngClass]="getHealthStatusClass(file.healthStatus)"
+                    [title]="file.healthMessage || file.healthStatus"
+                  >
+                    <i class="fas" [ngClass]="getHealthStatusIcon(file.healthStatus)"></i>
+                    {{ file.healthStatus }}
+                  </span>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }
+      }
+    </div>
+
+    <!-- Modal Footer -->
+    @if ((libraryFiles$ | async) && !(isLoading$ | async) && !(error$ | async)) {
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+        {{ 'common.close' | transloco }}
+      </button>
+    </div>
+    }
+  </div>
+</div>
+}

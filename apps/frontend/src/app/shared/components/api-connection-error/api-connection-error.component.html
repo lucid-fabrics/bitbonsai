@@ -1,0 +1,64 @@
+@if (showError$ | async) {
+  <div class="error-backdrop">
+    <div class="error-container">
+      <div class="error-header">
+        <div class="header-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h2>{{ 'connectionError.title' | transloco }}</h2>
+      </div>
+
+      <div class="error-body">
+        <p class="error-message">
+          The application cannot connect to the BitBonsai server. This could be
+          due to:
+        </p>
+
+        <div class="troubleshooting-section">
+          <h3>
+            <i class="fas fa-wrench"></i>
+            {{ 'connectionError.troubleshooting' | transloco }}
+          </h3>
+          <ul class="troubleshooting-list">
+            <li>
+              <strong>{{
+                'connectionError.checkServerRunning' | transloco
+              }}</strong>
+              <p>{{ 'connectionError.serverRunningDesc' | transloco }}</p>
+            </li>
+            <li>
+              <strong>{{ 'connectionError.verifyNetwork' | transloco }}</strong>
+              <p>{{ 'connectionError.networkDesc' | transloco }}</p>
+            </li>
+            <li>
+              <strong>{{ 'connectionError.checkConfig' | transloco }}</strong>
+              <p>{{ 'connectionError.configDesc' | transloco }}</p>
+            </li>
+            <li>
+              <strong>{{
+                'connectionError.reviewFirewall' | transloco
+              }}</strong>
+              <p>{{ 'connectionError.firewallDesc' | transloco }}</p>
+            </li>
+          </ul>
+        </div>
+
+        <div class="help-banner">
+          <i class="fas fa-info-circle"></i>
+          <span>{{ 'connectionError.docsLink' | transloco }}</span>
+        </div>
+      </div>
+
+      <div class="error-footer">
+        <button class="btn btn-secondary" (click)="dismiss()">
+          <i class="fas fa-times"></i>
+          {{ 'connectionError.dismiss' | transloco }}
+        </button>
+        <button class="btn btn-primary" (click)="reload()">
+          <i class="fas fa-sync-alt"></i>
+          {{ 'connectionError.retry' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

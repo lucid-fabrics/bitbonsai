@@ -1,0 +1,174 @@
+<form [formGroup]="libraryForm" (ngSubmit)="onSubmit()" class="library-form">
+  <div class="form-header">
+    <h2>{{ isEditMode ? ('libraries.editLibrary' | transloco) : ('libraries.addNewLibrary' | transloco) }}</h2>
+  </div>
+
+  <div class="form-body">
+    <!-- Name Field -->
+    <div class="form-group">
+      <label for="name">
+        <i class="fas fa-tag"></i>
+        {{ 'libraryForm.libraryNameStar' | transloco }}
+      </label>
+      <input
+        id="name"
+        type="text"
+        formControlName="name"
+        placeholder="e.g., Main Movie Collection"
+        [class.error]="nameControl?.invalid && nameControl?.touched"
+      />
+      @if (nameControl?.invalid && nameControl?.touched) {
+        <div class="validation-error">
+          @if (nameControl?.errors?.['required']) {
+            <span>{{ 'library.nameRequired' | transloco }}</span>
+          }
+          @if (nameControl?.errors?.['maxlength']) {
+            <span>{{ 'library.nameMaxLength' | transloco }}</span>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Path Field -->
+    <div class="form-group">
+      <label for="path">
+        <i class="fas fa-folder-open"></i>
+        {{ 'libraryForm.libraryPathStar' | transloco }}
+      </label>
+      <div class="path-input-wrapper" #pathWrapper (click)="onWrapperClick($event)">
+        <input
+          id="path"
+          type="text"
+          formControlName="path"
+          placeholder="/mnt/user/media/Movies"
+          [class.error]="pathControl?.invalid && pathControl?.touched"
+          (focus)="onPathFocus()"
+          (input)="onPathInput($event)"
+        />
+        @if (showFolderBrowser) {
+          <app-path-selector
+            [apiUrl]="apiUrl"
+            (pathSelected)="onFolderSelected($event)"
+            (closed)="closeFolderBrowser()"
+          />
+        }
+      </div>
+      <div class="field-hint">{{ 'library.pathHint' | transloco }}</div>
+      @if (pathControl?.invalid && pathControl?.touched) {
+        <div class="validation-error">
+          @if (pathControl?.errors?.['required']) {
+            <span>{{ 'library.pathRequired' | transloco }}</span>
+          }
+          @if (pathControl?.errors?.['pattern']) {
+            <span>{{ 'library.pathAbsolute' | transloco }}</span>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Media Type Field -->
+    <div class="form-group">
+      <label for="mediaType">
+        <i class="fas fa-film"></i>
+        {{ 'libraryForm.mediaTypeStar' | transloco }}
+      </label>
+      <select
+        id="mediaType"
+        formControlName="mediaType"
+        [class.error]="mediaTypeControl?.invalid && mediaTypeControl?.touched"
+      >
+        @for (type of mediaTypes; track type) {
+          <option [value]="type">
+            {{ type.replace('_', ' ') }}
+          </option>
+        }
+      </select>
+      <div class="field-hint">{{ 'library.contentType' | transloco }}</div>
+    </div>
+
+    <!-- Default Policy Field -->
+    <div class="form-group">
+      <label for="defaultPolicyId">
+        <i class="fas fa-cog"></i>
+        {{ 'libraryForm.defaultEncodingPolicy' | transloco }}
+      </label>
+      @if (policies$ | async; as policies) {
+        <select
+          id="defaultPolicyId"
+          formControlName="defaultPolicyId">
+          <option [value]="null">{{ 'libraryForm.noDefaultPolicy' | transloco }}</option>
+          @for (policy of policies; track policy.id) {
+            <option [value]="policy.id">
+              {{ policy.name }} ({{ policy.targetCodec }})
+            </option>
+          }
+        </select>
+      }
+      <div class="field-hint">
+        <i class="fas fa-info-circle"></i>
+        {{ 'libraryForm.defaultPolicyHint' | transloco }}
+      </div>
+    </div>
+
+    <!-- Enabled Toggle -->
+    <div class="form-group toggle-group">
+      <label for="enabled">
+        <i class="fas fa-power-off"></i>
+        {{ 'libraryForm.enableLibrary' | transloco }}
+      </label>
+      <div class="toggle-wrapper">
+        <input
+          id="enabled"
+          type="checkbox"
+          formControlName="enabled"
+          class="toggle-checkbox"
+        />
+        <label for="enabled" class="toggle-label">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-status">{{ enabledControl?.value ? ('libraries.enabled' | transloco) : ('libraries.disabled' | transloco) }}</span>
+      </div>
+      <div class="field-hint">
+        <i class="fas fa-info-circle"></i>
+        <strong>{{ 'library.whenEnabled' | transloco }}</strong> {{ 'library.scanEnabledDesc' | transloco }}
+        <strong>{{ 'library.whenDisabled' | transloco }}</strong> {{ 'library.scanDisabledDesc' | transloco }}
+      </div>
+    </div>
+
+    <!-- Watch Enabled Toggle -->
+    <div class="form-group toggle-group">
+      <label for="watchEnabled">
+        <i class="fas fa-eye"></i>
+        {{ 'libraries.autoDetectNewFiles' | transloco }}
+      </label>
+      <div class="toggle-wrapper">
+        <input
+          id="watchEnabled"
+          type="checkbox"
+          formControlName="watchEnabled"
+          class="toggle-checkbox"
+        />
+        <label for="watchEnabled" class="toggle-label">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-status">{{ watchEnabledControl?.value ? ('libraries.watching' | transloco) : ('libraries.notWatching' | transloco) }}</span>
+      </div>
+      <div class="field-hint">
+        <i class="fas fa-info-circle"></i>
+        <strong>{{ 'library.whenEnabled' | transloco }}</strong> {{ 'library.watchEnabledDesc' | transloco }}
+        <strong>{{ 'library.whenDisabled' | transloco }}</strong> {{ 'library.watchDisabledDesc' | transloco }}
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <button type="button" class="btn btn-secondary" (click)="onCancel()">
+      <i class="fas fa-times"></i>
+      {{ 'common.cancel' | transloco }}
+    </button>
+    <button type="submit" class="btn btn-primary" [disabled]="libraryForm.invalid">
+      <i class="fas fa-check"></i>
+      {{ isEditMode ? ('libraries.updateLibrary' | transloco) : ('libraries.createLibrary' | transloco) }}
+    </button>
+  </div>
+</form>

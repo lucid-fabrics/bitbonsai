@@ -1,0 +1,293 @@
+<div class="modal-backdrop" (click)="onClose()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header__content">
+        <h2 class="modal-header__title">
+          <fa-icon [icon]="['fas', 'folder-open']"></fa-icon>
+          {{ 'storageShares.title' | transloco }} - {{ node.name }}
+        </h2>
+        <p class="modal-header__subtitle">{{ 'storageShares.title' | transloco }}</p>
+      </div>
+      <button class="modal-header__close-btn" (click)="onClose()" type="button">
+        <fa-icon [icon]="['fas', 'times']"></fa-icon>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Error Message -->
+      @if (error()) {
+        <div class="error-message">
+          <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
+          <span class="error-message__text">{{ error() }}</span>
+          <button class="error-message__close-btn" (click)="error.set(null)" type="button">
+            <fa-icon [icon]="['fas', 'times']"></fa-icon>
+          </button>
+        </div>
+      }
+
+      <!-- Auto-Detect Info Message -->
+      @if (autoDetectMessage()) {
+        <div class="info-message">
+          <fa-icon [icon]="['fas', 'info-circle']" class="info-message__icon"></fa-icon>
+          <span class="info-message__text" [style.white-space]="'pre-line'">{{ autoDetectMessage() }}</span>
+          <button class="info-message__close-btn" (click)="autoDetectMessage.set(null)" type="button">
+            <fa-icon [icon]="['fas', 'times']"></fa-icon>
+          </button>
+        </div>
+      }
+
+      <!-- Action Buttons -->
+      <div class="action-bar">
+        @if (node.role === 'MAIN') {
+          <button class="action-bar__button action-bar__button--primary" (click)="autoExportDockerVolumes()" [disabled]="loading()">
+            <fa-icon [icon]="['fas', 'bolt']"></fa-icon>
+            {{ 'storageShares2.detectExportDockerVolumes' | transloco }}
+          </button>
+        }
+        @if (node.role === 'LINKED') {
+          <button class="action-bar__button action-bar__button--primary" (click)="autoDetect()" [disabled]="loading()">
+            <fa-icon [icon]="['fas', 'search']"></fa-icon>
+            {{ 'storageShares2.autoDetectShares' | transloco }}
+          </button>
+        }
+        <button class="action-bar__button action-bar__button--secondary" (click)="toggleCreateForm()" [disabled]="loading()">
+          <fa-icon [icon]="['fas', showCreateForm() ? 'times' : 'plus']"></fa-icon>
+          {{ showCreateForm() ? ('common.cancel' | transloco) : ('storageShares2.addShareManually' | transloco) }}
+        </button>
+        <button class="action-bar__button action-bar__button--secondary" (click)="loadShares()" [disabled]="loading()">
+          <fa-icon [icon]="['fas', 'sync-alt']"></fa-icon>
+          {{ 'common.refresh' | transloco }}
+        </button>
+      </div>
+
+      <!-- Create Form -->
+      @if (showCreateForm()) {
+        <div class="create-form">
+          <h3 class="create-form__title">{{ 'storageShares.addShare' | transloco }}</h3>
+          <form [formGroup]="createForm" (ngSubmit)="createShare()">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-group__label">{{ 'storageShares.shareName' | transloco }}</label>
+                <input type="text" class="form-group__control" formControlName="name" placeholder="e.g., Media Library" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-group__label">{{ 'storageShares.protocol' | transloco }}</label>
+                <select class="form-group__control" formControlName="protocol">
+                  <option [value]="StorageProtocol.NFS">NFS</option>
+                  <option [value]="StorageProtocol.SMB">SMB/CIFS</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-group__label">{{ 'storageShares.serverAddress' | transloco }}</label>
+                <input type="text" class="form-group__control" formControlName="serverAddress" placeholder="e.g., 192.168.1.100" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-group__label">{{ 'storageShares.sharePath' | transloco }}</label>
+                <div class="path-input-wrapper" #pathWrapper (click)="onWrapperClick($event)">
+                  <input
+                    type="text"
+                    class="form-group__control"
+                    formControlName="sharePath"
+                    [placeholder]="createForm.get('protocol')?.value === StorageProtocol.NFS ? '/mnt/user/media' : 'media'"
+                    (focus)="onPathFocus()"
+                  />
+                  @if (showFolderBrowser()) {
+                    <app-path-selector
+                      [apiUrl]="apiUrl"
+                      (pathSelected)="onFolderSelected($event)"
+                      (closed)="closeFolderBrowser()"
+                    />
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-group__label">
+                  {{ 'storageShares2.mountPointAutoGenerated' | transloco }}
+                  <fa-icon [icon]="['fas', 'info-circle']" class="info-icon"
+                    title="This is automatically generated from the share path"></fa-icon>
+                </label>
+                <input type="text" class="form-group__control form-group__control--readonly" formControlName="mountPoint" readonly />
+              </div>
+
+              <div class="form-group form-group--checkbox">
+                <label class="form-group__label">
+                  <input type="checkbox" class="form-group__control" formControlName="readOnly" />
+                  {{ 'storageShares2.readOnly' | transloco }}
+                </label>
+                <label class="form-group__label">
+                  <input type="checkbox" class="form-group__control" formControlName="autoMount" />
+                  {{ 'storageShares2.autoMount' | transloco }}
+                </label>
+              </div>
+            </div>
+
+            <!-- SMB-specific fields -->
+            @if (createForm.get('protocol')?.value === StorageProtocol.SMB) {
+              <div class="smb-section">
+                <h4 class="smb-section__title">{{ 'storageShares2.smbConfiguration' | transloco }}</h4>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-group__label">{{ 'storageShares.username' | transloco }}</label>
+                    <input type="text" class="form-group__control" formControlName="smbUsername" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-group__label">{{ 'storageShares.password' | transloco }}</label>
+                    <input type="password" class="form-group__control" formControlName="smbPassword" />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-group__label">{{ 'storageShares.domain' | transloco }}</label>
+                    <input type="text" class="form-group__control" formControlName="smbDomain" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-group__label">{{ 'storageShares2.smbVersion' | transloco }}</label>
+                    <select class="form-group__control" formControlName="smbVersion">
+                      <option value="2.0">2.0</option>
+                      <option value="2.1">2.1</option>
+                      <option value="3.0">3.0</option>
+                      <option value="3.1.1">3.1.1</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <div class="form-actions">
+              <button type="submit" class="form-actions__button" [disabled]="creating() || createForm.invalid">
+                <fa-icon [icon]="['fas', creating() ? 'spinner' : 'save']" [animation]="creating() ? 'spin' : undefined"></fa-icon>
+                {{ creating() ? ('storageShares2.creating' | transloco) : ('storageShares2.createShare' | transloco) }}
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- Loading State -->
+      @if (loading()) {
+        <div class="loading-state">
+          <fa-icon [icon]="['fas', 'spinner']" animation="spin" size="2x" class="loading-state__icon"></fa-icon>
+          <p class="loading-state__message">{{ 'storageShares.loading' | transloco }}</p>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!loading() && shares().length === 0 && !showCreateForm()) {
+        <div class="empty-state">
+          <fa-icon [icon]="['fas', 'folder-open']" size="3x" class="empty-state__icon"></fa-icon>
+          <h3 class="empty-state__title">{{ 'storageShares.noShares' | transloco }}</h3>
+          <p class="empty-state__description">
+            @if (node.role === 'LINKED') {
+              {{ 'storageShares2.autoDetectLinked' | transloco }}
+            } @else {
+              {{ 'storageShares2.autoDetectMain' | transloco }}
+            }
+          </p>
+        </div>
+      }
+
+      <!-- Shares List -->
+      @if (!loading() && shares().length > 0) {
+        <div class="shares-list">
+          <h3 class="shares-list__title">{{ 'storageShares.configuredShares' | transloco : { count: shares().length } }}</h3>
+          @for (share of shares(); track share.id) {
+            <div class="share-card" [ngClass]="getStatusClass(share.status)">
+              <div class="share-card__header">
+                <div class="share-card__info">
+                  <fa-icon [icon]="['fas', share.protocol === StorageProtocol.NFS ? 'network-wired' : 'server']" class="share-card__icon"></fa-icon>
+                  <div class="share-card__name">
+                    <strong class="share-card__name-text">
+                      {{ share.name }}
+                      @if (share.autoManaged) {
+                        <span class="share-card__badge share-card__badge--auto">
+                          <fa-icon [icon]="['fas', 'robot']"></fa-icon>
+                          {{ 'storageShares2.autoManaged' | transloco }}
+                        </span>
+                      }
+                    </strong>
+                    <span class="share-card__protocol">{{ share.protocol }}</span>
+                  </div>
+                </div>
+                <div class="share-card__status" [ngClass]="'share-card__status--' + share.status.toLowerCase()">
+                  <fa-icon
+                    [icon]="['fas', getStatusIcon(share.status)]"
+                    [animation]="share.status === StorageShareStatus.TESTING ? 'spin' : undefined"
+                  ></fa-icon>
+                  {{ share.status }}
+                </div>
+              </div>
+
+              <div class="share-card__details">
+                <div class="share-card__detail-row">
+                  <span class="share-card__detail-label">{{ 'storageShares.export' | transloco }}</span>
+                  <span class="share-card__detail-value">{{ share.exportPath }}</span>
+                </div>
+                <div class="share-card__detail-row">
+                  <span class="share-card__detail-label">{{ 'storageShares.mountPoint' | transloco }}</span>
+                  <span class="share-card__detail-value">{{ share.mountPoint }}</span>
+                </div>
+                @if (share.isMounted && share.usedPercent != null) {
+                  <div class="share-card__detail-row">
+                    <span class="share-card__detail-label">{{ 'storageShares.usage' | transloco }}</span>
+                    <span class="share-card__detail-value">
+                      {{ formatBytes(share.totalSizeBytes) }} total,
+                      {{ share.usedPercent?.toFixed(1) }}% used
+                    </span>
+                  </div>
+                }
+                @if (share.lastError) {
+                  <div class="share-card__detail-row share-card__detail-row--error">
+                    <span class="share-card__detail-label">{{ 'storageShares.error' | transloco }}</span>
+                    <span class="share-card__detail-value">{{ share.lastError }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="share-card__actions">
+                @if (!share.isMounted) {
+                  <button
+                    class="share-card__button share-card__button--success"
+                    (click)="mountShare(share)"
+                    [disabled]="share.status === StorageShareStatus.TESTING"
+                  >
+                    <fa-icon [icon]="['fas', 'plug']"></fa-icon>
+                    {{ 'storageShares2.mount' | transloco }}
+                  </button>
+                } @else {
+                  <button
+                    class="share-card__button share-card__button--warning"
+                    (click)="unmountShare(share)"
+                    [disabled]="share.status === StorageShareStatus.TESTING"
+                  >
+                    <fa-icon [icon]="['fas', 'eject']"></fa-icon>
+                    {{ 'storageShares2.unmount' | transloco }}
+                  </button>
+                }
+                <button
+                  class="share-card__button share-card__button--danger"
+                  (click)="deleteShare(share)"
+                  [disabled]="share.isMounted || share.status === StorageShareStatus.TESTING || share.autoManaged"
+                  [title]="share.autoManaged ? 'Auto-managed shares cannot be deleted manually' : ''"
+                >
+                  <fa-icon [icon]="['fas', 'trash']"></fa-icon>
+                  {{ 'common.delete' | transloco }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

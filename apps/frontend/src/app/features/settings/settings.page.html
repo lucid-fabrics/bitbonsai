@@ -1,0 +1,100 @@
+<div class="settings-container">
+  <div class="page-header">
+    <h1>{{ 'settings.title' | transloco }}</h1>
+    <p class="subtitle">{{ 'settings.subtitle' | transloco }}</p>
+  </div>
+
+  <div class="settings-layout">
+    <!-- Vertical Tab Navigation -->
+    <nav class="tab-nav">
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'license']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-key"></i>
+        <span>License</span>
+      </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'environment']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-server"></i>
+        <span>Environment</span>
+      </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'system']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-cog"></i>
+        <span>System</span>
+      </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'resources']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-microchip"></i>
+        <span>Resources</span>
+      </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'advanced']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-flask"></i>
+        <span>Advanced</span>
+      </a>
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'integrations']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-plug"></i>
+        <span>Integrations</span>
+      </a>
+      <!-- Debug tab: Development OR advanced mode in production -->
+      @if (showDebugTab()) {
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'debug']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-stethoscope"></i>
+        <span>Diagnostics</span>
+      </a>
+      }
+      <a
+        class="tab-button"
+        [routerLink]="['/settings', 'docs']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{exact: false}"
+        tabindex="0"
+      >
+        <i class="fa fa-book"></i>
+        <span>Documentation</span>
+      </a>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

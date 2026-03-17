@@ -1,0 +1,404 @@
+<!-- Modal Overlay -->
+@if (isOpen) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="header-content">
+          <i class="fas fa-plus-circle header-icon"></i>
+          <div class="header-text">
+            <h2>{{ 'addFiles.title' | transloco }}</h2>
+            @if ((viewMode$ | async) === 'library-selection') {
+              <p class="subtitle">{{ 'addFiles.selectLibrary' | transloco }}</p>
+              <div class="cache-info">
+                <span class="cache-age">
+                  <i class="fas fa-clock"></i>
+                  {{ 'addFiles.cache' | transloco }}
+                  {{ cacheAgeDisplay$ | async }}
+                  @if (cacheMetadata$ | async; as metadata) {
+                    <i
+                      class="fas fa-info-circle cache-tooltip"
+                      [title]="
+                        'Library data is cached for ' +
+                        metadata.cacheTtlMinutes +
+                        ' minutes to improve performance. Click refresh to reload or configure TTL in Settings.'
+                      "
+                    ></i>
+                  }
+                </span>
+                <button
+                  class="btn-refresh"
+                  (click)="refreshCache()"
+                  [disabled]="
+                    (isRefreshing$ | async) || (isLoadingLibraries$ | async)
+                  "
+                >
+                  <i
+                    class="fas fa-sync"
+                    [class.fa-spin]="
+                      (isRefreshing$ | async) || (isLoadingLibraries$ | async)
+                    "
+                  ></i>
+                  {{ 'addFiles.refresh' | transloco }}
+                </button>
+              </div>
+            } @else if ((viewMode$ | async) === 'file-selection') {
+              <p class="subtitle">
+                {{ (selectedLibrary$ | async)?.libraryName }}
+              </p>
+            }
+          </div>
+        </div>
+        <button
+          class="close-btn"
+          (click)="closeModal()"
+          [disabled]="isCreatingJobs$ | async"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body">
+        <!-- View: Library Selection -->
+        @if ((viewMode$ | async) === 'library-selection') {
+          <!-- Hidden subscription to trigger API call -->
+          <span [hidden]="true">{{ libraryPreviews$ | async }}</span>
+
+          <!-- Loading State -->
+          @if (isLoadingLibraries$ | async) {
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>{{ 'addFiles.loadingLibraries' | transloco }}</p>
+            </div>
+          }
+
+          <!-- Error State -->
+          @else if (librariesError$ | async; as error) {
+            <div class="error-state">
+              <i class="fas fa-exclamation-triangle error-icon"></i>
+              <h3>{{ 'addFiles.failedToLoadLibraries' | transloco }}</h3>
+              <p>{{ error }}</p>
+              <button class="btn btn-primary" (click)="closeModal()">
+                <i class="fas fa-times"></i>
+                Close
+              </button>
+            </div>
+          }
+
+          <!-- Libraries List -->
+          @else if (libraryPreviews$ | async; as previews) {
+            <!-- Empty State -->
+            @if (previews.length === 0) {
+              <div class="empty-state">
+                <i class="fas fa-folder-open empty-icon"></i>
+                <h3>{{ 'addFiles.noFilesToEncode' | transloco }}</h3>
+                <p>{{ 'addFiles.librariesOptimized' | transloco }}</p>
+              </div>
+            }
+
+            <!-- Library Cards -->
+            @else {
+              <div class="library-grid">
+                @for (preview of previews; track preview.libraryId) {
+                  <div
+                    class="library-card"
+                    (click)="selectLibrary(preview)"
+                    [class.disabled]="preview.needsEncodingCount === 0"
+                  >
+                    <div class="library-icon">
+                      <i class="fas fa-folder"></i>
+                    </div>
+                    <div class="library-info">
+                      <h4>{{ preview.libraryName }}</h4>
+                      <div class="library-stats">
+                        <div class="stat">
+                          <i class="fas fa-file-video"></i>
+                          <span class="stat-value">{{
+                            preview.needsEncodingCount
+                          }}</span>
+                          <span class="stat-label">{{
+                            'addFiles.filesReady' | transloco
+                          }}</span>
+                        </div>
+                        <div class="stat">
+                          <i class="fas fa-hdd"></i>
+                          <span class="stat-value">{{
+                            BytesBo.formatBytes(+preview.totalSizeBytes)
+                          }}</span>
+                        </div>
+                        @if (preview.targetCodec) {
+                          <div class="stat">
+                            <i class="fas fa-cog"></i>
+                            <span class="stat-value">{{
+                              preview.targetCodec
+                            }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                    @if (preview.needsEncodingCount > 0) {
+                      <div class="library-action">
+                        <i class="fas fa-chevron-right"></i>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          }
+        }
+
+        <!-- View: File Selection -->
+        @if (
+          (viewMode$ | async) === 'file-selection' &&
+            (selectedLibrary$ | async);
+          as library
+        ) {
+          <div class="file-selection-container">
+            <!-- Back Button -->
+            <button class="back-btn" (click)="backToLibrarySelection()">
+              <i class="fas fa-arrow-left"></i>
+              {{ 'addFiles.backToLibraries' | transloco }}
+            </button>
+
+            <!-- Policy Selector -->
+            @if (library.availablePolicies.length > 1) {
+              <div class="policy-selector">
+                <label for="policy-select">
+                  <i class="fas fa-cog"></i>
+                  Encoding Policy
+                </label>
+                <select
+                  id="policy-select"
+                  [value]="selectedPolicyId$ | async"
+                  (change)="selectedPolicyId$.next($any($event.target).value)"
+                >
+                  @for (policy of library.availablePolicies; track policy.id) {
+                    <option [value]="policy.id">
+                      {{ policy.name }} ({{ policy.preset }})
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Selection Controls -->
+            <div class="selection-controls">
+              <div class="selection-info">
+                <i class="fas fa-check-circle"></i>
+                <span
+                  >{{ getSelectedFileCount() }} /
+                  {{ getTotalFileCount() }} files selected</span
+                >
+              </div>
+              <div class="selection-buttons">
+                <button class="btn btn-sm" (click)="selectAllFiles()">
+                  <i class="fas fa-check-double"></i>
+                  Select All
+                </button>
+                <button class="btn btn-sm" (click)="deselectAllFiles()">
+                  <i class="fas fa-times-circle"></i>
+                  Deselect All
+                </button>
+              </div>
+            </div>
+
+            <!-- File List -->
+            <div class="file-list">
+              @for (file of library.needsEncoding; track file.filePath) {
+                <div
+                  class="file-item"
+                  [class.selected]="isFileSelected(file.filePath)"
+                  [class.disabled]="!file.canAddToQueue"
+                  (click)="
+                    file.canAddToQueue && toggleFileSelection(file.filePath)
+                  "
+                >
+                  <div class="file-checkbox">
+                    <i
+                      class="fas"
+                      [class.fa-check-square]="isFileSelected(file.filePath)"
+                      [class.fa-square]="!isFileSelected(file.filePath)"
+                    ></i>
+                  </div>
+                  <div class="file-details">
+                    <div class="file-name">
+                      <i class="fas fa-file-video"></i>
+                      {{ file.fileName }}
+                    </div>
+                    <div class="file-meta">
+                      <span class="meta-item">
+                        <span
+                          [class]="
+                            'codec-badge ' + getFileCodecBadgeClass(file)
+                          "
+                        >
+                          {{ file.codec }}
+                        </span>
+                      </span>
+                      <span class="meta-item">
+                        <i class="fas fa-expand-alt"></i>
+                        {{ file.resolution }}
+                      </span>
+                      <span class="meta-item">
+                        <i class="fas fa-hdd"></i>
+                        {{ BytesBo.formatBytes(file.sizeBytes) }}
+                      </span>
+                      @if (file.duration > 0) {
+                        <span class="meta-item">
+                          <i class="fas fa-clock"></i>
+                          {{ file.duration / 60 | number: '1.0-0' }} min
+                        </span>
+                      }
+                    </div>
+                    @if (!file.canAddToQueue && file.blockedReason) {
+                      <div class="file-blocked">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ file.blockedReason }}
+                      </div>
+                    }
+                    @if (
+                      file.canAddToQueue &&
+                      file.jobStage &&
+                      (file.jobStage === 'FAILED' ||
+                        file.jobStage === 'CANCELLED')
+                    ) {
+                      <div class="file-info">
+                        <i class="fas fa-info-circle"></i>
+                        @if (file.jobStage === 'FAILED') {
+                          Previous encoding failed - can retry
+                        } @else {
+                          Previously cancelled - can retry
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- View: Creating Jobs -->
+        @if ((viewMode$ | async) === 'creating-jobs') {
+          <div class="creating-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <h3>{{ 'addFiles.creatingJobs' | transloco }}</h3>
+            <p>{{ 'addFiles.pleaseWait' | transloco }}</p>
+          </div>
+        }
+
+        <!-- View: Results -->
+        @if (
+          (viewMode$ | async) === 'results' && (creationResult$ | async);
+          as result
+        ) {
+          <div class="results-container">
+            <div class="success-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <h3>{{ 'addFiles.jobsCreated' | transloco }}</h3>
+
+            <div class="result-stats">
+              <div class="result-card success">
+                <div class="result-icon">
+                  <i class="fas fa-plus-circle"></i>
+                </div>
+                <div class="result-content">
+                  <div class="result-value">{{ result.jobsCreated }}</div>
+                  <div class="result-label">
+                    {{ 'addFiles.jobsCreatedLabel' | transloco }}
+                  </div>
+                </div>
+              </div>
+
+              @if (result.filesSkipped > 0) {
+                <div class="result-card warning">
+                  <div class="result-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </div>
+                  <div class="result-content">
+                    <div class="result-value">{{ result.filesSkipped }}</div>
+                    <div class="result-label">
+                      {{ 'addFiles.filesSkipped' | transloco }}
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (result.skippedFiles.length > 0) {
+              <div class="skipped-files">
+                <h4>
+                  <i class="fas fa-info-circle"></i>
+                  Skipped Files ({{ result.skippedFiles.length }})
+                </h4>
+                <div class="skipped-list">
+                  @for (
+                    skipped of result.skippedFiles.slice(0, 10);
+                    track skipped.path
+                  ) {
+                    <div class="skipped-item">
+                      <div class="skipped-path">
+                        {{ skipped.path.split('/').pop() }}
+                      </div>
+                      <div class="skipped-reason">{{ skipped.reason }}</div>
+                    </div>
+                  }
+                  @if (result.skippedFiles.length > 10) {
+                    <div class="skipped-more">
+                      ... and {{ result.skippedFiles.length - 10 }} more
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <!-- Library Selection Footer -->
+        @if ((viewMode$ | async) === 'library-selection') {
+          <button class="btn btn-secondary" (click)="closeModal()">
+            <i class="fas fa-times"></i>
+            {{ 'common.cancel' | transloco }}
+          </button>
+        }
+
+        <!-- File Selection Footer -->
+        @if ((viewMode$ | async) === 'file-selection') {
+          <button class="btn btn-secondary" (click)="backToLibrarySelection()">
+            <i class="fas fa-arrow-left"></i>
+            {{ 'common.back' | transloco }}
+          </button>
+          <button
+            class="btn btn-success"
+            (click)="addToQueue()"
+            [disabled]="!canAddToQueue()"
+          >
+            <i class="fas fa-plus"></i>
+            Add {{ getSelectedFileCount() }} File{{
+              getSelectedFileCount() !== 1 ? 's' : ''
+            }}
+            to Queue
+          </button>
+        }
+
+        <!-- Results Footer -->
+        @if ((viewMode$ | async) === 'results') {
+          <button class="btn btn-secondary" (click)="closeModal()">
+            <i class="fas fa-times"></i>
+            {{ 'common.close' | transloco }}
+          </button>
+          <button class="btn btn-primary" (click)="viewQueue()">
+            <i class="fas fa-list"></i>
+            {{ 'queue.title' | transloco }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

@@ -1,17 +1,103 @@
-# OS
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
+
+# System files
 .DS_Store
 Thumbs.db
 
-# Editor
-.idea/
-.vscode/
-*.swp
-*.swo
+# Private/internal documentation (.claude/ files except agents, metrics, and workflows)
+.claude/*
+!.claude/agents/
+!.claude/agent-metrics.json
+!.claude/workflows/
 
-# Dependencies
-node_modules/
-package-lock.json
+# Development environment markers
+.env.unraid
+.env.docker
 
-# Misc
-*.log
-*.tmp
+# Generated proxy configuration (use dev-setup.sh to generate)
+proxy.conf.json
+
+# AI-generated documentation (never commit these)
+*REFACTORING*.md
+*COMPLETE*.md
+*REPORT*.md
+*SUMMARY*.md
+*SESSION*.md
+*TRANSCRIPT*.txt
+*conversation*.txt
+*-lets-*.txt
+AI_*.md
+PRISMA_SCHEMA_COMPLETE.md
+
+# Nx cache
+.nx/
+
+# Test media files (generated, not committed)
+/test-media/
+/test-data/
+
+# Test results and reports (generated, not committed)
+/playwright-report/
+/test-results/
+/.last-run.json
+**/junit.xml
+**/results.json
+
+# Prisma / Database
+*.db
+*.db-journal
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Release scripts (version backup for rollback)
+scripts/release/.version-backup
+
+.angular
+
+# Claude Code CLI (local only)
+.claude/
+.specify/
+
+# Note: CLAUDE.md is now tracked in git (contains project-specific AI instructions)
+# .github is tracked (contains CI/CD workflows)
+output.json

@@ -1,0 +1,255 @@
+@use 'sass:color';
+@use '../../../../styles/variables' as *;
+
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background: $bg-primary;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  border-right: 1px solid $border-primary;
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid $border-primary;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: $text-white;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  display: block;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.node-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-secondary;
+  text-align: center;
+  padding: 4px 8px;
+  background: rgba($text-secondary, 0.1);
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+}
+
+.node-role-badge {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: $bg-tertiary;
+
+  &.main-node {
+    background: color.adjust($accent-primary, $lightness: -30%, $saturation: -20%);
+    border-color: color.adjust($accent-primary, $lightness: -10%);
+
+    .role-label {
+      color: $accent-primary;
+      font-weight: 600;
+    }
+  }
+
+  &.child-node {
+    background: color.adjust($text-secondary, $lightness: -35%, $saturation: -20%);
+    border-color: color.adjust($text-secondary, $lightness: -20%);
+
+    .role-label {
+      color: $text-secondary;
+      font-weight: 600;
+    }
+  }
+}
+
+.role-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.main-node-info {
+  margin-top: 4px;
+  font-size: 10px;
+  color: $text-tertiary;
+  line-height: 1.3;
+}
+
+.notification-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 0;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $border-secondary;
+    border-radius: 3px;
+
+    &:hover {
+      background: color.adjust($border-secondary, $lightness:  10%);
+    }
+  }
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: $text-secondary;
+  text-decoration: none;
+  transition: $transition-fast;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+
+  &:hover {
+    background: $bg-tertiary;
+    color: $text-white;
+  }
+
+  &.active {
+    background: $bg-tertiary;
+    color: $text-white;
+    border-left-color: $accent-primary;
+  }
+}
+
+.nav-icon {
+  font-size: 18px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid $border-primary;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid $border-primary;
+  border-radius: 6px;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: $transition-fast;
+  width: 100%;
+
+  &:hover {
+    background: $bg-tertiary;
+    color: $text-white;
+    border-color: $border-secondary;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.logout-icon {
+  font-size: 16px;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.version {
+  font-size: 12px;
+  color: $text-tertiary;
+  text-align: center;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+  }
+
+  .logo-text,
+  .node-name,
+  .nav-label,
+  .logout-label,
+  .version {
+    display: none;
+  }
+
+  .sidebar-header {
+    padding: 15px 10px;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 12px 10px;
+  }
+
+  .nav-icon {
+    font-size: 24px;
+  }
+
+  .logout-btn {
+    justify-content: center;
+    padding: 12px 10px;
+  }
+
+  .logout-icon {
+    font-size: 20px;
+  }
+
+  .sidebar-footer {
+    padding: 15px 10px;
+  }
+}

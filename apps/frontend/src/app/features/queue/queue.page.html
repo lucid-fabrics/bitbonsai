@@ -1,0 +1,2152 @@
+<div class="queue-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-header__title">{{ 'queue.title' | transloco }}</h1>
+      <p class="page-header__subtitle">
+        {{ 'queue2.subtitle' | transloco }}
+        <button (click)="openAddFilesModal()" class="btn btn-primary btn-add-files"><i class="fas fa-plus btn-primary__icon"></i>
+          {{ 'queue.addFiles' | transloco }}
+        </button>
+      </p>
+    </div>
+    <!-- Advanced Mode: Bulk Actions -->
+    @if (advancedMode()) {
+      <div class="header-actions">
+        @if ((queueData$ | async)?.stats?.codecMatchCount && (queueData$ | async)!.stats!.codecMatchCount > 0) {
+          <button (click)="openSkipCodecMatchDialog()" class="btn btn-info" title="Skip encoding for files already in target codec">
+            <i class="fas fa-forward"></i>
+            {{ 'queue2.skipCodecMatch' | transloco }} ({{ (queueData$ | async)!.stats!.codecMatchCount }})
+          </button>
+          <button (click)="openForceEncodeCodecMatchDialog()" class="btn btn-warning" title="Force re-encode files already in target codec (for re-compression)">
+            <i class="fas fa-compress-arrows-alt"></i>
+            {{ 'queue2.reEncodeAnyway' | transloco }} ({{ (queueData$ | async)!.stats!.codecMatchCount }})
+          </button>
+        }
+        @if ((queueData$ | async)?.stats?.cancelled && (queueData$ | async)!.stats!.cancelled > 0) {
+          <button (click)="openRetryAllDialog()" class="btn btn-success">
+            <i class="fas fa-redo"></i>
+            {{ 'queue2.retryAllCancelled' | transloco }} ({{ (queueData$ | async)!.stats!.cancelled }})
+          </button>
+        }
+        @if ((queueData$ | async)?.stats?.failed && (queueData$ | async)!.stats!.failed > 0) {
+          <button (click)="openRetryFailedDialog()" class="btn btn-success">
+            <i class="fas fa-redo"></i>
+            {{ 'queue2.retryFailedJobs' | transloco }} ({{ (queueData$ | async)!.stats!.failed }})
+          </button>
+        }
+        @if ((queueData$ | async)?.stats?.queued && (queueData$ | async)!.stats!.queued > 0) {
+          <button (click)="openCancelAllDialog()" class="btn btn-danger">
+            <i class="fas fa-times-circle"></i>
+            {{ 'queue2.cancelAllQueued' | transloco }} ({{ (queueData$ | async)!.stats!.queued }})
+          </button>
+          <button (click)="rebalanceJobs()" class="btn btn-info" title="Redistribute queued jobs across available nodes">
+            <i class="fas fa-balance-scale"></i>
+            {{ 'queue2.rebalanceJobs' | transloco }}
+          </button>
+        }
+        <button (click)="openClearJobsDialog(selectedStatus !== 'ALL' ? [selectedStatus] : undefined)" class="btn btn-warning btn-clear-jobs">
+          <i class="fas fa-trash-alt"></i>
+          @if (selectedStatus !== 'ALL') {
+            {{ 'queue2.clearJobs' | transloco : { status: selectedStatus } }}
+          } @else {
+            {{ 'queue2.clearAllJobs' | transloco }}
+          }
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Disk Space Warning Banner -->
+  <app-disk-space-warning-banner></app-disk-space-warning-banner>
+
+  <!-- Node Status Bar -->
+  @if (nodeCapacity$ | async; as nodes) {
+    @if (nodes.length > 0) {
+      <div class="node-status-bar">
+        @for (node of nodes; track node.nodeId) {
+          @if (advancedMode()) {
+            <div class="node-status" [class]="getNodeStatusClass(node)"
+                 bbTooltip
+                 [tooltipTitle]="node.nodeName + ' Details'"
+                 [tooltipContent]="getNodeTooltipContent(node)"
+                 tooltipPlacement="bottom">
+              <div class="node-status__indicator">
+                <i [class]="getNodeStatusIcon(node)"></i>
+              </div>
+              <div class="node-status__info">
+                <span class="node-status__name">{{ node.nodeName }}</span>
+                <span class="node-status__label">{{ getNodeStatusLabel(node) }}</span>
+              </div>
+              <div class="node-status__workers">
+                <span class="workers-count">{{ node.activeJobs }}</span>
+                <span class="workers-max">/ {{ node.maxWorkers }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="node-status node-status--simple" [class]="getNodeStatusClass(node)">
+              <div class="node-status__indicator">
+                <i class="fas fa-circle" style="font-size: 8px"></i>
+              </div>
+              <div class="node-status__info">
+                <span class="node-status__name">{{ node.nodeName }}</span>
+                <span class="node-status__label">{{ getNodeStatusLabel(node) }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+  }
+
+  <!-- Compact Progress Dashboard -->
+  @if (queueData$ | async; as queueData) {
+    <div class="progress-dashboard compact">
+      <div class="pipeline-container">
+        <!-- Detected Stage (only show if > 0) -->
+        @if (queueData.stats.detected > 0) {
+          <div class="pipeline-stage detected clickable" (click)="onStatusFilterChange(JobStatus.DETECTED)">
+            <i class="fas fa-search"></i>
+            <span class="count">{{ queueData.stats.detected }}</span>
+            <span class="label">{{ 'queue2.detected' | transloco }}</span>
+          </div>
+          <i class="fas fa-chevron-right arrow"></i>
+        }
+
+        <!-- Health Check Stage (only show if > 0) -->
+        @if (queueData.stats.healthCheck > 0) {
+          <div class="pipeline-stage health-check clickable" (click)="onStatusFilterChange(JobStatus.HEALTH_CHECK)">
+            <i class="fas fa-heartbeat fa-pulse"></i>
+            <span class="count">{{ queueData.stats.healthCheck }}</span>
+            <span class="label">{{ 'queue2.healthCheck' | transloco }}</span>
+          </div>
+          <i class="fas fa-chevron-right arrow"></i>
+        }
+
+        <!-- Queued Stage -->
+        <div class="pipeline-stage queued clickable" (click)="onStatusFilterChange(JobStatus.QUEUED)">
+          <i class="fas fa-clock"></i>
+          <span class="count">{{ queueData.stats.queued }}</span>
+          <span class="label">{{ 'queue2.queued' | transloco }}</span>
+        </div>
+        <i class="fas fa-chevron-right arrow"></i>
+
+        <!-- Encoding Stage -->
+        <div class="pipeline-stage encoding clickable" [class.active]="queueData.stats.encoding > 0" (click)="onStatusFilterChange(JobStatus.ENCODING)">
+          @if (queueData.stats.encoding > 0) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-pause-circle"></i>
+          }
+          <span class="count">{{ queueData.stats.encoding }}</span>
+          <span class="label">{{ 'queue2.encoding' | transloco }}</span>
+        </div>
+        <i class="fas fa-chevron-right arrow"></i>
+
+        <!-- Completed Stage -->
+        <div class="pipeline-stage completed clickable" (click)="onStatusFilterChange(JobStatus.COMPLETED)">
+          <i class="fas fa-check-circle"></i>
+          <span class="count">{{ queueData.stats.completed }}</span>
+          <span class="label">{{ 'queue2.done' | transloco }}</span>
+          @if (Number.parseInt(queueData.stats.totalSavedBytes) > 0) {
+            <span class="saved">{{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes)) }}</span>
+          }
+        </div>
+
+        <!-- Alerts -->
+        @if (queueData.stats.needsDecision > 0) {
+          <div class="pipeline-alert needs-decision clickable" (click)="onStatusFilterChange(JobStatus.NEEDS_DECISION)">
+            <i class="fas fa-hand-paper"></i>
+            <span class="count">{{ queueData.stats.needsDecision }}</span>
+            <span class="label">{{ 'queue2.needsInput' | transloco }}</span>
+          </div>
+        }
+
+        @if (queueData.stats.failed > 0) {
+          <div class="pipeline-alert failed clickable" (click)="onStatusFilterChange(JobStatus.FAILED)">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span class="count">{{ queueData.stats.failed }}</span>
+            <span class="label">Failed</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Filter Bar -->
+  @if (availableNodes$ | async; as availableNodes) {
+    <div class="filter-bar">
+      <!-- Mobile Status Dropdown (shown on mobile only) -->
+      <div class="filter-group mobile-status-select">
+        <label for="status-filter-mobile">{{ 'queue2.statusLabel' | transloco }}</label>
+        <select
+          id="status-filter-mobile"
+          [value]="selectedStatus"
+          (change)="onStatusFilterChange($any($event.target).value)"
+          class="filter-select"
+        >
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ getStatusLabel(status) }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Desktop Status Buttons (hidden on mobile) -->
+      <div class="filter-group desktop-status-buttons">
+        <label>{{ 'queue2.statusLabel' | transloco }}</label>
+        <div class="status-filters">
+          @for (status of statuses; track status) {
+            <button
+              [class.active]="selectedStatus === status"
+              (click)="onStatusFilterChange(status)"
+              class="filter-btn"
+            >
+              {{ getStatusLabel(status) }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Advanced Mode: Node Filter -->
+      @if ((advancedMode()) && (isMainNode$ | async)) {
+        <div class="filter-group">
+          <label for="node-filter">Node:</label>
+          <select
+            id="node-filter"
+            [value]="selectedNodeId"
+            (change)="onNodeFilterChange($any($event.target).value)"
+            class="filter-select"
+          >
+            <option value="">{{ 'queue.allNodes' | transloco }}</option>
+            @for (node of availableNodes | keyvalue; track node.key) {
+              <option [value]="node.key">{{ node.value }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <!-- Advanced Mode: Library Filter -->
+      @if (advancedMode()) {
+        @if (availableLibraries$ | async; as availableLibraries) {
+          <div class="filter-group">
+            <label for="library-filter">Library:</label>
+            <select
+              id="library-filter"
+              [value]="selectedLibraryId"
+              (change)="onLibraryFilterChange($any($event.target).value)"
+              class="filter-select"
+            >
+              <option value="">{{ 'queue.allLibraries' | transloco }}</option>
+              @for (library of availableLibraries | keyvalue; track library.key) {
+                <option [value]="library.key">{{ library.value.name }} ({{ library.value.nodeName }})</option>
+              }
+            </select>
+          </div>
+        }
+      }
+
+      <div class="filter-group search-group">
+        <label for="search-input">Search:</label>
+        <input
+          id="search-input"
+          type="text"
+          placeholder="{{ 'queue2.filterByFilename' | transloco }}"
+          [value]="searchQuery"
+          (input)="onSearchChange($any($event.target).value)"
+          class="search-input"
+        />
+      </div>
+    </div>
+  }
+
+  <!-- Job Table -->
+  <div class="table-container">
+    @if (isLoading$ | async) {
+      <div class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>{{ 'queue.loadingQueue' | transloco }}</p>
+      </div>
+    }
+
+    @if ((isLoading$ | async) === false && (queueData$ | async); as queueData) {
+      @if (queueData.jobs.length > 0) {
+        <div class="table-wrapper">
+          <table class="queue-table">
+            <thead>
+              <tr>
+                <th class="col-status">{{ 'queue.status' | transloco }}</th>
+                <th class="col-filename">{{ 'queue2.fileName' | transloco }}</th>
+                @if (advancedMode()) {
+                  <th class="col-library">{{ 'policies.library' | transloco }}</th>
+                }
+                <th class="col-codec">Codec</th>
+                @if (advancedMode()) {
+                  <th class="col-policy">Policy</th>
+                }
+                @if (selectedStatus !== JobStatus.COMPLETED && selectedStatus !== JobStatus.NEEDS_DECISION) {
+                  <th class="col-progress">Progress</th>
+                }
+                @if (selectedStatus === JobStatus.NEEDS_DECISION) {
+                  <th class="col-expected-savings">Expected Savings</th>
+                }
+                <th class="col-size">Size</th>
+                @if (advancedMode()) {
+                  <th class="col-node">Node</th>
+                }
+                @if (selectedStatus === JobStatus.FAILED) {
+                  <th class="col-failed-at">Failed At</th>
+                  <th class="col-failure-progress">Progress</th>
+                  <th class="col-why">Why?</th>
+                }
+                @if (selectedStatus === JobStatus.COMPLETED) {
+                  <th class="col-started-at">Started At</th>
+                  <th class="col-completed-at">Completed At</th>
+                  <th class="col-duration">Duration</th>
+                }
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (job of queueData.jobs; track job.id) {
+              <tr
+                [class.expanded]="expandedJobId === job.id"
+                (click)="toggleJobDetails(job.id)"
+                class="job-row"
+              >
+                <td class="col-status">
+                  <span
+                    [class]="'status-badge ' + (job.status | statusClass)"
+                    bbTooltip
+                    [tooltipTitle]="job.status"
+                    [tooltipContent]="getStatusExplanation(job.status)"
+                    tooltipWhen="Check job status to understand what's happening with this encoding task."
+                    tooltipPlacement="right">
+                    <i [class]="'fas ' + getStatusIcon(job.status)"></i>
+                    {{ job.status }}
+                  </span>
+                </td>
+                <td class="col-filename" [title]="job.fileName">
+                  {{ job.fileName }}
+                  <!-- Hide job type badge for NEEDS_DECISION - it's not encoding yet -->
+                  @if (job.status !== JobStatus.NEEDS_DECISION) {
+                    @if (job.type === 'REMUX') {
+                      <span class="job-type-badge remux"
+                            bbTooltip
+                            tooltipTitle="Fast Remuxing"
+                            tooltipContent="This job is using stream copy (remux) to quickly change the container format without re-encoding. Much faster than encoding!"
+                            tooltipPlacement="top">
+                        <i class="fas fa-bolt"></i> {{ 'queue2.remuxing' | transloco }}
+                      </span>
+                    } @else if (job.type === 'ENCODE') {
+                      <span class="job-type-badge encode"
+                            bbTooltip
+                            tooltipTitle="Full Encoding"
+                            tooltipContent="This job is performing full video/audio transcoding to optimize quality and compression."
+                            tooltipPlacement="top">
+                        <i class="fas fa-cog"></i> {{ 'queue2.encoding' | transloco }}
+                      </span>
+                    }
+                  }
+                  @if (wasHealedFreshStart(job)) {
+                    <span class="auto-heal-badge warning"
+                          bbTooltip
+                          tooltipTitle="Auto-Healed (Fresh Start)"
+                          [tooltipContent]="'Temp file was missing. Job restarted from scratch (was at ' + (job.autoHealedProgress || 0).toFixed(1) + '%)' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
+                          tooltipPlacement="top">
+                      <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.restarted' | transloco }}
+                    </span>
+                  } @else if (wasHealedWithResume(job)) {
+                    <span class="auto-heal-badge"
+                          bbTooltip
+                          tooltipTitle="Auto-Healed (Resumed)"
+                          [tooltipContent]="'System auto-recovered this job and resumed from ' + (job.autoHealedProgress || 0).toFixed(1) + '%' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
+                          tooltipPlacement="top">
+                      <i class="fas fa-shield-alt"></i> {{ 'queue2.resumed' | transloco }}
+                    </span>
+                  } @else if (job.autoHealedAt) {
+                    <span class="auto-heal-badge"
+                          bbTooltip
+                          tooltipTitle="Auto-Healed"
+                          [tooltipContent]="'System auto-recovered this job on restart' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
+                          tooltipPlacement="top">
+                      <i class="fas fa-shield-alt"></i> {{ 'queue2.autoHealed' | transloco }}
+                    </span>
+                  }
+                  @if (job.stage === 'FAILED' && job.fileExists === false) {
+                    <span class="file-missing-badge"
+                          bbTooltip
+                          tooltipTitle="File Missing"
+                          tooltipContent="Source file no longer exists at original location. Try re-scanning the library, or cancel the job if the file was intentionally removed."
+                          tooltipPlacement="top">
+                      <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.fileMissing' | transloco }}
+                    </span>
+                  }
+                  @if (job.isBlacklisted) {
+                    <span class="auto-blocked-badge"
+                          bbTooltip
+                          tooltipTitle="Auto-Blocked"
+                          tooltipContent="This file has failed repeatedly and won't be retried automatically. Click Unblock to try again."
+                          tooltipPlacement="top">
+                      <i class="fas fa-ban"></i> Auto-Blocked
+                      <button class="unblock-btn" (click)="unblockJob(job.id, $event)" title="Unblock this file">
+                        <i class="fas fa-unlock"></i> Unblock
+                      </button>
+                    </span>
+                  }
+                  @if (advancedMode() && hasRecoveryHistory(job)) {
+                    <span class="recovery-count-badge"
+                          bbTooltip
+                          tooltipTitle="Recovery History"
+                          [tooltipContent]="getRecoveryTooltip(job)"
+                          tooltipPlacement="top">
+                      <i class="fas fa-history"></i> Recovered {{ (job.stuckRecoveryCount || 0) + (job.corruptedRequeueCount || 0) }}x
+                    </span>
+                  }
+                  @if (job.status === JobStatus.FAILED && isApproachingBlacklist(job)) {
+                    <span class="approaching-blacklist-badge"
+                          bbTooltip
+                          tooltipTitle="Repeated Failures"
+                          tooltipContent="This file has failed multiple times across retries. If failures continue, it may be automatically blocked."
+                          tooltipPlacement="top">
+                      <i class="fas fa-exclamation-circle"></i> Repeated failures
+                    </span>
+                  }
+                  @if (job.status === JobStatus.FAILED && (job.retryCount || 0) > 0) {
+                    @if ((job.retryCount || 0) >= 3) {
+                      <span class="retry-limit-badge maxed"
+                            bbTooltip
+                            tooltipTitle="Max Retries Reached"
+                            tooltipContent="This job has exhausted all automatic retry attempts. You can manually retry or delegate to a different node."
+                            tooltipPlacement="top">
+                        <i class="fas fa-times-circle"></i> Max retries reached
+                      </span>
+                    } @else {
+                      <span class="retry-limit-badge"
+                            bbTooltip
+                            tooltipTitle="Retry Attempt"
+                            tooltipContent="This job has been retried automatically. More attempts remain before reaching the limit."
+                            tooltipPlacement="top">
+                        <i class="fas fa-redo"></i> Attempt {{ (job.retryCount || 0) + 1 }}/3
+                      </span>
+                    }
+                  }
+                </td>
+                @if (advancedMode()) {
+                  <td class="col-library">{{ job.libraryName }}</td>
+                }
+                <td class="col-codec">
+                  @if (job.sourceCodec && job.targetCodec) {
+                    <div class="codec-conversion">
+                      <span class="codec-badge-small" [class]="job.sourceCodec | codecBadgeClass">
+                        {{ job.sourceCodec }}
+                      </span>
+                      <i class="fas fa-arrow-right codec-arrow-small"></i>
+                      <span class="codec-badge-small" [class]="job.targetCodec | codecBadgeClass">
+                        {{ job.targetCodec }}
+                      </span>
+                    </div>
+                  } @else {
+                    <span class="codec-placeholder">-</span>
+                  }
+                </td>
+                @if (advancedMode()) {
+                  <td class="col-policy">
+                    <span class="policy-badge-queue"
+                      bbTooltip
+                      tooltipTitle="Encoding Policy"
+                      [tooltipContent]="'This job uses the ' + job.policyName + ' policy'"
+                      tooltipWhen="You want to understand which encoding settings are being used for this job."
+                      tooltipPlacement="top">
+                      <i class="fas fa-cog"></i>
+                      {{ job.policyName }}
+                    </span>
+                  </td>
+                }
+                @if (selectedStatus !== JobStatus.COMPLETED && selectedStatus !== JobStatus.NEEDS_DECISION) {
+                  <td class="col-progress">
+                    @if (job.status === 'ENCODING') {
+                    <div class="progress-details">
+                      <div class="progress-bar-enhanced" [class.stuck]="isJobStuck(job)">
+                        <div class="progress-fill-enhanced" [style.width.%]="job.progress">
+                          <div class="progress-shimmer"></div>
+                        </div>
+                        @if (wasHealedWithResume(job) && job.autoHealedProgress !== undefined && job.autoHealedProgress !== null) {
+                          <div class="heal-indicator"
+                               [style.left.%]="job.autoHealedProgress"
+                               bbTooltip
+                               tooltipTitle="Resume Point"
+                               [tooltipContent]="'Job resumed from ' + job.autoHealedProgress.toFixed(1) + '% on ' + formatTimestamp(job.autoHealedAt || '')"
+                               tooltipPlacement="top">
+                          </div>
+                        }
+                        <span class="progress-percentage">
+                          {{ job.progress }}%
+                          @if (isJobStuck(job)) {
+                            <span
+                              class="stuck-warning-container"
+                              bbTooltip
+                              tooltipTitle="Job Appears Stuck"
+                              [tooltipContent]="getStuckJobMessage(job, !!advancedMode())"
+                              tooltipPlacement="top">
+                              <i class="fas fa-exclamation-triangle stuck-warning"></i>
+                            </span>
+                          }
+                        </span>
+                      </div>
+                      <div class="progress-meta">
+                        <span class="meta-item">
+                          <i class="fas fa-clock"></i>
+                          {{ formatETA(job.etaSeconds) }}
+                        </span>
+                        <span class="meta-item">
+                          <i class="fas fa-tachometer-alt"></i>
+                          {{ job.fps ? (job.fps | number: '1.1-1') + ' fps' : '-' }}
+                        </span>
+                        <span class="meta-item elapsed">
+                          <i class="fas fa-hourglass-half"></i>
+                          {{ getElapsedTime(job.startedAt) }} {{ 'queue2.elapsed' | transloco }}
+                        </span>
+                      </div>
+                    </div>
+                  } @else if (job.status === 'TRANSFERRING') {
+                    <div class="progress-details">
+                      <div class="progress-bar-enhanced transfer">
+                        <div class="progress-fill-enhanced transfer" [style.width.%]="job.transferProgress || 0">
+                          <div class="progress-shimmer"></div>
+                        </div>
+                        <span class="progress-percentage">
+                          {{ (job.transferProgress || 0) | number: '1.0-0' }}%
+                        </span>
+                      </div>
+                      <div class="progress-meta">
+                        <span class="meta-item">
+                          <i class="fas fa-exchange-alt"></i>
+                          {{ 'queue2.transferringTo' | transloco : { node: job.nodeName } }}
+                        </span>
+                        @if (job.transferSpeedMBps) {
+                          <span class="meta-item transfer-speed">
+                            <i class="fas fa-tachometer-alt"></i>
+                            {{ job.transferSpeedMBps | number: '1.1-1' }} MB/s
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  } @else if (job.status === 'QUEUED') {
+                    <div class="queue-position">
+                      <i class="fas fa-hourglass-start"></i>
+                      <span>{{ 'queue.waitingInQueue' | transloco }}</span>
+                    </div>
+                  } @else if (job.status === 'PAUSED') {
+                    <div class="queue-position">
+                      <i class="fas fa-pause-circle"></i>
+                      <span>{{ 'queue2.pausedAt' | transloco : { progress: job.progress } }}</span>
+                    </div>
+                    } @else {
+                      <span class="progress-placeholder">-</span>
+                    }
+                  </td>
+                }
+                @if (selectedStatus === JobStatus.NEEDS_DECISION) {
+                  <td class="col-expected-savings">
+                    <span class="expected-savings-value">{{ calculateExpectedSavings(job) }}</span>
+                  </td>
+                }
+                <td class="col-size">
+                  @if (job.status === 'COMPLETED' && job.currentSize > 0) {
+                    <!-- Completed: Show actual results -->
+                    <div class="size-info">
+                      <div class="size-comparison">
+                        <span class="size-before">{{ formatBytes(job.originalSize) }}</span>
+                        <i class="fas fa-arrow-right size-arrow"></i>
+                        <span class="size-after">{{ formatBytes(job.currentSize) }}</span>
+                      </div>
+                      @if (job.savedPercentage != null && job.savedPercentage > 0) {
+                        <span class="compression-badge positive">
+                          <i class="fas fa-arrow-down"></i>
+                          {{ job.savedPercentage.toFixed(1) }}%
+                        </span>
+                      } @else if (job.savedPercentage != null && job.savedPercentage < 0) {
+                        <span class="compression-badge negative">
+                          <i class="fas fa-arrow-up"></i>
+                          {{ Math.abs(job.savedPercentage).toFixed(1) }}%
+                        </span>
+                      }
+                    </div>
+                  } @else if (job.status === 'QUEUED' || job.status === 'ENCODING') {
+                    <!-- Queued/Encoding: Show estimate -->
+                    <div class="size-info">
+                      <div class="size-comparison">
+                        <span class="size-before">{{ formatBytes(job.originalSize) }}</span>
+                        <i class="fas fa-arrow-right size-arrow"></i>
+                        <span class="size-estimated">~{{ formatBytes(getEstimatedSize(job)) }}</span>
+                      </div>
+                      <span class="compression-badge estimated">
+                        <i class="fas fa-arrow-down"></i>
+                        ~{{ getEstimatedCompression(job) }}%
+                      </span>
+                    </div>
+                  } @else {
+                    <!-- Failed/Cancelled: Show original size only -->
+                    <span class="size-original">{{ formatBytes(job.originalSize) }}</span>
+                  }
+                </td>
+                @if (advancedMode()) {
+                  <td class="col-node">
+                    <div class="node-assignment">
+                      <span class="node-name">{{ job.nodeName }}</span>
+                      @if (job.manualAssignment) {
+                        <span class="assignment-badge manual"
+                              bbTooltip
+                              tooltipTitle="Manually Assigned"
+                              tooltipContent="This job was manually assigned to this node by a user."
+                              tooltipPlacement="top">
+                          <i class="fas fa-hand-pointer"></i> {{ 'queue2.manual' | transloco }}
+                        </span>
+                      }
+                      @if (job.originalNodeId && job.originalNodeId !== job.nodeId) {
+                        <span class="assignment-badge delegated"
+                              bbTooltip
+                              tooltipTitle="Delegated Job"
+                              tooltipContent="This job was delegated from another node."
+                              tooltipPlacement="top">
+                          <i class="fas fa-share"></i> {{ 'queue2.delegated' | transloco }}
+                        </span>
+                      }
+                      @if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'copied') {
+                        <span class="access-badge copied"
+                              bbTooltip
+                              tooltipTitle="File Copied"
+                              tooltipContent="File was copied to node's local storage before encoding. Provides faster encoding speeds."
+                              tooltipPlacement="top">
+                          <i class="fas fa-download"></i> {{ 'queue2.copied' | transloco }}
+                        </span>
+                      } @else if (getStorageAccessType(job, (availableNodesWithRole$ | async) || []) === 'local') {
+                        <span class="access-badge local"
+                              bbTooltip
+                              tooltipTitle="Direct Mount"
+                              tooltipContent="File accessed directly via Docker volume mount. Native performance."
+                              tooltipPlacement="top">
+                          <i class="fas fa-hdd"></i> {{ 'queue2.local' | transloco }}
+                        </span>
+                      } @else {
+                        <span class="access-badge nfs"
+                              bbTooltip
+                              tooltipTitle="NFS Mount"
+                              tooltipContent="File accessed via NFS network mount from main node."
+                              tooltipPlacement="top">
+                          <i class="fas fa-network-wired"></i> {{ 'queue2.nfs' | transloco }}
+                        </span>
+                      }
+                    </div>
+                  </td>
+                }
+                @if (selectedStatus === JobStatus.FAILED) {
+                  <td class="col-failed-at">{{ formatTimestamp(job.failedAt) }}</td>
+                  <td class="col-failure-progress">
+                    <span class="failure-progress-badge">{{ job.progress }}%</span>
+                  </td>
+                  <td class="col-why">{{ getShortFailureReason(job.error) }}</td>
+                }
+                @if (selectedStatus === JobStatus.COMPLETED) {
+                  <td class="col-started-at">{{ formatTimestamp(job.startedAt) }}</td>
+                  <td class="col-completed-at">{{ formatTimestamp(job.completedAt) }}</td>
+                  <td class="col-duration">{{ getEncodingDuration(job.startedAt, job.completedAt) }}</td>
+                }
+                <td class="col-actions">
+                  <div class="action-buttons">
+                    <!-- Advanced Mode: Pause, Keep Original, Resume, Force Start, Priority, Delegate -->
+                    @if (advancedMode()) {
+                      @if (job.status === 'ENCODING') {
+                        <button
+                          (click)="pauseJob(job.id, $event)"
+                          class="action-btn pause-btn"
+                          bbTooltip
+                          tooltipTitle="Pause Encoding"
+                          tooltipContent="Temporarily pauses the encoding process. You can resume this job later to continue from where it left off."
+                          tooltipWhen="You want to temporarily stop encoding this file to free up resources or prioritize other jobs."
+                          tooltipPlacement="top">
+                          <i class="fas fa-pause"></i>
+                        </button>
+                        @if (!job.keepOriginalRequested) {
+                          <button
+                            (click)="keepOriginal(job, $event)"
+                            class="action-btn keep-original-btn"
+                            bbTooltip
+                            tooltipTitle="Keep Original"
+                            tooltipContent="Preserves the original file after encoding completes. The original will be renamed to .original extension, allowing you to compare quality or restore it later."
+                            tooltipWhen="You want to keep the original file as a backup or for quality comparison."
+                            tooltipPlacement="top">
+                            <i class="fas fa-save"></i>
+                          </button>
+                        } @else {
+                          <button
+                            class="action-btn keep-original-btn active"
+                            disabled
+                            bbTooltip
+                            tooltipTitle="Keeping Original"
+                            tooltipContent="Original file will be preserved after encoding completes."
+                            tooltipPlacement="top">
+                            <i class="fas fa-check"></i>
+                          </button>
+                        }
+                      }
+                      @if (job.status === 'PAUSED') {
+                        <button
+                          (click)="resumeJob(job.id, $event)"
+                          class="action-btn resume-btn"
+                          bbTooltip
+                          tooltipTitle="Resume Encoding"
+                          tooltipContent="Resumes the paused encoding process. The job will continue from where it was paused."
+                          tooltipWhen="You want to continue encoding this paused job."
+                          tooltipPlacement="top">
+                          <i class="fas fa-play"></i>
+                        </button>
+                      }
+                      @if (job.status === 'QUEUED' || job.status === 'DETECTED') {
+                        <button
+                          (click)="forceStartJob(job.id, $event)"
+                          class="action-btn force-start-btn"
+                          bbTooltip
+                          tooltipTitle="Force Start Now"
+                          tooltipContent="Immediately starts encoding this job, bypassing the normal queue order. The job will be prioritized and start within seconds."
+                          tooltipWhen="You want to test or prioritize this specific file for immediate encoding."
+                          tooltipPlacement="top">
+                          <i class="fas fa-bolt"></i>
+                        </button>
+                      }
+                      @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'DETECTED') {
+                        <div class="priority-dropdown" (click)="$event.stopPropagation()">
+                          <button
+                            (click)="togglePriorityMenu(job.id)"
+                            [class]="'action-btn priority-btn priority-' + (job.priority ?? 0)"
+                            bbTooltip
+                            tooltipTitle="Set Priority"
+                            tooltipContent="Change job priority: Normal (0), High (1), or Top Priority (2). Max 3 jobs can have top priority. Priority auto-resets on completion."
+                            tooltipWhen="You want to change the order in which this job will be processed."
+                            tooltipPlacement="top">
+                            @if ((job.priority ?? 0) === 2) {
+                              <fa-icon [icon]="icons.fire"></fa-icon>
+                            } @else if ((job.priority ?? 0) === 1) {
+                              <fa-icon [icon]="icons.bolt"></fa-icon>
+                            } @else {
+                              <fa-icon [icon]="icons.layers"></fa-icon>
+                            }
+                          </button>
+                          <div class="priority-menu" [class.show]="openPriorityMenuId === job.id">
+                            <button
+                              (click)="setPriority(job.id, 0, $event)"
+                              [class.active]="(job.priority ?? 0) === 0"
+                              class="priority-option priority-0">
+                              <fa-icon [icon]="icons.layers"></fa-icon>
+                              {{ 'queue2.normal' | transloco }}
+                            </button>
+                            <button
+                              (click)="setPriority(job.id, 1, $event)"
+                              [class.active]="(job.priority ?? 0) === 1"
+                              class="priority-option priority-1">
+                              <fa-icon [icon]="icons.bolt"></fa-icon>
+                              {{ 'queue2.high' | transloco }}
+                            </button>
+                            <button
+                              (click)="setPriority(job.id, 2, $event)"
+                              [class.active]="(job.priority ?? 0) === 2"
+                              class="priority-option priority-2">
+                              <fa-icon [icon]="icons.fire"></fa-icon>
+                              {{ 'queue2.topPriority' | transloco }}
+                            </button>
+                          </div>
+                        </div>
+                      }
+                      @if (job.canBeDelegated) {
+                        <button
+                          (click)="openDelegationDialog(job, $event)"
+                          class="action-btn delegate-btn"
+                          bbTooltip
+                          tooltipTitle="Send to Node"
+                          [tooltipContent]="job.status === 'FAILED' ? 'Sends this failed job to a different node for retry. The error will be cleared and retryCount reset.' : 'Manually assign this job to a specific node. This overrides the automatic node selection algorithm.'"
+                          tooltipWhen="You want to choose which node should process this job."
+                          tooltipPlacement="top">
+                          <i class="fas fa-share"></i>
+                        </button>
+                      }
+                      @if (!job.canBeDelegated && (job.status === 'ENCODING' || job.status === 'PAUSED')) {
+                        <button
+                          class="action-btn delegate-btn disabled"
+                          disabled
+                          bbTooltip
+                          tooltipTitle="Cannot Delegate"
+                          tooltipContent="This job cannot be delegated because it has already started encoding ({{ job.progress }}% complete). Partially-encoded jobs have temp files stored on the current node's local storage that cannot be transferred. Only jobs that haven't started (0% progress) can be delegated."
+                          tooltipWhen="You want to understand why this job cannot be moved to another node."
+                          tooltipPlacement="top">
+                          <i class="fas fa-share"></i>
+                        </button>
+                      }
+                    }
+                    <!-- Essential: Cancel button (always visible) -->
+                    @if (job.status === 'QUEUED' || job.status === 'ENCODING' || job.status === 'FAILED') {
+                      <button
+                        (click)="openCancelDialog(job.id, $event)"
+                        class="action-btn cancel-btn"
+                        bbTooltip
+                        [tooltipTitle]="job.status === 'ENCODING' ? 'Stop Encoding' : 'Cancel Job'"
+                        [tooltipContent]="job.status === 'ENCODING' ? 'Stops the encoding process and cancels this job. The encoding will be terminated and the file will remain in its original format.' : 'Removes this job from the encoding queue. The file will remain in its original format and won\'t be encoded.'"
+                        tooltipWhen="You no longer want to encode this file, or you need to free up queue space for higher priority jobs."
+                        tooltipPlacement="top">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    }
+                    @if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+                      <button
+                        (click)="retryJob(job.id, $event)"
+                        class="action-btn retry-btn"
+                        bbTooltip
+                        [tooltipTitle]="job.status === 'FAILED' ? 'Retry Failed Job' : 'Retry Cancelled Job'"
+                        [tooltipContent]="job.status === 'FAILED' ? 'Attempts to re-encode this file. Useful if the failure was due to temporary issues like network problems or node availability.' : 'Re-queues this cancelled job for encoding.'"
+                        tooltipWhen="You want to give this job another attempt."
+                        tooltipPlacement="top">
+                        <i class="fas fa-redo"></i>
+                      </button>
+                    }
+                    <!-- Advanced Mode: Debug/analysis actions -->
+                    @if (advancedMode()) {
+                      @if (job.status === 'FAILED') {
+                        <button
+                          (click)="recheckJob(job.id, $event)"
+                          class="action-btn recheck-btn"
+                          bbTooltip
+                          tooltipTitle="Recheck Job"
+                          tooltipContent="Re-validates if the file is truly failed by checking file existence and running health checks. If the file is actually valid, the job will be moved back to COMPLETED. Useful for jobs incorrectly marked as FAILED due to race conditions."
+                          tooltipWhen="You suspect the job was incorrectly marked as failed and the file might actually be valid."
+                          tooltipPlacement="top">
+                          <i class="fas fa-check-circle"></i>
+                        </button>
+                      }
+                      @if (job.status === 'COMPLETED') {
+                        <button
+                          (click)="detectAndRequeue(job.id, $event)"
+                          class="action-btn detect-btn"
+                          bbTooltip
+                          tooltipTitle="Detect & Requeue"
+                          tooltipContent="Checks if encoding actually compressed the file. If the file is the same size or larger than the original, the job will be automatically requeued for retry. If compression was successful, you'll get an error message."
+                          tooltipWhen="You notice a completed job has the same file size as the original, indicating encoding didn't actually compress it."
+                          tooltipPlacement="top">
+                          <i class="fas fa-search"></i>
+                        </button>
+                      }
+                      @if ((job.status === 'FAILED' || job.status === 'CANCELLED') && ((job.retryCount ?? 0) > 0 || jobHistoryCache.has(job.id))) {
+                        <button
+                          (click)="openJobHistoryModal(job, $event)"
+                          class="action-btn history-btn"
+                          bbTooltip
+                          tooltipTitle="View Event History"
+                          tooltipContent="Shows a timeline of all failure, cancellation, restart, and auto-heal events for this job. Useful for troubleshooting repeated failures."
+                          tooltipWhen="You want to see the complete history of what happened to this job."
+                          tooltipPlacement="top">
+                          <i class="fas fa-history"></i>
+                        </button>
+                      }
+                    }
+                    <!-- Essential: Error details (always visible for failed jobs) -->
+                    @if (job.status === 'FAILED' && job.error) {
+                      <button
+                        (click)="openErrorDetailsModal(job)"
+                        class="action-btn error-btn"
+                        bbTooltip
+                        tooltipTitle="View Error Details"
+                        tooltipContent="Shows detailed error information including ffmpeg output, exit codes, and troubleshooting tips to help diagnose what went wrong."
+                        tooltipWhen="You need to understand why this job failed and how to fix it."
+                        tooltipPlacement="top">
+                        <i class="fas fa-exclamation-circle"></i>
+                      </button>
+                    }
+                    @if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+                      <button
+                        (click)="deleteJob(job, $event)"
+                        class="action-btn delete-btn"
+                        bbTooltip
+                        tooltipTitle="Delete Job Entry"
+                        tooltipContent="Permanently removes this job record from the database. The actual media file will NOT be affected. This action cannot be undone."
+                        tooltipWhen="You want to clean up failed/cancelled job entries from the queue."
+                        tooltipPlacement="top">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    }
+                    <button class="action-btn details-btn" title="View Details">
+                      <i [class]="expandedJobId === job.id ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              @if (expandedJobId === job.id) {
+                <tr class="details-row">
+                  <td colspan="9">
+                    <div class="job-details-expanded">
+                      <!-- Job Timeline (Advanced Mode Only) -->
+                      @if (advancedMode()) {
+                      <div class="timeline-section">
+                        <h4><i class="fas fa-history"></i> {{ 'queue2.jobTimeline' | transloco }}</h4>
+                        <div class="timeline-horizontal">
+                          <!-- Created -->
+                          <div class="timeline-event completed">
+                            <div class="timeline-icon">
+                              <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="timeline-label">{{ 'queue2.created' | transloco }}</div>
+                            <div class="timeline-timestamp">
+                              <div class="timestamp-relative">{{ formatRelativeTime(job.createdAt) }}</div>
+                              <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.createdAt) }}</div>
+                            </div>
+                          </div>
+
+                          <!-- Health Check (if job went through it) -->
+                          @if (job.startedAt || job.status !== 'QUEUED') {
+                            <div class="timeline-connector completed"></div>
+                            <div class="timeline-event completed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-heartbeat"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.healthCheck' | transloco }}</div>
+                              <div class="timeline-timestamp">{{ 'queue2.passed' | transloco }}</div>
+                            </div>
+                          }
+
+                          <!-- Started Encoding -->
+                          @if (job.startedAt) {
+                            <div class="timeline-connector completed"></div>
+                            <div class="timeline-event completed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-play-circle"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.started' | transloco }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.startedAt) }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.startedAt) }}</div>
+                              </div>
+                            </div>
+                          }
+
+                          <!-- Auto-Healed (if applicable) -->
+                          @if (wasHealedFreshStart(job)) {
+                            <div class="timeline-connector warning"></div>
+                            <div class="timeline-event warning">
+                              <div class="timeline-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.restartedTempMissing' | transloco }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.autoHealedAt || '') }} • Was at {{ (job.autoHealedProgress || 0).toFixed(1) }}%</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.autoHealedAt || '') }}</div>
+                              </div>
+                            </div>
+                          } @else if (wasHealedWithResume(job)) {
+                            <div class="timeline-connector auto-heal"></div>
+                            <div class="timeline-event auto-heal">
+                              <div class="timeline-icon">
+                                <i class="fas fa-shield-alt"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.resumed' | transloco }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.autoHealedAt || '') }} • From {{ (job.autoHealedProgress || 0).toFixed(1) }}%</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.autoHealedAt || '') }}</div>
+                              </div>
+                            </div>
+                          } @else if (job.autoHealedAt) {
+                            <div class="timeline-connector auto-heal"></div>
+                            <div class="timeline-event auto-heal">
+                              <div class="timeline-icon">
+                                <i class="fas fa-shield-alt"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.autoHealed' | transloco }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.autoHealedAt) }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.autoHealedAt) }}</div>
+                              </div>
+                            </div>
+                          }
+
+                          <!-- Retry Count (if any retries) -->
+                          @if (job.retryCount && job.retryCount > 0) {
+                            <div class="timeline-connector retry"></div>
+                            <div class="timeline-event retry">
+                              <div class="timeline-icon">
+                                <i class="fas fa-redo"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.retryNumber' | transloco : { count: job.retryCount } }}</div>
+                              <div class="timeline-timestamp">{{ 'queue2.inProgress' | transloco }}</div>
+                            </div>
+                          }
+
+                          <!-- Currently Encoding -->
+                          @if (job.status === 'ENCODING' && job.progress > 0) {
+                            <div class="timeline-connector active"></div>
+                            <div class="timeline-event active">
+                              <div class="timeline-icon pulsing">
+                                <i class="fas fa-cog fa-spin"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue2.encoding' | transloco }}</div>
+                              <div class="timeline-timestamp">{{ job.progress }}%</div>
+                            </div>
+                          }
+
+                          <!-- Expected Completion -->
+                          @if (job.status === 'ENCODING' && job.etaSeconds) {
+                            <div class="timeline-connector pending"></div>
+                            <div class="timeline-event pending">
+                              <div class="timeline-icon">
+                                <i class="fas fa-flag-checkered"></i>
+                              </div>
+                              <div class="timeline-label">ETA</div>
+                              <div class="timeline-timestamp">{{ formatETA(job.etaSeconds) }}</div>
+                            </div>
+                          }
+
+                          <!-- Completed -->
+                          @if (job.status === 'COMPLETED') {
+                            <div class="timeline-connector completed"></div>
+                            <div class="timeline-event completed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-check-circle"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue.completed' | transloco }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.completedAt || '') }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.completedAt || '') }}</div>
+                              </div>
+                            </div>
+                          }
+
+                          <!-- Failed -->
+                          @if (job.status === 'FAILED') {
+                            <div class="timeline-connector failed"></div>
+                            <div class="timeline-event failed">
+                              <div class="timeline-icon">
+                                <i class="fas fa-times-circle"></i>
+                              </div>
+                              <div class="timeline-label">{{ 'queue.failed' | transloco }}</div>
+                              <div class="timeline-timestamp">
+                                <div class="timestamp-relative">{{ formatRelativeTime(job.failedAt || '') }}</div>
+                                <div class="timestamp-absolute">{{ formatAbsoluteDateTime(job.failedAt || '') }}</div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                      }
+
+                      <!-- Encoding Preview (Advanced Mode Only, for ENCODING jobs) -->
+                      @if ((advancedMode()) && job.status === 'ENCODING') {
+                        <div class="encoding-preview-section">
+                          <div class="preview-header">
+                            <h4><i class="fas fa-images"></i> {{ 'queue2.encodingPreview' | transloco }}</h4>
+                            <button
+                              (click)="captureCurrentFrame(job.id, $event)"
+                              class="btn btn-sm btn-capture"
+                              [disabled]="capturingJobId === job.id"
+                              bbTooltip
+                              tooltipTitle="Capture Now"
+                              tooltipContent="Take a screenshot from the temp file at the current encoding progress. The preview will be added to the gallery below."
+                              tooltipPlacement="top">
+                              @if (capturingJobId === job.id) {
+                                <i class="fas fa-spinner fa-spin"></i> {{ 'queue2.capturing' | transloco }}
+                              } @else {
+                                <i class="fas fa-camera"></i> {{ 'queue2.captureNow' | transloco }}
+                              }
+                            </button>
+                          </div>
+                          <div class="preview-gallery">
+                            @let previewImages = parsePreviewImages(job.previewImagePaths, job.id);
+                            @if (previewImages.length > 0) {
+                              <bb-image-carousel
+                                [images]="previewImages"
+                                [showThumbnails]="true"
+                                (imageClick)="openFullscreenCarousel(job.id, job.previewImagePaths, $event)" />
+                            } @else {
+                              <div class="preview-placeholder">
+                                <i class="fas fa-camera"></i>
+                                <span>{{ 'queue2.noPreviewsYet' | transloco }}</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Expected Results (Advanced Mode Only) -->
+                      @if (advancedMode()) {
+                      <div class="results-section">
+                        <h4><i class="fas fa-calculator"></i> {{ 'queue2.expectedResults' | transloco }}</h4>
+                        <div class="results-grid">
+                          <div class="result-item">
+                            <span class="result-label">{{ 'queue2.currentSize' | transloco }}</span>
+                            <span class="result-value">{{ formatBytes(job.originalSize) }}</span>
+                          </div>
+                          <div class="result-item">
+                            <span class="result-label">{{ 'queue2.expectedFinalSize' | transloco }}</span>
+                            <span class="result-value">{{ calculateExpectedSize(job) }}</span>
+                          </div>
+                          <div class="result-item">
+                            <span class="result-label">{{ 'queue2.expectedSavingsLabel' | transloco }}</span>
+                            <span class="result-value savings">{{ calculateExpectedSavings(job) }}</span>
+                          </div>
+                          @if (job.status === 'ENCODING') {
+                            <div class="result-item">
+                              <span class="result-label">{{ 'queue2.encodingSpeed' | transloco }}</span>
+                              <span class="result-value">{{ calculateEncodingSpeed(job) }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                      }
+
+                      <!-- Original File Status (for COMPLETED jobs) -->
+                      @if (job.status === 'COMPLETED') {
+                        <div class="original-file-section">
+                          <h4><i class="fas fa-file-archive"></i> {{ 'queue2.originalFileStatus' | transloco }}</h4>
+                          <div class="original-file-info">
+                            @if (job.originalBackupPath) {
+                              <div class="original-kept">
+                                <div class="original-status">
+                                  <i class="fas fa-check-circle status-icon success"></i>
+                                  <span class="status-label">{{ 'queue2.originalKept' | transloco }}</span>
+                                  <span class="badge badge-success">KEPT</span>
+                                </div>
+                                <div class="original-details">
+                                  <div class="detail-row">
+                                    <span class="detail-label">{{ 'queue2.backupPath' | transloco }}</span>
+                                    <span class="detail-value path">{{ job.originalBackupPath }}</span>
+                                  </div>
+                                  <div class="detail-row">
+                                    <span class="detail-label">{{ 'queue2.originalSize' | transloco }}</span>
+                                    <span class="detail-value">{{ formatBytes(job.originalSizeBytes || 0) }}</span>
+                                  </div>
+                                  <div class="detail-row">
+                                    <span class="detail-label">{{ 'queue2.encodedSize' | transloco }}</span>
+                                    <span class="detail-value">{{ formatBytes(job.currentSize) }}</span>
+                                  </div>
+                                </div>
+                                <div class="original-actions">
+                                  <button
+                                    (click)="deleteOriginal(job, $event)"
+                                    class="action-btn delete-original-btn"
+                                    bbTooltip
+                                    tooltipTitle="Delete Original"
+                                    tooltipContent="Permanently deletes the original backup file to free disk space. This action cannot be undone."
+                                    tooltipWhen="You've verified the encoded file quality and no longer need the original backup."
+                                    tooltipPlacement="top">
+                                    <i class="fas fa-trash"></i>
+                                    {{ 'queue2.deleteOriginal' | transloco }}
+                                  </button>
+                                  <button
+                                    (click)="restoreOriginal(job, $event)"
+                                    class="action-btn restore-original-btn"
+                                    bbTooltip
+                                    tooltipTitle="Restore Original"
+                                    tooltipContent="Swaps the encoded file with the original backup. The original becomes the active file, and the encoded version becomes the backup."
+                                    tooltipWhen="You prefer the original file quality or encountered issues with the encoded version."
+                                    tooltipPlacement="top">
+                                    <i class="fas fa-undo"></i>
+                                    {{ 'queue2.restoreOriginal' | transloco }}
+                                  </button>
+                                </div>
+                              </div>
+                            } @else if (job.replacementAction === 'REPLACED') {
+                              <div class="original-replaced">
+                                <div class="original-status">
+                                  <i class="fas fa-times-circle status-icon replaced"></i>
+                                  <span class="status-label">{{ 'queue2.originalDeleted' | transloco }}</span>
+                                  <span class="badge badge-info">REPLACED</span>
+                                </div>
+                                <div class="original-details">
+                                  <div class="detail-row">
+                                    <span class="detail-label">{{ 'queue2.spaceFreed' | transloco }}</span>
+                                    <span class="detail-value savings">{{ formatBytes(job.savedSize) }}</span>
+                                  </div>
+                                  <div class="detail-row">
+                                    <span class="detail-label">{{ 'queue2.savings' | transloco }}</span>
+                                    <span class="detail-value savings">{{ job.savedPercentage.toFixed(2) }}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            } @else {
+                              <div class="original-unknown">
+                                <div class="original-status">
+                                  <i class="fas fa-question-circle status-icon"></i>
+                                  <span class="status-label">{{ 'queue2.statusUnknown' | transloco }}</span>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Retry Information (Advanced Mode Only) -->
+                      @if ((advancedMode()) && job.retryCount && job.retryCount > 0) {
+                        <div class="retry-section">
+                          <h4><i class="fas fa-redo"></i> {{ 'queue2.retryHistory' | transloco }}</h4>
+                          <div class="retry-info">
+                            <div class="retry-count">
+                              <i class="fas fa-sync-alt"></i>
+                              <span>{{ job.retryCount + 1 }} attempt{{ (job.retryCount + 1) > 1 ? 's' : '' }}</span>
+                            </div>
+                            @if (job.nextRetryAt) {
+                              <div class="retry-next">
+                                <i class="fas fa-clock"></i>
+                                <span>Next retry: {{ formatTimestamp(job.nextRetryAt) }}</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Decision Issues (NEEDS_DECISION status) -->
+                      @if (job.decisionRequired && job.decisionIssues) {
+                        <div class="decision-issues-section">
+                          <h4><i class="fas fa-exclamation-triangle"></i> {{ 'queue2.actionRequired' | transloco }}</h4>
+                          @for (issue of parseDecisionIssues(job.decisionIssues); track issue.code) {
+                            <app-decision-issue-card
+                              [issue]="issue"
+                              (actionSelected)="onDecisionActionSelected($event)">
+                            </app-decision-issue-card>
+                          }
+                        </div>
+                      }
+
+                      <!-- File Information -->
+                      <div class="file-info-section">
+                        <h4><i class="fas fa-info-circle"></i> {{ 'queue2.fileDetails' | transloco }}</h4>
+                        <div class="file-info-grid">
+                          <div class="info-row">
+                            <i class="fas fa-folder"></i>
+                            <span class="info-label">{{ 'queue.fullPath' | transloco }}</span>
+                            <span class="info-value monospace">{{ job.filePath }}</span>
+                          </div>
+                          @if (job.healthScore != null) {
+                            <div class="info-row">
+                              <i class="fas fa-heartbeat"></i>
+                              <span class="info-label">{{ 'queue.healthScore' | transloco }}</span>
+                              <span class="info-value" [class.health-good]="job.healthScore >= 90" [class.health-warning]="job.healthScore < 90">
+                                {{ job.healthScore }}/100
+                              </span>
+                            </div>
+                          }
+                          @if (job.healthMessage) {
+                            <div class="info-row">
+                              <i class="fas fa-notes-medical"></i>
+                              <span class="info-label">{{ 'queue.healthNotes' | transloco }}</span>
+                              <span class="info-value">{{ job.healthMessage }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Card Layout (< 768px) -->
+      <div class="mobile-job-list">
+        @for (job of queueData.jobs; track job.id) {
+          <div class="mobile-job-card"
+               [class.expanded]="expandedJobId === job.id"
+               [class]="'status-' + job.status.toLowerCase()"
+               (click)="toggleJobDetails(job.id)">
+
+            <!-- Card Header: Status + Filename -->
+            <div class="card-header-mobile">
+              <span class="status-badge-mobile" [class]="job.status | statusClass">
+                <i [class]="'fas ' + getStatusIcon(job.status)"></i>
+                {{ job.status }}
+              </span>
+              <h4 class="filename-mobile" [title]="job.fileName">
+                {{ job.fileName }}
+              </h4>
+              @if (job.type === 'REMUX') {
+                <span class="job-type-badge-mobile remux">
+                  <i class="fas fa-bolt"></i> {{ 'queue2.remuxing' | transloco }}
+                </span>
+              } @else if (job.type === 'ENCODE') {
+                <span class="job-type-badge-mobile encode">
+                  <i class="fas fa-cog"></i> {{ 'queue2.encoding' | transloco }}
+                </span>
+              }
+              @if (wasHealedFreshStart(job)) {
+                <span class="auto-heal-badge-mobile warning">
+                  <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.restarted' | transloco }}
+                </span>
+              } @else if (wasHealedWithResume(job)) {
+                <span class="auto-heal-badge-mobile">
+                  <i class="fas fa-shield-alt"></i> {{ 'queue2.resumed' | transloco }}
+                </span>
+              } @else if (job.autoHealedAt) {
+                <span class="auto-heal-badge-mobile">
+                  <i class="fas fa-shield-alt"></i> {{ 'queue2.autoHealed' | transloco }}
+                </span>
+              }
+            </div>
+
+            <!-- Card Meta: Library + Node -->
+            <div class="card-meta-mobile">
+              <span><i class="fas fa-book"></i> {{ job.libraryName }}</span>
+              <span><i class="fas fa-server"></i> {{ job.nodeName }}</span>
+            </div>
+
+            <!-- Progress (ENCODING jobs) -->
+            @if (job.status === JobStatus.ENCODING) {
+              <div class="progress-mobile">
+                <div class="progress-bar-mobile">
+                  <div class="progress-fill-mobile" [style.width.%]="job.progress"></div>
+                  <span class="progress-text-mobile">{{ job.progress.toFixed(1) }}%</span>
+                </div>
+                <div class="progress-meta-mobile">
+                  @if (job.etaSeconds) {
+                    <span><i class="fas fa-clock"></i> {{ formatETA(job.etaSeconds) }}</span>
+                  }
+                  @if (job.fps) {
+                    <span><i class="fas fa-tachometer-alt"></i> {{ job.fps }} FPS</span>
+                  }
+                  @if (job.startedAt) {
+                    <span><i class="fas fa-hourglass-half"></i> {{ getElapsedTime(job.startedAt) }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Size Compression (COMPLETED jobs) -->
+            @if (job.status === JobStatus.COMPLETED && job.currentSize && job.originalSize) {
+              <div class="size-mobile">
+                <div class="size-comparison">
+                  <span class="size-before">{{ formatBytes(job.originalSize) }}</span>
+                  <i class="fas fa-arrow-right"></i>
+                  <span class="size-after">{{ formatBytes(job.currentSize) }}</span>
+                </div>
+                <div class="size-savings">
+                  <i class="fas fa-piggy-bank"></i>
+                  {{ formatBytes(job.originalSize - job.currentSize) }} {{ 'queue2.saved' | transloco }}
+                  ({{ ((job.originalSize - job.currentSize) / job.originalSize * 100).toFixed(1) }}%)
+                </div>
+              </div>
+            }
+
+            <!-- Error Summary (FAILED jobs) -->
+            @if (job.status === JobStatus.FAILED && job.error) {
+              <div class="error-mobile">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ getShortFailureReason(job.error) }}</span>
+              </div>
+            }
+
+            <!-- Primary Actions (44x44px touch targets) -->
+            <div class="actions-mobile" (click)="$event.stopPropagation()">
+              @if (job.status === JobStatus.QUEUED) {
+                <button class="action-btn-mobile primary" (click)="forceStartJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Force Start" tooltipPlacement="top">
+                  <i class="fas fa-play-circle"></i>
+                </button>
+                <button class="action-btn-mobile" (click)="openCancelDialog(job.id, $event)"
+                        bbTooltip tooltipTitle="Cancel" tooltipPlacement="top">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.ENCODING) {
+                <button class="action-btn-mobile" (click)="pauseJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Pause" tooltipPlacement="top">
+                  <i class="fas fa-pause-circle"></i>
+                </button>
+                <button class="action-btn-mobile" (click)="openCancelDialog(job.id, $event)"
+                        bbTooltip tooltipTitle="Cancel" tooltipPlacement="top">
+                  <i class="fas fa-stop-circle"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.PAUSED) {
+                <button class="action-btn-mobile primary" (click)="resumeJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Resume" tooltipPlacement="top">
+                  <i class="fas fa-play-circle"></i>
+                </button>
+                <button class="action-btn-mobile" (click)="openCancelDialog(job.id, $event)"
+                        bbTooltip tooltipTitle="Cancel" tooltipPlacement="top">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.FAILED || job.status === JobStatus.CANCELLED) {
+                <button class="action-btn-mobile primary" (click)="retryJob(job.id, $event)"
+                        bbTooltip tooltipTitle="Retry" tooltipPlacement="top">
+                  <i class="fas fa-redo"></i>
+                </button>
+                <button class="action-btn-mobile danger" (click)="deleteJob(job, $event)"
+                        bbTooltip tooltipTitle="Delete" tooltipPlacement="top">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              }
+
+              @if (job.status === JobStatus.COMPLETED) {
+                <button class="action-btn-mobile" (click)="detectAndRequeue(job.id, $event)"
+                        bbTooltip tooltipTitle="Re-queue" tooltipPlacement="top">
+                  <i class="fas fa-redo-alt"></i>
+                </button>
+              }
+
+              <!-- History button (all statuses) -->
+              @if ((job.retryCount ?? 0) > 0 || jobHistoryCache.has(job.id)) {
+                <button class="action-btn-mobile" (click)="openJobHistoryModal(job, $event)"
+                        bbTooltip tooltipTitle="View History" tooltipPlacement="top">
+                  <i class="fas fa-history"></i>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      } @else {
+        <!-- Filter-aware empty states -->
+        @if (selectedStatus !== 'ALL' || selectedNodeId || selectedLibraryId || searchQuery) {
+          <!-- Filtered but no results -->
+          <div class="empty-state filtered">
+            <div class="empty-icon">
+              <i class="fas fa-filter"></i>
+            </div>
+            <h2>{{ 'queue2.noJobsMatchFilter' | transloco }}</h2>
+            <p class="empty-description">
+              @if (selectedStatus === JobStatus.COMPLETED) {
+                {{ 'queue2.noCompletedYet' | transloco }}
+              } @else if (selectedStatus === JobStatus.ENCODING) {
+                {{ 'queue2.noEncodingNow' | transloco }}
+              } @else if (selectedStatus === JobStatus.PAUSED) {
+                {{ 'queue2.noPausedJobs' | transloco }}
+              } @else if (selectedStatus === JobStatus.QUEUED) {
+                {{ 'queue2.noQueuedJobs' | transloco }}
+              } @else if (selectedStatus === JobStatus.FAILED) {
+                {{ 'queue2.noFailedJobs' | transloco }}
+              } @else if (selectedStatus === JobStatus.CANCELLED) {
+                {{ 'queue2.noCancelledJobs' | transloco }}
+              } @else if (selectedStatus === JobStatus.DETECTED) {
+                {{ 'queue2.noDetectedJobs' | transloco }}
+              } @else if (selectedStatus === JobStatus.HEALTH_CHECK) {
+                {{ 'queue2.noHealthCheckJobs' | transloco }}
+              } @else if (selectedStatus === JobStatus.VERIFYING) {
+                {{ 'queue2.noVerifyingJobs' | transloco }}
+              } @else if (searchQuery) {
+                {{ 'queue2.noSearchResults' | transloco : { query: searchQuery } }}
+              } @else if (selectedNodeId) {
+                {{ 'queue2.noNodeJobs' | transloco }}
+              } @else if (selectedLibraryId) {
+                {{ 'queue2.noLibraryJobs' | transloco }}
+              } @else {
+                {{ 'queue2.noFilterMatch' | transloco }}
+              }
+            </p>
+            <div class="filter-summary">
+              @if (selectedStatus !== 'ALL') {
+                <span class="filter-chip">
+                  <i class="fas fa-tag"></i>
+                  Status: {{ getStatusLabel(selectedStatus) }}
+                </span>
+              }
+              @if (selectedNodeId) {
+                <span class="filter-chip">
+                  <i class="fas fa-server"></i>
+                  Node: {{ (availableNodes$ | async)?.get(selectedNodeId) || 'Unknown' }}
+                </span>
+              }
+              @if (selectedLibraryId && (availableLibraries$ | async); as availableLibraries) {
+                <span class="filter-chip">
+                  <i class="fas fa-folder"></i>
+                  Library: {{ availableLibraries.get(selectedLibraryId)?.name || 'Unknown' }}
+                </span>
+              }
+              @if (searchQuery) {
+                <span class="filter-chip">
+                  <i class="fas fa-search"></i>
+                  Search: "{{ searchQuery }}"
+                </span>
+              }
+            </div>
+            <div class="empty-actions">
+              <button (click)="clearAllFilters()" class="btn btn-secondary">
+                <i class="fas fa-times-circle"></i>
+                {{ 'queue2.clearAllFilters' | transloco }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <!-- No filters, truly empty queue -->
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-inbox"></i>
+            </div>
+            <h2>{{ 'queue.noJobsYet' | transloco }}</h2>
+            <p class="empty-description">
+              {{ 'queue2.noJobsDescription' | transloco }}
+            </p>
+
+            <div class="getting-started">
+              <h3>{{ 'queue2.gettingStarted' | transloco }}</h3>
+              <ol>
+                <li>{{ 'queue2.step1' | transloco }}</li>
+                <li>{{ 'queue2.step2' | transloco }}</li>
+                <li>{{ 'queue2.step3' | transloco }}</li>
+                <li>{{ 'queue2.step4' | transloco }}</li>
+                <li>{{ 'queue2.step5' | transloco }}</li>
+              </ol>
+              <p class="help-tip">
+                <i class="fas fa-lightbulb"></i>
+                <strong>{{ 'queue2.tip' | transloco }}</strong>
+              </p>
+            </div>
+
+            <div class="empty-actions">
+              <a href="/libraries" class="btn btn-primary btn-large">
+                <i class="fas fa-folder"></i>
+                {{ 'queue2.setUpFirstLibrary' | transloco }}
+              </a>
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+
+  <!-- Stats Summary -->
+  @if (queueData$ | async; as queueData) {
+    <div class="stats-summary">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-list"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ queueData.stats.queued + queueData.stats.encoding + queueData.stats.completed + queueData.stats.failed }}</span>
+          <span class="stat-label">{{ 'queue2.totalJobs' | transloco }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon queued">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ queueData.stats.queued }}</span>
+          <span class="stat-label">{{ 'queue2.queued' | transloco }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon encoding">
+          <i class="fas fa-spinner"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ queueData.stats.encoding }}</span>
+          <span class="stat-label">{{ 'queue2.encoding' | transloco }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon completed">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ queueData.stats.completed }}</span>
+          <span class="stat-label">{{ 'queue.completed' | transloco }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon failed">
+          <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ queueData.stats.failed }}</span>
+          <span class="stat-label">{{ 'queue.failed' | transloco }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card highlight">
+        <div class="stat-icon">
+          <i class="fas fa-save"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes)) }}</span>
+          <span class="stat-label">{{ 'queue2.totalSavings' | transloco }}</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Pagination Controls -->
+  @if (queueData$ | async; as queueData) {
+    @if (queueData.total > 0) {
+      <div class="pagination-controls">
+        <!-- Page Size Selector -->
+        <div class="page-size-selector">
+          <label for="page-size">{{ 'queue2.show' | transloco }}</label>
+          <select
+            id="page-size"
+            [value]="pageSize"
+            (change)="onPageSizeChange(Number($any($event.target).value))"
+            class="page-size-select">
+            <option [value]="5">5</option>
+            <option [value]="10">10</option>
+            <option [value]="20">20</option>
+            <option [value]="50">50</option>
+            <option [value]="100">100</option>
+            <option [value]="250">250</option>
+            <option [value]="500">500</option>
+          </select>
+        </div>
+
+        <!-- Pagination Info -->
+        <div class="pagination-info">
+          @let startIndex = (queueData.page - 1) * queueData.limit + 1;
+          @let endIndex = Math.min(queueData.page * queueData.limit, queueData.total);
+          {{ 'queue2.showingJobs' | transloco : { start: startIndex, end: endIndex, total: queueData.total } }}
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="pagination-nav">
+          <!-- Previous Button -->
+          <button
+            (click)="previousPage()"
+            [disabled]="currentPage === 1"
+            class="page-btn"
+            title="Previous Page">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="page-numbers">
+            @let totalPages = queueData.totalPages;
+
+            <!-- First page -->
+            @if (currentPage > 2) {
+              <button
+                (click)="goToPage(1)"
+                class="page-btn">
+                1
+              </button>
+              @if (currentPage > 3) {
+                <span class="page-ellipsis">...</span>
+              }
+            }
+
+            <!-- Previous page -->
+            @if (currentPage > 1) {
+              <button
+                (click)="goToPage(currentPage - 1)"
+                class="page-btn">
+                {{ currentPage - 1 }}
+              </button>
+            }
+
+            <!-- Current page -->
+            <button
+              class="page-btn active"
+              disabled>
+              {{ currentPage }}
+            </button>
+
+            <!-- Next page -->
+            @if (currentPage < totalPages) {
+              <button
+                (click)="goToPage(currentPage + 1)"
+                class="page-btn">
+                {{ currentPage + 1 }}
+              </button>
+            }
+
+            <!-- Last page -->
+            @if (currentPage < totalPages - 1) {
+              @if (currentPage < totalPages - 2) {
+                <span class="page-ellipsis">...</span>
+              }
+              <button
+                (click)="goToPage(totalPages)"
+                class="page-btn">
+                {{ totalPages }}
+              </button>
+            }
+          </div>
+
+          <!-- Next Button -->
+          <button
+            (click)="nextPage()"
+            [disabled]="currentPage === queueData.totalPages"
+            class="page-btn"
+            title="Next Page">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Cancel Confirmation Dialog -->
+@if (showCancelDialog) {
+  <div class="dialog-overlay" (click)="closeCancelDialog()">
+    <div class="dialog-content cancel-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-times-circle"></i> {{ 'queue2.cancelEncodingJob' | transloco }}</h3>
+        <button (click)="closeCancelDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <p class="dialog-message">{{ 'queue2.cancelDialogMessage' | transloco }}</p>
+      </div>
+      <div class="dialog-footer cancel-actions">
+        <button (click)="closeCancelDialog()" class="btn btn-ghost" [disabled]="cancelDialogLoading">
+          <i class="fas fa-arrow-left"></i>
+          <span>{{ 'queue2.keepJob' | transloco }}</span>
+        </button>
+        <button (click)="confirmCancelAndRetry()" class="btn btn-cancel-retry" [disabled]="cancelDialogLoading">
+          @if (cancelDialogLoading) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-redo"></i>
+          }
+          <div class="btn-content">
+            <span class="btn-title">{{ 'queue2.cancelAndRetry' | transloco }}</span>
+            <span class="btn-subtitle">{{ 'queue2.cancelAndRetrySubtitle' | transloco }}</span>
+          </div>
+        </button>
+        <button (click)="confirmCancelAndBlacklist()" class="btn btn-cancel-blacklist" [disabled]="cancelDialogLoading">
+          @if (cancelDialogLoading) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-ban"></i>
+          }
+          <div class="btn-content">
+            <span class="btn-title">{{ 'queue2.cancelAndBlacklist' | transloco }}</span>
+            <span class="btn-subtitle">{{ 'queue2.cancelAndBlacklistSubtitle' | transloco }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Skip Codec Match Confirmation Dialog -->
+@if (showSkipCodecMatchDialog) {
+  <div class="dialog-overlay" (click)="closeSkipCodecMatchDialog()">
+    <div class="dialog-content skip-codec-match-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-forward"></i> {{ 'queue2.skipCodecMatchJobs' | transloco }}</h3>
+        <button (click)="closeSkipCodecMatchDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon" style="color: var(--info-color)">
+                <i class="fas fa-check-double"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ data.stats.codecMatchCount }}</div>
+                <div class="summary-label">{{ 'queue2.jobsToSkip' | transloco }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box" style="border-color: var(--info-color)">
+            <i class="fas fa-info-circle" style="color: var(--info-color)"></i>
+            <div class="info-content">
+              <strong>{{ 'queue2.whyFlagged' | transloco }}</strong>
+              <p>{{ 'queue2.whyFlaggedDesc' | transloco }}</p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>{{ 'queue2.flaggedReason1' | transloco }}</li>
+                <li>{{ 'queue2.flaggedReason2' | transloco }}</li>
+              </ul>
+              <p style="margin-top: 0.5rem;"><strong>{{ 'queue2.whatHappensSkip' | transloco }}</strong></p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>{{ 'queue2.skipResult1' | transloco }}</li>
+                <li>{{ 'queue2.skipResult2' | transloco }}</li>
+                <li>{{ 'queue2.skipResult3' | transloco }}</li>
+                <li>{{ 'queue2.skipResult4' | transloco }}</li>
+              </ul>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeSkipCodecMatchDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          {{ 'common.cancel' | transloco }}
+        </button>
+        <button (click)="confirmSkipCodecMatch()" class="btn btn-info">
+          <i class="fas fa-forward"></i>
+          {{ 'queue2.skipAllCodecMatchJobs' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Force Encode Codec Match Confirmation Dialog -->
+@if (showForceEncodeCodecMatchDialog) {
+  <div class="dialog-overlay" (click)="closeForceEncodeCodecMatchDialog()">
+    <div class="dialog-content skip-codec-match-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-compress-arrows-alt"></i> {{ 'queue2.reEncodeCodecMatchJobs' | transloco }}</h3>
+        <button (click)="closeForceEncodeCodecMatchDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon" style="color: var(--warning-color)">
+                <i class="fas fa-compress-arrows-alt"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ data.stats.codecMatchCount }}</div>
+                <div class="summary-label">{{ 'queue2.jobsToReEncode' | transloco }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box" style="border-color: var(--warning-color)">
+            <i class="fas fa-exclamation-triangle" style="color: var(--warning-color)"></i>
+            <div class="info-content">
+              <strong>{{ 'queue2.whyForceReEncode' | transloco }}</strong>
+              <p>{{ 'queue2.whyForceReEncodeDesc' | transloco }}</p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>{{ 'queue2.forceReason1' | transloco }}</li>
+                <li>{{ 'queue2.forceReason2' | transloco }}</li>
+                <li>{{ 'queue2.forceReason3' | transloco }}</li>
+              </ul>
+              <p style="margin-top: 0.5rem;"><strong>{{ 'queue2.forceWarning' | transloco }}</strong></p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li>{{ 'queue2.forceWarning1' | transloco }}</li>
+                <li>{{ 'queue2.forceWarning2' | transloco }}</li>
+                <li>{{ 'queue2.forceWarning3' | transloco }}</li>
+              </ul>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeForceEncodeCodecMatchDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          {{ 'common.cancel' | transloco }}
+        </button>
+        <button (click)="confirmForceEncodeCodecMatch()" class="btn btn-warning">
+          <i class="fas fa-compress-arrows-alt"></i>
+          {{ 'queue2.reEncodeAllCodecMatchJobs' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Retry All Cancelled Confirmation Dialog -->
+@if (showRetryAllDialog) {
+  <div class="dialog-overlay" (click)="closeRetryAllDialog()">
+    <div class="dialog-content retry-all-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-redo"></i> {{ 'queue2.retryAllCancelledJobs' | transloco }}</h3>
+        <button (click)="closeRetryAllDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          @let cancelledJobs = getCancelledJobs(data);
+          @let totalSize = calculateTotalSize(cancelledJobs);
+          @let estimatedTime = calculateEstimatedTime(totalSize);
+
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-file-video"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ cancelledJobs.length }}</div>
+                <div class="summary-label">{{ 'queue2.filesToRetry' | transloco }}</div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ formatBytes(totalSize) }}</div>
+                <div class="summary-label">{{ 'queue2.totalFileSize' | transloco }}</div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="summary-content">
+                @if (estimatedTime.hours > 0) {
+                  <div class="summary-value">~{{ estimatedTime.hours }}h {{ estimatedTime.minutes }}m</div>
+                } @else {
+                  <div class="summary-value">~{{ estimatedTime.minutes }}m</div>
+                }
+                <div class="summary-label">{{ 'queue2.estimatedTime' | transloco }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-content">
+              <strong>{{ 'queue2.whatHappensNext' | transloco }}</strong>
+              <p>{{ 'queue2.retryAllCancelledDesc' | transloco : { count: cancelledJobs.length, speed: formatBytes(getAvgEncodingSpeed()) } }}</p>
+            </div>
+          </div>
+
+          <div class="policy-note">
+            <i class="fas fa-cog"></i>
+            <span>{{ 'queue2.policyNote' | transloco }}</span>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeRetryAllDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          {{ 'common.cancel' | transloco }}
+        </button>
+        <button (click)="confirmRetryAll()" class="btn btn-success">
+          <i class="fas fa-redo"></i>
+          {{ 'queue2.retryAllCancelledJobs' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Retry Failed Jobs Dialog -->
+@if (showRetryFailedDialog) {
+  <div class="dialog-overlay" (click)="closeRetryFailedDialog()">
+    <div class="dialog-content retry-failed-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-redo"></i> {{ 'queue2.retryFailedJobsTitle' | transloco }}</h3>
+        <button (click)="closeRetryFailedDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (queueData$ | async; as data) {
+          @let failedJobs = getFailedJobs(data);
+          @let uniqueErrors = getUniqueFailureReasons(data);
+          @let filteredJobs = getFilteredFailedJobs(data, retryFailedSelectedError);
+
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-content">
+              <strong>{{ 'queue2.whatHappensNext' | transloco }}</strong>
+              <p>
+                @if (retryFailedSelectedError) {
+                  {{ 'queue2.retryFilteredDesc' | transloco : { count: filteredJobs.length } }}
+                } @else {
+                  {{ 'queue2.retryAllFailedDesc' | transloco : { count: failedJobs.length } }}
+                }
+              </p>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <h4>{{ 'queue2.filterByErrorReason' | transloco }}</h4>
+            <p class="filter-description">{{ 'queue2.filterDescription' | transloco }}</p>
+
+            <div class="error-filter-list">
+              <div
+                class="error-filter-option"
+                [class.selected]="retryFailedSelectedError === null"
+                (click)="retryFailedSelectedError = null"
+              >
+                <div class="error-radio">
+                  @if (retryFailedSelectedError === null) {
+                    <i class="fas fa-circle-dot"></i>
+                  } @else {
+                    <i class="far fa-circle"></i>
+                  }
+                </div>
+                <div class="error-content">
+                  <div class="error-label">{{ 'queue2.allFailedJobs' | transloco }}</div>
+                  <div class="error-count">{{ 'queue2.jobCount' | transloco : { count: failedJobs.length } }}</div>
+                </div>
+              </div>
+
+              @for (errorReason of uniqueErrors; track errorReason.error) {
+                <div
+                  class="error-filter-option"
+                  [class.selected]="retryFailedSelectedError === errorReason.error"
+                  (click)="retryFailedSelectedError = errorReason.error"
+                >
+                  <div class="error-radio">
+                    @if (retryFailedSelectedError === errorReason.error) {
+                      <i class="fas fa-circle-dot"></i>
+                    } @else {
+                      <i class="far fa-circle"></i>
+                    }
+                  </div>
+                  <div class="error-content">
+                    <div class="error-label">{{ errorReason.error }}</div>
+                    <div class="error-count">{{ 'queue2.jobCount' | transloco : { count: errorReason.count } }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="retry-summary">
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-file-video"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ filteredJobs.length }}</div>
+                <div class="summary-label">{{ 'queue2.filesToRetry' | transloco }}</div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ formatBytes(calculateTotalSize(filteredJobs)) }}</div>
+                <div class="summary-label">{{ 'queue2.totalFileSize' | transloco }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="policy-note">
+            <i class="fas fa-cog"></i>
+            <span>{{ 'queue2.policyNote' | transloco }}</span>
+          </div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeRetryFailedDialog()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          {{ 'common.cancel' | transloco }}
+        </button>
+        <button (click)="confirmRetryFailed()" class="btn btn-success">
+          <i class="fas fa-redo"></i>
+          @if (retryFailedSelectedError) {
+            {{ 'queue2.retrySelectedFailedJobs' | transloco }}
+          } @else {
+            {{ 'queue2.retryAllFailedJobs' | transloco }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Cancel All Confirmation Dialog -->
+@if (showCancelAllDialog) {
+  <div class="dialog-overlay" (click)="closeCancelAllDialog()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3>{{ 'queue2.cancelAllQueuedJobs' | transloco }}</h3>
+        <button (click)="closeCancelAllDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <p>{{ 'queue2.cancelAllConfirm' | transloco }}</p>
+        <p class="warning-text">
+          <i class="fas fa-exclamation-triangle"></i>
+          {{ 'queue2.cancelAllWarning' | transloco : { count: (queueData$ | async)?.stats?.queued || 0 } }}
+        </p>
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeCancelAllDialog()" class="btn btn-secondary">
+          {{ 'queue2.noKeepJobs' | transloco }}
+        </button>
+        <button (click)="confirmCancelAll()" class="btn btn-danger">
+          {{ 'queue2.yesCancelAll' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Clear Jobs Dialog -->
+@if (showClearJobsDialog) {
+  <div class="dialog-overlay" (click)="closeClearJobsDialog()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fas fa-trash-alt"></i> {{ 'queue2.clearJobsTitle' | transloco }}</h3>
+        <button (click)="closeClearJobsDialog()" class="dialog-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        @if (clearJobsStages.length > 0) {
+          <p>{{ 'queue2.clearJobsConfirmStages' | transloco : { stages: clearJobsStages.join(', ') } }}</p>
+        } @else {
+          <p>{{ 'queue2.clearJobsConfirmAll' | transloco }}</p>
+        }
+        <p class="warning-text">
+          <i class="fas fa-exclamation-triangle"></i>
+          {{ 'queue2.clearJobsWarning' | transloco }}
+        </p>
+        <p class="info-text">
+          <i class="fas fa-info-circle"></i>
+          {{ 'queue2.clearJobsNote' | transloco }}
+        </p>
+      </div>
+      <div class="dialog-footer">
+        <button (click)="closeClearJobsDialog()" class="btn btn-secondary">
+          {{ 'queue2.noKeepJobs' | transloco }}
+        </button>
+        <button (click)="confirmClearJobs()" class="btn btn-danger">
+          {{ 'queue2.yesDeleteJobs' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Add Files to Queue Modal -->
+<app-add-files-modal
+  [isOpen]="showAddFilesModal"
+  (close)="closeAddFilesModal()"
+  (jobsCreated)="handleJobsCreated()">
+</app-add-files-modal>
+
+<!-- Job History Modal -->
+@if (jobHistoryModalData) {
+  <app-job-history-modal
+    [isOpen]="showJobHistoryModal"
+    [fileName]="jobHistoryModalData.fileName"
+    [jobId]="jobHistoryModalData.jobId"
+    [history]="jobHistoryModalData.history"
+    (closeModal)="closeJobHistoryModal()">
+  </app-job-history-modal>
+}
+
+<!-- Error Details Modal -->
+@if (errorModalData) {
+  <app-error-details-modal
+    [isOpen]="showErrorDetailsModal"
+    [fileName]="errorModalData.fileName"
+    [error]="errorModalData.error"
+    [status]="errorModalData.status"
+    [jobId]="errorModalData.jobId"
+    (closeModal)="closeErrorDetailsModal()">
+  </app-error-details-modal>
+}
+
+<!-- Fullscreen Carousel Modal -->
+@if (showFullscreenCarousel) {
+  <bb-image-carousel
+    [images]="fullscreenCarouselImages"
+    [initialIndex]="fullscreenCarouselInitialIndex"
+    [showThumbnails]="true"
+    [fullscreen]="true"
+    (close)="closeFullscreenCarousel()" />
+}

@@ -1,0 +1,157 @@
+<div class="library-card" data-testid="library-card" [class.disabled]="!library().enabled">
+  <div class="card-header">
+    <div class="header-left">
+      <h3 class="library-name">
+        <i class="fas fa-folder-open"></i>
+        {{ library().name }}
+      </h3>
+      <span class="media-type-badge" [attr.data-type]="library().mediaType">
+        <i class="fas" [ngClass]="getMediaTypeIcon(library().mediaType)"></i>
+        {{ getMediaTypeLabel(library().mediaType) }}
+      </span>
+      @if (library().defaultPolicy) {
+        <span class="policy-badge default-policy"
+          bbTooltip
+          [tooltipTitle]="'libraryCard.defaultEncodingPolicy' | transloco"
+          [tooltipContent]="'libraryCard.defaultPolicyTooltip' | transloco : { name: library().defaultPolicy!.name }"
+          tooltipWhen="You want to understand which encoding settings will be used for files in this library."
+          tooltipPlacement="top">
+          <i class="fas fa-cog"></i>
+          {{ library().defaultPolicy!.name }}
+        </span>
+      } @else {
+        <span class="policy-badge no-policy"
+          bbTooltip
+          [tooltipTitle]="'libraryCard.noDefaultPolicySet' | transloco"
+          [tooltipContent]="'libraryCard.noDefaultPolicyTooltip' | transloco"
+          tooltipWhen="You want to set a default policy for easier workflow."
+          tooltipPlacement="top">
+          <i class="fas fa-exclamation-triangle"></i>
+          {{ 'libraries.noDefaultPolicy' | transloco }}
+        </span>
+      }
+    </div>
+    <div class="header-right">
+      @if (library().node) {
+        <span class="status-badge" [class.online]="library().node.status === 'ONLINE'">
+          {{ library().node.name }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <div class="card-body">
+    <div class="library-path">
+      <i class="fas fa-folder"></i>
+      <span>{{ library().path }}</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <i class="fas fa-file-video"></i>
+        <div class="stat-content">
+          <div class="stat-value">{{ library().totalFiles.toLocaleString() }}</div>
+          <div class="stat-label">{{ 'libraries.files' | transloco }}</div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <i class="fas fa-database"></i>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatSize(library().totalSizeBytes) }}</div>
+          <div class="stat-label">{{ 'libraryCard.totalSize' | transloco }}</div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <i class="fas fa-clock"></i>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatDate(library().lastScanAt) }}</div>
+          <div class="stat-label">{{ 'libraries.lastScan' | transloco }}</div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <i class="fas fa-tasks"></i>
+        <div class="stat-content">
+          <div class="stat-value">{{ library()._count.jobs }}</div>
+          <div class="stat-label">{{ 'libraryCard.jobs' | transloco }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-footer">
+    <div class="footer-left">
+      <div class="watch-toggle-section">
+        <button
+          class="btn btn-icon btn-toggle"
+          [class.active]="library().watchEnabled"
+          (click)="onToggleWatch()"
+          bbTooltip
+          [tooltipTitle]="library().watchEnabled ? ('libraryCard.disableWatching' | transloco) : ('libraryCard.enableWatching' | transloco)"
+          tooltipContent="Automatically monitors this library folder for new or modified files in real-time. When enabled, BitBonsai will detect changes without manual scanning."
+          [tooltipWhen]="library().watchEnabled ? 'You want to temporarily stop monitoring for changes (e.g., during bulk file operations).' : 'You want BitBonsai to automatically detect new files as they are added to this library.'"
+          tooltipPlacement="top">
+          <i class="fas" [ngClass]="library().watchEnabled ? 'fa-eye' : 'fa-eye-slash'"></i>
+          {{ library().watchEnabled ? ('libraries.watching' | transloco) : 'Watch' }}
+        </button>
+        <div class="watch-help-text">
+          @if (library().watchEnabled) {
+            <i class="fas fa-check-circle"></i>
+            <span>{{ 'libraryCard.autoDetecting' | transloco }}</span>
+          } @else {
+            <i class="fas fa-info-circle"></i>
+            <span>{{ 'libraryCard.clickToEnable' | transloco }}</span>
+          }
+        </div>
+      </div>
+    </div>
+    <div class="footer-right">
+      <button
+        class="btn btn-icon"
+        (click)="onViewFiles()"
+        bbTooltip
+        [tooltipTitle]="'libraryCard.viewFiles' | transloco"
+        tooltipContent="Browse all video files in this library. Shows file details including codec, resolution, size, and health status. Useful for reviewing your media collection."
+        tooltipWhen="You want to see all files in the library, not just ones needing encoding."
+        tooltipPlacement="top">
+        <i class="fas fa-list"></i>
+        {{ 'libraryCard.viewFiles' | transloco }}
+      </button>
+      <button
+        class="btn btn-icon"
+        (click)="onEdit()"
+        bbTooltip
+        tooltipTitle="Edit Library Settings"
+        tooltipContent="Modify library configuration including name, path, media type, and other settings. Does not affect existing files or encoding jobs."
+        tooltipWhen="You need to change the library name, update the path, or adjust media type classification."
+        tooltipPlacement="top">
+        <i class="fas fa-edit"></i>
+        {{ 'common.edit' | transloco }}
+      </button>
+      <button
+        class="btn btn-icon"
+        (click)="onScan()"
+        bbTooltip
+        tooltipTitle="Scan Library Now"
+        tooltipContent="Manually triggers a full library scan to discover new files, update metadata, and refresh statistics. This analyzes file codecs, sizes, and identifies encoding candidates."
+        tooltipWhen="You've added new files and want to update the library immediately, or when file watching is disabled."
+        tooltipPlacement="top">
+        <i class="fas fa-sync-alt"></i>
+        {{ 'libraryCard.scanLibrary' | transloco }}
+      </button>
+      <button
+        class="btn btn-icon btn-danger"
+        (click)="onDelete()"
+        bbTooltip
+        tooltipTitle="Delete Library"
+        tooltipContent="Removes this library from BitBonsai. IMPORTANT: Your actual media files will NOT be deleted - only the library configuration and tracking data will be removed."
+        tooltipWhen="You no longer need BitBonsai to manage this library. Your files will remain untouched on disk."
+        tooltipPlacement="top">
+        <i class="fas fa-trash"></i>
+        {{ 'libraryCard.deleteLibrary' | transloco }}
+      </button>
+    </div>
+  </div>
+</div>

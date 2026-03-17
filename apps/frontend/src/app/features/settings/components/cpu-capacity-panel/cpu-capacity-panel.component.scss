@@ -1,0 +1,419 @@
+@use 'sass:color';
+@use '../../../../../styles/variables' as *;
+
+.cpu-capacity-panel {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 800px;
+}
+
+// Header
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  .icon-wrapper {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .cpu-icon {
+    width: 28px;
+    height: 28px;
+    color: #fff;
+  }
+
+  .header-content {
+    flex: 1;
+
+    h3 {
+      margin: 0 0 4px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: $text-secondary;
+    }
+  }
+}
+
+// Info Card
+.info-card {
+  background: $bg-tertiary;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid $border-primary;
+    }
+
+    .card-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: $text-secondary;
+
+      .label-icon {
+        font-size: 16px;
+      }
+    }
+
+    .card-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+  }
+}
+
+// Calculation Card
+.calculation-card {
+  background: linear-gradient(135deg, rgba($accent-primary, 0.05), rgba($accent-primary, 0.02));
+  border: 1px solid rgba($accent-primary, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  .calc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    h4 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+
+    .calc-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+
+      &.balanced {
+        background: rgba(76, 175, 80, 0.1);
+        color: rgba(76, 175, 80, 1);
+      }
+    }
+  }
+
+  .worker-visual {
+    margin-bottom: 20px;
+  }
+
+  .worker-bar-container {
+    margin-bottom: 16px;
+  }
+
+  .worker-bar-bg {
+    height: 32px;
+    background: $bg-tertiary;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .worker-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 15%));
+    transition: width 0.5s ease;
+    border-radius: 16px;
+  }
+
+  .worker-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 12px;
+    color: $text-secondary;
+
+    .label-current {
+      font-weight: 600;
+      font-size: 14px;
+      color: $accent-primary;
+    }
+  }
+
+  .calc-formula {
+    background: $bg-tertiary;
+    border-radius: 6px;
+    padding: 12px;
+    font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+
+    .formula-step {
+      display: flex;
+      gap: 8px;
+      padding: 6px 0;
+
+      &:not(:last-child) {
+        border-bottom: 1px solid $border-primary;
+      }
+
+      .formula-label {
+        color: $text-secondary;
+        min-width: 120px;
+      }
+
+      .formula-value {
+        color: $text-primary;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .recommendation {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px;
+    background: $bg-secondary;
+    border-radius: 6px;
+
+    .recommendation-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .recommendation-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: $text-secondary;
+
+      strong {
+        color: $text-primary;
+      }
+    }
+  }
+}
+
+// Scenarios Section
+.scenarios-section {
+  margin-bottom: 20px;
+
+  .toggle-details {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: $bg-tertiary;
+    border: 1px solid $border-primary;
+    border-radius: 6px;
+    color: $text-primary;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: color.adjust($bg-tertiary, $lightness: 2%);
+      border-color: $accent-primary;
+    }
+
+    .chevron {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.2s;
+
+      &.rotated {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .scenarios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .scenario-card {
+    background: $bg-tertiary;
+    border: 2px solid $border-primary;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+
+    &.current {
+      border-color: $accent-primary;
+      background: rgba($accent-primary, 0.05);
+    }
+
+    &:hover:not(.current) {
+      border-color: color.adjust($border-primary, $lightness: 10%);
+    }
+
+    .scenario-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+
+      h5 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: $text-primary;
+      }
+
+      .scenario-badge {
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+
+        &.risk-low {
+          background: rgba(76, 175, 80, 0.1);
+          color: rgba(76, 175, 80, 1);
+        }
+
+        &.risk-medium {
+          background: rgba(255, 193, 7, 0.1);
+          color: rgba(255, 193, 7, 1);
+        }
+
+        &.risk-high {
+          background: rgba(244, 67, 54, 0.1);
+          color: rgba(244, 67, 54, 1);
+        }
+      }
+    }
+
+    .scenario-workers {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px;
+
+      .worker-count {
+        font-size: 32px;
+        font-weight: 700;
+        color: $text-primary;
+        line-height: 1;
+      }
+
+      .worker-label {
+        font-size: 12px;
+        color: $text-secondary;
+      }
+    }
+
+    .scenario-description {
+      font-size: 13px;
+      color: $text-secondary;
+      line-height: 1.4;
+      margin: 0 0 12px 0;
+    }
+
+    .scenario-current {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 12px;
+      border-top: 1px solid $border-primary;
+      color: $accent-primary;
+      font-size: 12px;
+      font-weight: 600;
+
+      .check-icon {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}
+
+// Memory Info
+.memory-info {
+  padding: 16px;
+  background: $bg-tertiary;
+  border-radius: 8px;
+
+  .memory-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+
+    .memory-label {
+      color: $text-secondary;
+    }
+
+    .memory-value {
+      color: $text-primary;
+      font-weight: 500;
+    }
+  }
+
+  .memory-bar {
+    height: 6px;
+    background: $bg-secondary;
+    border-radius: 3px;
+    overflow: hidden;
+
+    .memory-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
+      transition: width 0.5s ease;
+    }
+  }
+}
+
+// Loading State
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: $text-secondary;
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid $border-primary;
+    border-top-color: $accent-primary;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

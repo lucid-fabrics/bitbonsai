@@ -1,0 +1,35 @@
+@use '../../styles/variables' as *;
+
+.bb-badge {
+  display: inline-block;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-sm;
+  font-size: 0.75rem;
+  font-weight: $font-weight-bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &--success {
+    color: $success;
+    background: rgba($success, 0.15);
+    border: 1px solid rgba($success, 0.3);
+  }
+
+  &--warning {
+    color: $warning;
+    background: rgba($warning, 0.15);
+    border: 1px solid rgba($warning, 0.3);
+  }
+
+  &--danger {
+    color: $danger;
+    background: rgba($danger, 0.15);
+    border: 1px solid rgba($danger, 0.3);
+  }
+
+  &--info {
+    color: $info;
+    background: rgba($info, 0.15);
+    border: 1px solid rgba($info, 0.3);
+  }
+}

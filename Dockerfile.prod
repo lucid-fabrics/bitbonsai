@@ -1,0 +1,192 @@
+# Stage 1: Build Angular Frontend
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Copy package files and .npmrc for Font Awesome Pro
+COPY package*.json .npmrc ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps && \
+    npm cache clean --force
+
+# Copy workspace configuration
+COPY nx.json tsconfig.json tsconfig.base.json angular.json ./
+
+# Copy shared libs (required by frontend)
+COPY libs ./libs
+
+# Copy frontend source
+COPY apps/frontend ./apps/frontend
+
+# Build Angular app for production
+RUN npx nx build frontend --configuration=production
+
+# Stage 2: Build NestJS Backend
+FROM node:20-alpine AS backend-builder
+
+WORKDIR /app
+
+# Copy package files and .npmrc for Font Awesome Pro
+COPY package*.json .npmrc ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps && \
+    npm cache clean --force
+
+# Copy Prisma schema and generate client (needed for TypeScript types)
+COPY prisma ./prisma
+RUN ./node_modules/.bin/prisma generate
+
+# Copy workspace configuration
+COPY nx.json tsconfig.json tsconfig.base.json ./
+
+# Copy shared libs (may be required by backend)
+COPY libs ./libs
+
+# Copy backend source
+COPY apps/backend ./apps/backend
+
+# Build NestJS app for production
+RUN npx nx build backend --configuration=production
+
+# Stage 3: Backend Production Runtime
+FROM node:20-alpine AS backend
+
+# Install runtime dependencies only
+# NFS and SMB clients for shared storage support
+RUN apk add --no-cache \
+    ffmpeg \
+    curl \
+    tini \
+    nfs-utils \
+    cifs-utils \
+    util-linux
+
+WORKDIR /app
+
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm ci --only=production --legacy-peer-deps && \
+    npm cache clean --force
+
+# Copy built backend from builder
+COPY --from=backend-builder /app/dist/apps/backend ./dist/apps/backend
+
+# Create necessary directories
+RUN mkdir -p /data /media && \
+    chown -R node:node /app /data /media
+
+# Switch to non-root user
+USER node
+
+# Expose backend port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start backend
+CMD ["node", "dist/apps/backend/main.js"]
+
+# Stage 4: Frontend Production Runtime with Nginx
+FROM nginx:alpine AS frontend
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy built frontend from builder
+COPY --from=frontend-builder /app/dist/apps/frontend /usr/share/nginx/html
+
+# Copy custom nginx configuration
+COPY nginx.frontend.conf /etc/nginx/conf.d/default.conf
+
+# Create nginx user and set permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html
+
+# Expose HTTP port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+
+# Stage 5: All-in-one production image (Unraid Community App)
+# Includes embedded PostgreSQL for zero-configuration deployment
+FROM node:20-alpine AS production
+
+# Install runtime dependencies including PostgreSQL
+RUN apk add --no-cache \
+    ffmpeg \
+    nginx \
+    curl \
+    tini \
+    nfs-utils \
+    cifs-utils \
+    postgresql16 \
+    postgresql16-contrib \
+    su-exec \
+    openssh-keygen \
+    procps
+
+WORKDIR /app
+
+# Copy node_modules from backend builder (avoids needing .npmrc auth)
+COPY --from=backend-builder /app/node_modules ./node_modules
+COPY package*.json ./
+
+# Copy Prisma schema
+COPY prisma ./prisma
+# Re-generate Prisma client (ensures it matches the schema)
+RUN ./node_modules/.bin/prisma generate
+
+# Copy built backend
+COPY --from=backend-builder /app/dist/apps/backend ./dist/apps/backend
+
+# Copy backend docs (for Settings > Docs page)
+COPY --from=backend-builder /app/apps/backend/docs ./apps/backend/docs
+
+# Note: Don't prune - we need prisma CLI for runtime migrations
+# The size savings (~100MB) aren't worth the complexity
+
+# Copy built frontend
+COPY --from=frontend-builder /app/dist/apps/frontend /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.all-in-one.conf /etc/nginx/http.d/default.conf
+
+# Copy startup script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Create necessary directories
+# /config - Persistent storage (PostgreSQL data + encoding cache)
+# /media  - Media library mount point
+RUN mkdir -p /config/postgres /config/cache /config/logs /media /run/nginx /run/postgresql && \
+    chown -R postgres:postgres /config/postgres /run/postgresql && \
+    chown -R node:node /app /config/cache /config/logs /media && \
+    chown -R nginx:nginx /usr/share/nginx/html /run/nginx
+
+# Environment defaults
+ENV NODE_ENV=production \
+    DATABASE_URL=postgresql://bitbonsai:bitbonsai@localhost:5432/bitbonsai \
+    ENCODING_TEMP_PATH=/config/cache \
+    PGDATA=/config/postgres
+
+# Expose only port 8108 (nginx serves frontend + proxies /api to backend)
+EXPOSE 8108
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8108/ || exit 1
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint.sh"]
