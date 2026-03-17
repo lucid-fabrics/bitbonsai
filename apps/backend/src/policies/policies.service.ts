@@ -1,0 +1,258 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import { PolicyPreset, TargetCodec } from '@prisma/client';
+import type { AdvancedSettings, CreatePolicyDto, DeviceProfiles } from './dto/create-policy.dto';
+import type { PolicyDto } from './dto/policy.dto';
+import type { PolicyStatsDto } from './dto/policy-stats.dto';
+import type { PresetInfoDto } from './dto/preset-info.dto';
+import type { UpdatePolicyDto } from './dto/update-policy.dto';
+import { PolicyRepository } from './repositories/policy.repository';
+
+@Injectable()
+export class PoliciesService {
+  constructor(private readonly policyRepository: PolicyRepository) {}
+
+  /**
+   * Create a new encoding policy
+   */
+  async create(createPolicyDto: CreatePolicyDto): Promise<PolicyDto> {
+    const deviceProfiles: DeviceProfiles = createPolicyDto.deviceProfiles || {
+      appleTv: true,
+      roku: true,
+      web: true,
+      chromecast: true,
+      ps5: true,
+      xbox: true,
+    };
+
+    const advancedSettings: AdvancedSettings = createPolicyDto.advancedSettings || {
+      ffmpegFlags: ['-preset', 'medium'],
+      hwaccel: 'auto',
+      audioCodec: 'copy',
+      subtitleHandling: 'copy',
+    };
+
+    // Derive targetCodec and targetQuality from preset if not provided
+    const presetDefaults = this.getPresetDefaults(createPolicyDto.preset);
+    const targetCodec = createPolicyDto.targetCodec ?? presetDefaults.codec;
+    const targetQuality = createPolicyDto.targetQuality ?? presetDefaults.quality;
+
+    const policy = await this.policyRepository.create({
+      name: createPolicyDto.name,
+      preset: createPolicyDto.preset,
+      targetCodec,
+      targetQuality,
+      deviceProfiles: deviceProfiles as object,
+      advancedSettings: advancedSettings as object,
+      atomicReplace: createPolicyDto.atomicReplace ?? true,
+      verifyOutput: createPolicyDto.verifyOutput ?? true,
+      skipSeeding: createPolicyDto.skipSeeding ?? true,
+      allowSameCodec: createPolicyDto.allowSameCodec ?? false,
+      minSavingsPercent: createPolicyDto.minSavingsPercent ?? 0,
+      libraryId: createPolicyDto.libraryId,
+    });
+
+    return this.mapPolicyToDto(policy);
+  }
+
+  /**
+   * Get default codec and quality for a preset
+   */
+  private getPresetDefaults(preset: PolicyPreset): { codec: TargetCodec; quality: number } {
+    switch (preset) {
+      case PolicyPreset.BALANCED_HEVC:
+        return { codec: TargetCodec.HEVC, quality: 23 };
+      case PolicyPreset.FAST_HEVC:
+        return { codec: TargetCodec.HEVC, quality: 26 };
+      case PolicyPreset.QUALITY_AV1:
+        return { codec: TargetCodec.AV1, quality: 28 };
+      case PolicyPreset.COPY_IF_COMPLIANT:
+        return { codec: TargetCodec.HEVC, quality: 0 };
+      default:
+        return { codec: TargetCodec.HEVC, quality: 23 };
+    }
+  }
+
+  /**
+   * Get all policies
+   */
+  async findAll(): Promise<PolicyDto[]> {
+    const policies = await this.policyRepository.findAll();
+    return policies.map((policy) => this.mapPolicyToDto(policy));
+  }
+
+  /**
+   * Get policy with job statistics
+   */
+  async findOne(id: string): Promise<PolicyStatsDto> {
+    const policy = await this.policyRepository.findByIdWithStats(id);
+
+    if (!policy) {
+      throw new NotFoundException(`Policy with ID "${id}" not found`);
+    }
+
+    return this.mapPolicyToStatsDto(policy);
+  }
+
+  /**
+   * Update a policy
+   */
+  async update(id: string, updatePolicyDto: UpdatePolicyDto): Promise<PolicyDto> {
+    // Check if policy exists
+    await this.findOne(id);
+
+    const policy = await this.policyRepository.update(id, {
+      name: updatePolicyDto.name,
+      preset: updatePolicyDto.preset,
+      targetCodec: updatePolicyDto.targetCodec,
+      targetQuality: updatePolicyDto.targetQuality,
+      deviceProfiles: updatePolicyDto.deviceProfiles as object | undefined,
+      advancedSettings: updatePolicyDto.advancedSettings as object | undefined,
+      atomicReplace: updatePolicyDto.atomicReplace,
+      verifyOutput: updatePolicyDto.verifyOutput,
+      skipSeeding: updatePolicyDto.skipSeeding,
+      allowSameCodec: updatePolicyDto.allowSameCodec,
+      minSavingsPercent: updatePolicyDto.minSavingsPercent,
+      libraryId: updatePolicyDto.libraryId,
+    });
+
+    return this.mapPolicyToDto(policy);
+  }
+
+  /**
+   * Delete a policy
+   */
+  async remove(id: string): Promise<void> {
+    // Check if policy exists
+    await this.findOne(id);
+
+    await this.policyRepository.delete(id);
+  }
+
+  /**
+   * Get available presets with descriptions
+   */
+  getPresets(): PresetInfoDto[] {
+    return [
+      {
+        preset: PolicyPreset.BALANCED_HEVC,
+        name: 'Balanced HEVC',
+        description:
+          'Balanced quality and speed for general-purpose HEVC encoding. Ideal for most media libraries.',
+        defaultCodec: TargetCodec.HEVC,
+        recommendedQuality: 23,
+      },
+      {
+        preset: PolicyPreset.FAST_HEVC,
+        name: 'Fast HEVC',
+        description:
+          'Prioritizes encoding speed over quality. Good for large libraries where time is critical.',
+        defaultCodec: TargetCodec.HEVC,
+        recommendedQuality: 26,
+      },
+      {
+        preset: PolicyPreset.QUALITY_AV1,
+        name: 'Quality AV1',
+        description:
+          'Maximum quality and efficiency using AV1 codec. Slower encoding but best compression.',
+        defaultCodec: TargetCodec.AV1,
+        recommendedQuality: 28,
+      },
+      {
+        preset: PolicyPreset.COPY_IF_COMPLIANT,
+        name: 'Copy if Compliant',
+        description:
+          'Copy streams without re-encoding if already in target codec. Fastest option for compatible files.',
+        defaultCodec: TargetCodec.HEVC,
+        recommendedQuality: 0,
+      },
+      {
+        preset: PolicyPreset.CUSTOM,
+        name: 'Custom',
+        description: 'Fully customizable encoding policy with manual control over all parameters.',
+        defaultCodec: TargetCodec.HEVC,
+        recommendedQuality: 23,
+      },
+    ];
+  }
+
+  /**
+   * Map Prisma policy to PolicyDto
+   */
+  private mapPolicyToDto(policy: {
+    id: string;
+    name: string;
+    preset: string;
+    targetCodec: string;
+    targetQuality: number;
+    targetContainer: string | null;
+    skipReencoding: boolean;
+    allowSameCodec: boolean;
+    minSavingsPercent: number | null;
+    deviceProfiles: Prisma.JsonValue;
+    advancedSettings: Prisma.JsonValue;
+    atomicReplace: boolean;
+    verifyOutput: boolean;
+    skipSeeding: boolean;
+    libraryId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): PolicyDto {
+    return {
+      id: policy.id,
+      name: policy.name,
+      preset: policy.preset as PolicyPreset,
+      targetCodec: policy.targetCodec as TargetCodec,
+      targetQuality: policy.targetQuality,
+      targetContainer: policy.targetContainer,
+      skipReencoding: policy.skipReencoding,
+      allowSameCodec: policy.allowSameCodec,
+      minSavingsPercent: policy.minSavingsPercent,
+      deviceProfiles: policy.deviceProfiles as object,
+      advancedSettings: policy.advancedSettings as object,
+      atomicReplace: policy.atomicReplace,
+      verifyOutput: policy.verifyOutput,
+      skipSeeding: policy.skipSeeding,
+      libraryId: policy.libraryId,
+      createdAt: policy.createdAt.toISOString(),
+      updatedAt: policy.updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * Map Prisma policy with stats to PolicyStatsDto
+   */
+  private mapPolicyToStatsDto(policy: {
+    id: string;
+    name: string;
+    preset: string;
+    targetCodec: string;
+    targetQuality: number;
+    deviceProfiles: Prisma.JsonValue;
+    advancedSettings: Prisma.JsonValue;
+    atomicReplace: boolean;
+    verifyOutput: boolean;
+    skipSeeding: boolean;
+    library?: { id: string; name: string } | null;
+    _count: { jobs: number };
+    createdAt: Date;
+    updatedAt: Date;
+  }): PolicyStatsDto {
+    return {
+      id: policy.id,
+      name: policy.name,
+      preset: policy.preset as PolicyPreset,
+      targetCodec: policy.targetCodec as TargetCodec,
+      targetQuality: policy.targetQuality,
+      deviceProfiles: policy.deviceProfiles as object,
+      advancedSettings: policy.advancedSettings as object,
+      atomicReplace: policy.atomicReplace,
+      verifyOutput: policy.verifyOutput,
+      skipSeeding: policy.skipSeeding,
+      library: policy.library || null,
+      _count: { jobs: policy._count.jobs },
+      createdAt: policy.createdAt.toISOString(),
+      updatedAt: policy.updatedAt.toISOString(),
+    };
+  }
+}

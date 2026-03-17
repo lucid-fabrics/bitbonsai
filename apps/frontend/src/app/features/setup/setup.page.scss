@@ -1,0 +1,903 @@
+@use '../../../styles/variables' as *;
+@use 'sass:color';
+
+.setup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, $bg-primary 0%, color.adjust($bg-primary, $lightness: -3%) 100%);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+
+  // Animated background pattern
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba($accent-primary, 0.03) 0%, transparent 50%);
+    animation: rotate 60s linear infinite;
+  }
+
+  @keyframes rotate {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+.setup-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 600px;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Branding Section
+.brand-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.brand-logo {
+  font-size: 3.5rem;
+  color: $accent-primary;
+  margin-bottom: 1rem;
+  animation: pulse 2s ease-in-out infinite;
+
+  i {
+    display: inline-block;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.brand-title {
+  font-size: 2.5rem;
+  font-weight: $font-weight-bold;
+  color: $text-white;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+.brand-tagline {
+  font-size: 0.95rem;
+  color: $text-secondary;
+  margin: 0;
+  font-weight: $font-weight-normal;
+}
+
+// Setup Card
+.setup-card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-lg;
+  padding: 2.5rem;
+  box-shadow: $shadow-md;
+  backdrop-filter: blur(10px);
+}
+
+// Progress Section
+.progress-section {
+  margin-bottom: 2rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: $bg-tertiary;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, $accent-primary 0%, $accent-primary-hover 100%);
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px rgba($accent-primary, 0.5);
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: $text-secondary;
+  font-weight: 600;
+}
+
+// Alert Messages
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: $border-radius-sm;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  animation: slideDown 0.3s ease-out;
+
+  i {
+    font-size: 1.125rem;
+    flex-shrink: 0;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.alert-success {
+  background: rgba($success, 0.1);
+  border: 1px solid rgba($success, 0.3);
+  color: $success;
+
+  i {
+    color: $success;
+  }
+}
+
+.alert-error {
+  background: rgba($danger, 0.1);
+  border: 1px solid rgba($danger, 0.3);
+  color: $danger;
+
+  i {
+    color: $danger;
+  }
+}
+
+// Step Content
+.step-content {
+  animation: stepFade 0.3s ease-out;
+}
+
+@keyframes stepFade {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, rgba($accent-primary, 0.2) 0%, rgba($accent-primary, 0.05) 100%);
+  border: 2px solid rgba($accent-primary, 0.3);
+  border-radius: 50%;
+
+  i {
+    font-size: 2.5rem;
+    color: $accent-primary;
+  }
+}
+
+.step-title {
+  font-size: 1.75rem;
+  font-weight: $font-weight-bold;
+  color: $text-white;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+}
+
+.step-subtitle {
+  font-size: 0.9rem;
+  color: $text-secondary;
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+}
+
+.step-description {
+  font-size: 0.95rem;
+  color: $text-primary;
+  margin: 0 0 2rem 0;
+  text-align: center;
+  line-height: 1.6;
+}
+
+// Welcome Step
+.welcome-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0;
+}
+
+// Config Step
+.config-step {
+  padding: 1rem 0;
+}
+
+.config-form {
+  margin-bottom: 2rem;
+}
+
+// Node Type Selection Cards
+.node-type-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.node-type-card {
+  position: relative;
+  background: $bg-tertiary;
+  border: 2px solid $border-secondary;
+  border-radius: $border-radius-md;
+  padding: 2rem;
+  cursor: pointer;
+  transition: $transition-smooth;
+  display: block;
+
+  &:hover {
+    border-color: rgba($accent-primary, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba($accent-primary, 0.1);
+  }
+
+  &.selected {
+    border-color: $accent-primary;
+    background: rgba($accent-primary, 0.05);
+    box-shadow: 0 4px 16px rgba($accent-primary, 0.2);
+
+    .node-type-icon {
+      color: $accent-primary;
+      transform: scale(1.1);
+    }
+
+    .node-type-title {
+      color: $accent-primary;
+    }
+  }
+}
+
+.node-type-radio {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.node-type-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.node-type-icon {
+  font-size: 3rem;
+  color: $text-secondary;
+  margin-bottom: 1rem;
+  transition: $transition-smooth;
+
+  i {
+    display: inline-block;
+  }
+}
+
+.node-type-title {
+  font-size: 1.3rem;
+  font-weight: $font-weight-bold;
+  color: $text-white;
+  margin: 0 0 0.75rem 0;
+  transition: color $transition-smooth;
+}
+
+.node-type-description {
+  font-size: 0.9rem;
+  color: $text-secondary;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.config-option {
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  border-radius: $border-radius-sm;
+  padding: 1.5rem;
+}
+
+.config-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.config-question {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: $text-white;
+  margin: 0;
+  flex: 1;
+}
+
+// Toggle Switch
+.toggle-switch {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:checked + .toggle-slider {
+      background: $accent-primary;
+
+      &::before {
+        transform: translateX(26px);
+      }
+    }
+
+    &:focus + .toggle-slider {
+      box-shadow: 0 0 0 3px rgba($accent-primary, 0.2);
+    }
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: $border-secondary;
+    border-radius: 30px;
+    transition: $transition-fast;
+
+    &::before {
+      content: '';
+      position: absolute;
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background: $text-white;
+      border-radius: 50%;
+      transition: $transition-fast;
+    }
+  }
+}
+
+.config-explanation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba($accent-primary, 0.05);
+  border: 1px solid rgba($accent-primary, 0.1);
+  border-radius: $border-radius-sm;
+
+  i {
+    font-size: 1rem;
+    color: $accent-primary;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: $text-secondary;
+    line-height: 1.5;
+  }
+}
+
+// Account Step
+.account-step {
+  padding: 1rem 0;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// Form Styling (matching login page)
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text-primary;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  i {
+    font-size: 0.875rem;
+    color: $accent-primary;
+  }
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.password-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: $bg-tertiary;
+  border: 1px solid $border-secondary;
+  border-radius: $border-radius-sm;
+  color: $text-white;
+  font-size: 0.95rem;
+  font-family: $font-family;
+  transition: $transition-fast;
+  outline: none;
+
+  &::placeholder {
+    color: $text-tertiary;
+  }
+
+  &:focus {
+    border-color: $accent-primary;
+    background: color.adjust($bg-tertiary, $lightness: 2%);
+    box-shadow: 0 0 0 3px rgba($accent-primary, 0.1);
+  }
+
+  &:hover:not(:focus) {
+    border-color: color.adjust($border-secondary, $lightness: 5%);
+  }
+
+  &.input-error {
+    border-color: $danger;
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba($danger, 0.1);
+    }
+  }
+
+  // Remove autofill yellow background
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px $bg-tertiary inset !important;
+    -webkit-text-fill-color: $text-white !important;
+    border-color: $border-secondary;
+  }
+}
+
+.password-wrapper .form-input {
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: $text-secondary;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  i {
+    font-size: 1.125rem;
+  }
+
+  &:hover {
+    color: $accent-primary;
+  }
+
+  &:focus {
+    outline: 2px solid $accent-primary;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: $danger;
+  font-size: 0.8rem;
+  animation: shake 0.4s ease-out;
+
+  i {
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(5px);
+    }
+  }
+}
+
+// Step Actions (Navigation Buttons)
+.step-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+// Buttons
+.btn {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: $border-radius-sm;
+  font-size: 1rem;
+  font-weight: $font-weight-bold;
+  cursor: pointer;
+  transition: $transition-fast;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+
+  i {
+    font-size: 1rem;
+    transition: transform 0.2s;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  // Ripple effect
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s;
+  }
+
+  &:active:not(:disabled)::after {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+.btn-primary {
+  background: $accent-primary;
+  color: $text-dark;
+
+  &:hover:not(:disabled) {
+    background: $accent-primary-hover;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba($accent-primary, 0.4);
+
+    i {
+      transform: translateX(3px);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &.loading {
+    pointer-events: none;
+
+    .spinner {
+      display: inline-block;
+      width: 1.125rem;
+      height: 1.125rem;
+      border: 2px solid $text-dark;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  }
+}
+
+.btn-secondary {
+  background: $bg-tertiary;
+  color: $text-primary;
+  border: 1px solid $border-secondary;
+
+  &:hover:not(:disabled) {
+    background: color.adjust($bg-tertiary, $lightness: 3%);
+    border-color: color.adjust($border-secondary, $lightness: 5%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    i {
+      transform: translateX(-3px);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+.btn-large {
+  max-width: 300px;
+  padding: 1.125rem 2rem;
+  font-size: 1.05rem;
+}
+
+// Pairing Step (BEM)
+.pairing-step {
+  padding: 1rem 0;
+
+  // Loading state
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem 0;
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba($accent-primary, 0.1);
+      border-top-color: $accent-primary;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    p {
+      color: $text-secondary;
+      margin: 0;
+    }
+  }
+}
+
+// Pairing info container
+.pairing-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+// Pairing token section (BEM)
+.pairing-token {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .pairing-label {
+    font-size: 0.875rem;
+    font-weight: $font-weight-bold;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+  }
+
+  .token-display {
+    padding: 1.5rem;
+    background: rgba($accent-primary, 0.05);
+    border: 1px solid rgba($accent-primary, 0.2);
+    border-radius: $border-radius-sm;
+    text-align: center;
+
+    code {
+      font-size: 2rem;
+      font-weight: $font-weight-bold;
+      color: $accent-primary;
+      font-family: monospace;
+      letter-spacing: 0.15em;
+      word-break: break-all;
+    }
+  }
+
+  .pairing-instructions {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba($accent-primary, 0.05);
+    border: 1px solid rgba($accent-primary, 0.1);
+    border-radius: $border-radius-sm;
+    margin: 0;
+    font-size: 0.875rem;
+    color: $text-secondary;
+    line-height: 1.5;
+
+    i {
+      color: $accent-primary;
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: 0.125rem;
+    }
+
+    strong {
+      color: $accent-primary;
+      font-weight: $font-weight-bold;
+    }
+  }
+}
+
+// Footer
+.setup-footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid $border-primary;
+  color: $text-tertiary;
+  font-size: 0.8rem;
+
+  p {
+    margin: 0;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .setup-page {
+    padding: 1.5rem;
+  }
+
+  .setup-container {
+    max-width: 100%;
+  }
+
+  .brand-logo {
+    font-size: 3rem;
+  }
+
+  .brand-title {
+    font-size: 2rem;
+  }
+
+  .brand-tagline {
+    font-size: 0.875rem;
+  }
+
+  .setup-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .step-title {
+    font-size: 1.5rem;
+  }
+
+  .step-icon {
+    width: 70px;
+    height: 70px;
+
+    i {
+      font-size: 2rem;
+    }
+  }
+
+  .config-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .step-actions {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .setup-page {
+    padding: 1rem;
+  }
+
+  .brand-logo {
+    font-size: 2.5rem;
+  }
+
+  .brand-title {
+    font-size: 1.75rem;
+  }
+
+  .setup-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .step-icon {
+    width: 60px;
+    height: 60px;
+
+    i {
+      font-size: 1.75rem;
+    }
+  }
+
+  .form-input {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
+}

@@ -1,0 +1,1067 @@
+// BitBonsai Prisma Schema
+// Complete database schema for media optimization platform
+//
+// DEFAULT DATABASE: SQLite (file-based, zero-configuration)
+// - Perfect for single-node deployments
+// - No external database server required
+// - Production-ready for most use cases
+//
+// COMMERCIAL EDITION: PostgreSQL support available
+// - Required for multi-node deployments
+// - Enhanced performance and scalability
+// - Simply change provider to "postgresql" and update DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum LicenseTier {
+  FREE
+  PATREON              // Legacy - maps to PATREON_SUPPORTER
+  PATREON_SUPPORTER    // $3/mo - 2 nodes, 3 concurrent
+  PATREON_PLUS         // $5/mo - 3 nodes, 5 concurrent
+  PATREON_PRO          // $10/mo - 5 nodes, 10 concurrent
+  PATREON_ULTIMATE     // $20/mo - 10 nodes, 20 concurrent
+  COMMERCIAL_STARTER
+  COMMERCIAL_PRO
+  COMMERCIAL_ENTERPRISE
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum NodeRole {
+  MAIN
+  LINKED
+}
+
+enum NodeStatus {
+  ONLINE
+  OFFLINE
+  ERROR
+}
+
+enum NetworkLocation {
+  LOCAL         // Local network, low latency (<50ms)
+  REMOTE        // Remote network (VPN, internet)
+  UNKNOWN       // Not yet detected
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCING
+  COMPLETED
+  FAILED
+}
+
+enum AccelerationType {
+  CPU
+  INTEL_QSV
+  NVIDIA
+  AMD
+  APPLE_M
+}
+
+enum MediaType {
+  MOVIE
+  TV_SHOW
+  ANIME
+  ANIME_MOVIE
+  MIXED
+  OTHER
+}
+
+enum PolicyPreset {
+  BALANCED_HEVC
+  FAST_HEVC
+  QUALITY_AV1
+  COPY_IF_COMPLIANT
+  CUSTOM
+}
+
+enum TargetCodec {
+  HEVC
+  AV1
+  VP9
+  H264
+}
+
+enum JobType {
+  ENCODE // Full video/audio transcode
+  REMUX  // Container change only (stream copy)
+}
+
+enum JobStage {
+  DETECTED
+  HEALTH_CHECK
+  NEEDS_DECISION // User decision required before proceeding (e.g., AC3 audio + MP4)
+  TRANSFERRING // PHASE 2: File transfer to LINKED node (no shared storage)
+  QUEUED
+  ENCODING
+  PAUSED
+  PAUSED_LOAD // CRITICAL FIX: Auto-paused due to high system load
+  VERIFYING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum FileHealthStatus {
+  UNKNOWN
+  HEALTHY
+  WARNING
+  AT_RISK
+  CORRUPTED
+}
+
+enum JobEventType {
+  FAILED             // Job failed during encoding
+  CANCELLED          // User cancelled the job
+  RESTARTED          // Job restarted after failure
+  AUTO_HEALED        // Job auto-healed after backend restart
+  BACKEND_RESTART    // Job interrupted by backend restart
+  TIMEOUT            // Job timed out
+}
+
+enum RegistrationRequestStatus {
+  PENDING   // Waiting for MAIN node approval
+  APPROVED  // MAIN node approved request
+  REJECTED  // MAIN node rejected request
+  EXPIRED   // Request expired (24h timeout)
+  CANCELLED // Child node cancelled the request
+}
+
+enum ContainerType {
+  BARE_METAL // Native installation
+  DOCKER     // Docker container
+  LXC        // Proxmox LXC container
+  VM         // Virtual machine
+  UNKNOWN    // Could not determine
+}
+
+enum StorageProtocol {
+  NFS // Network File System
+  SMB // Server Message Block (CIFS)
+}
+
+enum StorageShareStatus {
+  AVAILABLE   // Share is detected and available
+  MOUNTED     // Share is currently mounted
+  UNMOUNTED   // Share exists but not mounted
+  ERROR       // Mount failed or share unreachable
+  TESTING     // Currently testing connectivity
+}
+
+// ============================================================================
+// SETTINGS MODEL (System Configuration)
+// ============================================================================
+
+model Settings {
+  id                           String   @id @default(cuid())
+  isSetupComplete              Boolean  @default(false)
+  allowLocalNetworkWithoutAuth Boolean  @default(false)
+  defaultQueueView             String   @default("ENCODING") // Default queue filter view (ENCODING, QUEUED, COMPLETED, FAILED, ALL, etc.)
+  readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
+  maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
+  advancedModeEnabled          Boolean  @default(false) // Show advanced UI controls (default: minimal mode for simple UX)
+
+  // ============ License Settings ============
+  licenseKey                   String?   @map("license_key") // License key (stored in DB for seamless UX)
+  licenseLastVerified          DateTime? @map("license_last_verified") // Last successful verification timestamp
+
+  // ============ Notification Settings ============
+  // Discord webhook
+  discordWebhookUrl            String?  // Discord webhook URL for notifications
+  discordNotifyOnComplete      Boolean  @default(true) // Notify on job completion
+  discordNotifyOnFail          Boolean  @default(true) // Notify on job failure
+  discordNotifyOnBatch         Boolean  @default(false) // Notify on batch completion
+
+  // Slack webhook
+  slackWebhookUrl              String?  // Slack webhook URL for notifications
+  slackNotifyOnComplete        Boolean  @default(true) // Notify on job completion
+  slackNotifyOnFail            Boolean  @default(true) // Notify on job failure
+  slackNotifyOnBatch           Boolean  @default(false) // Notify on batch completion
+
+  // Generic webhook (custom integrations)
+  webhookUrl                   String?  // Generic webhook URL
+  webhookSecret                String?  // Webhook secret for signature verification
+
+  // SMTP Email
+  smtpHost                     String?  // SMTP server host
+  smtpPort                     Int?     // SMTP server port (default: 587)
+  smtpSecure                   Boolean  @default(false) // Use TLS
+  smtpUser                     String?  // SMTP username
+  smtpPass                     String?  // SMTP password (encrypted)
+  emailFrom                    String?  // From email address
+  emailTo                      String?  // Recipient email address
+  emailDigestEnabled           Boolean  @default(false) // Send daily digest
+  emailDigestTime              String?  @default("08:00") // Time to send digest (HH:MM)
+
+  // ============ Integration Settings ============
+  // Plex
+  plexUrl                      String?  // Plex server URL (e.g., "http://192.168.1.100:32400")
+  plexToken                    String?  // Plex authentication token
+  plexPauseDuringPlayback      Boolean  @default(true) // Pause encoding during active playback
+  plexRefreshOnComplete        Boolean  @default(true) // Refresh library after encoding
+
+  // Jellyfin
+  jellyfinUrl                  String?  // Jellyfin server URL
+  jellyfinApiKey               String?  // Jellyfin API key
+  jellyfinRefreshOnComplete    Boolean  @default(true) // Refresh library after encoding
+
+  // Torrent client
+  torrentClient                String?  // Torrent client type (qbittorrent, transmission, deluge)
+  torrentUrl                   String?  // Torrent client URL
+  torrentUsername              String?  // Torrent client username
+  torrentPassword              String?  // Torrent client password (encrypted)
+  skipSeeding                  Boolean  @default(true) // Skip files being seeded
+
+  // Radarr
+  radarrUrl                    String?  // Radarr URL (e.g., "http://192.168.1.100:7878")
+  radarrApiKey                 String?  // Radarr API key
+  radarrRescanOnComplete       Boolean  @default(true) // Trigger rescan after encoding
+  radarrSkipQualityMet         Boolean  @default(false) // Skip if already HEVC/AV1
+
+  // Sonarr
+  sonarrUrl                    String?  // Sonarr URL (e.g., "http://192.168.1.100:8989")
+  sonarrApiKey                 String?  // Sonarr API key
+  sonarrRescanOnComplete       Boolean  @default(true) // Trigger rescan after encoding
+  sonarrSkipQualityMet         Boolean  @default(false) // Skip if already HEVC/AV1
+
+  // Whisparr
+  whisparrUrl                  String?  // Whisparr URL
+  whisparrApiKey               String?  // Whisparr API key
+  whisparrRescanOnComplete     Boolean  @default(true) // Trigger rescan after encoding
+  whisparrSkipQualityMet       Boolean  @default(false) // Skip if already HEVC/AV1
+
+  // ============ Operational Settings (UX: eliminates env vars) ============
+  // Job cleanup & stuck detection
+  jobStuckThresholdMinutes     Int      @default(5)      // Minutes before job is considered stuck
+  jobEncodingTimeoutHours      Int      @default(2)      // Hours before encoding job times out
+
+  // Stuck job recovery worker
+  recoveryIntervalMs           Int      @default(120000) // Recovery check interval (2 min default)
+  healthCheckTimeoutMin        Int      @default(5)      // Health check stage timeout
+  encodingTimeoutMin           Int      @default(10)     // Encoding stage timeout for recovery
+  verifyingTimeoutMin          Int      @default(30)     // Verifying stage timeout
+
+  // Health check worker
+  healthCheckConcurrency       Int      @default(10)     // Concurrent health checks
+  healthCheckIntervalMs        Int      @default(2000)   // Interval between health checks
+  maxRetryAttempts             Int      @default(3)      // Max retry attempts for health checks
+
+  // Backup cleanup worker
+  backupCleanupIntervalMs      Int      @default(3600000) // Backup cleanup interval (1 hour)
+  backupRetentionHours         Int      @default(24)      // Hours to retain backup files
+
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ============================================================================
+// USER MODEL (Authentication & Authorization)
+// ============================================================================
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
+  passwordHash String // bcrypt hashed password
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  // Refresh token for JWT token rotation
+  refreshToken          String?
+  refreshTokenExpiresAt DateTime?
+
+  // Patreon OAuth Integration
+  patreonId           String?   @unique // Patreon user ID
+  patreonAccessToken  String?   // OAuth access token (encrypted)
+  patreonRefreshToken String?   // OAuth refresh token (encrypted)
+  patreonTokenExpiry  DateTime? // When access token expires
+  patreonEmail        String?   // Email from Patreon
+  patreonFullName     String?   // Full name from Patreon
+  patreonTier         LicenseTier? // Current Patreon tier
+  patreonLastSync     DateTime? // Last successful sync with Patreon API
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([username])
+  @@index([email])
+  @@index([isActive])
+  @@index([patreonId])
+  @@index([patreonTier])
+  @@map("users")
+}
+
+// ============================================================================
+// LICENSE MODEL
+// ============================================================================
+
+model License {
+  id                   String        @id @default(cuid())
+  key                  String        @unique
+  tier                 LicenseTier
+  status               LicenseStatus
+  email                String        @unique
+  maxNodes             Int
+  maxConcurrentJobs    Int
+  features             Json // Feature flags: { multiNode: true, advancedPresets: true, api: true }
+  validUntil           DateTime? // Null = perpetual/lifetime
+  // Payment integrations
+  patreonId            String?   @unique  // Patreon user ID for OAuth
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  // Relations
+  nodes   Node[]
+  metrics Metric[]
+
+  @@index([status])
+  @@index([tier])
+  @@index([validUntil])
+  @@map("licenses")
+}
+
+// ============================================================================
+// NODE MODEL
+// ============================================================================
+
+model Node {
+  id               String           @id @default(cuid())
+  name             String
+  role             NodeRole
+  status           NodeStatus
+  version          String
+  acceleration     AccelerationType
+  pairingToken     String?          @unique // Used during pairing process, null after paired
+  pairingExpiresAt DateTime? // Pairing token expiration (10 minutes)
+  mainNodeUrl      String? // URL of main node (only for LINKED nodes, e.g., "http://192.168.1.100:3100")
+  apiKey           String           @unique // For node authentication
+  lastHeartbeat    DateTime
+  uptimeSeconds    Int              @default(0)
+  maxWorkers       Int              @default(1) // Number of concurrent encoding jobs
+  cpuLimit         Int              @default(80) // Maximum CPU usage percentage (1-100)
+
+  // Policy Sync Fields (Child Node Configuration)
+  lastSyncedAt   DateTime?   // When policies/settings were last synced to this child node
+  syncStatus     SyncStatus  @default(PENDING) // Current sync status (PENDING, SYNCING, COMPLETED, FAILED)
+  syncRetryCount Int         @default(0) // Number of sync retry attempts (max 3)
+  syncError      String?     // Error message if sync failed
+
+  // Hybrid Architecture Fields (Network & Capability Detection)
+  networkLocation    NetworkLocation @default(UNKNOWN) // Network location (LOCAL, REMOTE, UNKNOWN)
+  hasSharedStorage   Boolean         @default(false) // Can access main node's file system directly
+  storageBasePath    String?         // Base path for shared storage (e.g., "/mnt/media")
+  ipAddress          String?         // IP address of the node (especially for LINKED nodes, e.g., "192.168.1.213")
+  publicUrl          String?         // Public URL for remote access (e.g., "https://node.example.com")
+  vpnIpAddress       String?         // VPN IP address if using VPN (e.g., "10.8.0.2")
+  maxTransferSizeMB  Int             @default(50000) // Maximum file size to transfer (50GB default)
+
+  // Hardware Capabilities (for smart job routing)
+  cpuCores           Int?            // Number of CPU cores
+  ramGB              Int?            // RAM in gigabytes
+  bandwidthMbps      Int?            // Network bandwidth in Mbps
+  latencyMs          Int?            // Network latency to main node in milliseconds
+  lastSpeedTest      DateTime?       // When bandwidth was last tested
+  hasGpu             Boolean         @default(false) // Has GPU for hardware acceleration
+  avgEncodingSpeed   Float?          // Average encoding speed (FPS) for performance scoring
+
+  // Container & Environment Detection (for storage configuration recommendations)
+  containerType      String?         // Container type (BARE_METAL, LXC, DOCKER, KUBERNETES, UNKNOWN)
+  isPrivileged       Boolean         @default(false) // Whether container has privileged mode / CAP_SYS_ADMIN
+  canMountNFS        Boolean         @default(true) // Whether node can mount NFS shares (false for non-privileged LXC/Docker)
+  environmentDetectedAt DateTime?    // When environment was last detected
+
+  // Per-node encoding cache configuration (UX: eliminates ENCODING_TEMP_PATH env var)
+  encodingTempPath   String?         // Fast SSD path for temp encoding files (e.g., "/cache")
+
+  // Scheduling Fields (per-node encoding time windows)
+  scheduleEnabled    Boolean         @default(false) // Enable time-based scheduling for this node
+  scheduleWindows    Json?           // Array of TimeWindow objects: [{dayOfWeek: 0-6, startHour: 0-23, endHour: 0-23}]
+
+  // Load Throttling Settings (per-node)
+  // LOAD_THRESHOLD_MULTIPLIER: Max load = CPU cores * multiplier
+  // Higher values = more tolerant of high load (useful for NAS systems with high I/O wait)
+  // Default: 3.0 (good for NAS, use 1.5 for dedicated servers)
+  loadThresholdMultiplier Float @default(3.0)
+
+  // ============ Distribution v2 Fields ============
+  // Real-time load monitoring (updated via heartbeat)
+  currentSystemLoad   Float?    // Current 1-min load average from heartbeat
+  currentMemoryFreeGB Float?    // Current free memory in GB from heartbeat
+  lastHeartbeatLoad   Json?     // Full load data: {load1m, load5m, load15m, memFreeGB, memTotalGB}
+
+  // ETA & capacity tracking
+  estimatedFreeAt     DateTime? // Estimated time when node will have capacity
+  queuedJobCount      Int       @default(0) // Cached count of queued jobs (updated on assignment)
+
+  // Reliability tracking
+  recentFailureCount  Int       @default(0) // Failures in last 24h (updated by reliability tracker)
+  lastFailureAt       DateTime? // When last job failure occurred on this node
+  failureRate24h      Float?    // Failure rate percentage over last 24h
+
+  // Relations
+  licenseId String
+  license   License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  libraries Library[]
+  jobs      Job[]
+  metrics   Metric[]
+
+  // Registration requests where this node is the MAIN node receiving requests
+  registrationRequests NodeRegistrationRequest[]
+
+  // Storage shares configured on this node
+  storageShares StorageShare[]
+
+  // Distribution v2: Failure logs for reliability tracking
+  failureLogs NodeFailureLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([role])
+  @@index([licenseId])
+  @@index([lastHeartbeat])
+  @@index([syncStatus])
+  @@index([networkLocation]) // For filtering by network location
+  @@index([hasSharedStorage]) // For quick shared storage lookup
+  @@map("nodes")
+}
+
+// ============================================================================
+// NODE REGISTRATION REQUEST MODEL
+// ============================================================================
+
+model NodeRegistrationRequest {
+  id String @id @default(cuid())
+
+  // Child node information (before approval)
+  childNodeId   String? // Null until approved, then points to created Node
+  childNodeName String
+  childVersion  String
+
+  // System identification
+  ipAddress     String
+  hostname      String
+  containerType ContainerType
+
+  // Hardware specifications (JSON for flexibility)
+  hardwareSpecs Json // { cpuCores: 32, ramGb: 64, gpuModel: "NVIDIA RTX 4090", diskGb: 2000 }
+  acceleration  AccelerationType
+
+  // Network information
+  macAddress    String? // For detecting duplicate requests from same machine
+  subnet        String? // Network subnet (e.g., "192.168.1.0/24")
+  sshPublicKey  String? // Child node's SSH public key for passwordless file transfers
+
+  // Pairing token (generated by child node)
+  pairingToken     String   @unique
+  tokenExpiresAt   DateTime // 24 hours from creation
+  tokenGeneratedAt DateTime @default(now())
+
+  // Request status and lifecycle
+  status      RegistrationRequestStatus @default(PENDING)
+  requestedAt DateTime                  @default(now())
+  respondedAt DateTime? // When MAIN node approved/rejected
+
+  // MAIN node that received this request
+  mainNodeId String
+  mainNode   Node   @relation(fields: [mainNodeId], references: [id], onDelete: Cascade)
+
+  // Optional message from child node
+  message String?
+
+  // Response from MAIN node (if rejected)
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([mainNodeId])
+  @@index([pairingToken])
+  @@index([tokenExpiresAt])
+  @@index([status, mainNodeId]) // For querying pending requests per MAIN node
+  @@index([macAddress]) // For detecting duplicate requests
+  @@index([createdAt]) // PERF: For sorting by creation time
+  @@index([tokenExpiresAt, status]) // PERF: For expiration cleanup queries
+  @@index([status, createdAt]) // HIGH #22 FIX: Composite index for status-based queries with time ordering
+  @@map("node_registration_requests")
+}
+
+// ============================================================================
+// STORAGE SHARE MODEL (Shared Storage Configuration)
+// ============================================================================
+
+model StorageShare {
+  id String @id @default(cuid())
+
+  // Share Identification
+  name        String          // User-friendly name (e.g., "Media Library", "Downloads")
+  protocol    StorageProtocol // NFS or SMB
+  status      StorageShareStatus @default(AVAILABLE)
+
+  // Server Configuration
+  serverAddress String // Hostname or IP address (e.g., "192.168.1.100" or "unraid.local")
+  sharePath     String // Share path on server (e.g., "/mnt/user/media" for NFS, "media" for SMB)
+  exportPath    String? // Full export path (e.g., "192.168.1.100:/mnt/user/media")
+
+  // Local Mount Configuration
+  mountPoint    String  // Local mount point (e.g., "/mnt/shared/media")
+  mountOptions  String? // Mount options (e.g., "ro,nolock" for NFS, "username=admin" for SMB)
+  readOnly      Boolean @default(true) // Mount as read-only
+
+  // SMB-specific Configuration (null for NFS)
+  smbUsername String? // SMB username
+  smbPassword String? // SMB password (encrypted)
+  smbDomain   String? // SMB domain (optional)
+  smbVersion  String? @default("3.0") // SMB version (2.0, 2.1, 3.0, 3.1.1)
+
+  // Auto-Mount Configuration
+  autoMount       Boolean @default(true) // Auto-mount on boot and node startup
+  addToFstab      Boolean @default(true) // Add to /etc/fstab for persistence
+  mountOnDetection Boolean @default(true) // Auto-mount when share is detected
+  autoManaged     Boolean @default(false) // System-managed share (from Docker volumes) - not user-created
+
+  // Health & Status
+  isMounted         Boolean   @default(false) // Is currently mounted
+  lastMountAt       DateTime? // When share was last mounted
+  lastUnmountAt     DateTime? // When share was last unmounted
+  lastHealthCheckAt DateTime? // When health check was last performed
+  lastError         String?   // Last error message
+  errorCount        Int       @default(0) // Number of consecutive errors
+
+  // Capability Detection
+  isReachable       Boolean   @default(false) // Can ping server
+  supportsNFS       Boolean   @default(false) // Server supports NFS
+  supportsSMB       Boolean   @default(false) // Server supports SMB
+  detectedAt        DateTime? // When share was auto-detected
+
+  // Storage Usage (updated periodically)
+  totalSizeBytes     BigInt? // Total capacity in bytes
+  availableSizeBytes BigInt? // Available space in bytes
+  usedPercent        Float?  // Usage percentage (0-100)
+
+  // Relations
+  nodeId String
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  // Owned node (if this node is sharing storage to others)
+  ownerNodeId String? // Node that is sharing this storage (null if external storage)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nodeId, mountPoint]) // Prevent duplicate mount points on same node
+  @@index([nodeId])
+  @@index([status])
+  @@index([protocol])
+  @@index([isMounted])
+  @@index([autoMount])
+  @@index([ownerNodeId])
+  @@index([serverAddress]) // For querying shares by server
+  @@map("storage_shares")
+}
+
+// ============================================================================
+// LIBRARY MODEL
+// ============================================================================
+
+model Library {
+  id             String    @id @default(cuid())
+  name           String
+  path           String // Absolute path to library folder
+  mediaType      MediaType
+  enabled        Boolean   @default(true)
+  watchEnabled   Boolean   @default(false) // Enable automatic file watching (inotify)
+  lastScanAt     DateTime?
+  totalFiles     Int       @default(0)
+  totalSizeBytes BigInt    @default(0)
+
+  // Relations
+  nodeId String
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  // Default encoding policy for this library
+  defaultPolicyId String?
+  defaultPolicy   Policy? @relation("LibraryDefaultPolicy", fields: [defaultPolicyId], references: [id], onDelete: SetNull)
+
+  policies Policy[] @relation("LibraryPolicies")
+  jobs     Job[]
+
+  // Resilience relations
+  fileFailureRecords  FileFailureRecord[]
+  processedFileRecords ProcessedFileRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nodeId, path]) // Prevent duplicate paths on same node
+  @@index([nodeId])
+  @@index([enabled])
+  @@index([mediaType])
+  @@index([lastScanAt])
+  @@index([watchEnabled])
+  @@index([defaultPolicyId])
+  @@map("libraries")
+}
+
+// ============================================================================
+// POLICY MODEL
+// ============================================================================
+
+model Policy {
+  id               String       @id @default(cuid())
+  name             String
+  preset           PolicyPreset
+  targetCodec      TargetCodec
+  targetQuality    Int // CRF value (0-51, lower = better quality)
+  targetContainer  String?      @default("mkv") // Target container format (mkv, mp4, or null to keep original)
+  skipReencoding   Boolean      @default(true) // Skip re-encoding if already in target codec (fast remux instead)
+  allowSameCodec   Boolean      @default(false) // Allow source=target codec without NEEDS_DECISION (for re-compression scenarios)
+  minSavingsPercent Int?        @default(0) // Minimum expected savings % to encode (0 = no threshold, only with allowSameCodec)
+  deviceProfiles   Json // { appleTv: bool, roku: bool, web: bool, chromecast: bool }
+  advancedSettings Json // { ffmpegFlags: string[], hwaccel: string, etc }
+  atomicReplace    Boolean      @default(true) // Replace original atomically (rename)
+  verifyOutput     Boolean      @default(true) // Verify output playability
+  skipSeeding      Boolean      @default(true) // Skip files currently seeding in torrent clients
+
+  // Relations
+  libraryId String?
+  library   Library? @relation("LibraryPolicies", fields: [libraryId], references: [id], onDelete: SetNull)
+
+  // Reverse relation for default policy
+  defaultForLibraries Library[] @relation("LibraryDefaultPolicy")
+
+  jobs Job[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([libraryId])
+  @@index([preset])
+  @@index([targetCodec])
+  @@map("policies")
+}
+
+// ============================================================================
+// JOB MODEL
+// ============================================================================
+
+model Job {
+  id              String    @id @default(cuid())
+  type            JobType   @default(ENCODE) // Job type: full encode or fast remux
+  filePath        String // Full path to file
+  fileLabel       String // User-friendly name (e.g., "Movie Name (2024).mkv")
+  sourceCodec     String // Original codec (H.264, HEVC, etc)
+  sourceContainer String? // Original container (mkv, mp4, avi, etc)
+  targetCodec     String // Target codec
+  targetContainer String? // Target container (mkv, mp4, or null to keep original)
+  stage           JobStage
+  lastStageChangeAt DateTime? // CRITICAL FIX #4: Track when stage last changed (prevents watchdog false positives)
+  progress        Float     @default(0) // 0.0 to 100.0
+  etaSeconds      Int? // Estimated time to completion
+  fps             Float? // Current encoding speed (frames per second)
+  beforeSizeBytes BigInt // Original file size
+  afterSizeBytes  BigInt? // Encoded file size (null until completed)
+  savedBytes      BigInt? // Bytes saved (can be negative if larger)
+  savedPercent    Float? // Percentage saved
+  startedAt       DateTime?
+  completedAt     DateTime?
+  failedAt        DateTime? // When job failed (for FAILED status)
+  error           String? // Error message if failed
+  isBlacklisted   Boolean           @default(false) // User marked this file to never encode automatically
+  retryCount      Int               @default(0) // Number of encoding retry attempts (max 3)
+  nextRetryAt     DateTime? // When to retry next (for exponential backoff)
+
+  // Auto-Heal Fields (TRUE RESUME tracking)
+  autoHealedAt       DateTime? // When this job was automatically healed by system restart
+  autoHealedProgress Float?    // Progress percentage when auto-healed (for visual indicator on progress bar)
+
+  // Health Check Fields
+  healthStatus         FileHealthStatus @default(UNKNOWN) // File health status
+  healthScore          Int              @default(0) // Health score 0-100
+  healthMessage        String? // Detailed health message or warning
+  healthCheckedAt      DateTime? // When health check was performed
+  healthCheckStartedAt DateTime? // HIGH PRIORITY FIX: When health check started (prevents orphan detection)
+  healthCheckRetries   Int              @default(0) // Number of health check retry attempts
+
+  // Health Check Decision Fields (NEEDS_DECISION state)
+  decisionRequired Boolean @default(false) // Does this job require user decision before proceeding?
+  decisionIssues   String? // JSON array of HealthCheckIssue objects requiring decisions
+  decisionMadeAt   DateTime? // When user resolved the decision
+  decisionData     String? // JSON object with user's decision choices
+
+  // Priority Fields
+  priority      Int       @default(0) // 0=normal, 1=high, 2=top (max 3 top priority at once)
+  prioritySetAt DateTime? // When priority was last changed (for tracking)
+
+  // CRITICAL #5 FIX: Graceful pause/cancel for active encoding jobs
+  pauseRequestedAt  DateTime? // Timestamp when pause was requested (workers check this at progress checkpoints)
+  pauseProcessedAt  DateTime? // Timestamp when worker acknowledged the pause request
+  cancelRequestedAt DateTime? // Timestamp when cancel was requested (workers check this at progress checkpoints)
+  cancelProcessedAt DateTime? // Timestamp when worker acknowledged the cancel request
+
+  // Resume State Fields (TRUE RESUME after backend crash/restart)
+  tempFilePath       String?   // Path to partial encoded file (e.g., "/path/video.mp4.tmp.mp4")
+  resumeTimestamp    String?   // HH:MM:SS.MS where encoding stopped
+  lastProgressUpdate DateTime? // When progress was last saved to DB
+
+  // CRITICAL FIX #2: Cross-node auto-heal protection
+  lastHeartbeat      DateTime? // Last heartbeat from encoding node (updated every 30s during ENCODING)
+  heartbeatNodeId    String?   // Which node sent the last heartbeat (for validation)
+
+  // Encoding Preview Fields (Live thumbnails during encoding)
+  previewImagePaths String? // JSON array of preview image paths (generated from temp file)
+
+  // Original File Tracking (Keep Original Feature)
+  keepOriginalRequested Boolean @default(false) // User clicked "Keep Original" during encoding
+  originalBackupPath    String? // Path to .original backup if kept (e.g., "/path/movie.mkv.original")
+  originalSizeBytes     BigInt? // Size of original file before encoding
+  replacementAction     String? // 'REPLACED' or 'KEPT_BOTH' - what happened to original file
+
+  // AV1 Resource Throttling Fields (Smart CPU Management)
+  warning                 String?  // User-facing warning message (e.g., "AV1 encoding will take longer")
+  resourceThrottled       Boolean  @default(false) // Is job running with reduced resources?
+  resourceThrottleReason  String?  // Why resources were throttled
+  ffmpegThreads           Int?     // Number of threads FFmpeg is using for this job
+  startedFromSeconds      Float?   // Healing point: seconds where encoding resumed from
+  healingPointSeconds     Float?   // Healing point: detected resume point in temp file
+
+  // DEEP AUDIT P2: Auto-heal atomic claim pattern (prevents multi-node heal race)
+  autoHealClaimedAt       DateTime? // When this job was claimed for auto-healing
+  autoHealClaimedBy       String?   // Which node claimed this job for healing (nodeId)
+
+  // Job Attribution Fields (for distributed encoding & delegation)
+  originalNodeId   String?  // Node where job was originally created (null = created on current node)
+  manualAssignment Boolean  @default(false) // Was this job manually delegated by user?
+
+  // File Transfer Fields (PHASE 2: for LINKED nodes without shared storage)
+  transferRequired     Boolean   @default(false) // Does file need to be transferred to target node?
+  originalFilePath     String?   // CRITICAL: Original file path before any transfers (preserves source location)
+  transferProgress     Float     @default(0) // Transfer progress 0-100%
+  transferSpeedMBps    Float?    // Current transfer speed (MB/s)
+  transferStartedAt    DateTime? // When transfer started
+  transferCompletedAt  DateTime? // When transfer completed
+  transferLastProgressAt DateTime? // DEEP AUDIT P0: When transfer progress was last updated (for stall detection)
+  transferError        String?   // Error message if transfer failed
+  remoteTempPath       String?   // Temporary path on child node during transfer
+  transferRetryCount   Int       @default(0) // Number of transfer retry attempts (max 3)
+
+  // ============ Distribution v2 Fields ============
+  // Job stickiness (prevent unnecessary migrations)
+  assignedAt       DateTime? // When job was assigned to current node
+  stickyUntil      DateTime? // Don't migrate before this time (default: assignedAt + 5 min)
+  migrationCount   Int       @default(0) // Number of times job was migrated between nodes
+
+  // Duration estimation (for ETA-based distribution)
+  estimatedDuration   Int?     // Estimated encoding time in seconds (based on file size, codec, resolution)
+  estimatedStartAt    DateTime? // When job is estimated to start encoding
+  estimatedCompleteAt DateTime? // When job is estimated to complete
+
+  // Resilience: Retry loop caps (prevents infinite requeue of genuinely broken files)
+  corruptedRequeueCount Int @default(0) // Times auto-requeued from CORRUPTED (cap: 3)
+  stuckRecoveryCount    Int @default(0) // Times recovered from stuck ENCODING (cap: 5)
+  contentFingerprint    String? // xxHash fingerprint for rename detection (Phase 3)
+
+  // Distribution scoring (for debugging/visibility)
+  lastScoreBreakdown  Json?    // Last scoring breakdown when assigned: {load: 24, hw: 25, ...}
+  assignmentReason    String?  // Why job was assigned to this node (human-readable)
+
+  // Relations
+  nodeId String
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  libraryId String
+  library   Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+
+  // MEDIUM #4 FIX: Allow policy deletion by setting jobs to NULL instead of blocking
+  policyId String?
+  policy   Policy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+
+  // Relations
+  history JobHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type]) // For filtering by job type (ENCODE vs REMUX)
+  @@index([stage])
+  @@index([nodeId])
+  @@index([libraryId])
+  @@index([policyId])
+  @@index([createdAt])
+  @@index([completedAt])
+  @@index([updatedAt]) // LOW PRIORITY FIX #20: For watchdog queries (stuck job detection)
+  @@index([stage, nodeId]) // Composite for queue queries
+  @@index([isBlacklisted]) // For filtering blacklisted files
+  @@index([filePath, libraryId]) // For checking if file is blacklisted during scan
+  @@index([healthStatus]) // For filtering by health status
+  @@index([healthScore]) // For prioritization (healthy files first)
+  @@index([stage, healthScore]) // Composite for smart queue ordering
+  @@index([priority]) // For priority-based queue ordering
+  @@index([stage, priority, createdAt]) // Composite for efficient queue queries (ORDER BY priority DESC, createdAt ASC)
+  @@index([failedAt]) // PERF: For ordering failed jobs
+  @@index([autoHealedAt]) // PERF: For auto-heal queries
+  @@index([nextRetryAt]) // PERF: For retry scheduler queries
+  @@index([stage, retryCount, nextRetryAt]) // PERF: Composite for auto-heal eligibility queries
+  @@index([type, stage]) // Composite for filtering REMUX jobs in queue
+  @@index([originalNodeId]) // For filtering jobs by original node
+  @@index([manualAssignment]) // For filtering manually delegated jobs
+  @@index([stage, originalNodeId]) // Composite for node-specific queue views
+  @@index([transferRequired]) // PHASE 2: For filtering jobs that need file transfer
+  @@index([stage, transferRequired]) // PHASE 2: Composite for transfer queue queries
+  @@index([assignedAt]) // Distribution v2: For stickiness queries
+  @@index([stickyUntil]) // Distribution v2: For migration eligibility
+  @@index([migrationCount]) // Distribution v2: For tracking job migrations
+  @@index([estimatedDuration]) // Distribution v2: For file size distribution
+  @@index([stage, stickyUntil]) // Distribution v2: Composite for migration queries
+  @@index([stage, healthStatus, priority, createdAt]) // PERF AUDIT: Composite for queue claim with health filtering
+  @@index([libraryId, stage, isBlacklisted]) // PERF AUDIT: Composite for library scans
+  @@index([nodeId, stage, updatedAt]) // PERF AUDIT: Composite for stuck job detection
+  @@index([lastProgressUpdate]) // PERF AUDIT ROUND 4: For resume tracking queries
+  @@index([lastHeartbeat]) // PERF AUDIT ROUND 4: For heartbeat validation queries
+  @@index([autoHealClaimedAt, autoHealClaimedBy]) // DEEP AUDIT P2: For auto-heal claim queries
+  @@index([stage, transferLastProgressAt]) // DEEP AUDIT P0: Composite for TRANSFERRING stall detection
+  @@index([contentFingerprint])
+  // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
+  // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
+  // This prevents race conditions where multiple requests create duplicate jobs
+  // NOTE: Partial unique index implemented via raw SQL migration (20251029000000_add_unique_active_job_per_file)
+  // Cannot be expressed in Prisma schema syntax, handled by migration SQL directly
+  @@map("jobs")
+}
+
+// ============================================================================
+// FILE FAILURE RECORD (Cross-Job Failure Tracking - Phase 2)
+// ============================================================================
+
+model FileFailureRecord {
+  id              String   @id @default(cuid())
+  filePath        String
+  libraryId       String
+  library         Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  contentFingerprint String?
+  totalFailures   Int      @default(0)
+  lastFailedAt    DateTime
+  lastError       String?
+  autoBlacklisted Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([filePath, libraryId])
+  @@index([libraryId, autoBlacklisted])
+  @@index([contentFingerprint])
+  @@map("file_failure_records")
+}
+
+// ============================================================================
+// PROCESSED FILE RECORD (Content Fingerprinting - Phase 3)
+// ============================================================================
+
+model ProcessedFileRecord {
+  id                 String   @id @default(cuid())
+  contentFingerprint String   @unique
+  filePath           String
+  libraryId          String
+  library            Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  completedAt        DateTime
+  resultCodec        String
+  savedPercent       Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([libraryId])
+  @@map("processed_file_records")
+}
+
+// ============================================================================
+// JOB HISTORY MODEL (Failure/Event Tracking)
+// ============================================================================
+
+model JobHistory {
+  id String @id @default(cuid())
+
+  // Event Details
+  eventType JobEventType // Type of event (FAILED, CANCELLED, etc)
+  stage     JobStage // What stage the job was in when event occurred
+  progress  Float // Progress percentage when event occurred
+
+  // Error Information
+  errorMessage   String? // Error message if failed
+  errorDetails   String? // Additional error context
+  wasAutoHealed  Boolean @default(false) // Was this a successful auto-heal?
+  tempFileExists Boolean? // Did temp file exist during this event?
+
+  // Context
+  retryNumber   Int? // Which retry attempt was this?
+  triggeredBy   String? // 'USER', 'SYSTEM', 'BACKEND_RESTART', 'TIMEOUT'
+  systemMessage String? // User-friendly message explaining what happened
+
+  // Performance Data (when available)
+  fps              Float? // FPS at time of event
+  etaSeconds       Int? // ETA at time of event
+  startedFromSeconds Float? // If resumed, where it started from
+
+  // Relations
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([jobId, createdAt]) // For timeline queries
+  @@map("job_history")
+}
+
+// ============================================================================
+// METRIC MODEL (Analytics & Insights)
+// ============================================================================
+
+model Metric {
+  id   String   @id @default(cuid())
+  date DateTime // Date bucket for aggregation
+
+  // Relations
+  nodeId String? // Null = system-wide metric
+  node   Node?   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  licenseId String? // For license-level aggregation
+  license   License? @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  // Metrics
+  jobsCompleted             Int    @default(0)
+  jobsFailed                Int    @default(0)
+  totalSavedBytes           BigInt @default(0)
+  avgThroughputFilesPerHour Float  @default(0)
+  codecDistribution         Json // { "H.264": 62, "HEVC": 34, "AV1": 4 }
+
+  createdAt DateTime @default(now())
+
+  @@unique([date, nodeId, licenseId]) // One metric per date/node/license combination
+  @@index([date])
+  @@index([nodeId])
+  @@index([licenseId])
+  @@index([date, nodeId]) // For time-series node queries
+  @@map("metrics")
+}
+
+// ============================================================================
+// METRICS PROCESSED JOBS (AUDIT #2 - CRITICAL #25 FIX)
+// ============================================================================
+
+/// Tracks which jobs have had their metrics processed to prevent double-counting
+/// CRITICAL FIX #25: Prevents metrics double-count on backend restart
+/// The in-memory Set was cleared on restart, this persists to database
+model MetricsProcessedJob {
+  id          String   @id @default(cuid())
+  jobId       String   @unique
+  processedAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([processedAt]) // For cleanup of old entries
+  @@map("metrics_processed_jobs")
+}
+
+// ============================================================================
+// NODE FAILURE LOG MODEL (Distribution v2 - Reliability Tracking)
+// ============================================================================
+
+model NodeFailureLog {
+  id String @id @default(cuid())
+
+  // Failure details
+  reason      String   // Human-readable failure reason
+  errorCode   String?  // Error code if available
+  stage       JobStage // What stage the job was in when it failed
+  progress    Float?   // Progress when failed (0-100)
+
+  // Context
+  jobId       String?  // Related job ID (null if node-level failure)
+  filePath    String?  // File path for job failures
+  fileSize    BigInt?  // File size for analysis
+
+  // Relations
+  nodeId String
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([nodeId])
+  @@index([createdAt])
+  @@index([nodeId, createdAt]) // For 24h window queries
+  @@index([reason]) // For failure pattern analysis
+  @@map("node_failure_logs")
+}
+
+// ============================================================================
+// DISTRIBUTION CONFIG MODEL (Distribution v2 - Tunable Weights)
+// ============================================================================
+
+model DistributionConfig {
+  id String @id @default(cuid())
+
+  // Scoring Weights (multipliers, default 1.0)
+  weightRealTimeLoad    Float @default(1.0) // Weight for real-time load factor (0-30 pts)
+  weightQueueDepth      Float @default(1.0) // Weight for queue depth factor (0-20 pts)
+  weightHardware        Float @default(1.0) // Weight for hardware capability (0-25 pts)
+  weightPerformance     Float @default(1.0) // Weight for historical performance (0-25 pts)
+  weightStickiness      Float @default(1.0) // Weight for job stickiness penalty (-20 pts)
+  weightTransferCost    Float @default(1.0) // Weight for transfer penalty (-25 pts)
+  weightCodecMatch      Float @default(1.0) // Weight for codec/HW acceleration match (0-20 pts)
+  weightLibraryAffinity Float @default(1.0) // Weight for library affinity bonus (0-10 pts)
+  weightReliability     Float @default(1.0) // Weight for reliability penalty (-15 pts)
+  weightETABalance      Float @default(1.0) // Weight for ETA balancing (0-15 pts)
+  weightFileSizeSpread  Float @default(1.0) // Weight for file size distribution (0-15 pts)
+
+  // Behavior Settings
+  stickinessMinutes     Int     @default(5)    // Minimum time before job can migrate
+  failureWindow24h      Boolean @default(true) // Use 24h window for failure tracking
+  enableETABalancing    Boolean @default(true) // Enable ETA-based distribution
+  enableFileSizeSpread  Boolean @default(true) // Enable file size spreading
+  enableLibraryAffinity Boolean @default(true) // Enable library affinity bonus
+
+  // Thresholds
+  migrationScoreThreshold Float @default(20.0) // Minimum score improvement needed to migrate
+  maxMigrationsPerJob     Int   @default(3)    // Maximum migrations allowed per job
+  highLoadThreshold       Float @default(0.8)  // Load ratio above which node is considered high load
+
+  // Cache Settings
+  scoreCacheTtlSeconds Int @default(60) // How long to cache node scores
+
+  // Singleton - only one config row
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("distribution_config")
+}

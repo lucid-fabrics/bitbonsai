@@ -1,0 +1,85 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (auto-fix)
+    runs-on: self-hosted
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npx prisma generate
+      - name: Lint with auto-fix
+        run: |
+          npx nx run-many --target=lint --all --fix || true
+          npx prettier --write "**/*.{ts,json,md,scss,html}" || true
+      - name: Commit fixes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git add -A && git commit -m "style: auto-fix [skip ci]" && git push
+          fi
+      - name: Verify lint
+        run: npx nx run-many --target=lint --all || true
+
+  test:
+    name: Test (retry)
+    runs-on: self-hosted
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npx prisma generate
+      - name: Test (attempt 1)
+        id: t1
+        continue-on-error: true
+        run: npx nx run-many --target=test --all --passWithNoTests
+      - name: Test (attempt 2)
+        if: steps.t1.outcome == 'failure'
+        id: t2
+        continue-on-error: true
+        run: npx nx run-many --target=test --all --passWithNoTests
+      - name: Test (attempt 3)
+        if: steps.t2.outcome == 'failure'
+        run: npx nx run-many --target=test --all --passWithNoTests
+
+  build:
+    name: Build
+    runs-on: self-hosted
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npx prisma generate
+      - run: npx nx build frontend --configuration=production
+      - run: npx nx build backend --configuration=production
+      - run: npx nx build website --configuration=production

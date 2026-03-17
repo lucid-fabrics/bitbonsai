@@ -1,0 +1,127 @@
+<div class="libraries-container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1 class="header-left__title">Libraries</h1>
+        <p class="header-left__subtitle">
+          Configure and manage media libraries
+        </p>
+      </div>
+      <div class="header-right">
+        @if ((isLoading$ | async) === false && (libraries$ | async); as
+        libraries) {
+        <div class="library-count">
+          <fa-icon
+            [icon]="['fas', 'folder-open']"
+            class="library-count__icon"
+          ></fa-icon>
+          <span
+            >{{ libraries.length }} {{ libraries.length === 1 ? 'Library' :
+            'Libraries' }}</span
+          >
+        </div>
+        }
+        <button class="btn btn-primary" (click)="onAddLibrary()">
+          <fa-icon [icon]="['fas', 'plus']" class="btn__icon"></fa-icon>
+          Add Library
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (error$ | async; as error) {
+  <div class="error-alert">
+    <fa-icon
+      [icon]="['fas', 'exclamation-circle']"
+      class="error-alert__icon"
+    ></fa-icon>
+    <span class="error-alert__message">{{ error }}</span>
+  </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading$ | async) {
+  <div class="loading-state">
+    <fa-icon
+      [icon]="['fas', 'spinner']"
+      class="loading-state__icon fa-spin"
+    ></fa-icon>
+    <p class="loading-state__message">{{ 'common.loading' | transloco }}</p>
+  </div>
+  }
+
+  <!-- Empty State -->
+  @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
+  @if (libraries.length === 0) {
+  <div class="empty-state">
+    <div class="empty-state__icon-wrapper">
+      <fa-icon
+        [icon]="['fas', 'folder-open']"
+        class="empty-state__icon"
+      ></fa-icon>
+    </div>
+    <h2 class="empty-state__title">
+      {{ 'libraries.noLibrariesYet' | transloco }}
+    </h2>
+    <p class="empty-state__description">
+      {{ 'libraries.librariesDescription' | transloco }}
+    </p>
+
+    <div class="getting-started">
+      <h3>{{ 'libraries.gettingStarted' | transloco }}</h3>
+      <ol>
+        <li>{{ 'libraries.clickAddButton' | transloco }}</li>
+        <li>{{ 'libraries.chooseName' | transloco }}</li>
+        <li>{{ 'libraries.selectFolder' | transloco }}</li>
+        <li>{{ 'libraries.pickNode' | transloco }}</li>
+        <li>{{ 'libraries.enableWatching' | transloco }}</li>
+      </ol>
+    </div>
+
+    <button class="btn btn-primary btn-large" (click)="onAddLibrary()">
+      <fa-icon [icon]="['fas', 'plus']" class="btn__icon"></fa-icon>
+      {{ 'libraries.addYourFirstLibrary' | transloco }}
+    </button>
+  </div>
+  } }
+
+  <!-- Libraries Grid -->
+  @if ((isLoading$ | async) === false && (libraries$ | async); as libraries) {
+  @if (libraries.length > 0) {
+  <div class="libraries-grid">
+    @for (library of libraries; track library.id) {
+    <app-library-card
+      [library]="library"
+      (edit)="onEditLibrary($event)"
+      (scan)="onScanLibrary($event)"
+      (delete)="onDeleteLibrary($event)"
+      (toggleWatch)="onToggleWatch($event)"
+      (viewFiles)="onViewFiles($event)"
+    />
+    }
+  </div>
+  } }
+
+  <!-- Library Form Modal -->
+  @if (showForm && (nodes$ | async); as nodes) {
+  <div class="modal-backdrop" (click)="onFormCancel()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <app-library-form
+        [library]="selectedLibrary"
+        [nodes]="nodes"
+        (formSubmit)="onFormSubmit($event)"
+        (formCancel)="onFormCancel()"
+      />
+    </div>
+  </div>
+  }
+
+  <!-- Library Files Modal -->
+  <app-library-files-modal
+    [isOpen]="showFilesModal"
+    [libraryId]="selectedLibraryIdForFiles"
+    (close)="onCloseFilesModal()"
+  />
+</div>

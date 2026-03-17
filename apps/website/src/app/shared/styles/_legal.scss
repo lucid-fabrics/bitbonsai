@@ -1,0 +1,139 @@
+@use '../../../styles/variables';
+
+.legal {
+  width: 100%;
+}
+
+// Header
+.legal-header {
+  padding: 100px 0 60px;
+  background: variables.$bg-primary;
+  text-align: center;
+
+  &__container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  &__title {
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 800;
+    color: variables.$text-primary;
+    margin-bottom: 16px;
+  }
+
+  &__updated {
+    font-size: 16px;
+    color: variables.$text-tertiary;
+    margin: 0;
+  }
+}
+
+// Content
+.legal-content {
+  padding: 60px 0 100px;
+  background: variables.$bg-primary;
+
+  &__container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+}
+
+// Sections
+.legal-section {
+  margin-bottom: 48px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: variables.$text-primary;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid variables.$border-primary;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: variables.$text-primary;
+    margin-top: 24px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 16px;
+    color: variables.$text-secondary;
+    line-height: 1.8;
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  ul {
+    margin: 16px 0;
+    padding-left: 24px;
+
+    li {
+      font-size: 16px;
+      color: variables.$text-secondary;
+      line-height: 1.8;
+      margin-bottom: 8px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      strong {
+        color: variables.$text-primary;
+      }
+    }
+  }
+
+  a {
+    color: variables.$accent-primary;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .legal-header {
+    padding: 80px 0 40px;
+  }
+
+  .legal-content {
+    padding: 40px 0 60px;
+  }
+
+  .legal-section {
+    margin-bottom: 36px;
+
+    h2 {
+      font-size: 20px;
+    }
+
+    h3 {
+      font-size: 16px;
+    }
+
+    p,
+    ul li {
+      font-size: 15px;
+    }
+  }
+}

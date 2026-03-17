@@ -1,0 +1,239 @@
+@use '../../../styles/variables';
+
+.docs {
+  width: 100%;
+}
+
+// Header
+.docs-header {
+  padding: 100px 0 60px;
+  background: variables.$bg-primary;
+  text-align: center;
+
+  &__container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  &__title {
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 800;
+    color: variables.$text-primary;
+    margin-bottom: 16px;
+  }
+
+  &__subtitle {
+    font-size: 20px;
+    color: variables.$text-secondary;
+    line-height: 1.6;
+  }
+}
+
+// Content
+.docs-content {
+  padding: 60px 0 100px;
+  background: variables.$bg-primary;
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+}
+
+// Quick Start
+.quick-start {
+  background: variables.$bg-secondary;
+  border: 2px solid variables.$border-primary;
+  border-radius: 16px;
+  padding: 40px;
+  margin-bottom: 60px;
+
+  &__title {
+    font-size: 32px;
+    font-weight: 800;
+    color: variables.$text-primary;
+    margin-bottom: 12px;
+  }
+
+  &__description {
+    font-size: 18px;
+    color: variables.$text-secondary;
+    margin-bottom: 32px;
+  }
+
+  &__steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+  }
+}
+
+.step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+
+  &__number {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  &__content {
+    flex: 1;
+  }
+
+  &__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: variables.$text-primary;
+    margin-bottom: 8px;
+  }
+
+  &__description {
+    font-size: 15px;
+    color: variables.$text-secondary;
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+// Code Block
+.code-block {
+  background: #000;
+  border: 1px solid variables.$border-primary;
+  border-radius: 12px;
+  overflow: hidden;
+
+  &__header {
+    background: variables.$bg-secondary;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid variables.$border-primary;
+  }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: variables.$text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__copy {
+    background: transparent;
+    border: 1px solid variables.$border-secondary;
+    color: variables.$text-primary;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: variables.$accent-primary;
+      background: rgba(249, 190, 3, 0.05);
+    }
+  }
+
+  &__content {
+    padding: 20px;
+    margin: 0;
+    overflow-x: auto;
+
+    code {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #e0e0e0;
+    }
+  }
+}
+
+// Doc Sections
+.doc-sections {
+  display: grid;
+  gap: 40px;
+}
+
+.doc-section {
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  &__icon {
+    font-size: 32px;
+  }
+
+  &__title {
+    font-size: 28px;
+    font-weight: 800;
+    color: variables.$text-primary;
+    margin: 0;
+  }
+
+  &__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+  }
+}
+
+.doc-item {
+  background: variables.$bg-secondary;
+  border: 1px solid variables.$border-primary;
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: variables.$border-secondary;
+    transform: translateY(-2px);
+  }
+
+  &__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: variables.$text-primary;
+    margin-bottom: 12px;
+  }
+
+  &__description {
+    font-size: 15px;
+    color: variables.$text-secondary;
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .quick-start {
+    padding: 24px;
+
+    &__steps {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .doc-section__items {
+    grid-template-columns: 1fr;
+  }
+}

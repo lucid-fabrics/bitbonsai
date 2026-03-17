@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  bitbonsai-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: backend
+    container_name: bitbonsai-backend
+    ports:
+      - "3002:3000"
+      - "9230:9229"  # Node.js debug port
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/data/bitbonsai.db
+      - PORT=3000
+      - MEDIA_PATHS=/media/sonarr,/media/radarr,/media/whisparr
+      - LOG_LEVEL=debug
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      # Source code with HMR
+      - ./apps/backend:/app/apps/backend:cached
+      - ./libs:/app/libs:cached
+      - ./prisma:/app/prisma:cached
+      # Local test media directory (for Mac development)
+      - ./test-media:/media:cached
+      # Database persistence
+      - bitbonsai-data:/data
+      # Shared storage mount point for NFS/SMB mounts
+      - bitbonsai-shared:/mnt/shared
+      # Preserve node_modules (don't mount from host)
+      - /app/node_modules
+    # Capabilities required for mounting NFS/SMB shares
+    cap_add:
+      - SYS_ADMIN         # Required for mount operations
+      - DAC_READ_SEARCH   # Allows reading all files regardless of permissions
+    security_opt:
+      - apparmor:unconfined  # Required for mount operations
+    command: npx nx serve backend --host 0.0.0.0
+    restart: unless-stopped
+    networks:
+      - bitbonsai-network
+
+  bitbonsai-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: frontend
+    container_name: bitbonsai-frontend
+    ports:
+      - "4201:4200"  # Local development - no port conflicts
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Source code with HMR
+      - ./apps/frontend:/app/apps/frontend:cached
+      - ./libs:/app/libs:cached
+      - ./proxy.docker.conf.json:/app/proxy.conf.json:ro
+      - ./angular.json:/app/angular.json:ro
+      # Preserve node_modules (don't mount from host)
+      - /app/node_modules
+    command: npx nx serve frontend --host 0.0.0.0
+    restart: unless-stopped
+    networks:
+      - bitbonsai-network
+
+  # Optional: PostgreSQL for commercial tier (uncomment to enable)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: bitbonsai-postgres
+  #   environment:
+  #     - POSTGRES_DB=bitbonsai
+  #     - POSTGRES_USER=bitbonsai
+  #     - POSTGRES_PASSWORD=bitbonsai_secure_password
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U bitbonsai"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - bitbonsai-network
+
+  # Optional: Redis for BullMQ commercial tier (uncomment to enable)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: bitbonsai-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - bitbonsai-network
+
+volumes:
+  bitbonsai-data:
+    driver: local
+  bitbonsai-shared:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/shared
+  # postgres-data:
+  #   driver: local
+  # redis-data:
+  #   driver: local
+
+networks:
+  bitbonsai-network:
+    driver: bridge

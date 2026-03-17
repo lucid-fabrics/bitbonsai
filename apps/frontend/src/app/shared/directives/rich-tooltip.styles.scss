@@ -1,0 +1,179 @@
+// Rich Tooltip Styles
+// Self-documenting UI tooltips with detailed explanations
+
+.bb-tooltip {
+  position: absolute;
+  z-index: 10000;
+  max-width: 320px;
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.3),
+    0 6px 12px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+
+  &.bb-tooltip-visible {
+    opacity: 1;
+  }
+}
+
+.bb-tooltip-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.bb-tooltip-content {
+  position: relative;
+  z-index: 1;
+}
+
+.bb-tooltip-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #60a5fa;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bb-tooltip-description {
+  margin: 0 0 12px 0;
+  color: #cbd5e0;
+  font-size: 13px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.bb-tooltip-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+  &:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+.bb-tooltip-subtitle {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #93c5fd;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+// Special styling for code snippets in tooltips
+.bb-tooltip code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+// Emphasis in tooltips
+.bb-tooltip strong {
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.bb-tooltip em {
+  color: #fbbf24;
+  font-style: italic;
+}
+
+// Lists in tooltips
+.bb-tooltip ul,
+.bb-tooltip ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.bb-tooltip li {
+  margin: 4px 0;
+  color: #cbd5e0;
+}
+
+// Responsive sizing
+@media (max-width: 768px) {
+  .bb-tooltip {
+    max-width: 280px;
+    font-size: 12px;
+  }
+
+  .bb-tooltip-title {
+    font-size: 13px;
+  }
+}
+
+// Animation variants
+.bb-tooltip-fade-in {
+  animation: bbTooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes bbTooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Contextual color variants
+.bb-tooltip.bb-tooltip-success {
+  border-color: rgba(72, 187, 120, 0.3);
+
+  .bb-tooltip-title {
+    color: #68d391;
+  }
+}
+
+.bb-tooltip.bb-tooltip-warning {
+  border-color: rgba(237, 137, 54, 0.3);
+
+  .bb-tooltip-title {
+    color: #f6ad55;
+  }
+}
+
+.bb-tooltip.bb-tooltip-danger {
+  border-color: rgba(245, 101, 101, 0.3);
+
+  .bb-tooltip-title {
+    color: #fc8181;
+  }
+}
+
+.bb-tooltip.bb-tooltip-info {
+  border-color: rgba(66, 153, 225, 0.3);
+
+  .bb-tooltip-title {
+    color: #63b3ed;
+  }
+}

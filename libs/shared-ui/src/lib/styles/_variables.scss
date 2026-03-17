@@ -1,0 +1,61 @@
+// BitBonsai Dark Theme Color Palette
+// Shared across all applications (frontend, website, website-admin)
+
+// Primary/Accent Colors
+$accent-primary: #f9be03;
+$accent-primary-hover: #fcd34d;
+$accent-color: $accent-primary; // Alias for compatibility
+
+// Background Colors
+$bg-primary: #1a1a1a;
+$bg-secondary: #252525;
+$bg-tertiary: #2a2a2a;
+
+// Border Colors
+$border-primary: #2d2d2d;
+$border-secondary: #3d3d3d;
+
+// Text Colors
+$text-primary: #e0e0e0;
+$text-secondary: #888;
+$text-tertiary: #666;
+$text-muted: #666;
+$text-white: #fff;
+$text-dark: #1a1a1a;
+
+// Status Colors
+$success: #4ade80;
+$success-bg: #1a4d2e;
+$warning: #fbbf24;
+$warning-bg: #4d3a1a;
+$danger: #ff6b6b;
+$danger-bg: #4d1f1f;
+$danger-border: #4d1f1f;
+$info: #38bdf8;
+$info-bg: #1e3a5f;
+
+// Typography
+$font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+$font-weight-bold: 700;
+$font-weight-normal: 400;
+
+// Spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+
+// Border Radius
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+
+// Shadows
+$shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+$shadow-md: 0 10px 40px rgba(0, 0, 0, 0.5);
+
+// Transitions
+$transition-fast: all 0.2s;
+$transition-smooth: all 0.3s;

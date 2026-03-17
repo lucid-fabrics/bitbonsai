@@ -1,0 +1,192 @@
+import { AsyncPipe } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { Store } from '@ngrx/store';
+import { filter, switchMap } from 'rxjs/operators';
+import { selectIsMainNode } from './core/+state/current-node.selectors';
+import { AuthService } from './core/auth/auth.service';
+import { configureFontAwesome } from './core/config/font-awesome.config';
+import { SidebarComponent } from './core/layout/sidebar/sidebar.component';
+import { ErrorLoggerService } from './core/services/error-logger.service';
+import { NodeService } from './core/services/node.service';
+import { NodeConfigService } from './core/services/node-config.service';
+import { ApiConnectionErrorComponent } from './shared/components/api-connection-error/api-connection-error.component';
+import { NotificationBellComponent } from './shared/components/notification-bell/notification-bell.component';
+import { NotificationContainerComponent } from './shared/components/notification-container/notification-container.component';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [
+    AsyncPipe,
+    RouterOutlet,
+    SidebarComponent,
+    ApiConnectionErrorComponent,
+    NotificationBellComponent,
+    NotificationContainerComponent,
+  ],
+  template: `
+    @if (showLayout()) {
+      <div class="app-layout">
+        <app-sidebar />
+        <div class="content-wrapper">
+          @if ((isMainNode$ | async) !== false) {
+            <header class="app-header">
+              <div class="header-spacer"></div>
+              <app-notification-bell />
+            </header>
+          }
+          <main class="main-content">
+            <router-outlet />
+          </main>
+        </div>
+      </div>
+    } @else {
+      <router-outlet />
+    }
+    <app-api-connection-error />
+    @if ((isMainNode$ | async) !== false) {
+      <app-notification-container />
+    }
+  `,
+  styles: [
+    `
+    .app-layout {
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .content-wrapper {
+      flex: 1;
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+    }
+
+    .header-spacer {
+      flex: 1;
+    }
+
+    .main-content {
+      flex: 1;
+      background: #1a1a1a;
+      padding-top: 56px; /* Account for sticky app-header height */
+    }
+
+    /* When app-header is not shown (non-main nodes), remove padding */
+    .content-wrapper:not(:has(.app-header)) .main-content {
+      padding-top: 0;
+    }
+
+    @media (max-width: 768px) {
+      .content-wrapper {
+        margin-left: 60px;
+      }
+
+      .app-header {
+        padding: 0.5rem 1rem;
+      }
+    }
+  `,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AppComponent implements OnInit {
+  title = 'BitBonsai';
+
+  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly nodeService = inject(NodeService);
+  private readonly nodeConfigService = inject(NodeConfigService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly store = inject(Store);
+  private readonly errorLogger = inject(ErrorLoggerService);
+
+  // Track if we should show the app layout (sidebar + main content)
+  // Hide layout on login and setup pages - using signal for reactivity with OnPush
+  // Initialize to false to prevent flash of content during initial route check
+  readonly showLayout = signal(false);
+
+  // Only show notifications for MAIN nodes (child nodes don't need real-time notifications)
+  readonly isMainNode$ = this.store.select(selectIsMainNode);
+
+  constructor() {
+    const library = inject(FaIconLibrary);
+    configureFontAwesome(library);
+  }
+
+  ngOnInit(): void {
+    // Update showLayout signal on route changes
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((event: NavigationEnd) => {
+        const url = event.urlAfterRedirects;
+        this.showLayout.set(!this.isPublicRoute(url));
+      });
+
+    // Set initial value based on current route
+    const currentUrl = this.router.url;
+    this.showLayout.set(!this.isPublicRoute(currentUrl));
+
+    // Fetch current node information only when authenticated AND not on setup/node-setup routes
+    // This is used for route guards and UI restrictions based on node role
+    this.authService.isAuthenticated$
+      .pipe(
+        filter((isAuthenticated) => {
+          const currentUrl = this.router.url;
+          const isSetupRoute = currentUrl === '/setup' || currentUrl === '/node-setup';
+          return isAuthenticated && !isSetupRoute;
+        }),
+        switchMap(() => this.nodeService.getCurrentNode()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (node) => {
+          // Set main API URL in config service for LINKED nodes
+          // This allows the API interceptor to route requests to the MAIN node
+          if (node.mainNodeUrl) {
+            this.nodeConfigService.setMainApiUrl(node.mainNodeUrl);
+          }
+        },
+        error: (err) => {
+          this.errorLogger.error('Failed to fetch current node information', err);
+          // If no nodes are registered, the app will still work
+          // The user will need to register a node first
+        },
+      });
+  }
+
+  /**
+   * Check if URL is a public route (login, setup, node-setup)
+   * Handles URLs with query params like /login?returnUrl=/overview
+   */
+  private isPublicRoute(url: string): boolean {
+    const path = url.split('?')[0]; // Remove query params
+    return path === '/login' || path === '/setup' || path === '/node-setup';
+  }
+}

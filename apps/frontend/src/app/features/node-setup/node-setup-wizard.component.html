@@ -1,0 +1,500 @@
+<div class="wizard-container">
+  <!-- Progress Bar -->
+  <div class="wizard-progress">
+    <div class="progress-bar">
+      <div
+        class="progress-fill"
+        [style.width.%]="(currentStep() / 8) * 100"
+      ></div>
+    </div>
+    <div class="progress-steps">
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Welcome"
+        [class.current]="currentStep() === WizardStep.Welcome"
+      >
+        <div class="step-number">1</div>
+        <div class="step-label">{{ 'nodeSetup.welcome' | transloco }}</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.ChooseMethod"
+        [class.current]="currentStep() === WizardStep.ChooseMethod"
+      >
+        <div class="step-number">2</div>
+        <div class="step-label">{{ 'nodeSetup.method' | transloco }}</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.SelectNode"
+        [class.current]="currentStep() === WizardStep.SelectNode || currentStep() === WizardStep.Scanning || currentStep() === WizardStep.ManualCode"
+      >
+        <div class="step-number">3</div>
+        <div class="step-label">{{ 'nodeSetup.connect' | transloco }}</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Pairing"
+        [class.current]="currentStep() === WizardStep.Pairing"
+      >
+        <div class="step-number">4</div>
+        <div class="step-label">{{ 'nodeSetup.pairing' | transloco }}</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.CapabilityTest"
+        [class.current]="currentStep() === WizardStep.CapabilityTest || currentStep() === WizardStep.CapabilityResults"
+      >
+        <div class="step-number">5</div>
+        <div class="step-label">{{ 'nodeSetup.testing' | transloco }}</div>
+      </div>
+      <div
+        class="step"
+        [class.active]="currentStep() >= WizardStep.Complete"
+        [class.current]="currentStep() === WizardStep.Complete"
+      >
+        <div class="step-number">6</div>
+        <div class="step-label">{{ 'nodeSetup.done' | transloco }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Welcome -->
+  @if (currentStep() === WizardStep.Welcome) {
+    <div class="wizard-step step-welcome">
+      <div class="welcome-icon">
+        <fa-icon icon="network-wired"></fa-icon>
+      </div>
+      <h1>{{ 'nodeSetup.connectToMainNode' | transloco }}</h1>
+      <p class="welcome-description">
+        {{ 'nodeSetup.connectDescription' | transloco }}
+      </p>
+      <div class="welcome-features">
+        <div class="feature">
+          <fa-icon icon="magnifying-glass"></fa-icon>
+          <span>{{ 'nodeSetup.autoNetworkDiscovery' | transloco }}</span>
+        </div>
+        <div class="feature">
+          <fa-icon icon="keyboard"></fa-icon>
+          <span>{{ 'nodeSetup.manualPairingCodeEntry' | transloco }}</span>
+        </div>
+        <div class="feature">
+          <fa-icon icon="lock"></fa-icon>
+          <span>{{ 'nodeSetup.securePairingProcess' | transloco }}</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-large" (click)="startWizard()">
+        <fa-icon icon="arrow-right"></fa-icon>
+        {{ 'nodeSetup.getStarted' | transloco }}
+      </button>
+    </div>
+  }
+
+  <!-- Step 2: Choose Pairing Method -->
+  @if (currentStep() === WizardStep.ChooseMethod) {
+    <div class="wizard-step step-choose-method">
+      <h2>{{ 'nodeSetup.chooseConnectionMethod' | transloco }}</h2>
+      <p class="method-description">
+        {{ 'nodeSetup.howToConnect' | transloco }}
+      </p>
+
+      <div class="method-cards">
+        <div class="method-card" (click)="selectPairingMethod(PairingMethod.AutoDiscovery)">
+          <div class="method-icon">
+            <fa-icon icon="radar"></fa-icon>
+          </div>
+          <h3>{{ 'nodeSetup.autoDiscover' | transloco }}</h3>
+          <p>{{ 'nodeSetup.autoDiscoverDesc' | transloco }}</p>
+          <div class="method-badges">
+            <span class="badge badge-primary">{{ 'nodes.recommended' | transloco }}</span>
+            <span class="badge badge-info">{{ 'nodeSetup.fast' | transloco }}</span>
+          </div>
+        </div>
+
+        <div class="method-card" (click)="selectPairingMethod(PairingMethod.ManualCode)">
+          <div class="method-icon">
+            <fa-icon icon="keyboard"></fa-icon>
+          </div>
+          <h3>{{ 'nodeSetup.manualCode' | transloco }}</h3>
+          <p>{{ 'nodeSetup.manualCodeDesc' | transloco }}</p>
+          <div class="method-badges">
+            <span class="badge badge-secondary">{{ 'nodeSetup.advanced' | transloco }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Step 3: Manual Code Entry -->
+  @if (currentStep() === WizardStep.ManualCode) {
+    <div class="wizard-step step-manual-code">
+      <h2>{{ 'nodeSetup.enterPairingCode' | transloco }}</h2>
+      <p class="manual-description">
+        {{ 'nodeSetup.enterPairingCodeDesc' | transloco }}
+      </p>
+
+      @if (errorMessage()) {
+        <div class="alert alert-error">
+          <fa-icon icon="circle-exclamation"></fa-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <div class="manual-form">
+        <div class="form-group">
+          <label for="pairingCode">{{ 'nodeSetup.pairingCode' | transloco }}</label>
+          <input
+            type="text"
+            id="pairingCode"
+            class="input input-large text-center"
+            placeholder="123456"
+            maxlength="6"
+            [(ngModel)]="manualPairingCode"
+            (input)="errorMessage.set(null)"
+          />
+          <p class="input-hint" [innerHTML]="'nodeSetup.pairingCodeHint' | transloco">
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="mainNodeUrl">{{ 'nodeSetup.mainNodeAddress' | transloco }}</label>
+          <input
+            type="text"
+            id="mainNodeUrl"
+            class="input"
+            placeholder="http://192.168.1.100:3100"
+            [(ngModel)]="manualMainNodeUrl"
+            (input)="errorMessage.set(null)"
+          />
+          <p class="input-hint">
+            {{ 'nodeSetup.leaveEmptyAutoDetect' | transloco }}
+          </p>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-secondary" (click)="goBack()">
+          <fa-icon icon="arrow-left"></fa-icon>
+          {{ 'common.back' | transloco }}
+        </button>
+        <button
+          class="btn btn-link"
+          (click)="switchToAutoDiscovery()"
+        >
+          <fa-icon icon="radar"></fa-icon>
+          {{ 'nodeSetup.switchToAutoDiscover' | transloco }}
+        </button>
+        <button
+          class="btn btn-primary"
+          [disabled]="manualPairingCode().length !== 6"
+          (click)="proceedWithManualCode()"
+        >
+          {{ 'nodeSetup.continue' | transloco }}
+          <fa-icon icon="arrow-right"></fa-icon>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 4: Scanning -->
+  @if (currentStep() === WizardStep.Scanning) {
+    <div class="wizard-step step-scanning">
+      @if (isScanning()) {
+        <div class="scanning-animation">
+          <div class="radar">
+            <div class="radar-ping"></div>
+            <div class="radar-ping radar-ping-2"></div>
+            <div class="radar-ping radar-ping-3"></div>
+            <div class="radar-center">
+              <fa-icon icon="tower-broadcast"></fa-icon>
+            </div>
+          </div>
+        </div>
+        <h2>{{ 'nodeSetup.scanningNetwork' | transloco }}</h2>
+        <p class="scanning-description">
+          {{ 'nodeSetup.scanningDescription' | transloco }}
+        </p>
+        <div class="discovered-count">
+          @if (discoveredNodes().length > 0) {
+            <div class="count-badge pulse">
+              {{ discoveredNodes().length }}
+              {{ discoveredNodes().length === 1 ? 'node' : 'nodes' }} found
+            </div>
+          }
+        </div>
+      } @else {
+        @if (errorMessage()) {
+          <div class="scan-error">
+            <fa-icon icon="circle-exclamation"></fa-icon>
+            <h2>{{ 'nodeSetup.noNodesFound' | transloco }}</h2>
+            <p class="error-message">{{ errorMessage() }}</p>
+            <div class="error-actions">
+              <button class="btn btn-secondary" (click)="goBack()">
+                <fa-icon icon="arrow-left"></fa-icon>
+                {{ 'common.back' | transloco }}
+              </button>
+              <button class="btn btn-link" (click)="switchToManualCode()">
+                <fa-icon icon="keyboard"></fa-icon>
+                {{ 'nodeSetup.tryManualCode' | transloco }}
+              </button>
+              <button class="btn btn-primary" (click)="retryScan()">
+                <fa-icon icon="rotate-right"></fa-icon>
+                {{ 'nodeSetup.retryScan' | transloco }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="scan-complete">
+            <fa-icon icon="circle-check"></fa-icon>
+            <h2>{{ 'nodeSetup.scanComplete' | transloco }}</h2>
+            <p class="success-message">
+              Found {{ discoveredNodes().length }}
+              {{ discoveredNodes().length === 1 ? 'main node' : 'main nodes' }}
+            </p>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- Step 3: Select Node -->
+  @if (currentStep() === WizardStep.SelectNode) {
+    <div class="wizard-step step-select">
+      <h2>{{ 'nodeSetup.selectMainNode' | transloco }}</h2>
+      <p class="select-description">
+        {{ 'nodeSetup.selectMainNodeDesc' | transloco }}
+      </p>
+
+      <div class="nodes-list">
+        @for (node of discoveredNodes(); track node.nodeId) {
+          <div
+            class="node-card"
+            [class.selected]="selectedNodeId() === node.nodeId"
+            (click)="selectNode(node.nodeId)"
+          >
+            <div class="node-header">
+              <div class="node-icon">
+                <fa-icon icon="server"></fa-icon>
+              </div>
+              <div class="node-info">
+                <h3>{{ node.name }}</h3>
+                <div class="node-address">{{ node.ipAddress }}:{{ node.apiPort }}</div>
+              </div>
+              <div class="node-selection">
+                @if (selectedNodeId() === node.nodeId) {
+                  <fa-icon icon="circle-check"></fa-icon>
+                } @else {
+                  <fa-icon icon="circle"></fa-icon>
+                }
+              </div>
+            </div>
+            <div class="node-details">
+              <div class="detail">
+                <fa-icon icon="server"></fa-icon>
+                <span>{{ node.hostname }}</span>
+              </div>
+              <div class="detail">
+                <fa-icon icon="code-branch"></fa-icon>
+                <span>v{{ node.version }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (selectedNode()) {
+        <div class="node-name-input">
+          <label for="childNodeName">{{ 'nodeSetup.childNodeName' | transloco }}</label>
+          <input
+            type="text"
+            id="childNodeName"
+            [(ngModel)]="childNodeName"
+            placeholder="e.g., Encoding Node 1"
+            class="input"
+          />
+          <p class="input-hint">
+            {{ 'nodeSetup.childNodeNameHint' | transloco }}
+          </p>
+        </div>
+      }
+
+      <div class="step-actions">
+        <button class="btn btn-secondary" (click)="goBack()">
+          <fa-icon icon="arrow-left"></fa-icon>
+          {{ 'common.back' | transloco }}
+        </button>
+        @if (pairingMethod() === PairingMethod.AutoDiscovery) {
+          <button class="btn btn-link" (click)="switchToManualCode()">
+            <fa-icon icon="keyboard"></fa-icon>
+            {{ 'nodeSetup.switchToManualCode' | transloco }}
+          </button>
+        } @else {
+          <button class="btn btn-link" (click)="switchToAutoDiscovery()">
+            <fa-icon icon="radar"></fa-icon>
+            {{ 'nodeSetup.switchToAutoDiscover' | transloco }}
+          </button>
+        }
+        <button
+          class="btn btn-primary"
+          [disabled]="!canProceedToPairing()"
+          (click)="proceedToPairing()"
+        >
+          {{ 'nodeSetup.connect' | transloco }}
+          <fa-icon icon="arrow-right"></fa-icon>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 4: Pairing -->
+  @if (currentStep() === WizardStep.Pairing) {
+    <div class="wizard-step step-pairing">
+      @if (errorMessage()) {
+        <div class="step-pairing__error">
+          <fa-icon icon="circle-xmark"></fa-icon>
+          <h2 class="step-pairing__error-title">{{ 'nodeSetup.connectionFailed' | transloco }}</h2>
+          <p class="step-pairing__error-message">{{ errorMessage() }}</p>
+          <div class="step-pairing__error-actions">
+            <button class="btn btn-secondary" (click)="goBack()">
+              <fa-icon icon="arrow-left"></fa-icon>
+              {{ 'nodeSetup.goBack' | transloco }}
+            </button>
+            <button class="btn btn-primary" (click)="initiatePairing()">
+              <fa-icon icon="rotate-right"></fa-icon>
+              {{ 'common.retry' | transloco }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="step-pairing__animation">
+          <div class="step-pairing__connecting-icon">
+            <fa-icon icon="link"></fa-icon>
+          </div>
+        </div>
+
+        <h2>{{ 'nodeSetup.requestingConnection' | transloco }}</h2>
+        <p class="step-pairing__description">
+          {{ 'nodeSetup.sendingPairingRequest' | transloco }}
+          <strong>{{ selectedNode()?.name }}</strong>...
+        </p>
+
+        @if (pairingCode()) {
+          <div class="step-pairing__code-section">
+            <p class="step-pairing__code-label">{{ 'nodeSetup.pairingCodeLabel' | transloco }}</p>
+            <div class="step-pairing__code">{{ pairingCode() }}</div>
+            <p class="step-pairing__code-hint">
+              {{ 'nodeSetup.enterCodeOnMain' | transloco }}
+            </p>
+          </div>
+        }
+
+        @if (pairingStatus() === PairingStatus.WAITING_APPROVAL) {
+          <div class="step-pairing__waiting">
+            <div class="step-pairing__spinner"></div>
+            <p class="step-pairing__waiting-text">{{ 'nodeSetup.waitingForApproval' | transloco }}</p>
+            <div class="step-pairing__timeout-progress">
+              <div class="step-pairing__timeout-bar">
+                <div
+                  class="step-pairing__timeout-fill"
+                  [style.width.%]="pairingTimeoutProgress()"
+                ></div>
+              </div>
+              <p class="step-pairing__timeout-text">
+                {{ Math.max(0, 120 - pairingElapsedSeconds()) }}s remaining
+              </p>
+            </div>
+          </div>
+        }
+
+        <div class="step-pairing__actions">
+          <button class="btn btn-secondary" (click)="goBack()">
+            <fa-icon icon="xmark"></fa-icon>
+            {{ 'common.cancel' | transloco }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Step 6: Capability Test -->
+  @if (currentStep() === WizardStep.CapabilityTest) {
+    <div class="wizard-step step-capability-test">
+      @if (approvedNodeId()) {
+        <app-capability-test
+          [nodeId]="approvedNodeId()!"
+          (testComplete)="handleCapabilityTestComplete($event)"
+        ></app-capability-test>
+      }
+    </div>
+  }
+
+  <!-- Step 7: Capability Results -->
+  @if (currentStep() === WizardStep.CapabilityResults) {
+    <div class="wizard-step step-capability-results">
+      @if (capabilityTestResults()) {
+        <app-capability-results
+          [testResults]="capabilityTestResults()!"
+          (back)="handleCapabilityResultsBack()"
+          (complete)="handleCapabilityResultsComplete($event)"
+        ></app-capability-results>
+      }
+    </div>
+  }
+
+  <!-- Step 8: Complete -->
+  @if (currentStep() === WizardStep.Complete) {
+    <div class="wizard-step step-complete">
+      <div class="step-complete__success-icon">
+        <fa-icon icon="circle-check"></fa-icon>
+      </div>
+      <h1>{{ 'nodeSetup.connectionSuccessful' | transloco }}</h1>
+      <p class="step-complete__description">
+        {{ 'nodeSetup.successfullyConnectedTo' | transloco }}
+        <strong>{{ connectedMainNode()?.name || 'main node' }}</strong>
+      </p>
+
+      @if (hardwareDetection()) {
+        <div class="step-complete__hardware">
+          <h3 class="step-complete__hardware-title">{{ 'nodeSetup.hardwareDetectionSummary' | transloco }}</h3>
+          <div class="step-complete__hardware-grid">
+            <div class="step-complete__hardware-item">
+              <fa-icon icon="microchip"></fa-icon>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">{{ 'nodeSetup.acceleration' | transloco }}</div>
+                <div class="step-complete__hardware-value">
+                  {{ NodeBo.getAccelerationLabel(hardwareDetection()!.acceleration) }}
+                </div>
+              </div>
+            </div>
+            <div class="step-complete__hardware-item">
+              <fa-icon icon="memory"></fa-icon>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">{{ 'nodeSetup.cpuCores' | transloco }}</div>
+                <div class="step-complete__hardware-value">{{ hardwareDetection()!.cpuCores }}</div>
+              </div>
+            </div>
+            <div class="step-complete__hardware-item">
+              <fa-icon icon="server"></fa-icon>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">{{ 'nodeSetup.memory' | transloco }}</div>
+                <div class="step-complete__hardware-value">{{ hardwareDetection()!.totalMemoryGB }} GB</div>
+              </div>
+            </div>
+            <div class="step-complete__hardware-item">
+              <fa-icon icon="hard-drive"></fa-icon>
+              <div class="step-complete__hardware-info">
+                <div class="step-complete__hardware-label">{{ 'nodeSetup.availableDisk' | transloco }}</div>
+                <div class="step-complete__hardware-value">{{ hardwareDetection()!.availableDiskGB }} GB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <button class="btn btn-primary step-complete__btn" (click)="completeWizard()">
+        <fa-icon icon="rocket"></fa-icon>
+        {{ 'nodeSetup.startEncoding' | transloco }}
+      </button>
+    </div>
+  }
+</div>

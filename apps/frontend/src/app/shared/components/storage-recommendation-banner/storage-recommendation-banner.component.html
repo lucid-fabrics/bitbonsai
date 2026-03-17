@@ -1,0 +1,74 @@
+@if (recommendation) {
+  <div class="storage-banner" [class]="'banner-' + bannerClass">
+    <div class="banner-icon">
+      <fa-icon [icon]="['fas', icon]" size="2x"></fa-icon>
+    </div>
+
+    <div class="banner-content">
+      <div class="banner-header">
+        <h3>{{ 'storage.title' | transloco }}</h3>
+        <span class="method-badge" [class]="methodBadgeClass">
+          {{ recommendation.recommended }}
+        </span>
+      </div>
+
+      <div class="banner-body">
+        <p class="recommendation-reason">
+          <strong>{{ recommendation.reason }}</strong>
+        </p>
+        <p class="method-description">
+          {{ methodDescription }}
+        </p>
+
+        @if (sourceNodeName && targetNodeName) {
+          <div class="node-info">
+            <span class="node-label">Nodes:</span>
+            <span class="node-name">{{ sourceNodeName }}</span>
+            <fa-icon [icon]="['fas', 'arrow-right']" class="mx-2"></fa-icon>
+            <span class="node-name">{{ targetNodeName }}</span>
+            @if (containerType) {
+              <span class="container-badge">
+                {{ containerType }}
+              </span>
+            }
+          </div>
+        }
+
+        @if (recommendation.warning) {
+          <div class="warning-section">
+            <fa-icon
+              [icon]="['fas', 'exclamation-triangle']"
+              class="warning-icon"
+            ></fa-icon>
+            <span class="warning-text">{{ recommendation.warning }}</span>
+          </div>
+        }
+
+        @if (recommendation.actionRequired) {
+          <div class="action-section">
+            <div class="action-box">
+              <fa-icon
+                [icon]="['fas', 'lightbulb']"
+                class="action-icon"
+              ></fa-icon>
+              <div class="action-content">
+                <strong>Action Required:</strong>
+                <p>{{ recommendation.actionRequired }}</p>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="banner-actions">
+        <button class="btn btn-primary" (click)="onConfigure()">
+          <fa-icon [icon]="['fas', 'cog']" class="me-2"></fa-icon>
+          {{ 'nodes.configure' | transloco }}
+        </button>
+        <button class="btn btn-outline-secondary" (click)="onDismiss()">
+          {{ 'common.close' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

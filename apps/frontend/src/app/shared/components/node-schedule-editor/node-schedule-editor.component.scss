@@ -1,0 +1,333 @@
+@use 'sass:color';
+@use '../../../../styles/variables' as *;
+
+.schedule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: $text-white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    fa-icon {
+      color: $accent-primary;
+      font-size: 1rem;
+    }
+  }
+
+  &__subtitle {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: $text-secondary;
+    line-height: 1.4;
+  }
+
+  &__summary {
+    margin: 0;
+    font-size: 0.85rem;
+    color: $accent-primary;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    background: rgba($accent-primary, 0.1);
+    border-left: 3px solid $accent-primary;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  &__clear-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: $danger;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: $transition-fast;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: color.adjust($danger, $lightness: -10%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba($danger, 0.3);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      background: $bg-tertiary;
+      color: $text-tertiary;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    fa-icon {
+      font-size: 0.85rem;
+    }
+  }
+
+  &__calendar {
+    background: $bg-secondary;
+    border: 1px solid $border-primary;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: $shadow-sm;
+
+    // FullCalendar customization - Dark theme
+    ::ng-deep {
+      .fc {
+        // Header styling
+        .fc-toolbar {
+          margin-bottom: 1rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid $border-primary;
+        }
+
+        .fc-toolbar-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: $text-white;
+        }
+
+        .fc-button {
+          background: $accent-primary;
+          border-color: $accent-primary;
+          color: $text-dark;
+          text-transform: none;
+          font-weight: 600;
+          padding: 0.4rem 0.8rem;
+          font-size: 0.85rem;
+          transition: $transition-fast;
+
+          &:hover:not(:disabled) {
+            background: $accent-primary-hover;
+            border-color: $accent-primary-hover;
+            transform: translateY(-1px);
+          }
+
+          &:active {
+            transform: translateY(0);
+          }
+
+          &:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+
+          &:focus {
+            box-shadow: 0 0 0 3px rgba($accent-primary, 0.3);
+          }
+        }
+
+        // Grid styling
+        .fc-timegrid-slot {
+          height: 3rem;
+          border-color: $border-primary;
+        }
+
+        .fc-timegrid-axis,
+        .fc-timegrid-slot-label {
+          background: $bg-tertiary;
+          border-color: $border-primary;
+          color: $text-secondary;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .fc-col-header-cell {
+          background: $bg-tertiary;
+          font-weight: 600;
+          color: $text-white;
+          padding: 0.75rem 0;
+          border-color: $border-primary;
+          font-size: 0.85rem;
+        }
+
+        .fc-scrollgrid,
+        .fc-scrollgrid-section table,
+        .fc-timegrid-body,
+        .fc-timegrid-divider {
+          border-color: $border-primary;
+        }
+
+        // Day cells
+        .fc-timegrid-col {
+          background: $bg-primary;
+          border-color: $border-primary;
+        }
+
+        // Event styling - Gold accent
+        .fc-event {
+          border: 2px solid $accent-primary;
+          background: rgba($accent-primary, 0.25);
+          cursor: pointer;
+          transition: $transition-fast;
+          backdrop-filter: blur(8px);
+
+          &:hover {
+            background: rgba($accent-primary, 0.4);
+            border-color: $accent-primary-hover;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba($accent-primary, 0.4);
+          }
+
+          .fc-event-main {
+            padding: 0.25rem 0.5rem;
+          }
+
+          .fc-event-time,
+          .fc-event-title {
+            color: $text-white;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          }
+        }
+
+        // Selection styling
+        .fc-highlight {
+          background: rgba($accent-primary, 0.2);
+          border: 2px dashed $accent-primary;
+        }
+
+        // Today column highlight
+        .fc-day-today {
+          background: rgba($accent-primary, 0.05) !important;
+
+          .fc-col-header-cell-cushion {
+            color: $accent-primary;
+            font-weight: 700;
+          }
+        }
+
+        // Scrollbar styling
+        .fc-scroller {
+          &::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+
+          &::-webkit-scrollbar-track {
+            background: $bg-tertiary;
+            border-radius: 4px;
+          }
+
+          &::-webkit-scrollbar-thumb {
+            background: $accent-primary;
+            border-radius: 4px;
+
+            &:hover {
+              background: $accent-primary-hover;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  &__instructions {
+    background: rgba($accent-primary, 0.05);
+    border: 1px solid rgba($accent-primary, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  &__instructions-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: $accent-primary;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    fa-icon {
+      font-size: 0.9rem;
+    }
+  }
+
+  &__instructions-list {
+    margin: 0;
+    padding-left: 1.5rem;
+    list-style-type: none;
+
+    li {
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: $text-secondary;
+      line-height: 1.5;
+      position: relative;
+
+      &:before {
+        content: '→';
+        position: absolute;
+        left: -1.2rem;
+        color: $accent-primary;
+        font-weight: 700;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      strong {
+        color: $text-white;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .schedule-editor {
+    padding: 0.75rem;
+
+    &__header {
+      flex-direction: column;
+    }
+
+    &__clear-btn {
+      align-self: flex-start;
+    }
+
+    &__calendar {
+      padding: 0.5rem;
+
+      ::ng-deep {
+        .fc {
+          .fc-toolbar {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .fc-timegrid-slot {
+            height: 2.5rem;
+          }
+        }
+      }
+    }
+  }
+}

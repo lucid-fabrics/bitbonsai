@@ -1,0 +1,47 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+@use 'sass:color';
+
+.bb-button {
+  @include button-reset;
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $border-radius-sm;
+  font-weight: $font-weight-bold;
+  font-size: 0.875rem;
+  transition: $transition-fast;
+  cursor: pointer;
+
+  &--primary {
+    background: $accent-primary;
+    color: $text-dark;
+
+    &:hover:not(:disabled) {
+      background: $accent-primary-hover;
+    }
+  }
+
+  &--outline {
+    background: transparent;
+    color: $text-primary;
+    border: 1px solid $border-primary;
+
+    &:hover:not(:disabled) {
+      border-color: $accent-primary;
+      color: $accent-primary;
+    }
+  }
+
+  &--danger {
+    background: $danger;
+    color: $text-white;
+
+    &:hover:not(:disabled) {
+      background: color.adjust($danger, $lightness: 10%);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

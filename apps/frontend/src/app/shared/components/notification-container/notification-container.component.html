@@ -1,0 +1,9 @@
+<div class="notification-container">
+  @for (notification of notifications(); track notification.id) {
+    <app-notification-toast
+      [notification]="notification"
+      (dismiss)="removeNotification($event)"
+      (action)="handleAction(notification)"
+    />
+  }
+</div>
