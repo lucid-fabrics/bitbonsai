@@ -12,9 +12,8 @@ Encode your first video library in 5 minutes with zero configuration.
     Create `docker-compose.yml`:
 
     ```yaml docker-compose.yml
-    version: '3.8'
     services:
-      db:
+      postgres:
         image: postgres:15
         environment:
           POSTGRES_DB: bitbonsai
@@ -29,12 +28,12 @@ Encode your first video library in 5 minutes with zero configuration.
         ports:
           - "3100:3100"
         environment:
-          DATABASE_URL: postgresql://bitbonsai:bitbonsai@db:5432/bitbonsai
+          DATABASE_URL: postgresql://bitbonsai:bitbonsai@postgres:5432/bitbonsai
           NODE_ENV: production
         volumes:
           - /path/to/your/videos:/media
         depends_on:
-          - db
+          - postgres
         restart: unless-stopped
 
       frontend:
@@ -49,6 +48,7 @@ Encode your first video library in 5 minutes with zero configuration.
 
     volumes:
       bitbonsai-db:
+
     ```
 
     Replace `/path/to/your/videos` with your actual video library path.
@@ -179,6 +179,7 @@ You're encoding. Here's what to explore:
 
 ### Get Help
 
+- **[System Requirements](/installation/requirements)** - Hardware and software prerequisites
 - **[Troubleshooting](/advanced/troubleshooting)** - Fix common issues
 - **[FAQ](/faq)** - Frequently asked questions
 - **GitHub Issues** - Report bugs or request features

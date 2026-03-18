@@ -299,14 +299,14 @@ docker exec -i bitbonsai-postgres psql -U bitbonsai < backup.sql
 **2. Volume Backup (Docker)**
 ```bash
 # Stop containers
-docker-compose down
+docker compose down
 
 # Backup data volume
 tar -czf bitbonsai-data.tar.gz /var/lib/docker/volumes/bitbonsai_postgres_data
 
 # Restore
 tar -xzf bitbonsai-data.tar.gz -C /
-docker-compose up -d
+docker compose up -d
 ```
 
 **3. Automated Backups (Cron)**
