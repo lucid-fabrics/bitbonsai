@@ -132,7 +132,7 @@ Node assigned job → check /media/Movies/Film.mkv exists
 If you see jobs stuck in `TRANSFERRING` for more than 30 seconds, the NFS mount on that node is degraded. Check:
 ```bash
 # On the affected child node
-docker exec bitbonsai-backend ls -la /media/Movies/
+docker compose exec backend ls -la /media/Movies/
 ```
 
 ---

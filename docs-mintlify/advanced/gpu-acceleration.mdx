@@ -142,7 +142,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         deploy:
           resources:
             reservations:
@@ -218,7 +218,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         devices:
           - /dev/dri:/dev/dri
     ```
@@ -257,7 +257,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         devices:
           - /dev/dri:/dev/dri
           - /dev/kfd:/dev/kfd
@@ -354,8 +354,8 @@ After configuring [Docker](/glossary#docker) GPU passthrough:
 
 ```bash
 # Verify GPU is visible inside container
-docker exec bitbonsai-backend nvidia-smi  # NVIDIA
-docker exec bitbonsai-backend ls -la /dev/dri  # Intel/AMD
+docker compose exec backend nvidia-smi  # NVIDIA
+docker compose exec backend ls -la /dev/dri  # Intel/AMD
 
 # If missing, check docker-compose.yml has correct device passthrough
 ```
