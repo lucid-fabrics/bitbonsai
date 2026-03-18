@@ -735,7 +735,7 @@ df -h /path/to/temp /path/to/media
         **Option 1: Move to larger partition**
         ```yaml
         # In docker-compose.yml
-        bitbonsai-backend:
+        backend:
           volumes:
             - /mnt/larger-disk/bitbonsai-temp:/tmp/bitbonsai
         ```
@@ -874,7 +874,7 @@ If you've tried the above fixes and still experiencing issues, please report to 
   <Tab title="Docker Compose">
     Edit `docker-compose.yml`:
     ```yaml
-    bitbonsai-backend:
+    backend:
       environment:
         LOG_LEVEL: debug  # Change from 'info'
     ```

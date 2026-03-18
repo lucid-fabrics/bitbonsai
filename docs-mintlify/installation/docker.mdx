@@ -299,7 +299,7 @@ After starting BitBonsai for the first time:
     Backend automatically applies database migrations on startup. Check logs:
 
     ```bash
-    docker compose logs bitbonsai-backend
+    docker compose logs backend
     ```
 
     Look for:
@@ -350,8 +350,8 @@ docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup.sql
 
 Check logs for errors:
 ```bash
-docker compose logs bitbonsai-backend
-docker compose logs bitbonsai-frontend
+docker compose logs backend
+docker compose logs frontend
 ```
 
 ### Cannot Access UI
