@@ -19,7 +19,7 @@
   "topbarLinks": [
     {
       "name": "Website",
-      "url": "https://bitbonsai.io"
+      "url": "https://bitbonsai.app"
     }
   ],
   "topbarCtaButton": {
@@ -44,13 +44,14 @@
       "pages": [
         "advanced/gpu-acceleration",
         "advanced/multi-node",
+        "advanced/distributed-encoding",
         "advanced/codec-selection",
         "advanced/troubleshooting"
       ]
     },
     {
       "group": "Support",
-      "pages": ["faq", "test-page"]
+      "pages": ["faq", "glossary", "support/get-help"]
     }
   ],
   "footerSocials": {

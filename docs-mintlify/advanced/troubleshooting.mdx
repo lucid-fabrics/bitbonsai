@@ -18,7 +18,7 @@ Before diving into specific issues, run these commands to check system health:
 docker compose ps
 
 # Check backend logs
-docker compose logs -f bitbonsai-backend
+docker compose logs -f backend
 
 # Check database connectivity
 docker compose exec postgres pg_isready -U bitbonsai
@@ -117,11 +117,10 @@ df -h /path/to/temp /path/to/videos
       </Step>
 
       <Step title="Restart Worker Service">
-        After fixing mount issues:
+        After fixing mount issues, restart the backend container:
         ```bash
-        # On child node
-        systemctl restart bitbonsai-backend
-        journalctl -u bitbonsai-backend -f
+        docker compose restart backend
+        docker compose logs -f backend
         ```
       </Step>
     </Steps>
@@ -159,7 +158,7 @@ df -h /path/to/temp /path/to/videos
 
         Verify recovery in logs:
         ```bash
-        docker compose logs bitbonsai-backend | grep -i orphan
+        docker compose logs backend | grep -i orphan
         ```
       </Tab>
 
@@ -251,7 +250,7 @@ df -h /path/to/temp /path/to/videos
 
         Or via API:
         ```bash
-        curl -X POST http://localhost:3100/api/jobs/{jobId}/revalidate
+        curl -X POST http://localhost:3100/jobs/YOUR_JOB_ID/revalidate
         ```
       </Step>
 
@@ -265,7 +264,7 @@ df -h /path/to/temp /path/to/videos
 
         Check logs to confirm auto-recovery:
         ```bash
-        docker compose logs bitbonsai-backend | grep "Health Check Cron"
+        docker compose logs backend | grep "Health Check Cron"
         ```
       </Step>
 
@@ -434,41 +433,40 @@ df -h /path/to/temp /path/to/videos
       <Step title="Verify Main Node Backend Running">
         ```bash
         # Check container status
-        docker compose ps bitbonsai-backend
+        docker compose ps backend
 
         # View logs for errors
-        docker compose logs bitbonsai-backend
+        docker compose logs backend
 
         # Restart if needed
-        docker compose restart bitbonsai-backend
+        docker compose restart backend
         ```
       </Step>
 
       <Step title="Validate API Key Configuration">
-        Worker nodes must provide valid API key to connect:
-
-        On **child node**, check environment variables:
+        Worker nodes must provide a valid API key to connect. Check the child node's environment:
         ```bash
-        cat /etc/systemd/system/bitbonsai-backend.service
+        docker compose exec backend env | grep -E "MAIN_NODE_URL|NODE_API_KEY"
 
-        # Should contain:
-        Environment="MAIN_NODE_URL=http://192.168.1.100:3100"
-        Environment="NODE_API_KEY=your-api-key-here"
+        # Should show:
+        # MAIN_NODE_URL=http://192.168.1.100:3100
+        # NODE_API_KEY=your-api-key-here
         ```
 
-        Verify API key matches main node configuration:
+        Get the API key from the main node:
         ```bash
         # On main node
-        docker compose exec bitbonsai-backend env | grep NODE_API_KEY
+        docker compose exec backend env | grep NODE_API_KEY
         ```
 
-        Update child node config if needed:
+        If missing, add `NODE_API_KEY` to the child node's `docker-compose.yml` environment section and restart:
         ```bash
-        systemctl edit bitbonsai-backend
-        # Add/update environment variables
-        systemctl daemon-reload
-        systemctl restart bitbonsai-backend
+        docker compose restart backend
         ```
+
+        <Note>
+        `NODE_API_KEY` must match the value set on the main node. Generate a secure key with `openssl rand -hex 32` and set it on both nodes.
+        </Note>
       </Step>
     </Steps>
 
@@ -499,17 +497,17 @@ df -h /path/to/temp /path/to/videos
     <Steps>
       <Step title="Verify Backend Container Running">
         ```bash
-        docker compose ps bitbonsai-backend
+        docker compose ps backend
 
         # Should show: Up (healthy)
 
         # Check logs for startup errors
-        docker compose logs bitbonsai-backend | tail -50
+        docker compose logs backend | tail -50
         ```
 
         If not running:
         ```bash
-        docker compose up -d bitbonsai-backend
+        docker compose up -d backend
         ```
       </Step>
 
@@ -521,7 +519,7 @@ df -h /path/to/temp /path/to/videos
         # Should return: {"status":"ok"}
 
         # If failed, check port mapping
-        docker compose ps bitbonsai-backend
+        docker compose ps backend
         # Ports should show: 0.0.0.0:3100->3100/tcp
         ```
       </Step>
@@ -530,7 +528,7 @@ df -h /path/to/temp /path/to/videos
         Verify frontend knows where to find backend:
 
         ```bash
-        docker compose exec bitbonsai-frontend env | grep API_URL
+        docker compose exec frontend env | grep API_URL
 
         # Should be:
         # API_URL=http://bitbonsai-backend:3100  (internal Docker network)
@@ -613,7 +611,7 @@ df -h /path/to/temp /path/to/videos
       <Step title="Verify DATABASE_URL Correct">
         Check backend environment:
         ```bash
-        docker compose exec bitbonsai-backend env | grep DATABASE_URL
+        docker compose exec backend env | grep DATABASE_URL
 
         # Should be:
         # DATABASE_URL=postgresql://bitbonsai:password@postgres:5432/bitbonsai
@@ -633,7 +631,7 @@ df -h /path/to/temp /path/to/videos
 
         Restart:
         ```bash
-        docker compose restart bitbonsai-backend
+        docker compose restart backend
         ```
       </Step>
 
@@ -710,7 +708,7 @@ df -h /path/to/temp /path/to/videos
       <Step title="Clear Old Temporary Files">
         ```bash
         # BitBonsai should auto-clean, but manual cleanup if needed:
-        docker compose exec bitbonsai-backend rm -rf /tmp/bitbonsai/*
+        docker compose exec backend rm -rf /tmp/bitbonsai/*
 
         # OR from host (if mounted)
         rm -rf /path/to/temp/bitbonsai/*
@@ -752,7 +750,7 @@ df -h /path/to/temp /path/to/videos
         Two-pass encoding uses less temp space:
 
         In **Settings → Encoding Presets**, use presets with:
-        - Lower CRF values (e.g., CRF 23 instead of 18)
+        - Higher CRF values (e.g., CRF 23 instead of 18) — higher CRF = smaller output file
         - Slower presets (e.g., `medium` instead of `fast`)
 
         Trade-off: Slower encoding speed for less temp space.
@@ -772,15 +770,15 @@ df -h /path/to/temp /path/to/videos
 
 Access logs for debugging:
 
-| Component | Docker Command | Direct Path (if not containerized) |
-|-----------|----------------|-------------------------------------|
-| Backend | `docker compose logs -f bitbonsai-backend` | `journalctl -u bitbonsai-backend -f` |
-| Frontend | `docker compose logs -f bitbonsai-frontend` | `/var/log/bitbonsai-frontend.log` |
-| PostgreSQL | `docker compose logs -f postgres` | `/var/lib/postgresql/data/log/` |
-| FFmpeg Output | Check job details in UI | `/tmp/bitbonsai/encoding-*/ffmpeg.log` |
+| Component | Docker Command |
+|-----------|----------------|
+| Backend | `docker compose logs -f backend` |
+| Frontend | `docker compose logs -f frontend` |
+| PostgreSQL | `docker compose logs -f postgres` |
+| FFmpeg Output | Check job details in UI (Encoding tab → click job → expand logs) |
 
 <Tip>
-Add `-f` flag to follow logs in real-time: `docker compose logs -f bitbonsai-backend`
+Add `-f` flag to follow logs in real-time: `docker compose logs -f backend`
 </Tip>
 
 ## Recovery Procedures
@@ -805,7 +803,7 @@ rm -rf /path/to/temp/bitbonsai/*
 docker compose up -d
 
 # Verify clean startup
-docker compose logs bitbonsai-backend | grep "Application listening"
+docker compose logs backend | grep "Application listening"
 ```
 
 ### Database Backup & Restore
@@ -822,13 +820,13 @@ ls -lh backup-*.sql
 **Restore:**
 ```bash
 # Stop backend (to prevent write conflicts)
-docker compose stop bitbonsai-backend
+docker compose stop backend
 
 # Restore from backup
 docker compose exec -T postgres psql -U bitbonsai -d bitbonsai < backup-20260111.sql
 
 # Restart backend
-docker compose start bitbonsai-backend
+docker compose start backend
 ```
 
 ### Reset Stuck Jobs (Safe)
@@ -864,7 +862,7 @@ If you've tried the above fixes and still experiencing issues, please report to 
 1. BitBonsai version (`docker compose images | grep bitbonsai`)
 2. Deployment method (Docker Compose, Unraid, LXC)
 3. Node configuration (single vs. multi-node)
-4. Full error logs (use `docker compose logs --tail=100 bitbonsai-backend`)
+4. Full error logs (use `docker compose logs --tail=100 backend`)
 5. Steps to reproduce the issue
 6. Expected vs. actual behavior
 
@@ -883,7 +881,7 @@ If you've tried the above fixes and still experiencing issues, please report to 
 
     Restart:
     ```bash
-    docker compose restart bitbonsai-backend
+    docker compose restart backend
     ```
   </Tab>
 
@@ -918,8 +916,8 @@ iostat -x 1
 docker network inspect bitbonsai_default
 
 # Test inter-container connectivity
-docker compose exec bitbonsai-frontend ping bitbonsai-backend
-docker compose exec bitbonsai-backend ping postgres
+docker compose exec frontend ping bitbonsai-backend
+docker compose exec backend ping postgres
 
 # Capture network traffic (advanced)
 docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i any port 3100

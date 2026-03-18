@@ -25,7 +25,7 @@ Encode your first video library in 5 minutes with zero configuration.
         restart: unless-stopped
 
       backend:
-        image: bitbonsai/backend:latest
+        image: ghcr.io/bitbonsai/backend:latest
         ports:
           - "3100:3100"
         environment:
@@ -38,11 +38,11 @@ Encode your first video library in 5 minutes with zero configuration.
         restart: unless-stopped
 
       frontend:
-        image: bitbonsai/frontend:latest
+        image: ghcr.io/bitbonsai/frontend:latest
         ports:
-          - "4210:80"
+          - "4210:4210"
         environment:
-          API_URL: http://localhost:3100
+          API_URL: http://backend:3100
         depends_on:
           - backend
         restart: unless-stopped
@@ -56,7 +56,7 @@ Encode your first video library in 5 minutes with zero configuration.
     Start the stack:
 
     ```bash
-    docker-compose up -d
+    docker compose up -d
     ```
   </Step>
 
