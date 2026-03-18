@@ -184,7 +184,7 @@ Once videos are queued, BitBonsai automatically:
     - Files are not recognized video formats (MP4, MKV, AVI, MOV)
 
     **Solution:**
-    - Verify path exists: `docker exec bitbonsai-backend ls /videos/movies`
+    - Verify path exists: `docker compose exec backend ls /media/movies`
     - Check docker-compose.yml volume mounts
     - Ensure files have video extensions
   </Accordion>
@@ -217,7 +217,7 @@ Once videos are queued, BitBonsai automatically:
     **Solution:**
     - Check worker node status: Settings → Nodes
     - Verify main/child node services running
-    - Review worker logs: `docker logs bitbonsai-backend`
+    - Review worker logs: `docker compose logs backend`
   </Accordion>
 </AccordionGroup>
 
