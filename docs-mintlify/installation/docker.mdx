@@ -229,11 +229,11 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-frontend:
+      frontend:
         ports:
           - "8080:4210"  # Access on host port 8080
 
-      bitbonsai-backend:
+      backend:
         ports:
           - "8081:3100"  # API on host port 8081
     ```
@@ -244,7 +244,7 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         devices:
           - /dev/dri:/dev/dri  # Intel/AMD GPU
         # OR for NVIDIA:
@@ -263,7 +263,7 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         deploy:
           resources:
             limits:
@@ -280,7 +280,7 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         logging:
           driver: "json-file"
           options:
