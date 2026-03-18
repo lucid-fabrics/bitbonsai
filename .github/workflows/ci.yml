@@ -38,6 +38,26 @@ jobs:
       - name: Run markdownlint
         run: npx markdownlint "**/*.md" "**/*.mdx" --ignore node_modules
 
+  link-check:
+    name: Check Links
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check internal links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >
+            --no-progress
+            --exclude-loopback
+            --exclude 'localhost'
+            --exclude 'discord\.gg'
+            --exclude 'github\.com/bitbonsai'
+            'docs-mintlify/**/*.mdx'
+          fail: true
+
   validate-commits:
     name: Validate Commit Messages
     runs-on: ubuntu-latest

@@ -1,291 +1,169 @@
 ---
-title: Multi-Node Setup
-description: Add worker nodes to speed up encoding
-icon: network-wired
+title: Distributed Encoding Architecture
+description: How BitBonsai distributes encoding jobs across multiple nodes
+icon: diagram-project
 ---
 
-Scale BitBonsai's encoding capacity by adding worker nodes across multiple machines.
+This page explains the internal mechanics of how BitBonsai distributes work across nodes. For setup instructions, see [Multi-Node Setup](/advanced/multi-node).
 
-## What is Multi-Node Encoding?
+## Architecture Overview
 
-Multi-node encoding distributes video transcoding jobs across multiple physical machines, dramatically reducing total encoding time.
-
-**How it works:**
-- **Main Node**: Owns the PostgreSQL database, distributes jobs, hosts the web UI
-- **Child Nodes**: Worker-only nodes that pull jobs from the main node's queue
-- **Shared Storage**: NFS mount ensures all nodes access the same video files
-- **Automatic Load Balancing**: Jobs are distributed based on each node's current load and capacity
-
-**Example:**
-```
-Main Node (192.168.1.100):
-  - PostgreSQL database
-  - Web UI (port 4210)
-  - Encodes jobs (4 concurrent)
-
-Child Node 1 (192.168.1.170):
-  - Encodes jobs (8 concurrent)
-  - Proxies API calls to main
-
-Total capacity: 12 concurrent encoding jobs
-```
-
----
-
-## Architecture
-
-The main node owns the database and web UI. Child nodes are workers that connect to the main node's database.
+BitBonsai uses a **shared-database, direct-poll** model for distributed encoding. Every node — main and child — connects directly to the same PostgreSQL database and polls the job queue independently.
 
 ```
-[Web UI] -> [Main Node] -> [Database]
-                ↓
-         [Child Nodes] -> [NFS Storage]
+┌─────────────────────────────────────────────────────────┐
+│                     PostgreSQL (Main Node)               │
+│                     jobs table, nodes table              │
+└───────────────────┬─────────────────────────────────────┘
+                    │ All nodes read/write directly
+          ┌─────────┴──────────┐
+          ▼                    ▼
+   ┌─────────────┐      ┌─────────────┐
+   │  Main Node  │      │  Child Node │
+   │  NODE_MODE  │      │  NODE_MODE  │
+   │    =MAIN    │      │   =LINKED   │
+   └──────┬──────┘      └──────┬──────┘
+          │                    │
+          └────────┬───────────┘
+                   ▼
+          ┌─────────────────┐
+          │   NFS Storage   │
+          │  /mnt/videos    │
+          │ (shared mount)  │
+          └─────────────────┘
 ```
 
-All nodes must mount the same NFS share to access video files.
+**Key design decisions:**
+- No central job dispatcher — nodes self-assign via optimistic locking
+- No message queue (no Redis, no RabbitMQ) — PostgreSQL is the queue
+- Child nodes need direct database access (`DATABASE_URL`) to poll jobs
+- `MAIN_NODE_URL` is used only for node registration and health reporting
 
 ---
 
-## Prerequisites
+## Node Registration
 
-Before setting up multi-node:
+When a child node starts with `NODE_MODE=LINKED`, it:
 
-<Card title="Shared Storage Required" icon="folder">
-  All nodes must access the **same video files** via NFS/SMB network mount.
+1. Connects to PostgreSQL via `DATABASE_URL`
+2. POSTs its registration to `MAIN_NODE_URL/nodes/register` with:
+   - Hostname / IP address
+   - `CONCURRENT_JOBS` capacity
+   - Hardware info (CPU cores, GPU presence)
+3. Main node inserts a row in the `nodes` table
+4. Child node appears in **Settings → Nodes** in the web UI
 
-  Without shared storage, child nodes cannot read source videos or write encoded files.
-</Card>
+```
+Child Node Startup Log:
+  ✓ Connected to database at postgresql://192.168.1.100:5432/bitbonsai
+  ✓ Registered as LINKED node with ID: node_abc123
+  ✓ Capacity: 8 concurrent jobs
+  ✓ Heartbeat started (every 30 seconds)
+```
 
-<CardGroup cols={2}>
-  <Card title="Main Node" icon="server">
-    - PostgreSQL 15+ (8GB RAM recommended)
-    - Docker + Docker Compose
-    - NFS mount to video storage
-  </Card>
-
-  <Card title="Child Nodes" icon="microchip">
-    - Docker installed
-    - NFS mount to **same path** as main node
-    - Network access to main node
-  </Card>
-</CardGroup>
+Child nodes send a heartbeat every 30 seconds. If the main node hasn't received a heartbeat in 90 seconds, the node is marked `OFFLINE` and its active jobs are reset to `QUEUED`.
 
 ---
 
-## Setup Instructions
+## Job Distribution Mechanics
 
-### Step 1: Configure NFS Server
+There is no central scheduler. Each node runs its own polling loop:
 
-On your NAS or file server:
+```
+Every 5 seconds, each node:
+  1. Count my active jobs (status=ENCODING, assigned_node=me)
+  2. If active < CONCURRENT_JOBS:
+     a. SELECT job FROM jobs WHERE status='QUEUED'
+        ORDER BY created_at ASC
+        FOR UPDATE SKIP LOCKED   ← prevents double-assignment
+        LIMIT (CONCURRENT_JOBS - active)
+     b. UPDATE job SET status='ENCODING', assigned_node=me
+     c. Start FFmpeg process
+```
 
+The `FOR UPDATE SKIP LOCKED` clause is the key — PostgreSQL's row-level locking prevents two nodes from claiming the same job. No distributed lock manager needed.
+
+**Load balancing result:**
+
+| Scenario | Outcome |
+|----------|---------|
+| All nodes equally loaded | Jobs distributed round-robin by creation time |
+| One node faster than others | Faster node picks up more jobs (polls more aggressively) |
+| Node offline | Its QUEUED jobs are immediately visible to other nodes |
+| Node crashes mid-encode | Orphan recovery resets its ENCODING jobs to QUEUED on next startup |
+
+---
+
+## NFS: Why It's Required
+
+All nodes must mount the **same NFS share at the same path** (`/media` inside the container). Here's why:
+
+1. **Job assignment stores the file path** — e.g., `/media/Movies/Film.mkv`
+2. **FFmpeg runs on the assigned node** — it opens that exact path
+3. **Output is written back to the same path** (encoded file replaces original)
+
+If paths differ between nodes, FFmpeg on a child node will get `ENOENT: no such file` even if the file exists on the main node.
+
+```
+✓ Correct:
+  Main node:  /mnt/videos:/media   (NFS: nas:/mnt/user/videos → /mnt/videos)
+  Child node: /mnt/videos:/media   (NFS: nas:/mnt/user/videos → /mnt/videos)
+  Job path: /media/Movies/Film.mkv → works on any node
+
+✗ Wrong:
+  Main node:  /mnt/movies:/media
+  Child node: /mnt/media:/media
+  Job path: /media/Movies/Film.mkv → ENOENT on child (different host path)
+```
+
+---
+
+## TRANSFERRING Status
+
+When a job enters `TRANSFERRING`, the assigned node is verifying that the source file is accessible on its local NFS mount before starting FFmpeg. This is a brief file-existence check (not a copy operation).
+
+**Flow:**
+```
+Node assigned job → check /media/Movies/Film.mkv exists
+  → File accessible → status: ENCODING (immediate)
+  → File not yet accessible → retry 10x with 2s delay → ENCODING or FAILED
+```
+
+If you see jobs stuck in `TRANSFERRING` for more than 30 seconds, the NFS mount on that node is degraded. Check:
 ```bash
-# Example: Unraid NFS export
-/mnt/user/videos 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
-
-# Restart NFS
-exportfs -ra
+# On the affected child node
+docker exec bitbonsai-backend ls -la /media/Movies/
 ```
-
-### Step 2: Mount NFS on All Nodes
-
-Mount the shared storage at the **same path** on every node:
-
-```bash
-# On main node (192.168.1.100)
-sudo mkdir -p /mnt/videos
-sudo mount -t nfs 192.168.1.1:/mnt/user/videos /mnt/videos
-
-# On child node 1 (192.168.1.170)
-sudo mkdir -p /mnt/videos
-sudo mount -t nfs 192.168.1.1:/mnt/user/videos /mnt/videos
-
-# On child node 2 (192.168.1.171)
-sudo mkdir -p /mnt/videos
-sudo mount -t nfs 192.168.1.1:/mnt/user/videos /mnt/videos
-```
-
-Make permanent in `/etc/fstab`:
-```
-192.168.1.1:/mnt/user/videos /mnt/videos nfs defaults,_netdev 0 0
-```
-
-### Step 3: Deploy Main Node
-
-On the main node (192.168.1.100):
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: bitbonsai
-      POSTGRES_USER: bitbonsai
-      POSTGRES_PASSWORD: secure_password
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  backend:
-    image: bitbonsai/backend:latest
-    ports:
-      - "3100:3100"
-    environment:
-      DATABASE_URL: postgresql://bitbonsai:secure_password@postgres:5432/bitbonsai
-      NODE_MODE: MAIN
-      CONCURRENT_JOBS: 4
-    volumes:
-      - /mnt/videos:/media
-    depends_on:
-      - postgres
-    restart: unless-stopped
-
-  frontend:
-    image: bitbonsai/frontend:latest
-    ports:
-      - "4210:80"
-    environment:
-      API_URL: http://192.168.1.100:3100
-    restart: unless-stopped
-```
-
-Start:
-```bash
-docker compose up -d
-```
-
-### Step 4: Deploy Child Nodes
-
-On child node 1 (192.168.1.170):
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  backend:
-    image: bitbonsai/backend:latest
-    ports:
-      - "3100:3100"
-    environment:
-      DATABASE_URL: postgresql://bitbonsai:secure_password@192.168.1.100:5432/bitbonsai
-      NODE_MODE: LINKED
-      MAIN_NODE_URL: http://192.168.1.100:3100
-      CONCURRENT_JOBS: 8
-    volumes:
-      - /mnt/videos:/media
-    restart: unless-stopped
-```
-
-Start:
-```bash
-docker compose up -d
-```
-
-Repeat for additional child nodes (192.168.1.171, etc.)
-
-### Step 5: Verify Node Registration
-
-Check the web UI at `http://192.168.1.100:4210`:
-
-1. Go to **Settings → Nodes**
-2. You should see:
-   - Main Node (192.168.1.100) - Status: ONLINE
-   - Child Node 1 (192.168.1.170) - Status: ONLINE
-   - Child Node 2 (192.168.1.171) - Status: ONLINE
 
 ---
 
-## How Job Distribution Works
+## Capacity Planning
 
-BitBonsai uses smart load balancing:
+Use this formula to determine how many nodes you need:
 
-1. **User scans library** → Jobs added to queue (status: QUEUED)
-2. **Scheduler polls** every 5 seconds
-3. **For each node:**
-   - Check current load (active jobs / max concurrent)
-   - If load < 100%, assign next QUEUED job to this node
-4. **Node picks up job** → status changes to ENCODING
-5. **Job completes** → status changes to COMPLETED
-
-**Load calculation:**
 ```
-Node Load = (Active Jobs / Max Concurrent Jobs) × 100
+Required nodes = ceil(target_throughput_fps / per_node_fps)
 
 Example:
-- Main Node: 3/4 jobs = 75% load
-- Child Node 1: 6/8 jobs = 75% load
-- Child Node 2: 2/8 jobs = 25% load ← Gets next job
+  Target: encode 1000 files/day × 5,400 frames/file ÷ 86,400s = 62.5 fps needed
+  Per node (NVIDIA GPU, HEVC): ~60 fps
+  Required: ceil(62.5 / 60) = 2 nodes
 ```
 
----
+**Node sizing guidelines:**
 
-## Troubleshooting
-
-### Child Node Not Appearing in UI
-
-**Symptom:** Child node started but not visible in Settings → Nodes
-
-**Fix:**
-```bash
-# On child node, check logs
-docker logs bitbonsai-backend
-
-# Look for:
-# ✓ Connected to database at postgresql://192.168.1.100:5432/bitbonsai
-# ✓ Registered as LINKED node with ID: node_xyz
-
-# If missing, check:
-# 1. DATABASE_URL points to main node's PostgreSQL
-# 2. PostgreSQL port 5432 is accessible (firewall)
-# 3. NODE_MODE=LINKED is set
-```
-
-### Jobs Stuck in QUEUED
-
-**Symptom:** Jobs remain QUEUED, no node picks them up
-
-**Fix:**
-1. Check all nodes are ONLINE in Settings → Nodes
-2. Verify NFS mounts are working:
-   ```bash
-   docker exec bitbonsai-backend ls -la /media
-   ```
-3. Check logs for errors:
-   ```bash
-   docker logs bitbonsai-backend | grep ERROR
-   ```
-
-### File Not Found Errors
-
-**Symptom:** Job fails with "ENOENT: no such file or directory"
-
-**Fix:**
-- Verify NFS mount path is **identical** on all nodes
-- Check NFS permissions (should be `rw`, not `ro`)
-- Test file access:
-  ```bash
-  docker exec bitbonsai-backend cat /media/Movies/test.mp4
-  ```
+| Library Size | Recommended Setup |
+|---|---|
+| < 500 GB | Single node (main only) |
+| 500 GB – 5 TB | 1 main + 1–2 child nodes |
+| 5–20 TB | 1 main + 3–5 child nodes (GPU recommended) |
+| > 20 TB | 1 main + 6+ child nodes, 10GbE NFS |
 
 ---
 
-## Performance Tips
+## Related
 
-| Tip | Why |
-|-----|-----|
-| **Use 10GbE network** | NFS throughput critical for 4K video |
-| **Enable NFS async mode** | Faster writes (use UPS for safety) |
-| **Match NFS mount paths** | Avoids path rewriting overhead |
-| **Use SSD for database** | Faster job updates and queries |
-| **Monitor node load** | Add nodes when load > 80% consistently |
-
----
-
-## Related Guides
-
-- **[GPU Acceleration](/advanced/gpu-acceleration)** - Add GPU support to nodes
-- **[Monitoring](/guides/monitoring)** - Track multi-node performance
-- **[Troubleshooting](/advanced/troubleshooting)** - Fix common multi-node issues
+- **[Multi-Node Setup](/advanced/multi-node)** — Step-by-step configuration
+- **[GPU Acceleration](/advanced/gpu-acceleration)** — Hardware encoding per node
+- **[Monitoring](/guides/monitoring)** — Track distributed encoding performance
+- **[Understanding Jobs](/guides/understanding-jobs)** — Job lifecycle and status reference

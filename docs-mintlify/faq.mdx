@@ -136,19 +136,21 @@ BitBonsai supports multi-node distributed encoding. Steps:
 **1. Set Up Main Node (Database Owner)**
 ```bash
 docker run -d \
-  -e ROLE=main \
+  -e NODE_MODE=MAIN \
   -e DATABASE_URL=postgresql://user:pass@localhost:5432/bitbonsai \
   -p 3100:3100 \
-  bitbonsai/backend
+  ghcr.io/bitbonsai/backend:latest
 ```
 
 **2. Set Up Child Nodes (Workers)**
 ```bash
 docker run -d \
-  -e ROLE=linked \
+  -e NODE_MODE=LINKED \
+  -e DATABASE_URL=postgresql://user:pass@192.168.1.100:5432/bitbonsai \
   -e MAIN_NODE_URL=http://192.168.1.100:3100 \
-  -v /mnt/shared:/media \
-  bitbonsai/backend
+  -p 3100:3100 \
+  -v /mnt/videos:/media \
+  ghcr.io/bitbonsai/backend:latest
 ```
 
 **3. Configure Shared Storage (NFS)**
@@ -183,7 +185,7 @@ Yes. Multi-node support requires a paid license:
 - Priority support
 
 **How to Purchase:**
-1. Visit [bitbonsai.io/pricing](https://bitbonsai.io/pricing)
+1. Visit [bitbonsai.app/pricing](https://bitbonsai.app/pricing)
 2. Subscribe via Stripe or Patreon
 3. Receive license key via email
 4. Enter key in **Settings → License**
@@ -198,7 +200,7 @@ Yes. Multi-node support requires a paid license:
 - Development funding (full-time maintainer)
 - Community support (Discord, GitHub)
 
-See [Pricing Page](https://bitbonsai.io/pricing) for current rates.
+See [Pricing Page](https://bitbonsai.app/pricing) for current rates.
 </Accordion>
 
 ## Video Quality & Codecs
@@ -358,7 +360,7 @@ docker-compose up -d
 **Configuration:**
 - Mount media via WSL2: `\\wsl$\Ubuntu\mnt\media`
 - Database in WSL2 volume (better I/O)
-- Frontend accessible via `localhost:4200`
+- Frontend accessible via `localhost:4210`
 
 **Known Limitations:**
 - GPU passthrough (NVENC) requires WSL2 + CUDA drivers
@@ -428,7 +430,7 @@ BitBonsai provides multiple monitoring options:
 
 **1. Web UI (Mobile-Friendly)**
 ```
-Access: http://YOUR_IP:4200
+Access: http://YOUR_IP:4210
 Features:
 - Real-time job progress (%)
 - Live FFmpeg output logs
@@ -437,15 +439,19 @@ Features:
 ```
 
 **2. API Endpoints**
+
+Get your JWT token from the browser developer tools (F12 → Application → Local Storage → `token`).
+
 ```bash
 # Get all jobs
-curl http://YOUR_IP:3100/api/jobs
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://YOUR_IP:3100/jobs
 
 # Get specific job
-curl http://YOUR_IP:3100/api/jobs/123
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://YOUR_IP:3100/jobs/123
 
 # Get encoding stats
-curl http://YOUR_IP:3100/api/statistics
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://YOUR_IP:3100/insights/stats
 ```
 
 **3. WebSocket (Real-Time Updates)**
@@ -465,7 +471,7 @@ ws.onmessage = (event) => {
 - Pushover/Telegram integration
 
 **Mobile Access:**
-- Enable port forwarding (3100, 4200)
+- Enable port forwarding (3100, 4210)
 - Use VPN for secure remote access (Tailscale, WireGuard)
 - Or reverse proxy with SSL (Nginx, Caddy)
 
@@ -476,7 +482,7 @@ server {
   server_name bitbonsai.yourdomain.com;
 
   location / {
-    proxy_pass http://localhost:4200;
+    proxy_pass http://localhost:4210;
   }
 
   location /api {
@@ -507,10 +513,10 @@ Not yet. This is a **planned feature** for v2.0.
 2. **Cron Script (API-Based)**
 ```bash
 # Pause at 8 AM
-0 8 * * * curl -X POST http://localhost:3100/api/queue/pause-all
+0 8 * * * curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/queue/pause-all
 
 # Resume at 6 PM
-0 18 * * * curl -X POST http://localhost:3100/api/queue/resume-all
+0 18 * * * curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/queue/resume-all
 ```
 
 3. **CPU Limiting (Docker)**
@@ -562,17 +568,17 @@ BitBonsai offers three tiers:
 - Downgrade keeps data intact
 
 **Purchase Link:**
-[bitbonsai.io/pricing](https://bitbonsai.io/pricing)
+[bitbonsai.app/pricing](https://bitbonsai.app/pricing)
 
 **Non-Profit/Educational Discounts:**
-Contact `hello@bitbonsai.io` with proof of status for 50% discount.
+Contact `hello@bitbonsai.app` with proof of status for 50% discount.
 </Accordion>
 
 ## Need More Help?
 
 Still have questions? Try these resources:
 
-- **Documentation:** [BitBonsai Docs](https://docs.bitbonsai.io)
+- **Documentation:** [BitBonsai Docs](https://docs.bitbonsai.app)
 - **Discord:** [Join Community](https://discord.gg/bitbonsai)
 - **GitHub Issues:** [Report Bugs](https://github.com/bitbonsai/bitbonsai/issues)
-- **Email:** hello@bitbonsai.io
+- **Email:** hello@bitbonsai.app

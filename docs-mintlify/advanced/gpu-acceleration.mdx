@@ -121,13 +121,13 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 <Steps>
   <Step title="Install NVIDIA Container Toolkit">
     ```bash
-    # Detect your distribution
-    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    # Add NVIDIA Container Toolkit repository (current method)
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+      sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
-    # Add NVIDIA Docker repository
-    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-    curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
-      sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+      sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+      sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
     # Install toolkit
     sudo apt update && sudo apt install -y nvidia-container-toolkit
@@ -157,7 +157,6 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
   <Step title="Restart BitBonsai">
     ```bash
-    cd /path/to/bitbonsai
     docker compose down
     docker compose up -d
     ```
@@ -166,9 +165,11 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
   <Step title="Verify GPU is Accessible">
     ```bash
     # Check GPU is visible inside container
-    docker exec bitbonsai-backend nvidia-smi
+    docker compose exec backend nvidia-smi
 
-    # Should show GPU info
+    # Should show GPU info, e.g.:
+    # +-----------------------------------------------------------------------------+
+    # | NVIDIA-SMI 525.89.02    Driver Version: 525.89.02    CUDA Version: 12.0    |
     ```
   </Step>
 </Steps>

@@ -359,10 +359,10 @@ The system continuously monitors (see [health check](/glossary#health-check)):
 
 ```bash
 # Check queue status via API
-curl http://localhost:3100/queue/stats
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/queue/stats
 
 # Verify nodes are online
-curl http://localhost:3100/nodes
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/nodes
 ```
 
 ### Incorrect Storage Stats
@@ -406,9 +406,13 @@ Access dashboard data programmatically:
 | `GET /system/dashboard` | Complete dashboard (all panels) |
 | `GET /system/dashboard/health` | Health checks only |
 | `GET /queue/stats` | Queue statistics |
+| `GET /jobs` | All encoding jobs |
+| `GET /jobs/:id` | Single job details |
 | `GET /insights/stats` | Aggregated encoding stats |
 | `GET /insights/savings?days=30` | 30-day savings trend |
 | `GET /insights/nodes` | Node performance comparison |
+
+**Get your JWT token** from the browser's developer tools (F12 → Application → Local Storage → `token`) or from the login API response.
 
 **Example: Get dashboard JSON:**
 
