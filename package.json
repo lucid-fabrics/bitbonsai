@@ -22,7 +22,8 @@
   "lint-staged": {
     "*.{md,mdx}": [
       "prettier --write",
-      "markdownlint --fix"
+      "markdownlint --fix",
+      "eslint --ext .md,.mdx"
     ],
     "*.{json,yml,yaml}": [
       "prettier --write"
