@@ -24,7 +24,7 @@ docker compose logs -f backend
 docker compose exec postgres pg_isready -U bitbonsai
 
 # Check disk space (see temporary files glossary entry)
-df -h /path/to/temp /path/to/videos
+df -h /path/to/temp /path/to/media
 ```
 
 <Info>
@@ -531,21 +531,21 @@ df -h /path/to/temp /path/to/videos
         docker compose exec frontend env | grep API_URL
 
         # Should be:
-        # API_URL=http://bitbonsai-backend:3100  (internal Docker network)
+        # API_URL=http://backend:3100  (internal Docker network)
         # OR
         # API_URL=http://localhost:3100  (if accessing from outside)
         ```
 
         Update `docker-compose.yml` if incorrect:
         ```yaml
-        bitbonsai-frontend:
+        frontend:
           environment:
-            API_URL: http://bitbonsai-backend:3100
+            API_URL: http://backend:3100
         ```
 
         Restart:
         ```bash
-        docker compose restart bitbonsai-frontend
+        docker compose restart frontend
         ```
       </Step>
 
@@ -624,7 +624,7 @@ df -h /path/to/temp /path/to/videos
 
         Update `docker-compose.yml` if incorrect:
         ```yaml
-        bitbonsai-backend:
+        backend:
           environment:
             DATABASE_URL: postgresql://bitbonsai:changeme@postgres:5432/bitbonsai
         ```
@@ -916,16 +916,21 @@ iostat -x 1
 docker network inspect bitbonsai_default
 
 # Test inter-container connectivity
-docker compose exec frontend ping bitbonsai-backend
+docker compose exec frontend ping backend
 docker compose exec backend ping postgres
 
 # Capture network traffic (advanced)
 docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i any port 3100
+# Note: use the actual container name (bitbonsai-backend) for --net=container, not the service key
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Dashboard & Monitoring" icon="chart-line" href="/guides/monitoring">
+    Track job health, queue status, and system metrics
+  </Card>
+
   <Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
     Add worker nodes for distributed encoding
   </Card>
@@ -936,9 +941,5 @@ docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i a
 
   <Card title="FAQ" icon="question" href="/faq">
     Frequently asked questions
-  </Card>
-
-  <Card title="GitHub Issues" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues">
-    Report bugs and request features
   </Card>
 </CardGroup>
