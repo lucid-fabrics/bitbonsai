@@ -18,7 +18,7 @@ Encode your first video library in 5 minutes with zero configuration.
         environment:
           POSTGRES_DB: bitbonsai
           POSTGRES_USER: bitbonsai
-          POSTGRES_PASSWORD: bitbonsai
+          POSTGRES_PASSWORD: changeme
         volumes:
           - bitbonsai-db:/var/lib/postgresql/data
         restart: unless-stopped
@@ -28,7 +28,7 @@ Encode your first video library in 5 minutes with zero configuration.
         ports:
           - "3100:3100"
         environment:
-          DATABASE_URL: postgresql://bitbonsai:bitbonsai@postgres:5432/bitbonsai
+          DATABASE_URL: postgresql://bitbonsai:changeme@postgres:5432/bitbonsai
           NODE_ENV: production
         volumes:
           - /path/to/your/videos:/media
@@ -51,7 +51,11 @@ Encode your first video library in 5 minutes with zero configuration.
 
     ```
 
-    Replace `/path/to/your/videos` with your actual video library path.
+    Replace `/path/to/your/videos` with your actual video library path. Change `changeme` to a secure password.
+
+    <Warning>
+    Update `POSTGRES_PASSWORD` and `DATABASE_URL` to use the same secure password before running.
+    </Warning>
 
     Start the stack:
 
