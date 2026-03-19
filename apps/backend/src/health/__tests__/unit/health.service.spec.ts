@@ -143,7 +143,7 @@ describe('HealthService', () => {
   describe('checkRedisHealth', () => {
     it('should return ok when Redis is not configured', async () => {
       const originalEnv = process.env.REDIS_URL;
-      process.env.REDIS_URL = undefined;
+      process.env.REDIS_URL = '';
 
       const result = await service.checkRedisHealth();
 
@@ -169,7 +169,7 @@ describe('HealthService', () => {
       if (originalEnv) {
         process.env.REDIS_URL = originalEnv;
       } else {
-        process.env.REDIS_URL = undefined;
+        process.env.REDIS_URL = '';
       }
     });
   });

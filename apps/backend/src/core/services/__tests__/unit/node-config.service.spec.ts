@@ -61,7 +61,7 @@ describe('NodeConfigService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
-    process.env.NODE_ID = undefined;
+    process.env.NODE_ID = '';
 
     mockFs.existsSync.mockReturnValue(false);
     mockFs.readFileSync.mockReturnValue('');

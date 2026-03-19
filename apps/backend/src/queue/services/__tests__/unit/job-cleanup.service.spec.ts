@@ -304,12 +304,12 @@ describe('JobCleanupService', () => {
       if (originalStuck) {
         process.env.JOB_STUCK_THRESHOLD_MINUTES = originalStuck;
       } else {
-        process.env.JOB_STUCK_THRESHOLD_MINUTES = undefined;
+        process.env.JOB_STUCK_THRESHOLD_MINUTES = '';
       }
       if (originalTimeout) {
         process.env.JOB_ENCODING_TIMEOUT_HOURS = originalTimeout;
       } else {
-        process.env.JOB_ENCODING_TIMEOUT_HOURS = undefined;
+        process.env.JOB_ENCODING_TIMEOUT_HOURS = '';
       }
     });
   });

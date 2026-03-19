@@ -21,7 +21,7 @@ describe('EncryptionService', () => {
   afterEach(() => {
     // Restore original env
     if (originalEnv === undefined) {
-      process.env.ENCRYPTION_KEY = undefined;
+      process.env.ENCRYPTION_KEY = '';
     } else {
       process.env.ENCRYPTION_KEY = originalEnv;
     }
@@ -140,7 +140,7 @@ describe('EncryptionService', () => {
 
   describe('error handling', () => {
     it('should throw error when ENCRYPTION_KEY is not set', () => {
-      process.env.ENCRYPTION_KEY = undefined;
+      process.env.ENCRYPTION_KEY = '';
 
       const newService = new EncryptionService();
       expect(() => newService.encrypt('test')).toThrow('Failed to encrypt data');

@@ -506,7 +506,7 @@ describe('NodesService', () => {
     };
 
     beforeEach(() => {
-      process.env.NODE_ID = undefined;
+      process.env.NODE_ID = '';
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {

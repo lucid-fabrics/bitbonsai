@@ -7,7 +7,7 @@ describe('StripeService', () => {
   let licenseRepositoryMock: any;
 
   beforeEach(async () => {
-    process.env.STRIPE_SECRET_KEY = undefined;
+    process.env.STRIPE_SECRET_KEY = '';
 
     licenseRepositoryMock = {
       findByEmail: jest.fn(),
