@@ -389,4 +389,167 @@ describe('EncodingProcessorService', () => {
   });
 
   // Future: progress tracking tests (relies on FFmpeg event streams, covered by integration tests)
+
+  // ── isNonRetriableError (via handleJobFailure) ────────────────────────────
+
+  describe('handleJobFailure — non-retriable errors', () => {
+    it('permanently fails job on "moov atom not found" without retrying', async () => {
+      const error = new Error('moov atom not found');
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobFailure(mockJob as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Non-retriable error')
+      );
+      expect(queueService.update).not.toHaveBeenCalled();
+    });
+
+    it('permanently fails job on "source file appears corrupted"', async () => {
+      const error = new Error('source file appears corrupted');
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobFailure(mockJob as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Non-retriable error')
+      );
+    });
+
+    it('permanently fails job on "invalid data found when processing input"', async () => {
+      const error = new Error('Invalid data found when processing input');
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobFailure(mockJob as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Non-retriable error')
+      );
+    });
+  });
+
+  // ── isTransientError (via handleJobFailure) ───────────────────────────────
+
+  describe('handleJobFailure — transient error retry backoff', () => {
+    it('re-queues with retryCount=2 and backoff on second failure (ECONNRESET)', async () => {
+      const error = new Error('ECONNRESET: socket hang up');
+      const jobWithRetry = createMockJob({ id: 'job-123', retryCount: 1 });
+      queueService.update.mockResolvedValue(jobWithRetry as any);
+
+      await service.handleJobFailure({ ...jobWithRetry, policy: mockPolicy } as any, error);
+
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 2 })
+      );
+    });
+
+    it('permanently fails on ECONNREFUSED after max retries', async () => {
+      const error = new Error('ECONNREFUSED');
+      const exhaustedJob = createMockJob({ id: 'job-123', retryCount: 3 });
+      queueService.failJob.mockResolvedValue(exhaustedJob as any);
+
+      await service.handleJobFailure({ ...exhaustedJob, policy: mockPolicy } as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('retry attempts exhausted')
+      );
+    });
+
+    it('permanently fails non-transient, non-retriable error on first attempt', async () => {
+      const error = new Error('Unknown codec XYZ');
+      const freshJob = createMockJob({ id: 'job-123', retryCount: 0 });
+      queueService.failJob.mockResolvedValue(freshJob as any);
+
+      await service.handleJobFailure({ ...freshJob, policy: mockPolicy } as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Non-retriable error after 1 attempt(s)')
+      );
+    });
+  });
+
+  // ── handleJobCompletion ───────────────────────────────────────────────────
+
+  describe('handleJobCompletion — additional branches', () => {
+    it('calls updateLibraryStats with savedBytes', async () => {
+      const encodingFileService = module.get(EncodingFileService);
+      const result = {
+        beforeSizeBytes: BigInt(2_000_000_000),
+        afterSizeBytes: BigInt(1_200_000_000),
+        savedBytes: BigInt(800_000_000),
+        savedPercent: 40.0,
+      };
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobCompletion(mockJob as any, result);
+
+      expect(encodingFileService.updateLibraryStats).toHaveBeenCalledWith(
+        'library-1',
+        BigInt(800_000_000)
+      );
+    });
+
+    it('serialises BigInt sizes to strings for completeJob', async () => {
+      const result = {
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(750_000_000),
+        savedBytes: BigInt(250_000_000),
+        savedPercent: 25.0,
+      };
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobCompletion(mockJob as any, result);
+
+      expect(queueService.completeJob).toHaveBeenCalledWith('job-123', {
+        afterSizeBytes: '750000000',
+        savedBytes: '250000000',
+        savedPercent: 25.0,
+      });
+    });
+  });
+
+  // ── processNextJob — pause request ───────────────────────────────────────
+
+  describe('processNextJob — pause request intercepted before encoding', () => {
+    beforeEach(() => {
+      workerPoolService.getWorker.mockReturnValue({
+        workerId: 'node-1',
+        nodeId: 'node-1',
+        isRunning: true,
+        currentJobId: null,
+        startedAt: new Date(),
+      } as any);
+    });
+
+    it('returns null and transitions job to PAUSED when pauseRequestedAt is set', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      // validateAndHealJobPolicy: policy exists with matching codec → no healing
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      // pause check: job has a pending pause request
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: new Date(),
+        stage: 'QUEUED',
+      });
+
+      const result = await service.processNextJob('node-1');
+
+      expect(result).toBeNull();
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ stage: 'PAUSED' })
+      );
+    });
+  });
 });
