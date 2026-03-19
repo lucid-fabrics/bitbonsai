@@ -352,14 +352,14 @@ describe('QueueJobCrudService', () => {
 
     it('should proxy job creation to MAIN node when mainApiUrl is set', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
-      const mockResponse = { data: { id: 'job-proxied' } };
+      const _mockResponse = { data: { id: 'job-proxied' } };
       mockHttpService.post.mockReturnValue({
         pipe: jest.fn(),
         subscribe: jest.fn(),
         toPromise: jest.fn(),
       });
 
-      const { firstValueFrom: fvf } = jest.requireMock('rxjs');
+      const { firstValueFrom: _fvf } = jest.requireMock('rxjs');
       // We can't easily mock firstValueFrom without rewiring, so test error path instead
       mockHttpService.post.mockReturnValue({
         subscribe: jest.fn(),

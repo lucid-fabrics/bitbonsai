@@ -487,7 +487,7 @@ describe('EncodingFileService — extended coverage', () => {
     const mockStatfs = jest.fn();
 
     beforeEach(() => {
-      (fs as unknown as Record<string, unknown>)['promises'] = { statfs: mockStatfs };
+      (fs as unknown as Record<string, unknown>).promises = { statfs: mockStatfs };
     });
 
     it('resolves when sufficient disk space is available', async () => {

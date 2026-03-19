@@ -362,7 +362,9 @@ describe('FileTransferService', () => {
       mockStdout.on.mockImplementation((event: string, cb: (data: Buffer) => void) => {
         if (event === 'data') cb(Buffer.from(''));
       });
-      mockStderr.on.mockImplementation(() => {});
+      mockStderr.on.mockImplementation(() => {
+        /* noop */
+      });
 
       await service.cleanupRemoteTempFile('job-1');
 
@@ -394,7 +396,9 @@ describe('FileTransferService', () => {
           setImmediate(() => cb(1)); // non-zero exit
         }
       });
-      mockStdout.on.mockImplementation(() => {});
+      mockStdout.on.mockImplementation(() => {
+        /* noop */
+      });
       mockStderr.on.mockImplementation((event: string, cb: (data: Buffer) => void) => {
         if (event === 'data') cb(Buffer.from('rm: cannot remove'));
       });
@@ -528,7 +532,9 @@ describe('FileTransferService', () => {
             setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1)); // mkdir ok, rsync fail
           }
         });
-        proc.stdout.on.mockImplementation(() => {});
+        proc.stdout.on.mockImplementation(() => {
+          /* noop */
+        });
         proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
           if (evt === 'data') cb(Buffer.from('connection refused'));
         });
@@ -574,7 +580,9 @@ describe('FileTransferService', () => {
             setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1));
           }
         });
-        proc.stdout.on.mockImplementation(() => {});
+        proc.stdout.on.mockImplementation(() => {
+          /* noop */
+        });
         proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
           if (evt === 'data') cb(Buffer.from('rsync error'));
         });

@@ -540,14 +540,14 @@ describe('QueueProcessingService', () => {
       };
 
       // findManyWithInclude returns the job with mismatch
-      const originalFindMany = mockPrisma.job.findMany;
+      const _originalFindMany = mockPrisma.job.findMany;
       // We need to use the jobRepository's findManyWithInclude
       const mockJobRepoFull = {
         updateById: mockJobRepository.updateById,
         findManyWithInclude: jest.fn().mockResolvedValue([jobWithMismatch]),
       };
 
-      const { TestingModule: TestMod } = await import('@nestjs/testing');
+      const { TestingModule: _TestMod } = await import('@nestjs/testing');
       const newModule = await require('@nestjs/testing')
         .Test.createTestingModule({
           providers: [

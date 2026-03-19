@@ -516,7 +516,7 @@ describe('NodesService', () => {
     });
 
     afterEach(() => {
-      delete process.env.NODE_ID;
+      process.env.NODE_ID = '';
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {
