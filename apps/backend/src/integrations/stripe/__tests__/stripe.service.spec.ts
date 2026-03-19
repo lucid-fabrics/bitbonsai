@@ -43,11 +43,11 @@ describe('StripeService', () => {
   });
 
   afterEach(() => {
-    delete process.env.STRIPE_SECRET_KEY;
-    delete process.env.STRIPE_WEBHOOK_SECRET;
-    delete process.env.STRIPE_PRICE_STARTER;
-    delete process.env.STRIPE_PRICE_PRO;
-    delete process.env.STRIPE_PRICE_ENTERPRISE;
+    process.env.STRIPE_SECRET_KEY = '';
+    process.env.STRIPE_WEBHOOK_SECRET = '';
+    process.env.STRIPE_PRICE_STARTER = '';
+    process.env.STRIPE_PRICE_PRO = '';
+    process.env.STRIPE_PRICE_ENTERPRISE = '';
   });
 
   it('should be defined', () => {
@@ -203,7 +203,7 @@ describe('StripeService', () => {
     });
 
     it('should throw when STRIPE_WEBHOOK_SECRET is not set', async () => {
-      delete process.env.STRIPE_WEBHOOK_SECRET;
+      process.env.STRIPE_WEBHOOK_SECRET = '';
       const stripeMock = { webhooks: { constructEvent: jest.fn() } };
       const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
 
