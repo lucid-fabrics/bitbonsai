@@ -200,7 +200,9 @@ describe('PoolLockService', () => {
       let forceReleased = false;
 
       poolLocks.set('node-watchdog', {
-        promise: new Promise<void>(() => {}),
+        promise: new Promise<void>(() => {
+          /* never resolves */
+        }),
         release: () => {
           forceReleased = true;
         },

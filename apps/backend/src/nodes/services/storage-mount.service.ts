@@ -141,7 +141,7 @@ export class StorageMountService {
       this.logger.debug(`Executing unmount command: ${unmountCommand}`);
 
       // Execute unmount command
-      const { stdout, stderr } = await execAsync(unmountCommand);
+      const { stderr } = await execAsync(unmountCommand);
 
       if (stderr && !stderr.includes('warning')) {
         this.logger.warn(`Unmount stderr: ${stderr}`);
