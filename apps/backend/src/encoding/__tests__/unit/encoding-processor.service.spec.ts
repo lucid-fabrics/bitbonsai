@@ -4,6 +4,7 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { LibraryRepository } from '../../../common/repositories/library.repository';
 import { PolicyRepository } from '../../../common/repositories/policy.repository';
+import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { QueueService } from '../../../queue/queue.service';
@@ -550,6 +551,307 @@ describe('EncodingProcessorService', () => {
         'job-123',
         expect.objectContaining({ stage: 'PAUSED' })
       );
+    });
+  });
+
+  // ── onModuleDestroy ───────────────────────────────────────────────────────
+
+  describe('onModuleDestroy', () => {
+    it('resolves without throwing', async () => {
+      await expect(service.onModuleDestroy()).resolves.not.toThrow();
+    });
+  });
+
+  // ── startWorkerPool — default maxWorkers ──────────────────────────────────
+
+  describe('startWorkerPool — default maxWorkers', () => {
+    it('uses default workers when none specified', async () => {
+      workerPoolService.startWorkerPool.mockResolvedValue(4 as any);
+      await service.startWorkerPool('node-1');
+      expect(workerPoolService.startWorkerPool).toHaveBeenCalledWith(
+        'node-1',
+        4,
+        expect.any(Function)
+      );
+    });
+
+    it('passes specified maxWorkers to WorkerPoolService', async () => {
+      workerPoolService.startWorkerPool.mockResolvedValue(8 as any);
+      await service.startWorkerPool('node-1', 8);
+      expect(workerPoolService.startWorkerPool).toHaveBeenCalledWith(
+        'node-1',
+        8,
+        expect.any(Function)
+      );
+    });
+  });
+
+  // ── stopWorker — with workerId ────────────────────────────────────────────
+
+  describe('stopWorker — with specific workerId', () => {
+    it('passes workerId to WorkerPoolService', async () => {
+      await service.stopWorker('node-1', 'worker-abc');
+      expect(workerPoolService.stopWorker).toHaveBeenCalledWith('node-1', 'worker-abc');
+    });
+  });
+
+  // ── handleJobFailure — isNonRetriableError patterns ──────────────────────
+
+  describe('handleJobFailure — all non-retriable error patterns', () => {
+    const nonRetriableCases = [
+      'could not find ref with poc 0',
+      'error submitting packet to decoder',
+      'corrupt decoded frame in stream',
+      'missing reference picture',
+    ];
+
+    for (const msg of nonRetriableCases) {
+      it(`permanently fails job on "${msg}"`, async () => {
+        const error = new Error(msg);
+        queueService.failJob.mockResolvedValue(mockJob as any);
+
+        await service.handleJobFailure(mockJob as any, error);
+
+        expect(queueService.failJob).toHaveBeenCalledWith(
+          'job-123',
+          expect.stringContaining('Non-retriable error')
+        );
+        expect(queueService.update).not.toHaveBeenCalled();
+      });
+    }
+  });
+
+  // ── handleJobFailure — transient error all patterns ──────────────────────
+
+  describe('handleJobFailure — transient error patterns', () => {
+    const transientCases = ['ENOTFOUND host', 'temporarily unavailable', 'network error'];
+
+    for (const msg of transientCases) {
+      it(`re-queues job for transient error "${msg}"`, async () => {
+        const error = new Error(msg);
+        const freshJob = { ...mockJob, retryCount: 0 };
+        queueService.update.mockResolvedValue(freshJob as any);
+
+        await service.handleJobFailure(freshJob as any, error);
+
+        expect(queueService.update).toHaveBeenCalledWith(
+          'job-123',
+          expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
+        );
+      });
+    }
+  });
+
+  // ── handleJobCompletion — error propagation ───────────────────────────────
+
+  describe('handleJobCompletion — re-throws completeJob errors', () => {
+    it('re-throws error from queueService.completeJob', async () => {
+      const result = {
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(750_000_000),
+        savedBytes: BigInt(250_000_000),
+        savedPercent: 25.0,
+      };
+      queueService.completeJob.mockRejectedValue(new Error('DB write failed'));
+
+      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(
+        'DB write failed'
+      );
+    });
+  });
+
+  // ── processNextJob — source file relocation ───────────────────────────────
+
+  describe('processNextJob — source file missing, directory missing', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('returns null when directory also missing (unmounted library)', async () => {
+      // All existsSync calls return false: source file, dir, and relocation all fail
+      (fs.existsSync as jest.Mock).mockReturnValue(false);
+
+      const fileRelocatorService = module.get<{ relocateFile: jest.Mock }>(
+        FileRelocatorService as unknown as Parameters<typeof module.get>[0]
+      );
+      fileRelocatorService.relocateFile.mockResolvedValue({ found: false, searchedPaths: 0 });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.failJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      const result = await service.processNextJob('node-1');
+      expect(result).toBeNull();
+    });
+  });
+
+  // ── processNextJob — encoding success path ────────────────────────────────
+
+  describe('processNextJob — full successful encoding path', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('calls handleJobCompletion and returns job on success', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockResolvedValue({
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(700_000_000),
+        savedBytes: BigInt(300_000_000),
+        savedPercent: 30.0,
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      const systemResourceService = module.get(SystemResourceService);
+      (systemResourceService.performResourcePreflightChecks as jest.Mock).mockResolvedValue(
+        undefined
+      );
+
+      const result = await service.processNextJob('node-1');
+
+      expect(queueService.completeJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ savedPercent: 30.0 })
+      );
+      expect(result).not.toBeNull();
+    });
+  });
+
+  // ── handleJobFailure — retry exactly at boundary ──────────────────────────
+
+  describe('handleJobFailure — retry count boundary', () => {
+    it('retries on attempt 2 of 3 (retryCount=1)', async () => {
+      const error = new Error('ETIMEDOUT');
+      const job = { ...mockJob, retryCount: 1 };
+      queueService.update.mockResolvedValue(job as any);
+
+      await service.handleJobFailure(job as any, error);
+
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 2 })
+      );
+    });
+
+    it('retries on attempt 3 of 3 (retryCount=2)', async () => {
+      const error = new Error('ETIMEDOUT');
+      const job = { ...mockJob, retryCount: 2 };
+      queueService.update.mockResolvedValue(job as any);
+
+      await service.handleJobFailure(job as any, error);
+
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 3 })
+      );
+    });
+
+    it('fails permanently when retryCount=3 (all retries exhausted)', async () => {
+      const error = new Error('ETIMEDOUT');
+      const job = { ...mockJob, retryCount: 3 };
+      queueService.failJob.mockResolvedValue(job as any);
+
+      await service.handleJobFailure(job as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('retry attempts exhausted')
+      );
+    });
+  });
+
+  // ── processNextJob — validateAndHealJobPolicy branches ───────────────────
+
+  describe('processNextJob — validateAndHealJobPolicy', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('heals codec mismatch between job and policy', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      const mismatchedPolicy = { ...mockPolicy, targetCodec: 'AV1' };
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mismatchedPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+      (jobRepository.updateByIdWithInclude as jest.Mock).mockResolvedValue({
+        ...mockJob,
+        targetCodec: 'AV1',
+        policy: mismatchedPolicy,
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockResolvedValue({
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(700_000_000),
+        savedBytes: BigInt(300_000_000),
+        savedPercent: 30.0,
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      await service.processNextJob('node-1');
+
+      expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
+        'job-123',
+        { targetCodec: 'AV1' },
+        { policy: true }
+      );
+    });
+
+    it('throws when policy is missing and no fallback policy exists', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(null);
+      (policyRepository.findAll as jest.Mock).mockResolvedValue([]);
+
+      const libraryRepository = module.get(LibraryRepository);
+      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue(null);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.failJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      const result = await service.processNextJob('node-1');
+      // Expect it to fail the job (returns null after failure handling)
+      expect(result).toBeNull();
     });
   });
 });

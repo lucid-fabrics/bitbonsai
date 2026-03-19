@@ -430,7 +430,13 @@ describe('LibrariesService', () => {
           { provide: EventEmitter2, useValue: mockEventEmitter },
           {
             provide: MediaAnalysisService,
-            useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
           },
           {
             provide: QueueService,
@@ -492,7 +498,13 @@ describe('LibrariesService', () => {
           { provide: EventEmitter2, useValue: mockEventEmitter },
           {
             provide: MediaAnalysisService,
-            useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
           },
           {
             provide: QueueService,
@@ -555,7 +567,13 @@ describe('LibrariesService', () => {
           { provide: EventEmitter2, useValue: mockEventEmitter },
           {
             provide: MediaAnalysisService,
-            useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
           },
           {
             provide: QueueService,
@@ -643,7 +661,13 @@ describe('LibrariesService', () => {
           { provide: EventEmitter2, useValue: { emit: jest.fn() } },
           {
             provide: MediaAnalysisService,
-            useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
           },
           {
             provide: QueueService,
@@ -751,6 +775,445 @@ describe('LibrariesService', () => {
 
       await expect(service.scanPreview('lib-1')).rejects.toThrow(BadRequestException);
       await expect(service.scanPreview('lib-1')).rejects.toThrow('Library has no encoding policy');
+    });
+  });
+
+  describe('create - additional branches', () => {
+    it('should throw BadRequestException for path with traversal after normalization', async () => {
+      const dto = {
+        name: 'Bad Path',
+        path: '/mnt/user/movies/../../../etc/passwd',
+        mediaType: MediaType.MOVIE,
+        nodeId: 'node-1',
+      };
+      // normalize() resolves this to /etc/passwd which is not in allowed dirs
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should allow /media base path', async () => {
+      const dto = {
+        name: 'Media',
+        path: '/media/movies',
+        mediaType: MediaType.MOVIE,
+        nodeId: 'node-1',
+      };
+      const mediaLib = { ...mockLibrary, path: '/media/movies' };
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.library, 'create').mockResolvedValue(mediaLib as never);
+
+      const result = await service.create(dto);
+      expect(result.path).toBe('/media/movies');
+    });
+
+    it('should allow /data base path', async () => {
+      const dto = {
+        name: 'Data',
+        path: '/data/videos',
+        mediaType: MediaType.MOVIE,
+        nodeId: 'node-1',
+      };
+      const dataLib = { ...mockLibrary, path: '/data/videos' };
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.library, 'create').mockResolvedValue(dataLib as never);
+
+      const result = await service.create(dto);
+      expect(result.path).toBe('/data/videos');
+    });
+
+    it('should allow /downloads base path', async () => {
+      const dto = {
+        name: 'Downloads',
+        path: '/downloads/movies',
+        mediaType: MediaType.MOVIE,
+        nodeId: 'node-1',
+      };
+      const dlLib = { ...mockLibrary, path: '/downloads/movies' };
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.library, 'create').mockResolvedValue(dlLib as never);
+
+      const result = await service.create(dto);
+      expect(result.path).toBe('/downloads/movies');
+    });
+  });
+
+  describe('findAll - with node filter', () => {
+    it('should pass nodeId filter when specified', async () => {
+      const libs = [mockLibraryWithStats];
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue(libs as never);
+
+      const result = await service.findAll();
+      expect(result).toHaveLength(1);
+      expect(prisma.library.findMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('update - no watchEnabled change', () => {
+    it('should not emit any events when watchEnabled is not changed', async () => {
+      const mockEventEmitter = { emit: jest.fn() };
+      const updatedLibrary = { ...mockLibrary, name: 'New Name' };
+
+      const mod: TestingModule = await Test.createTestingModule({
+        providers: [
+          LibrariesService,
+          { provide: LibraryRepository, useValue: mockLibraryRepo },
+          { provide: NodeRepository, useValue: mockNodeRepo },
+          { provide: JobRepository, useValue: mockJobRepo },
+          { provide: PolicyRepository, useValue: mockPolicyRepo },
+          { provide: EventEmitter2, useValue: mockEventEmitter },
+          {
+            provide: MediaAnalysisService,
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
+          },
+          {
+            provide: QueueService,
+            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+          },
+          {
+            provide: SettingsService,
+            useValue: {
+              get: jest.fn(),
+              set: jest.fn(),
+              getAll: jest.fn(),
+              getReadyFilesCacheTtl: jest.fn(),
+            },
+          },
+          {
+            provide: DistributionOrchestratorService,
+            useValue: {
+              distribute: jest.fn(),
+              rebalance: jest.fn(),
+              findBestNodeForNewJob: jest.fn(),
+            },
+          },
+          {
+            provide: FileFailureTrackingService,
+            useValue: {
+              recordFailure: jest.fn().mockResolvedValue(false),
+              isBlacklisted: jest.fn().mockResolvedValue(false),
+              getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+              clearBlacklist: jest.fn().mockResolvedValue(undefined),
+            },
+          },
+        ],
+      }).compile();
+
+      const svc = mod.get<LibrariesService>(LibrariesService);
+      mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(mockLibrary);
+      mockLibraryRepo.updateWithInclude = jest.fn().mockResolvedValue(updatedLibrary);
+
+      await svc.update('lib-1', { name: 'New Name' });
+      expect(mockEventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('should not emit event when watchEnabled value is unchanged (true → true)', async () => {
+      const mockEventEmitter = { emit: jest.fn() };
+      const watchedLibrary = { ...mockLibrary, watchEnabled: true };
+
+      const mod: TestingModule = await Test.createTestingModule({
+        providers: [
+          LibrariesService,
+          { provide: LibraryRepository, useValue: mockLibraryRepo },
+          { provide: NodeRepository, useValue: mockNodeRepo },
+          { provide: JobRepository, useValue: mockJobRepo },
+          { provide: PolicyRepository, useValue: mockPolicyRepo },
+          { provide: EventEmitter2, useValue: mockEventEmitter },
+          {
+            provide: MediaAnalysisService,
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
+          },
+          {
+            provide: QueueService,
+            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+          },
+          {
+            provide: SettingsService,
+            useValue: {
+              get: jest.fn(),
+              set: jest.fn(),
+              getAll: jest.fn(),
+              getReadyFilesCacheTtl: jest.fn(),
+            },
+          },
+          {
+            provide: DistributionOrchestratorService,
+            useValue: {
+              distribute: jest.fn(),
+              rebalance: jest.fn(),
+              findBestNodeForNewJob: jest.fn(),
+            },
+          },
+          {
+            provide: FileFailureTrackingService,
+            useValue: {
+              recordFailure: jest.fn().mockResolvedValue(false),
+              isBlacklisted: jest.fn().mockResolvedValue(false),
+              getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+              clearBlacklist: jest.fn().mockResolvedValue(undefined),
+            },
+          },
+        ],
+      }).compile();
+
+      const svc = mod.get<LibrariesService>(LibrariesService);
+      mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(watchedLibrary);
+      mockLibraryRepo.updateWithInclude = jest.fn().mockResolvedValue(watchedLibrary);
+
+      await svc.update('lib-1', { watchEnabled: true });
+      expect(mockEventEmitter.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove - non-existent library', () => {
+    it('should throw NotFoundException when trying to remove non-existent library', async () => {
+      mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(null);
+
+      await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getAllReadyFiles', () => {
+    it('should return empty array when no libraries have policies', async () => {
+      const mockSettingsService = {
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        get: jest.fn(),
+        set: jest.fn(),
+        getAll: jest.fn(),
+      };
+
+      const mod: TestingModule = await Test.createTestingModule({
+        providers: [
+          LibrariesService,
+          { provide: LibraryRepository, useValue: mockLibraryRepo },
+          { provide: NodeRepository, useValue: mockNodeRepo },
+          { provide: JobRepository, useValue: mockJobRepo },
+          { provide: PolicyRepository, useValue: mockPolicyRepo },
+          { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+          {
+            provide: MediaAnalysisService,
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
+          },
+          {
+            provide: QueueService,
+            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+          },
+          { provide: SettingsService, useValue: mockSettingsService },
+          {
+            provide: DistributionOrchestratorService,
+            useValue: {
+              distribute: jest.fn(),
+              rebalance: jest.fn(),
+              findBestNodeForNewJob: jest.fn(),
+            },
+          },
+          {
+            provide: FileFailureTrackingService,
+            useValue: {
+              recordFailure: jest.fn().mockResolvedValue(false),
+              isBlacklisted: jest.fn().mockResolvedValue(false),
+              getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+              clearBlacklist: jest.fn().mockResolvedValue(undefined),
+            },
+          },
+        ],
+      }).compile();
+
+      const svc = mod.get<LibrariesService>(LibrariesService);
+      // Libraries with no defaultPolicy
+      mockLibraryRepo.findAllLibraries = jest
+        .fn()
+        .mockResolvedValue([{ ...mockLibrary, defaultPolicy: null }]);
+
+      const result = await svc.getAllReadyFiles();
+      expect(result).toEqual([]);
+    });
+
+    it('should return cached result on second call within TTL', async () => {
+      const mockSettingsService = {
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        get: jest.fn(),
+        set: jest.fn(),
+        getAll: jest.fn(),
+      };
+
+      const mod: TestingModule = await Test.createTestingModule({
+        providers: [
+          LibrariesService,
+          { provide: LibraryRepository, useValue: mockLibraryRepo },
+          { provide: NodeRepository, useValue: mockNodeRepo },
+          { provide: JobRepository, useValue: mockJobRepo },
+          { provide: PolicyRepository, useValue: mockPolicyRepo },
+          { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+          {
+            provide: MediaAnalysisService,
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
+          },
+          {
+            provide: QueueService,
+            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+          },
+          { provide: SettingsService, useValue: mockSettingsService },
+          {
+            provide: DistributionOrchestratorService,
+            useValue: {
+              distribute: jest.fn(),
+              rebalance: jest.fn(),
+              findBestNodeForNewJob: jest.fn(),
+            },
+          },
+          {
+            provide: FileFailureTrackingService,
+            useValue: {
+              recordFailure: jest.fn().mockResolvedValue(false),
+              isBlacklisted: jest.fn().mockResolvedValue(false),
+              getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+              clearBlacklist: jest.fn().mockResolvedValue(undefined),
+            },
+          },
+        ],
+      }).compile();
+
+      const svc = mod.get<LibrariesService>(LibrariesService);
+      mockLibraryRepo.findAllLibraries = jest.fn().mockResolvedValue([]);
+
+      // First call populates cache
+      await svc.getAllReadyFiles();
+      // Second call should use cache
+      await svc.getAllReadyFiles();
+
+      // findAllLibraries should only be called once (second call used cache)
+      expect(mockLibraryRepo.findAllLibraries).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getCacheMetadata - with populated cache', () => {
+    it('should return cacheValid=true when cache is populated and fresh', async () => {
+      const mockSettingsService = {
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        get: jest.fn(),
+        set: jest.fn(),
+        getAll: jest.fn(),
+      };
+
+      const mod: TestingModule = await Test.createTestingModule({
+        providers: [
+          LibrariesService,
+          { provide: LibraryRepository, useValue: mockLibraryRepo },
+          { provide: NodeRepository, useValue: mockNodeRepo },
+          { provide: JobRepository, useValue: mockJobRepo },
+          { provide: PolicyRepository, useValue: mockPolicyRepo },
+          { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+          {
+            provide: MediaAnalysisService,
+            useValue: {
+              analyze: jest.fn(),
+              getMediaInfo: jest.fn(),
+              getVideoCodecInfo: jest.fn(),
+              analyzeFiles: jest.fn(),
+              probeVideoFile: jest.fn(),
+            },
+          },
+          {
+            provide: QueueService,
+            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+          },
+          { provide: SettingsService, useValue: mockSettingsService },
+          {
+            provide: DistributionOrchestratorService,
+            useValue: {
+              distribute: jest.fn(),
+              rebalance: jest.fn(),
+              findBestNodeForNewJob: jest.fn(),
+            },
+          },
+          {
+            provide: FileFailureTrackingService,
+            useValue: {
+              recordFailure: jest.fn().mockResolvedValue(false),
+              isBlacklisted: jest.fn().mockResolvedValue(false),
+              getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+              clearBlacklist: jest.fn().mockResolvedValue(undefined),
+            },
+          },
+        ],
+      }).compile();
+
+      const svc = mod.get<LibrariesService>(LibrariesService);
+      mockLibraryRepo.findAllLibraries = jest.fn().mockResolvedValue([]);
+      // Populate cache via getAllReadyFiles
+      await svc.getAllReadyFiles();
+
+      const result = await svc.getCacheMetadata();
+      expect(result.cacheValid).toBe(true);
+      expect(result.cacheTimestamp).toBeInstanceOf(Date);
+      expect(result.cacheTtlMinutes).toBe(5);
+    });
+  });
+
+  describe('createJobsFromScan - with specific filePaths', () => {
+    it('should return 0 jobs when filePaths list has files but probeVideoFile returns null', async () => {
+      const libWithPolicy = {
+        ...mockLibraryWithStats,
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: { id: 'policy-1', name: 'Test', targetCodec: 'hevc' },
+        node: mockNode,
+      };
+      const mockPolicy = { id: 'policy-1', name: 'Test', targetCodec: 'hevc' };
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(libWithPolicy as never);
+      mockPolicyRepo.findById = jest.fn().mockResolvedValue(mockPolicy);
+      mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
+
+      // mediaAnalysis.probeVideoFile not provided → returns undefined → files skipped
+      const result = await service.createJobsFromScan('lib-1', 'policy-1', ['/media/movie.mkv']);
+      expect(result).toBeDefined();
+      expect(result.jobsCreated).toBe(0);
+    });
+  });
+
+  describe('createAllJobs - additional branches', () => {
+    it('should return empty result when no video files found', async () => {
+      const libWithNode = {
+        ...mockLibrary,
+        node: mockNode,
+      };
+      const mockPolicy = { id: 'policy-1', name: 'Test', targetCodec: 'hevc' };
+
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(libWithNode as never);
+      mockPolicyRepo.findById = jest.fn().mockResolvedValue(mockPolicy);
+      mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
+
+      // Override scanDirectoryStream to yield nothing (empty dir)
+      // Since the library path won't exist on disk, scanDirectoryStream returns empty
+      const result = await service.createAllJobs('lib-1', 'policy-1');
+
+      expect(result.jobsCreated).toBe(0);
+      expect(result.filesSkipped).toBe(0);
     });
   });
 });

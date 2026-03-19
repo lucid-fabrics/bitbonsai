@@ -122,4 +122,77 @@ describe('NFSAutoExportService', () => {
       await expect(service.removeAutoManagedExports()).resolves.not.toThrow();
     });
   });
+
+  describe('autoExportDockerVolumes – volume processing', () => {
+    it('should create share record for exported volume', async () => {
+      mockPrismaService.node.findFirst.mockResolvedValue({ id: 'main-node-id' });
+      mockPrismaService.storageShare.deleteMany.mockResolvedValue({ count: 0 });
+      mockVolumeDetector.detectVolumes.mockResolvedValue([
+        { source: '/mnt/user/media', destination: '/media', readOnly: false },
+      ]);
+      // Simulate showmount returning the volume's path
+      // The execAsync mock (set up via util.promisify stub) returns empty stdout by default.
+      // We need the NFS export check to return empty so the share is marked ERROR.
+      mockPrismaService.storageShare.findFirst.mockResolvedValue(null);
+      mockPrismaService.storageShare.create.mockResolvedValue({});
+      mockVolumeDetector.getSuggestedShareName.mockReturnValue('media');
+
+      await service.autoExportDockerVolumes();
+
+      expect(mockPrismaService.storageShare.create).toHaveBeenCalled();
+    });
+
+    it('should skip creating share record if one already exists', async () => {
+      mockPrismaService.node.findFirst.mockResolvedValue({ id: 'main-node-id' });
+      mockPrismaService.storageShare.deleteMany.mockResolvedValue({ count: 0 });
+      mockVolumeDetector.detectVolumes.mockResolvedValue([
+        { source: '/mnt/user/media', destination: '/media', readOnly: false },
+      ]);
+      // findBySharePath returns existing record
+      mockPrismaService.storageShare.findFirst.mockResolvedValue({ id: 'existing-share' });
+      mockVolumeDetector.getSuggestedShareName.mockReturnValue('media');
+
+      await service.autoExportDockerVolumes();
+
+      expect(mockPrismaService.storageShare.create).not.toHaveBeenCalled();
+    });
+
+    it('should process multiple volumes and create multiple records', async () => {
+      mockPrismaService.node.findFirst.mockResolvedValue({ id: 'main-node-id' });
+      mockPrismaService.storageShare.deleteMany.mockResolvedValue({ count: 0 });
+      mockVolumeDetector.detectVolumes.mockResolvedValue([
+        { source: '/mnt/user/media', destination: '/media', readOnly: false },
+        { source: '/mnt/user/downloads', destination: '/downloads', readOnly: false },
+      ]);
+      mockPrismaService.storageShare.findFirst.mockResolvedValue(null);
+      mockPrismaService.storageShare.create.mockResolvedValue({});
+      mockVolumeDetector.getSuggestedShareName.mockReturnValue('media');
+
+      await service.autoExportDockerVolumes();
+
+      expect(mockPrismaService.storageShare.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle create share record error gracefully', async () => {
+      mockPrismaService.node.findFirst.mockResolvedValue({ id: 'main-node-id' });
+      mockPrismaService.storageShare.deleteMany.mockResolvedValue({ count: 0 });
+      mockVolumeDetector.detectVolumes.mockResolvedValue([
+        { source: '/mnt/user/media', destination: '/media', readOnly: true },
+      ]);
+      mockPrismaService.storageShare.findFirst.mockResolvedValue(null);
+      mockPrismaService.storageShare.create.mockRejectedValue(new Error('create failed'));
+      mockVolumeDetector.getSuggestedShareName.mockReturnValue('media');
+
+      await expect(service.autoExportDockerVolumes()).resolves.not.toThrow();
+    });
+
+    it('should log cleanup message when old shares are deleted', async () => {
+      mockPrismaService.node.findFirst.mockResolvedValue({ id: 'main-node-id' });
+      // Simulate 3 deletions
+      mockPrismaService.storageShare.deleteMany.mockResolvedValue({ count: 3 });
+      mockVolumeDetector.detectVolumes.mockResolvedValue([]);
+
+      await expect(service.autoExportDockerVolumes()).resolves.not.toThrow();
+    });
+  });
 });

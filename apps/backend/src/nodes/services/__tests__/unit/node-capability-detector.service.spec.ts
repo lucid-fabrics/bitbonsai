@@ -1,4 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { promises as fsPromises } from 'fs';
 import { LibrariesService } from '../../../../libraries/libraries.service';
 import { NodeCapabilityDetectorService } from '../../node-capability-detector.service';
 
@@ -152,6 +153,171 @@ describe('NodeCapabilityDetectorService', () => {
       const result = await service.testBandwidth('node-1', 'http://node:3000');
 
       expect(result).toBe(0);
+    });
+  });
+
+  describe('isPrivateIP – edge cases', () => {
+    it('should return false for 172.15.x.x (below range)', () => {
+      expect(service.isPrivateIP('172.15.255.255')).toBe(false);
+    });
+
+    it('should return false for 172.32.x.x (above range)', () => {
+      expect(service.isPrivateIP('172.32.0.0')).toBe(false);
+    });
+
+    it('should return true for 172.16.0.0', () => {
+      expect(service.isPrivateIP('172.16.0.0')).toBe(true);
+    });
+
+    it('should return true for 172.31.255.255', () => {
+      expect(service.isPrivateIP('172.31.255.255')).toBe(true);
+    });
+
+    it('should return false for empty string', () => {
+      expect(service.isPrivateIP('')).toBe(false);
+    });
+  });
+
+  describe('testSharedStorageAccess – localhost/127.0.0.1 branch', () => {
+    it('should test local access when nodeIp is undefined', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/tmp']);
+      jest.spyOn(fsPromises, 'access').mockResolvedValue(undefined);
+      jest.spyOn(fsPromises, 'readdir').mockResolvedValue(['file.mkv'] as unknown as never);
+
+      const result = await service.testSharedStorageAccess('node-1', undefined);
+      expect(result.hasSharedStorage).toBe(true);
+      expect(result.storageBasePath).toBe('/tmp');
+    });
+
+    it('should test local access when nodeIp is localhost', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/tmp/media']);
+      jest.spyOn(fsPromises, 'access').mockResolvedValue(undefined);
+      jest.spyOn(fsPromises, 'readdir').mockResolvedValue([] as unknown as never);
+
+      const result = await service.testSharedStorageAccess('node-1', 'localhost');
+      expect(result.hasSharedStorage).toBe(true);
+    });
+
+    it('should test local access when nodeIp is 127.0.0.1', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/tmp/media']);
+      jest.spyOn(fsPromises, 'access').mockResolvedValue(undefined);
+      jest.spyOn(fsPromises, 'readdir').mockResolvedValue(['a'] as unknown as never);
+
+      const result = await service.testSharedStorageAccess('node-1', '127.0.0.1');
+      expect(result.hasSharedStorage).toBe(true);
+    });
+
+    it('returns no storage when local path is not accessible', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/nonexistent/path']);
+      jest.spyOn(fsPromises, 'access').mockRejectedValue(new Error('ENOENT'));
+
+      const result = await service.testSharedStorageAccess('node-1', '127.0.0.1');
+      expect(result.hasSharedStorage).toBe(false);
+      expect(result.storageBasePath).toBeNull();
+    });
+  });
+
+  describe('testSharedStorageAccess – NFS matching', () => {
+    it('returns shared storage when media path matches NFS export', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/mnt/user/media']);
+      jest
+        .spyOn(fsPromises, 'readFile')
+        .mockResolvedValue('/mnt/user/media 192.168.1.0/24(rw)\n' as unknown as Buffer);
+      // Make smb.conf unreadable
+      jest.spyOn(fsPromises, 'readFile').mockImplementation((p) => {
+        if (String(p) === '/etc/exports') {
+          return Promise.resolve('/mnt/user/media 192.168.1.0/24(rw)\n' as unknown as Buffer);
+        }
+        return Promise.reject(new Error('not found'));
+      });
+
+      const result = await service.testSharedStorageAccess('node-1', '192.168.1.50');
+      expect(result.hasSharedStorage).toBe(true);
+      expect(result.storageBasePath).toBe('/mnt/user/media');
+    });
+
+    it('returns shared storage when media path matches SMB share', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/mnt/user/media']);
+      jest.spyOn(fsPromises, 'readFile').mockImplementation((p) => {
+        if (String(p) === '/etc/exports') {
+          return Promise.reject(new Error('not found'));
+        }
+        if (String(p) === '/etc/samba/smb.conf') {
+          return Promise.resolve(
+            '[global]\n[media]\n   path = /mnt/user/media\n' as unknown as Buffer
+          );
+        }
+        return Promise.reject(new Error('not found'));
+      });
+
+      const result = await service.testSharedStorageAccess('node-1', '192.168.1.50');
+      expect(result.hasSharedStorage).toBe(true);
+      expect(result.storageBasePath).toBe('/mnt/user/media');
+    });
+
+    it('returns no storage when neither NFS nor SMB matches', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/mnt/user/movies']);
+      jest.spyOn(fsPromises, 'readFile').mockImplementation((p) => {
+        if (String(p) === '/etc/exports') {
+          return Promise.resolve('/mnt/user/music 192.168.1.0/24(rw)\n' as unknown as Buffer);
+        }
+        if (String(p) === '/etc/samba/smb.conf') {
+          return Promise.resolve('[global]\n[backups]\n' as unknown as Buffer);
+        }
+        return Promise.reject(new Error('not found'));
+      });
+
+      const result = await service.testSharedStorageAccess('node-1', '192.168.1.50');
+      expect(result.hasSharedStorage).toBe(false);
+    });
+
+    it('skips empty media paths gracefully', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['', '   ', '/real/path']);
+      jest.spyOn(fsPromises, 'readFile').mockRejectedValue(new Error('not found'));
+
+      const result = await service.testSharedStorageAccess('node-1', '192.168.1.50');
+      expect(result.hasSharedStorage).toBe(false);
+    });
+
+    it('skips empty NFS export paths gracefully', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue(['/media/tv']);
+      jest.spyOn(fsPromises, 'readFile').mockImplementation((p) => {
+        if (String(p) === '/etc/exports') {
+          // First line is header (skipped), then empty line, then real export
+          return Promise.resolve(
+            'Exports list on host:\n\n/media/tv 192.168.1.0/24\n' as unknown as Buffer
+          );
+        }
+        return Promise.reject(new Error('not found'));
+      });
+
+      const result = await service.testSharedStorageAccess('node-1', '192.168.1.50');
+      expect(result.hasSharedStorage).toBe(true);
+    });
+  });
+
+  describe('detectCapabilities – latency branches', () => {
+    it('classifies private IP with high latency as LOCAL (VPN/slow local)', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue([]);
+      jest.spyOn(service, 'measureLatency').mockResolvedValue(200);
+
+      const result = await service.detectCapabilities('node-1', '10.8.0.5');
+      expect(result.networkLocation).toBe('LOCAL');
+      expect(result.isPrivateIP).toBe(true);
+    });
+
+    it('result has expected shape', async () => {
+      mockLibrariesService.getAllLibraryPaths.mockResolvedValue([]);
+      jest.spyOn(service, 'measureLatency').mockResolvedValue(3);
+
+      const result = await service.detectCapabilities('node-1', '192.168.1.5');
+      expect(result).toMatchObject({
+        bandwidthMbps: null,
+        isPrivateIP: true,
+        latencyMs: 3,
+      });
+      expect(typeof result.reasoning).toBe('string');
+      expect(result.reasoning.length).toBeGreaterThan(0);
     });
   });
 });

@@ -249,3 +249,233 @@ describe('EnvironmentService', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Mocked unit tests – use service-level spies to avoid non-configurable fs
+// ---------------------------------------------------------------------------
+describe('EnvironmentService (mocked service methods)', () => {
+  let service: EnvironmentService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [EnvironmentService],
+    }).compile();
+
+    service = module.get<EnvironmentService>(EnvironmentService);
+    // Reset cache between tests
+    (service as unknown as { cachedEnvironment: null }).cachedEnvironment = null;
+    (service as unknown as { cachedHardwareInfo: null }).cachedHardwareInfo = null;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('isUnraid (behavioural)', () => {
+    it('returns a boolean', async () => {
+      expect(typeof (await service.isUnraid())).toBe('boolean');
+    });
+  });
+
+  describe('isDocker (behavioural)', () => {
+    it('returns a boolean', async () => {
+      expect(typeof (await service.isDocker())).toBe('boolean');
+    });
+  });
+
+  describe('getUnraidVersion (behavioural)', () => {
+    it('returns string or undefined', async () => {
+      const v = await service.getUnraidVersion();
+      expect(v === undefined || typeof v === 'string').toBe(true);
+    });
+  });
+
+  describe('getContainerRuntime', () => {
+    it('returns undefined when not in Docker', async () => {
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      expect(await service.getContainerRuntime()).toBeUndefined();
+    });
+
+    it('returns string or undefined when in Docker', async () => {
+      jest.spyOn(service, 'isDocker').mockResolvedValue(true);
+      const runtime = await service.getContainerRuntime();
+      expect(runtime === undefined || typeof runtime === 'string').toBe(true);
+    });
+  });
+
+  describe('detectEnvironment caching', () => {
+    it('detects UNRAID and caches result', async () => {
+      jest.spyOn(service, 'isUnraid').mockResolvedValue(true);
+      const r1 = await service.detectEnvironment();
+      const r2 = await service.detectEnvironment();
+      expect(r1).toBe('UNRAID');
+      expect(r2).toBe('UNRAID');
+      // isUnraid should only be called once due to caching
+      expect((service.isUnraid as jest.Mock).mock.calls.length).toBe(1);
+    });
+
+    it('detects DOCKER when not Unraid', async () => {
+      jest.spyOn(service, 'isUnraid').mockResolvedValue(false);
+      jest.spyOn(service, 'isDocker').mockResolvedValue(true);
+      expect(await service.detectEnvironment()).toBe('DOCKER');
+    });
+
+    it('detects BARE_METAL as default', async () => {
+      jest.spyOn(service, 'isUnraid').mockResolvedValue(false);
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      expect(await service.detectEnvironment()).toBe('BARE_METAL');
+    });
+  });
+
+  describe('getStoragePaths with mocked environment', () => {
+    it('returns UNRAID paths', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('UNRAID');
+      const p = await service.getStoragePaths();
+      expect(p.mediaPath).toBe('/mnt/user/media');
+      expect(p.configPath).toBe('/mnt/user/appdata/bitbonsai');
+    });
+
+    it('returns DOCKER paths', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('DOCKER');
+      const p = await service.getStoragePaths();
+      expect(p.mediaPath).toBe('/media');
+      expect(p.configPath).toBe('/config');
+    });
+
+    it('returns BARE_METAL paths', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      const p = await service.getStoragePaths();
+      expect(p.mediaPath).toBe('/var/lib/bitbonsai/media');
+    });
+  });
+
+  describe('getDocsLink with mocked environment', () => {
+    it('returns unraid link', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('UNRAID');
+      expect(await service.getDocsLink()).toBe('https://docs.bitbonsai.com/setup/unraid');
+    });
+
+    it('returns docker link', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('DOCKER');
+      expect(await service.getDocsLink()).toBe('https://docs.bitbonsai.com/setup/docker');
+    });
+
+    it('returns installation link for bare metal', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      expect(await service.getDocsLink()).toBe('https://docs.bitbonsai.com/setup/installation');
+    });
+  });
+
+  describe('getRecommendations with mocked environment', () => {
+    it('returns UNRAID recommendations including docker GPU note when in docker', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('UNRAID');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(true);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
+        systemInfo: { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('Unraid array storage'))).toBe(true);
+      expect(recs.some((r) => r.includes('GPU passthrough'))).toBe(true);
+    });
+
+    it('returns DOCKER recommendations', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('DOCKER');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(true);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
+        systemInfo: { cpuCores: 2, architecture: 'x64', platform: 'linux', totalMemoryGb: 8 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('Docker volumes'))).toBe(true);
+    });
+
+    it('returns BARE_METAL recommendations', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
+        systemInfo: { cpuCores: 2, architecture: 'x64', platform: 'linux', totalMemoryGb: 8 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('systemd service'))).toBe(true);
+    });
+
+    it('includes NVIDIA recommendation when detected', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: true, intelQsv: false, amd: false, appleVideoToolbox: false },
+        systemInfo: { cpuCores: 8, architecture: 'x64', platform: 'linux', totalMemoryGb: 32 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('NVIDIA'))).toBe(true);
+    });
+
+    it('includes Intel QSV recommendation when detected', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: false, intelQsv: true, amd: false, appleVideoToolbox: false },
+        systemInfo: { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('Intel Quick Sync'))).toBe(true);
+    });
+
+    it('includes AMD recommendation when detected', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: false, intelQsv: false, amd: true, appleVideoToolbox: false },
+        systemInfo: { cpuCores: 8, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('AMD'))).toBe(true);
+    });
+
+    it('includes Apple Silicon recommendation when detected', async () => {
+      jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
+      jest.spyOn(service, 'isDocker').mockResolvedValue(false);
+      jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
+        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: true },
+        systemInfo: { cpuCores: 10, architecture: 'arm64', platform: 'darwin', totalMemoryGb: 16 },
+      });
+
+      const recs = await service.getRecommendations();
+      expect(recs.some((r) => r.includes('Apple Silicon'))).toBe(true);
+    });
+  });
+
+  describe('getHardwareInfo caching', () => {
+    it('caches hardware info after first call', async () => {
+      const mockAcceleration = {
+        nvidia: false,
+        intelQsv: false,
+        amd: false,
+        appleVideoToolbox: false,
+      };
+      const mockSystemInfo = {
+        cpuCores: 4,
+        architecture: 'x64',
+        platform: 'linux',
+        totalMemoryGb: 8,
+      };
+
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue(mockAcceleration);
+      jest.spyOn(service, 'getSystemInfo').mockResolvedValue(mockSystemInfo);
+
+      const r1 = await service.getHardwareInfo();
+      const r2 = await service.getHardwareInfo();
+
+      expect(r1).toBe(r2);
+      expect((service.detectHardwareAcceleration as jest.Mock).mock.calls.length).toBe(1);
+    });
+  });
+});

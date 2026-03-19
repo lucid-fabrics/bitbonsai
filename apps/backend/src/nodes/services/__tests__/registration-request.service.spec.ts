@@ -356,4 +356,368 @@ describe('RegistrationRequestService', () => {
       await expect(service.deleteOldRequests()).resolves.toBeUndefined();
     });
   });
+
+  describe('resetRequestTTL', () => {
+    it('should update expiry and reset status to PENDING', async () => {
+      const updatedRequest = {
+        id: 'req-1',
+        status: RegistrationRequestStatus.PENDING,
+        tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      };
+      mockRegistrationRequestRepository.updateById.mockResolvedValue(updatedRequest);
+
+      const result = await service.resetRequestTTL('req-1');
+
+      expect(result).toEqual(updatedRequest);
+      expect(mockRegistrationRequestRepository.updateById).toHaveBeenCalledWith(
+        'req-1',
+        expect.objectContaining({
+          status: RegistrationRequestStatus.PENDING,
+          tokenExpiresAt: expect.any(Date),
+          tokenGeneratedAt: expect.any(Date),
+          requestedAt: expect.any(Date),
+        })
+      );
+    });
+  });
+
+  describe('cancelRequestByToken', () => {
+    it('should cancel request found by token', async () => {
+      const pendingRequest = {
+        id: 'req-token-1',
+        pairingToken: '654321',
+        tokenExpiresAt: new Date(Date.now() + 60000),
+        status: RegistrationRequestStatus.PENDING,
+        childNodeName: 'Child',
+        ipAddress: '1.2.3.4',
+      };
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(pendingRequest);
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(pendingRequest);
+      mockRegistrationRequestRepository.updateById.mockResolvedValue({
+        ...pendingRequest,
+        status: RegistrationRequestStatus.CANCELLED,
+      });
+
+      const result = await service.cancelRequestByToken('654321');
+
+      expect(result.status).toBe(RegistrationRequestStatus.CANCELLED);
+    });
+
+    it('should throw NotFoundException for invalid token', async () => {
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(null);
+
+      await expect(service.cancelRequestByToken('000000')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getRequest - apiKey missing from node', () => {
+    it('should return request without apiKey when childNode not found', async () => {
+      const request = {
+        id: 'req-1',
+        status: RegistrationRequestStatus.APPROVED,
+        childNodeId: 'child-99',
+      };
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
+      mockNodeRepository.findUnique.mockResolvedValue(null);
+
+      const result = await service.getRequest('req-1');
+
+      expect((result as unknown as Record<string, unknown>).apiKey).toBeUndefined();
+    });
+  });
+
+  describe('cleanupExpiredRequests - no expired', () => {
+    it('should not log when no requests expired', async () => {
+      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({ count: 0 });
+
+      await service.cleanupExpiredRequests();
+
+      expect(mockRegistrationRequestRepository.updateManyExpired).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteOldRequests - no deletions', () => {
+    it('should not log when count is 0', async () => {
+      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({ count: 0 });
+
+      await service.deleteOldRequests();
+
+      expect(mockRegistrationRequestRepository.deleteManyOld).toHaveBeenCalled();
+    });
+  });
+
+  describe('approveRequest', () => {
+    const buildTransaction = (
+      overrides: Partial<{
+        request: unknown;
+        mainNode: unknown;
+        duplicateNode: unknown;
+        newNode: unknown;
+      }> = {}
+    ) => {
+      const defaultRequest = {
+        id: 'req-1',
+        status: RegistrationRequestStatus.PENDING,
+        mainNodeId: 'main-1',
+        childNodeName: 'Child',
+        ipAddress: '192.168.1.170',
+        macAddress: null,
+        tokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        acceleration: AccelerationType.CPU,
+        childVersion: '1.0.0',
+        hardwareSpecs: { cpuCores: 4, ramGb: 16 },
+        sshPublicKey: null,
+        mainNode: { id: 'main-1' },
+      };
+      const defaultMainNode = {
+        id: 'main-1',
+        licenseId: 'license-1',
+        license: {
+          maxNodes: 10,
+          _count: { nodes: 2 },
+        },
+      };
+      const defaultNewNode = {
+        id: 'new-node-1',
+        apiKey: 'bb_abc123',
+        name: 'Child',
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue(overrides.request ?? defaultRequest),
+            findMany: jest.fn().mockResolvedValue([]),
+            update: jest.fn().mockResolvedValue({
+              ...(overrides.request ?? defaultRequest),
+              status: RegistrationRequestStatus.APPROVED,
+              childNodeId: defaultNewNode.id,
+            }),
+          },
+          node: {
+            findUnique: jest
+              .fn()
+              .mockResolvedValueOnce(overrides.mainNode ?? defaultMainNode)
+              .mockResolvedValue(null),
+            findFirst: jest.fn().mockResolvedValue(overrides.duplicateNode ?? null),
+            create: jest.fn().mockResolvedValue(overrides.newNode ?? defaultNewNode),
+          },
+        };
+        return cb(tx);
+      });
+    };
+
+    it('should throw NotFoundException when request not found', async () => {
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return cb(tx);
+      });
+
+      await expect(service.approveRequest('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException when request is not PENDING', async () => {
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'req-1',
+              status: RegistrationRequestStatus.APPROVED,
+              mainNodeId: 'main-1',
+              tokenExpiresAt: new Date(Date.now() + 60000),
+              mainNode: {},
+            }),
+          },
+        };
+        return cb(tx);
+      });
+
+      await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when request is expired', async () => {
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'req-1',
+              status: RegistrationRequestStatus.PENDING,
+              mainNodeId: 'main-1',
+              tokenExpiresAt: new Date(Date.now() - 60000), // expired
+              mainNode: {},
+            }),
+          },
+        };
+        return cb(tx);
+      });
+
+      await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException when main node not found', async () => {
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'req-1',
+              status: RegistrationRequestStatus.PENDING,
+              mainNodeId: 'main-1',
+              tokenExpiresAt: new Date(Date.now() + 60000),
+              mainNode: {},
+            }),
+          },
+          node: {
+            findUnique: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return cb(tx);
+      });
+
+      await expect(service.approveRequest('req-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ConflictException when license node limit reached', async () => {
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'req-1',
+              status: RegistrationRequestStatus.PENDING,
+              mainNodeId: 'main-1',
+              tokenExpiresAt: new Date(Date.now() + 60000),
+              mainNode: {},
+            }),
+          },
+          node: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'main-1',
+              licenseId: 'lic-1',
+              license: {
+                maxNodes: 2,
+                _count: { nodes: 2 },
+              },
+            }),
+            findFirst: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return cb(tx);
+      });
+
+      await expect(service.approveRequest('req-1')).rejects.toThrow(
+        expect.objectContaining({ message: expect.stringContaining('Maximum nodes') })
+      );
+    });
+
+    it('should successfully approve and create child node', async () => {
+      buildTransaction();
+
+      mockCapabilityDetector.detectCapabilities.mockResolvedValue({
+        networkLocation: 'LOCAL',
+        hasSharedStorage: false,
+        storageBasePath: null,
+        latencyMs: 5,
+      });
+      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-2' });
+      mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
+      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([]);
+
+      const result = await service.approveRequest('req-1');
+
+      expect(result).toBeDefined();
+      expect(mockNotificationsGateway.sendToAll).toHaveBeenCalled();
+    });
+
+    it('should setup SSH keys when sshPublicKey is present', async () => {
+      const requestWithSsh = {
+        id: 'req-ssh',
+        status: RegistrationRequestStatus.PENDING,
+        mainNodeId: 'main-1',
+        childNodeName: 'SSH Child',
+        ipAddress: '192.168.1.171',
+        macAddress: null,
+        tokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        acceleration: AccelerationType.CPU,
+        childVersion: '1.0.0',
+        hardwareSpecs: { cpuCores: 4, ramGb: 16 },
+        sshPublicKey: 'ssh-rsa AAAA...publickey child@node',
+        mainNode: { id: 'main-1' },
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        const tx = {
+          nodeRegistrationRequest: {
+            findUnique: jest.fn().mockResolvedValue(requestWithSsh),
+            findMany: jest.fn().mockResolvedValue([]),
+            update: jest.fn().mockResolvedValue({
+              ...requestWithSsh,
+              status: RegistrationRequestStatus.APPROVED,
+              childNodeId: 'new-node-ssh',
+            }),
+          },
+          node: {
+            findUnique: jest
+              .fn()
+              .mockResolvedValueOnce({
+                id: 'main-1',
+                licenseId: 'lic-1',
+                license: { maxNodes: 10, _count: { nodes: 2 } },
+              })
+              .mockResolvedValue(null),
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'new-node-ssh', apiKey: 'bb_sshkey' }),
+          },
+        };
+        return cb(tx);
+      });
+
+      mockCapabilityDetector.detectCapabilities.mockResolvedValue({
+        networkLocation: 'LOCAL',
+        hasSharedStorage: false,
+        storageBasePath: null,
+        latencyMs: 5,
+      });
+      mockSshKeyService.getPublicKey.mockReturnValue('ssh-rsa MAIN_PUBLIC_KEY');
+      mockNotificationsService.createNotification.mockResolvedValue({ id: 'n-ssh' });
+      mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
+      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([]);
+
+      const result = await service.approveRequest('req-ssh');
+
+      expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(
+        'ssh-rsa AAAA...publickey child@node',
+        expect.stringContaining('new-node-ssh')
+      );
+      expect((result as unknown as Record<string, unknown>).mainNodePublicKey).toBe(
+        'ssh-rsa MAIN_PUBLIC_KEY'
+      );
+    });
+
+    it('should mark child node as having shared storage when shares are created', async () => {
+      buildTransaction();
+
+      mockCapabilityDetector.detectCapabilities.mockResolvedValue({
+        networkLocation: 'LOCAL',
+        hasSharedStorage: false,
+        storageBasePath: null,
+        latencyMs: 5,
+      });
+      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-3' });
+      mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
+      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([
+        { id: 'share-1' },
+        { id: 'share-2' },
+      ]);
+      mockNodeRepository.updateData.mockResolvedValue({ id: 'new-node-1', hasSharedStorage: true });
+
+      await service.approveRequest('req-1');
+
+      expect(mockNodeRepository.updateData).toHaveBeenCalledWith('new-node-1', {
+        hasSharedStorage: true,
+      });
+    });
+  });
 });
