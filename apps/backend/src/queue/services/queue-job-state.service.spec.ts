@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
@@ -127,6 +128,7 @@ describe('QueueJobStateService', () => {
         { provide: JobFileOperationsService, useValue: mockJobFileOperationsService },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FileTransferService, useValue: mockFileTransferService },
+        { provide: HttpService, useValue: mockHttpService },
       ],
     }).compile();
 

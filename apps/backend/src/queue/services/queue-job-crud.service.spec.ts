@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
   ConflictException,
@@ -80,12 +81,9 @@ describe('QueueJobCrudService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ContentFingerprintService, useValue: mockContentFingerprint },
         { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
-        { provide: 'HttpService', useValue: mockHttpService },
+        { provide: HttpService, useValue: mockHttpService },
       ],
-    })
-      .overrideProvider('HttpService')
-      .useValue(mockHttpService)
-      .compile();
+    }).compile();
 
     service = module.get<QueueJobCrudService>(QueueJobCrudService);
     // Inject httpService manually since token name may vary
@@ -247,6 +245,10 @@ describe('QueueJobCrudService', () => {
   describe('updateProgress', () => {
     it('should throw BadRequestException when progress is out of range', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
       mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
 
       await expect(service.updateProgress('job-1', { progress: 150 } as any)).rejects.toThrow(
@@ -256,6 +258,10 @@ describe('QueueJobCrudService', () => {
 
     it('should throw BadRequestException when stage is HEALTH_CHECK', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
       mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
 
       await expect(

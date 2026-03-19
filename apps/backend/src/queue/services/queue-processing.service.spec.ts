@@ -1,5 +1,8 @@
+import { HttpService } from '@nestjs/axios';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
 import { MediaAnalysisService } from '../../libraries/services/media-analysis.service';
@@ -18,7 +21,9 @@ describe('QueueProcessingService', () => {
   let mockFileTransferService: jest.Mocked<FileTransferService>;
   let mockNodeConfig: jest.Mocked<NodeConfigService>;
   let mockJobCrudService: jest.Mocked<QueueJobCrudService>;
-  let mockHttpService: any;
+  let mockJobRepository: { updateById: jest.Mock };
+  let mockNodeRepository: { findById: jest.Mock; findUnique: jest.Mock };
+  let mockHttpService: { get: jest.Mock };
 
   beforeEach(async () => {
     mockPrisma = {
@@ -54,23 +59,27 @@ describe('QueueProcessingService', () => {
       create: jest.fn(),
     } as any;
 
+    mockJobRepository = { updateById: jest.fn() };
+    mockNodeRepository = { findById: jest.fn(), findUnique: jest.fn() };
     mockHttpService = { get: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QueueProcessingService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: JobRepository, useValue: mockJobRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: MediaAnalysisService, useValue: mockMediaAnalysis },
         { provide: FfmpegService, useValue: mockFfmpegService },
         { provide: JobRouterService, useValue: mockJobRouterService },
         { provide: FileTransferService, useValue: mockFileTransferService },
         { provide: NodeConfigService, useValue: mockNodeConfig },
+        { provide: HttpService, useValue: mockHttpService },
         { provide: QueueJobCrudService, useValue: mockJobCrudService },
       ],
     }).compile();
 
     service = module.get<QueueProcessingService>(QueueProcessingService);
-    (service as any).httpService = mockHttpService;
   });
 
   describe('onModuleInit', () => {
@@ -98,14 +107,14 @@ describe('QueueProcessingService', () => {
   describe('getNextJob', () => {
     it('should throw NotFoundException when node not found', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
-      mockPrisma.node.findUnique.mockResolvedValue(null);
+      mockNodeRepository.findUnique.mockResolvedValue(null);
 
       await expect(service.getNextJob('missing-node')).rejects.toThrow(NotFoundException);
     });
 
     it('should return null when node is at capacity', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
-      mockPrisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findUnique.mockResolvedValue({
         id: 'node-1',
         hasSharedStorage: true,
         license: { maxConcurrentJobs: 2 },
@@ -180,7 +189,7 @@ describe('QueueProcessingService', () => {
         codec: 'h264',
         container: 'mkv',
       } as any);
-      mockPrisma.node.findUnique.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
+      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
       mockJobCrudService.create.mockResolvedValue({ id: 'job-1' } as any);
 
       await service.handleFileDetected({
