@@ -98,7 +98,7 @@ describe('Level 6: Worker Pool Management', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
 
       // Verify
-      expect(completedJob).toBeDefined();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe('COMPLETED');
     }, 90000);
   });

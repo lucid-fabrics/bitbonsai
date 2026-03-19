@@ -27,7 +27,6 @@ import {
   NotificationPriority,
   NotificationType,
 } from '../../notifications/types/notification.types';
-import { PrismaService } from '../../prisma/prisma.service';
 import { RegistrationRequestRepository } from '../repositories/registration-request.repository';
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
 import { SshKeyService } from './ssh-key.service';
@@ -73,7 +72,6 @@ export class RegistrationRequestService {
   private readonly TTL_HOURS = 24;
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly registrationRequestRepository: RegistrationRequestRepository,
     readonly _systemInfoService: SystemInfoService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
@@ -243,7 +241,7 @@ export class RegistrationRequestService {
   ): Promise<NodeRegistrationRequest> {
     // RACE CONDITION FIX: Move all validation and creation inside transaction
     // This prevents race conditions where multiple approval requests arrive simultaneously
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.registrationRequestRepository.approveTransaction(async (tx) => {
       // Fetch request within transaction to get latest state
       const request = await tx.nodeRegistrationRequest.findUnique({
         where: { id: requestId },

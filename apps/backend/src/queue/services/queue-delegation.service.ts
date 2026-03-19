@@ -14,6 +14,8 @@ import { QueueJobStateService } from './queue-job-state.service';
  *
  * Handles multi-node job delegation, rebalancing, and stuck transfer cleanup.
  */
+const MAX_TRANSFER_RETRIES = 3;
+
 @Injectable()
 export class QueueDelegationService {
   private readonly logger = new Logger(QueueDelegationService.name);
@@ -73,7 +75,7 @@ export class QueueDelegationService {
           (Date.now() - new Date(job.transferStartedAt || 0).getTime()) / (60 * 1000)
         );
 
-        if (retryCount >= 3) {
+        if (retryCount >= MAX_TRANSFER_RETRIES) {
           this.logger.error(
             `  ✗ Job ${job.fileLabel}: Transfer failed after ${retryCount} retries (stuck ${stuckDuration}min)`
           );
@@ -85,12 +87,12 @@ export class QueueDelegationService {
           );
         } else {
           this.logger.warn(
-            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/3 (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`
+            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/${MAX_TRANSFER_RETRIES} (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`
           );
 
           await this.jobCrudService.update(job.id, {
             stage: JobStage.DETECTED,
-            transferError: `Transfer timeout after ${stuckDuration} minutes - retry ${retryCount + 1}/3`,
+            transferError: `Transfer timeout after ${stuckDuration} minutes - retry ${retryCount + 1}/${MAX_TRANSFER_RETRIES}`,
             transferRetryCount: retryCount + 1,
             transferProgress: 0,
             transferStartedAt: null,

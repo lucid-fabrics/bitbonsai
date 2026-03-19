@@ -88,4 +88,8 @@ export class RegistrationRequestRepository extends BaseRepository {
       },
     });
   }
+
+  async approveTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(fn);
+  }
 }

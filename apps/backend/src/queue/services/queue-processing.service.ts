@@ -1,8 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -16,7 +14,7 @@ import { NodeRepository } from '../../common/repositories/node.repository';
 import { normalizeCodec } from '../../common/utils/codec.util';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
-import { MediaAnalysisService } from '../../libraries/services/media-analysis.service';
+import { MediaAnalysisService } from '../../media/media-analysis.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileTransferService } from './file-transfer.service';
 import { JobRouterService } from './job-router.service';
@@ -36,9 +34,7 @@ export class QueueProcessingService implements OnModuleInit {
     private prisma: PrismaService,
     private readonly jobRepository: JobRepository,
     private readonly nodeRepository: NodeRepository,
-    @Inject(forwardRef(() => MediaAnalysisService))
     private mediaAnalysis: MediaAnalysisService,
-    @Inject(forwardRef(() => FfmpegService))
     private ffmpegService: FfmpegService,
     private jobRouterService: JobRouterService,
     private fileTransferService: FileTransferService,

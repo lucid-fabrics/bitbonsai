@@ -102,9 +102,9 @@ describe('Level 4: Edge Cases', () => {
       const failedJob = await waitForJobStage(prisma, job.id, 'FAILED', 60000);
 
       // ASSERT: Job failed with appropriate error
-      expect(failedJob).toBeTruthy();
+      expect(failedJob).not.toBeNull();
       expect(failedJob?.stage).toBe(JobStage.FAILED);
-      expect(failedJob?.error).toBeTruthy();
+      expect(failedJob?.error).not.toBeNull();
       expect(failedJob?.error).toContain('error'); // Should contain error details
 
       // Original corrupted file should still exist (no replacement)
@@ -134,9 +134,9 @@ describe('Level 4: Edge Cases', () => {
       const failedJob = await waitForJobStage(prisma, job.id, 'FAILED', 60000);
 
       // ASSERT
-      expect(failedJob).toBeTruthy();
+      expect(failedJob).not.toBeNull();
       expect(failedJob?.stage).toBe(JobStage.FAILED);
-      expect(failedJob?.error).toBeTruthy();
+      expect(failedJob?.error).not.toBeNull();
 
       // Original file unchanged
       expect(fs.existsSync(videoPath)).toBe(true);
@@ -165,7 +165,7 @@ describe('Level 4: Edge Cases', () => {
       const failedJob = await waitForJobStage(prisma, job.id, 'FAILED', 60000);
 
       // ASSERT
-      expect(failedJob).toBeTruthy();
+      expect(failedJob).not.toBeNull();
       expect(failedJob?.stage).toBe(JobStage.FAILED);
 
       // Original file unchanged
@@ -195,7 +195,7 @@ describe('Level 4: Edge Cases', () => {
       const failedJob = await waitForJobStage(prisma, job.id, 'FAILED', 30000);
 
       // ASSERT
-      expect(failedJob).toBeTruthy();
+      expect(failedJob).not.toBeNull();
       expect(failedJob?.stage).toBe(JobStage.FAILED);
       expect(failedJob?.error).toContain('not found');
     }, 60000);
@@ -288,9 +288,9 @@ describe('Level 4: Edge Cases', () => {
 
       // ASSERT
       if (process.platform !== 'win32') {
-        expect(failedJob).toBeTruthy();
+        expect(failedJob).not.toBeNull();
         expect(failedJob?.stage).toBe(JobStage.FAILED);
-        expect(failedJob?.error).toBeTruthy();
+        expect(failedJob?.error).not.toBeNull();
       }
     }, 60000);
   });
@@ -319,9 +319,9 @@ describe('Level 4: Edge Cases', () => {
       const retriedJob = await prisma.job.findUnique({ where: { id: job.id } });
 
       // ASSERT: Job should be queued for retry
-      expect(retriedJob).toBeTruthy();
+      expect(retriedJob).not.toBeNull();
       expect(retriedJob?.retryCount).toBe(1);
-      expect(retriedJob?.nextRetryAt).toBeTruthy();
+      expect(retriedJob?.nextRetryAt).not.toBeNull();
       expect(retriedJob?.error).toContain('Attempt 1/3 failed');
     }, 60000);
 
@@ -354,7 +354,7 @@ describe('Level 4: Edge Cases', () => {
       const finalJob = await prisma.job.findUnique({ where: { id: job.id } });
 
       // ASSERT: Job permanently failed after 3 retries
-      expect(finalJob).toBeTruthy();
+      expect(finalJob).not.toBeNull();
       expect(finalJob?.stage).toBe(JobStage.FAILED);
       expect(finalJob?.error).toContain('All 3 retry attempts exhausted');
     }, 90000);
@@ -387,7 +387,7 @@ describe('Level 4: Edge Cases', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       // ASSERT: Should complete successfully
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 90000);
 
@@ -417,7 +417,7 @@ describe('Level 4: Edge Cases', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       // ASSERT
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
   });

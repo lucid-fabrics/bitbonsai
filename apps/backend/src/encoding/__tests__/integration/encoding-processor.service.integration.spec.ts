@@ -9,7 +9,7 @@ import { DistributionOrchestratorService } from '../../../distribution/services/
 import { FileWatcherService } from '../../../file-watcher/file-watcher.service';
 import { JellyfinIntegrationService } from '../../../integrations/jellyfin.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
-import { MediaAnalysisService } from '../../../libraries/services/media-analysis.service';
+import { MediaAnalysisService } from '../../../media/media-analysis.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { SharedStorageVerifierService } from '../../../nodes/services/shared-storage-verifier.service';
 import { StorageShareService } from '../../../nodes/services/storage-share.service';
@@ -22,6 +22,8 @@ import { JobRouterService } from '../../../queue/services/job-router.service';
 import { SettingsService } from '../../../settings/settings.service';
 import { EncodingPreviewService } from '../../encoding-preview.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
+import { EncodingStartupService } from '../../encoding-startup.service';
+import { EncodingWatchdogService } from '../../encoding-watchdog.service';
 import { FfmpegService } from '../../ffmpeg.service';
 
 /**
@@ -121,6 +123,21 @@ describe('EncodingProcessorService Integration Tests', () => {
           provide: JellyfinIntegrationService,
           useValue: { notifyLibraryScan: jest.fn(), refreshLibrary: jest.fn() },
         },
+        {
+          provide: EncodingStartupService,
+          useValue: {
+            waitForVolumeMounts: jest.fn().mockResolvedValue(undefined),
+            autoHealOrphanedJobs: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: EncodingWatchdogService,
+          useValue: {
+            startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
+            manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
+            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+          },
+        },
       ],
     }).compile();
 
@@ -215,7 +232,7 @@ describe('EncodingProcessorService Integration Tests', () => {
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
       expect(updated?.stage).toBe('COMPLETED');
-      expect(updated?.startedAt).toBeDefined();
+      expect(updated?.startedAt).not.toBeNull();
     });
 
     it('should calculate and save encoding metrics', async () => {
@@ -240,9 +257,9 @@ describe('EncodingProcessorService Integration Tests', () => {
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
       expect(updated?.beforeSizeBytes).toBe(BigInt(2000000000));
-      expect(updated?.afterSizeBytes).toBeDefined();
-      expect(updated?.savedBytes).toBeDefined();
-      expect(updated?.savedPercent).toBeDefined();
+      expect(updated?.afterSizeBytes).not.toBeNull();
+      expect(updated?.savedBytes).not.toBeNull();
+      expect(updated?.savedPercent).not.toBeNull();
     });
 
     it('should set job to FAILED on encoding error', async () => {
@@ -293,7 +310,7 @@ describe('EncodingProcessorService Integration Tests', () => {
 
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
-      expect(updated?.completedAt).toBeDefined();
+      expect(updated?.completedAt).not.toBeNull();
       expect(updated?.completedAt?.getTime()).toBeGreaterThanOrEqual(before.getTime());
       expect(updated?.completedAt?.getTime()).toBeLessThanOrEqual(after.getTime());
     });

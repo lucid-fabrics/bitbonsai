@@ -33,6 +33,8 @@ export interface FileHealthResult {
  */
 @Injectable()
 export class FileHealthService {
+  private static readonly MAX_HEALTH_SCORE = 100;
+
   private readonly logger = new Logger(FileHealthService.name);
 
   /**
@@ -231,7 +233,7 @@ export class FileHealthService {
   }): FileHealthResult {
     const issues: string[] = [];
     const warnings: string[] = [];
-    let score = 100;
+    let score = FileHealthService.MAX_HEALTH_SCORE;
 
     // Critical: Exit code non-zero
     if (probeResult.exitCode !== 0) {

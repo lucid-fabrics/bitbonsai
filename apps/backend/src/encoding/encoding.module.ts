@@ -11,14 +11,23 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
 import { EncodingFileService } from './encoding-file.service';
+import { EncodingFileReplacementService } from './encoding-file-replacement.service';
 import { EncodingHistoryService } from './encoding-history.service';
+import { EncodingOutputVerificationService } from './encoding-output-verification.service';
 import { EncodingPreviewService } from './encoding-preview.service';
 import { EncodingProcessorService } from './encoding-processor.service';
 import { EncodingSchedulerService } from './encoding-scheduler.service';
+import { EncodingStartupService } from './encoding-startup.service';
+import { EncodingWatchdogService } from './encoding-watchdog.service';
 import { FfmpegService } from './ffmpeg.service';
+import { FfmpegFileVerificationService } from './ffmpeg-file-verification.service';
 import { FfmpegFlagBuilderService } from './ffmpeg-flag-builder.service';
+import { FfmpegProcessCleanupService } from './ffmpeg-process-cleanup.service';
+import { FfmpegProgressParserService } from './ffmpeg-progress-parser.service';
+import { FfprobeService } from './ffprobe.service';
 import { FileHealthService } from './file-health.service';
 import { HardwareAccelerationService } from './hardware-acceleration.service';
+import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
@@ -40,19 +49,26 @@ import { WorkerPoolService } from './worker-pool.service';
     CoreModule,
     PrismaModule,
     // forwardRef required: EncodingModule ↔ LibrariesModule circular dependency
-    // EncodingFileService + EncodingProcessorService inject LibrariesService.getAllLibraryPaths()
+    // EncodingFileService injects LibrariesService.findOne() + update()
     // LibrariesModule imports QueueModule which imports EncodingModule
     forwardRef(() => LibrariesModule),
-    // forwardRef required: EncodingModule ↔ NodesModule circular dependency
-    // EncodingProcessorService + SystemResourceService inject NodesService.getCurrentNode()
-    // NodesModule imports LibrariesModule which imports QueueModule which imports EncodingModule
-    forwardRef(() => NodesModule),
+    // NodesModule is a plain import: NodesModule no longer imports LibrariesModule
+    // so the transitive cycle EncodingModule → NodesModule → ... → EncodingModule is gone
+    NodesModule,
   ],
   controllers: [EncodingController],
   providers: [
     EncodingFileService,
+    EncodingFileReplacementService,
+    EncodingOutputVerificationService,
     EncodingProcessorService,
+    EncodingStartupService,
+    EncodingWatchdogService,
     FfmpegFlagBuilderService,
+    FfmpegProgressParserService,
+    FfprobeService,
+    FfmpegProcessCleanupService,
+    FfmpegFileVerificationService,
     FfmpegService,
     HardwareAccelerationService,
     FileHealthService,
@@ -64,6 +80,7 @@ import { WorkerPoolService } from './worker-pool.service';
     QualityMetricsService,
     SystemResourceService,
     WorkerPoolService,
+    JobRetryStrategyService,
     JobRepository,
     LibraryRepository,
     NodeRepository,

@@ -521,5 +521,271 @@ describe('DistributionOrchestratorService', () => {
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes[0]).toEqual({ nodeId: 'n1', availableSlots: 3 });
     });
+
+    it('should return empty nodes array when no online nodes', async () => {
+      mockNodeRepo.findOnlineIds.mockResolvedValue([]);
+
+      const result = await service.getNodesCapacity();
+
+      expect(result.nodes).toHaveLength(0);
+    });
+
+    it('should skip nodes where getNodeCapacity returns null', async () => {
+      mockNodeRepo.findOnlineIds.mockResolvedValue([{ id: 'n1' }, { id: 'n2' }, { id: 'n3' }]);
+      loadMonitor.getNodeCapacity
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ nodeId: 'n3', availableSlots: 1 });
+
+      const result = await service.getNodesCapacity();
+
+      expect(result.nodes).toHaveLength(1);
+    });
+  });
+
+  // ─── getDistributionSummary ───────────────────────────────────────
+
+  describe('getDistributionSummary', () => {
+    it('should return counts for all nodes', async () => {
+      const nodes = [
+        { id: 'n1', name: 'Node 1', status: 'ONLINE' },
+        { id: 'n2', name: 'Node 2', status: 'OFFLINE' },
+      ];
+      mockNodeRepo.findAllSummary.mockResolvedValue(nodes);
+      mockJobRepo.countForNode.mockResolvedValue(3);
+      mockJobRepo.countForNodeStages.mockResolvedValue(1);
+
+      const result = await service.getDistributionSummary();
+
+      expect(result.totalNodes).toBe(2);
+      expect(result.onlineNodes).toBe(1);
+      expect(result.totalQueuedJobs).toBe(6); // 3 per node × 2 nodes
+      expect(result.jobsPerNode).toHaveLength(2);
+    });
+
+    it('should count only ONLINE nodes for onlineNodes field', async () => {
+      mockNodeRepo.findAllSummary.mockResolvedValue([
+        { id: 'n1', name: 'Node 1', status: 'ONLINE' },
+        { id: 'n2', name: 'Node 2', status: 'ONLINE' },
+        { id: 'n3', name: 'Node 3', status: 'OFFLINE' },
+      ]);
+      mockJobRepo.countForNode.mockResolvedValue(0);
+      mockJobRepo.countForNodeStages.mockResolvedValue(0);
+
+      const result = await service.getDistributionSummary();
+
+      expect(result.totalNodes).toBe(3);
+      expect(result.onlineNodes).toBe(2);
+    });
+
+    it('should return zero totals when no nodes', async () => {
+      mockNodeRepo.findAllSummary.mockResolvedValue([]);
+
+      const result = await service.getDistributionSummary();
+
+      expect(result.totalNodes).toBe(0);
+      expect(result.onlineNodes).toBe(0);
+      expect(result.totalQueuedJobs).toBe(0);
+      expect(result.jobsPerNode).toHaveLength(0);
+    });
+  });
+
+  // ─── updateConfig ─────────────────────────────────────────────────
+
+  describe('updateConfig', () => {
+    it('should fetch active config then update by id', async () => {
+      const config = { id: 'cfg-1', isActive: true };
+      mockDistConfigRepo.findOrCreateDefault.mockResolvedValue(config);
+      mockDistConfigRepo.updateById.mockResolvedValue({ ...config, loadWeight: 0.5 });
+
+      const result = await service.updateConfig({ loadWeight: 0.5 });
+
+      expect(mockDistConfigRepo.findOrCreateDefault).toHaveBeenCalled();
+      expect(mockDistConfigRepo.updateById).toHaveBeenCalledWith('cfg-1', { loadWeight: 0.5 });
+      expect(result).toMatchObject({ loadWeight: 0.5 });
+    });
+  });
+
+  // ─── getScoreBreakdown edge cases ────────────────────────────────
+
+  describe('getScoreBreakdown negative factor percentages', () => {
+    it('should compute percentage for non-zero stickiness', () => {
+      const scoreWithPenalty = {
+        ...mockScore,
+        factors: { ...mockScore.factors, stickiness: -10 },
+      };
+      const breakdown = service.getScoreBreakdown(scoreWithPenalty);
+      const stickiness = breakdown.find((b) => b.factor === 'stickiness')!;
+
+      // ((20 + (-10)) / 20) * 100 = 50%
+      expect(stickiness.percentage).toBeCloseTo(50, 1);
+    });
+
+    it('should compute percentage for non-zero transferCost', () => {
+      const scoreWithTransfer = {
+        ...mockScore,
+        factors: { ...mockScore.factors, transferCost: -25 },
+      };
+      const breakdown = service.getScoreBreakdown(scoreWithTransfer);
+      const transferCost = breakdown.find((b) => b.factor === 'transferCost')!;
+
+      // ((25 + (-25)) / 25) * 100 = 0%
+      expect(transferCost.percentage).toBeCloseTo(0, 1);
+    });
+
+    it('should compute percentage for non-zero reliability penalty', () => {
+      const scoreWithReliability = {
+        ...mockScore,
+        factors: { ...mockScore.factors, reliability: -15 },
+      };
+      const breakdown = service.getScoreBreakdown(scoreWithReliability);
+      const reliability = breakdown.find((b) => b.factor === 'reliability')!;
+
+      // ((15 + (-15)) / 15) * 100 = 0%
+      expect(reliability.percentage).toBeCloseTo(0, 1);
+    });
+  });
+
+  // ─── rebalanceJobs migration branch ──────────────────────────────
+
+  describe('rebalanceJobs migration branch', () => {
+    it('should migrate jobs when shouldMigrate returns true', async () => {
+      const assignedJob = { ...mockJob, nodeId: 'node-old' };
+      const optimalNodeId = 'node-1';
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([assignedJob]);
+
+      // findOptimalNode internals
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
+      scorer.calculateScore.mockResolvedValue({ ...mockScore, nodeId: optimalNodeId });
+
+      // currentNode and candidateNode lookups
+      mockNodeRepo.findByIdWithActiveJobCount
+        .mockResolvedValueOnce({ ...mockNode, id: 'node-old', name: 'Old Node' })
+        .mockResolvedValueOnce(mockNode);
+
+      scorer.shouldMigrate.mockResolvedValue({ shouldMigrate: true, scoreDelta: 15 });
+
+      // assignJob internals
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
+      mockJobRepo.countForNode.mockResolvedValue(2);
+
+      const result = await service.rebalanceJobs();
+
+      expect(result.migratedCount).toBe(1);
+      expect(result.reasons[0]).toContain('Migrated');
+      expect(result.reasons[0]).toContain('+15.0 pts');
+    });
+
+    it('should not migrate when shouldMigrate returns false', async () => {
+      const assignedJob = { ...mockJob, nodeId: 'node-old' };
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([assignedJob]);
+
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
+      scorer.calculateScore.mockResolvedValue({ ...mockScore, nodeId: 'node-1' });
+
+      mockNodeRepo.findByIdWithActiveJobCount
+        .mockResolvedValueOnce({ ...mockNode, id: 'node-old' })
+        .mockResolvedValueOnce(mockNode);
+
+      scorer.shouldMigrate.mockResolvedValue({ shouldMigrate: false, scoreDelta: 2 });
+
+      const result = await service.rebalanceJobs();
+
+      expect(result.migratedCount).toBe(0);
+    });
+
+    it('should skip when findOptimalNode returns null', async () => {
+      const assignedJob = { ...mockJob, nodeId: 'node-old' };
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([assignedJob]);
+
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(null); // findOptimalNode → null
+
+      const result = await service.rebalanceJobs();
+
+      expect(result.migratedCount).toBe(0);
+    });
+
+    it('should skip when currentNode lookup returns null', async () => {
+      const assignedJob = { ...mockJob, nodeId: 'node-old' };
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([assignedJob]);
+
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
+      scorer.calculateScore.mockResolvedValue({ ...mockScore, nodeId: 'node-1' });
+
+      mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(null); // currentNode null
+
+      const result = await service.rebalanceJobs();
+
+      expect(result.migratedCount).toBe(0);
+    });
+  });
+
+  // ─── autoDistributeJobs ───────────────────────────────────────────
+
+  describe('autoDistributeJobs', () => {
+    it('should do nothing when all nodes are at capacity', async () => {
+      const fullNode = { ...mockNode, id: 'n1', maxWorkers: 2, _count: { jobs: 2 } };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([fullNode]);
+
+      await service.autoDistributeJobs();
+
+      expect(mockJobRepo.findQueuedExcludingNode).not.toHaveBeenCalled();
+    });
+
+    it('should skip node outside schedule window', async () => {
+      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 0 } };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(false);
+
+      await service.autoDistributeJobs();
+
+      expect(mockJobRepo.findQueuedExcludingNode).not.toHaveBeenCalled();
+    });
+
+    it('should move jobs to nodes with available slots', async () => {
+      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 1 } };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+
+      const queuedJob = { ...mockJob, id: 'job-q', updatedAt: new Date(), nodeId: 'other-node' };
+      mockJobRepo.findQueuedExcludingNode.mockResolvedValue([queuedJob]);
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
+      mockJobRepo.countForNode.mockResolvedValue(2);
+
+      await service.autoDistributeJobs();
+
+      expect(mockJobRepo.atomicUpdateMany).toHaveBeenCalled();
+      expect(mockNodeRepo.updateById).toHaveBeenCalledWith('n1', { queuedJobCount: 2 });
+    });
+
+    it('should skip job assignment when atomicUpdateMany returns count 0', async () => {
+      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 0 } };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+
+      const queuedJob = { ...mockJob, id: 'job-q', updatedAt: new Date(), nodeId: 'other-node' };
+      mockJobRepo.findQueuedExcludingNode.mockResolvedValue([queuedJob]);
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 0 }); // race lost
+      mockJobRepo.countForNode.mockResolvedValue(0);
+
+      await service.autoDistributeJobs();
+
+      // updateById still called for queue count update
+      expect(mockNodeRepo.updateById).toHaveBeenCalled();
+    });
+
+    it('should not query jobs when node has no jobs to distribute', async () => {
+      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 1 } };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+      mockJobRepo.findQueuedExcludingNode.mockResolvedValue([]); // no jobs available
+
+      await service.autoDistributeJobs();
+
+      expect(mockJobRepo.atomicUpdateMany).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JobEventType, JobStage } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobHistoryRepository } from '../../common/repositories/job-history.repository';
 
 export interface RecordJobEventParams {
   jobId: string;
@@ -23,30 +23,28 @@ export interface RecordJobEventParams {
 export class JobHistoryService {
   private readonly logger = new Logger(JobHistoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly jobHistoryRepository: JobHistoryRepository) {}
 
   /**
    * Record a job event in history
    */
   async recordEvent(params: RecordJobEventParams): Promise<void> {
     try {
-      await this.prisma.jobHistory.create({
-        data: {
-          jobId: params.jobId,
-          eventType: params.eventType,
-          stage: params.stage,
-          progress: params.progress,
-          errorMessage: params.errorMessage,
-          errorDetails: params.errorDetails,
-          wasAutoHealed: params.wasAutoHealed ?? false,
-          tempFileExists: params.tempFileExists,
-          retryNumber: params.retryNumber,
-          triggeredBy: params.triggeredBy,
-          systemMessage: params.systemMessage ?? this.generateSystemMessage(params),
-          fps: params.fps,
-          etaSeconds: params.etaSeconds,
-          startedFromSeconds: params.startedFromSeconds,
-        },
+      await this.jobHistoryRepository.createEntry({
+        jobId: params.jobId,
+        eventType: params.eventType,
+        stage: params.stage,
+        progress: params.progress,
+        errorMessage: params.errorMessage,
+        errorDetails: params.errorDetails,
+        wasAutoHealed: params.wasAutoHealed ?? false,
+        tempFileExists: params.tempFileExists,
+        retryNumber: params.retryNumber,
+        triggeredBy: params.triggeredBy,
+        systemMessage: params.systemMessage ?? this.generateSystemMessage(params),
+        fps: params.fps,
+        etaSeconds: params.etaSeconds,
+        startedFromSeconds: params.startedFromSeconds,
       });
 
       this.logger.log(
@@ -64,24 +62,18 @@ export class JobHistoryService {
    * Get job history timeline for a specific job
    */
   async getJobHistory(jobId: string) {
-    return this.prisma.jobHistory.findMany({
-      where: { jobId },
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.jobHistoryRepository.findManyByJobId(jobId);
   }
 
   /**
    * Get the number of failure events for a job
    */
   async getFailureCount(jobId: string): Promise<number> {
-    return this.prisma.jobHistory.count({
-      where: {
-        jobId,
-        eventType: {
-          in: [JobEventType.FAILED, JobEventType.BACKEND_RESTART, JobEventType.TIMEOUT],
-        },
-      },
-    });
+    return this.jobHistoryRepository.countByJobId(jobId, [
+      JobEventType.FAILED,
+      JobEventType.BACKEND_RESTART,
+      JobEventType.TIMEOUT,
+    ]);
   }
 
   /**

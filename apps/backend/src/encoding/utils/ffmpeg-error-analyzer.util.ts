@@ -5,6 +5,9 @@
  * Categorizes errors and helps users understand what went wrong and how to fix it.
  */
 
+const MAX_RETRY_ATTEMPTS = 3;
+const MIN_RETRIES_FOR_EARLY_FAILURE_CORRUPTION = 2;
+
 export interface FFmpegErrorAnalysis {
   category: ErrorCategory;
   title: string;
@@ -57,7 +60,7 @@ export function analyzeFfmpegError(
         '🗑️ Consider blacklisting this file to prevent further retry attempts',
       ],
       isRetriable: false,
-      shouldBlacklist: retryCount >= 3, // Blacklist after 3 attempts
+      shouldBlacklist: retryCount >= MAX_RETRY_ATTEMPTS, // Blacklist after 3 attempts
     };
   }
 
@@ -104,7 +107,11 @@ export function analyzeFfmpegError(
   }
 
   // PATTERN 4: Process interrupted/killed (exit 255 without corruption)
-  if ((exitCode === 255 || exitCode === -1) && progress < 5 && retryCount < 2) {
+  if (
+    (exitCode === 255 || exitCode === -1) &&
+    progress < 5 &&
+    retryCount < MIN_RETRIES_FOR_EARLY_FAILURE_CORRUPTION
+  ) {
     return {
       category: ErrorCategory.PROCESS_INTERRUPTED,
       title: '⚠️ Encoding Process Interrupted',
@@ -123,7 +130,11 @@ export function analyzeFfmpegError(
   }
 
   // PATTERN 5: Early failure with exit 255 after retries (likely corruption)
-  if ((exitCode === 255 || exitCode === -1) && progress < 5 && retryCount >= 2) {
+  if (
+    (exitCode === 255 || exitCode === -1) &&
+    progress < 5 &&
+    retryCount >= MIN_RETRIES_FOR_EARLY_FAILURE_CORRUPTION
+  ) {
     return {
       category: ErrorCategory.SOURCE_CORRUPTED,
       title: '🔴 Persistent Early Failure - Likely Corrupted',
@@ -177,7 +188,7 @@ export function analyzeFfmpegError(
       '🐛 If repeated failures occur, report this issue with the error log',
       '🔍 Check system resources and node health',
     ],
-    isRetriable: retryCount < 3,
+    isRetriable: retryCount < MAX_RETRY_ATTEMPTS,
     shouldBlacklist: false,
   };
 }

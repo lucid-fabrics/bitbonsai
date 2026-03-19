@@ -168,4 +168,187 @@ describe('JobFileOperationsService', () => {
       );
     });
   });
+
+  describe('deleteOriginalBackup - success path', () => {
+    it('should delete file and clear backup fields when backup exists', async () => {
+      const job = makeJob({
+        originalBackupPath: '/media/movie.mkv.orig',
+        originalSizeBytes: BigInt(1_000_000),
+      });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockJobRepository.updateById.mockResolvedValue({ ...job, originalBackupPath: null });
+
+      jest.spyOn(require('fs/promises'), 'unlink').mockResolvedValue(undefined);
+
+      const result = await service.deleteOriginalBackup('job-1');
+
+      expect(result.freedSpace).toBe(BigInt(1_000_000));
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ originalBackupPath: null, originalSizeBytes: null })
+      );
+    });
+
+    it('should use BigInt(0) when originalSizeBytes is null', async () => {
+      const job = makeJob({
+        originalBackupPath: '/media/movie.mkv.orig',
+        originalSizeBytes: null,
+      });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockJobRepository.updateById.mockResolvedValue({ ...job, originalBackupPath: null });
+      jest.spyOn(require('fs/promises'), 'unlink').mockResolvedValue(undefined);
+
+      const result = await service.deleteOriginalBackup('job-1');
+
+      expect(result.freedSpace).toBe(BigInt(0));
+    });
+
+    it('should throw BadRequestException when file deletion fails', async () => {
+      const job = makeJob({ originalBackupPath: '/media/movie.mkv.orig' });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      jest
+        .spyOn(require('fs/promises'), 'unlink')
+        .mockRejectedValue(new Error('Permission denied'));
+
+      await expect(service.deleteOriginalBackup('job-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('restoreOriginal - success path', () => {
+    it('should rename files and update job when backup exists', async () => {
+      const job = makeJob({
+        stage: JobStage.COMPLETED,
+        filePath: '/media/movie.mkv',
+        originalBackupPath: '/media/movie.mkv.orig',
+      });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        originalBackupPath: '/media/movie.mkv.encoded',
+      });
+      jest.spyOn(require('fs/promises'), 'rename').mockResolvedValue(undefined);
+
+      const _result = await service.restoreOriginal('job-1');
+
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ replacementAction: 'KEPT_BOTH' })
+      );
+    });
+
+    it('should throw BadRequestException when rename fails', async () => {
+      const job = makeJob({ originalBackupPath: '/media/movie.mkv.orig' });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      jest
+        .spyOn(require('fs/promises'), 'rename')
+        .mockRejectedValue(new Error('ENOENT: no such file'));
+
+      await expect(service.restoreOriginal('job-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('recheckFailedJob - success paths', () => {
+    it('should mark job COMPLETED when file is valid and compressed', async () => {
+      const job = makeJob({
+        stage: JobStage.FAILED,
+        filePath: '/media/movie.mkv',
+        beforeSizeBytes: BigInt(1_000_000_000),
+        error: 'encoding crashed',
+      });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockFfmpegService.verifyFile.mockResolvedValue({ isValid: true });
+
+      jest.spyOn(require('fs/promises'), 'stat').mockResolvedValue({
+        isFile: () => true,
+        size: 700_000_000,
+      } as any);
+
+      const completedJob = { ...job, stage: JobStage.COMPLETED, savedPercent: 30 };
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        return cb({
+          job: {
+            update: jest.fn().mockResolvedValue(completedJob),
+          },
+        });
+      });
+
+      const _result = await service.recheckFailedJob('job-1');
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should update error message when file exists but fails health check', async () => {
+      const job = makeJob({ stage: JobStage.FAILED });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockFfmpegService.verifyFile.mockResolvedValue({
+        isValid: false,
+        error: 'invalid codec data',
+      });
+
+      jest.spyOn(require('fs/promises'), 'stat').mockResolvedValue({
+        isFile: () => true,
+        size: 500_000_000,
+      } as any);
+
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        error: 'RECHECK FAILED: File exists but failed health check',
+      });
+
+      const _result = await service.recheckFailedJob('job-1');
+
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ error: expect.stringContaining('failed health check') })
+      );
+    });
+
+    it('should update error when file exists but is not compressed (savedBytes <= 0)', async () => {
+      const job = makeJob({
+        stage: JobStage.FAILED,
+        beforeSizeBytes: BigInt(1_000_000_000),
+      });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockFfmpegService.verifyFile.mockResolvedValue({ isValid: true });
+
+      // File is larger than original (no compression or grew)
+      jest.spyOn(require('fs/promises'), 'stat').mockResolvedValue({
+        isFile: () => true,
+        size: 1_500_000_000, // bigger than before
+      } as any);
+
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        error: 'RECHECK FAILED: Encoding did not compress the file.',
+      });
+
+      const _result = await service.recheckFailedJob('job-1');
+
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({
+          error: expect.stringContaining('RECHECK FAILED: Encoding did not compress'),
+        })
+      );
+    });
+  });
+
+  describe('requestKeepOriginal - originalSizeBytes', () => {
+    it('should set originalSizeBytes from job.beforeSizeBytes', async () => {
+      const job = makeJob({ stage: JobStage.ENCODING, beforeSizeBytes: BigInt(2_000_000_000) });
+      mockJobCrudService.findOne.mockResolvedValue(job as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        keepOriginalRequested: true,
+        originalSizeBytes: BigInt(2_000_000_000),
+      });
+
+      await service.requestKeepOriginal('job-1');
+
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ originalSizeBytes: BigInt(2_000_000_000) })
+      );
+    });
+  });
 });

@@ -5,6 +5,8 @@ import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { QueueService } from '../queue/queue.service';
 import { EncodingFileService } from './encoding-file.service';
+import { EncodingFileReplacementService } from './encoding-file-replacement.service';
+import { EncodingOutputVerificationService } from './encoding-output-verification.service';
 import { FfmpegService } from './ffmpeg.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
@@ -58,6 +60,8 @@ describe('EncodingFileService', () => {
         { provide: SystemResourceService, useValue: mockSystemResourceService },
         { provide: QueueService, useValue: mockQueueService },
         { provide: QualityMetricsService, useValue: {} },
+        EncodingFileReplacementService,
+        EncodingOutputVerificationService,
       ],
     }).compile();
 
@@ -130,7 +134,7 @@ describe('EncodingFileService', () => {
   describe('validateOutputDuration', () => {
     it('should pass for matching durations within tolerance', async () => {
       mockFfmpegService.getVideoDuration.mockResolvedValue(3600);
-      jest.spyOn(service, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
 
       await expect(
         service.validateOutputDuration('/output.mkv', 3600, '/input.mkv')
@@ -139,7 +143,7 @@ describe('EncodingFileService', () => {
 
     it('should throw for sub-second clips (skip validation)', async () => {
       // Sub-second clips should pass without calling getVideoDuration
-      jest.spyOn(service, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
 
       await expect(
         service.validateOutputDuration('/output.mkv', 0.5, '/input.mkv')
@@ -150,7 +154,7 @@ describe('EncodingFileService', () => {
     it('should throw when output duration is significantly shorter', async () => {
       // original = 3600s, output = 1800s (50% truncated)
       mockFfmpegService.getVideoDuration.mockResolvedValue(1800);
-      jest.spyOn(service, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
 
       await expect(
         service.validateOutputDuration('/output.mkv', 3600, '/input.mkv')
@@ -228,11 +232,15 @@ describe('EncodingFileService — extended coverage', () => {
         },
         { provide: QueueService, useValue: mockQueueService },
         { provide: QualityMetricsService, useValue: mockQualityMetricsService },
+        EncodingFileReplacementService,
+        EncodingOutputVerificationService,
       ],
     }).compile();
 
     service = module.get<EncodingFileService>(EncodingFileService);
     jest.spyOn(service, 'sleep').mockResolvedValue(undefined);
+    jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
+    jest.spyOn(service.fileReplacement, 'sleep').mockResolvedValue(undefined);
   });
 
   // ── checkTempFileWithRetry ─────────────────────────────────────────────────

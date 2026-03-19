@@ -1,11 +1,13 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { FileFailureRecordRepository } from '../common/repositories/file-failure-record.repository';
 import { JobRepository } from '../common/repositories/job.repository';
+import { JobHistoryRepository } from '../common/repositories/job-history.repository';
 import { LibraryRepository } from '../common/repositories/library.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { SettingsRepository } from '../common/repositories/settings.repository';
 import { CoreModule } from '../core/core.module';
 import { EncodingModule } from '../encoding/encoding.module';
-import { LibrariesModule } from '../libraries/libraries.module';
+import { MediaModule } from '../media/media.module';
 import { NodesModule } from '../nodes/nodes.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
@@ -22,6 +24,7 @@ import { AutoHealingService } from './services/auto-healing.service';
 import { BatchOperationsService } from './services/batch-operations.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { FileTransferService } from './services/file-transfer.service';
+import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 import { JobBulkOperationsService } from './services/job-bulk-operations.service';
 import { JobCleanupService } from './services/job-cleanup.service';
 import { JobFileOperationsService } from './services/job-file-operations.service';
@@ -31,6 +34,7 @@ import { JobRouterService } from './services/job-router.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
 import { QueueJobCrudService } from './services/queue-job-crud.service';
 import { QueueJobStateService } from './services/queue-job-state.service';
+import { QueueJobStatsService } from './services/queue-job-stats.service';
 import { QueueProcessingService } from './services/queue-processing.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
 import { WebhookNotificationService } from './services/webhook-notification.service';
@@ -52,18 +56,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Webhook notifications for job events via WebhookNotificationService.
  */
 @Module({
-  imports: [
-    CoreModule,
-    EncodingModule,
-    // forwardRef required: QueueModule ↔ LibrariesModule circular dependency
-    // QueueProcessingService injects MediaAnalysisService from LibrariesModule
-    // LibrariesService injects QueueService from QueueModule to create encoding jobs
-    forwardRef(() => LibrariesModule),
-    // forwardRef required: QueueModule ↔ NodesModule via shared cycle
-    // QueueModule imports EncodingModule which imports NodesModule
-    // NodesModule imports LibrariesModule which imports QueueModule
-    forwardRef(() => NodesModule),
-  ],
+  imports: [CoreModule, EncodingModule, MediaModule, NodesModule],
   controllers: [
     JobController,
     JobMetricsController,
@@ -76,6 +69,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     QueueService,
     FileFailureTrackingService,
     QueueJobCrudService,
+    QueueJobStatsService,
     QueueJobStateService,
     JobMetricsService,
     JobBulkOperationsService,
@@ -88,6 +82,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     FileTransferService,
     FileTransferWorker,
     HealthCheckWorker,
+    HealthCheckCodecAnalyzerService,
     AutoHealingService,
     RetrySchedulerService,
     StuckJobRecoveryWorker,
@@ -95,6 +90,8 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     BatchOperationsService,
     WebhookNotificationService,
     PrismaService,
+    FileFailureRecordRepository,
+    JobHistoryRepository,
     JobRepository,
     LibraryRepository,
     NodeRepository,

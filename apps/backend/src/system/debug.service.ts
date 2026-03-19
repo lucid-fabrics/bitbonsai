@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 
@@ -102,7 +103,7 @@ export class DebugService {
       id: string;
       startedAt: Date | null;
       progress: number | null;
-    }>({ stage: 'ENCODING' as any }, { id: true, startedAt: true, progress: true });
+    }>({ stage: JobStage.ENCODING }, { id: true, startedAt: true, progress: true });
 
     // Get system FFmpeg processes
     const systemProcesses = await this.findSystemFfmpegProcesses();

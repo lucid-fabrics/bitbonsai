@@ -1,10 +1,10 @@
 import { version } from '@bitbonsai/version';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { LicenseRepository } from '../common/repositories/license.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { SettingsRepository } from '../common/repositories/settings.repository';
 import { UserRepository } from '../common/repositories/user.repository';
-import { PrismaService } from '../prisma/prisma.service';
 import { InitializeSetupDto, NodeType } from './dto/initialize-setup.dto';
 import type { SetupStatusDto } from './dto/setup-status.dto';
 
@@ -20,7 +20,7 @@ export class SetupService {
   private readonly BCRYPT_ROUNDS = 10;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly licenseRepository: LicenseRepository,
     private readonly nodeRepository: NodeRepository,
     private readonly settingsRepository: SettingsRepository,
     private readonly userRepository: UserRepository
@@ -125,31 +125,29 @@ export class SetupService {
     });
 
     // Find or create a license
-    let license = await this.prisma.license.findFirst();
+    let license = await this.licenseRepository.findFirstWhere({});
 
     if (!license) {
       // Create a FREE license if none exists
-      license = await this.prisma.license.create({
-        data: {
-          key: `FREE-${this.generateRandomString(10)}`,
-          tier: 'FREE',
-          status: 'ACTIVE',
-          email:
-            nodeType === NodeType.Main
-              ? dto.username
-                ? `${dto.username}@local.bitbonsai`
-                : 'admin@bitbonsai.local'
-              : 'child-node@bitbonsai.local',
-          maxNodes: 1,
-          maxConcurrentJobs: 2,
-          features: {
-            multiNode: false,
-            advancedPresets: false,
-            api: false,
-            priorityQueue: false,
-            cloudStorage: false,
-            webhooks: false,
-          },
+      license = await this.licenseRepository.createLicense({
+        key: `FREE-${this.generateRandomString(10)}`,
+        tier: 'FREE',
+        status: 'ACTIVE',
+        email:
+          nodeType === NodeType.Main
+            ? dto.username
+              ? `${dto.username}@local.bitbonsai`
+              : 'admin@bitbonsai.local'
+            : 'child-node@bitbonsai.local',
+        maxNodes: 1,
+        maxConcurrentJobs: 2,
+        features: {
+          multiNode: false,
+          advancedPresets: false,
+          api: false,
+          priorityQueue: false,
+          cloudStorage: false,
+          webhooks: false,
         },
       });
     }

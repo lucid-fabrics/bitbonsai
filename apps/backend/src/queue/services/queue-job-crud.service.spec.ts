@@ -14,6 +14,7 @@ import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileFailureTrackingService } from './file-failure-tracking.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
+import { QueueJobStatsService } from './queue-job-stats.service';
 
 describe('QueueJobCrudService', () => {
   let service: QueueJobCrudService;
@@ -26,6 +27,8 @@ describe('QueueJobCrudService', () => {
   let mockHttpService: { post: jest.Mock; patch: jest.Mock; get: jest.Mock };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     mockJobRepository = {
       findUniqueSelect: jest.fn(),
       findById: jest.fn(),
@@ -75,6 +78,7 @@ describe('QueueJobCrudService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QueueJobCrudService,
+        QueueJobStatsService,
         { provide: JobRepository, useValue: mockJobRepository },
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: NodeConfigService, useValue: mockNodeConfig },
@@ -852,6 +856,309 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.deleteManyWhere.mockRejectedValue(new Error('Clear failed'));
 
       await expect(service.clearJobs()).rejects.toThrow('Clear failed');
+    });
+
+    it('should clear multiple specified stages', async () => {
+      mockJobRepository.deleteManyWhere.mockResolvedValue({ count: 7 });
+
+      const count = await service.clearJobs([JobStage.FAILED, JobStage.CANCELLED]);
+      expect(count).toBe(7);
+      expect(mockJobRepository.deleteManyWhere).toHaveBeenCalledWith({
+        stage: { in: [JobStage.FAILED, JobStage.CANCELLED] },
+      });
+    });
+  });
+
+  describe('findAll (additional)', () => {
+    it('should sort by createdAt asc for non-FAILED stage', async () => {
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      mockJobRepository.countWhere.mockResolvedValue(0);
+
+      await service.findAll(JobStage.ENCODING);
+
+      expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { createdAt: 'asc' } })
+      );
+    });
+
+    it('should calculate totalPages as 1 when total equals limit', async () => {
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      mockJobRepository.countWhere.mockResolvedValue(20);
+
+      const result = await service.findAll(undefined, undefined, undefined, undefined, 1, 20);
+
+      expect(result.totalPages).toBe(1);
+    });
+  });
+
+  describe('updateProgress (additional branches)', () => {
+    it('should set tempFilePath in updateData when temp file exists on disk', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeConfig.getNodeId.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+        nodeId: null,
+      } as any);
+      const updatedJob = { id: 'job-1', progress: 0 };
+      mockJobRepository.updateRaw.mockResolvedValue(updatedJob as any);
+
+      jest.spyOn(service, 'fileExists').mockReturnValue(true);
+
+      await service.updateProgress('job-1', { tempFilePath: '/tmp/encode_job1.mkv' } as any);
+
+      expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ tempFilePath: '/tmp/encode_job1.mkv' })
+      );
+    });
+
+    it('should NOT set tempFilePath when temp file does not exist on disk', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeConfig.getNodeId.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+        nodeId: null,
+      } as any);
+      const updatedJob = { id: 'job-1', progress: 0 };
+      mockJobRepository.updateRaw.mockResolvedValue(updatedJob as any);
+
+      jest.spyOn(service, 'fileExists').mockReturnValue(false);
+
+      await service.updateProgress('job-1', { tempFilePath: '/tmp/nonexistent.mkv' } as any);
+
+      expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
+        'job-1',
+        expect.not.objectContaining({ tempFilePath: expect.anything() })
+      );
+    });
+
+    it('should propagate error when updateRaw throws', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeConfig.getNodeId.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+        nodeId: null,
+      } as any);
+      mockJobRepository.updateRaw.mockRejectedValue(new Error('DB write failed'));
+
+      await expect(service.updateProgress('job-1', { progress: 50 } as any)).rejects.toThrow(
+        'DB write failed'
+      );
+    });
+
+    it('should return proxied job on successful proxy to MAIN node', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
+      const remoteJob = { id: 'job-1', progress: 75 };
+      jest.spyOn(require('rxjs'), 'firstValueFrom').mockResolvedValueOnce({ data: remoteJob });
+
+      const result = await service.updateProgress('job-1', { progress: 75 } as any);
+
+      expect(result).toEqual(remoteJob);
+    });
+  });
+
+  describe('update (additional)', () => {
+    it('should NOT set lastStageChangeAt when stage is not included in update', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      const updatedAt = new Date();
+      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt });
+      mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
+      const job = { id: 'job-1', progress: 75 };
+      mockJobRepository.findById.mockResolvedValue(job as any);
+
+      await service.update('job-1', { progress: 75 } as any);
+
+      const callArg = mockJobRepository.atomicUpdateMany.mock.calls[0][1];
+      expect(callArg).not.toHaveProperty('lastStageChangeAt');
+    });
+  });
+
+  describe('getJobStats (additional)', () => {
+    it('should return totalSavedBytes as "0" when savedBytes is BigInt(0)', async () => {
+      mockJobRepository.countWhere.mockResolvedValue(0);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      mockJobRepository.aggregateSumWhere.mockResolvedValue({
+        _sum: { savedBytes: BigInt(0) },
+      } as any);
+
+      const stats = await service.getJobStats();
+      expect(stats.totalSavedBytes).toBe('0');
+    });
+
+    it('should return nodeId as undefined when not provided', async () => {
+      mockJobRepository.countWhere.mockResolvedValue(0);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      mockJobRepository.aggregateSumWhere.mockResolvedValue({
+        _sum: { savedBytes: null },
+      } as any);
+
+      const stats = await service.getJobStats();
+      expect(stats.nodeId).toBeUndefined();
+    });
+  });
+
+  describe('updateProgress (additional)', () => {
+    it('should accept progress of exactly 0 (boundary value)', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
+      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({ id: 'job-1', progress: 0 } as any);
+
+      await expect(service.updateProgress('job-1', { progress: 0 } as any)).resolves.not.toThrow();
+    });
+
+    it('should accept progress of exactly 100 (boundary value)', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
+      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({ id: 'job-1', progress: 100 } as any);
+
+      await expect(
+        service.updateProgress('job-1', { progress: 100 } as any)
+      ).resolves.not.toThrow();
+    });
+
+    it('should not set lastHeartbeat when job stage is not ENCODING', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+        nodeId: 'node-1',
+      } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({ id: 'job-1' } as any);
+
+      await service.updateProgress('job-1', { progress: 50 } as any);
+
+      const callArg = mockJobRepository.updateRaw.mock.calls[0][1];
+      expect(callArg).not.toHaveProperty('lastHeartbeat');
+      expect(callArg).not.toHaveProperty('heartbeatNodeId');
+    });
+  });
+
+  describe('validateFilePath (additional)', () => {
+    it('should throw BadRequestException for path containing unicode dot \\u2024', () => {
+      expect(() => service.validateFilePath('/library/\u2024\u2024/secret', '/library')).toThrow(
+        BadRequestException
+      );
+    });
+  });
+
+  describe('create (additional)', () => {
+    const baseDto = {
+      fileLabel: 'movie.mkv',
+      filePath: '/tmp/movie.mkv',
+      sourceCodec: 'h264',
+      targetCodec: 'hevc',
+      beforeSizeBytes: 1024 * 1024,
+      nodeId: 'node-1',
+      libraryId: 'lib-1',
+      policyId: 'policy-1',
+      warning: null,
+      resourceThrottled: false,
+      resourceThrottleReason: null,
+      ffmpegThreads: null,
+      sourceContainer: 'mkv',
+      targetContainer: 'mkv',
+    };
+
+    beforeEach(() => {
+      jest.spyOn(service, 'validateFilePath').mockImplementation(() => undefined);
+    });
+
+    it('should rethrow P2002 error when no conflicting job found after constraint violation', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1' } as any);
+      (mockPrisma.library.findUnique as jest.Mock).mockResolvedValue({
+        id: 'lib-1',
+        path: '/tmp',
+      } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      mockJobRepository.findFirstWhere
+        .mockResolvedValueOnce(null) // active job check
+        .mockResolvedValueOnce(null); // conflict lookup returns null
+      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      const prismaError = {
+        code: 'P2002',
+        meta: { target: ['unique_active_job_per_file'] },
+      };
+      mockJobRepository.createJob.mockRejectedValue(prismaError);
+
+      // P2002 with no found job → falls through and re-throws prismaError
+      await expect(service.create(baseDto as any)).rejects.toEqual(prismaError);
+    });
+
+    it('should use type ENCODE as default when type not provided in dto', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1' } as any);
+      (mockPrisma.library.findUnique as jest.Mock).mockResolvedValue({
+        id: 'lib-1',
+        path: '/tmp',
+      } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      mockJobRepository.findFirstWhere.mockResolvedValue(null);
+      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      const createdJob = { id: 'new-job', type: 'ENCODE' };
+      mockJobRepository.createJob.mockResolvedValue(createdJob as any);
+
+      const dtoNoType = { ...baseDto };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (dtoNoType as any).type = undefined;
+      await service.create(dtoNoType as any);
+
+      expect(mockJobRepository.createJob).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'ENCODE' })
+      );
+    });
+
+    it('should set resourceThrottled to false by default when not provided', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1' } as any);
+      (mockPrisma.library.findUnique as jest.Mock).mockResolvedValue({
+        id: 'lib-1',
+        path: '/tmp',
+      } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      mockJobRepository.findFirstWhere.mockResolvedValue(null);
+      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
+      const createdJob = { id: 'new-job' };
+      mockJobRepository.createJob.mockResolvedValue(createdJob as any);
+
+      const dtoNoThrottle = { ...baseDto };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (dtoNoThrottle as any).resourceThrottled = undefined;
+      await service.create(dtoNoThrottle as any);
+
+      expect(mockJobRepository.createJob).toHaveBeenCalledWith(
+        expect.objectContaining({ resourceThrottled: false })
+      );
     });
   });
 

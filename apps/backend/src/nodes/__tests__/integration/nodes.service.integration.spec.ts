@@ -133,7 +133,7 @@ describe('NodesService Integration Tests', () => {
       });
 
       const result = await service.findOne(created.id);
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result.id).toBe(created.id);
     });
 

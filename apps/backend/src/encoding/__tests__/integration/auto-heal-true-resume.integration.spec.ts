@@ -10,6 +10,8 @@ import { NodesService } from '../../../nodes/nodes.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
+import { EncodingStartupService } from '../../encoding-startup.service';
+import { EncodingWatchdogService } from '../../encoding-watchdog.service';
 import { FfmpegService } from '../../ffmpeg.service';
 
 /**
@@ -93,6 +95,21 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
           provide: FileRelocatorService,
           useValue: { relocateFile: jest.fn(), verifyRelocation: jest.fn() },
         },
+        {
+          provide: EncodingStartupService,
+          useValue: {
+            waitForVolumeMounts: jest.fn().mockResolvedValue(undefined),
+            autoHealOrphanedJobs: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: EncodingWatchdogService,
+          useValue: {
+            startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
+            manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
+            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+          },
+        },
       ],
     }).compile();
 
@@ -159,7 +176,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         where: { id: jobId },
       });
 
-      expect(healedJob).toBeTruthy();
+      expect(healedJob).not.toBeNull();
       expect(healedJob?.stage).toBe(JobStage.QUEUED);
       expect(healedJob?.progress).toBe(50.0); // Progress preserved
       expect(healedJob?.resumeTimestamp).toBe('00:30:00'); // 1800 seconds = 30 minutes
@@ -292,7 +309,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
 
       expect(healedJob?.progress).toBe(45.0); // Progress PRESERVED
       expect(healedJob?.tempFilePath).toBe(testTempFile); // Path PRESERVED
-      expect(healedJob?.resumeTimestamp).toBeTruthy(); // Timestamp SET
+      expect(healedJob?.resumeTimestamp).not.toBeNull(); // Timestamp SET
 
       await prisma.job.delete({ where: { id: jobId } });
     });
@@ -485,7 +502,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
 
         if (jobData.shouldPreserve) {
           expect(healedJob?.progress).toBe(jobData.progress);
-          expect(healedJob?.tempFilePath).toBeTruthy();
+          expect(healedJob?.tempFilePath).not.toBeNull();
         } else {
           expect(healedJob?.progress).toBe(0);
           expect(healedJob?.tempFilePath).toBeNull();

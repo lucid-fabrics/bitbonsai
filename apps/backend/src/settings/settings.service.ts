@@ -37,6 +37,10 @@ export interface OperationalSettings {
  */
 @Injectable()
 export class SettingsService {
+  private static readonly DEFAULT_RECOVERY_INTERVAL_MS = 120000; // 2 minutes
+  private static readonly DEFAULT_HEALTH_CHECK_INTERVAL_MS = 2000; // 2 seconds
+  private static readonly DEFAULT_BACKUP_CLEANUP_INTERVAL_MS = 3600000; // 1 hour
+
   constructor(private readonly settingsRepository: SettingsRepository) {}
 
   /**
@@ -321,16 +325,18 @@ export class SettingsService {
       jobStuckThresholdMinutes: s.jobStuckThresholdMinutes ?? 5,
       jobEncodingTimeoutHours: s.jobEncodingTimeoutHours ?? 2,
       // Stuck job recovery
-      recoveryIntervalMs: s.recoveryIntervalMs ?? 120000,
+      recoveryIntervalMs: s.recoveryIntervalMs ?? SettingsService.DEFAULT_RECOVERY_INTERVAL_MS,
       healthCheckTimeoutMin: s.healthCheckTimeoutMin ?? 5,
       encodingTimeoutMin: s.encodingTimeoutMin ?? 10,
       verifyingTimeoutMin: s.verifyingTimeoutMin ?? 30,
       // Health check worker
       healthCheckConcurrency: s.healthCheckConcurrency ?? 10,
-      healthCheckIntervalMs: s.healthCheckIntervalMs ?? 2000,
+      healthCheckIntervalMs:
+        s.healthCheckIntervalMs ?? SettingsService.DEFAULT_HEALTH_CHECK_INTERVAL_MS,
       maxRetryAttempts: s.maxRetryAttempts ?? 3,
       // Backup cleanup
-      backupCleanupIntervalMs: s.backupCleanupIntervalMs ?? 3600000,
+      backupCleanupIntervalMs:
+        s.backupCleanupIntervalMs ?? SettingsService.DEFAULT_BACKUP_CLEANUP_INTERVAL_MS,
       backupRetentionHours: s.backupRetentionHours ?? 24,
     };
   }

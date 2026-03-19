@@ -303,7 +303,7 @@ describe('QueueJobStateService', () => {
       mockJobRepository.updateById.mockResolvedValue({ ...job, priority: 1 } as any);
       mockFfmpegService.reniceProcess.mockRejectedValue(new Error('process not found'));
 
-      await expect(service.updateJobPriority('job-1', 1)).resolves.toBeDefined();
+      await expect(service.updateJobPriority('job-1', 1)).resolves.not.toBeUndefined();
     });
 
     it('should throw NotFoundException when job not found', async () => {
@@ -571,7 +571,7 @@ describe('QueueJobStateService', () => {
         stage: JobStage.CANCELLED,
       } as any);
 
-      await expect(service.cancelJob('job-1')).resolves.toBeDefined();
+      await expect(service.cancelJob('job-1')).resolves.not.toBeUndefined();
     });
 
     it('should cancel transferring job and clean up remote temp file', async () => {
@@ -611,7 +611,7 @@ describe('QueueJobStateService', () => {
       mockFileFailureTracking.recordFailure.mockResolvedValue(true);
 
       // Should not throw even though wasBlacklisted=true
-      await expect(service.failJob('job-1', 'error')).resolves.toBeDefined();
+      await expect(service.failJob('job-1', 'error')).resolves.not.toBeUndefined();
     });
 
     it('should not throw when fileFailureTracking.recordFailure throws', async () => {
@@ -620,7 +620,7 @@ describe('QueueJobStateService', () => {
       mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.FAILED } as any);
       mockFileFailureTracking.recordFailure.mockRejectedValue(new Error('tracking error'));
 
-      await expect(service.failJob('job-1', 'error')).resolves.toBeDefined();
+      await expect(service.failJob('job-1', 'error')).resolves.not.toBeUndefined();
     });
   });
 

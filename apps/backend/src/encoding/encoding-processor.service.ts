@@ -1,5 +1,4 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Library, Policy } from '@prisma/client';
@@ -13,7 +12,10 @@ import { LibrariesService } from '../libraries/libraries.service';
 import { NodesService } from '../nodes/nodes.service';
 import { QueueService } from '../queue/queue.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
+import { EncodingStartupService } from './encoding-startup.service';
+import { EncodingWatchdogService } from './encoding-watchdog.service';
 import { FfmpegService } from './ffmpeg.service';
+import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
@@ -43,14 +45,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   // CRITICAL #5 FIX: Track ALL active intervals globally to prevent leaks on hot reload
   private static activeIntervals = new Set<NodeJS.Timeout>();
 
-  // Configuration
-  private readonly MAX_RETRIES = 3;
-
   // Auto-heal timing constants (Code Convention: no magic numbers)
   private readonly AUTO_HEAL_INITIAL_DELAY_MS = 2000; // 2 seconds
   private readonly AUTO_HEAL_STABILIZATION_DELAY_MS = 3000; // 3 seconds
-  private readonly VOLUME_MOUNT_PROBE_DELAY_MS = 1000; // 1 second
-  private readonly VOLUME_MOUNT_MAX_RETRIES = 10;
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly libraryRepository: LibraryRepository,
@@ -58,13 +55,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly queueService: QueueService,
     readonly _dataAccessService: DataAccessService,
     private readonly ffmpegService: FfmpegService,
-    private readonly librariesService: LibrariesService,
+    readonly _librariesService: LibrariesService,
     private readonly nodesService: NodesService,
     private readonly fileRelocatorService: FileRelocatorService,
     private readonly poolLockService: PoolLockService,
     private readonly systemResourceService: SystemResourceService,
     private readonly encodingFileService: EncodingFileService,
-    private readonly workerPoolService: WorkerPoolService
+    private readonly workerPoolService: WorkerPoolService,
+    private readonly jobRetryStrategyService: JobRetryStrategyService,
+    private readonly encodingStartupService: EncodingStartupService,
+    private readonly encodingWatchdogService: EncodingWatchdogService
   ) {}
 
   /**
@@ -98,7 +98,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_INITIAL_DELAY_MS));
 
       // Step 2: Wait for volume mounts to be accessible
-      await this.waitForVolumeMounts();
+      await this.encodingStartupService.waitForVolumeMounts();
 
       // Step 3: Let file system stabilize after volumes are mounted
       this.logger.log('⏳ Waiting for file system to stabilize...');
@@ -126,7 +126,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // STEP 4: Auto-heal orphaned jobs from previous crash/reboot
       // CRITICAL FIX: Only heal jobs belonging to THIS node to prevent cross-node interference
-      await this.autoHealOrphanedJobs(currentNode.id);
+      await this.encodingStartupService.autoHealOrphanedJobs(currentNode.id);
 
       // MULTI-NODE AUDIT: Enhanced logging to debug LINKED node encoding issues
       this.logger.log(`🔍 MULTI-NODE: Current node configuration:`);
@@ -163,7 +163,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       }
 
       // STEP 4: Start background watchdog to detect stuck jobs
-      this.startStuckJobWatchdog();
+      this.watchdogIntervalId = this.encodingWatchdogService.startStuckJobWatchdog();
+      EncodingProcessorService.activeIntervals.add(this.watchdogIntervalId);
     } catch (error: unknown) {
       this.logger.error('Failed to initialize encoding processor:', error);
     }
@@ -198,693 +199,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     // Note: Worker cleanup happens naturally when workers detect isRunning=false
     // FFmpeg process cleanup is handled by FfmpegService.onModuleDestroy()
-  }
-
-  /**
-   * Wait for Docker volume mounts to be fully accessible
-   * Probes the media directory to ensure volume is ready before auto-heal
-   * @private
-   */
-  private async waitForVolumeMounts(): Promise<void> {
-    // UX PHILOSOPHY: Derive media paths from libraries in database
-    // Eliminates need for MEDIA_PATHS env var - single source of truth
-    const mediaPaths = await this.librariesService.getAllLibraryPaths();
-    if (mediaPaths.length === 0) {
-      this.logger.warn('No libraries configured, skipping volume mount check');
-      return;
-    }
-
-    for (let attempt = 1; attempt <= this.VOLUME_MOUNT_MAX_RETRIES; attempt++) {
-      try {
-        // Test ALL media paths - if ANY exist, volumes are ready
-        for (const testPath of mediaPaths) {
-          if (fs.existsSync(testPath)) {
-            this.logger.log(
-              `✅ Volume mount ready: ${testPath} (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`
-            );
-            return;
-          }
-        }
-      } catch {
-        // Ignore errors, will retry
-      }
-
-      if (attempt < this.VOLUME_MOUNT_MAX_RETRIES) {
-        this.logger.debug(
-          `⏳ Waiting for volume mounts... (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, this.VOLUME_MOUNT_PROBE_DELAY_MS));
-      }
-    }
-
-    this.logger.warn(
-      `⚠️  Volume mounts not detected after ${this.VOLUME_MOUNT_MAX_RETRIES} attempts - proceeding anyway`
-    );
-  }
-
-  /**
-   * Auto-heal orphaned jobs that were left in active states
-   * from backend crashes, reboots, or container restarts
-   *
-   * Strategy:
-   * - On startup, ALL jobs in active processing states are orphaned (no active processes)
-   * - Reset them ALL to QUEUED so they can be retried immediately
-   * - Files that passed HEALTH_CHECK once don't need re-validation after restart
-   * - This ensures clean recovery from any type of restart
-   *
-   * CRITICAL FIX: Reset ALL orphaned jobs to QUEUED (not DETECTED)
-   * - HEALTH_CHECK jobs already passed validation, no need to re-validate
-   * - ENCODING, VERIFYING, PAUSED jobs obviously need to restart
-   * - getNextJob() only fetches QUEUED jobs, so DETECTED jobs would be stuck
-   *
-   * @param nodeId - Only heal jobs belonging to this node (prevents cross-node interference)
-   */
-  private async autoHealOrphanedJobs(nodeId: string): Promise<void> {
-    this.logger.log(`🏥 Auto-heal: Checking for orphaned jobs on this node (${nodeId})...`);
-
-    try {
-      // CRITICAL FIX #2: Check for jobs with recent heartbeats (< 2min old)
-      // These jobs are still being actively processed by other nodes and should NOT be healed
-      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-
-      // DEEP AUDIT FIX: Auto-heal claim staleness threshold reduced to 2 minutes
-      // If another node claimed a job but didn't complete healing within 2 minutes, it's stale
-      // (matches heartbeat check interval for consistency)
-      const twoMinutesAgoForClaim = new Date(Date.now() - 2 * 60 * 1000);
-
-      // On backend startup, jobs in active processing states need recovery
-      // CRITICAL FIX: Only process jobs belonging to THIS node to prevent cross-node interference
-      // Without this filter, CHILD node restart would reset MAIN node's actively encoding jobs
-      // DEEP AUDIT P2: Added atomic claim pattern to prevent multi-node heal race
-      const orphanedJobs = await this.jobRepository.findManyWithInclude<{
-        id: string;
-        fileLabel: string;
-        stage: JobStage;
-        progress: number;
-        updatedAt: Date;
-        tempFilePath: string | null;
-        retryCount: number;
-        error: string | null;
-      }>({
-        where: {
-          nodeId, // CRITICAL: Only this node's jobs
-          AND: [
-            // DEEP AUDIT P2: Exclude jobs already claimed for healing by another node
-            // Unless the claim is stale (> 10 minutes old)
-            {
-              OR: [
-                { autoHealClaimedAt: null }, // Not claimed
-                { autoHealClaimedBy: nodeId }, // Claimed by us (retry)
-                { autoHealClaimedAt: { lt: twoMinutesAgoForClaim } }, // Stale claim
-              ],
-            },
-            // HIGH #2 FIX: Exclude legitimately new jobs (startedAt null) from auto-heal
-            // Only heal jobs that were started but have stale heartbeat
-            {
-              startedAt: { not: null }, // Must have been started
-            },
-            // CRITICAL FIX #2: Exclude jobs with recent heartbeats
-            {
-              OR: [
-                { lastHeartbeat: null }, // Started but no heartbeat = orphaned
-                { lastHeartbeat: { lt: twoMinutesAgo } }, // Stale heartbeat = orphaned
-              ],
-            },
-            // Job stage conditions
-            {
-              OR: [
-                // Active processing stages - always recover
-                {
-                  stage: {
-                    in: [
-                      JobStage.HEALTH_CHECK,
-                      JobStage.ENCODING,
-                      JobStage.VERIFYING,
-                      JobStage.PAUSED_LOAD, // System load-based pause - recover
-                    ],
-                  },
-                },
-                // PAUSED jobs - only recover if paused by schedule (has specific error message)
-                {
-                  stage: JobStage.PAUSED,
-                  error: { contains: 'Outside scheduled encoding window' },
-                },
-              ],
-            },
-          ],
-        },
-        select: {
-          id: true,
-          fileLabel: true,
-          stage: true,
-          progress: true,
-          updatedAt: true,
-          tempFilePath: true, // TRUE RESUME: needed to check if temp file exists
-          retryCount: true, // AUTO-HEAL TRACKING: needed to increment retry count
-          error: true, // Needed to check pause reason
-        },
-      });
-
-      // Also log manually paused jobs that are being preserved (only for this node)
-      const manuallyPausedJobs = await this.jobRepository.findManyWithInclude<{
-        id: string;
-        fileLabel: string;
-      }>({
-        where: {
-          nodeId, // Only this node's jobs
-          stage: JobStage.PAUSED,
-          OR: [
-            { error: null },
-            { error: { not: { contains: 'Outside scheduled encoding window' } } },
-          ],
-        },
-        select: { id: true, fileLabel: true },
-      });
-      if (manuallyPausedJobs.length > 0) {
-        this.logger.log(
-          `ℹ️ Preserving ${manuallyPausedJobs.length} manually paused job(s) on this node - will NOT auto-resume`
-        );
-      }
-
-      if (orphanedJobs.length === 0) {
-        this.logger.log('✅ No orphaned jobs found on this node - system is healthy');
-        return;
-      }
-
-      this.logger.warn(
-        `🔧 Found ${orphanedJobs.length} orphaned job(s) on this node from backend restart - recovering...`
-      );
-
-      // Reset each orphaned job to QUEUED
-      // CRITICAL FIX: ALL jobs go to QUEUED (not DETECTED) to resume immediately
-      // TRUE RESUME: Keep progress and resume state (DON'T reset to 0%)
-      for (const job of orphanedJobs) {
-        try {
-          // DEEP AUDIT P2: Atomic claim - try to claim job for healing
-          // This prevents race condition where multiple nodes try to heal same job
-          const claimResult = await this.jobRepository.atomicUpdateMany(
-            {
-              id: job.id,
-              OR: [
-                { autoHealClaimedAt: null },
-                { autoHealClaimedBy: nodeId },
-                { autoHealClaimedAt: { lt: new Date(Date.now() - 2 * 60 * 1000) } },
-              ],
-            },
-            {
-              autoHealClaimedAt: new Date(),
-              autoHealClaimedBy: nodeId,
-            }
-          );
-
-          if (claimResult.count === 0) {
-            this.logger.debug(`  ⏭️ Job ${job.id} already claimed by another node, skipping`);
-            continue; // Another node claimed this job
-          }
-
-          // TRUE RESUME: Check if temp file still exists (with retry logic)
-          const tempFileExists = await this.encodingFileService.checkTempFileWithRetry(
-            job.tempFilePath
-          );
-
-          // Log temp file check result for debugging
-          if (job.tempFilePath) {
-            this.logger.log(`  Checking temp file: ${job.tempFilePath}`);
-            this.logger.log(`  File exists: ${tempFileExists}`);
-          }
-
-          const errorMessage =
-            job.stage === JobStage.PAUSED
-              ? 'Paused job reset after backend restart - will resume from last position'
-              : tempFileExists
-                ? `Auto-heal: Successfully resumed from ${job.progress.toFixed(1)}% (was ${job.stage} before restart)`
-                : `Auto-heal attempted but temp file was lost during restart - restarting from 0% (was ${job.stage} at ${job.progress.toFixed(1)}%)`;
-
-          // CRITICAL BUG FIX: Recalculate resumeTimestamp based on current progress
-          // The old resumeTimestamp is STALE (from when job first started encoding)
-          // We need to calculate the CORRECT timestamp for the current progress percentage
-          let recalculatedResumeTimestamp: string | null = null;
-          if (tempFileExists && job.progress > 0) {
-            try {
-              // LOW #15 FIX: Use outer query job data instead of redundant inner query
-              // The job object already has filePath from the outer findMany query
-              const videoJob = await this.jobRepository.findUniqueSelect<{ filePath: string }>(
-                { id: job.id },
-                { filePath: true }
-              );
-
-              const filePath = videoJob?.filePath;
-              if (filePath) {
-                // Get video duration
-                const videoDuration = await this.ffmpegService.getVideoDuration(filePath);
-
-                // Calculate resume time in seconds based on current progress
-                const resumeSeconds = (job.progress / 100) * videoDuration;
-
-                // Convert to HH:MM:SS.MS format
-                recalculatedResumeTimestamp =
-                  this.ffmpegService.formatSecondsToTimestamp(resumeSeconds);
-
-                this.logger.log(
-                  `  🔄 Recalculated resumeTimestamp for job ${job.fileLabel}: progress=${job.progress.toFixed(1)}%, videoDuration=${videoDuration.toFixed(2)}s, resumeSeconds=${resumeSeconds.toFixed(2)}s, resumeTimestamp=${recalculatedResumeTimestamp}`
-                );
-              }
-            } catch (error: unknown) {
-              this.logger.warn(
-                `  ⚠️  Failed to recalculate resumeTimestamp for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`
-              );
-              // Continue with existing resumeTimestamp (better than nothing)
-            }
-          }
-
-          // MULTI-NODE: Use QueueService proxy to support LINKED nodes
-          await this.queueService.update(job.id, {
-            stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
-            // TRUE RESUME: DON'T reset progress if temp file exists
-            ...(tempFileExists ? {} : { progress: 0 }),
-            etaSeconds: null,
-            error: errorMessage,
-            startedAt: null, // Clear startedAt to allow fresh start
-            // AUTO-HEAL TRACKING: ONLY set when temp file exists (successful resume)
-            // Green dot indicator should only show when auto-heal actually worked
-            ...(tempFileExists
-              ? {
-                  autoHealedAt: new Date(),
-                  autoHealedProgress: job.progress,
-                }
-              : {}),
-            retryCount: job.retryCount + 1,
-            // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
-            ...(tempFileExists
-              ? { resumeTimestamp: recalculatedResumeTimestamp }
-              : {
-                  tempFilePath: null,
-                  resumeTimestamp: null,
-                }),
-            // DEEP AUDIT P2: Clear the claim after successful healing
-            autoHealClaimedAt: null,
-            autoHealClaimedBy: null,
-          });
-
-          this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, ${tempFileExists ? `will resume from ${job.progress.toFixed(1)}%` : 'restarting from 0%'})`
-          );
-        } catch (error: unknown) {
-          this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
-        }
-      }
-
-      this.logger.log(`✅ Auto-heal complete - recovered ${orphanedJobs.length} job(s)`);
-    } catch (error: unknown) {
-      this.logger.error('Auto-heal failed:', error);
-    }
-  }
-
-  /**
-   * Start background watchdog to detect stuck jobs during runtime
-   *
-   * HIGH PRIORITY FIX: Dynamic timeout based on file size
-   * CRITICAL FIX: Intelligent load management with auto-pause/resume
-   * - Small files (<10GB): 5 minute timeout
-   * - Large files (>=10GB): 15 minute timeout
-   * - Runs every 60 seconds for faster detection
-   * - Attempts to kill hung FFmpeg processes before failing
-   * - Auto-pauses jobs when load is high, resumes when load drops
-   * - Provides detailed diagnostic information
-   */
-  private startStuckJobWatchdog(): void {
-    this.logger.log(
-      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size, load-based auto-pause)'
-    );
-
-    // AUDIT #2 ISSUE #24 FIX: Clear existing interval if any (hot reload protection)
-    if (this.watchdogIntervalId) {
-      clearInterval(this.watchdogIntervalId);
-      EncodingProcessorService.activeIntervals.delete(this.watchdogIntervalId);
-    }
-
-    // CRITICAL #5 FIX: Track interval globally to prevent leaks on hot reload
-    const intervalId = setInterval(async () => {
-      try {
-        // UX PHILOSOPHY: Auto-cleanup zombie FFmpeg processes (self-healing)
-        // This eliminates the need for manual "Kill Zombies" button in debug UI
-        await this.autoCleanupZombieProcesses();
-
-        // CRITICAL FIX: Intelligent load management FIRST (before stuck job detection)
-        await this.manageLoadBasedPausing();
-
-        // Then proceed with stuck job detection
-        // HIGH PRIORITY FIX: Dynamic timeout based on file size
-        // Small files get 5min timeout, large files get 15min timeout
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-        const tenGB = BigInt(10 * 1024 * 1024 * 1024);
-
-        const stuckJobs = await this.jobRepository.findManyWithInclude<{
-          id: string;
-          fileLabel: string;
-          progress: number;
-          updatedAt: Date;
-          beforeSizeBytes: bigint;
-          lastStageChangeAt: Date | null;
-        }>({
-          where: {
-            stage: 'ENCODING',
-            AND: [
-              // CRITICAL FIX #4: Exclude jobs recently paused (prevents false positives)
-              // Only consider jobs that have been in ENCODING state for the full timeout
-              {
-                OR: [
-                  { lastStageChangeAt: null }, // Old jobs without timestamp
-                  { lastStageChangeAt: { lt: fiveMinutesAgo } }, // Must be in ENCODING >= 5min
-                ],
-              },
-              // Dynamic timeout based on file size
-              {
-                OR: [
-                  {
-                    // Small files (<10GB): stuck for 5+ minutes
-                    beforeSizeBytes: {
-                      lt: tenGB,
-                    },
-                    updatedAt: {
-                      lt: fiveMinutesAgo,
-                    },
-                  },
-                  {
-                    // Large files (>=10GB): stuck for 15+ minutes
-                    beforeSizeBytes: {
-                      gte: tenGB,
-                    },
-                    updatedAt: {
-                      lt: fifteenMinutesAgo,
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-          select: {
-            id: true,
-            fileLabel: true,
-            progress: true,
-            updatedAt: true,
-            beforeSizeBytes: true,
-            lastStageChangeAt: true, // CRITICAL FIX #4: Include for debugging
-          },
-        });
-
-        if (stuckJobs.length > 0) {
-          this.logger.warn(
-            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (dynamic timeout: 5-15min based on file size)`
-          );
-
-          for (const job of stuckJobs) {
-            const stuckDurationMs = Date.now() - new Date(job.updatedAt).getTime();
-            const stuckMinutes = Math.floor(stuckDurationMs / 60000);
-            const fileSizeGB = Number(job.beforeSizeBytes) / 1024 ** 3;
-            const timeoutUsed = job.beforeSizeBytes < tenGB ? '5min' : '15min';
-
-            this.logger.warn(
-              `  - ${job.fileLabel} (${fileSizeGB.toFixed(2)}GB) stuck at ${job.progress}% for ${stuckMinutes} minutes (timeout: ${timeoutUsed})`
-            );
-
-            // STEP 1: Try to kill the ffmpeg process
-            const killAttempted = await this.killStuckFFmpegProcess(job.id);
-
-            // STEP 2: Get diagnostic information
-            const lastStderr = this.ffmpegService.getLastStderr(job.id);
-            let errorMessage = `Job stuck - no progress for ${stuckMinutes} minutes`;
-
-            if (killAttempted) {
-              errorMessage += `\n\nFFmpeg process was killed by watchdog`;
-            } else {
-              errorMessage += `\n\nNo active FFmpeg process found (may have crashed)`;
-            }
-
-            if (lastStderr) {
-              // Extract last few lines of stderr for context
-              const stderrLines = lastStderr.trim().split('\n').slice(-5);
-              const stderrContext = stderrLines.join('\n');
-              errorMessage += `\n\nLast ffmpeg output:\n${stderrContext}`;
-            } else {
-              errorMessage += `\n\nNo error output captured (likely process crash or kill)`;
-            }
-
-            // STEP 3: Add system diagnostics
-            const diagnostics = await this.getSystemDiagnostics(job.id);
-            errorMessage += `\n\n${diagnostics}`;
-
-            // STEP 4: Fail the job
-            this.logger.warn(`  ✗ Failing stuck job: ${job.fileLabel}`);
-            await this.queueService.failJob(job.id, errorMessage);
-          }
-        }
-      } catch (error: unknown) {
-        this.logger.error('Watchdog check failed:', error);
-      }
-    }, 60 * 1000); // Every 60 seconds
-
-    // CRITICAL #5 FIX: Store interval ID and track globally
-    this.watchdogIntervalId = intervalId;
-    EncodingProcessorService.activeIntervals.add(intervalId);
-  }
-
-  /**
-   * UX PHILOSOPHY: Auto-cleanup zombie FFmpeg processes
-   *
-   * Self-healing system that automatically cleans up orphaned FFmpeg processes.
-   * This eliminates the need for users to manually click "Kill Zombies" in the debug UI.
-   *
-   * Zombies typically occur when:
-   * - Backend was restarted but FFmpeg processes weren't killed
-   * - A crash left orphaned processes
-   *
-   * Runs every 60 seconds via the watchdog loop.
-   * @private
-   */
-  private async autoCleanupZombieProcesses(): Promise<void> {
-    try {
-      const result = await this.ffmpegService.killAllZombieFfmpegProcesses();
-
-      // Only log if zombies were found (avoid log spam)
-      if (result.killed > 0 || result.failed > 0) {
-        this.logger.log(
-          `🧹 Auto-cleanup: Killed ${result.killed} zombie FFmpeg process(es)` +
-            (result.failed > 0 ? ` (${result.failed} failed)` : '')
-        );
-      }
-    } catch (error: unknown) {
-      // Silently handle errors - don't let zombie cleanup crash the watchdog
-      this.logger.debug(`Zombie cleanup error (non-fatal): ${error}`);
-    }
-  }
-
-  /**
-   * Attempt to kill a stuck FFmpeg process
-   *
-   * @param jobId - Job ID
-   * @returns True if process was found and killed
-   * @private
-   */
-  private async killStuckFFmpegProcess(jobId: string): Promise<boolean> {
-    try {
-      // Use FFmpeg service's kill method
-      const killed = await this.ffmpegService.killProcess(jobId);
-
-      if (killed) {
-        this.logger.log(`  ✓ Killed stuck FFmpeg process for job ${jobId}`);
-        return true;
-      }
-
-      this.logger.debug(`  - No active FFmpeg process found for job ${jobId}`);
-      return false;
-    } catch (error: unknown) {
-      this.logger.error(`  ✗ Failed to kill FFmpeg process for job ${jobId}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * CRITICAL FIX: Intelligent load management with auto-pause/resume
-   *
-   * Load-Based Worker Limits:
-   * - Load < 50: All workers active (normal operation)
-   * - Load 50-100: Pause to 80% of workers
-   * - Load 100-200: Pause to 50% of workers
-   * - Load 200+: Pause to 30% of workers (emergency mode)
-   *
-   * @private
-   */
-  private async manageLoadBasedPausing(): Promise<void> {
-    // Only check load on Linux/macOS (load average not available on Windows)
-    if (process.platform === 'win32') {
-      return;
-    }
-
-    // Get 1-minute load average
-    const loadAvg = os.loadavg()[0];
-    const cpuCount = os.cpus().length;
-
-    // Get current node to filter jobs
-    const currentNode = await this.nodesService.getCurrentNode();
-    if (!currentNode) {
-      return; // Can't manage load without knowing current node
-    }
-
-    // Count only THIS node's encoding jobs (not other nodes)
-    const encodingJobs = await this.jobRepository.countWhere({
-      stage: 'ENCODING',
-      nodeId: currentNode.id,
-    });
-
-    // Determine target worker limit based on load ratio (load per CPU)
-    // Use node's configured maxWorkers, not the calculated default
-    const nodeMaxWorkers =
-      currentNode.maxWorkers || this.systemResourceService.defaultWorkersPerNode;
-    let targetWorkers: number;
-    let loadLevel: string;
-    const loadRatio = loadAvg / cpuCount;
-
-    // HIGH #9 FIX: Apply loadThresholdMultiplier to all thresholds
-    // Default multiplier is 5.0, making thresholds: 5.0, 10.0, 15.0
-    const normalThreshold = 1.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 5.0
-    const moderateThreshold = 2.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 10.0
-    const highThreshold = 3.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 15.0
-
-    if (loadRatio < normalThreshold) {
-      // Normal operation - all workers (load < 1x multiplier)
-      targetWorkers = nodeMaxWorkers;
-      loadLevel = 'normal';
-    } else if (loadRatio < moderateThreshold) {
-      // Moderate load - 80% workers (load 1-2x multiplier)
-      targetWorkers = Math.ceil(nodeMaxWorkers * 0.8);
-      loadLevel = 'moderate';
-    } else if (loadRatio < highThreshold) {
-      // High load - 50% workers (load 2-3x multiplier)
-      targetWorkers = Math.ceil(nodeMaxWorkers * 0.5);
-      loadLevel = 'high';
-    } else {
-      // Emergency - 30% workers (minimum 2, load > 3x multiplier)
-      targetWorkers = Math.max(2, Math.ceil(nodeMaxWorkers * 0.3));
-      loadLevel = 'critical';
-    }
-
-    // Calculate jobs to pause/resume
-    const jobsToPause = encodingJobs - targetWorkers;
-    const pausedJobs = await this.jobRepository.countWhere({ stage: 'PAUSED_LOAD' });
-
-    // SCENARIO 1: Load is high, need to pause jobs
-    if (jobsToPause > 0 && encodingJobs > targetWorkers) {
-      this.logger.warn(
-        `🔥 High system load detected: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`
-      );
-      this.logger.warn(
-        `   Pausing ${jobsToPause} job(s) to reduce load from ${encodingJobs} to ${targetWorkers} workers`
-      );
-
-      // Get lowest priority QUEUED jobs to pause (don't interrupt encoding jobs)
-      const jobsToAutoPause = await this.jobRepository.findManyWithInclude<{
-        id: string;
-        fileLabel: string;
-        priority: number;
-      }>({
-        where: { stage: 'QUEUED' },
-        orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }], // Lowest priority, newest first
-        take: jobsToPause,
-        select: { id: true, fileLabel: true, priority: true },
-      });
-
-      // Pause each job
-      for (const job of jobsToAutoPause) {
-        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
-        await this.queueService.update(job.id, {
-          stage: 'PAUSED_LOAD',
-          error: `Auto-paused due to ${loadLevel} system load (${loadAvg.toFixed(1)}). Will auto-resume when load drops.`,
-        });
-
-        this.logger.log(
-          `  ⏸️  Paused job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`
-        );
-      }
-    }
-
-    // SCENARIO 2: Load is acceptable, resume paused jobs
-    else if (pausedJobs > 0 && encodingJobs < targetWorkers) {
-      const jobsToResume = Math.min(pausedJobs, targetWorkers - encodingJobs);
-
-      this.logger.log(
-        `✅ System load acceptable: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`
-      );
-      this.logger.log(
-        `   Resuming ${jobsToResume} paused job(s) (${pausedJobs} paused, ${targetWorkers} target workers)`
-      );
-
-      // Get highest priority paused jobs to resume
-      const jobsToAutoResume = await this.jobRepository.findManyWithInclude<{
-        id: string;
-        fileLabel: string;
-        priority: number;
-      }>({
-        where: { stage: 'PAUSED_LOAD' },
-        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }], // Highest priority, oldest first
-        take: jobsToResume,
-        select: { id: true, fileLabel: true, priority: true },
-      });
-
-      // Resume each job
-      for (const job of jobsToAutoResume) {
-        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
-        await this.queueService.update(job.id, {
-          stage: 'QUEUED',
-          error: `Auto-resumed after load dropped to ${loadLevel} level (${loadAvg.toFixed(1)})`,
-        });
-
-        this.logger.log(
-          `  ▶️  Resumed job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`
-        );
-      }
-    }
-  }
-
-  /**
-   * Get system diagnostics for stuck job troubleshooting
-   *
-   * @param jobId - Job ID
-   * @returns Diagnostic information string
-   * @private
-   */
-  private async getSystemDiagnostics(jobId: string): Promise<string> {
-    const diagnostics: string[] = ['System Diagnostics:'];
-
-    try {
-      // Memory status
-      const totalMemory = os.totalmem();
-      const freeMemory = os.freemem();
-      const usedMemoryPercent = ((totalMemory - freeMemory) / totalMemory) * 100;
-      diagnostics.push(
-        `- Memory: ${usedMemoryPercent.toFixed(1)}% used (${(freeMemory / 1024 ** 3).toFixed(2)}GB free)`
-      );
-
-      // Load average (Linux/macOS only)
-      if (process.platform !== 'win32') {
-        const loadAvg = os.loadavg();
-        diagnostics.push(`- Load average: ${loadAvg.map((l) => l.toFixed(2)).join(', ')}`);
-      }
-
-      // Active worker count
-      const allWorkers = Array.from(this.workerPoolService.getAllWorkers().values());
-      const activeWorkers = allWorkers.filter((w) => w.currentJobId !== null);
-      diagnostics.push(`- Active workers: ${activeWorkers.length}/${allWorkers.length}`);
-
-      // FFmpeg process status
-      const hasProcess = this.ffmpegService.hasActiveProcess(jobId);
-      diagnostics.push(`- FFmpeg process active: ${hasProcess ? 'Yes' : 'No'}`);
-    } catch (error: unknown) {
-      diagnostics.push(`- Diagnostic collection failed: ${error}`);
-    }
-
-    return diagnostics.join('\n');
   }
 
   /**
@@ -1099,82 +413,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Handle job failure
-   *
-   * HIGH PRIORITY FIX: Clearer exponential backoff with 1-based attempt numbering
-   * CRITICAL FIX: Detect non-retriable errors (corrupted source files)
-   *
-   * Implements retry logic with exponential backoff (max 3 retries).
-   * Backoff delays:
-   * - Attempt 1 (retry after 1st failure): 1 min delay
-   * - Attempt 2 (retry after 2nd failure): 2 min delay
-   * - Attempt 3 (retry after 3rd failure): 4 min delay
-   * - After 3 attempts (4th failure): Job marked as FAILED
+   * Handle job failure — delegates retry logic to JobRetryStrategyService.
    *
    * @param job - Failed job
    * @param error - Error that caused failure
    */
   async handleJobFailure(job: JobWithPolicy, error: unknown): Promise<void> {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    this.logger.error(`Job ${job.id} failed: ${errorMessage}`);
-
-    try {
-      // CRITICAL FIX: Check if error indicates corrupted source file (non-retriable)
-      const isNonRetriable = this.isNonRetriableError(errorMessage);
-
-      // Check if this is a transient error that should be retried
-      const shouldRetry = !isNonRetriable && this.isTransientError(errorMessage);
-
-      // HIGH PRIORITY FIX: Use 1-based attempt numbering for clarity
-      // currentAttempt = 0 means first attempt, 1 = second attempt, etc.
-      const currentAttempt = job.retryCount || 0;
-      const nextAttempt = currentAttempt + 1;
-      const totalAttempts = currentAttempt + 1; // Total attempts SO FAR (including this failure)
-
-      if (shouldRetry && nextAttempt <= this.MAX_RETRIES) {
-        // Calculate exponential backoff delay
-        // HIGH PRIORITY FIX: Clearer calculation
-        // Base delay: 60 seconds, multiplied by 2^(attempt - 1)
-        // Attempt 1: 60 * 2^0 = 60s (1 min)
-        // Attempt 2: 60 * 2^1 = 120s (2 min)
-        // Attempt 3: 60 * 2^2 = 240s (4 min)
-        const baseDelaySeconds = 60;
-        const delaySeconds = baseDelaySeconds * 2 ** currentAttempt;
-        const nextRetryAt = new Date(Date.now() + delaySeconds * 1000);
-        const delayMinutes = Math.floor(delaySeconds / 60);
-
-        this.logger.log(
-          `Retrying job ${job.id}: Attempt ${totalAttempts} of ${this.MAX_RETRIES} failed. ` +
-            `Next retry (attempt ${nextAttempt}) in ${delayMinutes} minute(s) at ${nextRetryAt.toISOString()}`
-        );
-
-        // Update job with retry information
-        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
-        await this.queueService.update(job.id, {
-          stage: 'QUEUED',
-          progress: 0,
-          retryCount: nextAttempt,
-          nextRetryAt,
-          error: `Attempt ${totalAttempts}/${this.MAX_RETRIES} failed: ${errorMessage}. Retrying in ${delayMinutes}min...`,
-        });
-      } else {
-        // Mark job as failed
-        let failureReason: string;
-        if (isNonRetriable) {
-          failureReason = `Non-retriable error (corrupted source file): ${errorMessage}`;
-          this.logger.error(`Job ${job.id} permanently failed - corrupted source file detected`);
-        } else if (shouldRetry) {
-          failureReason = `All ${this.MAX_RETRIES} retry attempts exhausted (${totalAttempts} total failures). Last error: ${errorMessage}`;
-        } else {
-          failureReason = `Non-retriable error after ${totalAttempts} attempt(s): ${errorMessage}`;
-        }
-
-        this.logger.error(`Job ${job.id} permanently failed: ${failureReason}`);
-        await this.queueService.failJob(job.id, failureReason);
-      }
-    } catch (updateError: unknown) {
-      this.logger.error(`Error updating failed job ${job.id}:`, updateError);
-    }
+    return this.jobRetryStrategyService.handleJobFailure(job, error);
   }
 
   /**
@@ -1353,49 +598,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * CRITICAL FIX: Check if error is non-retriable (corrupted source file)
-   *
-   * @param errorMessage - Error message
-   * @returns True if error indicates corrupted source (should NOT retry)
-   * @private
-   */
-  private isNonRetriableError(errorMessage: string): boolean {
-    const nonRetriablePatterns = [
-      'non-retriable error', // Flag from FFmpeg service
-      'source file appears corrupted', // Decoder errors
-      'could not find ref with poc', // HEVC reference frame error
-      'error submitting packet to decoder', // Decoder error
-      'invalid data found when processing input', // Corrupted container
-      'corrupt decoded frame', // Corrupted frame
-      'missing reference picture', // Missing reference frame
-      'moov atom not found', // Corrupted MP4
-    ];
-
-    const errorLower = errorMessage.toLowerCase();
-    return nonRetriablePatterns.some((pattern) => errorLower.includes(pattern.toLowerCase()));
-  }
-
-  /**
-   * Check if error is transient and should be retried
-   *
-   * @param errorMessage - Error message
-   * @returns True if error is transient
-   * @private
-   */
-  private isTransientError(errorMessage: string): boolean {
-    const transientErrors = [
-      'ECONNRESET',
-      'ETIMEDOUT',
-      'ENOTFOUND',
-      'ECONNREFUSED',
-      'temporarily unavailable',
-      'network',
-    ];
-
-    return transientErrors.some((err) => errorMessage.toLowerCase().includes(err.toLowerCase()));
   }
 
   /**

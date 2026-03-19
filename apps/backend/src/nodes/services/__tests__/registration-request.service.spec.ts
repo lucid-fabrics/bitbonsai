@@ -4,7 +4,6 @@ import { AccelerationType, ContainerType, RegistrationRequestStatus } from '@pri
 import { NodeRepository } from '../../../common/repositories/node.repository';
 import { NotificationsGateway } from '../../../notifications/notifications.gateway';
 import { NotificationsService } from '../../../notifications/notifications.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { RegistrationRequestRepository } from '../../repositories/registration-request.repository';
 import { NodeCapabilityDetectorService } from '../node-capability-detector.service';
 import {
@@ -18,24 +17,6 @@ import { SystemInfoService } from '../system-info.service';
 describe('RegistrationRequestService', () => {
   let service: RegistrationRequestService;
 
-  const mockPrisma = {
-    nodeRegistrationRequest: {
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      updateMany: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    node: {
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
-    $transaction: jest.fn(),
-  };
-
   const mockRegistrationRequestRepository = {
     findFirstByMac: jest.fn(),
     createRequest: jest.fn(),
@@ -45,6 +26,7 @@ describe('RegistrationRequestService', () => {
     findManyPending: jest.fn(),
     findUniqueById: jest.fn(),
     findUniqueByToken: jest.fn(),
+    approveTransaction: jest.fn(),
   };
 
   const mockNodeRepository = {
@@ -97,7 +79,6 @@ describe('RegistrationRequestService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RegistrationRequestService,
-        { provide: PrismaService, useValue: mockPrisma },
         { provide: RegistrationRequestRepository, useValue: mockRegistrationRequestRepository },
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: SystemInfoService, useValue: mockSystemInfoService },
@@ -483,129 +464,141 @@ describe('RegistrationRequestService', () => {
         name: 'Child',
       };
 
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue(overrides.request ?? defaultRequest),
-            findMany: jest.fn().mockResolvedValue([]),
-            update: jest.fn().mockResolvedValue({
-              ...(overrides.request ?? defaultRequest),
-              status: RegistrationRequestStatus.APPROVED,
-              childNodeId: defaultNewNode.id,
-            }),
-          },
-          node: {
-            findUnique: jest
-              .fn()
-              .mockResolvedValueOnce(overrides.mainNode ?? defaultMainNode)
-              .mockResolvedValue(null),
-            findFirst: jest.fn().mockResolvedValue(overrides.duplicateNode ?? null),
-            create: jest.fn().mockResolvedValue(overrides.newNode ?? defaultNewNode),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue(overrides.request ?? defaultRequest),
+              findMany: jest.fn().mockResolvedValue([]),
+              update: jest.fn().mockResolvedValue({
+                ...(overrides.request ?? defaultRequest),
+                status: RegistrationRequestStatus.APPROVED,
+                childNodeId: defaultNewNode.id,
+              }),
+            },
+            node: {
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce(overrides.mainNode ?? defaultMainNode)
+                .mockResolvedValue(null),
+              findFirst: jest.fn().mockResolvedValue(overrides.duplicateNode ?? null),
+              create: jest.fn().mockResolvedValue(overrides.newNode ?? defaultNewNode),
+            },
+          };
+          return cb(tx);
+        }
+      );
     };
 
     it('should throw NotFoundException when request not found', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue(null),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue(null),
+            },
+          };
+          return cb(tx);
+        }
+      );
 
       await expect(service.approveRequest('missing')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when request is not PENDING', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'req-1',
-              status: RegistrationRequestStatus.APPROVED,
-              mainNodeId: 'main-1',
-              tokenExpiresAt: new Date(Date.now() + 60000),
-              mainNode: {},
-            }),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'req-1',
+                status: RegistrationRequestStatus.APPROVED,
+                mainNodeId: 'main-1',
+                tokenExpiresAt: new Date(Date.now() + 60000),
+                mainNode: {},
+              }),
+            },
+          };
+          return cb(tx);
+        }
+      );
 
       await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when request is expired', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'req-1',
-              status: RegistrationRequestStatus.PENDING,
-              mainNodeId: 'main-1',
-              tokenExpiresAt: new Date(Date.now() - 60000), // expired
-              mainNode: {},
-            }),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'req-1',
+                status: RegistrationRequestStatus.PENDING,
+                mainNodeId: 'main-1',
+                tokenExpiresAt: new Date(Date.now() - 60000), // expired
+                mainNode: {},
+              }),
+            },
+          };
+          return cb(tx);
+        }
+      );
 
       await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when main node not found', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'req-1',
-              status: RegistrationRequestStatus.PENDING,
-              mainNodeId: 'main-1',
-              tokenExpiresAt: new Date(Date.now() + 60000),
-              mainNode: {},
-            }),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue(null),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'req-1',
+                status: RegistrationRequestStatus.PENDING,
+                mainNodeId: 'main-1',
+                tokenExpiresAt: new Date(Date.now() + 60000),
+                mainNode: {},
+              }),
+            },
+            node: {
+              findUnique: jest.fn().mockResolvedValue(null),
+            },
+          };
+          return cb(tx);
+        }
+      );
 
       await expect(service.approveRequest('req-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ConflictException when license node limit reached', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'req-1',
-              status: RegistrationRequestStatus.PENDING,
-              mainNodeId: 'main-1',
-              tokenExpiresAt: new Date(Date.now() + 60000),
-              mainNode: {},
-            }),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'main-1',
-              licenseId: 'lic-1',
-              license: {
-                maxNodes: 2,
-                _count: { nodes: 2 },
-              },
-            }),
-            findFirst: jest.fn().mockResolvedValue(null),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'req-1',
+                status: RegistrationRequestStatus.PENDING,
+                mainNodeId: 'main-1',
+                tokenExpiresAt: new Date(Date.now() + 60000),
+                mainNode: {},
+              }),
+            },
+            node: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'main-1',
+                licenseId: 'lic-1',
+                license: {
+                  maxNodes: 2,
+                  _count: { nodes: 2 },
+                },
+              }),
+              findFirst: jest.fn().mockResolvedValue(null),
+            },
+          };
+          return cb(tx);
+        }
+      );
 
       await expect(service.approveRequest('req-1')).rejects.toThrow(
         expect.objectContaining({ message: expect.stringContaining('Maximum nodes') })
@@ -627,7 +620,7 @@ describe('RegistrationRequestService', () => {
 
       const result = await service.approveRequest('req-1');
 
-      expect(result).toBeDefined();
+      expect(result).toMatchObject({ id: 'req-1', status: RegistrationRequestStatus.APPROVED });
       expect(mockNotificationsGateway.sendToAll).toHaveBeenCalled();
     });
 
@@ -647,32 +640,34 @@ describe('RegistrationRequestService', () => {
         mainNode: { id: 'main-1' },
       };
 
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          nodeRegistrationRequest: {
-            findUnique: jest.fn().mockResolvedValue(requestWithSsh),
-            findMany: jest.fn().mockResolvedValue([]),
-            update: jest.fn().mockResolvedValue({
-              ...requestWithSsh,
-              status: RegistrationRequestStatus.APPROVED,
-              childNodeId: 'new-node-ssh',
-            }),
-          },
-          node: {
-            findUnique: jest
-              .fn()
-              .mockResolvedValueOnce({
-                id: 'main-1',
-                licenseId: 'lic-1',
-                license: { maxNodes: 10, _count: { nodes: 2 } },
-              })
-              .mockResolvedValue(null),
-            findFirst: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue({ id: 'new-node-ssh', apiKey: 'bb_sshkey' }),
-          },
-        };
-        return cb(tx);
-      });
+      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            nodeRegistrationRequest: {
+              findUnique: jest.fn().mockResolvedValue(requestWithSsh),
+              findMany: jest.fn().mockResolvedValue([]),
+              update: jest.fn().mockResolvedValue({
+                ...requestWithSsh,
+                status: RegistrationRequestStatus.APPROVED,
+                childNodeId: 'new-node-ssh',
+              }),
+            },
+            node: {
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce({
+                  id: 'main-1',
+                  licenseId: 'lic-1',
+                  license: { maxNodes: 10, _count: { nodes: 2 } },
+                })
+                .mockResolvedValue(null),
+              findFirst: jest.fn().mockResolvedValue(null),
+              create: jest.fn().mockResolvedValue({ id: 'new-node-ssh', apiKey: 'bb_sshkey' }),
+            },
+          };
+          return cb(tx);
+        }
+      );
 
       mockCapabilityDetector.detectCapabilities.mockResolvedValue({
         networkLocation: 'LOCAL',

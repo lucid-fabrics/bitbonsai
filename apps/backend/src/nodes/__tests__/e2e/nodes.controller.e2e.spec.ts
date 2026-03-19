@@ -148,10 +148,10 @@ describe('NodesController (E2E)', () => {
         .send(registerDto)
         .expect(201)
         .expect((res) => {
-          expect(res.body.node).toBeDefined();
+          expect(res.body.node).not.toBeNull();
           expect(res.body.node.name).toBe(registerDto.name);
           expect(res.body.node.role).toBe('MAIN');
-          expect(res.body.apiKey).toBeDefined();
+          expect(typeof res.body.apiKey).toBe('string');
         });
     });
 
@@ -220,9 +220,9 @@ describe('NodesController (E2E)', () => {
         .send(pairDto)
         .expect(201)
         .expect((res) => {
-          expect(res.body.node).toBeDefined();
+          expect(res.body.node).not.toBeNull();
           expect(res.body.node.role).toBe('LINKED');
-          expect(res.body.apiKey).toBeDefined();
+          expect(typeof res.body.apiKey).toBe('string');
         });
     });
 

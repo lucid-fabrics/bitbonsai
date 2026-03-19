@@ -131,7 +131,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
       // Wait for completion
       for (const job of jobs) {
         const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
-        expect(completedJob).toBeDefined();
+        expect(completedJob).not.toBeNull();
         expect(completedJob?.stage).toBe('COMPLETED');
       }
 

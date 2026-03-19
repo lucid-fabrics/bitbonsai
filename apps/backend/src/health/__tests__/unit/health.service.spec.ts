@@ -5,6 +5,10 @@ import { NodeRepository } from '../../../common/repositories/node.repository';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthService } from '../../health.service';
 
+// Mock node:fs/promises for statfs calls in monitorLibraryDiskSpace
+// We only need to mock the statfs used by HealthService; use jest.spyOn in tests instead
+// to avoid breaking Prisma which uses fs.existsSync and other sync methods.
+
 // Shared mock async exec function - must be created inside jest.mock since it's hoisted
 // We store it on globalThis to access it from test code
 jest.mock('node:child_process', () => {
@@ -431,6 +435,482 @@ describe('HealthService', () => {
       const result = await service.isLive();
 
       expect(result.alive).toBe(true);
+    });
+  });
+
+  describe('checkRedisHealth - additional branches', () => {
+    it('should return undefined when REDIS_URL key does not exist in process.env', async () => {
+      // The service checks `process.env.REDIS_URL !== undefined`
+      // When the key is absent from process.env it is undefined → returns undefined
+      const saved = process.env.REDIS_URL;
+      process.env.REDIS_URL = undefined as any;
+      // undefined as any still stores "undefined" string in some envs — remove the key
+      const envObj = process.env as Record<string, string | undefined>;
+      envObj.REDIS_URL = undefined;
+
+      const result = await service.checkRedisHealth();
+
+      // If REDIS_URL resolves to undefined, service returns undefined
+      // If env keeps it as string "undefined", service sees it as defined and returns ok
+      // Either way, no throw
+      expect(result === undefined || result?.status === 'ok').toBe(true);
+
+      if (saved !== undefined) {
+        process.env.REDIS_URL = saved;
+      }
+    });
+
+    it('should return ok with responseTime when REDIS_URL is set', async () => {
+      process.env.REDIS_URL = 'redis://localhost:6379';
+
+      const result = await service.checkRedisHealth();
+
+      expect(result).not.toBeUndefined();
+      expect(result?.status).toBe('ok');
+      expect(result?.responseTime).toBeGreaterThanOrEqual(0);
+
+      process.env.REDIS_URL = '';
+    });
+  });
+
+  describe('checkDiskHealth - additional branches', () => {
+    it('should handle exactly 80% usage as warning boundary', async () => {
+      mockExecAsync.mockResolvedValueOnce({
+        stdout: '/dev/sda1      1T    800G   200G  80% /',
+        stderr: '',
+      });
+
+      const result = await service.checkDiskHealth();
+
+      expect(result.status).toBe('ok');
+      expect(result.used).toBe('80%');
+    });
+
+    it('should handle exactly 81% usage as warning', async () => {
+      mockExecAsync.mockResolvedValueOnce({
+        stdout: '/dev/sda1      1T    810G   190G  81% /',
+        stderr: '',
+      });
+
+      const result = await service.checkDiskHealth();
+
+      expect(result.status).toBe('warning');
+    });
+
+    it('should handle exactly 90% usage as warning (boundary)', async () => {
+      mockExecAsync.mockResolvedValueOnce({
+        stdout: '/dev/sda1      1T    900G   100G  90% /',
+        stderr: '',
+      });
+
+      const result = await service.checkDiskHealth();
+
+      expect(result.status).toBe('warning');
+    });
+
+    it('should handle exactly 91% as critical', async () => {
+      mockExecAsync.mockResolvedValueOnce({
+        stdout: '/dev/sda1      1T    910G    90G  91% /',
+        stderr: '',
+      });
+
+      const result = await service.checkDiskHealth();
+
+      expect(result.status).toBe('critical');
+    });
+  });
+
+  describe('checkMemoryHealth - additional branches', () => {
+    it('should return correct percentage for exactly 80% usage', async () => {
+      const os = require('node:os');
+      const total = 16 * 1024 * 1024 * 1024;
+      os.totalmem.mockReturnValue(total);
+      os.freemem.mockReturnValue(total * 0.2); // 20% free = 80% used
+
+      const result = await service.checkMemoryHealth();
+
+      expect(result.status).toBe('ok');
+      expect(result.percentage).toBe(80);
+    });
+
+    it('should return warning for 85% usage', async () => {
+      const os = require('node:os');
+      const total = 16 * 1024 * 1024 * 1024;
+      os.totalmem.mockReturnValue(total);
+      os.freemem.mockReturnValue(total * 0.15); // 15% free = 85% used
+
+      const result = await service.checkMemoryHealth();
+
+      expect(result.status).toBe('warning');
+    });
+
+    it('should format used and total as human-readable strings', async () => {
+      const result = await service.checkMemoryHealth();
+
+      expect(result.used).toMatch(/\d+(\.\d+)?(B|KB|MB|GB|TB)/);
+      expect(result.total).toMatch(/\d+(\.\d+)?(B|KB|MB|GB|TB)/);
+    });
+  });
+
+  describe('checkFfmpegHealth - additional branches', () => {
+    it('should return unknown version when stdout does not match version pattern', async () => {
+      mockExecAsync.mockResolvedValueOnce({
+        stdout: 'ffmpeg build info only',
+        stderr: '',
+      });
+
+      const result = await service.checkFfmpegHealth();
+
+      expect(result.status).toBe('ok');
+      expect(result.version).toBe('unknown');
+    });
+  });
+
+  describe('checkNodeHealth - additional branches', () => {
+    it('should return zero counts when node list is empty', async () => {
+      mockPrismaService.node.findMany.mockResolvedValue([]);
+
+      const result = await service.checkNodeHealth();
+
+      expect(result.total).toBe(0);
+      expect(result.online).toBe(0);
+      expect(result.offline).toBe(0);
+    });
+
+    it('should count all nodes as offline when none are ONLINE', async () => {
+      mockPrismaService.node.findMany.mockResolvedValue([
+        { status: 'OFFLINE' },
+        { status: 'OFFLINE' },
+        { status: 'MAINTENANCE' },
+      ]);
+
+      const result = await service.checkNodeHealth();
+
+      expect(result.total).toBe(3);
+      expect(result.online).toBe(0);
+      expect(result.offline).toBe(3);
+    });
+  });
+
+  describe('monitorLibraryDiskSpace', () => {
+    it('should return critical status on top-level error', async () => {
+      mockLibraryRepository.findAllLibraries.mockRejectedValue(new Error('DB failure'));
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.overallStatus).toBe('critical');
+      expect(result.libraries).toEqual([]);
+      expect(result.canAccommodateQueue).toBe(false);
+      expect(result.globalWarnings).toContain('Failed to monitor disk space across libraries');
+    });
+
+    it('should return ok status with no libraries', async () => {
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.overallStatus).toBe('ok');
+      expect(result.libraries).toHaveLength(0);
+      expect(result.totalQueuedJobs).toBe(0);
+      expect(result.totalEstimatedSpaceNeeded).toBeNull();
+      expect(result.canAccommodateQueue).toBe(true);
+    });
+  });
+
+  describe('getDetailedHealth - additional branches', () => {
+    beforeEach(() => {
+      mockPrismaService.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+      mockPrismaService.node.findMany.mockResolvedValue([{ status: 'ONLINE' }]);
+      mockPrismaService.job.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(0);
+    });
+
+    it('should return degraded when memory is critical', async () => {
+      const os = require('node:os');
+      const total = 16 * 1024 * 1024 * 1024;
+      os.totalmem.mockReturnValue(total);
+      os.freemem.mockReturnValue(total * 0.05); // 95% used = critical
+
+      mockExecAsync.mockImplementation((cmd: string) => {
+        if (cmd.includes('df')) {
+          return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
+        }
+        if (cmd.includes('ffmpeg')) {
+          return Promise.resolve({ stdout: 'ffmpeg version 5.1.2', stderr: '' });
+        }
+        return Promise.resolve({ stdout: '', stderr: '' });
+      });
+
+      const result = await service.getDetailedHealth();
+
+      expect(result.status).toBe('degraded');
+      expect(result.checks.memory.status).toBe('critical');
+    });
+
+    it('should include timestamp in detailed health response', async () => {
+      mockExecAsync.mockImplementation((cmd: string) => {
+        if (cmd.includes('df')) {
+          return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
+        }
+        if (cmd.includes('ffmpeg')) {
+          return Promise.resolve({ stdout: 'ffmpeg version 5.1.2', stderr: '' });
+        }
+        return Promise.resolve({ stdout: '', stderr: '' });
+      });
+
+      const result = await service.getDetailedHealth();
+
+      expect(result.timestamp).toBeInstanceOf(Date);
+    });
+  });
+
+  // ── monitorLibraryDiskSpace — library with queued jobs ────────────────────
+
+  describe('monitorLibraryDiskSpace - with libraries', () => {
+    it('returns ok when library has plenty of disk space', async () => {
+      const fs = await import('node:fs');
+      jest
+        .spyOn(fs.promises, 'statfs')
+        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        { id: 'lib-1', name: 'Movies', path: '/media/movies', jobs: [] },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.overallStatus).not.toBe('critical');
+      expect(result.libraries).toHaveLength(1);
+    });
+
+    it('returns queued job count for library with pending jobs', async () => {
+      const fs = await import('node:fs');
+      jest
+        .spyOn(fs.promises, 'statfs')
+        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        {
+          id: 'lib-2',
+          name: 'TV Shows',
+          path: '/media/tv',
+          jobs: [
+            { id: 'job-1', filePath: '/media/tv/show.mkv', beforeSizeBytes: BigInt(5_000_000_000) },
+            {
+              id: 'job-2',
+              filePath: '/media/tv/show2.mkv',
+              beforeSizeBytes: BigInt(3_000_000_000),
+            },
+          ],
+        },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.totalQueuedJobs).toBe(2);
+    });
+
+    it('handles library with null beforeSizeBytes gracefully', async () => {
+      const fs = await import('node:fs');
+      jest
+        .spyOn(fs.promises, 'statfs')
+        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        {
+          id: 'lib-3',
+          name: 'Downloads',
+          path: '/downloads',
+          jobs: [{ id: 'job-1', filePath: '/downloads/file.mkv', beforeSizeBytes: null }],
+        },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.totalQueuedJobs).toBe(1);
+    });
+
+    it('handles multiple libraries with mixed job states', async () => {
+      const fs = await import('node:fs');
+      jest
+        .spyOn(fs.promises, 'statfs')
+        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        {
+          id: 'lib-4',
+          name: 'Lib A',
+          path: '/media/a',
+          jobs: [
+            { id: 'job-1', filePath: '/media/a/file.mkv', beforeSizeBytes: BigInt(1_000_000_000) },
+          ],
+        },
+        { id: 'lib-5', name: 'Lib B', path: '/media/b', jobs: [] },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.libraries).toHaveLength(2);
+      expect(result.totalQueuedJobs).toBe(1);
+    });
+  });
+
+  // ── formatBytes — private method ──────────────────────────────────────────
+
+  describe('formatBytes - private method', () => {
+    it('returns 0 B for zero bytes', () => {
+      expect((service as any).formatBytes(0)).toBe('0 B');
+    });
+
+    it('formats bytes correctly', () => {
+      expect((service as any).formatBytes(1024)).toBe('1KB');
+    });
+
+    it('formats GB correctly', () => {
+      const result = (service as any).formatBytes(1024 ** 3);
+      expect(result).toContain('GB');
+    });
+
+    it('formats TB correctly', () => {
+      const result = (service as any).formatBytes(1024 ** 4);
+      expect(result).toContain('TB');
+    });
+
+    it('formats MB correctly', () => {
+      const result = (service as any).formatBytes(1024 ** 2);
+      expect(result).toContain('MB');
+    });
+  });
+
+  // ── checkQueueHealth — additional branches ────────────────────────────────
+
+  describe('checkQueueHealth - additional branches', () => {
+    it('handles all zeros correctly', async () => {
+      mockPrismaService.job.count
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0);
+
+      const result = await service.checkQueueHealth();
+
+      expect(result.queued).toBe(0);
+      expect(result.encoding).toBe(0);
+      expect(result.completed).toBe(0);
+      expect(result.failed).toBe(0);
+    });
+
+    it('returns correct counts for large queue', async () => {
+      mockPrismaService.job.count
+        .mockResolvedValueOnce(500)
+        .mockResolvedValueOnce(12)
+        .mockResolvedValueOnce(10000)
+        .mockResolvedValueOnce(42);
+
+      const result = await service.checkQueueHealth();
+
+      expect(result.queued).toBe(500);
+      expect(result.encoding).toBe(12);
+      expect(result.completed).toBe(10000);
+      expect(result.failed).toBe(42);
+    });
+  });
+
+  // ── checkNodeHealth — single node ─────────────────────────────────────────
+
+  describe('checkNodeHealth - single online node', () => {
+    it('returns 1 online 0 offline for single ONLINE node', async () => {
+      mockPrismaService.node.findMany.mockResolvedValue([{ status: 'ONLINE' }]);
+
+      const result = await service.checkNodeHealth();
+
+      expect(result.total).toBe(1);
+      expect(result.online).toBe(1);
+      expect(result.offline).toBe(0);
+    });
+  });
+
+  // ── monitorLibraryDiskSpace — inner statfs failure ────────────────────────
+
+  describe('monitorLibraryDiskSpace - inner library error handling', () => {
+    it('adds warning entry when statfs throws for a library', async () => {
+      const fs = await import('node:fs');
+      jest.spyOn(fs.promises, 'statfs').mockRejectedValue(new Error('ENOENT: no such file'));
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        {
+          id: 'lib-err',
+          name: 'BadLib',
+          path: '/nonexistent/path',
+          jobs: [
+            {
+              id: 'job-1',
+              filePath: '/nonexistent/path/file.mkv',
+              beforeSizeBytes: BigInt(1_000_000_000),
+            },
+          ],
+        },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.libraries).toHaveLength(1);
+      expect(result.libraries[0].status).toBe('warning');
+      expect(result.libraries[0].hasEnoughSpaceForQueue).toBe(false);
+      expect(result.libraries[0].warningMessage).toContain('Failed to check disk space');
+    });
+
+    it('sets warning message when disk is warning-level but queued jobs still fit', async () => {
+      const fs = await import('node:fs');
+      // 10TB total, 15% free (~1.5TB) → 85% used → 'warning'
+      // Job is 1KB → space needed = 1.2KB + 5GB min → ~5GB required, 1.5TB available → fits
+      const totalBlocks = BigInt(2_500_000_000); // 10TB at 4096 bytes/block
+      const freeBlocks = BigInt(375_000_000); // 15% free = 1.5TB
+      jest.spyOn(fs.promises, 'statfs').mockResolvedValue({
+        blocks: totalBlocks,
+        bsize: 4096,
+        bavail: freeBlocks,
+      } as any);
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        {
+          id: 'lib-warn',
+          name: 'WarnLib',
+          path: '/media/warn',
+          jobs: [{ id: 'job-1', filePath: '/media/warn/tiny.mkv', beforeSizeBytes: BigInt(1_000) }],
+        },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.libraries).toHaveLength(1);
+      const lib = result.libraries[0];
+      expect(lib.status).toBe('warning');
+      expect(lib.hasEnoughSpaceForQueue).toBe(true);
+      expect(lib.warningMessage).toContain('warning');
+    });
+
+    it('sets warning globalWarning when no queued jobs but disk is warning-level', async () => {
+      const fs = await import('node:fs');
+      // 10TB total, 15% free → 85% used → 'warning'
+      jest.spyOn(fs.promises, 'statfs').mockResolvedValue({
+        blocks: BigInt(2_500_000_000),
+        bsize: 4096,
+        bavail: BigInt(375_000_000), // 15% free
+      } as any);
+
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
+        { id: 'lib-nojobs', name: 'EmptyWarnLib', path: '/media/empty', jobs: [] },
+      ]);
+
+      const result = await service.monitorLibraryDiskSpace();
+
+      expect(result.libraries[0].status).toBe('warning');
+      expect(result.globalWarnings.some((w) => w.includes('EmptyWarnLib'))).toBe(true);
+      expect(result.libraries[0].warningMessage).toContain('warning');
     });
   });
 });

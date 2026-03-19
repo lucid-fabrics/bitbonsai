@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Logger,
   Param,
   Patch,
   Post,
@@ -29,18 +28,14 @@ import { OptimalConfigDto } from './dto/optimal-config.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
 import { JobAttributionService, type NodeScore } from './services/job-attribution.service';
-import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { toCurrentNodeDto, toNodeResponseDto, toNodeResponseDtoArray } from './utils/node.mapper';
 
 @ApiTags('nodes')
 @ApiBearerAuth('JWT-auth')
 @Controller('nodes')
 export class NodesController {
-  private readonly logger = new Logger(NodesController.name);
-
   constructor(
     private readonly nodesService: NodesService,
-    private readonly capabilityDetector: NodeCapabilityDetectorService,
     private readonly jobAttribution: JobAttributionService
   ) {}
 
@@ -259,39 +254,7 @@ export class NodesController {
   async getStorageRecommendation(
     @Body() body: { sourceNodeId: string; targetNodeId: string }
   ): Promise<unknown> {
-    const { EnvironmentDetectorService, ContainerType } = await import(
-      '../core/services/environment-detector.service'
-    );
-    const detector = new EnvironmentDetectorService();
-
-    // Get node info
-    const sourceNode = await this.nodesService.findOne(body.sourceNodeId);
-    const targetNode = await this.nodesService.findOne(body.targetNodeId);
-
-    // Map NetworkLocation enum to string for subnet
-    const sourceSubnet = sourceNode.networkLocation ? String(sourceNode.networkLocation) : null;
-    const targetSubnet = targetNode.networkLocation ? String(targetNode.networkLocation) : null;
-
-    // Prisma ContainerType enum values match EnvironmentDetector ContainerType
-    const containerValues = Object.values(ContainerType) as string[];
-    const toContainerType = (val: string | null) =>
-      val && containerValues.includes(val)
-        ? (val as (typeof ContainerType)[keyof typeof ContainerType])
-        : ContainerType.UNKNOWN;
-
-    const sourceInfo = {
-      subnet: sourceSubnet,
-      containerType: toContainerType(sourceNode.containerType),
-      canMountNFS: sourceNode.canMountNFS || false,
-    };
-
-    const targetInfo = {
-      subnet: targetSubnet,
-      containerType: toContainerType(targetNode.containerType),
-      canMountNFS: targetNode.canMountNFS || false,
-    };
-
-    return detector.recommendStorageMethod(sourceInfo, targetInfo);
+    return this.nodesService.recommendStorageMethod(body.sourceNodeId, body.targetNodeId);
   }
 
   /**
@@ -505,63 +468,7 @@ export class NodesController {
     description: 'Internal server error during capability test',
   })
   async testNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
-    const node = await this.nodesService.findOne(id);
-
-    // Get IP address: prefer stored ipAddress, then extract from URLs, fallback to localhost
-    let nodeIp = node.ipAddress || '127.0.0.1';
-
-    // If no stored IP, try extracting from URLs
-    if (!node.ipAddress) {
-      const urlToUse = node.publicUrl || node.mainNodeUrl;
-      if (urlToUse) {
-        try {
-          const url = new URL(urlToUse);
-          nodeIp = url.hostname;
-        } catch (error: unknown) {
-          this.logger.warn(
-            `Failed to parse node URL "${urlToUse}", falling back to localhost: ${error instanceof Error ? error.message : String(error)}`
-          );
-        }
-      }
-    }
-
-    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp);
-
-    // Build test results with all phases
-    const tests = {
-      networkConnection: {
-        status: 'success' as const,
-        message: `Latency: ${result.latencyMs}ms`,
-        details: { latencyMs: result.latencyMs, isPrivateIP: result.isPrivateIP },
-      },
-      sharedStorage: {
-        status: result.hasSharedStorage ? ('success' as const) : ('warning' as const),
-        message: result.hasSharedStorage
-          ? `Accessible at ${result.storageBasePath}`
-          : 'No shared storage access',
-        details: {
-          hasSharedStorage: result.hasSharedStorage,
-          storageBasePath: result.storageBasePath,
-        },
-      },
-      hardwareDetection: {
-        status: 'success' as const,
-        message: `Detected ${node.cpuCores || 'unknown'} cores, ${node.ramGB || 'unknown'}GB RAM`,
-        details: { cpuCores: node.cpuCores, ramGB: node.ramGB },
-      },
-      networkType: {
-        status: 'success' as const,
-        message: `Classified as ${result.networkLocation}`,
-        details: { networkLocation: result.networkLocation },
-      },
-    };
-
-    return {
-      nodeId: id,
-      nodeName: node.name,
-      ...result,
-      tests,
-    };
+    return this.nodesService.testNodeCapabilities(id);
   }
 
   /**

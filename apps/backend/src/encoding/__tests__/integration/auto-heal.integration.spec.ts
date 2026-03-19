@@ -8,6 +8,8 @@ import { NodesService } from '../../../nodes/nodes.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
+import { EncodingStartupService } from '../../encoding-startup.service';
+import { EncodingWatchdogService } from '../../encoding-watchdog.service';
 import { FfmpegService } from '../../ffmpeg.service';
 
 /**
@@ -92,6 +94,21 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
           provide: FileRelocatorService,
           useValue: { relocateFile: jest.fn(), verifyRelocation: jest.fn() },
         },
+        {
+          provide: EncodingStartupService,
+          useValue: {
+            waitForVolumeMounts: jest.fn().mockResolvedValue(undefined),
+            autoHealOrphanedJobs: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: EncodingWatchdogService,
+          useValue: {
+            startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
+            manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
+            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+          },
+        },
       ],
     }).compile();
 
@@ -153,7 +170,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         where: { id: testJobIds.encoding },
       });
 
-      expect(healedJob).toBeTruthy();
+      expect(healedJob).not.toBeNull();
       expect(healedJob?.stage).toBe(JobStage.QUEUED);
       expect(healedJob?.progress).toBe(0); // Progress reset
       expect(healedJob?.startedAt).toBeNull(); // startedAt cleared
@@ -195,7 +212,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         where: { id: testJobIds.healthCheck },
       });
 
-      expect(healedJob).toBeTruthy();
+      expect(healedJob).not.toBeNull();
       expect(healedJob?.stage).toBe(JobStage.QUEUED); // CRITICAL: Must be QUEUED
       expect(healedJob?.stage).not.toBe(JobStage.DETECTED); // CRITICAL: Must NOT be DETECTED
       expect(healedJob?.progress).toBe(0);
@@ -235,7 +252,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         where: { id: testJobIds.verifying },
       });
 
-      expect(healedJob).toBeTruthy();
+      expect(healedJob).not.toBeNull();
       expect(healedJob?.stage).toBe(JobStage.QUEUED);
       expect(healedJob?.progress).toBe(0);
     });
@@ -273,7 +290,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         where: { id: testJobIds.paused },
       });
 
-      expect(healedJob).toBeTruthy();
+      expect(healedJob).not.toBeNull();
       expect(healedJob?.stage).toBe(JobStage.QUEUED);
       expect(healedJob?.progress).toBe(0);
       expect(healedJob?.error).toContain('Paused job reset after backend restart');
@@ -312,7 +329,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         where: { id: testJobIds.queued },
       });
 
-      expect(job).toBeTruthy();
+      expect(job).not.toBeNull();
       expect(job?.stage).toBe(JobStage.QUEUED); // Unchanged
       expect(job?.error).toBeNull(); // No error message added
     });
@@ -354,7 +371,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
         where: { id: testJobIds.completed },
       });
 
-      expect(job).toBeTruthy();
+      expect(job).not.toBeNull();
       expect(job?.stage).toBe(JobStage.COMPLETED); // Unchanged
     });
 
@@ -413,7 +430,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
           where: { id: jobData.id },
         });
 
-        expect(healedJob).toBeTruthy();
+        expect(healedJob).not.toBeNull();
         expect(healedJob?.stage).toBe(JobStage.QUEUED);
         expect(healedJob?.progress).toBe(0);
       }

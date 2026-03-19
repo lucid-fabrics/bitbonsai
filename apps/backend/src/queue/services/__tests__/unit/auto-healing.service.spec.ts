@@ -2,9 +2,8 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { JobEventType, JobStage } from '@prisma/client';
 import * as fs from 'fs';
 import { JobRepository } from '../../../../common/repositories/job.repository';
+import { JobHistoryRepository } from '../../../../common/repositories/job-history.repository';
 import { SettingsRepository } from '../../../../common/repositories/settings.repository';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
 import { AutoHealingService } from '../../auto-healing.service';
 
 jest.mock('fs', () => ({
@@ -14,12 +13,14 @@ jest.mock('fs', () => ({
 
 describe('AutoHealingService', () => {
   let service: AutoHealingService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let jobHistoryRepository: { createEntry: jest.Mock };
   let jobRepository: { findManySelect: jest.Mock; updateById: jest.Mock };
   let settingsRepository: { findFirst: jest.Mock };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    jobHistoryRepository = {
+      createEntry: jest.fn(),
+    };
     jobRepository = {
       findManySelect: jest.fn(),
       updateById: jest.fn(),
@@ -31,7 +32,7 @@ describe('AutoHealingService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AutoHealingService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: JobHistoryRepository, useValue: jobHistoryRepository },
         { provide: JobRepository, useValue: jobRepository },
         { provide: SettingsRepository, useValue: settingsRepository },
       ],
@@ -82,7 +83,7 @@ describe('AutoHealingService', () => {
         createFailedJob('job-2', { retryCount: 0, progress: 0 }),
       ]);
       jobRepository.updateById.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.healFailedJobs();
@@ -119,7 +120,7 @@ describe('AutoHealingService', () => {
         }),
       ]);
       jobRepository.updateById.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
       const result = await service.healFailedJobs();
@@ -148,7 +149,7 @@ describe('AutoHealingService', () => {
         }),
       ]);
       jobRepository.updateById.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.healFailedJobs();
@@ -170,23 +171,21 @@ describe('AutoHealingService', () => {
         createFailedJob('job-1', { retryCount: 0, progress: 20 }),
       ]);
       jobRepository.updateById.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       await service.healFailedJobs();
 
-      expect(prisma.jobHistory.create).toHaveBeenCalledWith({
-        data: {
-          jobId: 'job-1',
-          eventType: JobEventType.AUTO_HEALED,
-          stage: JobStage.FAILED,
-          progress: 20,
-          wasAutoHealed: true,
-          tempFileExists: false,
-          retryNumber: 1,
-          triggeredBy: 'BACKEND_RESTART',
-          systemMessage: expect.stringContaining('starting encoding from scratch'),
-        },
+      expect(jobHistoryRepository.createEntry).toHaveBeenCalledWith({
+        jobId: 'job-1',
+        eventType: JobEventType.AUTO_HEALED,
+        stage: JobStage.FAILED,
+        progress: 20,
+        wasAutoHealed: true,
+        tempFileExists: false,
+        retryNumber: 1,
+        triggeredBy: 'BACKEND_RESTART',
+        systemMessage: expect.stringContaining('starting encoding from scratch'),
       });
     });
 
@@ -198,7 +197,7 @@ describe('AutoHealingService', () => {
         createFailedJob('job-3'),
       ]);
       (fs.existsSync as jest.Mock).mockReturnValue(false);
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
 
       jobRepository.updateById
         .mockResolvedValueOnce({}) // job-1 succeeds

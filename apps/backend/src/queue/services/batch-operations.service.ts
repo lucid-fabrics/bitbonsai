@@ -24,6 +24,8 @@ export interface BatchOperationResult {
  * - Bulk delete completed/failed jobs
  * - Clear entire queue (with safety checks)
  */
+const DEFAULT_MAX_RETRIES = 3;
+
 @Injectable()
 export class BatchOperationsService {
   private readonly logger = new Logger(BatchOperationsService.name);
@@ -196,7 +198,10 @@ export class BatchOperationsService {
    * @param maxRetries - Maximum retry count threshold (only retry jobs with fewer retries)
    * @returns Operation result
    */
-  async retryAllFailed(nodeId?: string, maxRetries = 3): Promise<BatchOperationResult> {
+  async retryAllFailed(
+    nodeId?: string,
+    maxRetries = DEFAULT_MAX_RETRIES
+  ): Promise<BatchOperationResult> {
     this.logger.log(`Retrying all failed jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
 
     try {

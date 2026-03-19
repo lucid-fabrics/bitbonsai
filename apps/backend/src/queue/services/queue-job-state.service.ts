@@ -1,12 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  BadRequestException,
-  forwardRef,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FileHealthStatus, type Job, JobEventType, JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { JobRepository } from '../../common/repositories/job.repository';
@@ -38,7 +31,6 @@ export class QueueJobStateService {
   constructor(
     private prisma: PrismaService,
     private jobRepository: JobRepository,
-    @Inject(forwardRef(() => FfmpegService))
     private ffmpegService: FfmpegService,
     private jobHistoryService: JobHistoryService,
     private fileTransferService: FileTransferService,

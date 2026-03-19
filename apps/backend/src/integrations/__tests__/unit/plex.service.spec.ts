@@ -296,5 +296,424 @@ describe('PlexIntegrationService', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Connection refused');
     });
+
+    it('should return success without serverName when MediaContainer is absent', async () => {
+      mockHttpService.get.mockReturnValue(of({ data: {} }));
+
+      const result = await service.testConnection('http://plex:32400', 'token-123');
+
+      expect(result.success).toBe(true);
+      expect(result.serverName).toBeUndefined();
+    });
+  });
+
+  describe('getActiveSessions', () => {
+    it('should use grandparentTitle prefix for episode sessions', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            MediaContainer: {
+              Metadata: [
+                {
+                  type: 'episode',
+                  title: 'Ozymandias',
+                  grandparentTitle: 'Breaking Bad',
+                  User: { title: 'Admin' },
+                  Player: { state: 'playing' },
+                },
+              ],
+            },
+          },
+        })
+      );
+
+      const result = await service.getActiveSessions();
+
+      expect(result[0].title).toBe('Breaking Bad - Ozymandias');
+    });
+
+    it('should use title alone when grandparentTitle is absent', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            MediaContainer: {
+              Metadata: [
+                {
+                  type: 'movie',
+                  title: 'Inception',
+                  User: { title: 'User1' },
+                  Player: { state: 'playing' },
+                },
+              ],
+            },
+          },
+        })
+      );
+
+      const result = await service.getActiveSessions();
+
+      expect(result[0].title).toBe('Inception');
+    });
+
+    it('should fall back to Unknown when User is absent', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            MediaContainer: {
+              Metadata: [
+                {
+                  type: 'movie',
+                  title: 'Inception',
+                  Player: { state: 'playing' },
+                },
+              ],
+            },
+          },
+        })
+      );
+
+      const result = await service.getActiveSessions();
+
+      expect(result[0].user).toBe('Unknown');
+    });
+  });
+
+  describe('refreshLibrary', () => {
+    it('should strip trailing slash from URL', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400/',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(of({ data: {} }));
+
+      await service.refreshLibrary('2');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'http://plex:32400/library/sections/2/refresh',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('notifyNewFile', () => {
+    it('should refresh specific section when library section is found', async () => {
+      // getPlexConfig calls 1 & 2 (notifyNewFile + findLibrarySection + refreshLibrary)
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexRefreshOnComplete: true,
+      });
+      // findLibrarySection HTTP response
+      mockHttpService.get
+        .mockReturnValueOnce(
+          of({
+            data: {
+              MediaContainer: {
+                Directory: [
+                  {
+                    key: '3',
+                    Location: [{ path: '/media/movies' }],
+                  },
+                ],
+              },
+            },
+          })
+        )
+        // refreshLibrary HTTP response
+        .mockReturnValueOnce(of({ data: {} }));
+
+      await service.notifyNewFile('/media/movies/Inception.mkv');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'http://plex:32400/library/sections/3/refresh',
+        expect.any(Object)
+      );
+    });
+
+    it('should refresh all sections when no matching library section found', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexRefreshOnComplete: true,
+      });
+      // findLibrarySection returns no match
+      mockHttpService.get
+        .mockReturnValueOnce(
+          of({
+            data: {
+              MediaContainer: {
+                Directory: [
+                  {
+                    key: '1',
+                    Location: [{ path: '/media/tv' }],
+                  },
+                ],
+              },
+            },
+          })
+        )
+        .mockReturnValueOnce(of({ data: {} }));
+
+      await service.notifyNewFile('/media/movies/Unknown.mkv');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'http://plex:32400/library/sections/all/refresh',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('checkPlaybackAndPause', () => {
+    it('should pause encoding jobs when playback just starts', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexPauseDuringPlayback: true,
+      });
+      // isPlaybackActive returns true (active session)
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            MediaContainer: {
+              Metadata: [
+                { Player: { state: 'playing' }, type: 'movie', title: 'T', User: { title: 'U' } },
+              ],
+            },
+          },
+        })
+      );
+      mockJobRepository.updateManyWhere.mockResolvedValue({ count: 2 });
+
+      await service.checkPlaybackAndPause();
+
+      expect(mockJobRepository.updateManyWhere).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: expect.anything() }),
+        expect.objectContaining({ error: 'Paused: Plex playback detected' })
+      );
+    });
+
+    it('should resume encoding jobs when playback stops', async () => {
+      // Simulate wasPlaybackActive = true by first running a pause cycle
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexPauseDuringPlayback: true,
+      });
+      // First call: playback active → sets wasPlaybackActive = true
+      mockHttpService.get.mockReturnValueOnce(
+        of({
+          data: {
+            MediaContainer: {
+              Metadata: [
+                { Player: { state: 'playing' }, type: 'movie', title: 'T', User: { title: 'U' } },
+              ],
+            },
+          },
+        })
+      );
+      mockJobRepository.updateManyWhere.mockResolvedValue({ count: 1 });
+      await service.checkPlaybackAndPause();
+
+      // Second call: playback stopped → should resume
+      mockHttpService.get.mockReturnValueOnce(of({ data: { MediaContainer: { Metadata: [] } } }));
+      mockJobRepository.updateManyWhere.mockResolvedValue({ count: 1 });
+      await service.checkPlaybackAndPause();
+
+      expect(mockJobRepository.updateManyWhere).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({ contains: 'Plex playback detected' }),
+        }),
+        expect.objectContaining({ error: null })
+      );
+    });
+
+    it('should handle errors in playback check without throwing', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexPauseDuringPlayback: true,
+      });
+      mockHttpService.get.mockReturnValue(throwError(() => new Error('Plex down')));
+
+      await expect(service.checkPlaybackAndPause()).resolves.not.toThrow();
+    });
+  });
+
+  describe('isPlaybackActive', () => {
+    it('should return false when MediaContainer has no Metadata', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(of({ data: { MediaContainer: {} } }));
+
+      const result = await service.isPlaybackActive();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when response data is missing MediaContainer', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(of({ data: {} }));
+
+      const result = await service.isPlaybackActive();
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getPlexConfig - error path', () => {
+    it('should return null when findFirst throws', async () => {
+      mockSettingsRepository.findFirst.mockRejectedValue(new Error('DB connection lost'));
+
+      // isPlaybackActive calls getPlexConfig which catches and returns null → returns false
+      const result = await service.isPlaybackActive();
+
+      expect(result).toBe(false);
+    });
+
+    it('should use default true for pauseDuringPlayback when not explicitly set', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        // plexPauseDuringPlayback intentionally absent → defaults to true
+      });
+      mockHttpService.get.mockReturnValue(of({ data: { MediaContainer: { Metadata: [] } } }));
+      mockJobRepository.updateManyWhere.mockResolvedValue({ count: 0 });
+
+      // Should not throw - defaults apply
+      await expect(service.checkPlaybackAndPause()).resolves.not.toThrow();
+    });
+
+    it('should use default true for refreshOnComplete when not explicitly set', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        // plexRefreshOnComplete intentionally absent → defaults to true
+      });
+      // findLibrarySection call
+      mockHttpService.get
+        .mockReturnValueOnce(of({ data: { MediaContainer: { Directory: [] } } }))
+        // refreshLibrary all call
+        .mockReturnValueOnce(of({ data: {} }));
+
+      await service.notifyNewFile('/some/file.mkv');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'http://plex:32400/library/sections/all/refresh',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('findLibrarySection - error path', () => {
+    it('should return null and fall back to refresh all when findLibrarySection throws', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexRefreshOnComplete: true,
+      });
+      // findLibrarySection HTTP call throws, then refreshLibrary succeeds
+      mockHttpService.get
+        .mockReturnValueOnce(throwError(() => new Error('Network error')))
+        .mockReturnValueOnce(of({ data: {} }));
+
+      await service.notifyNewFile('/media/movies/Test.mkv');
+
+      // Falls back to refresh all since section not found
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'http://plex:32400/library/sections/all/refresh',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('checkPlaybackAndPause - no state change branches', () => {
+    it('should not pause again when playback was already active', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexPauseDuringPlayback: true,
+      });
+
+      const activeSessions = of({
+        data: {
+          MediaContainer: {
+            Metadata: [
+              { Player: { state: 'playing' }, type: 'movie', title: 'T', User: { title: 'U' } },
+            ],
+          },
+        },
+      });
+      mockHttpService.get.mockReturnValue(activeSessions);
+      mockJobRepository.updateManyWhere.mockResolvedValue({ count: 1 });
+
+      // First call sets wasPlaybackActive = true
+      await service.checkPlaybackAndPause();
+      const callCount = mockJobRepository.updateManyWhere.mock.calls.length;
+
+      // Second call: still playing, wasPlaybackActive already true → no action
+      await service.checkPlaybackAndPause();
+
+      expect(mockJobRepository.updateManyWhere.mock.calls.length).toBe(callCount);
+    });
+
+    it('should not resume when playback was not active and still not active', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+        plexPauseDuringPlayback: true,
+      });
+      mockHttpService.get.mockReturnValue(of({ data: { MediaContainer: { Metadata: [] } } }));
+
+      // wasPlaybackActive starts false, playback not active → no action
+      await service.checkPlaybackAndPause();
+
+      expect(mockJobRepository.updateManyWhere).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getActiveSessions - Player state fallback', () => {
+    it('should use unknown as state when Player is absent', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: 'http://plex:32400',
+        plexToken: 'token-123',
+      });
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            MediaContainer: {
+              Metadata: [
+                {
+                  type: 'movie',
+                  title: 'Interstellar',
+                  User: { title: 'User1' },
+                  // Player intentionally absent
+                },
+              ],
+            },
+          },
+        })
+      );
+
+      const result = await service.getActiveSessions();
+
+      expect(result[0].state).toBe('unknown');
+    });
   });
 });

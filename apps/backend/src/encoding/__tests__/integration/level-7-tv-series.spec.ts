@@ -112,7 +112,7 @@ describe('Level 7: TV Series Processing', () => {
         await encodingProcessor.processNextJob('test-worker-1');
         const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
 
-        expect(completedJob).toBeDefined();
+        expect(completedJob).not.toBeNull();
         expect(completedJob?.stage).toBe('COMPLETED');
       }
 

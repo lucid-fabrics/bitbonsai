@@ -2,8 +2,8 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JobEventType, JobStage } from '@prisma/client';
 import { existsSync } from 'fs';
 import { JobRepository } from '../../common/repositories/job.repository';
+import { JobHistoryRepository } from '../../common/repositories/job-history.repository';
 import { SettingsRepository } from '../../common/repositories/settings.repository';
-import { PrismaService } from '../../prisma/prisma.service';
 
 /**
  * AutoHealingService
@@ -25,8 +25,7 @@ export class AutoHealingService implements OnModuleInit {
   private readonly SETTINGS_CACHE_TTL_MS = 60000; // 1 minute cache
 
   constructor(
-    // PrismaService retained for jobHistory.create (no JobHistoryRepository exists)
-    private readonly prisma: PrismaService,
+    private readonly jobHistoryRepository: JobHistoryRepository,
     private readonly jobRepository: JobRepository,
     private readonly settingsRepository: SettingsRepository
   ) {}
@@ -160,18 +159,16 @@ export class AutoHealingService implements OnModuleInit {
           });
 
           // AUDIT TRAIL: Create history entry to track healing decision
-          await this.prisma.jobHistory.create({
-            data: {
-              jobId: job.id,
-              eventType: JobEventType.AUTO_HEALED,
-              stage: JobStage.FAILED, // Was in FAILED before healing
-              progress: job.progress || 0,
-              wasAutoHealed: true,
-              tempFileExists: !!hasTempFile,
-              retryNumber: job.retryCount + 1,
-              triggeredBy: 'BACKEND_RESTART',
-              systemMessage,
-            },
+          await this.jobHistoryRepository.createEntry({
+            jobId: job.id,
+            eventType: JobEventType.AUTO_HEALED,
+            stage: JobStage.FAILED, // Was in FAILED before healing
+            progress: job.progress || 0,
+            wasAutoHealed: true,
+            tempFileExists: !!hasTempFile,
+            retryNumber: job.retryCount + 1,
+            triggeredBy: 'BACKEND_RESTART',
+            systemMessage,
           });
 
           healedCount++;

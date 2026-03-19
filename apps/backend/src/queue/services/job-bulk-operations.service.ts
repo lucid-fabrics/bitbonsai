@@ -1,8 +1,8 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../../common/repositories/job.repository';
 import { normalizeCodec } from '../../common/utils/codec.util';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 /**
  * JobBulkOperationsService
@@ -16,8 +16,7 @@ export class JobBulkOperationsService {
   private readonly logger = new Logger(JobBulkOperationsService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => FfmpegService))
+    private readonly jobRepository: JobRepository,
     private readonly ffmpegService: FfmpegService
   ) {}
 
@@ -28,10 +27,10 @@ export class JobBulkOperationsService {
     this.logger.log('Cancelling all jobs (including encoding)');
 
     try {
-      const encodingJobs = await this.prisma.job.findMany({
-        where: { stage: JobStage.ENCODING },
-        select: { id: true, fileLabel: true },
-      });
+      const encodingJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+      }>({ stage: JobStage.ENCODING }, { id: true, fileLabel: true });
 
       if (encodingJobs.length > 0) {
         this.logger.log(`Killing ${encodingJobs.length} FFmpeg process(es) in parallel...`);
@@ -49,8 +48,8 @@ export class JobBulkOperationsService {
         this.logger.log(`Finished killing ${encodingJobs.length} FFmpeg process(es)`);
       }
 
-      const result = await this.prisma.job.updateMany({
-        where: {
+      const result = await this.jobRepository.updateManyWhere(
+        {
           stage: {
             in: [
               JobStage.DETECTED,
@@ -61,11 +60,11 @@ export class JobBulkOperationsService {
             ],
           },
         },
-        data: {
+        {
           stage: JobStage.CANCELLED,
           completedAt: new Date(),
-        },
-      });
+        }
+      );
 
       this.logger.log(`Cancelled ${result.count} job(s) (all stages including encoding)`);
       return { cancelledCount: result.count };
@@ -86,34 +85,27 @@ export class JobBulkOperationsService {
     this.logger.log('Retrying all cancelled jobs');
 
     try {
-      const cancelledJobs = await this.prisma.job.findMany({
-        where: {
-          stage: JobStage.CANCELLED,
-        },
-        select: {
-          id: true,
-          fileLabel: true,
-          beforeSizeBytes: true,
-        },
-      });
+      const cancelledJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        beforeSizeBytes: bigint;
+      }>({ stage: JobStage.CANCELLED }, { id: true, fileLabel: true, beforeSizeBytes: true });
 
       const totalSize = cancelledJobs.reduce(
         (sum, job) => sum + BigInt(job.beforeSizeBytes),
         BigInt(0)
       );
 
-      const result = await this.prisma.job.updateMany({
-        where: {
-          stage: JobStage.CANCELLED,
-        },
-        data: {
+      const result = await this.jobRepository.updateManyWhere(
+        { stage: JobStage.CANCELLED },
+        {
           stage: JobStage.QUEUED,
           progress: 0,
           error: null,
           completedAt: null,
           startedAt: null,
-        },
-      });
+        }
+      );
 
       this.logger.log(`Retried ${result.count} cancelled job(s)`);
       return {
@@ -215,16 +207,11 @@ export class JobBulkOperationsService {
     );
 
     try {
-      const allFailedJobs = await this.prisma.job.findMany({
-        where: {
-          stage: JobStage.FAILED,
-        },
-        select: {
-          id: true,
-          fileLabel: true,
-          error: true,
-        },
-      });
+      const allFailedJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        error: string | null;
+      }>({ stage: JobStage.FAILED }, { id: true, fileLabel: true, error: true });
 
       let jobsToRetry = allFailedJobs;
       if (errorFilter) {
@@ -236,18 +223,13 @@ export class JobBulkOperationsService {
 
       const jobIdsToRetry = jobsToRetry.map((job) => job.id);
 
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: { in: jobIdsToRetry },
-        },
-        data: {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          error: null,
-          completedAt: null,
-          startedAt: null,
-          failedAt: null,
-        },
+      const result = await this.jobRepository.updateManyByIds(jobIdsToRetry, {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        error: null,
+        completedAt: null,
+        startedAt: null,
+        failedAt: null,
       });
 
       this.logger.log(
@@ -278,19 +260,24 @@ export class JobBulkOperationsService {
     this.logger.log('Skipping all jobs where codec already matches target');
 
     try {
-      const allNeedsDecisionJobs = await this.prisma.job.findMany({
-        where: {
-          stage: JobStage.NEEDS_DECISION,
-        },
-        select: {
+      const allNeedsDecisionJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        sourceCodec: string;
+        targetCodec: string;
+        beforeSizeBytes: bigint;
+        decisionIssues: string | null;
+      }>(
+        { stage: JobStage.NEEDS_DECISION },
+        {
           id: true,
           fileLabel: true,
           sourceCodec: true,
           targetCodec: true,
           beforeSizeBytes: true,
           decisionIssues: true,
-        },
-      });
+        }
+      );
 
       const jobsToSkip = allNeedsDecisionJobs.filter((job) => {
         const normalizedSource = normalizeCodec(job.sourceCodec);
@@ -304,11 +291,9 @@ export class JobBulkOperationsService {
       }
 
       const now = new Date();
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: { in: jobsToSkip.map((j) => j.id) },
-        },
-        data: {
+      const result = await this.jobRepository.updateManyByIds(
+        jobsToSkip.map((j) => j.id),
+        {
           stage: JobStage.COMPLETED,
           decisionRequired: false,
           decisionIssues: null,
@@ -323,15 +308,12 @@ export class JobBulkOperationsService {
           completedAt: now,
           progress: 100,
           healthMessage: '✅ Skipped - file already in target codec (bulk action)',
-        },
-      });
+        }
+      );
 
       await Promise.all(
         jobsToSkip.map((job) =>
-          this.prisma.job.update({
-            where: { id: job.id },
-            data: { afterSizeBytes: job.beforeSizeBytes },
-          })
+          this.jobRepository.updateById(job.id, { afterSizeBytes: job.beforeSizeBytes })
         )
       );
 
@@ -362,18 +344,16 @@ export class JobBulkOperationsService {
     this.logger.log('Force encoding all jobs where codec already matches target');
 
     try {
-      const allNeedsDecisionJobs = await this.prisma.job.findMany({
-        where: {
-          stage: JobStage.NEEDS_DECISION,
-        },
-        select: {
-          id: true,
-          fileLabel: true,
-          sourceCodec: true,
-          targetCodec: true,
-          decisionIssues: true,
-        },
-      });
+      const allNeedsDecisionJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        sourceCodec: string;
+        targetCodec: string;
+        decisionIssues: string | null;
+      }>(
+        { stage: JobStage.NEEDS_DECISION },
+        { id: true, fileLabel: true, sourceCodec: true, targetCodec: true, decisionIssues: true }
+      );
 
       const jobsToEncode = allNeedsDecisionJobs.filter((job) => {
         const normalizedSource = normalizeCodec(job.sourceCodec);
@@ -387,11 +367,9 @@ export class JobBulkOperationsService {
       }
 
       const now = new Date();
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: { in: jobsToEncode.map((j) => j.id) },
-        },
-        data: {
+      const result = await this.jobRepository.updateManyByIds(
+        jobsToEncode.map((j) => j.id),
+        {
           stage: JobStage.QUEUED,
           decisionRequired: false,
           decisionIssues: null,
@@ -404,8 +382,8 @@ export class JobBulkOperationsService {
             },
           }),
           healthMessage: '⚡ Force re-encoding - user requested (bulk action)',
-        },
-      });
+        }
+      );
 
       this.logger.log(`Queued ${result.count} codec-match job(s) for force encoding`);
 

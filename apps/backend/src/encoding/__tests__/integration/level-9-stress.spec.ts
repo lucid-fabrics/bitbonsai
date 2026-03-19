@@ -110,7 +110,7 @@ describe('Level 9: Stress Testing', () => {
       // Wait for all jobs to complete
       for (const job of jobs) {
         const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
-        expect(completedJob).toBeDefined();
+        expect(completedJob).not.toBeNull();
         expect(completedJob?.stage).toBe('COMPLETED');
       }
     }, 300000);

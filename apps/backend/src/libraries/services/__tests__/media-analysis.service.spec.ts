@@ -3,7 +3,7 @@ import {
   FileHealthStatus,
   MediaAnalysisService,
   type VideoCodecInfo,
-} from '../media-analysis.service';
+} from '../../../media/media-analysis.service';
 
 // Mock child_process.execFile
 jest.mock('child_process', () => ({

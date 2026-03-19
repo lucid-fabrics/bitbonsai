@@ -267,8 +267,8 @@ describe('Policies API (e2e)', () => {
         .expect((res) => {
           expect(res.body.id).toBe(policyId);
           expect(res.body.name).toBe('Test Policy');
-          expect(res.body.library).toBeDefined();
-          expect(res.body._count).toBeDefined();
+          expect(res.body.library).not.toBeNull();
+          expect(res.body._count).not.toBeNull();
         });
     });
 

@@ -527,4 +527,176 @@ describe('JellyfinIntegrationService', () => {
       expect(result.found).toBe(false);
     });
   });
+
+  describe('findFileByNameAndSize – additional branches', () => {
+    beforeEach(() => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        jellyfinUrl: 'http://localhost:8096',
+        jellyfinApiKey: 'api-key-123',
+      });
+    });
+
+    it('should return not found when items have no Path and no MediaSources', async () => {
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            Items: [{ Id: 'item-1', Name: 'No Path Movie', Type: 'Movie' }],
+          },
+        })
+      );
+
+      const result = await service.findFileByNameAndSize('/media/movies/nope.mkv', 1024);
+
+      expect(result.found).toBe(false);
+    });
+
+    it('should skip MediaSource entries missing Path or Size', async () => {
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            Items: [
+              {
+                Id: 'item-1',
+                Name: 'Partial Sources',
+                Type: 'Movie',
+                Size: 999999,
+                MediaSources: [
+                  { Path: '/media/a.mkv' }, // no Size
+                  { Size: 500 }, // no Path
+                ],
+              },
+            ],
+          },
+        })
+      );
+
+      // none match by size; none have valid path+size in MediaSources; path dissimilar
+      const result = await service.findFileByNameAndSize('/totally/different/path.mkv', 1024);
+
+      expect(result.found).toBe(false);
+    });
+
+    it('should handle response.data with no Items key (undefined)', async () => {
+      mockHttpService.get.mockReturnValue(of({ data: {} }));
+
+      const result = await service.findFileByNameAndSize('/media/movies/test.mkv', 1024);
+
+      expect(result.found).toBe(false);
+    });
+
+    it('should use MediaSources first path for path-similarity fallback', async () => {
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            Items: [
+              {
+                Id: 'item-via-source',
+                Name: 'Source Movie',
+                Type: 'Movie',
+                MediaSources: [{ Path: '/media/movies/collection/source.mkv', Size: 99999 }],
+              },
+            ],
+          },
+        })
+      );
+
+      const result = await service.findFileByNameAndSize(
+        '/media/movies/collection/original.mkv',
+        1024
+      );
+
+      expect(result.found).toBe(true);
+      expect(result.path).toBe('/media/movies/collection/source.mkv');
+    });
+
+    it('should return not found when settingsRepository throws', async () => {
+      mockSettingsRepository.findFirst.mockRejectedValue(new Error('DB error'));
+
+      const result = await service.findFileByNameAndSize('/media/movies/test.mkv', 1024);
+
+      expect(result.found).toBe(false);
+    });
+  });
+
+  describe('getItemById – additional branches', () => {
+    it('should strip trailing slash from Jellyfin URL', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        jellyfinUrl: 'http://localhost:8096/',
+        jellyfinApiKey: 'key-abc',
+      });
+      mockHttpService.get.mockReturnValue(of({ data: { Id: 'x', Name: 'X', Type: 'Movie' } }));
+
+      await service.getItemById('x');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'http://localhost:8096/Items/x',
+        expect.anything()
+      );
+    });
+  });
+
+  describe('testConnection – additional branches', () => {
+    it('should return success with undefined serverName/version when fields absent', async () => {
+      mockHttpService.get.mockReturnValue(of({ data: {} }));
+
+      const result = await service.testConnection('http://localhost:8096', 'key');
+
+      expect(result.success).toBe(true);
+      expect(result.serverName).toBeUndefined();
+      expect(result.version).toBeUndefined();
+    });
+  });
+
+  describe('refreshLibrary – additional branches', () => {
+    it('should handle non-Error thrown by post gracefully', async () => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        jellyfinUrl: 'http://localhost:8096',
+        jellyfinApiKey: 'api-key-123',
+        jellyfinRefreshOnComplete: true,
+      });
+
+      mockHttpService.post.mockReturnValue(throwError(() => 'string error'));
+
+      await expect(service.refreshLibrary()).resolves.not.toThrow();
+    });
+  });
+
+  describe('search term extraction – additional branches', () => {
+    beforeEach(() => {
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        jellyfinUrl: 'http://localhost:8096',
+        jellyfinApiKey: 'api-key-123',
+      });
+    });
+
+    it('should strip release group suffix', async () => {
+      mockHttpService.get.mockReturnValue(of({ data: { Items: [] } }));
+
+      await service.findFileByNameAndSize('/media/Interstellar-YIFY.mkv', 1024);
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.stringContaining('/Items'),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            searchTerm: expect.not.stringContaining('YIFY'),
+          }),
+        })
+      );
+    });
+
+    it('should remove bracket content from filename', async () => {
+      mockHttpService.get.mockReturnValue(of({ data: { Items: [] } }));
+
+      await service.findFileByNameAndSize('/media/Dune [4K Remaster].mkv', 1024);
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.stringContaining('/Items'),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            searchTerm: expect.not.stringContaining('4K Remaster'),
+          }),
+        })
+      );
+    });
+  });
 });

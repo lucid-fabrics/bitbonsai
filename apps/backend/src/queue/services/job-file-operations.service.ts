@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import type { Job } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
@@ -22,7 +22,6 @@ export class JobFileOperationsService {
     private readonly prisma: PrismaService,
     private readonly jobRepository: JobRepository,
     private readonly jobCrudService: QueueJobCrudService,
-    @Inject(forwardRef(() => FfmpegService))
     private readonly ffmpegService: FfmpegService,
     private readonly jobMetricsService: JobMetricsService
   ) {}

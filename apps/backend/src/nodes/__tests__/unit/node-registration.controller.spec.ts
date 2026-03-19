@@ -359,7 +359,7 @@ describe('NodeRegistrationController', () => {
         'req-1',
         undefined
       );
-      expect(result).toBeDefined();
+      expect(result).toMatchObject({ id: 'req-1', status: 'APPROVED' });
     });
 
     it('should propagate NotFoundException for unknown request', async () => {

@@ -1057,4 +1057,55 @@ describe('QueueService', () => {
       await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
     });
   });
+
+  // ── non-Error thrown values (covers `instanceof Error ? ... : 'Unknown error'`) ──
+
+  describe('handleEncodingProgressUpdate — non-Error thrown value', () => {
+    it('handles string thrown without crashing', async () => {
+      jobCrudService.updateProgress.mockRejectedValue('string error');
+      const event = new EncodingProgressUpdateEvent('job-1', {
+        progress: 50,
+        etaSeconds: 100,
+        fps: 24,
+      });
+
+      await expect(service.handleEncodingProgressUpdate(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingPreviewUpdate — non-Error thrown value', () => {
+    it('handles plain object thrown without crashing', async () => {
+      jobCrudService.updateJobPreview.mockRejectedValue({ code: 500 });
+      const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg']);
+
+      await expect(service.handleEncodingPreviewUpdate(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingFailed — non-Error thrown value', () => {
+    it('handles number thrown without crashing', async () => {
+      jobStateService.failJob.mockRejectedValue(42);
+      const event = new EncodingFailedEvent('job-1', 'crash');
+
+      await expect(service.handleEncodingFailed(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingCancelled — non-Error thrown value', () => {
+    it('handles null thrown without crashing', async () => {
+      jobStateService.cancelJob.mockRejectedValue(null);
+      const event = new EncodingCancelledEvent('job-1');
+
+      await expect(service.handleEncodingCancelled(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingProcessMarked — non-Error thrown value', () => {
+    it('handles string thrown without crashing', async () => {
+      jobCrudService.updateJobRaw.mockRejectedValue('unexpected string');
+      const event = new EncodingProcessMarkedEvent('job-1', { pauseProcessedAt: new Date() });
+
+      await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
+    });
+  });
 });

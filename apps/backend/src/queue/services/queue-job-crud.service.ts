@@ -11,7 +11,6 @@ import { type Job, JobStage, Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
-import { normalizeCodec } from '../../common/utils/codec.util';
 import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -19,6 +18,7 @@ import type { CreateJobDto } from '../dto/create-job.dto';
 import type { JobStatsDto } from '../dto/job-stats.dto';
 import type { UpdateJobDto } from '../dto/update-job.dto';
 import { FileFailureTrackingService } from './file-failure-tracking.service';
+import { QueueJobStatsService } from './queue-job-stats.service';
 
 /**
  * QueueJobCrudService
@@ -36,7 +36,8 @@ export class QueueJobCrudService {
     private nodeConfig: NodeConfigService,
     private httpService: HttpService,
     private contentFingerprint: ContentFingerprintService,
-    private fileFailureTracking: FileFailureTrackingService
+    private fileFailureTracking: FileFailureTrackingService,
+    private jobStats: QueueJobStatsService
   ) {}
 
   /**
@@ -164,6 +165,15 @@ export class QueueJobCrudService {
         throw new BadRequestException(`Path validation error: ${message}`);
       }
     }
+  }
+
+  /**
+   * Check if a file exists on disk (extracted for testability)
+   */
+  fileExists(filePath: string): boolean {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs') as typeof import('fs');
+    return fs.existsSync(filePath);
   }
 
   /**
@@ -582,20 +592,18 @@ export class QueueJobCrudService {
     }
 
     try {
-      const updateData: Record<string, unknown> = { ...updateJobDto };
+      const { tempFilePath, ...restDto } = updateJobDto;
+      const updateData: Record<string, unknown> = { ...restDto };
 
       if (updateJobDto.resumeTimestamp) {
         updateData.resumeTimestamp = updateJobDto.resumeTimestamp;
         updateData.lastProgressUpdate = new Date();
       }
-      if (updateJobDto.tempFilePath) {
-        const fs = await import('fs');
-        if (fs.existsSync(updateJobDto.tempFilePath)) {
-          updateData.tempFilePath = updateJobDto.tempFilePath;
+      if (tempFilePath) {
+        if (this.fileExists(tempFilePath)) {
+          updateData.tempFilePath = tempFilePath;
         } else {
-          this.logger.warn(
-            `Temp file not found: ${updateJobDto.tempFilePath}, ignoring resume state`
-          );
+          this.logger.warn(`Temp file not found: ${tempFilePath}, ignoring resume state`);
         }
       }
 
@@ -731,64 +739,6 @@ export class QueueJobCrudService {
    * Get job statistics
    */
   async getJobStats(nodeId?: string): Promise<JobStatsDto> {
-    this.logger.log(`Fetching job stats (node: ${nodeId || 'all'})`);
-
-    const where = nodeId ? { nodeId } : {};
-
-    const [
-      detected,
-      healthCheck,
-      needsDecision,
-      needsDecisionJobs,
-      queued,
-      transferring,
-      encoding,
-      verifying,
-      completed,
-      failed,
-      cancelled,
-      totalSaved,
-    ] = await Promise.all([
-      this.jobRepository.countWhere({ ...where, stage: JobStage.DETECTED }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.HEALTH_CHECK }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.NEEDS_DECISION }),
-      this.jobRepository.findManyWithInclude<{ sourceCodec: string; targetCodec: string }>({
-        where: { ...where, stage: JobStage.NEEDS_DECISION },
-        select: { sourceCodec: true, targetCodec: true },
-      }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.QUEUED }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.TRANSFERRING }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.ENCODING }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.VERIFYING }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.COMPLETED }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.FAILED }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.CANCELLED }),
-      this.jobRepository.aggregateSumWhere(
-        { ...where, stage: JobStage.COMPLETED },
-        { savedBytes: true }
-      ),
-    ]);
-
-    const codecMatchCount = needsDecisionJobs.filter((job) => {
-      const normalizedSource = normalizeCodec(job.sourceCodec);
-      const normalizedTarget = normalizeCodec(job.targetCodec);
-      return normalizedSource === normalizedTarget;
-    }).length;
-
-    return {
-      detected,
-      healthCheck,
-      needsDecision,
-      codecMatchCount,
-      queued,
-      transferring,
-      encoding,
-      verifying,
-      completed,
-      failed,
-      cancelled,
-      totalSavedBytes: ((totalSaved._sum.savedBytes as bigint | null) || BigInt(0)).toString(),
-      nodeId,
-    };
+    return this.jobStats.getJobStats(nodeId);
   }
 }

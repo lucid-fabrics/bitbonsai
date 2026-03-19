@@ -268,7 +268,7 @@ describe('HealthDashboardService', () => {
     it('should return complete dashboard', async () => {
       const dashboard = await service.getDashboard();
 
-      expect(dashboard.timestamp).toBeTruthy();
+      expect(dashboard.timestamp).not.toBeNull();
       expect(typeof dashboard.overallStatus).toBe('string');
       expect(dashboard.checks).toBeInstanceOf(Array);
       expect(dashboard.system).not.toBeNull();

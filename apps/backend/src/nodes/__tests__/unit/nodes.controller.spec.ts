@@ -2,7 +2,6 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { NodesController } from '../../nodes.controller';
 import { NodesService } from '../../nodes.service';
 import { JobAttributionService } from '../../services/job-attribution.service';
-import { NodeCapabilityDetectorService } from '../../services/node-capability-detector.service';
 
 describe('NodesController', () => {
   let controller: NodesController;
@@ -16,10 +15,7 @@ describe('NodesController', () => {
     getRecommendedConfig: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
-  };
-
-  const mockCapabilityDetector = {
-    detectCapabilities: jest.fn(),
+    testNodeCapabilities: jest.fn(),
   };
 
   const mockJobAttribution = {
@@ -34,7 +30,6 @@ describe('NodesController', () => {
       controllers: [NodesController],
       providers: [
         { provide: NodesService, useValue: mockNodesService },
-        { provide: NodeCapabilityDetectorService, useValue: mockCapabilityDetector },
         { provide: JobAttributionService, useValue: mockJobAttribution },
       ],
     }).compile();
@@ -55,7 +50,7 @@ describe('NodesController', () => {
       const result = await controller.heartbeat('node1', heartbeatDto as any);
 
       expect(mockNodesService.heartbeat).toHaveBeenCalledWith('node1', heartbeatDto);
-      expect(result).toBeDefined();
+      expect(result).toMatchObject({ id: 'node1', status: 'ONLINE' });
     });
 
     it('should propagate errors for unknown node', async () => {
@@ -72,7 +67,7 @@ describe('NodesController', () => {
       const result = await controller.getCurrentNode();
 
       expect(mockNodesService.getCurrentNode).toHaveBeenCalledTimes(1);
-      expect(result).toBeDefined();
+      expect(result).toMatchObject({ id: 'node1', role: 'MAIN' });
     });
 
     it('should propagate errors when no nodes registered', async () => {
@@ -126,7 +121,7 @@ describe('NodesController', () => {
       const result = await controller.findOne('node1');
 
       expect(mockNodesService.findOne).toHaveBeenCalledWith('node1');
-      expect(result).toBeDefined();
+      expect(result).toMatchObject({ id: 'node1', name: 'Main', role: 'MAIN' });
     });
 
     it('should propagate not found errors', async () => {
@@ -178,7 +173,7 @@ describe('NodesController', () => {
       const result = await controller.update('node1', dto as any);
 
       expect(mockNodesService.update).toHaveBeenCalledWith('node1', dto);
-      expect(result).toBeDefined();
+      expect(result).toMatchObject({ id: 'node1', role: 'MAIN' });
     });
 
     it('should propagate service errors', async () => {
@@ -203,38 +198,29 @@ describe('NodesController', () => {
   });
 
   describe('testNodeCapabilities', () => {
-    it('should detect capabilities and return test results', async () => {
-      const node = {
-        id: 'node1',
-        name: 'Worker',
-        ipAddress: '192.168.1.50',
-        cpuCores: 8,
-        ramGB: 16,
-        publicUrl: null,
-        mainNodeUrl: null,
-      };
-      const capResult = {
+    it('should delegate to nodesService and return test results', async () => {
+      const testResult = {
+        nodeId: 'node1',
+        nodeName: 'Worker',
         latencyMs: 5,
         isPrivateIP: true,
         hasSharedStorage: true,
         storageBasePath: '/mnt/media',
         networkLocation: 'LOCAL',
+        tests: {
+          networkConnection: { status: 'success', message: 'Latency: 5ms' },
+        },
       };
-      mockNodesService.findOne.mockResolvedValue(node);
-      mockCapabilityDetector.detectCapabilities.mockResolvedValue(capResult);
+      mockNodesService.testNodeCapabilities.mockResolvedValue(testResult);
 
       const result = await controller.testNodeCapabilities('node1');
 
-      expect(mockNodesService.findOne).toHaveBeenCalledWith('node1');
-      expect(mockCapabilityDetector.detectCapabilities).toHaveBeenCalledWith(
-        'node1',
-        '192.168.1.50'
-      );
+      expect(mockNodesService.testNodeCapabilities).toHaveBeenCalledWith('node1');
       expect(result).toMatchObject({ nodeId: 'node1', nodeName: 'Worker' });
     });
 
     it('should propagate service errors', async () => {
-      mockNodesService.findOne.mockRejectedValue(new Error('not found'));
+      mockNodesService.testNodeCapabilities.mockRejectedValue(new Error('not found'));
       await expect(controller.testNodeCapabilities('missing')).rejects.toThrow('not found');
     });
   });

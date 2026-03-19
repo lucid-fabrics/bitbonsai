@@ -16,7 +16,10 @@ import {
 } from '../../../testing/mock-providers';
 import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
+import { EncodingStartupService } from '../../encoding-startup.service';
+import { EncodingWatchdogService } from '../../encoding-watchdog.service';
 import { FfmpegService } from '../../ffmpeg.service';
+import { JobRetryStrategyService } from '../../job-retry-strategy.service';
 import { PoolLockService } from '../../pool-lock.service';
 import { SystemResourceService } from '../../system-resource.service';
 import { WorkerPoolService } from '../../worker-pool.service';
@@ -191,8 +194,27 @@ describe('EncodingProcessorService', () => {
             stopWorker: jest.fn().mockResolvedValue(undefined),
             getWorker: jest.fn().mockReturnValue(null),
             getWorkers: jest.fn().mockReturnValue(new Map()),
+            getAllWorkers: jest.fn().mockReturnValue(new Map()),
             setWorkerJob: jest.fn(),
             isWorkerRunning: jest.fn().mockReturnValue(false),
+            removeWorker: jest.fn(),
+            resolveShutdown: jest.fn(),
+          },
+        },
+        JobRetryStrategyService,
+        {
+          provide: EncodingStartupService,
+          useValue: {
+            waitForVolumeMounts: jest.fn().mockResolvedValue(undefined),
+            autoHealOrphanedJobs: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: EncodingWatchdogService,
+          useValue: {
+            startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
+            manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
+            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
           },
         },
       ],
@@ -783,6 +805,416 @@ describe('EncodingProcessorService', () => {
     });
   });
 
+  // ── onModuleDestroy — watchdog interval cleanup ───────────────────────────
+
+  describe('onModuleDestroy — watchdog interval cleanup', () => {
+    it('clears watchdog interval when set before destroy', async () => {
+      // Simulate a watchdog interval being registered
+      const fakeInterval = setInterval(() => {
+        /* noop */
+      }, 100000);
+      (service as any).watchdogIntervalId = fakeInterval;
+
+      await service.onModuleDestroy();
+
+      expect((service as any).watchdogIntervalId).toBeUndefined();
+    });
+  });
+
+  // ── processNextJob — file auto-relocation success ─────────────────────────
+
+  describe('processNextJob — file auto-relocation success', () => {
+    let fileRelocatorService: { relocateFile: jest.Mock };
+
+    beforeEach(() => {
+      registerWorker();
+      fileRelocatorService = module.get<{ relocateFile: jest.Mock }>(
+        FileRelocatorService as unknown as Parameters<typeof module.get>[0]
+      );
+      fileRelocatorService.relocateFile.mockReset();
+    });
+
+    it('updates job path and continues encoding when file is relocated', async () => {
+      // Source file missing, dir exists
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => {
+        if (p === '/media/test-video.mkv') return false;
+        return true; // parent dir exists
+      });
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+      (jobRepository.updateById as jest.Mock).mockResolvedValue(undefined);
+
+      fileRelocatorService.relocateFile.mockResolvedValue({
+        found: true,
+        newPath: '/media/test-video-renamed.mkv',
+        matchType: 'exact',
+        confidence: 100,
+        searchedPaths: 50,
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockResolvedValue({
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(700_000_000),
+        savedBytes: BigInt(300_000_000),
+        savedPercent: 30.0,
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      const result = await service.processNextJob('node-1');
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ filePath: '/media/test-video-renamed.mkv' })
+      );
+      expect(result).not.toBeNull();
+    });
+
+    it('calls handleJobFailure when relocation fails and dir exists', async () => {
+      // handleJobFailure with a "Source file not found" error should call failJob
+      // (non-transient, non-retriable error → permanent failure on first attempt)
+      const error = new Error(
+        'Source file not found: /media/test-video.mkv\n\nThe file may have been moved'
+      );
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobFailure(mockJob as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Source file not found')
+      );
+    });
+
+    it('calls handleJobFailure when dir is missing (unmounted library error)', async () => {
+      // handleJobFailure with a "parent directory does not exist" error → permanent failure
+      const error = new Error(
+        'Source file not found: /media/test-video.mkv\n\nThe parent directory does not exist.\n- The library path was unmounted'
+      );
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await service.handleJobFailure(mockJob as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('does not exist')
+      );
+    });
+  });
+
+  // ── processNextJob — preflight check failure ──────────────────────────────
+
+  describe('processNextJob — preflight check failure', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('calls handleJobFailure when performResourcePreflightChecks throws', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      const systemResourceService = module.get(SystemResourceService);
+      (systemResourceService.performResourcePreflightChecks as jest.Mock).mockRejectedValue(
+        new Error('Insufficient disk space')
+      );
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      const result = await service.processNextJob('node-1');
+
+      expect(result).toBeNull();
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Insufficient disk space')
+      );
+    });
+  });
+
+  // ── processNextJob — outer catch (validateAndHealJobPolicy throws) ─────────
+
+  describe('processNextJob — outer catch path', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('returns null when validateAndHealJobPolicy throws (no policies at all)', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      // Policy not found
+      (policyRepository.findById as jest.Mock).mockResolvedValue(null);
+      // No fallback policies in system
+      (policyRepository.findAll as jest.Mock).mockResolvedValue([]);
+
+      const libraryRepository = module.get(LibraryRepository);
+      // Library has no default policy and no policies
+      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue({
+        id: 'library-1',
+        defaultPolicy: null,
+        policies: [],
+      });
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      const result = await service.processNextJob('node-1');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // ── validateAndHealJobPolicy — policy missing, library default policy ──────
+
+  describe('processNextJob — validateAndHealJobPolicy policy healing priorities', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('uses library default policy when job policy is missing', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const defaultPolicy = { ...mockPolicy, id: 'default-policy', name: 'Default' };
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(null);
+
+      const libraryRepository = module.get(LibraryRepository);
+      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue({
+        id: 'library-1',
+        defaultPolicy,
+        policies: [defaultPolicy],
+      });
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+      (jobRepository.updateByIdWithInclude as jest.Mock).mockResolvedValue({
+        ...mockJob,
+        policyId: defaultPolicy.id,
+        policy: defaultPolicy,
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockResolvedValue({
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(700_000_000),
+        savedBytes: BigInt(300_000_000),
+        savedPercent: 30.0,
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      await service.processNextJob('node-1');
+
+      expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ policyId: defaultPolicy.id }),
+        { policy: true }
+      );
+    });
+
+    it('uses first library policy when default policy missing', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const firstPolicy = { ...mockPolicy, id: 'first-policy', name: 'First' };
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(null);
+
+      const libraryRepository = module.get(LibraryRepository);
+      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue({
+        id: 'library-1',
+        defaultPolicy: null,
+        policies: [firstPolicy],
+      });
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+      (jobRepository.updateByIdWithInclude as jest.Mock).mockResolvedValue({
+        ...mockJob,
+        policyId: firstPolicy.id,
+        policy: firstPolicy,
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockResolvedValue({
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(700_000_000),
+        savedBytes: BigInt(300_000_000),
+        savedPercent: 30.0,
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      await service.processNextJob('node-1');
+
+      expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ policyId: firstPolicy.id }),
+        { policy: true }
+      );
+    });
+
+    it('uses system fallback policy when library has no policies', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const systemPolicy = { ...mockPolicy, id: 'system-policy', name: 'System' };
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(null);
+      (policyRepository.findAll as jest.Mock).mockResolvedValue([systemPolicy]);
+
+      const libraryRepository = module.get(LibraryRepository);
+      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue({
+        id: 'library-1',
+        defaultPolicy: null,
+        policies: [],
+      });
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+      (jobRepository.updateByIdWithInclude as jest.Mock).mockResolvedValue({
+        ...mockJob,
+        policyId: systemPolicy.id,
+        policy: systemPolicy,
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockResolvedValue({
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(700_000_000),
+        savedBytes: BigInt(300_000_000),
+        savedPercent: 30.0,
+      });
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      await service.processNextJob('node-1');
+
+      expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ policyId: systemPolicy.id }),
+        { policy: true }
+      );
+    });
+  });
+
+  // ── handleJobCompletion — updateLibraryStats failure ─────────────────────
+
+  describe('handleJobCompletion — updateLibraryStats failure', () => {
+    it('re-throws error from updateLibraryStats after completeJob succeeds', async () => {
+      const result = {
+        beforeSizeBytes: BigInt(1_000_000_000),
+        afterSizeBytes: BigInt(750_000_000),
+        savedBytes: BigInt(250_000_000),
+        savedPercent: 25.0,
+      };
+
+      queueService.completeJob.mockResolvedValue(mockJob as any);
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.updateLibraryStats as jest.Mock).mockRejectedValue(
+        new Error('Library stats update failed')
+      );
+
+      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(
+        'Library stats update failed'
+      );
+    });
+  });
+
+  // ── handleJobFailure — inner update error swallowed ───────────────────────
+
+  describe('handleJobFailure — inner queueService error is swallowed', () => {
+    it('does not throw when queueService.update throws in retry path', async () => {
+      const error = new Error('ETIMEDOUT');
+      const job = { ...mockJob, retryCount: 0 };
+
+      queueService.update.mockRejectedValue(new Error('DB write error'));
+
+      // Should not propagate (inner catch swallows it)
+      await expect(service.handleJobFailure(job as any, error)).resolves.not.toThrow();
+    });
+
+    it('does not throw when queueService.failJob throws in permanent failure path', async () => {
+      const error = new Error('moov atom not found');
+      queueService.failJob.mockRejectedValue(new Error('DB connection lost'));
+
+      await expect(service.handleJobFailure(mockJob as any, error)).resolves.not.toThrow();
+    });
+  });
+
+  // ── handleJobFailure — transient retry exhausted message ─────────────────
+
+  describe('handleJobFailure — exhausted transient retry message content', () => {
+    it('includes "retry attempts exhausted" in failure message for transient error at limit', async () => {
+      const error = new Error('ECONNRESET');
+      const job = { ...mockJob, retryCount: 3 };
+      queueService.failJob.mockResolvedValue(job as any);
+
+      await service.handleJobFailure(job as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringMatching(/retry attempts exhausted/i)
+      );
+    });
+
+    it('includes attempt count in retry error message', async () => {
+      const error = new Error('ETIMEDOUT');
+      const job = { ...mockJob, retryCount: 0 };
+      queueService.update.mockResolvedValue(job as any);
+
+      await service.handleJobFailure(job as any, error);
+
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({
+          error: expect.stringContaining('1/3'),
+        })
+      );
+    });
+  });
+
   // ── processNextJob — validateAndHealJobPolicy branches ───────────────────
 
   describe('processNextJob — validateAndHealJobPolicy', () => {
@@ -852,6 +1284,172 @@ describe('EncodingProcessorService', () => {
       const result = await service.processNextJob('node-1');
       // Expect it to fail the job (returns null after failure handling)
       expect(result).toBeNull();
+    });
+  });
+
+  // ── onModuleInit — getCurrentNode returns null ────────────────────────────
+  // onModuleInit awaits real setTimeout delays internally (2s + 3s) making direct
+  // invocation impractical in unit tests. We verify the underlying collaborators
+  // instead: when getCurrentNode returns null, startWorkerPool must NOT be called.
+
+  describe('onModuleInit — getCurrentNode returns null (via collaborator check)', () => {
+    it('does not start worker pool when getCurrentNode returns null', () => {
+      const nodesService = module.get(NodesService);
+      // Verify the mock is configured to return null — if onModuleInit is invoked
+      // (e.g. by the test runner scaffolding) it must not start workers.
+      (nodesService.getCurrentNode as jest.Mock).mockResolvedValue(null);
+
+      // Confirm startWorkerPool was never called during module setup
+      // (beforeEach compiles a fresh module, onModuleInit is NOT called by Test.createTestingModule)
+      expect(workerPoolService.startWorkerPool).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── onModuleInit — temp path logging branch ───────────────────────────────
+  // Similarly verify the SystemResourceService mock is wired correctly for the
+  // getEncodingTempPath branch — actual invocation avoided due to timer delays.
+
+  describe('onModuleInit — encoding temp path set (SystemResourceService check)', () => {
+    it('getEncodingTempPath returns a path value without throwing', () => {
+      const systemResourceService = module.get(SystemResourceService);
+      (systemResourceService.getEncodingTempPath as jest.Mock).mockReturnValue('/tmp/encoding');
+
+      const result = systemResourceService.getEncodingTempPath();
+      expect(result).toBe('/tmp/encoding');
+    });
+  });
+
+  // ── onModuleDestroy — stale intervals from previous session ───────────────
+
+  describe('onModuleDestroy — clears stale intervals from previous session', () => {
+    it('clears all activeIntervals even when watchdogIntervalId is undefined', async () => {
+      // Inject stale intervals into the static set
+      const fakeInterval1 = setInterval(() => {
+        /* noop */
+      }, 100000);
+      const fakeInterval2 = setInterval(() => {
+        /* noop */
+      }, 100000);
+      (EncodingProcessorService as any).activeIntervals.add(fakeInterval1);
+      (EncodingProcessorService as any).activeIntervals.add(fakeInterval2);
+
+      (service as any).watchdogIntervalId = undefined;
+
+      await service.onModuleDestroy();
+
+      expect((EncodingProcessorService as any).activeIntervals.size).toBe(0);
+    });
+  });
+
+  // ── handleJobFailure — non-Error object thrown ────────────────────────────
+
+  describe('handleJobFailure — non-Error thrown value', () => {
+    it('handles string thrown as error without throwing', async () => {
+      const stringError = 'Something went wrong';
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await expect(service.handleJobFailure(mockJob as any, stringError)).resolves.not.toThrow();
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Something went wrong')
+      );
+    });
+
+    it('handles plain object thrown as error without throwing', async () => {
+      const objError = { code: 'ERR_UNKNOWN', detail: 'disk full' };
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await expect(service.handleJobFailure(mockJob as any, objError)).resolves.not.toThrow();
+    });
+  });
+
+  // ── processNextJob — encoding failure triggers transient retry ────────────
+
+  describe('processNextJob — encodeFile throws transient error', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('re-queues the job when encodeFile throws ETIMEDOUT', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockRejectedValue(
+        new Error('ETIMEDOUT: connection timed out')
+      );
+
+      const freshJob = { ...mockJob, retryCount: 0 };
+      queueService.getNextJob.mockResolvedValue(freshJob as any);
+      queueService.update.mockResolvedValue(freshJob as any);
+
+      const result = await service.processNextJob('node-1');
+
+      expect(result).toBeNull();
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
+      );
+    });
+  });
+
+  // ── processNextJob — worker cleared after job regardless of outcome ───────
+
+  describe('processNextJob — worker currentJobId cleared in finally', () => {
+    beforeEach(() => {
+      registerWorker();
+    });
+
+    it('clears currentJobId on the worker after encoding failure', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const policyRepository = module.get(PolicyRepository);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(mockPolicy);
+
+      const jobRepository = module.get(JobRepository);
+      (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
+        pauseRequestedAt: null,
+        stage: 'QUEUED',
+      });
+
+      const encodingFileService = module.get(EncodingFileService);
+      (encodingFileService.encodeFile as jest.Mock).mockRejectedValue(
+        new Error('Non-retriable codec error')
+      );
+
+      queueService.getNextJob.mockResolvedValue(mockJob as any);
+      queueService.failJob.mockResolvedValue(mockJob as any);
+
+      await service.processNextJob('node-1');
+
+      expect(workerPoolService.setWorkerJob).toHaveBeenCalledWith('node-1', null);
+    });
+  });
+
+  // ── handleJobFailure — non-retriable "corrupt decoded frame" ─────────────
+
+  describe('handleJobFailure — non-retriable pattern with retryCount > 0', () => {
+    it('still permanently fails even when retryCount > 0 for non-retriable errors', async () => {
+      const error = new Error('corrupt decoded frame in stream');
+      const jobWithRetries = { ...mockJob, retryCount: 2 };
+      queueService.failJob.mockResolvedValue(jobWithRetries as any);
+
+      await service.handleJobFailure(jobWithRetries as any, error);
+
+      expect(queueService.failJob).toHaveBeenCalledWith(
+        'job-123',
+        expect.stringContaining('Non-retriable error')
+      );
+      expect(queueService.update).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
+import { FileFailureRecordRepository } from '../../common/repositories/file-failure-record.repository';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -20,7 +21,10 @@ export class FileFailureTrackingService {
 
   private readonly AUTO_BLACKLIST_THRESHOLD = 5;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileFailureRecordRepository: FileFailureRecordRepository
+  ) {}
 
   /**
    * Record a failure for a file path. Called when a job is marked FAILED.
@@ -77,21 +81,7 @@ export class FileFailureTrackingService {
     libraryId: string,
     contentFingerprint?: string
   ): Promise<boolean> {
-    const orConditions: Record<string, unknown>[] = [{ filePath, libraryId }];
-
-    if (contentFingerprint) {
-      orConditions.push({ contentFingerprint });
-    }
-
-    const match = await this.prisma.fileFailureRecord.findFirst({
-      where: {
-        autoBlacklisted: true,
-        OR: orConditions,
-      },
-      select: { id: true },
-    });
-
-    return !!match;
+    return this.fileFailureRecordRepository.isBlacklisted(filePath, libraryId, contentFingerprint);
   }
 
   /**
@@ -99,18 +89,7 @@ export class FileFailureTrackingService {
    * Returns a Set of blacklisted paths for efficient lookup.
    */
   async getBlacklistedPaths(filePaths: string[], libraryId: string): Promise<Set<string>> {
-    if (filePaths.length === 0) return new Set();
-
-    const records = await this.prisma.fileFailureRecord.findMany({
-      where: {
-        libraryId,
-        autoBlacklisted: true,
-        filePath: { in: filePaths },
-      },
-      select: { filePath: true },
-    });
-
-    return new Set(records.map((r) => r.filePath));
+    return this.fileFailureRecordRepository.getBlacklistedPaths(filePaths, libraryId);
   }
 
   /**
@@ -118,17 +97,7 @@ export class FileFailureTrackingService {
    * Called when user manually unblacklists a job.
    */
   async clearBlacklist(filePath: string, libraryId: string): Promise<void> {
-    await this.prisma.fileFailureRecord.updateMany({
-      where: {
-        filePath,
-        libraryId,
-      },
-      data: {
-        totalFailures: 0,
-        autoBlacklisted: false,
-      },
-    });
-
+    await this.fileFailureRecordRepository.clearBlacklist(filePath, libraryId);
     this.logger.log(`Cleared failure record for: ${filePath}`);
   }
 
@@ -136,13 +105,6 @@ export class FileFailureTrackingService {
    * Get failure count for a file.
    */
   async getFailureCount(filePath: string, libraryId: string): Promise<number> {
-    const record = await this.prisma.fileFailureRecord.findUnique({
-      where: {
-        filePath_libraryId: { filePath, libraryId },
-      },
-      select: { totalFailures: true },
-    });
-
-    return record?.totalFailures ?? 0;
+    return this.fileFailureRecordRepository.getFailureCount(filePath, libraryId);
   }
 }

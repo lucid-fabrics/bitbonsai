@@ -2,7 +2,7 @@
   "name": "bitbonsai",
   "version": "1.0.0",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky && git config core.hooksPath .githooks"
   },
   "private": false,
   "dependencies": {

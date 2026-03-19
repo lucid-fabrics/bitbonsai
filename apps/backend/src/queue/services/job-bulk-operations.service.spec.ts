@@ -1,22 +1,21 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../../common/repositories/job.repository';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import { JobBulkOperationsService } from './job-bulk-operations.service';
 
 describe('JobBulkOperationsService', () => {
   let service: JobBulkOperationsService;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let prisma: any;
+  let jobRepository: any;
   let ffmpegService: jest.Mocked<FfmpegService>;
 
   beforeEach(async () => {
-    const prismaMock = {
-      job: {
-        findMany: jest.fn(),
-        updateMany: jest.fn(),
-        update: jest.fn(),
-      },
+    const jobRepositoryMock = {
+      findManySelect: jest.fn(),
+      updateManyWhere: jest.fn(),
+      updateManyByIds: jest.fn(),
+      updateById: jest.fn(),
     };
 
     const ffmpegMock = {
@@ -26,13 +25,13 @@ describe('JobBulkOperationsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobBulkOperationsService,
-        { provide: PrismaService, useValue: prismaMock },
+        { provide: JobRepository, useValue: jobRepositoryMock },
         { provide: FfmpegService, useValue: ffmpegMock },
       ],
     }).compile();
 
     service = module.get<JobBulkOperationsService>(JobBulkOperationsService);
-    prisma = module.get(PrismaService);
+    jobRepository = module.get(JobRepository);
     ffmpegService = module.get(FfmpegService);
   });
 
@@ -46,25 +45,26 @@ describe('JobBulkOperationsService', () => {
         { id: 'job-1', fileLabel: 'movie1.mkv' },
         { id: 'job-2', fileLabel: 'movie2.mkv' },
       ];
-      prisma.job.findMany.mockResolvedValue(encodingJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 5 } as never);
+      jobRepository.findManySelect.mockResolvedValue(encodingJobs as never);
+      jobRepository.updateManyWhere.mockResolvedValue({ count: 5 } as never);
       ffmpegService.killProcess.mockResolvedValue(true);
 
       const result = await service.cancelAllQueued();
 
       expect(ffmpegService.killProcess).toHaveBeenCalledWith('job-1');
       expect(ffmpegService.killProcess).toHaveBeenCalledWith('job-2');
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.updateManyWhere).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ stage: JobStage.CANCELLED }),
-        })
+          stage: expect.objectContaining({ in: expect.arrayContaining([JobStage.ENCODING]) }),
+        }),
+        expect.objectContaining({ stage: JobStage.CANCELLED })
       );
       expect(result.cancelledCount).toBe(5);
     });
 
     it('should still cancel jobs even if no encoding jobs are running', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
-      prisma.job.updateMany.mockResolvedValue({ count: 3 } as never);
+      jobRepository.findManySelect.mockResolvedValue([]);
+      jobRepository.updateManyWhere.mockResolvedValue({ count: 3 } as never);
 
       const result = await service.cancelAllQueued();
 
@@ -72,8 +72,8 @@ describe('JobBulkOperationsService', () => {
       expect(result.cancelledCount).toBe(3);
     });
 
-    it('should propagate errors from prisma', async () => {
-      prisma.job.findMany.mockRejectedValue(new Error('DB connection lost'));
+    it('should propagate errors from repository', async () => {
+      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection lost'));
 
       await expect(service.cancelAllQueued()).rejects.toThrow('DB connection lost');
     });
@@ -85,16 +85,14 @@ describe('JobBulkOperationsService', () => {
         { id: 'job-1', fileLabel: 'a.mkv', beforeSizeBytes: BigInt(500000000) },
         { id: 'job-2', fileLabel: 'b.mkv', beforeSizeBytes: BigInt(300000000) },
       ];
-      prisma.job.findMany.mockResolvedValue(cancelledJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 2 } as never);
+      jobRepository.findManySelect.mockResolvedValue(cancelledJobs as never);
+      jobRepository.updateManyWhere.mockResolvedValue({ count: 2 } as never);
 
       const result = await service.retryAllCancelled();
 
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { stage: JobStage.CANCELLED },
-          data: expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 }),
-        })
+      expect(jobRepository.updateManyWhere).toHaveBeenCalledWith(
+        { stage: JobStage.CANCELLED },
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 })
       );
       expect(result.retriedCount).toBe(2);
       expect(result.totalSizeBytes).toBe('800000000');
@@ -102,8 +100,8 @@ describe('JobBulkOperationsService', () => {
     });
 
     it('should return zero count when no cancelled jobs exist', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
-      prisma.job.updateMany.mockResolvedValue({ count: 0 } as never);
+      jobRepository.findManySelect.mockResolvedValue([]);
+      jobRepository.updateManyWhere.mockResolvedValue({ count: 0 } as never);
 
       const result = await service.retryAllCancelled();
 
@@ -118,8 +116,8 @@ describe('JobBulkOperationsService', () => {
         { id: 'job-1', fileLabel: 'a.mkv', error: 'FFmpeg exit code 1' },
         { id: 'job-2', fileLabel: 'b.mkv', error: 'File not found' },
       ];
-      prisma.job.findMany.mockResolvedValue(failedJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 2 } as never);
+      jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 2 } as never);
 
       const result = await service.retryAllFailed();
 
@@ -132,16 +130,14 @@ describe('JobBulkOperationsService', () => {
         { id: 'job-1', fileLabel: 'a.mkv', error: 'FFmpeg exit code 1' },
         { id: 'job-2', fileLabel: 'b.mkv', error: 'No such file or directory (ENOENT)' },
       ];
-      prisma.job.findMany.mockResolvedValue(failedJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 } as never);
+      jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
 
       const result = await service.retryAllFailed('File Not Found');
 
       // Only the ENOENT job should be retried
-      const retryCall = prisma.job.updateMany.mock.calls[0][0] as {
-        where: { id: { in: string[] } };
-      };
-      expect(retryCall.where.id.in).toEqual(['job-2']);
+      const retryIds = jobRepository.updateManyByIds.mock.calls[0][0] as string[];
+      expect(retryIds).toEqual(['job-2']);
       expect(result.jobs).toHaveLength(1);
     });
   });
@@ -212,29 +208,27 @@ describe('JobBulkOperationsService', () => {
           decisionIssues: null,
         },
       ];
-      prisma.job.findMany.mockResolvedValue(needsDecisionJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 } as never);
-      prisma.job.update.mockResolvedValue({} as never);
+      jobRepository.findManySelect.mockResolvedValue(needsDecisionJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
+      jobRepository.updateById.mockResolvedValue({} as never);
 
       const result = await service.skipAllCodecMatch();
 
       // Only job-1 (hevc→hevc) should be skipped
-      const updateCall = prisma.job.updateMany.mock.calls[0][0] as {
-        where: { id: { in: string[] } };
-      };
-      expect(updateCall.where.id.in).toEqual(['job-1']);
+      const updatedIds = jobRepository.updateManyByIds.mock.calls[0][0] as string[];
+      expect(updatedIds).toEqual(['job-1']);
       expect(result.skippedCount).toBe(1);
       expect(result.jobs[0].fileLabel).toBe('hevc-file.mkv');
     });
 
     it('should return zero count when no codec-match jobs exist', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.skipAllCodecMatch();
 
       expect(result.skippedCount).toBe(0);
       expect(result.jobs).toEqual([]);
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(jobRepository.updateManyByIds).not.toHaveBeenCalled();
     });
 
     it('should mark skipped jobs as COMPLETED', async () => {
@@ -248,16 +242,14 @@ describe('JobBulkOperationsService', () => {
           decisionIssues: null,
         },
       ];
-      prisma.job.findMany.mockResolvedValue(needsDecisionJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 } as never);
-      prisma.job.update.mockResolvedValue({} as never);
+      jobRepository.findManySelect.mockResolvedValue(needsDecisionJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
+      jobRepository.updateById.mockResolvedValue({} as never);
 
       await service.skipAllCodecMatch();
 
-      const updateManyCall = prisma.job.updateMany.mock.calls[0][0] as {
-        data: { stage: string };
-      };
-      expect(updateManyCall.data.stage).toBe(JobStage.COMPLETED);
+      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as { stage: string };
+      expect(updateData.stage).toBe(JobStage.COMPLETED);
     });
   });
 
@@ -272,25 +264,23 @@ describe('JobBulkOperationsService', () => {
           decisionIssues: null,
         },
       ];
-      prisma.job.findMany.mockResolvedValue(needsDecisionJobs as never);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 } as never);
+      jobRepository.findManySelect.mockResolvedValue(needsDecisionJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
 
       const result = await service.forceEncodeAllCodecMatch();
 
-      const updateManyCall = prisma.job.updateMany.mock.calls[0][0] as {
-        data: { stage: string };
-      };
-      expect(updateManyCall.data.stage).toBe(JobStage.QUEUED);
+      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as { stage: string };
+      expect(updateData.stage).toBe(JobStage.QUEUED);
       expect(result.queuedCount).toBe(1);
     });
 
     it('should return zero count when no codec-match jobs exist', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.forceEncodeAllCodecMatch();
 
       expect(result.queuedCount).toBe(0);
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(jobRepository.updateManyByIds).not.toHaveBeenCalled();
     });
   });
 });

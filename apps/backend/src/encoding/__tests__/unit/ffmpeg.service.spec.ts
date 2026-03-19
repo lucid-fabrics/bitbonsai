@@ -7,7 +7,11 @@ import { JobRepository } from '../../../common/repositories/job.repository';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import { FfmpegService } from '../../ffmpeg.service';
+import { FfmpegFileVerificationService } from '../../ffmpeg-file-verification.service';
 import { FfmpegFlagBuilderService } from '../../ffmpeg-flag-builder.service';
+import { FfmpegProcessCleanupService } from '../../ffmpeg-process-cleanup.service';
+import { FfmpegProgressParserService } from '../../ffmpeg-progress-parser.service';
+import { FfprobeService } from '../../ffprobe.service';
 import { HardwareAccelerationService } from '../../hardware-acceleration.service';
 
 // Mock child_process spawn (keep original exec for Prisma compatibility)
@@ -113,6 +117,7 @@ describe('FfmpegService', () => {
             findById: jest.fn().mockResolvedValue(null),
             updateById: jest.fn().mockResolvedValue(mockJob),
             findManyWithInclude: jest.fn().mockResolvedValue([]),
+            findStatusFields: jest.fn().mockResolvedValue(null),
           },
         },
         {
@@ -143,6 +148,36 @@ describe('FfmpegService', () => {
             validateFfmpegFlags: jest.fn().mockImplementation((f: string[]) => f),
             selectCodecForPolicy: jest.fn().mockReturnValue('libx265'),
             buildFfmpegCommand: jest.fn().mockReturnValue(['-i', 'input', 'output']),
+          },
+        },
+        FfmpegProgressParserService,
+        {
+          provide: FfmpegProcessCleanupService,
+          useValue: {
+            findSystemFfmpegProcesses: jest.fn().mockResolvedValue([]),
+            killFfmpegByPid: jest.fn().mockResolvedValue({ success: true, message: 'ok' }),
+            cleanupOrphanedTempFiles: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: FfmpegFileVerificationService,
+          useValue: {
+            sleep: jest.fn().mockResolvedValue(undefined),
+            waitForFileExists: jest.fn().mockResolvedValue(true),
+            verifyFileWithRetries: jest.fn().mockResolvedValue({ isValid: true, attempts: 1 }),
+          },
+        },
+        {
+          provide: FfprobeService,
+          useValue: {
+            getVideoDuration: jest.fn().mockResolvedValue(3600),
+            getVideoInfo: jest.fn().mockResolvedValue({ codec: 'hevc', container: 'matroska' }),
+            getVideoInfoCached: jest
+              .fn()
+              .mockResolvedValue({ codec: 'hevc', container: 'matroska' }),
+            verifyFile: jest.fn().mockResolvedValue({ isValid: true }),
+            cleanupCodecCache: jest.fn(),
+            clearCache: jest.fn(),
           },
         },
       ],

@@ -108,7 +108,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
 
       // ASSERT: Job completed successfully
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
       expect(completedJob?.progress).toBe(100);
       expect(completedJob?.error).toBeNull();
@@ -120,11 +120,11 @@ describe('Level 1: Basic Single Job Flow', () => {
       const afterStats = fs.statSync(videoPath);
       const afterSize = afterStats.size;
 
-      expect(completedJob?.afterSizeBytes).toBeTruthy();
+      expect(completedJob?.afterSizeBytes).not.toBeNull();
       expect(Number(completedJob?.afterSizeBytes)).toBe(afterSize);
 
       // Verify size reduction (HEVC should be smaller than H.264)
-      expect(completedJob?.savedBytes).toBeTruthy();
+      expect(completedJob?.savedBytes).not.toBeNull();
       expect(Number(completedJob?.savedBytes)).toBeGreaterThan(0);
 
       // Verify saved percentage is reasonable (10-50% reduction)
@@ -132,8 +132,8 @@ describe('Level 1: Basic Single Job Flow', () => {
       expect(completedJob?.savedPercent).toBeLessThan(50);
 
       // Verify timestamps
-      expect(completedJob?.startedAt).toBeTruthy();
-      expect(completedJob?.completedAt).toBeTruthy();
+      expect(completedJob?.startedAt).not.toBeNull();
+      expect(completedJob?.completedAt).not.toBeNull();
       expect(completedJob?.completedAt?.getTime()).toBeGreaterThan(
         completedJob?.startedAt?.getTime() ?? 0
       );
@@ -169,7 +169,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 90000);
 
       // ASSERT
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
       expect(completedJob?.fileLabel).toBe('The Matrix (1999)');
     }, 150000);
@@ -260,7 +260,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       // Inode may change (atomic replacement)
       const afterInode = fs.statSync(videoPath).ino;
       // Note: Can't reliably test inode change across platforms
-      expect(afterInode).toBeTruthy();
+      expect(afterInode).toBeGreaterThan(0);
 
       // Verify no temp files left behind
       const dir = fs.readdirSync(videoPath.substring(0, videoPath.lastIndexOf('/')));

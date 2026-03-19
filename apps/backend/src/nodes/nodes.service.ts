@@ -1,7 +1,5 @@
-import { version as APP_VERSION } from '@bitbonsai/version';
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,9 +7,7 @@ import {
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { type AccelerationType, type Node, NodeRole } from '@prisma/client';
-import { randomBytes } from 'crypto';
 import * as os from 'os';
-import { LicenseRepository } from '../common/repositories/license.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { DataAccessService } from '../core/services/data-access.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
@@ -20,7 +16,8 @@ import type { NodeStatsDto } from './dto/node-stats.dto';
 import type { OptimalConfigDto } from './dto/optimal-config.dto';
 import type { RegisterNodeDto } from './dto/register-node.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
-import { StorageShareService } from './services/storage-share.service';
+import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
+import { NodeRegistrationService } from './services/node-registration.service';
 import { SystemInfoService } from './services/system-info.service';
 import {
   calculateOptimalWorkers,
@@ -39,10 +36,10 @@ export class NodesService implements OnModuleInit {
 
   constructor(
     private readonly nodeRepository: NodeRepository,
-    private readonly licenseRepository: LicenseRepository,
     private readonly dataAccessService: DataAccessService,
     private readonly systemInfoService: SystemInfoService,
-    private readonly storageShareService: StorageShareService
+    private readonly capabilityDetector: NodeCapabilityDetectorService,
+    private readonly nodeRegistration: NodeRegistrationService
   ) {}
 
   /**
@@ -112,94 +109,7 @@ export class NodesService implements OnModuleInit {
    * @throws ConflictException if maximum nodes reached for license
    */
   async registerNode(data: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
-    // If no license key provided, use main node's license (for child node registration from main)
-    let licenseKey = data.licenseKey;
-    if (!licenseKey) {
-      const mainNode = await this.nodeRepository.findFirstWithLicense({ role: NodeRole.MAIN });
-
-      if (!mainNode) {
-        throw new BadRequestException(
-          'No main node found. License key is required for first node registration.'
-        );
-      }
-
-      licenseKey = mainNode.license.key;
-      this.logger.debug(`Using main node's license (${licenseKey}) for child node registration`);
-    }
-
-    // Validate license
-    const license = await this.licenseRepository.findByKeyWithInclude<{
-      id: string;
-      status: string;
-      maxNodes: number;
-      _count: { nodes: number };
-    }>(licenseKey, { _count: { select: { nodes: true } } });
-
-    if (!license || license.status !== 'ACTIVE') {
-      throw new BadRequestException('Invalid or inactive license key');
-    }
-
-    if (license._count.nodes >= license.maxNodes) {
-      throw new ConflictException(`Maximum nodes (${license.maxNodes}) reached for this license`);
-    }
-
-    // Generate pairing token (6-digit code, expires in 10 minutes)
-    const pairingToken = this.generatePairingToken();
-    const pairingExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Determine role
-    const role = license._count.nodes === 0 ? NodeRole.MAIN : NodeRole.LINKED;
-
-    // CRITICAL: Validate no duplicate MAIN nodes (data integrity check)
-    if (role === NodeRole.MAIN) {
-      // Double-check that no MAIN node exists (prevents race conditions and data corruption)
-      const existingMainNode = await this.nodeRepository.findFirstWithLicense({
-        role: NodeRole.MAIN,
-        licenseId: license.id,
-      });
-
-      if (existingMainNode) {
-        this.logger.error(
-          `❌ Attempted to create duplicate MAIN node! Existing MAIN: ${existingMainNode.name} (${existingMainNode.id})`
-        );
-        throw new ConflictException(
-          'A MAIN node already exists for this license. Only one MAIN node is allowed per license.'
-        );
-      }
-    }
-
-    // Provide intelligent defaults for optional fields
-    const nodeName =
-      data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
-    const nodeVersion = data.version || APP_VERSION; // Read from package.json
-    const nodeAcceleration = data.acceleration || 'CPU'; // Default to CPU (every node has a CPU)
-
-    // Create node
-    const node = await this.nodeRepository.createNode({
-      name: nodeName,
-      role,
-      status: 'ONLINE',
-      version: nodeVersion,
-      acceleration: nodeAcceleration,
-      apiKey: this.generateApiKey(),
-      pairingToken,
-      pairingExpiresAt,
-      lastHeartbeat: new Date(),
-      licenseId: license.id,
-    });
-
-    return {
-      id: node.id,
-      name: node.name,
-      role: node.role,
-      status: node.status,
-      version: node.version,
-      acceleration: node.acceleration,
-      apiKey: node.apiKey,
-      pairingToken: node.pairingToken || '',
-      pairingExpiresAt: node.pairingExpiresAt || new Date(),
-      createdAt: node.createdAt,
-    };
+    return this.nodeRegistration.registerNode(data);
   }
 
   /**
@@ -216,52 +126,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if token is invalid or expired
    */
   async pairNode(pairingToken: string): Promise<Node> {
-    const node = await this.nodeRepository.findFirst<Node | null>({
-      where: {
-        pairingToken,
-        pairingExpiresAt: {
-          gte: new Date(), // Token must not be expired
-        },
-      },
-    });
-
-    if (!node) {
-      throw new NotFoundException('Invalid or expired pairing token');
-    }
-
-    // Clear pairing token (pairing complete)
-    const pairedNode = await this.nodeRepository.updateData(node.id, {
-      pairingToken: null,
-      pairingExpiresAt: null,
-    });
-
-    // CRITICAL FIX: Auto-detect and mount storage shares for LINKED nodes
-    // This was missing - child nodes were paired but never got storage access!
-    if (pairedNode.role === 'LINKED') {
-      this.logger.log(
-        `🗂️  Pairing complete - auto-mounting storage shares for ${pairedNode.name}...`
-      );
-
-      // Run auto-mount asynchronously (don't block pairing response)
-      this.storageShareService
-        .autoDetectAndMount(pairedNode.id)
-        .then((result) => {
-          this.logger.log(
-            `✅ Storage auto-mount complete for ${pairedNode.name}: ${result.detected} detected, ${result.created} created, ${result.mounted} mounted`
-          );
-          if (result.errors.length > 0) {
-            this.logger.warn(`⚠️  Mount errors: ${result.errors.join(', ')}`);
-          }
-        })
-        .catch((error) => {
-          this.logger.error(
-            `❌ Failed to auto-mount storage shares for ${pairedNode.name}:`,
-            error instanceof Error ? error.stack : error
-          );
-        });
-    }
-
-    return pairedNode;
+    return this.nodeRegistration.pairNode(pairingToken);
   }
 
   /**
@@ -274,32 +139,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async generatePairingTokenForNode(nodeId: string): Promise<NodeRegistrationResponseDto> {
-    const node = await this.nodeRepository.findById(nodeId);
-
-    if (!node) {
-      throw new NotFoundException(`Node with ID ${nodeId} not found`);
-    }
-
-    const pairingToken = this.generatePairingToken();
-    const pairingExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    const updated = await this.nodeRepository.updateData(nodeId, {
-      pairingToken,
-      pairingExpiresAt,
-    });
-
-    return {
-      id: updated.id,
-      name: updated.name,
-      role: updated.role,
-      status: updated.status,
-      version: updated.version,
-      acceleration: updated.acceleration,
-      apiKey: updated.apiKey,
-      pairingToken: updated.pairingToken || '',
-      pairingExpiresAt: updated.pairingExpiresAt || new Date(),
-      createdAt: updated.createdAt,
-    };
+    return this.nodeRegistration.generatePairingTokenForNode(nodeId);
   }
 
   /**
@@ -836,43 +676,104 @@ export class NodesService implements OnModuleInit {
   }
 
   /**
-   * Generate a secure API key for node authentication
+   * Recommend storage method between two nodes
    *
-   * Format: bb_[64 hex characters]
-   *
-   * @returns API key string
+   * @param sourceNodeId Source node identifier
+   * @param targetNodeId Target node identifier
+   * @returns Storage method recommendation
    */
-  private generateApiKey(): string {
-    const random = randomBytes(32).toString('hex');
-    return `bb_${random}`;
+  async recommendStorageMethod(sourceNodeId: string, targetNodeId: string): Promise<unknown> {
+    const { EnvironmentDetectorService, ContainerType } = await import(
+      '../core/services/environment-detector.service'
+    );
+    const detector = new EnvironmentDetectorService();
+
+    const sourceNode = await this.findOne(sourceNodeId);
+    const targetNode = await this.findOne(targetNodeId);
+
+    const sourceSubnet = sourceNode.networkLocation ? String(sourceNode.networkLocation) : null;
+    const targetSubnet = targetNode.networkLocation ? String(targetNode.networkLocation) : null;
+
+    const containerValues = Object.values(ContainerType) as string[];
+    const toContainerType = (val: string | null) =>
+      val && containerValues.includes(val)
+        ? (val as (typeof ContainerType)[keyof typeof ContainerType])
+        : ContainerType.UNKNOWN;
+
+    return detector.recommendStorageMethod(
+      {
+        subnet: sourceSubnet,
+        containerType: toContainerType(sourceNode.containerType),
+        canMountNFS: sourceNode.canMountNFS || false,
+      },
+      {
+        subnet: targetSubnet,
+        containerType: toContainerType(targetNode.containerType),
+        canMountNFS: targetNode.canMountNFS || false,
+      }
+    );
   }
 
   /**
-   * Generate a secure 6-digit pairing token
+   * Test node capabilities and return structured test results
    *
-   * SECURITY FIX: Uses crypto.randomBytes instead of Math.random()
-   * - Cryptographically secure random number generation
-   * - Prevents predictable token generation
-   * - Uses rejection sampling to ensure uniform distribution
-   *
-   * Format: 000000-999999 (6 digits)
-   *
-   * @returns 6-digit pairing code
+   * @param id Node identifier
+   * @returns Capability test results with structured test phases
    */
-  private generatePairingToken(): string {
-    // SECURITY: Use crypto.randomBytes for cryptographically secure random numbers
-    // Generate random number in range [100000, 999999] using rejection sampling
-    let token: number;
-    do {
-      // Generate 4 random bytes (32 bits)
-      const buffer = randomBytes(4);
-      // Convert to unsigned 32-bit integer
-      token = buffer.readUInt32BE(0);
-      // Use modulo to get number in range [0, 999999], then add 100000 to get [100000, 999999]
-      // Rejection sampling ensures uniform distribution
-    } while (token > 4294967295 - (4294967295 % 900000)); // Reject values that would cause bias
+  async testNodeCapabilities(id: string): Promise<Record<string, unknown>> {
+    const node = await this.findOne(id);
 
-    token = (token % 900000) + 100000;
-    return token.toString();
+    let nodeIp = node.ipAddress || '127.0.0.1';
+
+    if (!node.ipAddress) {
+      const urlToUse = node.publicUrl || node.mainNodeUrl;
+      if (urlToUse) {
+        try {
+          const url = new URL(urlToUse);
+          nodeIp = url.hostname;
+        } catch (error: unknown) {
+          this.logger.warn(
+            `Failed to parse node URL "${urlToUse}", falling back to localhost: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+    }
+
+    const result = await this.capabilityDetector.detectCapabilities(id, nodeIp);
+
+    const tests = {
+      networkConnection: {
+        status: 'success' as const,
+        message: `Latency: ${result.latencyMs}ms`,
+        details: { latencyMs: result.latencyMs, isPrivateIP: result.isPrivateIP },
+      },
+      sharedStorage: {
+        status: result.hasSharedStorage ? ('success' as const) : ('warning' as const),
+        message: result.hasSharedStorage
+          ? `Accessible at ${result.storageBasePath}`
+          : 'No shared storage access',
+        details: {
+          hasSharedStorage: result.hasSharedStorage,
+          storageBasePath: result.storageBasePath,
+        },
+      },
+      hardwareDetection: {
+        status: 'success' as const,
+        message: `Detected ${node.cpuCores || 'unknown'} cores, ${node.ramGB || 'unknown'}GB RAM`,
+        details: { cpuCores: node.cpuCores, ramGB: node.ramGB },
+      },
+      networkType: {
+        status: 'success' as const,
+        message: `Classified as ${result.networkLocation}`,
+        details: { networkLocation: result.networkLocation },
+      },
+    };
+
+    return {
+      nodeId: id,
+      nodeName: node.name,
+      ...result,
+      tests,
+    };
   }
 }

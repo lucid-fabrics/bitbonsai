@@ -100,7 +100,7 @@ describe('Level 2: Multiple Codecs', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
 
       // ASSERT
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       // Verify output codec is HEVC
@@ -144,7 +144,7 @@ describe('Level 2: Multiple Codecs', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
 
       // ASSERT
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       const outputInfo = await verifyVideoFile(videoPath);
@@ -184,7 +184,7 @@ describe('Level 2: Multiple Codecs', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
 
       // ASSERT
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       // MPEG-2 to HEVC should have significant size reduction (>30%)
@@ -220,7 +220,7 @@ describe('Level 2: Multiple Codecs', () => {
       await encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
 
@@ -247,7 +247,7 @@ describe('Level 2: Multiple Codecs', () => {
       await encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
 
@@ -274,7 +274,7 @@ describe('Level 2: Multiple Codecs', () => {
       await encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
     }, 120000);
   });

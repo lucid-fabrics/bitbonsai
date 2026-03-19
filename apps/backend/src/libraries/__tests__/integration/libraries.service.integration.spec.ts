@@ -78,8 +78,8 @@ describe('LibrariesService Integration Tests', () => {
 
       const result = await service.create(createDto);
 
-      expect(result).toBeDefined();
-      expect(result.id).toBeDefined();
+      expect(result).not.toBeNull();
+      expect(typeof result.id).toBe('string');
       expect(result.name).toBe(createDto.name);
     });
 
@@ -106,7 +106,7 @@ describe('LibrariesService Integration Tests', () => {
         where: { id: created.id },
       });
 
-      expect(retrieved).toBeDefined();
+      expect(retrieved).not.toBeNull();
       expect(retrieved?.name).toBe('Persistent Test');
     });
 
@@ -158,7 +158,7 @@ describe('LibrariesService Integration Tests', () => {
       });
 
       const result = await service.findOne(created.id);
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result.id).toBe(created.id);
     });
 

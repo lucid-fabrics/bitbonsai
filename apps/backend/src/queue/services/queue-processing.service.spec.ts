@@ -5,7 +5,7 @@ import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
-import { MediaAnalysisService } from '../../libraries/services/media-analysis.service';
+import { MediaAnalysisService } from '../../media/media-analysis.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileTransferService } from './file-transfer.service';
 import { JobRouterService } from './job-router.service';
@@ -562,8 +562,7 @@ describe('QueueProcessingService', () => {
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../libraries/services/media-analysis.service')
-                .MediaAnalysisService,
+              provide: require('../../media/media-analysis.service').MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -641,8 +640,7 @@ describe('QueueProcessingService', () => {
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../libraries/services/media-analysis.service')
-                .MediaAnalysisService,
+              provide: require('../../media/media-analysis.service').MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -679,6 +677,492 @@ describe('QueueProcessingService', () => {
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-orphan',
         expect.objectContaining({ policyId: 'p1' })
+      );
+    });
+
+    it('should warn and skip when no policies exist', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockPrisma.policy.findMany.mockResolvedValue([]);
+
+      const mockJobRepoEmpty = {
+        updateById: mockJobRepository.updateById,
+        findManyWithInclude: jest.fn().mockResolvedValue([]),
+      };
+
+      const newModule3 = await require('@nestjs/testing')
+        .Test.createTestingModule({
+          providers: [
+            (await import('./queue-processing.service')).QueueProcessingService,
+            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../common/repositories/job.repository').JobRepository,
+              useValue: mockJobRepoEmpty,
+            },
+            {
+              provide: require('../../common/repositories/node.repository').NodeRepository,
+              useValue: mockNodeRepository,
+            },
+            {
+              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              useValue: mockMediaAnalysis,
+            },
+            {
+              provide: require('../../encoding/ffmpeg.service').FfmpegService,
+              useValue: mockFfmpegService,
+            },
+            {
+              provide: require('./job-router.service').JobRouterService,
+              useValue: mockJobRouterService,
+            },
+            {
+              provide: require('./file-transfer.service').FileTransferService,
+              useValue: mockFileTransferService,
+            },
+            {
+              provide: require('../../core/services/node-config.service').NodeConfigService,
+              useValue: mockNodeConfig,
+            },
+            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('./queue-job-crud.service').QueueJobCrudService,
+              useValue: mockJobCrudService,
+            },
+          ],
+        })
+        .compile();
+
+      const newService3 = newModule3.get(
+        (await import('./queue-processing.service')).QueueProcessingService
+      );
+
+      await newService3.onModuleInit();
+
+      expect(mockJobRepoEmpty.findManyWithInclude).not.toHaveBeenCalled();
+    });
+
+    it('should use first available policy when library has no policies', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockPrisma.policy.findMany.mockResolvedValue([
+        { id: 'p-fallback', targetCodec: 'av1', name: 'Fallback' },
+      ]);
+
+      const noLibraryJob = {
+        id: 'job-no-library',
+        policyId: null,
+        targetCodec: 'h264',
+        library: {
+          nodeId: 'node-1',
+          defaultPolicy: null,
+          policies: [],
+        },
+      };
+
+      const mockJobRepoFallback = {
+        updateById: jest.fn().mockResolvedValue({}),
+        findManyWithInclude: jest.fn().mockResolvedValue([noLibraryJob]),
+      };
+
+      const newModuleFallback = await require('@nestjs/testing')
+        .Test.createTestingModule({
+          providers: [
+            (await import('./queue-processing.service')).QueueProcessingService,
+            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../common/repositories/job.repository').JobRepository,
+              useValue: mockJobRepoFallback,
+            },
+            {
+              provide: require('../../common/repositories/node.repository').NodeRepository,
+              useValue: mockNodeRepository,
+            },
+            {
+              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              useValue: mockMediaAnalysis,
+            },
+            {
+              provide: require('../../encoding/ffmpeg.service').FfmpegService,
+              useValue: mockFfmpegService,
+            },
+            {
+              provide: require('./job-router.service').JobRouterService,
+              useValue: mockJobRouterService,
+            },
+            {
+              provide: require('./file-transfer.service').FileTransferService,
+              useValue: mockFileTransferService,
+            },
+            {
+              provide: require('../../core/services/node-config.service').NodeConfigService,
+              useValue: mockNodeConfig,
+            },
+            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('./queue-job-crud.service').QueueJobCrudService,
+              useValue: mockJobCrudService,
+            },
+          ],
+        })
+        .compile();
+
+      const newServiceFallback = newModuleFallback.get(
+        (await import('./queue-processing.service')).QueueProcessingService
+      );
+
+      await newServiceFallback.onModuleInit();
+
+      expect(mockJobRepoFallback.updateById).toHaveBeenCalledWith(
+        'job-no-library',
+        expect.objectContaining({ policyId: 'p-fallback' })
+      );
+    });
+
+    it('should handle individual job healing errors without stopping the loop', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockPrisma.policy.findMany.mockResolvedValue([
+        { id: 'p1', targetCodec: 'hevc', name: 'Default' },
+      ]);
+
+      const errorJob = {
+        id: 'job-error',
+        policyId: 'p1',
+        targetCodec: 'h264', // mismatch → triggers updateById
+        library: { nodeId: 'node-1', defaultPolicy: null, policies: [] },
+      };
+      const goodJob = {
+        id: 'job-good',
+        policyId: 'p1',
+        targetCodec: 'hevc', // no mismatch
+        library: { nodeId: 'node-1', defaultPolicy: null, policies: [] },
+      };
+
+      const failingUpdateById = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('DB error'))
+        .mockResolvedValue({});
+
+      const mockJobRepoErrors = {
+        updateById: failingUpdateById,
+        findManyWithInclude: jest.fn().mockResolvedValue([errorJob, goodJob]),
+      };
+
+      const newModuleErr = await require('@nestjs/testing')
+        .Test.createTestingModule({
+          providers: [
+            (await import('./queue-processing.service')).QueueProcessingService,
+            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../common/repositories/job.repository').JobRepository,
+              useValue: mockJobRepoErrors,
+            },
+            {
+              provide: require('../../common/repositories/node.repository').NodeRepository,
+              useValue: mockNodeRepository,
+            },
+            {
+              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              useValue: mockMediaAnalysis,
+            },
+            {
+              provide: require('../../encoding/ffmpeg.service').FfmpegService,
+              useValue: mockFfmpegService,
+            },
+            {
+              provide: require('./job-router.service').JobRouterService,
+              useValue: mockJobRouterService,
+            },
+            {
+              provide: require('./file-transfer.service').FileTransferService,
+              useValue: mockFileTransferService,
+            },
+            {
+              provide: require('../../core/services/node-config.service').NodeConfigService,
+              useValue: mockNodeConfig,
+            },
+            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('./queue-job-crud.service').QueueJobCrudService,
+              useValue: mockJobCrudService,
+            },
+          ],
+        })
+        .compile();
+
+      const newServiceErr = newModuleErr.get(
+        (await import('./queue-processing.service')).QueueProcessingService
+      );
+
+      await expect(newServiceErr.onModuleInit()).resolves.not.toThrow();
+    });
+  });
+
+  describe('getNextJob - additional branches', () => {
+    it('should return null when linked-node proxy returns null data', async () => {
+      const { of } = await import('rxjs');
+      mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000/api/v1');
+      mockHttpService.get.mockReturnValue(of({ data: null }));
+
+      const result = await service.getNextJob('node-1');
+      expect(result).toBeNull();
+    });
+
+    it('should return null after exhausting all attempts when pause requested', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeRepository.findUnique.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: true,
+        license: { maxConcurrentJobs: 5 },
+        _count: { jobs: 1 },
+      });
+
+      mockPrisma.$transaction.mockResolvedValue({ claimFailed: true, pauseRequested: true });
+
+      const result = await service.getNextJob('node-1');
+      expect(result).toBeNull();
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(5);
+    });
+
+    it('should return null when transaction returns needs transfer', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeRepository.findUnique.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: false,
+        license: { maxConcurrentJobs: 5 },
+        _count: { jobs: 1 },
+      });
+
+      mockPrisma.$transaction.mockResolvedValue({ claimFailed: true, needsTransfer: true });
+
+      const result = await service.getNextJob('node-1');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('handleFileDetected - additional branches', () => {
+    it('should create ENCODE job when codecs differ', async () => {
+      mockPrisma.library.findUnique.mockResolvedValue({
+        id: 'lib-1',
+        name: 'Movies',
+        nodeId: 'node-1',
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: {
+          id: 'policy-1',
+          targetCodec: 'hevc',
+          targetContainer: 'mkv',
+          skipReencoding: true,
+        },
+      });
+      mockMediaAnalysis.probeVideoFile.mockResolvedValue({
+        codec: 'h264',
+        duration: 3600,
+        sizeBytes: 1000000000,
+      } as any);
+      mockFfmpegService.getVideoInfoCached.mockResolvedValue({
+        codec: 'h264',
+        container: 'mkv',
+      } as any);
+      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: true });
+      mockJobCrudService.create.mockResolvedValue({ id: 'job-encode' } as any);
+
+      await service.handleFileDetected({
+        libraryId: 'lib-1',
+        filePath: '/media/movie.mkv',
+        fileName: 'movie.mkv',
+      });
+
+      expect(mockJobCrudService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'ENCODE' })
+      );
+    });
+
+    it('should not trigger file transfer when target node has shared storage', async () => {
+      mockPrisma.library.findUnique.mockResolvedValue({
+        id: 'lib-1',
+        name: 'Movies',
+        nodeId: 'node-main',
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: {
+          id: 'policy-1',
+          targetCodec: 'hevc',
+          targetContainer: 'mkv',
+          skipReencoding: false,
+        },
+      });
+      mockMediaAnalysis.probeVideoFile.mockResolvedValue({
+        codec: 'h264',
+        duration: 3600,
+        sizeBytes: 1000000000,
+      } as any);
+      mockFfmpegService.getVideoInfoCached.mockResolvedValue({
+        codec: 'h264',
+        container: 'mkv',
+      } as any);
+      mockJobRouterService.findBestNodeForJob.mockResolvedValue('node-child');
+      mockNodeRepository.findById
+        .mockResolvedValueOnce({ id: 'node-child', hasSharedStorage: true })
+        .mockResolvedValueOnce({ id: 'node-main', hasSharedStorage: true });
+
+      mockJobCrudService.create.mockResolvedValue({ id: 'job-shared' } as any);
+
+      await service.handleFileDetected({
+        libraryId: 'lib-1',
+        filePath: '/media/movie.mkv',
+        fileName: 'movie.mkv',
+      });
+
+      expect(mockFileTransferService.transferFile).not.toHaveBeenCalled();
+    });
+
+    it('should not trigger file transfer when target and source are same node', async () => {
+      mockPrisma.library.findUnique.mockResolvedValue({
+        id: 'lib-1',
+        name: 'Movies',
+        nodeId: 'node-1',
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: {
+          id: 'policy-1',
+          targetCodec: 'hevc',
+          targetContainer: 'mkv',
+          skipReencoding: false,
+        },
+      });
+      mockMediaAnalysis.probeVideoFile.mockResolvedValue({
+        codec: 'h264',
+        duration: 3600,
+        sizeBytes: 1000000000,
+      } as any);
+      mockFfmpegService.getVideoInfoCached.mockResolvedValue({
+        codec: 'h264',
+        container: 'mkv',
+      } as any);
+      mockJobRouterService.findBestNodeForJob.mockResolvedValue('node-1');
+      // Same node for both
+      mockNodeRepository.findById
+        .mockResolvedValueOnce({ id: 'node-1', hasSharedStorage: false })
+        .mockResolvedValueOnce({ id: 'node-1', hasSharedStorage: false });
+
+      mockJobCrudService.create.mockResolvedValue({ id: 'job-same-node' } as any);
+
+      await service.handleFileDetected({
+        libraryId: 'lib-1',
+        filePath: '/media/movie.mkv',
+        fileName: 'movie.mkv',
+      });
+
+      expect(mockFileTransferService.transferFile).not.toHaveBeenCalled();
+    });
+
+    it('should handle file transfer background error gracefully', async () => {
+      mockPrisma.library.findUnique.mockResolvedValue({
+        id: 'lib-1',
+        name: 'Movies',
+        nodeId: 'node-main',
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: {
+          id: 'policy-1',
+          targetCodec: 'hevc',
+          targetContainer: 'mkv',
+          skipReencoding: false,
+        },
+      });
+      mockMediaAnalysis.probeVideoFile.mockResolvedValue({
+        codec: 'h264',
+        duration: 3600,
+        sizeBytes: 1000000000,
+      } as any);
+      mockFfmpegService.getVideoInfoCached.mockResolvedValue({
+        codec: 'h264',
+        container: 'mkv',
+      } as any);
+      mockJobRouterService.findBestNodeForJob.mockResolvedValue('node-child');
+      mockNodeRepository.findById
+        .mockResolvedValueOnce({ id: 'node-child', hasSharedStorage: false })
+        .mockResolvedValueOnce({ id: 'node-main', hasSharedStorage: true });
+
+      mockJobCrudService.create.mockResolvedValue({ id: 'job-transfer-fail' } as any);
+      mockFileTransferService.transferFile.mockRejectedValue(new Error('transfer failed'));
+
+      await expect(
+        service.handleFileDetected({
+          libraryId: 'lib-1',
+          filePath: '/media/movie.mkv',
+          fileName: 'movie.mkv',
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it('should use library nodeId as fallback when jobRouter returns null', async () => {
+      mockPrisma.library.findUnique.mockResolvedValue({
+        id: 'lib-1',
+        name: 'Movies',
+        nodeId: 'node-fallback',
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: {
+          id: 'policy-1',
+          targetCodec: 'hevc',
+          targetContainer: 'mkv',
+          skipReencoding: false,
+        },
+      });
+      mockMediaAnalysis.probeVideoFile.mockResolvedValue({
+        codec: 'h264',
+        duration: 1800,
+        sizeBytes: 500000000,
+      } as any);
+      mockFfmpegService.getVideoInfoCached.mockResolvedValue({
+        codec: 'h264',
+        container: 'mkv',
+      } as any);
+      mockJobRouterService.findBestNodeForJob.mockResolvedValue(null); // no optimal node
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-fallback',
+        hasSharedStorage: true,
+      });
+      mockJobCrudService.create.mockResolvedValue({ id: 'job-fallback' } as any);
+
+      await service.handleFileDetected({
+        libraryId: 'lib-1',
+        filePath: '/media/movie.mkv',
+        fileName: 'movie.mkv',
+      });
+
+      expect(mockJobCrudService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: 'node-fallback' })
+      );
+    });
+
+    it('should use mkv as default targetContainer when policy has none', async () => {
+      mockPrisma.library.findUnique.mockResolvedValue({
+        id: 'lib-1',
+        name: 'Movies',
+        nodeId: 'node-1',
+        defaultPolicyId: 'policy-1',
+        defaultPolicy: {
+          id: 'policy-1',
+          targetCodec: 'hevc',
+          targetContainer: null, // no container → should default to 'mkv'
+          skipReencoding: false,
+        },
+      });
+      mockMediaAnalysis.probeVideoFile.mockResolvedValue({
+        codec: 'h264',
+        duration: 3600,
+        sizeBytes: 1000000000,
+      } as any);
+      mockFfmpegService.getVideoInfoCached.mockResolvedValue({
+        codec: 'h264',
+        container: 'mkv',
+      } as any);
+      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: true });
+      mockJobCrudService.create.mockResolvedValue({ id: 'job-default-container' } as any);
+
+      await service.handleFileDetected({
+        libraryId: 'lib-1',
+        filePath: '/media/movie.mkv',
+        fileName: 'movie.mkv',
+      });
+
+      expect(mockJobCrudService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ targetContainer: 'mkv' })
       );
     });
   });
