@@ -400,5 +400,394 @@ describe('HealthCheckWorker', () => {
 
       expect(message).toContain('Low bitrate detected');
     });
+
+    it('should handle AT_RISK status', () => {
+      const result = {
+        status: FileHealthStatus.AT_RISK,
+        score: 55,
+        issues: ['Partial corruption'],
+        warnings: ['Missing metadata'],
+      };
+
+      const message = (worker as any).buildHealthMessage(result);
+      expect(message).toContain('55/100');
+      expect(message).toContain('Partial corruption');
+      expect(message).toContain('Missing metadata');
+    });
+
+    it('should handle UNKNOWN status', () => {
+      const result = {
+        status: FileHealthStatus.UNKNOWN,
+        score: 0,
+        issues: [],
+        warnings: [],
+      };
+
+      const message = (worker as any).buildHealthMessage(result);
+      expect(message).toContain('0/100');
+    });
+  });
+
+  // ─── checkCodecMatch ─────────────────────────────────────────────
+
+  describe('checkCodecMatch', () => {
+    it('should return null when codecs differ', () => {
+      const result = (worker as any).checkCodecMatch('h264', 'hevc');
+      expect(result).toBeNull();
+    });
+
+    it('should return BLOCKER issue when source matches target codec', () => {
+      const result = (worker as any).checkCodecMatch('hevc', 'hevc');
+      expect(result).not.toBeNull();
+      expect(result.code).toBe('CODEC_ALREADY_MATCHES_TARGET');
+      expect(result.severity).toBe('BLOCKER');
+    });
+
+    it('should include skip_encoding as recommended action', () => {
+      const result = (worker as any).checkCodecMatch('h264', 'h264');
+      expect(result.suggestedActions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'skip_encoding', recommended: true }),
+        ])
+      );
+    });
+
+    it('should include force_reencode and cancel_job actions', () => {
+      const result = (worker as any).checkCodecMatch('av1', 'av1');
+      const ids = result.suggestedActions.map((a: { id: string }) => a.id);
+      expect(ids).toContain('force_reencode');
+      expect(ids).toContain('cancel_job');
+    });
+  });
+
+  // ─── getCodecDisplayName ──────────────────────────────────────────
+
+  describe('getCodecDisplayName', () => {
+    it('should return friendly name for known codecs', () => {
+      expect((worker as any).getCodecDisplayName('hevc')).toBe('HEVC (H.265)');
+      expect((worker as any).getCodecDisplayName('h264')).toBe('H.264 (AVC)');
+      expect((worker as any).getCodecDisplayName('av1')).toBe('AV1');
+      expect((worker as any).getCodecDisplayName('vp9')).toBe('VP9');
+    });
+
+    it('should uppercase unknown codecs', () => {
+      expect((worker as any).getCodecDisplayName('mpeg2')).toBe('MPEG2');
+    });
+  });
+
+  // ─── calculateExpectedSavingsPercent ─────────────────────────────
+
+  describe('calculateExpectedSavingsPercent', () => {
+    it('should return 5% for same-codec re-encoding', () => {
+      const result = (worker as any).calculateExpectedSavingsPercent('hevc', 'hevc', BigInt(0));
+      expect(result).toBe(5);
+    });
+
+    it('should return ~35% for h264 → hevc', () => {
+      const result = (worker as any).calculateExpectedSavingsPercent('h264', 'hevc', BigInt(0));
+      expect(result).toBe(35);
+    });
+
+    it('should return negative savings for hevc → h264', () => {
+      const result = (worker as any).calculateExpectedSavingsPercent('hevc', 'h264', BigInt(0));
+      expect(result).toBeLessThan(0);
+    });
+
+    it('should return 0 for unknown codec pair', () => {
+      const result = (worker as any).calculateExpectedSavingsPercent('mpeg2', 'wmv', BigInt(0));
+      expect(result).toBe(0);
+    });
+  });
+
+  // ─── checkCodecMatchWithThreshold ────────────────────────────────
+
+  describe('checkCodecMatchWithThreshold', () => {
+    it('should return SAVINGS_BELOW_THRESHOLD issue', () => {
+      const result = (worker as any).checkCodecMatchWithThreshold('h264', 'hevc', 10, 20);
+      expect(result).not.toBeNull();
+      expect(result.code).toBe('SAVINGS_BELOW_THRESHOLD');
+      expect(result.severity).toBe('BLOCKER');
+    });
+
+    it('should include expected savings in message', () => {
+      const result = (worker as any).checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      expect(result.message).toContain('10%');
+      expect(result.message).toContain('30%');
+    });
+
+    it('should have skip_encoding as recommended action', () => {
+      const result = (worker as any).checkCodecMatchWithThreshold('h264', 'hevc', 5, 25);
+      const recommended = result.suggestedActions.find(
+        (a: { recommended: boolean }) => a.recommended
+      );
+      expect(recommended.id).toBe('skip_encoding');
+    });
+  });
+
+  // ─── autoRequeueCorruptedJobs - exhausted jobs ────────────────────
+
+  describe('autoRequeueCorruptedJobs - exhausted jobs', () => {
+    it('should permanently fail exhausted jobs and record failure tracking', async () => {
+      const exhaustedJob = {
+        id: 'ex-1',
+        fileLabel: 'bad.mkv',
+        corruptedRequeueCount: 3,
+        filePath: '/media/bad.mkv',
+        libraryId: 'lib-1',
+        contentFingerprint: 'fp-abc',
+      };
+
+      jobRepository.findManySelect
+        .mockResolvedValueOnce([]) // eligible jobs (none)
+        .mockResolvedValueOnce([exhaustedJob]); // exhausted jobs
+      jobRepository.updateById.mockResolvedValue({});
+      fileFailureTrackingService.recordFailure.mockResolvedValue(undefined);
+
+      await worker.autoRequeueCorruptedJobs();
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'ex-1',
+        expect.objectContaining({ stage: JobStage.FAILED })
+      );
+      expect(fileFailureTrackingService.recordFailure).toHaveBeenCalled();
+    });
+
+    it('should handle failure tracking error gracefully', async () => {
+      const exhaustedJob = {
+        id: 'ex-2',
+        fileLabel: 'bad2.mkv',
+        corruptedRequeueCount: 3,
+        filePath: '/media/bad2.mkv',
+        libraryId: 'lib-1',
+        contentFingerprint: null,
+      };
+
+      jobRepository.findManySelect.mockResolvedValueOnce([]).mockResolvedValueOnce([exhaustedJob]);
+      jobRepository.updateById.mockResolvedValue({});
+      fileFailureTrackingService.recordFailure.mockRejectedValue(new Error('tracking DB down'));
+
+      // Should not throw
+      await expect(worker.autoRequeueCorruptedJobs()).resolves.not.toThrow();
+    });
+  });
+
+  // ─── processHealthChecks - filtered jobs ─────────────────────────
+
+  describe('processHealthChecks - filtered jobs', () => {
+    it('should process DETECTED jobs immediately', async () => {
+      const detectedJob = {
+        id: 'job-d1',
+        stage: JobStage.DETECTED,
+        healthCheckStartedAt: null,
+        beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+        filePath: '/media/file.mkv',
+        fileLabel: 'file.mkv',
+        sourceCodec: 'h264',
+        targetCodec: 'hevc',
+        targetContainer: 'mkv',
+        policy: null,
+      };
+
+      jobRepository.findManyWithInclude.mockResolvedValue([detectedJob]);
+      jobRepository.findUniqueWithInclude.mockResolvedValue(null); // job not found in checkJobHealth
+
+      await (worker as any).processHealthChecks();
+
+      expect(jobRepository.findManyWithInclude).toHaveBeenCalled();
+    });
+
+    it('should filter out HEALTH_CHECK jobs within dynamic timeout', async () => {
+      const recentHealthCheckJob = {
+        id: 'job-hc1',
+        stage: JobStage.HEALTH_CHECK,
+        healthCheckStartedAt: new Date(Date.now() - 1000), // just 1 second ago
+        beforeSizeBytes: BigInt(1024 * 1024 * 1024), // 1GB → ~10 min timeout
+        filePath: '/media/file.mkv',
+        fileLabel: 'file.mkv',
+        sourceCodec: 'h264',
+        targetCodec: 'hevc',
+        targetContainer: 'mkv',
+        policy: null,
+      };
+
+      jobRepository.findManyWithInclude.mockResolvedValue([recentHealthCheckJob]);
+
+      await (worker as any).processHealthChecks();
+
+      // checkJobHealth should NOT be called since job is within timeout window
+      expect(jobRepository.findUniqueWithInclude).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── checkJobHealth - error retry paths ──────────────────────────
+
+  describe('checkJobHealth - error paths', () => {
+    it('should retry by resetting to DETECTED when healthCheckRetries < max', async () => {
+      jobRepository.findUniqueWithInclude.mockResolvedValue({
+        id: 'job-err',
+        filePath: '/media/file.mkv',
+        fileLabel: 'file.mkv',
+        stage: JobStage.DETECTED,
+        sourceCodec: 'h264',
+        targetCodec: 'hevc',
+        targetContainer: 'mkv',
+        beforeSizeBytes: BigInt(1073741824),
+        policy: null,
+      });
+
+      // Simulate file access failure by making fs.access throw
+      jest.mock('fs/promises', () => ({
+        access: jest.fn().mockRejectedValue(new Error('ENOENT')),
+      }));
+
+      // fileHealthService.analyzeFile throws
+      fileHealthService.analyzeFile.mockRejectedValue(new Error('ffprobe failed'));
+
+      // findUniqueSelect for retry count
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        healthCheckRetries: 0,
+        fileLabel: 'file.mkv',
+      });
+      jobRepository.updateById.mockResolvedValue({});
+      prisma.$executeRaw.mockResolvedValue(1);
+
+      // Mock fs/promises to allow file access
+      const mockFsPromises = { access: jest.fn().mockResolvedValue(undefined) };
+      jest.doMock('fs/promises', () => mockFsPromises);
+      containerCompatibilityService.checkCompatibility.mockResolvedValue([]);
+
+      await (worker as any).checkJobHealth('job-err');
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-err',
+        expect.objectContaining({ stage: JobStage.DETECTED, healthCheckRetries: 1 })
+      );
+    });
+
+    it('should mark FAILED when healthCheckRetries >= max', async () => {
+      jobRepository.findUniqueWithInclude.mockResolvedValue({
+        id: 'job-maxerr',
+        filePath: '/media/file.mkv',
+        fileLabel: 'file.mkv',
+        stage: JobStage.DETECTED,
+        sourceCodec: 'h264',
+        targetCodec: 'hevc',
+        targetContainer: 'mkv',
+        beforeSizeBytes: BigInt(1073741824),
+        policy: null,
+      });
+
+      fileHealthService.analyzeFile.mockRejectedValue(new Error('crash'));
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        healthCheckRetries: 3,
+        fileLabel: 'file.mkv',
+      });
+      jobRepository.updateById.mockResolvedValue({});
+      prisma.$executeRaw.mockResolvedValue(1);
+      containerCompatibilityService.checkCompatibility.mockResolvedValue([]);
+
+      const mockFsPromises = { access: jest.fn().mockResolvedValue(undefined) };
+      jest.doMock('fs/promises', () => mockFsPromises);
+
+      await (worker as any).checkJobHealth('job-maxerr');
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-maxerr',
+        expect.objectContaining({
+          stage: JobStage.FAILED,
+          healthStatus: FileHealthStatus.CORRUPTED,
+        })
+      );
+    });
+
+    it('should skip when job not found', async () => {
+      jobRepository.findUniqueWithInclude.mockResolvedValue(null);
+      // fs.access mock via doMock
+      const mockFsPromises = { access: jest.fn().mockResolvedValue(undefined) };
+      jest.doMock('fs/promises', () => mockFsPromises);
+      prisma.$executeRaw.mockResolvedValue(0); // not claimed
+
+      await (worker as any).checkJobHealth('nonexistent');
+
+      // Should not crash or call updateById
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it('should skip when job already claimed by another worker', async () => {
+      jobRepository.findUniqueWithInclude.mockResolvedValue({
+        id: 'job-claimed',
+        filePath: '/media/file.mkv',
+        fileLabel: 'file.mkv',
+        stage: JobStage.DETECTED,
+        sourceCodec: 'h264',
+        targetCodec: 'hevc',
+        targetContainer: 'mkv',
+        beforeSizeBytes: BigInt(1073741824),
+        policy: null,
+      });
+
+      const mockFsPromises = { access: jest.fn().mockResolvedValue(undefined) };
+      jest.doMock('fs/promises', () => mockFsPromises);
+
+      prisma.$executeRaw.mockResolvedValue(0); // claim returns 0 = already claimed
+
+      await (worker as any).checkJobHealth('job-claimed');
+
+      expect(fileHealthService.analyzeFile).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── timeoutStuckHealthChecks - no healthCheckStartedAt ──────────
+
+  describe('timeoutStuckHealthChecks - edge cases', () => {
+    it('should use 10 min as fallback when healthCheckStartedAt is null', async () => {
+      const stuckJob = {
+        id: 'stuck-null',
+        fileLabel: 'stuck-null.mkv',
+        healthCheckStartedAt: null,
+        retryCount: 3,
+      };
+
+      jobRepository.findManySelect.mockResolvedValue([stuckJob]);
+      jobRepository.updateById.mockResolvedValue({});
+
+      await (worker as any).timeoutStuckHealthChecks();
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'stuck-null',
+        expect.objectContaining({ stage: JobStage.FAILED })
+      );
+    });
+
+    it('should calculate backoff exponentially for retries', async () => {
+      const stuckJob0 = {
+        id: 'stuck-backoff-0',
+        fileLabel: 'file0.mkv',
+        healthCheckStartedAt: new Date(Date.now() - 15 * 60 * 1000),
+        retryCount: 0, // backoff = 30s
+      };
+
+      const stuckJob1 = {
+        id: 'stuck-backoff-1',
+        fileLabel: 'file1.mkv',
+        healthCheckStartedAt: new Date(Date.now() - 15 * 60 * 1000),
+        retryCount: 1, // backoff = 60s
+      };
+
+      jobRepository.findManySelect.mockResolvedValue([stuckJob0, stuckJob1]);
+      jobRepository.updateById.mockResolvedValue({});
+
+      await (worker as any).timeoutStuckHealthChecks();
+
+      // Both should be reset to DETECTED
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'stuck-backoff-0',
+        expect.objectContaining({ stage: JobStage.DETECTED, retryCount: 1 })
+      );
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'stuck-backoff-1',
+        expect.objectContaining({ stage: JobStage.DETECTED, retryCount: 2 })
+      );
+    });
   });
 });

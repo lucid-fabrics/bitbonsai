@@ -397,7 +397,7 @@ describe('FileHealthService', () => {
       // exitCode=1 (-50) + no duration (-10) + no bitrate (-5) = 35 ... not quite
       // exitCode=1 (-50) + no audio (-5) + no duration (-10) + no bitrate (-5) = 30 → still CORRUPTED
       // Use evaluateHealth directly for deterministic AT_RISK
-      const result = (service as any).evaluateHealth({
+      const _result = (service as any).evaluateHealth({
         exitCode: 0,
         stdout: '{}',
         stderr: '',

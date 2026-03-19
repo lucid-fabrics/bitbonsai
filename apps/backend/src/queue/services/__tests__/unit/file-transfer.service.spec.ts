@@ -331,5 +331,288 @@ describe('FileTransferService', () => {
 
       expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
+
+    it('should call remote rm command and update DB when remoteTempPath exists', async () => {
+      const { spawn } = require('node:child_process');
+
+      const mockStdout = { on: jest.fn(), destroy: jest.fn() };
+      const mockStderr = { on: jest.fn(), destroy: jest.fn() };
+      const mockSsh = {
+        stdout: mockStdout,
+        stderr: mockStderr,
+        on: jest.fn(),
+        kill: jest.fn(),
+        killed: false,
+      };
+
+      spawn.mockReturnValue(mockSsh);
+
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        remoteTempPath: '/tmp/bitbonsai-transfer/movie.mkv',
+        node: { id: 'node-1', name: 'Child', ipAddress: '192.168.1.170' },
+      });
+      jobRepository.updateById.mockResolvedValue({});
+
+      // Trigger close with code 0 to simulate success
+      mockSsh.on.mockImplementation((event: string, cb: (code: number) => void) => {
+        if (event === 'close') {
+          setImmediate(() => cb(0));
+        }
+      });
+      mockStdout.on.mockImplementation((event: string, cb: (data: Buffer) => void) => {
+        if (event === 'data') cb(Buffer.from(''));
+      });
+      mockStderr.on.mockImplementation(() => {});
+
+      await service.cleanupRemoteTempFile('job-1');
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', { remoteTempPath: null });
+    });
+
+    it('should handle remote command failure gracefully', async () => {
+      const { spawn } = require('node:child_process');
+
+      const mockStdout = { on: jest.fn(), destroy: jest.fn() };
+      const mockStderr = { on: jest.fn(), destroy: jest.fn() };
+      const mockSsh = {
+        stdout: mockStdout,
+        stderr: mockStderr,
+        on: jest.fn(),
+        kill: jest.fn(),
+        killed: false,
+      };
+
+      spawn.mockReturnValue(mockSsh);
+
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        remoteTempPath: '/tmp/bitbonsai-transfer/movie.mkv',
+        node: { id: 'node-1', name: 'Child', ipAddress: '192.168.1.170' },
+      });
+
+      mockSsh.on.mockImplementation((event: string, cb: (code: number) => void) => {
+        if (event === 'close') {
+          setImmediate(() => cb(1)); // non-zero exit
+        }
+      });
+      mockStdout.on.mockImplementation(() => {});
+      mockStderr.on.mockImplementation((event: string, cb: (data: Buffer) => void) => {
+        if (event === 'data') cb(Buffer.from('rm: cannot remove'));
+      });
+
+      // Should not throw
+      await service.cleanupRemoteTempFile('job-1');
+      // updateById should NOT be called on failure
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================================================
+  // cancelTransfer - with active transfer
+  // ==========================================================================
+  describe('cancelTransfer with active transfer', () => {
+    it('should abort and update job when active transfer exists', async () => {
+      // Inject an active AbortController into the service's private map
+      const abortController = new AbortController();
+      const abortSpy = jest.spyOn(abortController, 'abort');
+      (service as unknown as { activeTransfers: Map<string, AbortController> }).activeTransfers.set(
+        'job-cancel',
+        abortController
+      );
+
+      jobRepository.updateById.mockResolvedValue({});
+
+      await service.cancelTransfer('job-cancel');
+
+      expect(abortSpy).toHaveBeenCalled();
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-cancel',
+        expect.objectContaining({
+          stage: 'CANCELLED',
+          transferError: 'Transfer cancelled by user',
+        })
+      );
+
+      // Should be removed from map
+      expect(
+        (
+          service as unknown as { activeTransfers: Map<string, AbortController> }
+        ).activeTransfers.has('job-cancel')
+      ).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // getTransferProgress - ETA null when progress is 0
+  // ==========================================================================
+  describe('getTransferProgress - additional cases', () => {
+    it('should return null ETA when progress is 0 even with speed', async () => {
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        id: 'job-1',
+        stage: 'TRANSFERRING',
+        transferRequired: true,
+        transferProgress: 0,
+        transferSpeedMBps: 50,
+        transferError: null,
+        beforeSizeBytes: BigInt(1073741824),
+      });
+
+      const result = await service.getTransferProgress('job-1');
+      // ETA is null when progress === 0 (division by zero guard)
+      expect(result.eta).toBeNull();
+    });
+
+    it('should return PENDING when not transferring and progress < 100 and no error', async () => {
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        id: 'job-2',
+        stage: 'DETECTED',
+        transferRequired: true,
+        transferProgress: 25,
+        transferSpeedMBps: null,
+        transferError: null,
+        beforeSizeBytes: BigInt(500000000),
+      });
+
+      const result = await service.getTransferProgress('job-2');
+      expect(result.status).toBe('PENDING');
+    });
+  });
+
+  // ==========================================================================
+  // transferFile - error path: retry logic
+  // ==========================================================================
+  describe('transferFile - error retry logic', () => {
+    const sourceNode = {
+      id: 'src-1',
+      name: 'Main',
+      ipAddress: '192.168.1.100',
+      hasSharedStorage: false,
+    };
+    const targetNode = {
+      id: 'tgt-1',
+      name: 'Child',
+      ipAddress: '192.168.1.170',
+      hasSharedStorage: false,
+    };
+
+    it('should mark FAILED after max retries reached', async () => {
+      const { spawn } = require('node:child_process');
+
+      const mockStdout = { on: jest.fn(), destroy: jest.fn() };
+      const mockStderr = { on: jest.fn(), destroy: jest.fn() };
+      const mockProcess = {
+        stdout: mockStdout,
+        stderr: mockStderr,
+        on: jest.fn(),
+        kill: jest.fn(),
+        killed: false,
+      };
+      spawn.mockReturnValue(mockProcess);
+
+      // All updateById calls succeed; findUniqueSelect returns retryCount = 2 (3rd attempt = max)
+      jobRepository.updateById.mockResolvedValue({});
+      jobRepository.findUniqueSelect.mockResolvedValue({ transferRetryCount: 2 });
+
+      // Simulate SSH for mkdir command then rsync error
+      let spawnCallCount = 0;
+      spawn.mockImplementation(() => {
+        spawnCallCount++;
+        const proc = {
+          stdout: { on: jest.fn(), destroy: jest.fn() },
+          stderr: { on: jest.fn(), destroy: jest.fn() },
+          on: jest.fn(),
+          kill: jest.fn(),
+          killed: false,
+        };
+        proc.on.mockImplementation((event: string, cb: (code: number | Error) => void) => {
+          if (event === 'close') {
+            setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1)); // mkdir ok, rsync fail
+          }
+        });
+        proc.stdout.on.mockImplementation(() => {});
+        proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
+          if (evt === 'data') cb(Buffer.from('connection refused'));
+        });
+        return proc;
+      });
+
+      await expect(
+        service.transferFile(
+          'job-max-retry',
+          '/media/file.mkv',
+          sourceNode as unknown as import('@prisma/client').Node,
+          targetNode as unknown as import('@prisma/client').Node
+        )
+      ).rejects.toThrow();
+
+      // Last updateById call should mark as FAILED
+      const calls = jobRepository.updateById.mock.calls;
+      const failCall = calls.find((c: unknown[]) => {
+        const data = c[1] as { stage?: string };
+        return data?.stage === 'FAILED';
+      });
+      expect(failCall).toBeDefined();
+    });
+
+    it('should reset to DETECTED stage when retries remain', async () => {
+      const { spawn } = require('node:child_process');
+
+      jobRepository.updateById.mockResolvedValue({});
+      jobRepository.findUniqueSelect.mockResolvedValue({ transferRetryCount: 0 });
+
+      let spawnCallCount = 0;
+      spawn.mockImplementation(() => {
+        spawnCallCount++;
+        const proc = {
+          stdout: { on: jest.fn(), destroy: jest.fn() },
+          stderr: { on: jest.fn(), destroy: jest.fn() },
+          on: jest.fn(),
+          kill: jest.fn(),
+          killed: false,
+        };
+        proc.on.mockImplementation((event: string, cb: (code: number) => void) => {
+          if (event === 'close') {
+            setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1));
+          }
+        });
+        proc.stdout.on.mockImplementation(() => {});
+        proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
+          if (evt === 'data') cb(Buffer.from('rsync error'));
+        });
+        return proc;
+      });
+
+      await expect(
+        service.transferFile(
+          'job-retry',
+          '/media/file.mkv',
+          sourceNode as unknown as import('@prisma/client').Node,
+          targetNode as unknown as import('@prisma/client').Node
+        )
+      ).rejects.toThrow();
+
+      const calls = jobRepository.updateById.mock.calls;
+      const detectedCall = calls.find((c: unknown[]) => {
+        const data = c[1] as { stage?: string };
+        return data?.stage === 'DETECTED';
+      });
+      expect(detectedCall).toBeDefined();
+    });
+  });
+
+  // ==========================================================================
+  // onModuleInit - error codes
+  // ==========================================================================
+  describe('onModuleInit - error code handling', () => {
+    it('should warn when exec errors with code other than 1', async () => {
+      const { exec } = require('node:child_process');
+      exec.mockImplementation(
+        (_cmd: string, cb: (err: { code: number }, stdout: string, stderr: string) => void) => {
+          cb({ code: 2 }, '', 'permission denied');
+        }
+      );
+
+      await service.onModuleInit();
+      // Should complete without throwing
+    });
   });
 });
