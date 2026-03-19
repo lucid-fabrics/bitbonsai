@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../../common/repositories/job.repository';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobFileOperationsService } from './job-file-operations.service';
@@ -9,7 +10,8 @@ import { QueueJobCrudService } from './queue-job-crud.service';
 
 describe('JobFileOperationsService', () => {
   let service: JobFileOperationsService;
-  let mockPrisma: any;
+  let mockPrisma: { job: { update: jest.Mock }; $transaction: jest.Mock };
+  let mockJobRepository: { updateById: jest.Mock; updateByIdWithInclude: jest.Mock };
   let mockJobCrudService: jest.Mocked<QueueJobCrudService>;
   let mockFfmpegService: jest.Mocked<FfmpegService>;
   let mockJobMetricsService: jest.Mocked<JobMetricsService>;
@@ -37,6 +39,11 @@ describe('JobFileOperationsService', () => {
       $transaction: jest.fn(),
     };
 
+    mockJobRepository = {
+      updateById: jest.fn(),
+      updateByIdWithInclude: jest.fn(),
+    };
+
     mockJobCrudService = {
       findOne: jest.fn(),
     } as any;
@@ -53,6 +60,7 @@ describe('JobFileOperationsService', () => {
       providers: [
         JobFileOperationsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: JobRepository, useValue: mockJobRepository },
         { provide: QueueJobCrudService, useValue: mockJobCrudService },
         { provide: FfmpegService, useValue: mockFfmpegService },
         { provide: JobMetricsService, useValue: mockJobMetricsService },
@@ -67,14 +75,13 @@ describe('JobFileOperationsService', () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
       const updatedJob = { ...job, keepOriginalRequested: true };
-      mockPrisma.job.update.mockResolvedValue(updatedJob);
+      mockJobRepository.updateById.mockResolvedValue(updatedJob);
 
       const _result = await service.requestKeepOriginal('job-1');
 
-      expect(mockPrisma.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ keepOriginalRequested: true }),
-        })
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ keepOriginalRequested: true })
       );
     });
 
@@ -111,7 +118,7 @@ describe('JobFileOperationsService', () => {
     it('should update error message when file does not exist', async () => {
       const job = makeJob({ stage: JobStage.FAILED });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
-      mockPrisma.job.update.mockResolvedValue({
+      mockJobRepository.updateById.mockResolvedValue({
         ...job,
         error: 'RECHECK FAILED: File does not exist',
       });
@@ -122,10 +129,9 @@ describe('JobFileOperationsService', () => {
         .mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
 
       const _result = await service.recheckFailedJob('job-1');
-      expect(mockPrisma.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ error: expect.stringContaining('RECHECK FAILED') }),
-        })
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ error: expect.stringContaining('RECHECK FAILED') })
       );
     });
   });
@@ -151,14 +157,14 @@ describe('JobFileOperationsService', () => {
     it('should requeue job when no compression detected', async () => {
       const job = makeJob({ stage: JobStage.COMPLETED, savedBytes: BigInt(0) });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
-      mockPrisma.job.update.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
+      mockJobRepository.updateByIdWithInclude.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
 
       const _result = await service.detectAndRequeueIfUncompressed('job-1');
 
-      expect(mockPrisma.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ stage: JobStage.QUEUED }),
-        })
+      expect(mockJobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ stage: JobStage.QUEUED }),
+        expect.anything()
       );
     });
   });
