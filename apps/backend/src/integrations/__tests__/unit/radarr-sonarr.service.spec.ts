@@ -1,14 +1,14 @@
 import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { MediaServerType, RadarrSonarrIntegrationService } from '../../radarr-sonarr.service';
 
 describe('RadarrSonarrIntegrationService', () => {
   let service: RadarrSonarrIntegrationService;
 
-  const mockPrismaService = {
-    settings: { findFirst: jest.fn() },
+  const mockSettingsRepository = {
+    findFirst: jest.fn(),
   };
 
   const mockHttpService = {
@@ -23,7 +23,7 @@ describe('RadarrSonarrIntegrationService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RadarrSonarrIntegrationService,
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: SettingsRepository, useValue: mockSettingsRepository },
         { provide: HttpService, useValue: mockHttpService },
       ],
     }).compile();
@@ -37,7 +37,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('getRadarrMovies', () => {
     it('should return empty array when Radarr not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.getRadarrMovies();
 
@@ -45,7 +45,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should return mapped movies on success', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
@@ -80,7 +80,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should return empty array on API error', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
@@ -94,7 +94,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('getSonarrSeries', () => {
     it('should return empty array when Sonarr not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.getSonarrSeries();
 
@@ -102,7 +102,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should map hasFile from episodeFileCount', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         sonarrUrl: 'http://sonarr:8989',
         sonarrApiKey: 'api-key',
       });
@@ -140,7 +140,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('triggerRadarrRescan', () => {
     it('should not call API when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       await service.triggerRadarrRescan(1);
 
@@ -148,7 +148,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should send RescanMovie command', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
@@ -166,7 +166,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
@@ -178,7 +178,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('triggerSonarrRescan', () => {
     it('should send RescanSeries command', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         sonarrUrl: 'http://sonarr:8989',
         sonarrApiKey: 'api-key',
       });
@@ -196,7 +196,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('shouldSkipFile', () => {
     it('should not skip when Radarr not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.shouldSkipFile('/movies/test.mkv');
 
@@ -204,7 +204,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should skip HEVC files when skipQualityMet is true', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
         radarrSkipQualityMet: true,
@@ -233,7 +233,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should not skip non-HEVC files', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
         radarrSkipQualityMet: true,
@@ -290,7 +290,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('getRadarrQualityProfiles', () => {
     it('should return empty array when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.getRadarrQualityProfiles();
 
@@ -298,7 +298,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should return mapped quality profiles', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
@@ -322,7 +322,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('registerWebhooks', () => {
     it('should return error when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.registerWebhooks(
         MediaServerType.RADARR,
@@ -334,7 +334,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should create new webhook when none exists', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
@@ -357,7 +357,7 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should update existing webhook', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
