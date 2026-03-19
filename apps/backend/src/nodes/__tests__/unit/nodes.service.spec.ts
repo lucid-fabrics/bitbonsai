@@ -1,15 +1,17 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AccelerationType, LicenseStatus, NodeRole, NodeStatus } from '@prisma/client';
+import { LicenseRepository } from '../../../common/repositories/license.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { DataAccessService } from '../../../core/services/data-access.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { NodesService } from '../../nodes.service';
 import { StorageShareService } from '../../services/storage-share.service';
 import { SystemInfoService } from '../../services/system-info.service';
 
 describe('NodesService', () => {
   let service: NodesService;
-  let prisma: PrismaService;
+  let mockNodeRepo: Record<string, jest.Mock>;
+  let mockLicenseRepo: Record<string, jest.Mock>;
 
   const mockLicense = {
     id: 'license-1',
@@ -36,6 +38,7 @@ describe('NodesService', () => {
     lastHeartbeat: new Date(),
     uptimeSeconds: 0,
     licenseId: 'license-1',
+    ipAddress: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -63,12 +66,40 @@ describe('NodesService', () => {
   };
 
   beforeEach(async () => {
+    mockNodeRepo = {
+      findFirstNode: jest.fn(),
+      findFirstWithLicense: jest.fn(),
+      createNode: jest.fn(),
+      findFirst: jest.fn(),
+      updateData: jest.fn(),
+      findById: jest.fn(),
+      findWithStats: jest.fn(),
+      findWithSelect: jest.fn(),
+      findAllWithLicense: jest.fn(),
+      findByApiKey: jest.fn(),
+      findManyByIp: jest.fn(),
+      findManyByRole: jest.fn(),
+      findFirstByRole: jest.fn(),
+      deleteById: jest.fn(),
+    };
+
+    mockLicenseRepo = {
+      findByKeyWithInclude: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NodesService,
+        { provide: NodeRepository, useValue: mockNodeRepo },
+        { provide: LicenseRepository, useValue: mockLicenseRepo },
         {
           provide: DataAccessService,
-          useValue: { getNextJob: jest.fn(), updateJobProgress: jest.fn(), findJobById: jest.fn() },
+          useValue: {
+            getNextJob: jest.fn(),
+            updateJobProgress: jest.fn(),
+            findJobById: jest.fn(),
+            sendHeartbeat: jest.fn(),
+          },
         },
         {
           provide: SystemInfoService,
@@ -91,27 +122,10 @@ describe('NodesService', () => {
             verifyAccess: jest.fn(),
           },
         },
-        {
-          provide: PrismaService,
-          useValue: {
-            license: {
-              findUnique: jest.fn(),
-            },
-            node: {
-              create: jest.fn(),
-              findFirst: jest.fn(),
-              findUnique: jest.fn(),
-              findMany: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-          },
-        },
       ],
     }).compile();
 
     service = module.get<NodesService>(NodesService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -127,8 +141,9 @@ describe('NodesService', () => {
     };
 
     it('should register a new node as MAIN role when no nodes exist', async () => {
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null); // no duplicate MAIN
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
 
@@ -137,11 +152,11 @@ describe('NodesService', () => {
       expect(result.apiKey).toMatch(/^bb_[a-f0-9]{64}$/);
       expect(result.pairingToken).toMatch(/^\d{6}$/);
       expect(result.pairingExpiresAt).toBeInstanceOf(Date);
-      expect(prisma.node.create).toHaveBeenCalledWith({
-        data: {
+      expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
           name: registerDto.name,
           role: NodeRole.MAIN,
-          status: NodeStatus.ONLINE,
+          status: 'ONLINE',
           version: registerDto.version,
           acceleration: registerDto.acceleration,
           apiKey: expect.any(String),
@@ -149,8 +164,8 @@ describe('NodesService', () => {
           pairingExpiresAt: expect.any(Date),
           lastHeartbeat: expect.any(Date),
           licenseId: mockLicense.id,
-        },
-      });
+        })
+      );
     });
 
     it('should register a new node as LINKED role when nodes already exist', async () => {
@@ -160,21 +175,21 @@ describe('NodesService', () => {
       };
       const linkedNode = { ...mockNode, role: NodeRole.LINKED };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(licenseWithNodes as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(linkedNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(licenseWithNodes);
+      mockNodeRepo.createNode.mockResolvedValue(linkedNode);
 
       const result = await service.registerNode(registerDto);
 
       expect(result.role).toBe(NodeRole.LINKED);
-      expect(prisma.node.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
           role: NodeRole.LINKED,
-        }),
-      });
+        })
+      );
     });
 
     it('should throw BadRequestException if license is invalid', async () => {
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(null);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(null);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -187,7 +202,7 @@ describe('NodesService', () => {
         ...mockLicense,
         status: LicenseStatus.EXPIRED,
       };
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(inactiveLicense as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(inactiveLicense);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -201,7 +216,7 @@ describe('NodesService', () => {
         maxNodes: 3,
         _count: { nodes: 3 },
       };
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(fullLicense as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(fullLicense);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(ConflictException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -212,7 +227,7 @@ describe('NodesService', () => {
 
   describe('pairNode', () => {
     it('should pair a node successfully with valid token', async () => {
-      const futureExpiration = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+      const futureExpiration = new Date(Date.now() + 5 * 60 * 1000);
       const nodeWithToken = {
         ...mockNode,
         pairingToken: '123456',
@@ -220,35 +235,33 @@ describe('NodesService', () => {
       };
       const pairedNode = {
         ...mockNode,
+        role: NodeRole.MAIN,
         pairingToken: null,
         pairingExpiresAt: null,
       };
 
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(nodeWithToken as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(pairedNode as never);
+      mockNodeRepo.findFirst.mockResolvedValue(nodeWithToken);
+      mockNodeRepo.updateData.mockResolvedValue(pairedNode);
 
       const result = await service.pairNode('123456');
 
       expect(result.pairingToken).toBeNull();
       expect(result.pairingExpiresAt).toBeNull();
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
-          pairingToken: null,
-          pairingExpiresAt: null,
-        },
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith('node-1', {
+        pairingToken: null,
+        pairingExpiresAt: null,
       });
     });
 
     it('should throw NotFoundException if token is invalid', async () => {
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+      mockNodeRepo.findFirst.mockResolvedValue(null);
 
       await expect(service.pairNode('999999')).rejects.toThrow(NotFoundException);
       await expect(service.pairNode('999999')).rejects.toThrow('Invalid or expired pairing token');
     });
 
     it('should throw NotFoundException if token is expired', async () => {
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+      mockNodeRepo.findFirst.mockResolvedValue(null);
 
       await expect(service.pairNode('123456')).rejects.toThrow(NotFoundException);
       await expect(service.pairNode('123456')).rejects.toThrow('Invalid or expired pairing token');
@@ -263,24 +276,21 @@ describe('NodesService', () => {
         pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       const result = await service.generatePairingTokenForNode('node-1');
 
       expect(result.pairingToken).toMatch(/^\d{6}$/);
       expect(result.pairingExpiresAt).toBeInstanceOf(Date);
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
-          pairingToken: expect.any(String),
-          pairingExpiresAt: expect.any(Date),
-        },
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith('node-1', {
+        pairingToken: expect.any(String),
+        pairingExpiresAt: expect.any(Date),
       });
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.generatePairingTokenForNode('non-existent')).rejects.toThrow(
         NotFoundException
@@ -299,19 +309,17 @@ describe('NodesService', () => {
         uptimeSeconds: 60,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       const result = await service.heartbeat('node-1');
 
       expect(result.lastHeartbeat).toBeInstanceOf(Date);
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
         expect.objectContaining({
-          where: { id: 'node-1' },
-          data: expect.objectContaining({
-            status: NodeStatus.ONLINE,
-            uptimeSeconds: { increment: 60 },
-          }),
+          status: NodeStatus.ONLINE,
+          uptimeSeconds: { increment: 60 },
         })
       );
     });
@@ -322,24 +330,22 @@ describe('NodesService', () => {
         status: NodeStatus.ERROR,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       await service.heartbeat('node-1', { status: NodeStatus.ERROR });
 
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
         expect.objectContaining({
-          where: { id: 'node-1' },
-          data: expect.objectContaining({
-            status: NodeStatus.ERROR,
-            uptimeSeconds: { increment: 60 },
-          }),
+          status: NodeStatus.ERROR,
+          uptimeSeconds: { increment: 60 },
         })
       );
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.heartbeat('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.heartbeat('non-existent')).rejects.toThrow(
@@ -350,7 +356,7 @@ describe('NodesService', () => {
 
   describe('getNodeStats', () => {
     it('should return node with comprehensive statistics', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNodeWithStats as never);
+      mockNodeRepo.findWithStats.mockResolvedValue(mockNodeWithStats);
 
       const result = await service.getNodeStats('node-1');
 
@@ -358,41 +364,11 @@ describe('NodesService', () => {
       expect(result.license).toEqual(mockNodeWithStats.license);
       expect(result.libraries).toHaveLength(1);
       expect(result.activeJobCount).toBe(5);
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        include: {
-          license: {
-            select: {
-              tier: true,
-              maxConcurrentJobs: true,
-              maxNodes: true,
-              status: true,
-            },
-          },
-          libraries: {
-            select: {
-              id: true,
-              name: true,
-              totalFiles: true,
-              totalSizeBytes: true,
-              mediaType: true,
-            },
-          },
-          _count: {
-            select: {
-              jobs: {
-                where: {
-                  stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] },
-                },
-              },
-            },
-          },
-        },
-      });
+      expect(mockNodeRepo.findWithStats).toHaveBeenCalledWith('node-1');
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findWithStats.mockResolvedValue(null);
 
       await expect(service.getNodeStats('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.getNodeStats('non-existent')).rejects.toThrow(
@@ -408,33 +384,27 @@ describe('NodesService', () => {
         { ...mockNode, id: 'node-2', role: NodeRole.LINKED },
       ];
 
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue(mockNodes as never);
+      mockNodeRepo.findAllWithLicense.mockResolvedValue(mockNodes);
 
       const result = await service.findAll();
 
       expect(result).toHaveLength(2);
-      expect(prisma.node.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-        })
-      );
+      expect(mockNodeRepo.findAllWithLicense).toHaveBeenCalled();
     });
   });
 
   describe('findOne', () => {
     it('should return a specific node by ID', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
 
       const result = await service.findOne('node-1');
 
       expect(result.id).toBe('node-1');
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-      });
+      expect(mockNodeRepo.findById).toHaveBeenCalledWith('node-1');
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent')).rejects.toThrow(
@@ -445,18 +415,16 @@ describe('NodesService', () => {
 
   describe('remove', () => {
     it('should delete a node successfully', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'delete').mockResolvedValue(mockNode as never);
+      mockNodeRepo.findWithSelect.mockResolvedValue(mockNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
 
       await service.remove('node-1');
 
-      expect(prisma.node.delete).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-      });
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findWithSelect.mockResolvedValue(null);
 
       await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.remove('non-existent')).rejects.toThrow(
@@ -474,12 +442,12 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
 
-      // API key should be bb_ followed by 64 hex characters
       expect(result.apiKey).toMatch(/^bb_[a-f0-9]{64}$/);
     });
   });
@@ -493,12 +461,12 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
 
-      // Pairing token should be exactly 6 digits
       expect(result.pairingToken).toMatch(/^\d{6}$/);
     });
 
@@ -511,18 +479,19 @@ describe('NodesService', () => {
       };
 
       const now = Date.now();
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
       const futureExpiration = new Date(now + 10 * 60 * 1000);
-      jest
-        .spyOn(prisma.node, 'create')
-        .mockResolvedValue({ ...mockNode, pairingExpiresAt: futureExpiration } as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue({
+        ...mockNode,
+        pairingExpiresAt: futureExpiration,
+      });
 
       const result = await service.registerNode(registerDto);
 
       const expirationTime = result.pairingExpiresAt.getTime();
       const expectedExpiration = now + 10 * 60 * 1000;
 
-      // Allow 1 second tolerance for test execution time
       expect(expirationTime).toBeGreaterThanOrEqual(expectedExpiration - 1000);
       expect(expirationTime).toBeLessThanOrEqual(expectedExpiration + 1000);
     });
@@ -537,14 +506,13 @@ describe('NodesService', () => {
     };
 
     beforeEach(() => {
-      // Clear NODE_ID environment variable before each test
-      process.env.NODE_ID = undefined;
+      delete process.env.NODE_ID;
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {
       process.env.NODE_ID = 'node-2';
       const linkedNodeWithIp = { ...linkedNode, ipAddress: '192.168.1.100' };
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(linkedNodeWithIp as never);
+      mockNodeRepo.findById.mockResolvedValue(linkedNodeWithIp);
 
       const result = await service.getCurrentNode();
 
@@ -554,7 +522,7 @@ describe('NodesService', () => {
 
     it('should return MAIN node when NODE_ID is not set via IP detection', async () => {
       const mainNodeWithIp = { ...mockNode, ipAddress: '192.168.1.100' };
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([mainNodeWithIp] as never);
+      mockNodeRepo.findManyByIp.mockResolvedValue([mainNodeWithIp]);
 
       const result = await service.getCurrentNode();
 
@@ -564,7 +532,7 @@ describe('NodesService', () => {
 
     it('should throw NotFoundException if NODE_ID is set but node does not exist', async () => {
       process.env.NODE_ID = 'invalid-node-id';
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
       await expect(service.getCurrentNode()).rejects.toThrow(
@@ -573,8 +541,10 @@ describe('NodesService', () => {
     });
 
     it('should throw NotFoundException if no node exists when NODE_ID is not set', async () => {
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+      mockNodeRepo.findManyByIp.mockResolvedValue([]);
+      mockNodeRepo.findFirstNode.mockResolvedValue(null);
+      mockNodeRepo.findFirstByRole.mockResolvedValue(null);
+      mockNodeRepo.findManyByRole.mockResolvedValue([]);
 
       await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
     });
