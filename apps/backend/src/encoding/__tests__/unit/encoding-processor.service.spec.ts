@@ -18,15 +18,18 @@ import { EncodingProcessorService } from '../../encoding-processor.service';
 import { FfmpegService } from '../../ffmpeg.service';
 import { PoolLockService } from '../../pool-lock.service';
 import { SystemResourceService } from '../../system-resource.service';
+import { WorkerPoolService } from '../../worker-pool.service';
 
 // Mock fs module
 jest.mock('node:fs');
 
 describe('EncodingProcessorService', () => {
   let service: EncodingProcessorService;
+  let module: TestingModule;
   let queueService: jest.Mocked<QueueService>;
   let ffmpegService: jest.Mocked<FfmpegService>;
   let librariesService: jest.Mocked<LibrariesService>;
+  let workerPoolService: jest.Mocked<WorkerPoolService>;
 
   const mockPolicy = createMockPolicy({
     id: 'policy-1',
@@ -57,7 +60,7 @@ describe('EncodingProcessorService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         EncodingProcessorService,
         {
@@ -180,6 +183,17 @@ describe('EncodingProcessorService', () => {
             sleep: jest.fn().mockResolvedValue(undefined),
           },
         },
+        {
+          provide: WorkerPoolService,
+          useValue: {
+            startWorkerPool: jest.fn().mockResolvedValue(undefined),
+            stopWorker: jest.fn().mockResolvedValue(undefined),
+            getWorker: jest.fn().mockReturnValue(null),
+            getWorkers: jest.fn().mockReturnValue(new Map()),
+            setWorkerJob: jest.fn(),
+            isWorkerRunning: jest.fn().mockReturnValue(false),
+          },
+        },
       ],
     }).compile();
 
@@ -187,57 +201,49 @@ describe('EncodingProcessorService', () => {
     queueService = module.get(QueueService);
     ffmpegService = module.get(FfmpegService);
     librariesService = module.get(LibrariesService);
+    workerPoolService = module.get(WorkerPoolService);
   });
 
   /**
    * Helper: register a worker so processNextJob can find it
    */
   function registerWorker(workerId = 'node-1') {
-    (service as any).workers.set(workerId, {
+    workerPoolService.getWorker.mockReturnValue({
       workerId,
       nodeId: 'node-1',
       isRunning: true,
       currentJobId: null,
       startedAt: new Date(),
-    });
+    } as any);
   }
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('startWorker', () => {
-    it('should start a new worker for a node', async () => {
-      await (service as any).startWorker('node-1', 'node-1');
-      expect((service as any).workers.has('node-1')).toBe(true);
-    });
-
-    it('should not start duplicate workers for same node', async () => {
-      await (service as any).startWorker('node-1', 'node-1');
-      await (service as any).startWorker('node-1', 'node-1');
-      expect((service as any).workers.size).toBe(1);
+  describe('startWorkerPool', () => {
+    it('should delegate to WorkerPoolService', async () => {
+      workerPoolService.startWorkerPool.mockResolvedValue(2 as any);
+      await service.startWorkerPool('node-1', 4);
+      expect(workerPoolService.startWorkerPool).toHaveBeenCalled();
     });
   });
 
   describe('stopWorker', () => {
-    it('should stop a running worker', async () => {
-      await (service as any).startWorker('node-1', 'node-1');
+    it('should delegate to WorkerPoolService', async () => {
       await service.stopWorker('node-1');
-      expect((service as any).workers.get('node-1')?.isRunning).toBe(false);
+      expect(workerPoolService.stopWorker).toHaveBeenCalledWith('node-1', undefined);
     });
 
-    it('should handle stopping non-existent worker', async () => {
-      await service.stopWorker('non-existent');
-      expect((service as any).workers.has('non-existent')).toBe(false);
+    it('should handle stopping non-existent worker gracefully', async () => {
+      workerPoolService.stopWorker.mockResolvedValue(undefined);
+      await expect(service.stopWorker('non-existent')).resolves.not.toThrow();
     });
   });
 
   describe('processNextJob', () => {
     beforeEach(() => {
       registerWorker();
-      // Default: policy exists and matches
-      prisma.policy.findUnique.mockResolvedValue(mockPolicy as any);
-      prisma.job.findUnique.mockResolvedValue(null); // No fresh pause check
     });
 
     it('should return null when no jobs available', async () => {
@@ -310,10 +316,6 @@ describe('EncodingProcessorService', () => {
       } as never);
       librariesService.update.mockResolvedValue({} as never);
       queueService.completeJob.mockResolvedValue(mockJob as any);
-      prisma.library.findUnique.mockResolvedValue({
-        id: 'library-1',
-        totalSizeBytes: BigInt(10000000000),
-      } as any);
 
       await service.handleJobCompletion(mockJob as any, result);
 
@@ -333,7 +335,6 @@ describe('EncodingProcessorService', () => {
       };
 
       queueService.completeJob.mockRejectedValue(new Error('Database error'));
-      prisma.library.findUnique.mockRejectedValue(new Error('Database error'));
 
       // handleJobCompletion re-throws errors from completeJob
       await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(

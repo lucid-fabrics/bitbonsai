@@ -32,7 +32,6 @@ export class ContentFingerprintService {
       const hasher = await (xxhashWasm.default as () => Promise<typeof this.xxhash>)();
       this.xxhash = hasher;
     }
-    // biome-ignore lint/style/noNonNullAssertion: assigned in the if-block above
     return this.xxhash!;
   }
 

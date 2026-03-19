@@ -9,14 +9,10 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
 import { NodesController } from '../nodes.controller';
 import { NodesService } from '../nodes.service';
 import { JobAttributionService } from '../services/job-attribution.service';
 import { NodeCapabilityDetectorService } from '../services/node-capability-detector.service';
-import { NodeDiscoveryService } from '../services/node-discovery.service';
-import { RegistrationRequestService } from '../services/registration-request.service';
-import { SshKeyService } from '../services/ssh-key.service';
 
 describe('Security Validation Tests', () => {
   let controller: NodesController;
@@ -54,28 +50,12 @@ describe('Security Validation Tests', () => {
           },
         },
         {
-          provide: PrismaService,
-          useValue: {},
-        },
-        {
-          provide: NodeDiscoveryService,
-          useValue: { discoverNodes: jest.fn() },
-        },
-        {
-          provide: RegistrationRequestService,
-          useValue: { createRequest: jest.fn() },
-        },
-        {
           provide: NodeCapabilityDetectorService,
           useValue: { detectCapabilities: jest.fn() },
         },
         {
           provide: JobAttributionService,
           useValue: { getScores: jest.fn() },
-        },
-        {
-          provide: SshKeyService,
-          useValue: { getKeys: jest.fn() },
         },
       ],
     }).compile();
@@ -106,8 +86,8 @@ describe('Security Validation Tests', () => {
       expect(result).not.toHaveProperty('licenseId');
     });
 
-    it('should exclude apiKey from pair response', async () => {
-      const result = await controller.pair({ pairingToken: '123456' });
+    it('should exclude apiKey from findOne response (pairing security check)', async () => {
+      const result = await controller.findOne('test-node-1');
 
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('name');

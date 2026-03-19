@@ -73,7 +73,7 @@ export class StorageMountService {
       this.logger.debug(`Executing mount command: ${mountCommand}`);
 
       // Execute mount command
-      const { stdout, stderr } = await execAsync(mountCommand);
+      const { stderr } = await execAsync(mountCommand);
 
       if (stderr && !stderr.includes('warning')) {
         this.logger.warn(`Mount stderr: ${stderr}`);

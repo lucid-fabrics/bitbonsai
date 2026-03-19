@@ -1,8 +1,27 @@
 import * as os from 'node:os';
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobRepository } from '../common/repositories/job.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { DebugService } from './debug.service';
+
+jest.mock('@prisma/client', () => ({ PrismaClient: class PrismaClient {} }));
+jest.mock('../prisma/prisma.service', () => ({
+  PrismaService: class PrismaService {},
+}));
+
+// Mock node:os to allow re-mocking in tests
+jest.mock('node:os', () => ({
+  loadavg: jest.fn().mockReturnValue([0.5, 0.5, 0.5]),
+  cpus: jest
+    .fn()
+    .mockReturnValue(
+      Array(4).fill({ model: 'x', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } })
+    ),
+  freemem: jest.fn().mockReturnValue(8 * 1024 ** 3),
+  totalmem: jest.fn().mockReturnValue(16 * 1024 ** 3),
+  networkInterfaces: jest.fn().mockReturnValue({}),
+}));
 
 // Mock child_process so we don't actually run system commands
 jest.mock('node:child_process', () => ({
@@ -11,16 +30,19 @@ jest.mock('node:child_process', () => ({
 
 describe('DebugService', () => {
   let service: DebugService;
-  let mockPrisma: any;
+  let mockJobRepository: { findManySelect: jest.Mock };
+  let mockNodeRepository: { findFirstByIpAddresses: jest.Mock; updateById: jest.Mock };
 
   beforeEach(async () => {
-    mockPrisma = {
-      job: { findMany: jest.fn() },
-      node: { findFirst: jest.fn(), update: jest.fn() },
-    };
+    mockJobRepository = { findManySelect: jest.fn() };
+    mockNodeRepository = { findFirstByIpAddresses: jest.fn(), updateById: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DebugService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        DebugService,
+        { provide: JobRepository, useValue: mockJobRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
+      ],
     }).compile();
 
     service = module.get<DebugService>(DebugService);
@@ -32,7 +54,7 @@ describe('DebugService', () => {
 
   describe('getSystemLoad', () => {
     it('should return system load info with default threshold when no node found', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue(null);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue(null);
       jest.spyOn(os, 'loadavg').mockReturnValue([1.5, 2.0, 1.8]);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(8).fill({
@@ -54,7 +76,10 @@ describe('DebugService', () => {
     });
 
     it('should use node loadThresholdMultiplier when available', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue({ id: 'node-1', loadThresholdMultiplier: 3.0 });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+        loadThresholdMultiplier: 3.0,
+      });
       jest.spyOn(os, 'loadavg').mockReturnValue([0.5, 0.5, 0.5]);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(4).fill({
@@ -73,7 +98,7 @@ describe('DebugService', () => {
     });
 
     it('should mark as overloaded when memory is critically low', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue(null);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue(null);
       jest.spyOn(os, 'loadavg').mockReturnValue([0.1, 0.1, 0.1]);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(8).fill({
@@ -95,7 +120,7 @@ describe('DebugService', () => {
   describe('getFfmpegProcesses', () => {
     it('should return encoding jobs and system processes', async () => {
       const encodingJobs = [{ id: 'job-1', startedAt: new Date(Date.now() - 60000), progress: 50 }];
-      mockPrisma.job.findMany.mockResolvedValue(encodingJobs);
+      mockJobRepository.findManySelect.mockResolvedValue(encodingJobs);
 
       const { execFileSync } = require('node:child_process');
       execFileSync.mockReturnValue('');
@@ -141,8 +166,11 @@ describe('DebugService', () => {
     });
 
     it('should update load threshold when node found', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue({ id: 'node-1' });
-      mockPrisma.node.update.mockResolvedValue({ id: 'node-1', loadThresholdMultiplier: 3.0 });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.updateById.mockResolvedValue({
+        id: 'node-1',
+        loadThresholdMultiplier: 3.0,
+      });
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(8).fill({
           model: 'x',
@@ -159,7 +187,7 @@ describe('DebugService', () => {
     });
 
     it('should return failure when no node found', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue(null);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue(null);
 
       const result = await service.updateLoadThreshold(2.0);
 

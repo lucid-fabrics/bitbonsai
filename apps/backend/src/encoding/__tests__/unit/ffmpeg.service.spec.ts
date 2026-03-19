@@ -3,10 +3,12 @@ import { EventEmitter } from 'node:events';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { EncodingCancelledEvent, EncodingFailedEvent } from '../../../common/events';
+import { JobRepository } from '../../../common/repositories/job.repository';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import { FfmpegService } from '../../ffmpeg.service';
+import { FfmpegFlagBuilderService } from '../../ffmpeg-flag-builder.service';
+import { HardwareAccelerationService } from '../../hardware-acceleration.service';
 
 // Mock child_process spawn (keep original exec for Prisma compatibility)
 jest.mock('node:child_process', () => {
@@ -45,6 +47,7 @@ function createMockChildProcess(): ChildProcess {
 
 describe('FfmpegService', () => {
   let service: FfmpegService;
+  let module: TestingModule;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let mockSpawn: jest.Mock;
   let mockExistsSync: jest.Mock;
@@ -93,16 +96,6 @@ describe('FfmpegService', () => {
       unlink: fs.promises.unlink as jest.Mock,
     };
 
-    // Create mock PrismaService
-    const mockPrismaService = {
-      job: {
-        findUnique: jest.fn().mockResolvedValue(null),
-        update: jest.fn().mockResolvedValue(mockJob),
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-      $transaction: jest.fn().mockImplementation((fn: any) => fn(mockPrismaService)),
-    };
-
     const mockEventEmitterInstance = {
       emit: jest.fn(),
       on: jest.fn(),
@@ -111,12 +104,16 @@ describe('FfmpegService', () => {
       removeAllListeners: jest.fn(),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         FfmpegService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: JobRepository,
+          useValue: {
+            findById: jest.fn().mockResolvedValue(null),
+            updateById: jest.fn().mockResolvedValue(mockJob),
+            findManyWithInclude: jest.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: EventEmitter2,
@@ -127,6 +124,25 @@ describe('FfmpegService', () => {
           useValue: {
             generatePreview: jest.fn(),
             cleanupPreviews: jest.fn(),
+          },
+        },
+        {
+          provide: HardwareAccelerationService,
+          useValue: {
+            detectHardwareAcceleration: jest.fn().mockResolvedValue({
+              type: 'CPU',
+              flags: [],
+              videoCodec: 'libx265',
+            }),
+          },
+        },
+        {
+          provide: FfmpegFlagBuilderService,
+          useValue: {
+            ALLOWED_FFMPEG_FLAGS: new Set<string>(),
+            validateFfmpegFlags: jest.fn().mockImplementation((f: string[]) => f),
+            selectCodecForPolicy: jest.fn().mockReturnValue('libx265'),
+            buildFfmpegCommand: jest.fn().mockReturnValue(['-i', 'input', 'output']),
           },
         },
       ],
@@ -143,19 +159,20 @@ describe('FfmpegService', () => {
   });
 
   describe('detectHardwareAcceleration', () => {
+    let hardwareAccelerationService: { detectHardwareAcceleration: jest.Mock };
+
+    beforeEach(() => {
+      hardwareAccelerationService = module.get(HardwareAccelerationService) as any;
+    });
+
     it('should detect NVIDIA GPU', async () => {
-      // Mock successful nvidia-smi execution
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
+      hardwareAccelerationService.detectHardwareAcceleration.mockResolvedValue({
+        type: 'NVIDIA',
+        flags: ['-hwaccel', 'cuda'],
+        videoCodec: 'hevc_nvenc',
+      });
 
-      const promise = service.detectHardwareAcceleration();
-
-      // Simulate nvidia-smi success
-      setTimeout(() => {
-        mockProcess.emit('close', 0);
-      }, 10);
-
-      const result = await promise;
+      const result = await service.detectHardwareAcceleration();
 
       expect(result.type).toBe('NVIDIA');
       expect(result.flags).toContain('-hwaccel');
@@ -164,21 +181,13 @@ describe('FfmpegService', () => {
     });
 
     it('should detect Intel QSV', async () => {
-      // Mock nvidia-smi failure
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
+      hardwareAccelerationService.detectHardwareAcceleration.mockResolvedValue({
+        type: 'INTEL_QSV',
+        flags: ['-hwaccel', 'qsv'],
+        videoCodec: 'hevc_qsv',
+      });
 
-      const promise = service.detectHardwareAcceleration();
-
-      // Simulate nvidia-smi failure
-      setTimeout(() => {
-        mockProcess.emit('close', 1);
-      }, 10);
-
-      // Mock Intel QSV device exists
-      mockExistsSync.mockImplementation((path) => path === '/dev/dri/renderD128');
-
-      const result = await promise;
+      const result = await service.detectHardwareAcceleration();
 
       expect(result.type).toBe('INTEL_QSV');
       expect(result.flags).toContain('-hwaccel');
@@ -187,84 +196,69 @@ describe('FfmpegService', () => {
     });
 
     it('should fallback to CPU when no hardware acceleration available', async () => {
-      // Mock nvidia-smi failure
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
+      hardwareAccelerationService.detectHardwareAcceleration.mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
 
-      const promise = service.detectHardwareAcceleration();
+      const result = await service.detectHardwareAcceleration();
 
-      setTimeout(() => {
-        mockProcess.emit('close', 1);
-      }, 10);
-
-      // No hardware devices
-      mockExistsSync.mockReturnValue(false);
-
-      const result = await promise;
-
-      // On macOS (darwin), it will detect Apple M hardware
-      // On other platforms without hardware, it will fallback to CPU
-      if (process.platform === 'darwin') {
-        expect(result.type).toBe('APPLE_M');
-        expect(result.flags).toEqual(['-hwaccel', 'videotoolbox']);
-        expect(result.videoCodec).toBe('hevc_videotoolbox');
-      } else {
-        expect(result.type).toBe('CPU');
-        expect(result.flags).toEqual([]);
-        expect(result.videoCodec).toBe('libx265');
-      }
+      expect(result.type).toBe('CPU');
+      expect(result.flags).toEqual([]);
+      expect(result.videoCodec).toBe('libx265');
     });
   });
 
   describe('buildFfmpegCommand', () => {
-    it('should build correct ffmpeg command with hardware acceleration', () => {
+    let flagBuilderService: { buildFfmpegCommand: jest.Mock };
+
+    beforeEach(() => {
+      flagBuilderService = module.get(FfmpegFlagBuilderService) as any;
+    });
+
+    it('should delegate to FfmpegFlagBuilderService', () => {
       const hwaccel = {
         type: 'NVIDIA' as const,
         flags: ['-hwaccel', 'cuda'],
         videoCodec: 'hevc_nvenc',
       };
 
+      flagBuilderService.buildFfmpegCommand.mockReturnValue([
+        '-hwaccel',
+        'cuda',
+        '-i',
+        '/media/video.mp4',
+        '-c:v',
+        'hevc_nvenc',
+        '-y',
+        '/media/video.mp4.tmp',
+      ]);
+
       const args = service.buildFfmpegCommand(mockJob, mockPolicy, hwaccel, '/media/video.mp4.tmp');
 
+      expect(flagBuilderService.buildFfmpegCommand).toHaveBeenCalled();
       expect(args).toContain('-hwaccel');
       expect(args).toContain('cuda');
-      expect(args).toContain('-i');
-      expect(args).toContain('/media/video.mp4');
-      expect(args).toContain('-c:v');
-      expect(args).toContain('hevc_nvenc');
-      expect(args).toContain('-crf');
-      expect(args).toContain('23');
-      expect(args).toContain('-c:a');
-      expect(args).toContain('copy');
-      expect(args).toContain('-preset');
-      expect(args).toContain('medium');
-      expect(args).toContain('-progress');
-      expect(args).toContain('pipe:2');
-      expect(args).toContain('-y');
-      expect(args).toContain('/media/video.mp4.tmp');
     });
 
-    it('should build command with custom audio codec', () => {
-      const customPolicy = {
-        ...mockPolicy,
-        advancedSettings: {
-          audioCodec: 'aac',
-          ffmpegFlags: [],
-        },
-      };
-
+    it('should return args from FfmpegFlagBuilderService for custom audio codec', () => {
       const hwaccel = {
         type: 'CPU' as const,
         flags: [],
         videoCodec: 'libx265',
       };
 
-      const args = service.buildFfmpegCommand(
-        mockJob,
-        customPolicy,
-        hwaccel,
-        '/media/video.mp4.tmp'
-      );
+      flagBuilderService.buildFfmpegCommand.mockReturnValue([
+        '-i',
+        '/media/video.mp4',
+        '-c:a',
+        'aac',
+        '-y',
+        '/media/video.mp4.tmp',
+      ]);
+
+      const args = service.buildFfmpegCommand(mockJob, mockPolicy, hwaccel, '/media/video.mp4.tmp');
 
       expect(args).toContain('-c:a');
       expect(args).toContain('aac');

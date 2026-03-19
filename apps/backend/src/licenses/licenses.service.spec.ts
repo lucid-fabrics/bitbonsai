@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -28,12 +29,12 @@ describe('LicensesService', () => {
       providers: [
         LicensesService,
         { provide: LicenseRepository, useValue: mockLicenseRepository },
+        { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     service = module.get<LicensesService>(LicensesService);
-    (service as any).httpService = mockHttpService;
   });
 
   describe('activateLicense', () => {

@@ -1,17 +1,15 @@
 import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { TorrentClient, TorrentIntegrationService } from '../../torrent.service';
 
 describe('TorrentIntegrationService', () => {
   let service: TorrentIntegrationService;
   let _httpService: jest.Mocked<HttpService>;
 
-  const mockPrismaService = {
-    settings: {
-      findFirst: jest.fn(),
-    },
+  const mockSettingsRepository = {
+    findFirst: jest.fn(),
   };
 
   const mockHttpService = {
@@ -26,8 +24,8 @@ describe('TorrentIntegrationService', () => {
       providers: [
         TorrentIntegrationService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: SettingsRepository,
+          useValue: mockSettingsRepository,
         },
         {
           provide: HttpService,
@@ -48,7 +46,7 @@ describe('TorrentIntegrationService', () => {
 
   describe('isFileSeeding', () => {
     it('should return false when no torrent config', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.isFileSeeding('/media/movies/test.mkv');
 
@@ -56,7 +54,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return false when torrent client not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: null,
         torrentUrl: null,
       });
@@ -67,7 +65,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return true when file is being seeded in qBittorrent', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         torrentUsername: 'admin',
@@ -112,7 +110,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return false when file is not in any torrent', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         torrentUsername: 'admin',
@@ -157,7 +155,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return false when torrent is not seeding', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,
@@ -193,7 +191,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return false on connection error', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,
@@ -210,7 +208,7 @@ describe('TorrentIntegrationService', () => {
 
   describe('getSeedingFiles', () => {
     it('should return empty array when no config', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.getSeedingFiles();
 
@@ -218,7 +216,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return list of seeding files', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,
@@ -262,7 +260,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return empty array on error', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,
@@ -387,7 +385,7 @@ describe('TorrentIntegrationService', () => {
 
     seedingStates.forEach((state) => {
       it(`should detect ${state} as seeding`, async () => {
-        mockPrismaService.settings.findFirst.mockResolvedValue({
+        mockSettingsRepository.findFirst.mockResolvedValue({
           torrentClient: TorrentClient.QBITTORRENT,
           torrentUrl: 'http://localhost:8080',
           skipSeeding: true,
@@ -428,7 +426,7 @@ describe('TorrentIntegrationService', () => {
 
     nonSeedingStates.forEach((state) => {
       it(`should not detect ${state} as seeding`, async () => {
-        mockPrismaService.settings.findFirst.mockResolvedValue({
+        mockSettingsRepository.findFirst.mockResolvedValue({
           torrentClient: TorrentClient.QBITTORRENT,
           torrentUrl: 'http://localhost:8080',
           skipSeeding: true,
@@ -464,7 +462,7 @@ describe('TorrentIntegrationService', () => {
 
   describe('path matching', () => {
     it('should match exact file path', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,
@@ -503,7 +501,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should match partial file path', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,
@@ -545,7 +543,7 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should handle double slashes in paths', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         torrentClient: TorrentClient.QBITTORRENT,
         torrentUrl: 'http://localhost:8080',
         skipSeeding: true,

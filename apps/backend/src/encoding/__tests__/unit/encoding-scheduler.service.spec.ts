@@ -1,17 +1,30 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../testing/mock-providers';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { EncodingSchedulerService, type TimeWindow } from '../../encoding-scheduler.service';
 
 describe('EncodingSchedulerService', () => {
   let service: EncodingSchedulerService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let nodeRepository: Record<string, jest.Mock>;
+  let jobRepository: Record<string, jest.Mock>;
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    nodeRepository = {
+      findWithSelect: jest.fn(),
+      findManySelect: jest.fn().mockResolvedValue([]),
+      updateData: jest.fn().mockResolvedValue({}),
+    };
+
+    jobRepository = {
+      atomicUpdateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EncodingSchedulerService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        EncodingSchedulerService,
+        { provide: NodeRepository, useValue: nodeRepository },
+        { provide: JobRepository, useValue: jobRepository },
+      ],
     }).compile();
 
     service = module.get<EncodingSchedulerService>(EncodingSchedulerService);
@@ -29,7 +42,7 @@ describe('EncodingSchedulerService', () => {
 
   describe('isEncodingAllowed', () => {
     it('should return true when node not found', async () => {
-      prisma.node.findUnique.mockResolvedValue(null);
+      nodeRepository.findWithSelect.mockResolvedValue(null);
 
       const result = await service.isEncodingAllowed('node-1');
 
@@ -37,7 +50,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return true when scheduling is disabled', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: false,
         scheduleWindows: null,
       });
@@ -48,7 +61,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return true when scheduling enabled but no windows defined', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: null,
       });
@@ -59,7 +72,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return true when scheduling enabled with empty windows', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: [],
       });
@@ -82,7 +95,7 @@ describe('EncodingSchedulerService', () => {
         },
       ];
 
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: windows,
       });
@@ -108,7 +121,7 @@ describe('EncodingSchedulerService', () => {
         },
       ];
 
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: windows,
       });
@@ -134,7 +147,7 @@ describe('EncodingSchedulerService', () => {
 
       // Only test if we can construct a valid overnight window
       if (windows[0].startHour > windows[0].endHour) {
-        prisma.node.findUnique.mockResolvedValue({
+        nodeRepository.findWithSelect.mockResolvedValue({
           scheduleEnabled: true,
           scheduleWindows: windows,
         });
@@ -147,7 +160,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return true on error', async () => {
-      prisma.node.findUnique.mockRejectedValue(new Error('Database error'));
+      nodeRepository.findWithSelect.mockRejectedValue(new Error('Database error'));
 
       const result = await service.isEncodingAllowed('node-1');
 
@@ -157,7 +170,7 @@ describe('EncodingSchedulerService', () => {
 
   describe('getNextAllowedTime', () => {
     it('should return null when scheduling disabled', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: false,
         scheduleWindows: null,
       });
@@ -168,7 +181,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return null when node not found', async () => {
-      prisma.node.findUnique.mockResolvedValue(null);
+      nodeRepository.findWithSelect.mockResolvedValue(null);
 
       const result = await service.getNextAllowedTime('node-1');
 
@@ -176,7 +189,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return null when no windows defined', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: [],
       });
@@ -199,7 +212,7 @@ describe('EncodingSchedulerService', () => {
         },
       ];
 
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: windows,
       });
@@ -223,7 +236,7 @@ describe('EncodingSchedulerService', () => {
         },
       ];
 
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepository.findWithSelect.mockResolvedValue({
         scheduleEnabled: true,
         scheduleWindows: windows,
       });
@@ -235,7 +248,7 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return null on error', async () => {
-      prisma.node.findUnique.mockRejectedValue(new Error('Database error'));
+      nodeRepository.findWithSelect.mockRejectedValue(new Error('Database error'));
 
       const result = await service.getNextAllowedTime('node-1');
 
@@ -245,28 +258,28 @@ describe('EncodingSchedulerService', () => {
 
   describe('enforceSchedules', () => {
     it('should do nothing when no nodes have scheduling enabled', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      nodeRepository.findManySelect.mockResolvedValue([]);
 
       await service.enforceSchedules();
 
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(jobRepository.atomicUpdateMany).not.toHaveBeenCalled();
     });
 
     it('should skip nodes with empty windows', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         { id: 'node-1', name: 'Node 1', scheduleWindows: [] },
       ]);
 
       await service.enforceSchedules();
 
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(jobRepository.atomicUpdateMany).not.toHaveBeenCalled();
     });
 
     it('should pause jobs when outside schedule window', async () => {
       const now = new Date();
       const differentDay = (now.getDay() + 3) % 7;
 
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         {
           id: 'node-1',
           name: 'Node 1',
@@ -274,16 +287,15 @@ describe('EncodingSchedulerService', () => {
         },
       ]);
 
-      prisma.job.updateMany.mockResolvedValue({ count: 2 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 2 });
 
       await service.enforceSchedules();
 
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: 'node-1' }),
         expect.objectContaining({
-          data: expect.objectContaining({
-            stage: 'PAUSED',
-            error: 'Paused: Outside scheduled encoding window',
-          }),
+          stage: 'PAUSED',
+          error: 'Paused: Outside scheduled encoding window',
         })
       );
     });
@@ -293,7 +305,7 @@ describe('EncodingSchedulerService', () => {
       const currentDay = now.getDay();
       const _currentHour = now.getHours();
 
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         {
           id: 'node-1',
           name: 'Node 1',
@@ -301,22 +313,21 @@ describe('EncodingSchedulerService', () => {
         },
       ]);
 
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
 
       await service.enforceSchedules();
 
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: 'node-1' }),
         expect.objectContaining({
-          data: expect.objectContaining({
-            stage: 'QUEUED',
-            error: null,
-          }),
+          stage: 'QUEUED',
+          error: null,
         })
       );
     });
 
     it('should handle errors gracefully', async () => {
-      prisma.node.findMany.mockRejectedValue(new Error('Database error'));
+      nodeRepository.findManySelect.mockRejectedValue(new Error('Database error'));
 
       await expect(service.enforceSchedules()).resolves.not.toThrow();
     });
@@ -326,29 +337,29 @@ describe('EncodingSchedulerService', () => {
     it('should enable scheduling with windows', async () => {
       const windows: TimeWindow[] = [{ dayOfWeek: 1, startHour: 22, endHour: 6 }];
 
-      prisma.node.update.mockResolvedValue({});
+      nodeRepository.updateData.mockResolvedValue({});
 
       await service.setNodeSchedule('node-1', true, windows);
 
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: expect.objectContaining({
+      expect(nodeRepository.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({
           scheduleEnabled: true,
-        }),
-      });
+        })
+      );
     });
 
     it('should disable scheduling', async () => {
-      prisma.node.update.mockResolvedValue({});
+      nodeRepository.updateData.mockResolvedValue({});
 
       await service.setNodeSchedule('node-1', false);
 
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: expect.objectContaining({
+      expect(nodeRepository.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({
           scheduleEnabled: false,
-        }),
-      });
+        })
+      );
     });
   });
 

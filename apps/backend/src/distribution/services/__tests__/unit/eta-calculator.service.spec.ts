@@ -1,18 +1,55 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Job } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { JobRepository } from '../../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { EtaCalculatorService } from '../../eta-calculator.service';
 
 describe('EtaCalculatorService', () => {
   let service: EtaCalculatorService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let jobRepo: Record<string, jest.Mock>;
+  let nodeRepo: Record<string, jest.Mock>;
+
+  // Shims so existing `prisma.job.X` / `prisma.node.X` references in tests still work
+  let prisma: {
+    job: Record<string, jest.Mock>;
+    node: Record<string, jest.Mock>;
+  };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    jobRepo = {
+      findCompletedSince: jest.fn(),
+      findActiveForNode: jest.fn(),
+      findQueuedAndEncodingForNode: jest.fn(),
+      updateById: jest.fn(),
+    };
+    nodeRepo = {
+      findWithSelect: jest.fn(),
+      updateById: jest.fn(),
+    };
+
+    prisma = {
+      job: {
+        findMany: jobRepo.findCompletedSince,
+        update: jobRepo.updateById,
+      },
+      node: {
+        findUnique: nodeRepo.findWithSelect,
+        update: nodeRepo.updateById,
+      },
+    };
+
+    // Keep repo mocks in sync with shims
+    jobRepo.findCompletedSince = prisma.job.findMany;
+    jobRepo.updateById = prisma.job.update;
+    nodeRepo.findWithSelect = prisma.node.findUnique;
+    nodeRepo.updateById = prisma.node.update;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EtaCalculatorService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        EtaCalculatorService,
+        { provide: JobRepository, useValue: jobRepo },
+        { provide: NodeRepository, useValue: nodeRepo },
+      ],
     }).compile();
 
     service = module.get<EtaCalculatorService>(EtaCalculatorService);
@@ -245,7 +282,7 @@ describe('EtaCalculatorService', () => {
 
   describe('calculateNodeFreeAt', () => {
     it('should return null for a node with no active jobs', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepo.findActiveForNode.mockResolvedValue([]);
       const result = await service.calculateNodeFreeAt('node-1');
       expect(result).toBeNull();
     });
@@ -257,24 +294,22 @@ describe('EtaCalculatorService', () => {
       // Clear rate cache to avoid interference from other tests
       service.clearCache();
 
-      prisma.job.findMany
-        // First call: for calculateNodeFreeAt
-        .mockResolvedValueOnce([
-          createMockJob({
-            id: 'job-1',
-            stage: 'ENCODING' as any,
-            etaSeconds: 3600, // 1 hour remaining
-          }),
-          createMockJob({
-            id: 'job-2',
-            stage: 'QUEUED' as any,
-            estimatedDuration: 7200, // 2 hours
-          }),
-        ])
-        // Second call: for encoding rates (empty)
-        .mockResolvedValueOnce([]);
+      jobRepo.findActiveForNode.mockResolvedValue([
+        createMockJob({
+          id: 'job-1',
+          stage: 'ENCODING' as any,
+          etaSeconds: 3600, // 1 hour remaining
+        }),
+        createMockJob({
+          id: 'job-2',
+          stage: 'QUEUED' as any,
+          estimatedDuration: 7200, // 2 hours
+        }),
+      ]);
+      // encoding rates query
+      prisma.job.findMany.mockResolvedValue([]);
 
-      prisma.node.findUnique.mockResolvedValue({ maxWorkers: 1 });
+      nodeRepo.findWithSelect.mockResolvedValue({ maxWorkers: 1 });
 
       const result = await service.calculateNodeFreeAt('node-1');
       expect(result).not.toBeNull();
@@ -291,14 +326,13 @@ describe('EtaCalculatorService', () => {
       jest.setSystemTime(new Date('2026-02-21T12:00:00Z'));
       service.clearCache();
 
-      prisma.job.findMany
-        .mockResolvedValueOnce([
-          createMockJob({ stage: 'QUEUED' as any, estimatedDuration: 7200 }),
-          createMockJob({ stage: 'QUEUED' as any, estimatedDuration: 7200 }),
-        ])
-        .mockResolvedValueOnce([]);
+      jobRepo.findActiveForNode.mockResolvedValue([
+        createMockJob({ stage: 'QUEUED' as any, estimatedDuration: 7200 }),
+        createMockJob({ stage: 'QUEUED' as any, estimatedDuration: 7200 }),
+      ]);
+      prisma.job.findMany.mockResolvedValue([]);
 
-      prisma.node.findUnique.mockResolvedValue({ maxWorkers: 2 });
+      nodeRepo.findWithSelect.mockResolvedValue({ maxWorkers: 2 });
 
       const result = await service.calculateNodeFreeAt('node-1');
       // Total: 14400 / 2 workers = 7200 seconds = 2 hours
@@ -313,11 +347,12 @@ describe('EtaCalculatorService', () => {
       jest.setSystemTime(new Date('2026-02-21T12:00:00Z'));
       service.clearCache();
 
-      prisma.job.findMany
-        .mockResolvedValueOnce([createMockJob({ stage: 'QUEUED' as any, estimatedDuration: 3600 })])
-        .mockResolvedValueOnce([]);
+      jobRepo.findActiveForNode.mockResolvedValue([
+        createMockJob({ stage: 'QUEUED' as any, estimatedDuration: 3600 }),
+      ]);
+      prisma.job.findMany.mockResolvedValue([]);
 
-      prisma.node.findUnique.mockResolvedValue({ maxWorkers: null });
+      nodeRepo.findWithSelect.mockResolvedValue({ maxWorkers: null });
 
       const result = await service.calculateNodeFreeAt('node-1');
       // 3600 / 1 = 3600 seconds = 1 hour
@@ -350,22 +385,20 @@ describe('EtaCalculatorService', () => {
         }),
       ];
 
-      prisma.job.findMany.mockResolvedValueOnce(jobs);
-      prisma.node.findUnique.mockResolvedValue({ maxWorkers: 1 });
-      prisma.job.update.mockResolvedValue({});
-      prisma.node.update.mockResolvedValue({});
+      jobRepo.findQueuedAndEncodingForNode.mockResolvedValue(jobs);
+      nodeRepo.findWithSelect.mockResolvedValue({ maxWorkers: 1 });
+      jobRepo.updateById.mockResolvedValue({});
+      nodeRepo.updateById.mockResolvedValue({});
 
       await service.updateNodeETAs('node-1');
 
       // Should update both jobs
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
+      expect(jobRepo.updateById).toHaveBeenCalledTimes(2);
       // Should update node's estimatedFreeAt
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(nodeRepo.updateById).toHaveBeenCalledWith(
+        'node-1',
         expect.objectContaining({
-          where: { id: 'node-1' },
-          data: expect.objectContaining({
-            estimatedFreeAt: expect.any(Date),
-          }),
+          estimatedFreeAt: expect.any(Date),
         })
       );
 
@@ -386,19 +419,18 @@ describe('EtaCalculatorService', () => {
         }),
       ];
 
-      prisma.job.findMany.mockResolvedValueOnce(jobs);
-      prisma.node.findUnique.mockResolvedValue({ maxWorkers: 1 });
-      prisma.job.update.mockResolvedValue({});
-      prisma.node.update.mockResolvedValue({});
+      jobRepo.findQueuedAndEncodingForNode.mockResolvedValue(jobs);
+      nodeRepo.findWithSelect.mockResolvedValue({ maxWorkers: 1 });
+      jobRepo.updateById.mockResolvedValue({});
+      nodeRepo.updateById.mockResolvedValue({});
 
       await service.updateNodeETAs('node-1');
 
       // Should update with adjusted duration (50% of 10000 = 5000)
-      expect(prisma.job.update).toHaveBeenCalledWith(
+      expect(jobRepo.updateById).toHaveBeenCalledWith(
+        'job-1',
         expect.objectContaining({
-          data: expect.objectContaining({
-            estimatedDuration: 5000,
-          }),
+          estimatedDuration: 5000,
         })
       );
 
@@ -415,14 +447,14 @@ describe('EtaCalculatorService', () => {
         createMockJob({ id: 'job-2', stage: 'QUEUED' as any, estimatedDuration: 3600 }),
       ];
 
-      prisma.job.findMany.mockResolvedValueOnce(jobs);
-      prisma.node.findUnique.mockResolvedValue({ maxWorkers: 2 });
-      prisma.job.update.mockResolvedValue({});
-      prisma.node.update.mockResolvedValue({});
+      jobRepo.findQueuedAndEncodingForNode.mockResolvedValue(jobs);
+      nodeRepo.findWithSelect.mockResolvedValue({ maxWorkers: 2 });
+      jobRepo.updateById.mockResolvedValue({});
+      nodeRepo.updateById.mockResolvedValue({});
 
       await service.updateNodeETAs('node-1');
 
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
+      expect(jobRepo.updateById).toHaveBeenCalledTimes(2);
 
       jest.useRealTimers();
     });

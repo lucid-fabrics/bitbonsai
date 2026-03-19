@@ -1,23 +1,31 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { LicenseStatus, LicenseTier } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { LicenseRepository } from '../../common/repositories/license.repository';
 import { LicenseService } from '../license.service';
 
 describe('LicenseService', () => {
   let service: LicenseService;
-  let prismaMock: any;
+  let licenseRepo: Record<string, jest.Mock>;
+
+  // Shim so existing `prismaMock.license.X` references still work
+  let prismaMock: { license: Record<string, jest.Mock> };
 
   beforeEach(async () => {
+    licenseRepo = {
+      findUnique: jest.fn(),
+      createLicense: jest.fn(),
+    };
+
     prismaMock = {
       license: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
+        findUnique: licenseRepo.findUnique,
+        create: licenseRepo.createLicense,
       },
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LicenseService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [LicenseService, { provide: LicenseRepository, useValue: licenseRepo }],
     }).compile();
 
     service = module.get<LicenseService>(LicenseService);

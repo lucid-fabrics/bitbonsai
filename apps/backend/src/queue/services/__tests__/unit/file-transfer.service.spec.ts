@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { JobRepository } from '../../../../common/repositories/job.repository';
 import { FileTransferService } from '../../file-transfer.service';
 
 // Mock child_process
@@ -10,22 +10,16 @@ jest.mock('node:child_process', () => ({
 
 describe('FileTransferService', () => {
   let service: FileTransferService;
-  let prisma: Record<string, Record<string, jest.Mock>>;
-
-  function createMockPrisma() {
-    return {
-      job: {
-        update: jest.fn(),
-        findUnique: jest.fn(),
-      },
-    };
-  }
+  let jobRepository: { updateById: jest.Mock; findUniqueSelect: jest.Mock };
 
   beforeEach(async () => {
-    prisma = createMockPrisma();
+    jobRepository = {
+      updateById: jest.fn(),
+      findUniqueSelect: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FileTransferService, { provide: PrismaService, useValue: prisma }],
+      providers: [FileTransferService, { provide: JobRepository, useValue: jobRepository }],
     }).compile();
 
     service = module.get<FileTransferService>(FileTransferService);
@@ -183,7 +177,7 @@ describe('FileTransferService', () => {
 
       await service.transferFile('job-1', '/media/file.mkv', sourceNode, targetNode);
 
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
   });
 
@@ -192,7 +186,7 @@ describe('FileTransferService', () => {
   // ==========================================================================
   describe('getTransferProgress', () => {
     it('should return PENDING status for detected jobs', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         id: 'job-1',
         stage: 'DETECTED',
         transferRequired: true,
@@ -210,7 +204,7 @@ describe('FileTransferService', () => {
     });
 
     it('should return TRANSFERRING status for active transfers', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         id: 'job-1',
         stage: 'TRANSFERRING',
         transferRequired: true,
@@ -228,7 +222,7 @@ describe('FileTransferService', () => {
     });
 
     it('should return COMPLETED status when progress is 100', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         id: 'job-1',
         stage: 'QUEUED',
         transferRequired: true,
@@ -245,7 +239,7 @@ describe('FileTransferService', () => {
     });
 
     it('should return FAILED status when transferError exists', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         id: 'job-1',
         stage: 'FAILED',
         transferRequired: true,
@@ -262,7 +256,7 @@ describe('FileTransferService', () => {
     });
 
     it('should throw when job not found', async () => {
-      prisma.job.findUnique.mockResolvedValue(null);
+      jobRepository.findUniqueSelect.mockResolvedValue(null);
 
       await expect(service.getTransferProgress('nonexistent')).rejects.toThrow(
         'Job nonexistent not found'
@@ -270,7 +264,7 @@ describe('FileTransferService', () => {
     });
 
     it('should calculate ETA when speed and progress are available', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         id: 'job-1',
         stage: 'TRANSFERRING',
         transferRequired: true,
@@ -286,7 +280,7 @@ describe('FileTransferService', () => {
     });
 
     it('should return null ETA when speed is not available', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         id: 'job-1',
         stage: 'TRANSFERRING',
         transferRequired: true,
@@ -310,7 +304,7 @@ describe('FileTransferService', () => {
       // No active transfer registered for this job
       await service.cancelTransfer('no-such-job');
 
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
   });
 
@@ -319,7 +313,7 @@ describe('FileTransferService', () => {
   // ==========================================================================
   describe('cleanupRemoteTempFile', () => {
     it('should skip cleanup when job has no remoteTempPath', async () => {
-      prisma.job.findUnique.mockResolvedValue({
+      jobRepository.findUniqueSelect.mockResolvedValue({
         remoteTempPath: null,
         node: { id: 'node-1', name: 'Child', ipAddress: '192.168.1.170' },
       });
@@ -327,15 +321,15 @@ describe('FileTransferService', () => {
       await service.cleanupRemoteTempFile('job-1');
 
       // No update or remote command should be called
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
 
     it('should skip cleanup when job not found', async () => {
-      prisma.job.findUnique.mockResolvedValue(null);
+      jobRepository.findUniqueSelect.mockResolvedValue(null);
 
       await service.cleanupRemoteTempFile('nonexistent');
 
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
   });
 });

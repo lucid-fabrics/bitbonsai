@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { DockerVolumeDetectorService } from '../../docker-volume-detector.service';
 import { NFSAutoExportService } from '../../nfs-auto-export.service';
 
@@ -15,6 +15,7 @@ jest.mock('util', () => ({
 describe('NFSAutoExportService', () => {
   let service: NFSAutoExportService;
 
+  // Keep the same mock shape so existing assertions continue to work.
   const mockPrismaService = {
     storageShare: {
       deleteMany: jest.fn(),
@@ -24,6 +25,22 @@ describe('NFSAutoExportService', () => {
     node: {
       findFirst: jest.fn(),
     },
+  };
+
+  // NodeRepository mock aliased to same jest.fn() instance
+  const mockNodeRepository = {
+    findMain: mockPrismaService.node.findFirst,
+  };
+
+  // IStorageShareRepository mock aliased to same jest.fn() instances
+  const mockStorageShareRepository = {
+    deleteAllAutoManaged: jest
+      .fn()
+      .mockImplementation(() =>
+        mockPrismaService.storageShare.deleteMany({ where: { autoManaged: true } })
+      ),
+    findBySharePath: mockPrismaService.storageShare.findFirst,
+    create: mockPrismaService.storageShare.create,
   };
 
   const mockVolumeDetector = {
@@ -37,7 +54,8 @@ describe('NFSAutoExportService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NFSAutoExportService,
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: NodeRepository, useValue: mockNodeRepository },
+        { provide: 'IStorageShareRepository', useValue: mockStorageShareRepository },
         { provide: DockerVolumeDetectorService, useValue: mockVolumeDetector },
       ],
     }).compile();

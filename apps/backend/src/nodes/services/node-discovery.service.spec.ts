@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NodeRole } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { NodeDiscoveryService } from './node-discovery.service';
 
 // Mock bonjour-service at the module level
@@ -17,17 +17,15 @@ jest.mock('bonjour-service', () => {
 
 describe('NodeDiscoveryService', () => {
   let service: NodeDiscoveryService;
-  let mockPrisma: any;
+  let mockNodeRepository: any;
 
   beforeEach(async () => {
-    mockPrisma = {
-      node: {
-        findFirst: jest.fn(),
-      },
+    mockNodeRepository = {
+      findMain: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [NodeDiscoveryService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [NodeDiscoveryService, { provide: NodeRepository, useValue: mockNodeRepository }],
     }).compile();
 
     service = module.get<NodeDiscoveryService>(NodeDiscoveryService);
@@ -39,7 +37,7 @@ describe('NodeDiscoveryService', () => {
 
   describe('onModuleInit', () => {
     it('should start broadcasting when node is MAIN', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue({
+      mockNodeRepository.findMain.mockResolvedValue({
         id: 'node-1',
         name: 'Main Node',
         role: NodeRole.MAIN,
@@ -54,7 +52,7 @@ describe('NodeDiscoveryService', () => {
     });
 
     it('should not broadcast when no MAIN node found', async () => {
-      mockPrisma.node.findFirst.mockResolvedValue(null);
+      mockNodeRepository.findMain.mockResolvedValue(null);
       const startBroadcastingspy = jest
         .spyOn(service, 'startBroadcasting')
         .mockResolvedValue(undefined);

@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { LicenseStatus } from '@prisma/client';
 import { of, throwError } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { LicenseRepository } from '../../../common/repositories/license.repository';
 import { LicenseClientService } from '../../license-client.service';
 
 // Mock tier-config and tier-mapping
@@ -45,11 +45,20 @@ describe('LicenseClientService', () => {
     get: jest.fn(),
   };
 
+  const mockLicenseRepo = {
+    findFirst: jest.fn(),
+    findByKey: jest.fn(),
+    updateByKey: jest.fn(),
+    findFirstActiveDesc: jest.fn(),
+    transactionFindFirstAndUpsert: jest.fn(),
+  };
+
+  // Shims so existing `mockPrismaService.license.X` references still work
   const mockPrismaService = {
     license: {
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
+      findFirst: mockLicenseRepo.findFirst,
+      findUnique: mockLicenseRepo.findByKey,
+      update: mockLicenseRepo.updateByKey,
       create: jest.fn(),
     },
     $transaction: jest.fn(),
@@ -67,7 +76,7 @@ describe('LicenseClientService', () => {
         LicenseClientService,
         { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: LicenseRepository, useValue: mockLicenseRepo },
       ],
     }).compile();
 
@@ -93,20 +102,19 @@ describe('LicenseClientService', () => {
 
   describe('setLicenseKey', () => {
     it('should update existing license', async () => {
-      mockPrismaService.license.findUnique.mockResolvedValue({ key: 'BB-TEST-1234' });
-      mockPrismaService.license.update.mockResolvedValue({});
+      mockLicenseRepo.findByKey.mockResolvedValue({ key: 'BB-TEST-1234' });
+      mockLicenseRepo.updateByKey.mockResolvedValue({});
 
       await service.setLicenseKey('BB-TEST-1234');
 
-      expect(mockPrismaService.license.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { key: 'BB-TEST-1234' },
-        })
+      expect(mockLicenseRepo.updateByKey).toHaveBeenCalledWith(
+        'BB-TEST-1234',
+        expect.objectContaining({ updatedAt: expect.any(Date) })
       );
     });
 
     it('should throw when license does not exist', async () => {
-      mockPrismaService.license.findUnique.mockResolvedValue(null);
+      mockLicenseRepo.findByKey.mockResolvedValue(null);
 
       await expect(service.setLicenseKey('BB-NEW-KEY')).rejects.toThrow(
         'License must be validated via API before use'
@@ -204,17 +212,16 @@ describe('LicenseClientService', () => {
     });
 
     it('should fall back to local DB when API fails and no cache', async () => {
-      mockPrismaService.license.findFirst
-        .mockResolvedValueOnce({ key: 'BB-DB-KEY' }) // getLicenseKey
-        .mockResolvedValueOnce({
-          key: 'BB-DB-KEY',
-          email: 'db@test.com',
-          tier: 'PATREON_SUPPORTER',
-          status: LicenseStatus.ACTIVE,
-          maxNodes: 2,
-          maxConcurrentJobs: 3,
-          validUntil: null,
-        });
+      mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-DB-KEY' });
+      mockLicenseRepo.findFirstActiveDesc.mockResolvedValue({
+        key: 'BB-DB-KEY',
+        email: 'db@test.com',
+        tier: 'PATREON_SUPPORTER',
+        status: LicenseStatus.ACTIVE,
+        maxNodes: 2,
+        maxConcurrentJobs: 3,
+        validUntil: null,
+      });
       mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
       const result = await service.verifyLicense();
@@ -224,18 +231,16 @@ describe('LicenseClientService', () => {
     });
 
     it('should throw UnauthorizedException when all fallbacks fail', async () => {
-      mockPrismaService.license.findFirst
-        .mockResolvedValueOnce({ key: 'BB-TEST' }) // getLicenseKey
-        .mockResolvedValueOnce(null); // local DB fallback
+      mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-TEST' });
+      mockLicenseRepo.findFirstActiveDesc.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
       await expect(service.verifyLicense()).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw when API returns empty response', async () => {
-      mockPrismaService.license.findFirst
-        .mockResolvedValueOnce({ key: 'BB-TEST' })
-        .mockResolvedValueOnce(null);
+      mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-TEST' });
+      mockLicenseRepo.findFirstActiveDesc.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(of({ data: null }));
 
       await expect(service.verifyLicense()).rejects.toThrow(UnauthorizedException);
@@ -267,26 +272,15 @@ describe('LicenseClientService', () => {
         })
       );
 
-      mockPrismaService.$transaction.mockImplementation(
-        async (fn: (tx: unknown) => Promise<unknown>) => {
-          const tx = {
-            license: {
-              findFirst: jest.fn().mockResolvedValue(null),
-              create: jest.fn().mockResolvedValue({
-                key: 'BB-ACTIVATE-KEY',
-                email: 'user@test.com',
-                tier: 'PATREON_SUPPORTER',
-                status: LicenseStatus.ACTIVE,
-                maxNodes: 2,
-                maxConcurrentJobs: 3,
-                validUntil: null,
-              }),
-              update: jest.fn(),
-            },
-          };
-          return fn(tx);
-        }
-      );
+      mockLicenseRepo.transactionFindFirstAndUpsert.mockResolvedValue({
+        key: 'BB-ACTIVATE-KEY',
+        email: 'user@test.com',
+        tier: 'PATREON_SUPPORTER',
+        status: LicenseStatus.ACTIVE,
+        maxNodes: 2,
+        maxConcurrentJobs: 3,
+        validUntil: null,
+      });
 
       const result = await service.activateLicense('BB-ACTIVATE-KEY', 'user@test.com');
 
@@ -344,7 +338,9 @@ describe('LicenseClientService', () => {
       const result = await service.lookupLicenseByEmail('user@test.com');
 
       expect(result.found).toBe(true);
-      expect(result.license).toEqual(expect.objectContaining({ tier: 'SUPPORTER', maxNodes: 2 }));
+      expect(result.license).toEqual(
+        expect.objectContaining({ tier: 'PATREON_SUPPORTER', maxNodes: 2 })
+      );
     });
 
     it('should return not found when email has no license', async () => {

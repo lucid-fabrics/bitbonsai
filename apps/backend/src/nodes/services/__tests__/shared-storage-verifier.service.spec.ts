@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import type { SharedStorageVerifierService } from '../shared-storage-verifier.service';
 
 // We need to mock child_process.exec BEFORE the module is loaded
@@ -35,15 +35,15 @@ jest.mock('fs', () => {
 describe('SharedStorageVerifierService', () => {
   let service: SharedStorageVerifierService;
 
-  const mockPrisma = {
-    storageShare: {
-      findMany: jest.fn(),
-      update: jest.fn(),
-    },
-    node: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
+  const mockStorageShareRepository = {
+    findMountedWithNode: jest.fn(),
+    findMountedByNodeId: jest.fn(),
+    update: jest.fn(),
+  };
+
+  const mockNodeRepository = {
+    findById: jest.fn(),
+    updateData: jest.fn(),
   };
 
   const createMockNode = (overrides: Partial<Node> = {}): Node =>
@@ -82,7 +82,11 @@ describe('SharedStorageVerifierService', () => {
     const { SharedStorageVerifierService } = require('../shared-storage-verifier.service');
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SharedStorageVerifierService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        SharedStorageVerifierService,
+        { provide: 'IStorageShareRepository', useValue: mockStorageShareRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
+      ],
     }).compile();
 
     service = module.get(SharedStorageVerifierService);
@@ -91,16 +95,16 @@ describe('SharedStorageVerifierService', () => {
   describe('performHealthCheck', () => {
     it('should skip when no mounted shares exist', async () => {
       mockExecResult('');
-      mockPrisma.storageShare.findMany.mockResolvedValue([]);
+      mockStorageShareRepository.findMountedWithNode.mockResolvedValue([]);
 
       await service.performHealthCheck();
 
-      expect(mockPrisma.storageShare.update).not.toHaveBeenCalled();
+      expect(mockStorageShareRepository.update).not.toHaveBeenCalled();
     });
 
     it('should mark shares as unmounted when mount point missing from system mounts', async () => {
       mockExecResult('192.168.1.100:/vol on /mnt/other type nfs (rw)\n');
-      mockPrisma.storageShare.findMany.mockResolvedValue([
+      mockStorageShareRepository.findMountedWithNode.mockResolvedValue([
         {
           id: 'share-1',
           nodeId: 'node-1',
@@ -110,7 +114,7 @@ describe('SharedStorageVerifierService', () => {
           node: { name: 'Child Node' },
         },
       ]);
-      mockPrisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-1',
         name: 'Child Node',
         hasSharedStorage: true,
@@ -118,18 +122,18 @@ describe('SharedStorageVerifierService', () => {
 
       await service.performHealthCheck();
 
-      expect(mockPrisma.storageShare.update).toHaveBeenCalledWith({
-        where: { id: 'share-1' },
-        data: expect.objectContaining({
+      expect(mockStorageShareRepository.update).toHaveBeenCalledWith(
+        'share-1',
+        expect.objectContaining({
           isMounted: false,
           status: 'UNMOUNTED',
-        }),
-      });
+        })
+      );
     });
 
     it('should update health check timestamp for mounted shares', async () => {
       mockExecResult('192.168.1.100:/vol on /mnt/nfs/media type nfs (rw)\n');
-      mockPrisma.storageShare.findMany.mockResolvedValue([
+      mockStorageShareRepository.findMountedWithNode.mockResolvedValue([
         {
           id: 'share-1',
           nodeId: 'node-1',
@@ -138,22 +142,22 @@ describe('SharedStorageVerifierService', () => {
           node: { name: 'Child Node' },
         },
       ]);
-      mockPrisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-1',
         hasSharedStorage: true,
       });
 
       await service.performHealthCheck();
 
-      expect(mockPrisma.storageShare.update).toHaveBeenCalledWith({
-        where: { id: 'share-1' },
-        data: { lastHealthCheckAt: expect.any(Date) },
-      });
+      expect(mockStorageShareRepository.update).toHaveBeenCalledWith(
+        'share-1',
+        expect.objectContaining({ lastHealthCheckAt: expect.any(Date) })
+      );
     });
 
     it('should set hasSharedStorage=false when node loses all mounts', async () => {
       mockExecResult('');
-      mockPrisma.storageShare.findMany.mockResolvedValue([
+      mockStorageShareRepository.findMountedWithNode.mockResolvedValue([
         {
           id: 'share-1',
           nodeId: 'node-1',
@@ -162,7 +166,7 @@ describe('SharedStorageVerifierService', () => {
           node: { name: 'Node' },
         },
       ]);
-      mockPrisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-1',
         name: 'Node',
         hasSharedStorage: true,
@@ -170,15 +174,15 @@ describe('SharedStorageVerifierService', () => {
 
       await service.performHealthCheck();
 
-      expect(mockPrisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: expect.objectContaining({ hasSharedStorage: false }),
-      });
+      expect(mockNodeRepository.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ hasSharedStorage: false })
+      );
     });
 
     it('should recover hasSharedStorage=true when mount reappears', async () => {
       mockExecResult('server:/vol on /mnt/nfs type nfs (rw)\n');
-      mockPrisma.storageShare.findMany.mockResolvedValue([
+      mockStorageShareRepository.findMountedWithNode.mockResolvedValue([
         {
           id: 'share-1',
           nodeId: 'node-1',
@@ -187,7 +191,7 @@ describe('SharedStorageVerifierService', () => {
           node: { name: 'Node' },
         },
       ]);
-      mockPrisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-1',
         name: 'Node',
         hasSharedStorage: false,
@@ -195,10 +199,10 @@ describe('SharedStorageVerifierService', () => {
 
       await service.performHealthCheck();
 
-      expect(mockPrisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: expect.objectContaining({ hasSharedStorage: true }),
-      });
+      expect(mockNodeRepository.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ hasSharedStorage: true })
+      );
     });
 
     it('should handle mount command failure gracefully', async () => {
@@ -224,7 +228,7 @@ describe('SharedStorageVerifierService', () => {
       const source = createMockNode({ id: 'src-1', storageBasePath: '/mnt/nfs/media' });
 
       mockExecResult('server:/vol on /mnt/nfs/media type nfs (rw)\n');
-      mockPrisma.storageShare.findMany.mockResolvedValue([
+      mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([
         { mountPoint: '/mnt/nfs/media', isMounted: true },
       ]);
       mockFsAccess.mockResolvedValue(undefined);
@@ -245,7 +249,7 @@ describe('SharedStorageVerifierService', () => {
       const source = createMockNode({ id: 'src-1' });
 
       mockExecResult('');
-      mockPrisma.storageShare.findMany.mockResolvedValue([]);
+      mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([]);
 
       const result = await service.verifyFileAccess('/path/file.mkv', target, source);
 
@@ -270,7 +274,7 @@ describe('SharedStorageVerifierService', () => {
     it('should detect mounted storage share', async () => {
       const node = createMockNode();
       mockExecResult('server:/export on /mnt/nfs/media type nfs (rw)\n');
-      mockPrisma.storageShare.findMany.mockResolvedValue([
+      mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([
         { mountPoint: '/mnt/nfs/media', isMounted: true, name: 'Media' },
       ]);
 
@@ -283,7 +287,7 @@ describe('SharedStorageVerifierService', () => {
     it('should fallback to storageBasePath when no shares match', async () => {
       const node = createMockNode({ storageBasePath: '/mnt/data' });
       mockExecResult('server:/vol on /mnt/data type nfs (rw)\n');
-      mockPrisma.storageShare.findMany.mockResolvedValue([]);
+      mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([]);
 
       const result = await service.verifyNFSMount(node);
 
@@ -294,7 +298,7 @@ describe('SharedStorageVerifierService', () => {
     it('should return not mounted when no mounts found', async () => {
       const node = createMockNode({ storageBasePath: null });
       mockExecResult('');
-      mockPrisma.storageShare.findMany.mockResolvedValue([]);
+      mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([]);
 
       const result = await service.verifyNFSMount(node);
 

@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
   let reflector: Reflector;
-  let settingsRepository: jest.Mocked<SettingsRepository>;
+  let settingsRepository: { findFirst: jest.Mock };
 
   const mockExecutionContext = (
     ip = '192.168.1.100',
@@ -33,7 +33,7 @@ describe('JwtAuthGuard', () => {
   beforeEach(async () => {
     settingsRepository = {
       findFirst: jest.fn(),
-    } as unknown as jest.Mocked<SettingsRepository>;
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

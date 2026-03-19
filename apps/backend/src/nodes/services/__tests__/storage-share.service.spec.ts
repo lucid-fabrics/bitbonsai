@@ -2,8 +2,8 @@ import { HttpService } from '@nestjs/axios';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { StorageProtocol, StorageShareStatus } from '@prisma/client';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { EncryptionService } from '../../../core/services/encryption.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { StorageMountService } from '../storage-mount.service';
 import { StorageShareService } from '../storage-share.service';
 
@@ -23,11 +23,11 @@ describe('StorageShareService', () => {
     delete: jest.fn(),
   };
 
-  const mockPrismaService = {
-    node: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
+  const mockNodeRepository = {
+    findById: jest.fn(),
+    updateData: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
   };
 
   const mockEncryptionService = {
@@ -81,7 +81,7 @@ describe('StorageShareService', () => {
       providers: [
         StorageShareService,
         { provide: 'IStorageShareRepository', useValue: mockRepository },
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: EncryptionService, useValue: mockEncryptionService },
         { provide: StorageMountService, useValue: mockMountService },
         { provide: HttpService, useValue: mockHttpService },
@@ -243,7 +243,7 @@ describe('StorageShareService', () => {
   describe('updateStatus', () => {
     it('should set isMounted=true and reset errors for MOUNTED status', async () => {
       mockRepository.findById.mockResolvedValue(baseShare);
-      mockPrismaService.node.update.mockResolvedValue({});
+      mockNodeRepository.updateData.mockResolvedValue({});
       mockRepository.update.mockResolvedValue({});
 
       await service.updateStatus('share-1', StorageShareStatus.MOUNTED);
@@ -261,15 +261,15 @@ describe('StorageShareService', () => {
 
     it('should auto-set hasSharedStorage on node when mounting', async () => {
       mockRepository.findById.mockResolvedValue(baseShare);
-      mockPrismaService.node.update.mockResolvedValue({});
+      mockNodeRepository.updateData.mockResolvedValue({});
       mockRepository.update.mockResolvedValue({});
 
       await service.updateStatus('share-1', StorageShareStatus.MOUNTED);
 
-      expect(mockPrismaService.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: { hasSharedStorage: true, networkLocation: 'LOCAL' },
-      });
+      expect(mockNodeRepository.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ hasSharedStorage: true })
+      );
     });
 
     it('should set isMounted=false for UNMOUNTED status', async () => {
@@ -374,7 +374,7 @@ describe('StorageShareService', () => {
 
   describe('autoDetectShares', () => {
     it('should return shared-by-main shares for MAIN node', async () => {
-      mockPrismaService.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-1',
         role: 'MAIN',
       });
@@ -387,7 +387,7 @@ describe('StorageShareService', () => {
     });
 
     it('should filter out already-configured shares', async () => {
-      mockPrismaService.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-1',
         role: 'MAIN',
       });
@@ -400,7 +400,7 @@ describe('StorageShareService', () => {
     });
 
     it('should return empty for LINKED node without mainNodeUrl', async () => {
-      mockPrismaService.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findById.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
         mainNodeUrl: null,
@@ -412,7 +412,7 @@ describe('StorageShareService', () => {
     });
 
     it('should throw NotFoundException for unknown node', async () => {
-      mockPrismaService.node.findUnique.mockResolvedValue(null);
+      mockNodeRepository.findById.mockResolvedValue(null);
 
       await expect(service.autoDetectShares('bad-id')).rejects.toThrow(NotFoundException);
     });

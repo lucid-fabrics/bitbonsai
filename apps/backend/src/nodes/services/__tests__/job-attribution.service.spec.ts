@@ -1,11 +1,16 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Job, Node } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { JobAttributionService } from '../job-attribution.service';
 
 describe('JobAttributionService', () => {
   let service: JobAttributionService;
-  let prisma: PrismaService;
+  // 'prisma' is kept as the shared mock object so existing jest.spyOn() calls work
+  let prisma: {
+    job: { findUnique: jest.Mock };
+    node: { findMany: jest.Mock; aggregate: jest.Mock };
+  };
 
   /**
    * Mock data factories
@@ -134,26 +139,39 @@ describe('JobAttributionService', () => {
   };
 
   beforeEach(async () => {
+    // Shared mock object — tests use jest.spyOn(prisma.job, 'findUnique') etc.
+    // Repository methods are aliased to the same jest.fn() instances.
+    prisma = {
+      job: { findUnique: jest.fn() },
+      node: { findMany: jest.fn(), aggregate: jest.fn() },
+    };
+
+    // jobRepository.findManyWithInclude wraps prisma.job.findUnique and returns array
+    const mockJobRepository = {
+      findManyWithInclude: jest.fn().mockImplementation(async (args: any) => {
+        const result = await prisma.job.findUnique(args);
+        return result ? [result] : [];
+      }),
+    };
+
+    // nodeRepository aliases to same jest.fn() instances
+    const mockNodeRepository = {
+      findOnlineWithAllJobCount: prisma.node.findMany,
+      aggregateMaxEncodingSpeed: jest.fn().mockImplementation(async () => {
+        const result = await prisma.node.aggregate({});
+        return (result as any)?._max?.avgEncodingSpeed ?? null;
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobAttributionService,
-        {
-          provide: PrismaService,
-          useValue: {
-            job: {
-              findUnique: jest.fn(),
-            },
-            node: {
-              findMany: jest.fn(),
-              aggregate: jest.fn(),
-            },
-          },
-        },
+        { provide: JobRepository, useValue: mockJobRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
       ],
     }).compile();
 
     service = module.get<JobAttributionService>(JobAttributionService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   /**
@@ -310,23 +328,8 @@ describe('JobAttributionService', () => {
 
         await service.findOptimalNode('job-1');
 
-        expect(prisma.node.findMany).toHaveBeenCalledWith({
-          where: {
-            status: 'ONLINE',
-            role: { in: ['MAIN', 'LINKED'] },
-          },
-          include: {
-            _count: {
-              select: {
-                jobs: {
-                  where: {
-                    stage: { in: ['ENCODING', 'QUEUED'] },
-                  },
-                },
-              },
-            },
-          },
-        });
+        // findOnlineWithAllJobCount() encapsulates the query internally
+        expect(prisma.node.findMany).toHaveBeenCalled();
       });
     });
 
@@ -765,23 +768,8 @@ describe('JobAttributionService', () => {
 
       await service.getAllNodeScores();
 
-      expect(prisma.node.findMany).toHaveBeenCalledWith({
-        where: {
-          status: 'ONLINE',
-          role: { in: ['MAIN', 'LINKED'] },
-        },
-        include: {
-          _count: {
-            select: {
-              jobs: {
-                where: {
-                  stage: { in: ['ENCODING', 'QUEUED'] },
-                },
-              },
-            },
-          },
-        },
-      });
+      // findOnlineWithAllJobCount() encapsulates the query internally
+      expect(prisma.node.findMany).toHaveBeenCalled();
     });
   });
 

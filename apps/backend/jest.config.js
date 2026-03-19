@@ -1,5 +1,6 @@
 module.exports = {
   displayName: 'backend',
+  workerIdleMemoryLimit: '512MB',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],

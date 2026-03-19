@@ -1,8 +1,5 @@
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { NotificationsService } from '../../../notifications/notifications.service';
-import { HardwareDetectionService } from '../../../system/hardware-detection.service';
-import { NodesService } from '../../nodes.service';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { NodeDiscoveryService } from '../node-discovery.service';
 
 // Mock bonjour-service
@@ -22,22 +19,9 @@ jest.mock('bonjour-service', () => {
 describe('NodeDiscoveryService', () => {
   let service: NodeDiscoveryService;
 
-  const mockNodesService = {
-    getCurrentNode: jest.fn().mockRejectedValue(new Error('No node configured')),
-    findOne: jest.fn(),
-  };
-
-  const mockHardwareDetectionService = {
-    detectHardware: jest.fn().mockResolvedValue({
-      accelerationType: 'CPU',
-      gpus: [],
-      cpu: { cores: 4 },
-      platform: 'linux',
-    }),
-  };
-
-  const mockNotificationsService = {
-    createNotification: jest.fn().mockResolvedValue({}),
+  const mockNodeRepository = {
+    findMain: jest.fn().mockResolvedValue(null),
+    findById: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -45,13 +29,7 @@ describe('NodeDiscoveryService', () => {
     mockPublish.mockReturnValue({ stop: mockServiceStop });
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        NodeDiscoveryService,
-        { provide: NodesService, useValue: mockNodesService },
-        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
-        { provide: HardwareDetectionService, useValue: mockHardwareDetectionService },
-        { provide: NotificationsService, useValue: mockNotificationsService },
-      ],
+      providers: [NodeDiscoveryService, { provide: NodeRepository, useValue: mockNodeRepository }],
     }).compile();
 
     service = module.get<NodeDiscoveryService>(NodeDiscoveryService);
@@ -74,20 +52,8 @@ describe('NodeDiscoveryService', () => {
     });
   });
 
-  describe('getDiscoveredNodes', () => {
-    it('should return empty array initially', () => {
-      expect(service.getDiscoveredNodes()).toEqual([]);
-    });
-  });
-
-  describe('clearDiscoveredNodes', () => {
-    it('should clear without error', () => {
-      expect(() => service.clearDiscoveredNodes()).not.toThrow();
-    });
-  });
-
-  describe('scanForMainNodes', () => {
-    it('should return discovered nodes', async () => {
+  describe('discoverMainNodes', () => {
+    it('should return discovered nodes array', async () => {
       const mockBrowser = {
         on: jest.fn().mockReturnThis(),
         start: jest.fn(),
@@ -95,9 +61,8 @@ describe('NodeDiscoveryService', () => {
       };
       mockFind.mockReturnValue(mockBrowser);
 
-      const nodesPromise = service.scanForMainNodes();
+      const nodesPromise = service.discoverMainNodes(100);
 
-      // Resolve after timeout
       const nodes = await nodesPromise;
       expect(Array.isArray(nodes)).toBe(true);
     });

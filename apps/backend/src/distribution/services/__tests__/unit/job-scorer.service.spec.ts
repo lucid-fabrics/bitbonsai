@@ -1,7 +1,8 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Job, Node } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { DistributionConfigRepository } from '../../../../common/repositories/distribution-config.repository';
+import { JobRepository } from '../../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { JobScorerService } from '../../job-scorer.service';
 import { LoadMonitorService } from '../../load-monitor.service';
 
@@ -15,8 +16,17 @@ type JobWithRelations = Job & {
 
 describe('JobScorerService', () => {
   let service: JobScorerService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let jobRepo: Record<string, jest.Mock>;
+  let nodeRepo: Record<string, jest.Mock>;
+  let distConfigRepo: Record<string, jest.Mock>;
   let loadMonitor: Record<string, jest.Mock>;
+
+  // Shims so existing `prisma.X.Y` calls in test assertions still work
+  let prisma: {
+    distributionConfig: Record<string, jest.Mock>;
+    job: Record<string, jest.Mock>;
+    node: Record<string, jest.Mock>;
+  };
 
   const defaultConfig = {
     id: 'default',
@@ -44,16 +54,50 @@ describe('JobScorerService', () => {
   };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    jobRepo = {
+      countForNode: jest.fn(),
+      countByLibraryAndNode: jest.fn(),
+      countLargeFilesForNode: jest.fn(),
+    };
+    nodeRepo = {
+      aggregateMaxEncodingSpeed: jest.fn(),
+    };
+    distConfigRepo = {
+      findOrCreateDefault: jest.fn(),
+    };
     loadMonitor = {
       getNodeLoad: jest.fn().mockResolvedValue(null),
       calculateLoadScore: jest.fn().mockReturnValue(15),
     } as Record<string, jest.Mock>;
 
+    // Shims for backwards-compat with existing `prisma.X.Y` assertions
+    prisma = {
+      distributionConfig: {
+        findFirst: distConfigRepo.findOrCreateDefault,
+        create: jest.fn(),
+      },
+      job: {
+        count: jobRepo.countForNode,
+        aggregate: jest.fn(),
+      },
+      node: {
+        aggregate: nodeRepo.aggregateMaxEncodingSpeed,
+      },
+    };
+
+    // Keep shims in sync
+    distConfigRepo.findOrCreateDefault = prisma.distributionConfig.findFirst;
+    jobRepo.countForNode = prisma.job.count;
+    jobRepo.countByLibraryAndNode = prisma.job.count;
+    jobRepo.countLargeFilesForNode = prisma.job.count;
+    nodeRepo.aggregateMaxEncodingSpeed = prisma.node.aggregate;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobScorerService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: JobRepository, useValue: jobRepo },
+        { provide: NodeRepository, useValue: nodeRepo },
+        { provide: DistributionConfigRepository, useValue: distConfigRepo },
         { provide: LoadMonitorService, useValue: loadMonitor },
       ],
     }).compile();
@@ -324,7 +368,7 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 100 } });
+      prisma.node.aggregate.mockResolvedValue(100);
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.performance).toBe(25);
@@ -335,7 +379,7 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 100 } });
+      prisma.node.aggregate.mockResolvedValue(100);
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.performance).toBe(13); // 50/100 * 25 = 12.5 -> 13
@@ -670,8 +714,8 @@ describe('JobScorerService', () => {
 
   describe('getConfig (private)', () => {
     it('should create default config if none exists', async () => {
-      prisma.distributionConfig.findFirst.mockResolvedValue(null);
-      prisma.distributionConfig.create.mockResolvedValue(defaultConfig);
+      // findOrCreateDefault handles both find and create internally
+      distConfigRepo.findOrCreateDefault.mockResolvedValue(defaultConfig);
 
       const node = createNode();
       const job = createJob();
@@ -681,9 +725,7 @@ describe('JobScorerService', () => {
 
       await service.calculateScore(node, job);
 
-      expect(prisma.distributionConfig.create).toHaveBeenCalledWith({
-        data: { id: 'default' },
-      });
+      expect(distConfigRepo.findOrCreateDefault).toHaveBeenCalled();
     });
 
     it('should cache config for 1 minute', async () => {
@@ -697,7 +739,7 @@ describe('JobScorerService', () => {
       await service.calculateScore(node, job);
 
       // Config should be fetched only once
-      expect(prisma.distributionConfig.findFirst).toHaveBeenCalledTimes(1);
+      expect(distConfigRepo.findOrCreateDefault).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -716,13 +758,13 @@ describe('JobScorerService', () => {
       await service.calculateScore(node, job);
 
       // Should have fetched config twice (before and after cache clear)
-      expect(prisma.distributionConfig.findFirst).toHaveBeenCalledTimes(2);
+      expect(distConfigRepo.findOrCreateDefault).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('config weight application', () => {
     it('should disable optional factors when config flags are false', async () => {
-      prisma.distributionConfig.findFirst.mockResolvedValue({
+      distConfigRepo.findOrCreateDefault.mockResolvedValue({
         ...defaultConfig,
         enableLibraryAffinity: false,
         enableETABalancing: false,

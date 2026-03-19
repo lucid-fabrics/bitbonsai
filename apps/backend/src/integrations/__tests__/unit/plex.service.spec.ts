@@ -1,15 +1,19 @@
 import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { PlexIntegrationService } from '../../plex.service';
 
 describe('PlexIntegrationService', () => {
   let service: PlexIntegrationService;
 
-  const mockPrismaService = {
-    settings: { findFirst: jest.fn() },
-    job: { updateMany: jest.fn() },
+  const mockSettingsRepository = {
+    findFirst: jest.fn(),
+  };
+
+  const mockJobRepository = {
+    updateManyWhere: jest.fn(),
   };
 
   const mockHttpService = {
@@ -23,7 +27,8 @@ describe('PlexIntegrationService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlexIntegrationService,
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: SettingsRepository, useValue: mockSettingsRepository },
+        { provide: JobRepository, useValue: mockJobRepository },
         { provide: HttpService, useValue: mockHttpService },
       ],
     }).compile();
@@ -37,7 +42,7 @@ describe('PlexIntegrationService', () => {
 
   describe('isPlaybackActive', () => {
     it('should return false when Plex not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.isPlaybackActive();
 
@@ -45,7 +50,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should return false when no settings with plexUrl', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({ plexUrl: null, plexToken: null });
+      mockSettingsRepository.findFirst.mockResolvedValue({ plexUrl: null, plexToken: null });
 
       const result = await service.isPlaybackActive();
 
@@ -53,7 +58,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should return true when active playing sessions exist', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -80,7 +85,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should return false when sessions are paused', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -107,7 +112,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should return false on API error', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -121,7 +126,7 @@ describe('PlexIntegrationService', () => {
 
   describe('getActiveSessions', () => {
     it('should return empty array when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.getActiveSessions();
 
@@ -129,7 +134,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should map session data correctly', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -159,7 +164,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should return empty array on error', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -173,7 +178,7 @@ describe('PlexIntegrationService', () => {
 
   describe('refreshLibrary', () => {
     it('should not call API when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       await service.refreshLibrary();
 
@@ -181,7 +186,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should refresh specific section when sectionId provided', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -198,7 +203,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should refresh all sections when no sectionId', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -213,7 +218,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
@@ -225,7 +230,7 @@ describe('PlexIntegrationService', () => {
 
   describe('notifyNewFile', () => {
     it('should not call when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       await service.notifyNewFile('/media/movies/test.mkv');
 
@@ -233,7 +238,7 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should not call when refreshOnComplete is false', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
         plexRefreshOnComplete: false,
@@ -247,7 +252,7 @@ describe('PlexIntegrationService', () => {
 
   describe('checkPlaybackAndPause', () => {
     it('should do nothing when pauseDuringPlayback is false', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
         plexPauseDuringPlayback: false,
@@ -255,15 +260,15 @@ describe('PlexIntegrationService', () => {
 
       await service.checkPlaybackAndPause();
 
-      expect(mockPrismaService.job.updateMany).not.toHaveBeenCalled();
+      expect(mockJobRepository.updateManyWhere).not.toHaveBeenCalled();
     });
 
     it('should do nothing when not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       await service.checkPlaybackAndPause();
 
-      expect(mockPrismaService.job.updateMany).not.toHaveBeenCalled();
+      expect(mockJobRepository.updateManyWhere).not.toHaveBeenCalled();
     });
   });
 

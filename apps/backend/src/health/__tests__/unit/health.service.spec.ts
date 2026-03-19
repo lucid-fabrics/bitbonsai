@@ -1,4 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { LibraryRepository } from '../../../common/repositories/library.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthService } from '../../health.service';
 
@@ -28,7 +31,6 @@ jest.mock('node:os', () => ({
 
 describe('HealthService', () => {
   let service: HealthService;
-  let _prisma: PrismaService;
 
   const mockPrismaService = {
     $queryRaw: jest.fn(),
@@ -38,6 +40,19 @@ describe('HealthService', () => {
     job: {
       count: jest.fn(),
     },
+  };
+
+  // Repository mocks aliased to same jest.fn() instances so existing assertions pass
+  const mockNodeRepository = {
+    findAllSummary: mockPrismaService.node.findMany,
+  };
+
+  const mockJobRepository = {
+    countWhere: mockPrismaService.job.count,
+  };
+
+  const mockLibraryRepository = {
+    findAllLibraries: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
@@ -51,11 +66,22 @@ describe('HealthService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: NodeRepository,
+          useValue: mockNodeRepository,
+        },
+        {
+          provide: JobRepository,
+          useValue: mockJobRepository,
+        },
+        {
+          provide: LibraryRepository,
+          useValue: mockLibraryRepository,
+        },
       ],
     }).compile();
 
     service = module.get<HealthService>(HealthService);
-    _prisma = module.get<PrismaService>(PrismaService);
 
     // Get reference to the promisified exec mock (stable reference via globalThis)
     mockExecAsync = (globalThis as any).__mockExecAsync;

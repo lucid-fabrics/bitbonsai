@@ -1,22 +1,21 @@
 import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { SettingsRepository } from '../../../../common/repositories/settings.repository';
 import { WebhookEventType, WebhookNotificationService } from '../../webhook-notification.service';
 
 describe('WebhookNotificationService', () => {
   let service: WebhookNotificationService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let settingsRepository: { findFirst: jest.Mock };
   let httpService: { post: jest.Mock };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    settingsRepository = { findFirst: jest.fn() };
     httpService = { post: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebhookNotificationService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: SettingsRepository, useValue: settingsRepository },
         { provide: HttpService, useValue: httpService },
       ],
     }).compile();
@@ -43,7 +42,7 @@ describe('WebhookNotificationService', () => {
     secret: string | null = null,
     events: string[] | null = null
   ) => {
-    prisma.settings.findFirst.mockResolvedValue({
+    settingsRepository.findFirst.mockResolvedValue({
       webhookUrl: url,
       webhookSecret: secret,
       webhookEvents: events,
@@ -69,7 +68,7 @@ describe('WebhookNotificationService', () => {
     });
 
     it('should not throw on errors', async () => {
-      prisma.settings.findFirst.mockRejectedValue(new Error('DB error'));
+      settingsRepository.findFirst.mockRejectedValue(new Error('DB error'));
 
       await expect(
         service.sendJobNotification(WebhookEventType.JOB_COMPLETED, { id: 'job-1' })
@@ -87,7 +86,7 @@ describe('WebhookNotificationService', () => {
     });
 
     it('should not throw on errors', async () => {
-      prisma.settings.findFirst.mockRejectedValue(new Error('Error'));
+      settingsRepository.findFirst.mockRejectedValue(new Error('Error'));
 
       await expect(service.sendHealthAlert('DISK_FULL', 'Disk space low')).resolves.not.toThrow();
     });
@@ -103,7 +102,7 @@ describe('WebhookNotificationService', () => {
     });
 
     it('should not throw on errors', async () => {
-      prisma.settings.findFirst.mockRejectedValue(new Error('Error'));
+      settingsRepository.findFirst.mockRejectedValue(new Error('Error'));
 
       await expect(
         service.sendBatchCompleteNotification(5, 5, 0, BigInt(500000))

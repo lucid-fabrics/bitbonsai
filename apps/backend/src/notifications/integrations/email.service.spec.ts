@@ -1,6 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import * as nodemailer from 'nodemailer';
-import { PrismaService } from '../../prisma/prisma.service';
+import { SettingsRepository } from '../../common/repositories/settings.repository';
 import { EmailNotificationService } from './email.service';
 
 jest.mock('nodemailer');
@@ -11,7 +11,7 @@ const mockCreateTransport = nodemailer.createTransport as jest.Mock;
 
 describe('EmailNotificationService', () => {
   let service: EmailNotificationService;
-  let prisma: jest.Mocked<PrismaService>;
+  let prisma: any;
 
   const validSmtpSettings = {
     smtpHost: 'smtp.example.com',
@@ -29,18 +29,19 @@ describe('EmailNotificationService', () => {
       verify: mockVerify,
     });
 
-    const prismaMock = {
-      settings: {
-        findFirst: jest.fn(),
-      },
-    } as unknown as jest.Mocked<PrismaService>;
+    const settingsRepoMock = {
+      findFirst: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EmailNotificationService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        EmailNotificationService,
+        { provide: SettingsRepository, useValue: settingsRepoMock },
+      ],
     }).compile();
 
     service = module.get<EmailNotificationService>(EmailNotificationService);
-    prisma = module.get(PrismaService);
+    prisma = module.get(SettingsRepository);
   });
 
   afterEach(() => {
@@ -53,7 +54,7 @@ describe('EmailNotificationService', () => {
 
   describe('sendJobCompleted', () => {
     it('should send email when SMTP is configured', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendJobCompleted({
         fileLabel: 'movie.mkv',
@@ -72,7 +73,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should do nothing when SMTP is not configured', async () => {
-      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.findFirst.mockResolvedValue(null);
 
       await service.sendJobCompleted({ fileLabel: 'movie.mkv' });
 
@@ -80,7 +81,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should do nothing when smtpHost is missing', async () => {
-      prisma.settings.findFirst.mockResolvedValue({
+      prisma.findFirst.mockResolvedValue({
         smtpUser: 'user@example.com',
         emailTo: 'to@example.com',
       } as never);
@@ -91,7 +92,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should include space saved and duration in the email body', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendJobCompleted({
         fileLabel: 'movie.mkv',
@@ -107,7 +108,7 @@ describe('EmailNotificationService', () => {
 
   describe('sendJobFailed', () => {
     it('should send failure email with subject containing the filename', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendJobFailed({
         fileLabel: 'corrupt.mkv',
@@ -123,7 +124,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should do nothing when SMTP is not configured', async () => {
-      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.findFirst.mockResolvedValue(null);
 
       await service.sendJobFailed({ fileLabel: 'movie.mkv' });
 
@@ -131,7 +132,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should handle missing error gracefully', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await expect(
         service.sendJobFailed({ fileLabel: 'movie.mkv', error: null })
@@ -141,7 +142,7 @@ describe('EmailNotificationService', () => {
 
   describe('sendDailyDigest', () => {
     it('should send daily digest email', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendDailyDigest({
         date: '2025-01-15',
@@ -159,7 +160,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should include success rate in the email body', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendDailyDigest({
         date: '2025-01-15',
@@ -176,7 +177,7 @@ describe('EmailNotificationService', () => {
 
   describe('sendHealthAlert', () => {
     it('should send critical alert with correct subject', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendHealthAlert({
         type: 'node_offline',
@@ -192,7 +193,7 @@ describe('EmailNotificationService', () => {
     });
 
     it('should send warning alert with correct subject', async () => {
-      prisma.settings.findFirst.mockResolvedValue(validSmtpSettings as never);
+      prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await service.sendHealthAlert({
         type: 'high_load',

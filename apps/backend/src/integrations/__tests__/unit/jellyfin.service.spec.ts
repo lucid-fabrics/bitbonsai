@@ -1,16 +1,14 @@
 import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { JellyfinIntegrationService } from '../../jellyfin.service';
 
 describe('JellyfinIntegrationService', () => {
   let service: JellyfinIntegrationService;
 
-  const mockPrismaService = {
-    settings: {
-      findFirst: jest.fn(),
-    },
+  const mockSettingsRepository = {
+    findFirst: jest.fn(),
   };
 
   const mockHttpService = {
@@ -25,8 +23,8 @@ describe('JellyfinIntegrationService', () => {
       providers: [
         JellyfinIntegrationService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: SettingsRepository,
+          useValue: mockSettingsRepository,
         },
         {
           provide: HttpService,
@@ -46,7 +44,7 @@ describe('JellyfinIntegrationService', () => {
 
   describe('isConfigured', () => {
     it('should return false when no settings exist', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.isConfigured();
 
@@ -54,7 +52,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should return false when Jellyfin URL is missing', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: null,
         jellyfinApiKey: 'api-key-123',
       });
@@ -65,7 +63,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should return false when API key is missing', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: null,
       });
@@ -76,7 +74,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should return true when both URL and API key are configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
       });
@@ -135,14 +133,14 @@ describe('JellyfinIntegrationService', () => {
 
   describe('findFileByNameAndSize', () => {
     beforeEach(() => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
       });
     });
 
     it('should return not found when Jellyfin is not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.findFileByNameAndSize('/media/movies/test.mkv', 1024);
 
@@ -299,7 +297,7 @@ describe('JellyfinIntegrationService', () => {
 
   describe('getItemById', () => {
     it('should return null when Jellyfin is not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       const result = await service.getItemById('item-123');
 
@@ -307,7 +305,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should return item data on success', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
       });
@@ -334,7 +332,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should return null on API error', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
       });
@@ -349,7 +347,7 @@ describe('JellyfinIntegrationService', () => {
 
   describe('refreshLibrary', () => {
     it('should not call API when Jellyfin is not configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
+      mockSettingsRepository.findFirst.mockResolvedValue(null);
 
       await service.refreshLibrary();
 
@@ -357,7 +355,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should not call API when refreshOnComplete is false', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
         jellyfinRefreshOnComplete: false,
@@ -369,7 +367,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should trigger library refresh when configured', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
         jellyfinRefreshOnComplete: true,
@@ -389,7 +387,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should default refreshOnComplete to true when undefined', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
         // jellyfinRefreshOnComplete not set
@@ -403,7 +401,7 @@ describe('JellyfinIntegrationService', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
         jellyfinRefreshOnComplete: true,
@@ -418,7 +416,7 @@ describe('JellyfinIntegrationService', () => {
 
   describe('search term extraction', () => {
     beforeEach(() => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
       });
@@ -476,7 +474,7 @@ describe('JellyfinIntegrationService', () => {
 
   describe('path similarity', () => {
     beforeEach(() => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({
+      mockSettingsRepository.findFirst.mockResolvedValue({
         jellyfinUrl: 'http://localhost:8096',
         jellyfinApiKey: 'api-key-123',
       });

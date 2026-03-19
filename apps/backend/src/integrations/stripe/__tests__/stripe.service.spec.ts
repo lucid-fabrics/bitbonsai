@@ -1,24 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { LicenseRepository } from '../../../common/repositories/license.repository';
 import { StripeService } from '../stripe.service';
 
 describe('StripeService', () => {
   let service: StripeService;
-  let prismaMock: any;
+  let licenseRepositoryMock: any;
 
   beforeEach(async () => {
     process.env.STRIPE_SECRET_KEY = undefined;
 
-    prismaMock = {
-      license: {
-        findUnique: jest.fn(),
-        update: jest.fn(),
-        create: jest.fn(),
-      },
+    licenseRepositoryMock = {
+      findByEmail: jest.fn(),
+      findFirstWhere: jest.fn(),
+      updateByKey: jest.fn(),
+      updateById: jest.fn(),
+      upsertByEmail: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [StripeService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [StripeService, { provide: LicenseRepository, useValue: licenseRepositoryMock }],
     }).compile();
 
     service = module.get<StripeService>(StripeService);
@@ -37,7 +37,7 @@ describe('StripeService', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_123';
 
       const module: TestingModule = await Test.createTestingModule({
-        providers: [StripeService, { provide: PrismaService, useValue: prismaMock }],
+        providers: [StripeService, { provide: LicenseRepository, useValue: licenseRepositoryMock }],
       }).compile();
 
       const newService = module.get<StripeService>(StripeService);

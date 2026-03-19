@@ -1,9 +1,11 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AccelerationType, ContainerType, RegistrationRequestStatus } from '@prisma/client';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { NotificationsGateway } from '../../../notifications/notifications.gateway';
 import { NotificationsService } from '../../../notifications/notifications.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RegistrationRequestRepository } from '../../repositories/registration-request.repository';
 import { NodeCapabilityDetectorService } from '../node-capability-detector.service';
 import {
   type CreateRegistrationRequestDto,
@@ -32,6 +34,25 @@ describe('RegistrationRequestService', () => {
       update: jest.fn(),
     },
     $transaction: jest.fn(),
+  };
+
+  const mockRegistrationRequestRepository = {
+    findFirstByMac: jest.fn(),
+    createRequest: jest.fn(),
+    updateById: jest.fn(),
+    updateManyExpired: jest.fn(),
+    deleteManyOld: jest.fn(),
+    findManyPending: jest.fn(),
+    findUniqueById: jest.fn(),
+    findUniqueByToken: jest.fn(),
+  };
+
+  const mockNodeRepository = {
+    findUnique: jest.fn(),
+    findMain: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateData: jest.fn(),
   };
 
   const mockSystemInfoService = {};
@@ -77,6 +98,8 @@ describe('RegistrationRequestService', () => {
       providers: [
         RegistrationRequestService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: RegistrationRequestRepository, useValue: mockRegistrationRequestRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: SystemInfoService, useValue: mockSystemInfoService },
         { provide: NodeCapabilityDetectorService, useValue: mockCapabilityDetector },
         { provide: NotificationsService, useValue: mockNotificationsService },
@@ -91,29 +114,29 @@ describe('RegistrationRequestService', () => {
 
   describe('createRegistrationRequest', () => {
     it('should create a new registration request', async () => {
-      mockPrisma.nodeRegistrationRequest.findFirst.mockResolvedValue(null);
+      mockRegistrationRequestRepository.findFirstByMac.mockResolvedValue(null);
       const createdRequest = {
         id: 'req-1',
         ...createDto,
         status: RegistrationRequestStatus.PENDING,
         pairingToken: '123456',
       };
-      mockPrisma.nodeRegistrationRequest.create.mockResolvedValue(createdRequest);
+      mockRegistrationRequestRepository.createRequest.mockResolvedValue(createdRequest);
       mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-1' });
 
       const result = await service.createRegistrationRequest(createDto);
 
       expect(result).toEqual(createdRequest);
-      expect(mockPrisma.nodeRegistrationRequest.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(mockRegistrationRequestRepository.createRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
           mainNodeId: 'main-1',
           childNodeName: 'Child Node',
           ipAddress: '192.168.1.170',
           hostname: 'child-host',
           macAddress: 'AA:BB:CC:DD:EE:FF',
           containerType: ContainerType.LXC,
-        }),
-      });
+        })
+      );
       expect(mockNotificationsGateway.sendToAll).toHaveBeenCalled();
     });
 
@@ -123,51 +146,44 @@ describe('RegistrationRequestService', () => {
         macAddress: 'AA:BB:CC:DD:EE:FF',
         status: RegistrationRequestStatus.PENDING,
       };
-      mockPrisma.nodeRegistrationRequest.findFirst.mockResolvedValue(existingRequest);
-      mockPrisma.nodeRegistrationRequest.update.mockResolvedValue({
+      mockRegistrationRequestRepository.findFirstByMac.mockResolvedValue(existingRequest);
+      mockRegistrationRequestRepository.updateById.mockResolvedValue({
         ...existingRequest,
         tokenExpiresAt: new Date(),
       });
 
       await service.createRegistrationRequest(createDto);
 
-      expect(mockPrisma.nodeRegistrationRequest.update).toHaveBeenCalledWith({
-        where: { id: 'existing-1' },
-        data: expect.objectContaining({
+      expect(mockRegistrationRequestRepository.updateById).toHaveBeenCalledWith(
+        'existing-1',
+        expect.objectContaining({
           status: RegistrationRequestStatus.PENDING,
-        }),
-      });
-      expect(mockPrisma.nodeRegistrationRequest.create).not.toHaveBeenCalled();
+        })
+      );
+      expect(mockRegistrationRequestRepository.createRequest).not.toHaveBeenCalled();
     });
 
     it('should skip duplicate check when macAddress is null', async () => {
       const dtoNoMac = { ...createDto, macAddress: null };
-      mockPrisma.nodeRegistrationRequest.create.mockResolvedValue({ id: 'req-1' });
+      mockRegistrationRequestRepository.createRequest.mockResolvedValue({ id: 'req-1' });
       mockNotificationsService.createNotification.mockResolvedValue({ id: 'n' });
 
       await service.createRegistrationRequest(dtoNoMac);
 
-      expect(mockPrisma.nodeRegistrationRequest.findFirst).not.toHaveBeenCalled();
-      expect(mockPrisma.nodeRegistrationRequest.create).toHaveBeenCalled();
+      expect(mockRegistrationRequestRepository.findFirstByMac).not.toHaveBeenCalled();
+      expect(mockRegistrationRequestRepository.createRequest).toHaveBeenCalled();
     });
   });
 
   describe('getPendingRequests', () => {
     it('should return pending non-expired requests', async () => {
       const requests = [{ id: 'req-1' }, { id: 'req-2' }];
-      mockPrisma.nodeRegistrationRequest.findMany.mockResolvedValue(requests);
+      mockRegistrationRequestRepository.findManyPending.mockResolvedValue(requests);
 
       const result = await service.getPendingRequests('main-1');
 
       expect(result).toEqual(requests);
-      expect(mockPrisma.nodeRegistrationRequest.findMany).toHaveBeenCalledWith({
-        where: {
-          mainNodeId: 'main-1',
-          status: RegistrationRequestStatus.PENDING,
-          tokenExpiresAt: { gt: expect.any(Date) },
-        },
-        orderBy: { requestedAt: 'desc' },
-      });
+      expect(mockRegistrationRequestRepository.findManyPending).toHaveBeenCalledWith('main-1');
     });
   });
 
@@ -178,14 +194,14 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.PENDING,
         childNodeId: null,
       };
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue(request);
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
 
       const result = await service.getRequest('req-1');
       expect(result).toEqual(request);
     });
 
     it('should throw NotFoundException when request not found', async () => {
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue(null);
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(null);
 
       await expect(service.getRequest('nonexistent')).rejects.toThrow(NotFoundException);
     });
@@ -196,8 +212,8 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.APPROVED,
         childNodeId: 'child-1',
       };
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue(request);
-      mockPrisma.node.findUnique.mockResolvedValue({ apiKey: 'bb_secret_key' });
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
+      mockNodeRepository.findUnique.mockResolvedValue({ apiKey: 'bb_secret_key' });
 
       const result = await service.getRequest('req-1');
       expect((result as any).apiKey).toBe('bb_secret_key');
@@ -211,22 +227,22 @@ describe('RegistrationRequestService', () => {
         pairingToken: '123456',
         tokenExpiresAt: new Date(Date.now() + 60000),
       };
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue(request);
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(request);
 
       const result = await service.getRequestByToken('123456');
       expect(result.id).toBe('req-1');
     });
 
     it('should throw NotFoundException for invalid token', async () => {
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue(null);
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(null);
 
       await expect(service.getRequestByToken('000000')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException for expired token', async () => {
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue({
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue({
         id: 'req-1',
-        tokenExpiresAt: new Date(Date.now() - 60000), // expired
+        tokenExpiresAt: new Date(Date.now() - 60000),
       });
 
       await expect(service.getRequestByToken('123456')).rejects.toThrow(BadRequestException);
@@ -241,8 +257,8 @@ describe('RegistrationRequestService', () => {
         childNodeName: 'Child',
         ipAddress: '1.1.1.1',
       };
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue(request);
-      mockPrisma.nodeRegistrationRequest.update.mockResolvedValue({
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
+      mockRegistrationRequestRepository.updateById.mockResolvedValue({
         ...request,
         status: RegistrationRequestStatus.REJECTED,
         rejectionReason: 'Not authorized',
@@ -251,17 +267,17 @@ describe('RegistrationRequestService', () => {
       const result = await service.rejectRequest('req-1', { reason: 'Not authorized' });
 
       expect(result.status).toBe(RegistrationRequestStatus.REJECTED);
-      expect(mockPrisma.nodeRegistrationRequest.update).toHaveBeenCalledWith({
-        where: { id: 'req-1' },
-        data: expect.objectContaining({
+      expect(mockRegistrationRequestRepository.updateById).toHaveBeenCalledWith(
+        'req-1',
+        expect.objectContaining({
           status: RegistrationRequestStatus.REJECTED,
           rejectionReason: 'Not authorized',
-        }),
-      });
+        })
+      );
     });
 
     it('should throw BadRequestException when rejecting non-PENDING request', async () => {
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue({
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue({
         id: 'req-1',
         status: RegistrationRequestStatus.APPROVED,
       });
@@ -274,13 +290,13 @@ describe('RegistrationRequestService', () => {
 
   describe('cancelRequest', () => {
     it('should cancel a PENDING request', async () => {
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue({
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue({
         id: 'req-1',
         status: RegistrationRequestStatus.PENDING,
         childNodeName: 'Child',
         ipAddress: '1.1.1.1',
       });
-      mockPrisma.nodeRegistrationRequest.update.mockResolvedValue({
+      mockRegistrationRequestRepository.updateById.mockResolvedValue({
         id: 'req-1',
         status: RegistrationRequestStatus.CANCELLED,
       });
@@ -290,7 +306,7 @@ describe('RegistrationRequestService', () => {
     });
 
     it('should throw BadRequestException when cancelling non-PENDING request', async () => {
-      mockPrisma.nodeRegistrationRequest.findUnique.mockResolvedValue({
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue({
         id: 'req-1',
         status: RegistrationRequestStatus.REJECTED,
       });
@@ -301,52 +317,41 @@ describe('RegistrationRequestService', () => {
 
   describe('cleanupExpiredRequests', () => {
     it('should mark expired PENDING requests as EXPIRED', async () => {
-      mockPrisma.nodeRegistrationRequest.updateMany.mockResolvedValue({ count: 3 });
+      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({ count: 3 });
 
       await service.cleanupExpiredRequests();
 
-      expect(mockPrisma.nodeRegistrationRequest.updateMany).toHaveBeenCalledWith({
-        where: {
-          status: RegistrationRequestStatus.PENDING,
-          tokenExpiresAt: { lt: expect.any(Date) },
-        },
-        data: {
-          status: RegistrationRequestStatus.EXPIRED,
-        },
-      });
+      expect(mockRegistrationRequestRepository.updateManyExpired).toHaveBeenCalledWith(
+        expect.any(Date)
+      );
     });
 
     it('should handle errors gracefully', async () => {
-      mockPrisma.nodeRegistrationRequest.updateMany.mockRejectedValue(new Error('DB error'));
+      mockRegistrationRequestRepository.updateManyExpired.mockRejectedValue(new Error('DB error'));
 
-      // Should not throw
       await expect(service.cleanupExpiredRequests()).resolves.toBeUndefined();
     });
   });
 
   describe('deleteOldRequests', () => {
     it('should delete requests older than 30 days', async () => {
-      mockPrisma.nodeRegistrationRequest.deleteMany.mockResolvedValue({ count: 5 });
+      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({ count: 5 });
 
       await service.deleteOldRequests();
 
-      expect(mockPrisma.nodeRegistrationRequest.deleteMany).toHaveBeenCalledWith({
-        where: {
-          createdAt: { lt: expect.any(Date) },
-          status: {
-            in: [
-              RegistrationRequestStatus.APPROVED,
-              RegistrationRequestStatus.REJECTED,
-              RegistrationRequestStatus.EXPIRED,
-              RegistrationRequestStatus.CANCELLED,
-            ],
-          },
-        },
-      });
+      expect(mockRegistrationRequestRepository.deleteManyOld).toHaveBeenCalledWith(
+        expect.any(Date),
+        expect.arrayContaining([
+          RegistrationRequestStatus.APPROVED,
+          RegistrationRequestStatus.REJECTED,
+          RegistrationRequestStatus.EXPIRED,
+          RegistrationRequestStatus.CANCELLED,
+        ])
+      );
     });
 
     it('should handle errors gracefully', async () => {
-      mockPrisma.nodeRegistrationRequest.deleteMany.mockRejectedValue(new Error('DB error'));
+      mockRegistrationRequestRepository.deleteManyOld.mockRejectedValue(new Error('DB error'));
 
       await expect(service.deleteOldRequests()).resolves.toBeUndefined();
     });

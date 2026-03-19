@@ -62,7 +62,7 @@ describe('DistributionController', () => {
       orchestrator.getAllNodeScores.mockResolvedValue(mockScores);
       orchestrator.getScoreBreakdown.mockReturnValue({ hardware: 50, load: 35.7 });
 
-      const result = await controller.getNodeScores('job-1');
+      const result = (await controller.getNodeScores('job-1')) as any;
 
       expect(result.jobId).toBe('job-1');
       expect(result.scores).toHaveLength(1);
@@ -90,7 +90,7 @@ describe('DistributionController', () => {
       orchestrator.getAllNodeScores.mockResolvedValue(mockScores);
       orchestrator.getScoreBreakdown.mockReturnValue({});
 
-      const result = await controller.getNodeScoreDetail('job-1', 'node-1');
+      const result = (await controller.getNodeScoreDetail('job-1', 'node-1')) as any;
 
       expect(result.nodeId).toBe('node-1');
       expect(result.totalScore).toBe(90);
@@ -155,7 +155,7 @@ describe('DistributionController', () => {
       const updatedConfig = { id: 'default', isActive: true, weightRealTimeLoad: 3 };
       orchestrator.updateConfig.mockResolvedValue(updatedConfig);
 
-      const result = await controller.updateConfig({ weightRealTimeLoad: 3 });
+      const result = (await controller.updateConfig({ weightRealTimeLoad: 3 })) as any;
 
       expect(result.weightRealTimeLoad).toBe(3);
     });
@@ -180,7 +180,7 @@ describe('DistributionController', () => {
       });
       reliabilityTracker.isUnreliable.mockReturnValue(false);
 
-      const result = await controller.getNodeReliability('node-1');
+      const result = (await controller.getNodeReliability('node-1')) as any;
 
       expect(result.nodeId).toBe('node-1');
       expect(result.isUnreliable).toBe(false);
@@ -193,7 +193,7 @@ describe('DistributionController', () => {
       });
       reliabilityTracker.isUnreliable.mockReturnValue(true);
 
-      const result = await controller.getNodeReliability('node-1');
+      const result = (await controller.getNodeReliability('node-1')) as any;
 
       expect(result.isUnreliable).toBe(true);
     });
@@ -208,7 +208,7 @@ describe('DistributionController', () => {
         ],
       });
 
-      const result = await controller.getNodesCapacity();
+      const result = (await controller.getNodesCapacity()) as any;
 
       expect(result.nodes).toHaveLength(2);
     });
@@ -216,7 +216,7 @@ describe('DistributionController', () => {
     it('should return empty when no capacity data', async () => {
       orchestrator.getNodesCapacity.mockResolvedValue({ nodes: [] });
 
-      const result = await controller.getNodesCapacity();
+      const result = (await controller.getNodesCapacity()) as any;
 
       expect(result.nodes).toHaveLength(0);
     });
@@ -226,7 +226,7 @@ describe('DistributionController', () => {
     it('should return simulation result', async () => {
       orchestrator.findOptimalNode.mockResolvedValue({ nodeId: 'node-1', score: 95 });
 
-      const result = await controller.simulateAssignment('job-1');
+      const result = (await controller.simulateAssignment('job-1')) as any;
 
       expect(result.simulation).toBe(true);
       expect(result.nodeId).toBe('node-1');

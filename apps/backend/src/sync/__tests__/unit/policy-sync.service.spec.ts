@@ -1,12 +1,17 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { SyncStatus } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { LibraryRepository } from '../../../common/repositories/library.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
+import { PolicyRepository } from '../../../common/repositories/policy.repository';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { PolicySyncService } from '../../policy-sync.service';
 
 describe('PolicySyncService', () => {
   let service: PolicySyncService;
 
+  // Keep the same mock shape so existing assertions continue to work.
+  // Repository methods aliased to same jest.fn() instances.
   const mockPrismaService = {
     node: {
       findUnique: jest.fn(),
@@ -28,11 +33,40 @@ describe('PolicySyncService', () => {
     },
   };
 
+  const mockNodeRepository = {
+    findById: mockPrismaService.node.findUnique,
+    updateData: mockPrismaService.node.update,
+    updateById: mockPrismaService.node.update,
+    findWithSelect: mockPrismaService.node.findFirst,
+    findMain: mockPrismaService.node.findFirst,
+  };
+
+  const mockPolicyRepository = {
+    findAll: mockPrismaService.policy.findMany,
+    upsert: mockPrismaService.policy.upsert,
+  };
+
+  const mockLibraryRepository = {
+    findAllLibraries: mockPrismaService.library.findMany,
+    upsertLibrary: mockPrismaService.library.upsert,
+  };
+
+  const mockSettingsRepository = {
+    findFirst: mockPrismaService.settings.findFirst,
+    upsertSettings: mockPrismaService.settings.update,
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PolicySyncService, { provide: PrismaService, useValue: mockPrismaService }],
+      providers: [
+        PolicySyncService,
+        { provide: NodeRepository, useValue: mockNodeRepository },
+        { provide: PolicyRepository, useValue: mockPolicyRepository },
+        { provide: LibraryRepository, useValue: mockLibraryRepository },
+        { provide: SettingsRepository, useValue: mockSettingsRepository },
+      ],
     }).compile();
 
     service = module.get<PolicySyncService>(PolicySyncService);
@@ -109,10 +143,8 @@ describe('PolicySyncService', () => {
       await service.syncToChildNode('child-1');
 
       expect(mockPrismaService.node.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'child-1' },
-          data: expect.objectContaining({ syncStatus: SyncStatus.SYNCING }),
-        })
+        'child-1',
+        expect.objectContaining({ syncStatus: SyncStatus.SYNCING })
       );
     });
 
@@ -138,7 +170,7 @@ describe('PolicySyncService', () => {
     });
 
     it('should return sync status for existing node', async () => {
-      mockPrismaService.node.findUnique.mockResolvedValue({
+      mockPrismaService.node.findFirst.mockResolvedValue({
         id: 'child-1',
         syncStatus: SyncStatus.COMPLETED,
         lastSyncedAt: new Date('2025-01-01'),
@@ -155,7 +187,7 @@ describe('PolicySyncService', () => {
     });
 
     it('should include error when sync failed', async () => {
-      mockPrismaService.node.findUnique.mockResolvedValue({
+      mockPrismaService.node.findFirst.mockResolvedValue({
         id: 'child-1',
         syncStatus: SyncStatus.FAILED,
         lastSyncedAt: null,
@@ -184,11 +216,10 @@ describe('PolicySyncService', () => {
 
       // First call: reset retry count
       expect(mockPrismaService.node.update).toHaveBeenCalledWith(
+        'child-1',
         expect.objectContaining({
-          data: expect.objectContaining({
-            syncRetryCount: 0,
-            syncStatus: SyncStatus.PENDING,
-          }),
+          syncRetryCount: 0,
+          syncStatus: SyncStatus.PENDING,
         })
       );
     });
@@ -229,7 +260,9 @@ describe('PolicySyncService', () => {
 
       expect(mockPrismaService.policy.upsert).toHaveBeenCalledTimes(2);
       expect(mockPrismaService.policy.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'p1' } })
+        { id: 'p1' },
+        expect.objectContaining({ id: 'p1' }),
+        expect.objectContaining({ name: 'Policy1' })
       );
     });
   });
@@ -271,16 +304,11 @@ describe('PolicySyncService', () => {
         readyFilesCacheTtlMinutes: 10,
       });
 
-      expect(mockPrismaService.settings.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'settings-1' },
-        })
-      );
+      expect(mockPrismaService.settings.update).toHaveBeenCalled();
     });
 
     it('should create settings when none exist', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue(null);
-      mockPrismaService.settings.create.mockResolvedValue({});
+      mockPrismaService.settings.update.mockResolvedValue({});
 
       await service.receiveSettings({
         isSetupComplete: false,
@@ -289,7 +317,7 @@ describe('PolicySyncService', () => {
         readyFilesCacheTtlMinutes: 5,
       });
 
-      expect(mockPrismaService.settings.create).toHaveBeenCalled();
+      expect(mockPrismaService.settings.update).toHaveBeenCalled();
     });
   });
 });

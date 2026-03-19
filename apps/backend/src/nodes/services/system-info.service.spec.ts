@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AccelerationType } from '@prisma/client';
-import * as os from 'os';
 import { SystemInfoService } from './system-info.service';
 
 // Mock child_process exec
@@ -8,10 +7,21 @@ jest.mock('child_process', () => ({
   exec: jest.fn(),
 }));
 
+// Mock os module so non-configurable properties can be overridden
+jest.mock('os', () => ({
+  networkInterfaces: jest.fn(),
+  hostname: jest.fn(),
+  cpus: jest.fn(),
+  totalmem: jest.fn(),
+}));
+
 describe('SystemInfoService', () => {
   let service: SystemInfoService;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const osMock = require('os');
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [SystemInfoService],
     }).compile();
@@ -21,7 +31,7 @@ describe('SystemInfoService', () => {
 
   describe('collectSystemInfo', () => {
     it('should return complete system info object', async () => {
-      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
+      osMock.networkInterfaces.mockReturnValue({
         eth0: [
           {
             family: 'IPv4',
@@ -32,9 +42,9 @@ describe('SystemInfoService', () => {
             cidr: '192.168.1.100/24',
           },
         ],
-      } as any);
-      jest.spyOn(os, 'hostname').mockReturnValue('test-host');
-      jest.spyOn(os, 'cpus').mockReturnValue([
+      });
+      osMock.hostname.mockReturnValue('test-host');
+      osMock.cpus.mockReturnValue([
         {
           model: 'Intel Core i7',
           speed: 3000,
@@ -46,9 +56,10 @@ describe('SystemInfoService', () => {
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
         },
       ]);
-      jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 ** 3);
+      osMock.totalmem.mockReturnValue(16 * 1024 ** 3);
 
       // Mock exec for disk space and GPU detection
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { exec } = require('child_process');
       exec.mockImplementation((_cmd: string, cb: any) => cb(null, { stdout: '0G', stderr: '' }));
 
@@ -63,7 +74,7 @@ describe('SystemInfoService', () => {
     });
 
     it('should return 127.0.0.1 when no external IP found', async () => {
-      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
+      osMock.networkInterfaces.mockReturnValue({
         lo: [
           {
             family: 'IPv4',
@@ -74,7 +85,10 @@ describe('SystemInfoService', () => {
             cidr: '127.0.0.1/8',
           },
         ],
-      } as any);
+      });
+      osMock.hostname.mockReturnValue('localhost');
+      osMock.cpus.mockReturnValue([]);
+      osMock.totalmem.mockReturnValue(0);
 
       const result = await service.collectSystemInfo();
 
@@ -84,19 +98,25 @@ describe('SystemInfoService', () => {
 
   describe('container type detection', () => {
     it('should detect Apple Silicon on darwin arm64', async () => {
-      // Override platform detection
-      Object.defineProperty(process, 'platform', { value: 'darwin', writable: true });
-      Object.defineProperty(process, 'arch', { value: 'arm64', writable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(process, 'arch', {
+        value: 'arm64',
+        writable: true,
+        configurable: true,
+      });
 
-      jest.spyOn(os, 'networkInterfaces').mockReturnValue({} as any);
-      jest.spyOn(os, 'hostname').mockReturnValue('mac-host');
-      jest
-        .spyOn(os, 'cpus')
-        .mockReturnValue([
-          { model: 'Apple M2', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
-        ]);
-      jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 ** 3);
+      osMock.networkInterfaces.mockReturnValue({});
+      osMock.hostname.mockReturnValue('mac-host');
+      osMock.cpus.mockReturnValue([
+        { model: 'Apple M2', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+      ]);
+      osMock.totalmem.mockReturnValue(16 * 1024 ** 3);
 
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { exec } = require('child_process');
       exec.mockImplementation((_cmd: string, cb: any) => cb(new Error('command not found'), null));
 

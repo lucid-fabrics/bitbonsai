@@ -11,12 +11,12 @@ export class I18nService {
     this.flattenObject(en);
   }
 
-  private flattenObject(obj: any, prefix = ''): void {
+  private flattenObject(obj: Record<string, unknown>, prefix = ''): void {
     for (const key in obj) {
       if (Object.hasOwn(obj, key)) {
         const fullKey = prefix ? `${prefix}.${key}` : key;
         if (typeof obj[key] === 'object' && obj[key] !== null) {
-          this.flattenObject(obj[key], fullKey);
+          this.flattenObject(obj[key] as Record<string, unknown>, fullKey);
         } else {
           this.flatTranslations[fullKey] = String(obj[key]);
         }

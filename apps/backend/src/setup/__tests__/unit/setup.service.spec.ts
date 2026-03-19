@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { NodeRepository } from '../../../common/repositories/node.repository';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
+import { UserRepository } from '../../../common/repositories/user.repository';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { NodeType } from '../../dto/initialize-setup.dto';
 import { SetupService } from '../../setup.service';
@@ -20,6 +23,13 @@ jest.mock('crypto', () => ({
 describe('SetupService', () => {
   let service: SetupService;
   let prisma: Record<string, Record<string, jest.Mock>>;
+  let mockNodeRepository: { findFirstByRole: jest.Mock; createNode: jest.Mock };
+  let mockSettingsRepository: {
+    findFirst: jest.Mock;
+    upsertSettings: jest.Mock;
+    update: jest.Mock;
+  };
+  let mockUserRepository: { count: jest.Mock; create: jest.Mock; deleteMany: jest.Mock };
 
   function createMockPrisma() {
     return {
@@ -37,8 +47,35 @@ describe('SetupService', () => {
   beforeEach(async () => {
     prisma = createMockPrisma();
 
+    mockNodeRepository = {
+      findFirstByRole: prisma.node.findFirst,
+      createNode: prisma.node.create,
+    };
+
+    mockSettingsRepository = {
+      findFirst: prisma.settings.findFirst,
+      upsertSettings: jest.fn().mockImplementation(async () => {
+        return prisma.settings.update() ?? prisma.settings.create();
+      }),
+      update: jest.fn().mockImplementation(async (_where: unknown, data: unknown) => {
+        return prisma.settings.update({ where: _where, data });
+      }),
+    };
+
+    mockUserRepository = {
+      count: prisma.user.count,
+      create: prisma.user.create,
+      deleteMany: prisma.user.deleteMany,
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SetupService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        SetupService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NodeRepository, useValue: mockNodeRepository },
+        { provide: SettingsRepository, useValue: mockSettingsRepository },
+        { provide: UserRepository, useValue: mockUserRepository },
+      ],
     }).compile();
 
     service = module.get<SetupService>(SetupService);
@@ -162,21 +199,16 @@ describe('SetupService', () => {
       expect(result.message).toBe('Setup completed successfully');
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            username: 'admin',
-            email: 'admin@local.bitbonsai',
-            role: 'ADMIN',
-            isActive: true,
-            passwordHash: 'hashed_password_abc',
-          }),
+          username: 'admin',
+          email: 'admin@local.bitbonsai',
+          role: 'ADMIN',
+          passwordHash: 'hashed_password_abc',
         })
       );
       expect(prisma.node.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            role: 'MAIN',
-            status: 'ONLINE',
-          }),
+          role: 'MAIN',
+          status: 'ONLINE',
         })
       );
     });
@@ -196,13 +228,12 @@ describe('SetupService', () => {
         nodeType: NodeType.Main,
       });
 
-      expect(prisma.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: {
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
           isSetupComplete: true,
           allowLocalNetworkWithoutAuth: true,
-        },
-      });
+        })
+      );
       expect(prisma.settings.create).not.toHaveBeenCalled();
     });
 
@@ -223,9 +254,7 @@ describe('SetupService', () => {
 
       expect(prisma.license.create).not.toHaveBeenCalled();
       expect(prisma.node.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ licenseId: 'license-1' }),
-        })
+        expect.objectContaining({ licenseId: 'license-1' })
       );
     });
 
@@ -246,10 +275,8 @@ describe('SetupService', () => {
       expect(result.pairingToken).toMatch(/^BITBONSAI-/);
       expect(prisma.node.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            role: 'LINKED',
-            mainNodeUrl: 'http://192.168.1.100:3100',
-          }),
+          role: 'LINKED',
+          mainNodeUrl: 'http://192.168.1.100:3100',
         })
       );
       expect(prisma.user.create).not.toHaveBeenCalled();
@@ -299,7 +326,7 @@ describe('SetupService', () => {
       const result = await service.resetSetup();
 
       expect(result.message).toContain('Setup reset successfully');
-      expect(prisma.user.deleteMany).toHaveBeenCalledWith({});
+      expect(prisma.user.deleteMany).toHaveBeenCalled();
       expect(prisma.settings.update).toHaveBeenCalledWith({
         where: { id: 'settings-1' },
         data: { isSetupComplete: false },

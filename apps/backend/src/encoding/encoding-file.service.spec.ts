@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JobRepository } from '../common/repositories/job.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { EncodingFileService } from './encoding-file.service';
 import { FfmpegService } from './ffmpeg.service';
@@ -14,7 +15,6 @@ describe('EncodingFileService', () => {
   let mockSystemResourceService: jest.Mocked<SystemResourceService>;
   let mockQueueService: jest.Mocked<QueueService>;
   let mockLibrariesService: jest.Mocked<LibrariesService>;
-  let mockPrisma: any;
 
   beforeEach(async () => {
     mockFfmpegService = {
@@ -36,15 +36,22 @@ describe('EncodingFileService', () => {
       update: jest.fn().mockResolvedValue(undefined),
     } as any;
 
-    mockPrisma = {
-      settings: { findFirst: jest.fn().mockResolvedValue(null) },
-      job: { update: jest.fn() },
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EncodingFileService,
-        { provide: PrismaService, useValue: mockPrisma },
+        {
+          provide: JobRepository,
+          useValue: {
+            findById: jest.fn(),
+            updateById: jest.fn(),
+          },
+        },
+        {
+          provide: SettingsRepository,
+          useValue: {
+            findFirst: jest.fn().mockResolvedValue(null),
+          },
+        },
         { provide: FfmpegService, useValue: mockFfmpegService },
         { provide: LibrariesService, useValue: mockLibrariesService },
         { provide: FileRelocatorService, useValue: {} },
@@ -100,8 +107,8 @@ describe('EncodingFileService', () => {
     it('should throw for extreme compression (>95% with large file)', () => {
       expect(() =>
         service.validateOutputSize(
-          BigInt(2_000_000_000), // 2GB original
-          BigInt(10_000_000), // 10MB output (99.5% reduction)
+          BigInt(3_000_000_000), // 3GB original
+          BigInt(95_000_000), // 95MB output (96.8% reduction, above min 90MB threshold)
           3600,
           '/media/movie.mkv'
         )

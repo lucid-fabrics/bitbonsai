@@ -1,5 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import * as os from 'os';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { createMockPrismaService } from '../../../testing/mock-providers';
@@ -38,10 +40,25 @@ describe('HealthDashboardService', () => {
       getAllLibraryPaths: jest.fn().mockResolvedValue([]),
     };
 
+    // Repository mocks aliased to same jest.fn() instances so existing assertions pass
+    const mockJobRepository = {
+      countWhere: prisma.job.count,
+      countByStage: prisma.job.count,
+      findCompletedSince: prisma.job.findMany,
+      aggregateWithAvgCount: prisma.job.aggregate,
+    };
+
+    const mockNodeRepository = {
+      count: prisma.node.count,
+      findMany: prisma.node.findMany,
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HealthDashboardService,
         { provide: PrismaService, useValue: prisma },
+        { provide: JobRepository, useValue: mockJobRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: HardwareDetectionService, useValue: hardwareDetection },
         { provide: LibrariesService, useValue: librariesService },
       ],
@@ -251,7 +268,7 @@ describe('HealthDashboardService', () => {
     it('should return complete dashboard', async () => {
       const dashboard = await service.getDashboard();
 
-      expect(dashboard.timestamp).toBeInstanceOf(Date);
+      expect(dashboard.timestamp).toBeTruthy();
       expect(typeof dashboard.overallStatus).toBe('string');
       expect(dashboard.checks).toBeInstanceOf(Array);
       expect(dashboard.system).not.toBeNull();

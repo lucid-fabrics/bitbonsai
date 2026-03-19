@@ -4,7 +4,8 @@ import { JobMetricsService } from './job-metrics.service';
 
 describe('JobMetricsService', () => {
   let service: JobMetricsService;
-  let prisma: jest.Mocked<PrismaService>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
 
   const baseJob = {
     id: 'job-1',
@@ -28,7 +29,7 @@ describe('JobMetricsService', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
-    } as unknown as jest.Mocked<PrismaService>;
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [JobMetricsService, { provide: PrismaService, useValue: prismaMock }],

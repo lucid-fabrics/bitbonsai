@@ -138,15 +138,15 @@ describe('LicensesController', () => {
 
   describe('getAvailableTiers', () => {
     it('should return all 8 license tiers', async () => {
-      const result = await controller.getAvailableTiers();
+      const result = (await controller.getAvailableTiers()) as any;
 
       expect(result.tiers).toHaveLength(8);
     });
 
     it('should include FREE tier with correct values', async () => {
-      const result = await controller.getAvailableTiers();
+      const result = (await controller.getAvailableTiers()) as any;
 
-      const freeTier = result.tiers.find((t) => t.id === LicenseTier.FREE);
+      const freeTier = result.tiers.find((t: any) => t.id === LicenseTier.FREE);
       expect(freeTier).not.toBeUndefined();
       expect(freeTier?.price).toBe(0);
       expect(freeTier?.maxNodes).toBe(1);
@@ -154,9 +154,9 @@ describe('LicensesController', () => {
     });
 
     it('should include COMMERCIAL_ENTERPRISE tier', async () => {
-      const result = await controller.getAvailableTiers();
+      const result = (await controller.getAvailableTiers()) as any;
 
-      const enterprise = result.tiers.find((t) => t.id === LicenseTier.COMMERCIAL_ENTERPRISE);
+      const enterprise = result.tiers.find((t: any) => t.id === LicenseTier.COMMERCIAL_ENTERPRISE);
       expect(enterprise).not.toBeUndefined();
       expect(enterprise?.maxNodes).toBe(999);
     });

@@ -6,7 +6,8 @@ import { JobBulkOperationsService } from './job-bulk-operations.service';
 
 describe('JobBulkOperationsService', () => {
   let service: JobBulkOperationsService;
-  let prisma: jest.Mocked<PrismaService>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
   let ffmpegService: jest.Mocked<FfmpegService>;
 
   beforeEach(async () => {
@@ -16,7 +17,7 @@ describe('JobBulkOperationsService', () => {
         updateMany: jest.fn(),
         update: jest.fn(),
       },
-    } as unknown as jest.Mocked<PrismaService>;
+    };
 
     const ffmpegMock = {
       killProcess: jest.fn(),
@@ -47,7 +48,7 @@ describe('JobBulkOperationsService', () => {
       ];
       prisma.job.findMany.mockResolvedValue(encodingJobs as never);
       prisma.job.updateMany.mockResolvedValue({ count: 5 } as never);
-      ffmpegService.killProcess.mockResolvedValue(undefined);
+      ffmpegService.killProcess.mockResolvedValue(true);
 
       const result = await service.cancelAllQueued();
 

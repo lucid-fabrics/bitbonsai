@@ -1,21 +1,34 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { LicenseTier } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { LicenseRepository } from '../../../common/repositories/license.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { LicenseGuardService } from '../../license-guard.service';
 
 describe('LicenseGuardService', () => {
   let service: LicenseGuardService;
 
+  const mockLicenseRepo = {
+    findFirstActiveWithSelect: jest.fn(),
+  };
+  const mockNodeRepo = {
+    count: jest.fn(),
+  };
+  const mockJobRepo = {
+    countWhere: jest.fn(),
+  };
+
+  // Shims so existing `mockPrismaService.X.Y` references still work
   const mockPrismaService = {
     license: {
-      findFirst: jest.fn(),
+      findFirst: mockLicenseRepo.findFirstActiveWithSelect,
     },
     node: {
-      count: jest.fn(),
+      count: mockNodeRepo.count,
     },
     job: {
-      count: jest.fn(),
+      count: mockJobRepo.countWhere,
     },
   };
 
@@ -23,10 +36,9 @@ describe('LicenseGuardService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LicenseGuardService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
+        { provide: LicenseRepository, useValue: mockLicenseRepo },
+        { provide: NodeRepository, useValue: mockNodeRepo },
+        { provide: JobRepository, useValue: mockJobRepo },
       ],
     }).compile();
 

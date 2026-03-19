@@ -1,19 +1,55 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { JobRepository } from '../../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import type { HeartbeatLoadData } from '../../../interfaces/scoring-factors.interface';
 import { LoadMonitorService } from '../../load-monitor.service';
 
 describe('LoadMonitorService', () => {
   let service: LoadMonitorService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let nodeRepo: Record<string, jest.Mock>;
+  let jobRepo: Record<string, jest.Mock>;
+
+  // Shim so existing `prisma.node.X` / `prisma.job.X` references still resolve
+  let prisma: {
+    node: Record<string, jest.Mock>;
+    job: Record<string, jest.Mock>;
+  };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    nodeRepo = {
+      updateById: jest.fn(),
+      findLoadData: jest.fn(),
+      findCapacityData: jest.fn(),
+      findAllLoadData: jest.fn(),
+    };
+    jobRepo = {
+      countForNode: jest.fn(),
+    };
+
+    prisma = {
+      node: {
+        update: nodeRepo.updateById,
+        findUnique: nodeRepo.findLoadData,
+        findMany: nodeRepo.findAllLoadData,
+      },
+      job: {
+        count: jobRepo.countForNode,
+      },
+    };
+
+    // Keep repo mocks in sync with shims
+    nodeRepo.updateById = prisma.node.update;
+    nodeRepo.findLoadData = prisma.node.findUnique;
+    nodeRepo.findAllLoadData = prisma.node.findMany;
+    jobRepo.countForNode = prisma.job.count;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LoadMonitorService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        LoadMonitorService,
+        { provide: NodeRepository, useValue: nodeRepo },
+        { provide: JobRepository, useValue: jobRepo },
+      ],
     }).compile();
 
     service = module.get<LoadMonitorService>(LoadMonitorService);
@@ -63,14 +99,14 @@ describe('LoadMonitorService', () => {
         cpuCount: 8,
       });
 
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
+      expect(nodeRepo.updateById).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({
           currentSystemLoad: 2.5,
           currentMemoryFreeGB: 12,
           lastHeartbeatLoad: expect.objectContaining({ load1m: 2.5 }),
-        },
-      });
+        })
+      );
     });
 
     it('should make load data available via cache', async () => {
@@ -109,11 +145,11 @@ describe('LoadMonitorService', () => {
       expect(result).not.toBeNull();
       expect(result!.load1m).toBe(3.0);
       // Should not hit database since cache is fresh
-      expect(prisma.node.findUnique).not.toHaveBeenCalled();
+      expect(nodeRepo.findLoadData).not.toHaveBeenCalled();
     });
 
     it('should fall back to database if cache is stale', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepo.findLoadData.mockResolvedValue({
         lastHeartbeatLoad: {
           load1m: 5.0,
           load5m: 4.0,
@@ -131,24 +167,18 @@ describe('LoadMonitorService', () => {
       const result = await service.getNodeLoad('node-1');
       expect(result).not.toBeNull();
       expect(result!.load1m).toBe(5.0);
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        select: expect.objectContaining({
-          lastHeartbeatLoad: true,
-          currentSystemLoad: true,
-        }),
-      });
+      expect(nodeRepo.findLoadData).toHaveBeenCalledWith('node-1');
     });
 
     it('should return null if no data in cache or database', async () => {
-      prisma.node.findUnique.mockResolvedValue(null);
+      nodeRepo.findLoadData.mockResolvedValue(null);
 
       const result = await service.getNodeLoad('unknown-node');
       expect(result).toBeNull();
     });
 
     it('should return null if node exists but has no heartbeat data', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepo.findLoadData.mockResolvedValue({
         lastHeartbeatLoad: null,
         currentSystemLoad: null,
         currentMemoryFreeGB: null,
@@ -282,13 +312,13 @@ describe('LoadMonitorService', () => {
 
   describe('getNodeCapacity', () => {
     it('should return null for unknown node', async () => {
-      prisma.node.findUnique.mockResolvedValue(null);
+      nodeRepo.findCapacityData.mockResolvedValue(null);
       const result = await service.getNodeCapacity('unknown');
       expect(result).toBeNull();
     });
 
     it('should return capacity for a healthy node', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepo.findCapacityData.mockResolvedValue({
         id: 'node-1',
         name: 'Test Node',
         role: 'MAIN',
@@ -301,7 +331,7 @@ describe('LoadMonitorService', () => {
         currentMemoryFreeGB: null,
         _count: { jobs: 2 },
       });
-      prisma.job.count.mockResolvedValue(3);
+      jobRepo.countForNode.mockResolvedValue(3);
 
       const result = await service.getNodeCapacity('node-1');
       expect(result).not.toBeNull();
@@ -312,7 +342,7 @@ describe('LoadMonitorService', () => {
     });
 
     it('should report zero available slots when fully busy', async () => {
-      prisma.node.findUnique.mockResolvedValue({
+      nodeRepo.findCapacityData.mockResolvedValue({
         id: 'node-1',
         name: 'Test Node',
         role: 'LINKED',
@@ -325,7 +355,7 @@ describe('LoadMonitorService', () => {
         currentMemoryFreeGB: null,
         _count: { jobs: 3 }, // More active than max workers
       });
-      prisma.job.count.mockResolvedValue(0);
+      jobRepo.countForNode.mockResolvedValue(0);
 
       const result = await service.getNodeCapacity('node-1');
       expect(result!.availableSlots).toBe(0);
@@ -334,7 +364,7 @@ describe('LoadMonitorService', () => {
 
   describe('getAllNodesLoad', () => {
     it('should return empty map when no nodes online', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      nodeRepo.findAllLoadData.mockResolvedValue([]);
       const result = await service.getAllNodesLoad();
       expect(result.size).toBe(0);
     });
@@ -352,7 +382,7 @@ describe('LoadMonitorService', () => {
         cpuCount: 8,
       });
 
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepo.findAllLoadData.mockResolvedValue([
         {
           id: 'node-1',
           lastHeartbeatLoad: null,
@@ -368,7 +398,7 @@ describe('LoadMonitorService', () => {
     });
 
     it('should fall back to database data for stale cache', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepo.findAllLoadData.mockResolvedValue([
         {
           id: 'node-2',
           lastHeartbeatLoad: {
@@ -391,7 +421,7 @@ describe('LoadMonitorService', () => {
     });
 
     it('should skip nodes without heartbeat data', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepo.findAllLoadData.mockResolvedValue([
         {
           id: 'node-3',
           lastHeartbeatLoad: null,
@@ -422,7 +452,7 @@ describe('LoadMonitorService', () => {
       service.clearNodeCache('node-1');
 
       // Now getNodeLoad should fall through to database
-      prisma.node.findUnique.mockResolvedValue(null);
+      nodeRepo.findLoadData.mockResolvedValue(null);
       const result = await service.getNodeLoad('node-1');
       expect(result).toBeNull();
     });

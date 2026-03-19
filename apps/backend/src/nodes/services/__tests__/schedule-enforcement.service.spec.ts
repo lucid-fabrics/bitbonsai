@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { createMockJob, createMockNode } from '../../../testing/mock-factories';
 import * as scheduleChecker from '../../utils/schedule-checker';
 import { JobAttributionService, type NodeScore } from '../job-attribution.service';
@@ -25,9 +26,11 @@ const createMockNodeScore = (
 
 describe('ScheduleEnforcementService', () => {
   let service: ScheduleEnforcementService;
-  let _prisma: PrismaService;
   let _jobAttribution: JobAttributionService;
 
+  // Keep the same mock shape so existing assertions referencing
+  // mockPrismaService.job.* / node.* / $transaction continue to work.
+  // Repository methods are aliased to the same jest.fn() instances.
   const mockPrismaService = {
     job: {
       findMany: jest.fn(),
@@ -45,6 +48,18 @@ describe('ScheduleEnforcementService', () => {
     }),
   };
 
+  // JobRepository mock: service calls findManyWithInclude / atomicUpdateMany / updateById
+  const mockJobRepository = {
+    findManyWithInclude: mockPrismaService.job.findMany,
+    atomicUpdateMany: mockPrismaService.job.updateMany,
+    updateById: mockPrismaService.job.update,
+  };
+
+  // NodeRepository mock: service calls findOnlineWithActiveJobCount
+  const mockNodeRepository = {
+    findOnlineWithActiveJobCount: mockPrismaService.node.findMany,
+  };
+
   const mockJobAttributionService = {
     calculateNodeScore: jest.fn(),
   };
@@ -54,8 +69,12 @@ describe('ScheduleEnforcementService', () => {
       providers: [
         ScheduleEnforcementService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: JobRepository,
+          useValue: mockJobRepository,
+        },
+        {
+          provide: NodeRepository,
+          useValue: mockNodeRepository,
         },
         {
           provide: JobAttributionService,
@@ -65,7 +84,6 @@ describe('ScheduleEnforcementService', () => {
     }).compile();
 
     service = module.get<ScheduleEnforcementService>(ScheduleEnforcementService);
-    _prisma = module.get<PrismaService>(PrismaService);
     _jobAttribution = module.get<JobAttributionService>(JobAttributionService);
 
     // Mock logger to prevent console output during tests
@@ -120,15 +138,11 @@ describe('ScheduleEnforcementService', () => {
 
       await service.enforceSchedules();
 
-      // Should call updateMany with only job-2
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: { in: ['job-2'] },
-        },
-        data: {
-          stage: 'PAUSED',
-        },
-      });
+      // Should call atomicUpdateMany with only job-2 (signature: (where, data))
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['job-2'] } },
+        { stage: 'PAUSED' }
+      );
     });
 
     it('should not call updateMany if all jobs are in schedule', async () => {
@@ -201,14 +215,10 @@ describe('ScheduleEnforcementService', () => {
 
       await service.enforceSchedules();
 
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: { in: ['job-1', 'job-2', 'job-3'] },
-        },
-        data: {
-          stage: 'PAUSED',
-        },
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['job-1', 'job-2', 'job-3'] } },
+        { stage: 'PAUSED' }
+      );
 
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledTimes(1);
     });
@@ -266,7 +276,7 @@ describe('ScheduleEnforcementService', () => {
       expect(mockPrismaService.job.findMany).toHaveBeenCalled();
       expect(mockPrismaService.node.findMany).not.toHaveBeenCalled();
       expect(mockJobAttributionService.calculateNodeScore).not.toHaveBeenCalled();
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+      expect(mockPrismaService.job.update).not.toHaveBeenCalled();
     });
 
     it('should return early if no online nodes exist', async () => {
@@ -278,7 +288,7 @@ describe('ScheduleEnforcementService', () => {
 
       expect(mockPrismaService.node.findMany).toHaveBeenCalled();
       expect(mockJobAttributionService.calculateNodeScore).not.toHaveBeenCalled();
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+      expect(mockPrismaService.job.update).not.toHaveBeenCalled();
     });
 
     it('should fetch nodes only once', async () => {
@@ -355,7 +365,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should use $transaction with job.update calls
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
     });
 
     it('should not move job if already on optimal node', async () => {
@@ -385,7 +395,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should not execute raw SQL update
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+      expect(mockPrismaService.job.update).not.toHaveBeenCalled();
     });
 
     it('should skip nodes with zero score', async () => {
@@ -415,7 +425,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should not execute update
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+      expect(mockPrismaService.job.update).not.toHaveBeenCalled();
     });
 
     it('should preserve originalNodeId when moving jobs', async () => {
@@ -446,7 +456,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Verify $transaction was called (Prisma-based batch update)
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
     });
 
     it('should set originalNodeId to NULL when first assigning', async () => {
@@ -473,7 +483,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Verify $transaction was called for batch update
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
     });
 
     it('should batch update multiple jobs via Prisma transaction', async () => {
@@ -512,20 +522,16 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should use $transaction for batch update
-      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
 
-      // Verify job.update was called for both jobs
+      // Verify updateById was called for both jobs (signature: updateById(id, data))
       expect(mockPrismaService.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'job-1' },
-          data: expect.objectContaining({ nodeId: 'node-2' }),
-        })
+        'job-1',
+        expect.objectContaining({ nodeId: 'node-2' })
       );
       expect(mockPrismaService.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'job-2' },
-          data: expect.objectContaining({ nodeId: 'node-2' }),
-        })
+        'job-2',
+        expect.objectContaining({ nodeId: 'node-2' })
       );
     });
 
@@ -575,14 +581,8 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      expect(mockPrismaService.node.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            status: 'ONLINE',
-            role: { in: ['MAIN', 'LINKED'] },
-          },
-        })
-      );
+      // nodeRepository.findOnlineWithActiveJobCount() encapsulates the query internally
+      expect(mockPrismaService.node.findMany).toHaveBeenCalled();
     });
 
     it('should include job count in node query', async () => {
@@ -592,15 +592,8 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      expect(mockPrismaService.node.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: {
-            _count: {
-              select: { jobs: true },
-            },
-          },
-        })
-      );
+      // nodeRepository.findOnlineWithActiveJobCount() encapsulates the query internally
+      expect(mockPrismaService.node.findMany).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
@@ -638,7 +631,7 @@ describe('ScheduleEnforcementService', () => {
         .mockResolvedValueOnce(score2);
 
       const txError = new Error('Transaction failed');
-      mockPrismaService.$transaction.mockRejectedValue(txError);
+      mockPrismaService.job.update.mockRejectedValue(txError);
 
       const errorSpy = jest.spyOn(Logger.prototype, 'error');
 
@@ -668,14 +661,10 @@ describe('ScheduleEnforcementService', () => {
 
       await service.resumePausedJobs();
 
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: { in: ['job-1'] },
-        },
-        data: {
-          stage: 'QUEUED',
-        },
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['job-1'] } },
+        { stage: 'QUEUED' }
+      );
     });
 
     it('should not call updateMany if no jobs can be resumed', async () => {
@@ -749,14 +738,10 @@ describe('ScheduleEnforcementService', () => {
 
       await service.resumePausedJobs();
 
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: { in: ['job-1', 'job-2', 'job-3'] },
-        },
-        data: {
-          stage: 'QUEUED',
-        },
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['job-1', 'job-2', 'job-3'] } },
+        { stage: 'QUEUED' }
+      );
 
       // Should be single batch call, not individual updates
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledTimes(1);
@@ -777,13 +762,9 @@ describe('ScheduleEnforcementService', () => {
       await service.resumePausedJobs();
 
       // Verify jobs are moved to QUEUED, not back to ENCODING
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: {
-            stage: 'QUEUED',
-          },
-        })
-      );
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(expect.any(Object), {
+        stage: 'QUEUED',
+      });
     });
 
     it('should selectively resume jobs based on schedule', async () => {
@@ -821,14 +802,10 @@ describe('ScheduleEnforcementService', () => {
       await service.resumePausedJobs();
 
       // Only job-1 should be resumed
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: { in: ['job-1'] },
-        },
-        data: {
-          stage: 'QUEUED',
-        },
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['job-1'] } },
+        { stage: 'QUEUED' }
+      );
     });
 
     it('should handle errors gracefully', async () => {
@@ -932,7 +909,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should have attempted to move job via $transaction
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
 
       // Mock resumePausedJobs call
       jest.clearAllMocks();
@@ -983,10 +960,10 @@ describe('ScheduleEnforcementService', () => {
       await service.enforceSchedules();
 
       // Should pause the job
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: { id: { in: ['encoding-job'] } },
-        data: { stage: 'PAUSED' },
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['encoding-job'] } },
+        { stage: 'PAUSED' }
+      );
 
       // Step 2: Check queued jobs (with node still outside window)
       jest.clearAllMocks();
@@ -999,7 +976,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should not assign to unavailable node
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+      expect(mockPrismaService.job.update).not.toHaveBeenCalled();
 
       // Step 3: Resume when back in schedule
       jest.clearAllMocks();
@@ -1009,10 +986,10 @@ describe('ScheduleEnforcementService', () => {
       await service.resumePausedJobs();
 
       // Should resume the job
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith({
-        where: { id: { in: ['paused-job'] } },
-        data: { stage: 'QUEUED' },
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        { id: { in: ['paused-job'] } },
+        { stage: 'QUEUED' }
+      );
     });
   });
 
@@ -1065,7 +1042,7 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should assign the unassigned job via $transaction
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
     });
 
     it('should handle very large job batches in autoAssignQueuedJobs', async () => {
@@ -1158,11 +1135,10 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Verify it uses safe Prisma job.update, not raw SQL
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.job.update).toHaveBeenCalled();
       expect(mockPrismaService.job.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "job-1'; DROP TABLE jobs; --" },
-        })
+        "job-1'; DROP TABLE jobs; --",
+        expect.any(Object)
       );
     });
   });

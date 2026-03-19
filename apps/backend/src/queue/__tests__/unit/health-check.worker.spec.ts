@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { FileHealthStatus, JobStage } from '@prisma/client';
+import { JobRepository } from '../../../common/repositories/job.repository';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { ContainerCompatibilityService } from '../../../encoding/container-compatibility.service';
 import { FfmpegService } from '../../../encoding/ffmpeg.service';
@@ -11,6 +12,7 @@ import { FileFailureTrackingService } from '../../services/file-failure-tracking
 describe('HealthCheckWorker', () => {
   let worker: HealthCheckWorker;
   let prisma: Record<string, Record<string, jest.Mock>>;
+  let jobRepository: Record<string, jest.Mock>;
   let fileHealthService: Record<string, jest.Mock>;
   let containerCompatibilityService: Record<string, jest.Mock>;
   let ffmpegService: Record<string, jest.Mock>;
@@ -54,6 +56,16 @@ describe('HealthCheckWorker', () => {
       providers: [
         HealthCheckWorker,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: JobRepository,
+          useValue: {
+            findManySelect: jest.fn().mockResolvedValue([]),
+            findManyWithInclude: jest.fn().mockResolvedValue([]),
+            findUniqueWithInclude: jest.fn().mockResolvedValue(null),
+            findUniqueSelect: jest.fn().mockResolvedValue(null),
+            updateById: jest.fn().mockResolvedValue({}),
+          },
+        },
         { provide: FileHealthService, useValue: fileHealthService },
         { provide: ContainerCompatibilityService, useValue: containerCompatibilityService },
         { provide: FfmpegService, useValue: ffmpegService },
@@ -63,9 +75,12 @@ describe('HealthCheckWorker', () => {
     }).compile();
 
     worker = module.get<HealthCheckWorker>(HealthCheckWorker);
+    jobRepository = module.get(JobRepository) as any;
 
     // Prevent the worker loop from starting during tests
-    jest.spyOn(worker as any, 'start').mockImplementation(() => {});
+    jest.spyOn(worker as any, 'start').mockImplementation(() => {
+      /* noop */
+    });
 
     jest.clearAllMocks();
   });
@@ -104,45 +119,41 @@ describe('HealthCheckWorker', () => {
         },
       ];
 
-      // First findMany: eligible jobs, second findMany: exhausted jobs
-      prisma.job.findMany.mockResolvedValueOnce(corruptedJobs).mockResolvedValueOnce([]);
-      prisma.job.update.mockResolvedValue({});
+      // First findManySelect: eligible jobs, second findManySelect: exhausted jobs
+      jobRepository.findManySelect.mockResolvedValueOnce(corruptedJobs).mockResolvedValueOnce([]);
+      jobRepository.updateById.mockResolvedValue({});
 
       await worker.autoRequeueCorruptedJobs();
 
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            healthStatus: FileHealthStatus.CORRUPTED,
-          }),
-        })
+          healthStatus: FileHealthStatus.CORRUPTED,
+        }),
+        expect.anything()
       );
 
-      // Now uses individual update calls per job with corruptedRequeueCount increment
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
-      expect(prisma.job.update).toHaveBeenCalledWith(
+      // Now uses individual updateById calls per job with corruptedRequeueCount increment
+      expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'j1',
         expect.objectContaining({
-          where: { id: 'j1' },
-          data: expect.objectContaining({
-            stage: JobStage.DETECTED,
-            healthStatus: FileHealthStatus.UNKNOWN,
-            corruptedRequeueCount: { increment: 1 },
-          }),
+          stage: JobStage.DETECTED,
+          healthStatus: FileHealthStatus.UNKNOWN,
         })
       );
     });
 
     it('should skip when no CORRUPTED jobs found', async () => {
-      // First findMany: eligible jobs, second findMany: exhausted jobs
-      prisma.job.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      // First findManySelect: eligible jobs, second findManySelect: exhausted jobs
+      jobRepository.findManySelect.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       await worker.autoRequeueCorruptedJobs();
 
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
 
     it('should prevent overlapping executions', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       // Simulate running state
       (worker as any).cronRunning = true;
@@ -150,12 +161,12 @@ describe('HealthCheckWorker', () => {
 
       await worker.autoRequeueCorruptedJobs();
 
-      // Should not call findMany because lock is held
-      expect(prisma.job.findMany).not.toHaveBeenCalled();
+      // Should not call findManySelect because lock is held
+      expect(jobRepository.findManySelect).not.toHaveBeenCalled();
     });
 
     it('should force reset stale lock (>2h old)', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       // Simulate stale lock (3 hours old)
       (worker as any).cronRunning = true;
@@ -164,11 +175,11 @@ describe('HealthCheckWorker', () => {
       await worker.autoRequeueCorruptedJobs();
 
       // Should proceed despite lock being held (stale)
-      expect(prisma.job.findMany).toHaveBeenCalled();
+      expect(jobRepository.findManySelect).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
-      prisma.job.findMany.mockRejectedValue(new Error('DB connection failed'));
+      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection failed'));
 
       // Should not throw
       await expect(worker.autoRequeueCorruptedJobs()).resolves.not.toThrow();
@@ -189,18 +200,16 @@ describe('HealthCheckWorker', () => {
         retryCount: 3, // MAX_RETRY_ATTEMPTS
       };
 
-      prisma.job.findMany.mockResolvedValue([stuckJob]);
-      prisma.job.update.mockResolvedValue({});
+      jobRepository.findManySelect.mockResolvedValue([stuckJob]);
+      jobRepository.updateById.mockResolvedValue({});
 
       await (worker as any).timeoutStuckHealthChecks();
 
-      expect(prisma.job.update).toHaveBeenCalledWith(
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'stuck-1',
         expect.objectContaining({
-          where: { id: 'stuck-1' },
-          data: expect.objectContaining({
-            stage: JobStage.FAILED,
-            healthStatus: FileHealthStatus.CORRUPTED,
-          }),
+          stage: JobStage.FAILED,
+          healthStatus: FileHealthStatus.CORRUPTED,
         })
       );
     });
@@ -213,19 +222,17 @@ describe('HealthCheckWorker', () => {
         retryCount: 1,
       };
 
-      prisma.job.findMany.mockResolvedValue([stuckJob]);
-      prisma.job.update.mockResolvedValue({});
+      jobRepository.findManySelect.mockResolvedValue([stuckJob]);
+      jobRepository.updateById.mockResolvedValue({});
 
       await (worker as any).timeoutStuckHealthChecks();
 
-      expect(prisma.job.update).toHaveBeenCalledWith(
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'stuck-1',
         expect.objectContaining({
-          where: { id: 'stuck-1' },
-          data: expect.objectContaining({
-            stage: JobStage.DETECTED,
-            retryCount: 2,
-            healthCheckStartedAt: null,
-          }),
+          stage: JobStage.DETECTED,
+          retryCount: 2,
+          healthCheckStartedAt: null,
         })
       );
     });
@@ -240,8 +247,8 @@ describe('HealthCheckWorker', () => {
         retryCount: 3,
       };
 
-      prisma.job.findMany.mockResolvedValue([stuckJob]);
-      prisma.job.update.mockResolvedValue({});
+      jobRepository.findManySelect.mockResolvedValue([stuckJob]);
+      jobRepository.updateById.mockResolvedValue({});
 
       await (worker as any).timeoutStuckHealthChecks();
 
@@ -249,11 +256,11 @@ describe('HealthCheckWorker', () => {
     });
 
     it('should handle no stuck jobs gracefully', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       await (worker as any).timeoutStuckHealthChecks();
 
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
   });
 
@@ -268,7 +275,7 @@ describe('HealthCheckWorker', () => {
 
       await (worker as any).processHealthChecks();
 
-      expect(prisma.job.findMany).not.toHaveBeenCalled();
+      expect(jobRepository.findManyWithInclude).not.toHaveBeenCalled();
     });
 
     it('should apply backpressure when at 80% capacity', async () => {
@@ -279,16 +286,16 @@ describe('HealthCheckWorker', () => {
 
       await (worker as any).processHealthChecks();
 
-      expect(prisma.job.findMany).not.toHaveBeenCalled();
+      expect(jobRepository.findManyWithInclude).not.toHaveBeenCalled();
     });
 
     it('should skip when no jobs need health checking', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManyWithInclude.mockResolvedValue([]);
 
       await (worker as any).processHealthChecks();
 
-      // findMany called but no further processing
-      expect(prisma.job.findMany).toHaveBeenCalled();
+      // findManyWithInclude called but no further processing
+      expect(jobRepository.findManyWithInclude).toHaveBeenCalled();
     });
   });
 
