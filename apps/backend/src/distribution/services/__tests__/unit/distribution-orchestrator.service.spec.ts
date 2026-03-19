@@ -1,5 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { DistributionConfigRepository } from '../../../../common/repositories/distribution-config.repository';
+import { JobRepository } from '../../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { DistributionOrchestratorService } from '../../distribution-orchestrator.service';
 import { EtaCalculatorService } from '../../eta-calculator.service';
 import { JobScorerService } from '../../job-scorer.service';
@@ -15,7 +17,9 @@ import * as scheduleChecker from '../../../../nodes/utils/schedule-checker';
 
 describe('DistributionOrchestratorService', () => {
   let service: DistributionOrchestratorService;
-  let prisma: Record<string, Record<string, jest.Mock>>;
+  let mockJobRepo: Record<string, jest.Mock>;
+  let mockNodeRepo: Record<string, jest.Mock>;
+  let mockDistConfigRepo: Record<string, jest.Mock>;
   let scorer: Record<string, jest.Mock>;
   let loadMonitor: Record<string, jest.Mock>;
   let etaCalculator: Record<string, jest.Mock>;
@@ -64,23 +68,27 @@ describe('DistributionOrchestratorService', () => {
   };
 
   beforeEach(async () => {
-    prisma = {
-      job: {
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        updateMany: jest.fn(),
-        count: jest.fn(),
-      },
-      node: {
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
-      distributionConfig: {
-        findFirst: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-      },
+    mockJobRepo = {
+      findByIdWithLibrary: jest.fn(),
+      findEligibleForRebalance: jest.fn(),
+      findQueuedExcludingNode: jest.fn(),
+      atomicUpdateMany: jest.fn(),
+      countForNode: jest.fn(),
+      countForNodeStages: jest.fn(),
+    };
+
+    mockNodeRepo = {
+      findOnlineWithActiveJobCount: jest.fn(),
+      findOnlineWithAllJobCount: jest.fn(),
+      findByIdWithActiveJobCount: jest.fn(),
+      findOnlineIds: jest.fn(),
+      findAllSummary: jest.fn(),
+      updateById: jest.fn().mockResolvedValue(undefined),
+    };
+
+    mockDistConfigRepo = {
+      findOrCreateDefault: jest.fn(),
+      updateById: jest.fn(),
     };
 
     scorer = {
@@ -104,7 +112,9 @@ describe('DistributionOrchestratorService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DistributionOrchestratorService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: JobRepository, useValue: mockJobRepo },
+        { provide: NodeRepository, useValue: mockNodeRepo },
+        { provide: DistributionConfigRepository, useValue: mockDistConfigRepo },
         { provide: JobScorerService, useValue: scorer },
         { provide: LoadMonitorService, useValue: loadMonitor },
         { provide: EtaCalculatorService, useValue: etaCalculator },
@@ -116,6 +126,7 @@ describe('DistributionOrchestratorService', () => {
 
     jest.clearAllMocks();
     (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+    mockNodeRepo.updateById.mockResolvedValue(undefined);
   });
 
   it('should be defined', () => {
@@ -126,7 +137,7 @@ describe('DistributionOrchestratorService', () => {
 
   describe('findOptimalNode', () => {
     it('should return null when job is not found', async () => {
-      prisma.job.findUnique.mockResolvedValue(null);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(null);
 
       const result = await service.findOptimalNode('nonexistent');
 
@@ -134,8 +145,8 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should return null when no online nodes exist', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
-      prisma.node.findMany.mockResolvedValue([]);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([]);
 
       const result = await service.findOptimalNode('job-1');
 
@@ -143,8 +154,8 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should return null when all node scores are 0', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
-      prisma.node.findMany.mockResolvedValue([mockNode]);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
       scorer.calculateScore.mockResolvedValue({ ...mockScore, totalScore: 0 });
 
       const result = await service.findOptimalNode('job-1');
@@ -153,9 +164,9 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should return the best-scoring node', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
       const node2 = { ...mockNode, id: 'node-2', name: 'Worker Node' };
-      prisma.node.findMany.mockResolvedValue([mockNode, node2]);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode, node2]);
 
       const lowScore = { ...mockScore, nodeId: 'node-1', totalScore: 50 };
       const highScore = { ...mockScore, nodeId: 'node-2', nodeName: 'Worker Node', totalScore: 90 };
@@ -171,8 +182,8 @@ describe('DistributionOrchestratorService', () => {
 
     it('should detect migration when job was on different node', async () => {
       const assignedJob = { ...mockJob, nodeId: 'node-old' };
-      prisma.job.findUnique.mockResolvedValue(assignedJob);
-      prisma.node.findMany.mockResolvedValue([mockNode]);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
       scorer.calculateScore.mockResolvedValue(mockScore);
 
       const result = await service.findOptimalNode('job-1');
@@ -183,8 +194,8 @@ describe('DistributionOrchestratorService', () => {
 
     it('should not flag migration when job stays on same node', async () => {
       const assignedJob = { ...mockJob, nodeId: 'node-1' };
-      prisma.job.findUnique.mockResolvedValue(assignedJob);
-      prisma.node.findMany.mockResolvedValue([mockNode]);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
       scorer.calculateScore.mockResolvedValue(mockScore);
 
       const result = await service.findOptimalNode('job-1');
@@ -198,12 +209,12 @@ describe('DistributionOrchestratorService', () => {
 
   describe('assignJob', () => {
     it('should find optimal node when nodeId not specified', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
-      prisma.node.findMany.mockResolvedValue([mockNode]);
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
+      mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(mockNode);
       scorer.calculateScore.mockResolvedValue(mockScore);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
-      prisma.job.count.mockResolvedValue(5);
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
+      mockJobRepo.countForNode.mockResolvedValue(5);
 
       const result = await service.assignJob('job-1');
 
@@ -212,10 +223,10 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should return null when job not found during assign', async () => {
-      prisma.job.findUnique.mockResolvedValueOnce(mockJob); // for findOptimalNode
-      prisma.node.findMany.mockResolvedValue([mockNode]);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValueOnce(mockJob); // for findOptimalNode
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
       scorer.calculateScore.mockResolvedValue(mockScore);
-      prisma.job.findUnique.mockResolvedValueOnce(null); // for assignJob lookup
+      mockJobRepo.findByIdWithLibrary.mockResolvedValueOnce(null); // for assignJob lookup
 
       const result = await service.assignJob('job-1');
 
@@ -223,8 +234,8 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should return null when target node not found', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
-      prisma.node.findUnique.mockResolvedValue(null);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
+      mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(null);
 
       const result = await service.assignJob('job-1', 'nonexistent-node');
 
@@ -232,10 +243,10 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should handle optimistic lock failure (race condition)', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
+      mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(mockNode);
       scorer.calculateScore.mockResolvedValue(mockScore);
-      prisma.job.updateMany.mockResolvedValue({ count: 0 }); // Race lost
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 0 }); // Race lost
 
       const result = await service.assignJob('job-1', 'node-1');
 
@@ -244,11 +255,11 @@ describe('DistributionOrchestratorService', () => {
 
     it('should update ETAs for both old and new node on migration', async () => {
       const migratingJob = { ...mockJob, nodeId: 'node-old', updatedAt: new Date() };
-      prisma.job.findUnique.mockResolvedValue(migratingJob);
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(migratingJob);
+      mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(mockNode);
       scorer.calculateScore.mockResolvedValue(mockScore);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
-      prisma.job.count.mockResolvedValue(3);
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
+      mockJobRepo.countForNode.mockResolvedValue(3);
 
       await service.assignJob('job-1', 'node-1');
 
@@ -262,7 +273,7 @@ describe('DistributionOrchestratorService', () => {
 
   describe('getAllNodeScores', () => {
     it('should return empty array when job not found', async () => {
-      prisma.job.findUnique.mockResolvedValue(null);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(null);
 
       const result = await service.getAllNodeScores('nonexistent');
 
@@ -270,9 +281,9 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should return scores sorted descending by totalScore', async () => {
-      prisma.job.findUnique.mockResolvedValue(mockJob);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
       const node2 = { ...mockNode, id: 'node-2', name: 'Worker' };
-      prisma.node.findMany.mockResolvedValue([mockNode, node2]);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode, node2]);
 
       const score1 = { ...mockScore, totalScore: 40 };
       const score2 = { ...mockScore, nodeId: 'node-2', totalScore: 90 };
@@ -321,7 +332,7 @@ describe('DistributionOrchestratorService', () => {
 
   describe('rebalanceJobs', () => {
     it('should return 0 migrations when no eligible jobs', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([]);
 
       const result = await service.rebalanceJobs();
 
@@ -331,17 +342,18 @@ describe('DistributionOrchestratorService', () => {
 
     it('should assign unassigned jobs to optimal node', async () => {
       const unassignedJob = { ...mockJob, nodeId: null };
-      prisma.job.findMany.mockResolvedValue([unassignedJob]);
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([unassignedJob]);
 
-      // findOptimalNode mocks
-      prisma.job.findUnique.mockResolvedValue(unassignedJob);
-      prisma.node.findMany.mockResolvedValue([mockNode]);
+      // findOptimalNode
+      mockJobRepo.findByIdWithLibrary.mockResolvedValueOnce(unassignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
       scorer.calculateScore.mockResolvedValue(mockScore);
 
-      // assignJob mocks
-      prisma.node.findUnique.mockResolvedValue(mockNode);
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
-      prisma.job.count.mockResolvedValue(1);
+      // assignJob (with nodeId provided by findOptimalNode result)
+      mockJobRepo.findByIdWithLibrary.mockResolvedValueOnce(unassignedJob);
+      mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(mockNode);
+      mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
+      mockJobRepo.countForNode.mockResolvedValue(1);
 
       const result = await service.rebalanceJobs();
 
@@ -351,11 +363,11 @@ describe('DistributionOrchestratorService', () => {
 
     it('should skip jobs already on optimal node', async () => {
       const assignedJob = { ...mockJob, nodeId: 'node-1' };
-      prisma.job.findMany.mockResolvedValue([assignedJob]);
+      mockJobRepo.findEligibleForRebalance.mockResolvedValue([assignedJob]);
 
       // findOptimalNode returns same node
-      prisma.job.findUnique.mockResolvedValue(assignedJob);
-      prisma.node.findMany.mockResolvedValue([mockNode]);
+      mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
       scorer.calculateScore.mockResolvedValue(mockScore);
 
       const result = await service.rebalanceJobs();
@@ -392,25 +404,22 @@ describe('DistributionOrchestratorService', () => {
   // ─── getActiveConfig ──────────────────────────────────────────────
 
   describe('getActiveConfig', () => {
-    it('should return existing active config', async () => {
+    it('should return active config from repository', async () => {
       const config = { id: 'default', isActive: true };
-      prisma.distributionConfig.findFirst.mockResolvedValue(config);
+      mockDistConfigRepo.findOrCreateDefault.mockResolvedValue(config);
 
       const result = await service.getActiveConfig();
 
       expect(result).toEqual(config);
     });
 
-    it('should create default config when none exists', async () => {
+    it('should create and return default config when none exists', async () => {
       const newConfig = { id: 'default', isActive: true };
-      prisma.distributionConfig.findFirst.mockResolvedValue(null);
-      prisma.distributionConfig.create.mockResolvedValue(newConfig);
+      mockDistConfigRepo.findOrCreateDefault.mockResolvedValue(newConfig);
 
       const result = await service.getActiveConfig();
 
-      expect(prisma.distributionConfig.create).toHaveBeenCalledWith({
-        data: { id: 'default' },
-      });
+      expect(mockDistConfigRepo.findOrCreateDefault).toHaveBeenCalled();
       expect(result).toEqual(newConfig);
     });
   });
@@ -419,7 +428,7 @@ describe('DistributionOrchestratorService', () => {
 
   describe('findBestNodeForNewJob', () => {
     it('should fall back to library node when no online nodes', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([]);
 
       const result = await service.findBestNodeForNewJob('lib-node-1');
 
@@ -429,7 +438,7 @@ describe('DistributionOrchestratorService', () => {
     it('should prefer node with available capacity and GPU', async () => {
       const gpuNode = { ...mockNode, id: 'gpu-1', hasGpu: true, _count: { jobs: 0 } };
       const cpuNode = { ...mockNode, id: 'cpu-1', hasGpu: false, _count: { jobs: 2 } };
-      prisma.node.findMany.mockResolvedValue([cpuNode, gpuNode]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([cpuNode, gpuNode]);
 
       const result = await service.findBestNodeForNewJob('lib-node-1');
 
@@ -439,7 +448,7 @@ describe('DistributionOrchestratorService', () => {
     it('should penalize at-capacity nodes', async () => {
       const fullNode = { ...mockNode, id: 'full', maxWorkers: 2, _count: { jobs: 2 } };
       const freeNode = { ...mockNode, id: 'free', maxWorkers: 4, _count: { jobs: 0 } };
-      prisma.node.findMany.mockResolvedValue([fullNode, freeNode]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([fullNode, freeNode]);
 
       const result = await service.findBestNodeForNewJob('lib-node-1');
 
@@ -449,7 +458,7 @@ describe('DistributionOrchestratorService', () => {
     it('should exclude nodes outside schedule window', async () => {
       const scheduled = { ...mockNode, id: 'scheduled', _count: { jobs: 0 } };
       const unscheduled = { ...mockNode, id: 'unscheduled', _count: { jobs: 0 } };
-      prisma.node.findMany.mockResolvedValue([unscheduled, scheduled]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([unscheduled, scheduled]);
 
       (scheduleChecker.isNodeInAllowedWindow as jest.Mock)
         .mockReturnValueOnce(false) // unscheduled
@@ -462,7 +471,7 @@ describe('DistributionOrchestratorService', () => {
 
     it('should fall back to library node when all nodes score 0', async () => {
       const node = { ...mockNode, _count: { jobs: 0 } };
-      prisma.node.findMany.mockResolvedValue([node]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([node]);
 
       (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(false);
 
@@ -486,7 +495,7 @@ describe('DistributionOrchestratorService', () => {
         hasSharedStorage: false,
         _count: { jobs: 0 },
       };
-      prisma.node.findMany.mockResolvedValue([libNode, otherNode]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([libNode, otherNode]);
 
       const result = await service.findBestNodeForNewJob('lib-node');
 
@@ -499,7 +508,7 @@ describe('DistributionOrchestratorService', () => {
 
   describe('getNodesCapacity', () => {
     it('should return capacity for all online nodes', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      mockNodeRepo.findOnlineIds.mockResolvedValue([
         { id: 'n1', name: 'Node 1' },
         { id: 'n2', name: 'Node 2' },
       ]);
