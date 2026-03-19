@@ -102,7 +102,7 @@ describe('NodesController', () => {
       const result = await controller.pair(dto as any);
 
       expect(mockNodesService.pairNode).toHaveBeenCalledWith('123456');
-      expect(result).toBeDefined();
+      expect(result).toEqual(node);
     });
 
     it('should propagate invalid token errors', async () => {
@@ -139,7 +139,7 @@ describe('NodesController', () => {
       const result = await controller.heartbeat('node1', heartbeatDto as any);
 
       expect(mockNodesService.heartbeat).toHaveBeenCalledWith('node1', heartbeatDto);
-      expect(result).toBeDefined();
+      expect(result).toEqual(node);
     });
 
     it('should propagate errors for unknown node', async () => {
@@ -156,7 +156,7 @@ describe('NodesController', () => {
       const result = await controller.getCurrentNode();
 
       expect(mockNodesService.getCurrentNode).toHaveBeenCalledTimes(1);
-      expect(result).toBeDefined();
+      expect(result).toEqual(node);
     });
 
     it('should propagate errors when no nodes registered', async () => {
@@ -210,7 +210,7 @@ describe('NodesController', () => {
       const result = await controller.findOne('node1');
 
       expect(mockNodesService.findOne).toHaveBeenCalledWith('node1');
-      expect(result).toBeDefined();
+      expect(result).toEqual(node);
     });
 
     it('should propagate not found errors', async () => {
@@ -262,7 +262,7 @@ describe('NodesController', () => {
       const result = await controller.update('node1', dto as any);
 
       expect(mockNodesService.update).toHaveBeenCalledWith('node1', dto);
-      expect(result).toBeDefined();
+      expect(result).toEqual(node);
     });
 
     it('should propagate service errors', async () => {
@@ -329,7 +329,7 @@ describe('NodesController', () => {
       const result = await controller.createRegistrationRequest(dto as any);
 
       expect(mockRegistrationRequestService.createRegistrationRequest).toHaveBeenCalledWith(dto);
-      expect(result).toBeDefined();
+      expect(result).toEqual(request);
     });
 
     it('should propagate service errors', async () => {
@@ -371,7 +371,7 @@ describe('NodesController', () => {
       const result = await controller.getRegistrationRequest('req1');
 
       expect(mockRegistrationRequestService.getRequest).toHaveBeenCalledWith('req1');
-      expect(result).toBeDefined();
+      expect(result).toEqual(request);
     });
 
     it('should propagate not found errors', async () => {
@@ -392,7 +392,7 @@ describe('NodesController', () => {
         'req1',
         approveDto
       );
-      expect(result).toBeDefined();
+      expect(result).toEqual(approved);
     });
 
     it('should propagate errors when request is not pending', async () => {
@@ -414,7 +414,7 @@ describe('NodesController', () => {
       const result = await controller.rejectRegistrationRequest('req1', rejectDto as any);
 
       expect(mockRegistrationRequestService.rejectRequest).toHaveBeenCalledWith('req1', rejectDto);
-      expect(result).toBeDefined();
+      expect(result).toEqual(rejected);
     });
 
     it('should propagate errors for non-pending requests', async () => {
@@ -433,7 +433,7 @@ describe('NodesController', () => {
       const result = await controller.cancelRegistrationRequest('req1');
 
       expect(mockRegistrationRequestService.cancelRequest).toHaveBeenCalledWith('req1');
-      expect(result).toBeDefined();
+      expect(result).toEqual(cancelled);
     });
 
     it('should propagate errors', async () => {
@@ -450,7 +450,7 @@ describe('NodesController', () => {
       const result = await controller.cancelRegistrationRequestByToken('123456');
 
       expect(mockRegistrationRequestService.cancelRequestByToken).toHaveBeenCalledWith('123456');
-      expect(result).toBeDefined();
+      expect(result).toEqual(cancelled);
     });
 
     it('should propagate errors for invalid token', async () => {

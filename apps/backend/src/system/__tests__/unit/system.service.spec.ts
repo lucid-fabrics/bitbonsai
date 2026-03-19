@@ -135,7 +135,7 @@ describe('SystemService', () => {
       const result = service.getSystemResources();
 
       expect(result.recommendation.current).toBe('balanced');
-      expect(result.recommendation.reason).toBeDefined();
+      expect(result.recommendation.reason).not.toBeNull();
     });
 
     it('should handle missing CPU model', () => {

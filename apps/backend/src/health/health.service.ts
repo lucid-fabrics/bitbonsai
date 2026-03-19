@@ -5,6 +5,9 @@ import { promisify } from 'node:util';
 import { version } from '@bitbonsai/version';
 import { Injectable, Logger } from '@nestjs/common';
 import { NodeStatus } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { PrismaService } from '../prisma/prisma.service';
 import type { BasicHealthDto } from './dto/basic-health.dto';
 import type { DetailedHealthDto } from './dto/detailed-health.dto';
@@ -33,7 +36,12 @@ export class HealthService {
   private readonly WARNING_THRESHOLD_PERCENT = 80; // Warn at 80% used
   private readonly CRITICAL_THRESHOLD_PERCENT = 90; // Critical at 90% used
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository,
+    private readonly libraryRepository: LibraryRepository
+  ) {}
 
   /**
    * Get basic health information
@@ -49,7 +57,7 @@ export class HealthService {
         uptime: Math.floor((Date.now() - this.startTime) / 1000),
         version: this.version,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Basic health check failed:', error);
       return {
         status: 'error',
@@ -127,7 +135,7 @@ export class HealthService {
         status: 'ok',
         responseTime,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Database health check failed:', error);
       return {
         status: 'error',
@@ -156,7 +164,7 @@ export class HealthService {
         status: 'ok',
         responseTime,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Redis health check failed:', error);
       return {
         status: 'error',
@@ -191,7 +199,7 @@ export class HealthService {
         used: `${Math.round(usedPercent)}%`,
         available,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Disk health check failed:', error);
       return {
         status: 'ok',
@@ -224,7 +232,7 @@ export class HealthService {
         total: this.formatBytes(totalMem),
         percentage: Math.round(percentage * 10) / 10,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Memory health check failed:', error);
       return {
         status: 'ok',
@@ -253,7 +261,7 @@ export class HealthService {
         responseTime,
         version,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('FFmpeg health check failed:', error);
       return {
         status: 'error',
@@ -267,11 +275,7 @@ export class HealthService {
    */
   async checkNodeHealth(): Promise<NodeHealthDto> {
     try {
-      const nodes = await this.prisma.node.findMany({
-        select: {
-          status: true,
-        },
-      });
+      const nodes = await this.nodeRepository.findAllSummary();
 
       const total = nodes.length;
       const online = nodes.filter((node) => node.status === NodeStatus.ONLINE).length;
@@ -282,7 +286,7 @@ export class HealthService {
         online,
         offline,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Node health check failed:', error);
       return {
         total: 0,
@@ -298,18 +302,10 @@ export class HealthService {
   async checkQueueHealth(): Promise<QueueHealthDto> {
     try {
       const [queued, encoding, completed, failed] = await Promise.all([
-        this.prisma.job.count({
-          where: { stage: 'QUEUED' },
-        }),
-        this.prisma.job.count({
-          where: { stage: 'ENCODING' },
-        }),
-        this.prisma.job.count({
-          where: { stage: 'COMPLETED' },
-        }),
-        this.prisma.job.count({
-          where: { stage: 'FAILED' },
-        }),
+        this.jobRepository.countWhere({ stage: 'QUEUED' }),
+        this.jobRepository.countWhere({ stage: 'ENCODING' }),
+        this.jobRepository.countWhere({ stage: 'COMPLETED' }),
+        this.jobRepository.countWhere({ stage: 'FAILED' }),
       ]);
 
       return {
@@ -318,7 +314,7 @@ export class HealthService {
         completed,
         failed,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Queue health check failed:', error);
       return {
         queued: 0,
@@ -342,22 +338,22 @@ export class HealthService {
   async monitorLibraryDiskSpace(): Promise<DiskSpaceMonitoringDto> {
     try {
       // Get all libraries with their queued jobs
-      const libraries = await this.prisma.library.findMany({
-        include: {
-          jobs: {
-            where: {
-              stage: {
-                in: ['QUEUED', 'ENCODING'],
-              },
-            },
-            select: {
-              id: true,
-              filePath: true,
-              beforeSizeBytes: true,
+      const libraries = (await this.libraryRepository.findAllLibraries(undefined, {
+        jobs: {
+          where: {
+            stage: {
+              in: ['QUEUED', 'ENCODING'],
             },
           },
+          select: {
+            id: true,
+            filePath: true,
+            beforeSizeBytes: true,
+          },
         },
-      });
+      })) as (import('@prisma/client').Library & {
+        jobs: { id: string; filePath: string; beforeSizeBytes: bigint | null }[];
+      })[];
 
       const librarySpaceData: LibraryDiskSpaceDto[] = [];
       const globalWarnings: string[] = [];
@@ -449,7 +445,7 @@ export class HealthService {
             hasEnoughSpaceForQueue,
             warningMessage,
           });
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.warn(
             `Failed to check disk space for library ${library.name} at ${library.path}`,
             error
@@ -488,7 +484,7 @@ export class HealthService {
           totalQueuedJobs > 0 ? totalEstimatedSpaceNeededBigInt.toString() : null,
         canAccommodateQueue,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to monitor library disk space', error);
 
       // Return error state
@@ -515,7 +511,7 @@ export class HealthService {
       return {
         ready: true,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Readiness check failed:', error);
       return {
         ready: false,

@@ -149,7 +149,7 @@ export class SMBMountStrategy implements IMountStrategy {
       // Use smbclient to list shares
       const { stdout } = await execAsync(`smbclient -L ${serverAddress} -N 2>&1`);
       return !stdout.includes('Connection') && !stdout.includes('error');
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(
         `SMB connectivity test failed: ${error instanceof Error ? error.message : 'unknown error'}`
       );

@@ -229,7 +229,7 @@ export class QueueService {
         resumeTimestamp: event.data.resumeTimestamp,
         tempFilePath: event.data.tempFilePath,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `Progress update failed for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -240,7 +240,7 @@ export class QueueService {
   async handleEncodingPreviewUpdate(event: EncodingPreviewUpdateEvent): Promise<void> {
     try {
       await this.updateJobPreview(event.jobId, event.previewPaths);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `Preview update failed for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -251,7 +251,7 @@ export class QueueService {
   async handleEncodingFailed(event: EncodingFailedEvent): Promise<void> {
     try {
       await this.failJob(event.jobId, event.errorMessage);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to mark job ${event.jobId} as failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -262,7 +262,7 @@ export class QueueService {
   async handleEncodingCancelled(event: EncodingCancelledEvent): Promise<void> {
     try {
       await this.cancelJob(event.jobId);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to cancel job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -273,7 +273,7 @@ export class QueueService {
   async handleEncodingProcessMarked(event: EncodingProcessMarkedEvent): Promise<void> {
     try {
       await this.updateJobRaw(event.jobId, event.updates);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `Failed to mark process state for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );

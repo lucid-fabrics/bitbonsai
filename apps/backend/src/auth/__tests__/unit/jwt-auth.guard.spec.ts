@@ -1,14 +1,13 @@
 import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../testing/mock-providers';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
   let reflector: Reflector;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let settingsRepository: jest.Mocked<SettingsRepository>;
 
   const mockExecutionContext = (
     ip = '192.168.1.100',
@@ -32,10 +31,16 @@ describe('JwtAuthGuard', () => {
   };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    settingsRepository = {
+      findFirst: jest.fn(),
+    } as unknown as jest.Mocked<SettingsRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [JwtAuthGuard, Reflector, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        JwtAuthGuard,
+        Reflector,
+        { provide: SettingsRepository, useValue: settingsRepository },
+      ],
     }).compile();
 
     guard = module.get<JwtAuthGuard>(JwtAuthGuard);
@@ -66,7 +71,7 @@ describe('JwtAuthGuard', () => {
 
   it('should allow local network IPs when local bypass is enabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    prisma.settings.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
+    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
     const context = mockExecutionContext('192.168.1.100');
 
     const result = await guard.canActivate(context);
@@ -76,7 +81,7 @@ describe('JwtAuthGuard', () => {
 
   it('should allow local network IPs for 10.x.x.x when bypass is enabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    prisma.settings.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
+    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
     const context = mockExecutionContext('10.0.0.5');
 
     const result = await guard.canActivate(context);
@@ -86,7 +91,7 @@ describe('JwtAuthGuard', () => {
 
   it('should not bypass for public IPs even when local bypass is enabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    prisma.settings.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
+    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
     const context = mockExecutionContext('8.8.8.8');
 
     // Override super.canActivate to avoid passport errors in tests
@@ -102,7 +107,7 @@ describe('JwtAuthGuard', () => {
 
   it('should require JWT when local bypass is disabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    prisma.settings.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: false });
+    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: false });
     const context = mockExecutionContext('192.168.1.100');
 
     // Override super.canActivate
@@ -117,7 +122,7 @@ describe('JwtAuthGuard', () => {
 
   it('should require JWT when no settings exist', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    prisma.settings.findFirst.mockResolvedValue(null);
+    settingsRepository.findFirst.mockResolvedValue(null);
     const context = mockExecutionContext('192.168.1.100');
 
     jest

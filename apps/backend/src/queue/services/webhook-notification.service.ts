@@ -4,7 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Job } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
-import { PrismaService } from '../../prisma/prisma.service';
+import { SettingsRepository } from '../../common/repositories/settings.repository';
 
 /**
  * Failed webhook entry for dead-letter queue
@@ -67,7 +67,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
   private isProcessingDLQ = false;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly settingsRepository: SettingsRepository,
     private readonly httpService: HttpService
   ) {}
 
@@ -131,7 +131,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
       };
 
       await this.sendWebhook(settings.webhookUrl, payload, settings.webhookSecret);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to send webhook notification: ${error instanceof Error ? error.message : error}`
       );
@@ -169,7 +169,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
       };
 
       await this.sendWebhook(settings.webhookUrl, payload, settings.webhookSecret);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to send health alert webhook: ${error}`);
     }
   }
@@ -208,7 +208,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
       };
 
       await this.sendWebhook(settings.webhookUrl, payload, settings.webhookSecret);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to send batch complete webhook: ${error}`);
     }
   }
@@ -223,7 +223,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
     webhookSecret: string | null;
     webhookEvents: unknown;
   }> {
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
     const s = settings as SystemSettings | null;
 
     return {
@@ -274,7 +274,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
         }
 
         throw new Error(`Webhook returned status ${response.status}`);
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = error instanceof Error ? error.message : String(error);
 
         if (attempt < this.MAX_RETRIES) {
@@ -424,7 +424,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
             item.lastAttempt = now;
             item.lastError = `Status ${response.status}`;
           }
-        } catch (error) {
+        } catch (error: unknown) {
           item.attempts++;
           item.lastAttempt = now;
           item.lastError = error instanceof Error ? error.message : String(error);

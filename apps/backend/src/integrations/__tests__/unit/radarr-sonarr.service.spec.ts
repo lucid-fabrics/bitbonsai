@@ -284,7 +284,7 @@ describe('RadarrSonarrIntegrationService', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
+      expect(result.error).toBe('Connection refused');
     });
   });
 

@@ -52,7 +52,7 @@ export class JobHistoryService {
       this.logger.log(
         `Recorded ${params.eventType} event for job ${params.jobId} at ${params.progress.toFixed(1)}%`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to record job history event`,
         error instanceof Error ? error.stack : String(error)

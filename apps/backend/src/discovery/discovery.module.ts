@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NodesModule } from '../nodes/nodes.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { PrismaService } from '../prisma/prisma.service';
 import { SyncModule } from '../sync/sync.module';
 import { SystemModule } from '../system/system.module';
 import { DiscoveryController } from './discovery.controller';
@@ -23,7 +22,7 @@ import { NodeDiscoveryService } from './node-discovery.service';
 @Module({
   imports: [NodesModule, NotificationsModule, SystemModule, SyncModule],
   controllers: [DiscoveryController],
-  providers: [NodeDiscoveryService, PrismaService],
+  providers: [NodeDiscoveryService],
   exports: [NodeDiscoveryService],
 })
 export class DiscoveryModule {}

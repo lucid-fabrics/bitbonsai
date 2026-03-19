@@ -101,7 +101,7 @@ export class JobMetricsService {
       });
 
       this.logger.log(`Metrics updated for job: ${job.id}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to update metrics for job: ${job.id}`, error);
       if (tx) {
         throw error;

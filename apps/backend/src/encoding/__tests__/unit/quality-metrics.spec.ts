@@ -24,22 +24,18 @@ describe('QualityMetricsService', () => {
 
   describe('Quality Metrics Calculation', () => {
     it('should have calculateVmaf method defined', () => {
-      expect(service.calculateVmaf).toBeDefined();
       expect(typeof service.calculateVmaf).toBe('function');
     });
 
     it('should have calculatePsnr method defined', () => {
-      expect(service.calculatePsnr).toBeDefined();
       expect(typeof service.calculatePsnr).toBe('function');
     });
 
     it('should have calculateSsim method defined', () => {
-      expect(service.calculateSsim).toBeDefined();
       expect(typeof service.calculateSsim).toBe('function');
     });
 
     it('should have calculateAllQualityMetrics method defined', () => {
-      expect(service.calculateAllQualityMetrics).toBeDefined();
       expect(typeof service.calculateAllQualityMetrics).toBe('function');
     });
 
@@ -74,7 +70,7 @@ describe('QualityMetricsService', () => {
         '/nonexistent/encoded.mp4'
       );
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result.calculatedAt).toBeInstanceOf(Date);
       // Should return partial results even if some metrics fail
       expect(result.vmaf === undefined || typeof result.vmaf === 'number').toBe(true);

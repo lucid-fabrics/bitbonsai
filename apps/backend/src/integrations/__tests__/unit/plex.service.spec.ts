@@ -289,7 +289,7 @@ describe('PlexIntegrationService', () => {
       const result = await service.testConnection('http://plex:32400', 'bad-token');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
+      expect(result.error).toBe('Connection refused');
     });
   });
 });

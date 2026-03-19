@@ -1,13 +1,14 @@
 import * as fs from 'node:fs';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { LibraryRepository } from '../../../common/repositories/library.repository';
+import { PolicyRepository } from '../../../common/repositories/policy.repository';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../../queue/queue.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import {
-  createMockPrismaService,
   mockDataAccessProvider,
   mockEventEmitterProvider,
   mockFileRelocatorProvider,
@@ -26,7 +27,6 @@ describe('EncodingProcessorService', () => {
   let queueService: jest.Mocked<QueueService>;
   let ffmpegService: jest.Mocked<FfmpegService>;
   let librariesService: jest.Mocked<LibrariesService>;
-  let prisma: ReturnType<typeof createMockPrismaService>;
 
   const mockPolicy = createMockPolicy({
     id: 'policy-1',
@@ -57,12 +57,36 @@ describe('EncodingProcessorService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    prisma = createMockPrismaService();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EncodingProcessorService,
-        { provide: PrismaService, useValue: prisma },
+        {
+          provide: JobRepository,
+          useValue: {
+            findById: jest.fn(),
+            findFirstWhere: jest.fn(),
+            findFirstSelect: jest.fn(),
+            findUniqueSelect: jest.fn(),
+            findManyWithInclude: jest.fn().mockResolvedValue([]),
+            updateById: jest.fn(),
+            updateByIdWithInclude: jest.fn(),
+            atomicUpdateMany: jest.fn(),
+            countWhere: jest.fn().mockResolvedValue(0),
+          },
+        },
+        {
+          provide: LibraryRepository,
+          useValue: {
+            findUniqueWithInclude: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: PolicyRepository,
+          useValue: {
+            findById: jest.fn(),
+            findAll: jest.fn().mockResolvedValue([]),
+          },
+        },
         mockDataAccessProvider,
         mockFileRelocatorProvider,
         mockEventEmitterProvider,
@@ -191,7 +215,7 @@ describe('EncodingProcessorService', () => {
     it('should not start duplicate workers for same node', async () => {
       await (service as any).startWorker('node-1', 'node-1');
       await (service as any).startWorker('node-1', 'node-1');
-      expect(service).toBeDefined();
+      expect((service as any).workers.size).toBe(1);
     });
   });
 
@@ -199,12 +223,12 @@ describe('EncodingProcessorService', () => {
     it('should stop a running worker', async () => {
       await (service as any).startWorker('node-1', 'node-1');
       await service.stopWorker('node-1');
-      expect(service).toBeDefined();
+      expect((service as any).workers.get('node-1')?.isRunning).toBe(false);
     });
 
     it('should handle stopping non-existent worker', async () => {
       await service.stopWorker('non-existent');
-      expect(service).toBeDefined();
+      expect((service as any).workers.has('non-existent')).toBe(false);
     });
   });
 

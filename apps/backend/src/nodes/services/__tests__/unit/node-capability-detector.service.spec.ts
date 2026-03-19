@@ -1,12 +1,9 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { LibrariesService } from '../../../../libraries/libraries.service';
-import { PrismaService } from '../../../../prisma/prisma.service';
 import { NodeCapabilityDetectorService } from '../../node-capability-detector.service';
 
 describe('NodeCapabilityDetectorService', () => {
   let service: NodeCapabilityDetectorService;
-
-  const mockPrismaService = {};
 
   const mockLibrariesService = {
     getAllLibraryPaths: jest.fn(),
@@ -18,7 +15,6 @@ describe('NodeCapabilityDetectorService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NodeCapabilityDetectorService,
-        { provide: PrismaService, useValue: mockPrismaService },
         { provide: LibrariesService, useValue: mockLibrariesService },
       ],
     }).compile();

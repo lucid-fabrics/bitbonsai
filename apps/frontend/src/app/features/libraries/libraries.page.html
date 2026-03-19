@@ -3,9 +3,9 @@
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1 class="header-left__title">Libraries</h1>
+        <h1 class="header-left__title">{{ 'libraries.title' | transloco }}</h1>
         <p class="header-left__subtitle">
-          Configure and manage media libraries
+          {{ 'libraries.subtitle' | transloco }}
         </p>
       </div>
       <div class="header-right">
@@ -17,14 +17,13 @@
             class="library-count__icon"
           ></fa-icon>
           <span
-            >{{ libraries.length }} {{ libraries.length === 1 ? 'Library' :
-            'Libraries' }}</span
+            >{{ libraries.length }} {{ libraries.length === 1 ? ('libraries.librarySingular' | transloco) : ('libraries.title' | transloco) }}</span
           >
         </div>
         }
         <button class="btn btn-primary" (click)="onAddLibrary()">
           <fa-icon [icon]="['fas', 'plus']" class="btn__icon"></fa-icon>
-          Add Library
+          {{ 'libraries.addLibrary' | transloco }}
         </button>
       </div>
     </div>

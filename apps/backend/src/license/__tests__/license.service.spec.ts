@@ -128,7 +128,7 @@ describe('LicenseService', () => {
 
       const result = await service.createLicense(createData);
 
-      expect(result).toBeDefined();
+      expect(result).toEqual(mockLicense);
       expect(prismaMock.license.create).toHaveBeenCalled();
     });
 

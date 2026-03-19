@@ -241,7 +241,7 @@ describe('StorageMountService', () => {
       const result = await service.testConnectivity('192.168.1.100');
 
       expect(result.isReachable).toBe(true);
-      expect(result.latencyMs).toBeDefined();
+      expect(result.latencyMs).toBeGreaterThanOrEqual(0);
     });
 
     it('should return unreachable when ping shows 0 received', async () => {

@@ -1,7 +1,7 @@
 import { existsSync, promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { LibraryRepository } from '../common/repositories/library.repository';
 
 /**
  * BackupCleanupWorker
@@ -42,7 +42,7 @@ export class BackupCleanupWorker implements OnModuleInit {
   ); // 1 hour
   private readonly RETENTION_HOURS = parseInt(process.env.BACKUP_RETENTION_HOURS || '24', 10);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly libraryRepository: LibraryRepository) {}
 
   /**
    * Start the cleanup worker when module initializes
@@ -74,7 +74,7 @@ export class BackupCleanupWorker implements OnModuleInit {
     while (this.isRunning) {
       try {
         await this.cleanupOrphanedBackups();
-      } catch (error) {
+      } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(`Backup cleanup worker error: ${errorMessage}`);
       }
@@ -93,10 +93,7 @@ export class BackupCleanupWorker implements OnModuleInit {
     const cutoffTime = now - retentionMs;
 
     // Get all library paths
-    const libraries = await this.prisma.library.findMany({
-      where: { enabled: true },
-      select: { id: true, name: true, path: true },
-    });
+    const libraries = await this.libraryRepository.findAllLibraries({ enabled: true });
 
     if (libraries.length === 0) {
       this.logger.debug('No enabled libraries found, skipping backup cleanup');
@@ -115,7 +112,7 @@ export class BackupCleanupWorker implements OnModuleInit {
         );
         totalCleaned += cleaned;
         totalSizeFreed += sizeFreed;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.warn(`Failed to cleanup backups in library "${library.name}": ${error}`);
       }
     }
@@ -185,12 +182,12 @@ export class BackupCleanupWorker implements OnModuleInit {
                 `Skipping recent backup: ${entry.name} (age: ${Math.floor(fileAge / 1000 / 60)}min)`
               );
             }
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.warn(`Failed to cleanup backup file ${fullPath}: ${error}`);
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Don't fail the entire cleanup if one directory fails
       this.logger.warn(`Failed to read directory ${dirPath}: ${error}`);
     }

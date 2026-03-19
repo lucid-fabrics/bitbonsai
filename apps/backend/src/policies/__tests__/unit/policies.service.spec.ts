@@ -439,7 +439,6 @@ describe('PoliciesService', () => {
       const presets = service.getPresets();
 
       for (const preset of presets) {
-        expect(preset.description).toBeDefined();
         expect(preset.description.length).toBeGreaterThan(10);
       }
     });

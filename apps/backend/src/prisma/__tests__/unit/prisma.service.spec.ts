@@ -23,8 +23,8 @@ describe('PrismaService', () => {
   });
 
   it('should have Prisma client methods available', () => {
-    expect(service.$connect).toBeDefined();
-    expect(service.$disconnect).toBeDefined();
+    expect(typeof service.$connect).toBe('function');
+    expect(typeof service.$disconnect).toBe('function');
   });
 
   describe('onModuleInit', () => {
@@ -71,9 +71,9 @@ describe('PrismaService', () => {
   describe('database operations', () => {
     it('should have Prisma client methods available', () => {
       // Verify that PrismaClient methods are accessible
-      expect(service.$queryRaw).toBeDefined();
-      expect(service.$executeRaw).toBeDefined();
-      expect(service.$transaction).toBeDefined();
+      expect(typeof service.$queryRaw).toBe('function');
+      expect(typeof service.$executeRaw).toBe('function');
+      expect(typeof service.$transaction).toBe('function');
     });
   });
 });

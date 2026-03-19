@@ -349,7 +349,7 @@ describe('QueueController', () => {
 
       const result = await controller.update('job1', {} as any);
 
-      expect(result).toBeDefined();
+      expect(result).toEqual(job);
     });
 
     it('should throw ForbiddenException when LINKED node tries to update another node job', async () => {

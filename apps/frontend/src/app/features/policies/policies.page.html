@@ -60,11 +60,11 @@
 
         <div class="preset-card__details">
           <div class="preset-card__detail-row">
-            <span class="preset-card__detail-label">Codec:</span>
+            <span class="preset-card__detail-label">{{ 'policies.codec' | transloco }}:</span>
             <span class="preset-card__detail-value">{{ preset.codec }}</span>
           </div>
           <div class="preset-card__detail-row">
-            <span class="preset-card__detail-label">Quality:</span>
+            <span class="preset-card__detail-label">{{ 'policies.quality' | transloco }}:</span>
             <span class="preset-card__detail-value">CRF {{ preset.crf }}</span>
           </div>
         </div>
@@ -94,30 +94,21 @@
       </div>
       <h2>{{ 'policies.noPolicies' | transloco }}</h2>
       <p class="empty-description">
-        Policies define how your media files should be encoded. They control the
-        codec, quality, and device compatibility for your video files.
+        {{ 'policies.noPoliciesHint' | transloco }}
       </p>
 
       <div class="getting-started">
         <h3>{{ 'policies.gettingStarted' | transloco }}</h3>
         <ol>
-          <li>
-            Browse the "Quick Start Templates" above to see preset options
-          </li>
-          <li>
-            Click on a recommended template (like "Balanced HEVC") to get
-            started
-          </li>
-          <li>Give your policy a memorable name</li>
-          <li>
-            Adjust quality settings if needed (lower CRF = better quality)
-          </li>
-          <li>Select which devices should play your encoded files</li>
+          <li>{{ 'policies.step1BrowseTemplates' | transloco }}</li>
+          <li>{{ 'policies.step2ClickTemplate' | transloco }}</li>
+          <li>{{ 'policies.policyNameHint' | transloco }}</li>
+          <li>{{ 'policies.step4AdjustQuality' | transloco }}</li>
+          <li>{{ 'policies.selectDevices' | transloco }}</li>
         </ol>
         <p class="help-tip">
           <fa-icon icon="lightbulb"></fa-icon>
-          <strong>Tip:</strong> Start with "Balanced HEVC" for a great mix of
-          quality and file size savings!
+          <strong>{{ 'policies.tipStart' | transloco }}</strong> {{ 'policies.startWithBalanced' | transloco }}
         </p>
       </div>
 
@@ -186,7 +177,7 @@
               >
             </td>
             <td class="policies-table__cell">
-              {{ policy.libraryId || 'All Libraries' }}
+              {{ policy.libraryId || ('policies.allLibraries' | transloco) }}
             </td>
             <td class="policies-table__cell text-center">
               {{ policy.completedJobs }}
@@ -195,7 +186,7 @@
               <button
                 class="btn-icon"
                 (click)="openEditForm(policy)"
-                aria-label="Edit policy {{ policy.name }}"
+                [attr.aria-label]="('policies.editPolicyAriaLabel' | transloco: { name: policy.name })"
                 bbTooltip
                 tooltipTitle="Edit Policy"
                 tooltipContent="Modify this policy's settings including codec, quality (CRF), device profiles, and advanced encoding options. Changes only affect future encoding jobs."
@@ -207,7 +198,7 @@
               <button
                 class="btn-icon btn-danger"
                 (click)="confirmDelete(policy)"
-                aria-label="Delete policy {{ policy.name }}"
+                [attr.aria-label]="('policies.deletePolicyAriaLabel' | transloco: { name: policy.name })"
                 bbTooltip
                 tooltipTitle="Delete Policy"
                 tooltipContent="Permanently remove this policy from BitBonsai. Existing encoded videos are not affected. Jobs currently using this policy will complete, but no new jobs can use it."
@@ -231,9 +222,9 @@
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-header__title">
-          {{ isEditMode ? 'Edit Policy' : 'Create Policy' }}
+          {{ isEditMode ? ('policies.editPolicy' | transloco) : ('policies.createPolicy' | transloco) }}
         </h2>
-        <button class="btn-icon" (click)="closeForm()" aria-label="Close form">
+        <button class="btn-icon" (click)="closeForm()" [attr.aria-label]="'policies.closeForm' | transloco">
           <fa-icon [icon]="icons.times"></fa-icon>
         </button>
       </div>
@@ -242,7 +233,7 @@
         <form (ngSubmit)="submitForm()">
           <!-- Name Input -->
           <div class="form-group">
-            <label for="name" class="form-group__label">Policy Name *</label>
+            <label for="name" class="form-group__label">{{ 'policies.policyName' | transloco }}</label>
             <input
               id="name"
               type="text"
@@ -263,7 +254,7 @@
           <!-- Preset Selector -->
           <div class="form-group">
             <label for="preset" class="form-group__label"
-              >Preset Template</label
+              >{{ 'policies.presetTemplate' | transloco }}</label
             >
             <select
               id="preset"
@@ -280,13 +271,13 @@
               <option [value]="PolicyPreset.COPY_IF_COMPLIANT">
                 Copy If Compliant
               </option>
-              <option [value]="PolicyPreset.CUSTOM">Custom</option>
+              <option [value]="PolicyPreset.CUSTOM">{{ 'policies.custom' | transloco }}</option>
             </select>
           </div>
 
           <!-- Target Codec -->
           <div class="form-group">
-            <label for="codec" class="form-group__label">Target Codec *</label>
+            <label for="codec" class="form-group__label">{{ 'policies.targetCodec' | transloco }}</label>
             <select
               id="codec"
               class="form-group__input"
@@ -303,7 +294,7 @@
           <!-- Quality Slider -->
           <div class="form-group">
             <label for="targetQuality" class="form-group__label">
-              Quality (CRF) *
+              {{ 'policies.quality' | transloco }}
               <span
                 class="form-group__label-quality-indicator"
                 bbTooltip
@@ -317,10 +308,9 @@
             </label>
             <div class="field-hint">
               <fa-icon icon="info-circle"></fa-icon>
-              CRF (Constant Rate Factor) controls video quality.
-              <strong>Lower values = better quality + larger files.</strong>
-              Higher values = smaller files + lower quality. Most users should
-              use 18-23 for excellent quality with good compression.
+              {{ 'policies.crfDesc' | transloco }}
+              <strong>{{ 'policies.qualityHint' | transloco }}</strong>
+              {{ 'policies.crfDescExtra' | transloco }}
             </div>
             <div class="slider-container">
               <input
@@ -353,7 +343,7 @@
           <!-- Library Association -->
           <div class="form-group">
             <label for="library" class="form-group__label"
-              >Library (Optional)</label
+              >{{ 'policies.libraryOptional' | transloco }}</label
             >
             <select
               id="library"
@@ -361,7 +351,7 @@
               [(ngModel)]="formData.libraryId"
               name="library"
             >
-              <option value="">All Libraries</option>
+              <option value="">{{ 'policies.allLibraries' | transloco }}</option>
               @for (library of libraries$ | async; track library.id) {
               <option [value]="library.id">{{ library.name }}</option>
               }
@@ -374,7 +364,7 @@
 
           <!-- Device Profiles -->
           <div class="form-group">
-            <label class="form-group__label">Device Profiles *</label>
+            <label class="form-group__label">{{ 'policies.deviceProfiles' | transloco }}</label>
             <div class="field-hint">
               <fa-icon icon="info-circle"></fa-icon>
               Select which devices should be able to play your encoded videos.
@@ -420,7 +410,7 @@
               class="advanced-toggle"
               (click)="showAdvancedSettings = !showAdvancedSettings"
             >
-              {{ showAdvancedSettings ? '▼' : '▶' }} Advanced Settings
+              {{ showAdvancedSettings ? '▼' : '▶' }} {{ 'policies.advancedSettings' | transloco }}
             </button>
 
             @if (showAdvancedSettings) {
@@ -428,7 +418,7 @@
               <!-- Audio Handling -->
               <div class="form-group">
                 <label for="audio" class="form-group__label"
-                  >Audio Handling</label
+                  >{{ 'policies.audioHandling' | transloco }}</label
                 >
                 <select
                   id="audio"
@@ -436,12 +426,12 @@
                   [(ngModel)]="formData.audioHandling"
                   name="audio"
                 >
-                  <option [value]="AudioHandling.COPY">Copy Original</option>
+                  <option [value]="AudioHandling.COPY">{{ 'policies.copyOriginal' | transloco }}</option>
                   <option [value]="AudioHandling.TRANSCODE_AAC">
-                    Transcode to AAC
+                    {{ 'policies.transcodeAac' | transloco }}
                   </option>
                   <option [value]="AudioHandling.TRANSCODE_AC3">
-                    Transcode to AC3
+                    {{ 'policies.transcodeAc3' | transloco }}
                   </option>
                 </select>
               </div>
@@ -449,7 +439,7 @@
               <!-- Container Format -->
               <div class="form-group">
                 <label for="targetContainer" class="form-group__label"
-                  >Container Format</label
+                  >{{ 'policies.containerFormat' | transloco }}</label
                 >
                 <select
                   id="targetContainer"
@@ -563,7 +553,7 @@
               <!-- FFmpeg Flags -->
               <div class="form-group">
                 <label for="ffmpeg" class="form-group__label"
-                  >Custom FFmpeg Flags</label
+                  >{{ 'policies.customFfmpegFlags' | transloco }}</label
                 >
                 <textarea
                   id="ffmpeg"
@@ -586,7 +576,7 @@
       <!-- Form Actions (Fixed Footer) -->
       <div class="form-actions">
         <button type="button" class="btn-secondary" (click)="closeForm()">
-          Cancel
+          {{ 'policies.cancel' | transloco }}
         </button>
         <button
           type="button"
@@ -595,7 +585,7 @@
           (click)="submitForm()"
         >
           <fa-icon [icon]="icons.check"></fa-icon>
-          {{ isEditMode ? 'Update Policy' : 'Create Policy' }}
+          {{ isEditMode ? ('policies.updatePolicy' | transloco) : ('policies.createPolicy' | transloco) }}
         </button>
       </div>
     </div>

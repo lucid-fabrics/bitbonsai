@@ -129,7 +129,7 @@ export class EncodingPreviewService {
                 `Preview ${index + 1} file not found after extraction for job ${jobId}`
               );
             }
-          } catch (error) {
+          } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
             this.logger.warn(
               `Failed to generate preview ${index + 1} for job ${jobId}: ${message}`
@@ -140,7 +140,7 @@ export class EncodingPreviewService {
       );
 
       return previewPaths.sort(); // Ensure correct order
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to generate previews for job ${jobId}:`, error);
       return [];
     }
@@ -270,7 +270,7 @@ export class EncodingPreviewService {
       const jobPreviewDir = path.join(this.PREVIEW_DIR, jobId);
       await fs.rm(jobPreviewDir, { recursive: true, force: true });
       this.logger.debug(`Cleaned up previews for job ${jobId}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Failed to cleanup previews for job ${jobId}:`, error);
     }
   }

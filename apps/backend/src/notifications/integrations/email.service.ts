@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Transporter } from 'nodemailer';
 import * as nodemailer from 'nodemailer';
 import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
-import { PrismaService } from '../../prisma/prisma.service';
+import { SettingsRepository } from '../../common/repositories/settings.repository';
 
 /**
  * Email configuration interface
@@ -35,7 +35,7 @@ interface EmailConfig {
 export class EmailNotificationService {
   private readonly logger = new Logger(EmailNotificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly settingsRepository: SettingsRepository) {}
 
   /**
    * Send job completed notification
@@ -254,7 +254,7 @@ export class EmailNotificationService {
       });
 
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -267,7 +267,7 @@ export class EmailNotificationService {
    */
   private async getEmailConfig(): Promise<EmailConfig | null> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
       const s = settings as SystemSettings | null;
 
       if (!s?.smtpHost || !s?.smtpUser || !s?.emailTo) {
@@ -317,7 +317,7 @@ export class EmailNotificationService {
       });
 
       this.logger.debug(`Email sent: ${subject}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to send email: ${error}`);
     }
   }

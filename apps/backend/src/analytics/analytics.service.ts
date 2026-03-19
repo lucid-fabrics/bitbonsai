@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -79,7 +80,11 @@ export class AnalyticsService {
     'Local SSD': 0.008,
   };
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    // PrismaService retained for $queryRaw (raw SQL aggregation not expressible via repository)
+    private readonly prisma: PrismaService
+  ) {}
 
   /**
    * Get overall analytics summary
@@ -88,31 +93,22 @@ export class AnalyticsService {
     const dateFilter = this.getDateFilter(period);
 
     // Total jobs and files
-    const totalJobs = await this.prisma.job.count({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: dateFilter,
-      },
+    const totalJobs = await this.jobRepository.countWhere({
+      stage: JobStage.COMPLETED,
+      completedAt: dateFilter,
     });
 
     // Space savings aggregate
-    const savingsAgg = await this.prisma.job.aggregate({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: dateFilter,
-      },
-      _sum: { savedBytes: true },
-      _avg: { savedPercent: true },
+    const savingsAgg = await this.jobRepository.aggregateWithAvgCount({
+      stage: JobStage.COMPLETED,
+      completedAt: dateFilter,
     });
 
     // Processing time (use aggregation instead of loading all rows)
-    const timingStats = await this.prisma.job.aggregate({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: dateFilter,
-        startedAt: { not: null },
-      },
-      _count: { id: true },
+    const timingStats = await this.jobRepository.aggregateCount({
+      stage: JobStage.COMPLETED,
+      completedAt: dateFilter,
+      startedAt: { not: null },
     });
 
     // Get average processing time using raw SQL aggregation
@@ -129,25 +125,18 @@ export class AnalyticsService {
       (avgProcessingResult[0]?.avg_duration_ms || 0) * (timingStats._count.id || 0);
 
     // Success rate
-    const failedJobs = await this.prisma.job.count({
-      where: {
-        stage: JobStage.FAILED,
-        updatedAt: dateFilter,
-      },
+    const failedJobs = await this.jobRepository.countWhere({
+      stage: JobStage.FAILED,
+      updatedAt: dateFilter,
     });
 
     const successRate =
       totalJobs + failedJobs > 0 ? (totalJobs / (totalJobs + failedJobs)) * 100 : 100;
 
     // Most efficient codec
-    const codecEfficiency = await this.prisma.job.groupBy({
-      by: ['targetCodec'],
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: dateFilter,
-      },
-      _avg: { savedPercent: true },
-      _count: true,
+    const codecEfficiency = await this.jobRepository.groupByTargetCodecAvg({
+      stage: JobStage.COMPLETED,
+      completedAt: dateFilter,
     });
 
     const mostEfficientCodec =
@@ -231,22 +220,20 @@ export class AnalyticsService {
     const dateFilter = this.getDateFilter(period);
     const groupByFormat = this.getGroupByFormat(period);
 
-    const jobs = await this.prisma.job.findMany({
-      where: {
+    const jobs = await this.jobRepository.findManySelect<{
+      completedAt: Date | null;
+      startedAt: Date | null;
+      beforeSizeBytes: bigint;
+      targetCodec: string;
+    }>(
+      {
         stage: JobStage.COMPLETED,
         completedAt: dateFilter,
         startedAt: { not: null },
         beforeSizeBytes: { gt: 0 },
       },
-      select: {
-        completedAt: true,
-        startedAt: true,
-        beforeSizeBytes: true,
-        targetCodec: true,
-      },
-      orderBy: { completedAt: 'asc' },
-      take: 10000,
-    });
+      { completedAt: true, startedAt: true, beforeSizeBytes: true, targetCodec: true }
+    );
 
     // Group by date and codec
     const grouped = new Map<
@@ -297,12 +284,13 @@ export class AnalyticsService {
   async getCostSavings(provider = 'AWS S3'): Promise<CostSavingsEstimate> {
     const costPerGB = this.STORAGE_COSTS[provider] || 0.02;
 
-    const savingsAgg = await this.prisma.job.aggregate({
-      where: { stage: JobStage.COMPLETED },
-      _sum: { savedBytes: true },
-    });
+    const savingsAgg = await this.jobRepository.aggregateSumWhere(
+      { stage: JobStage.COMPLETED },
+      { savedBytes: true }
+    );
 
-    const totalSavedGB = Number(savingsAgg._sum.savedBytes || 0) / 1024 ** 3;
+    const totalSavedGB =
+      Number((savingsAgg._sum as Record<string, bigint | null>).savedBytes || 0) / 1024 ** 3;
     const estimatedMonthlyCost = totalSavedGB * costPerGB;
     const estimatedYearlyCost = estimatedMonthlyCost * 12;
 
@@ -340,33 +328,35 @@ export class AnalyticsService {
   > {
     const dateFilter = this.getDateFilter(period);
 
-    const completedJobs = await this.prisma.job.findMany({
-      where: {
+    const completedJobs = await this.jobRepository.findManySelect<{
+      nodeId: string;
+      beforeSizeBytes: bigint;
+      savedPercent: number | null;
+      startedAt: Date | null;
+      completedAt: Date | null;
+      node: { name: string } | null;
+    }>(
+      {
         stage: JobStage.COMPLETED,
         completedAt: dateFilter,
         startedAt: { not: null },
       },
-      select: {
+      {
         nodeId: true,
         beforeSizeBytes: true,
         savedPercent: true,
         startedAt: true,
         completedAt: true,
         node: { select: { name: true } },
-      },
-      take: 10000,
+      }
+    );
+
+    const failedByNode = await this.jobRepository.groupByNodeIdCount({
+      stage: JobStage.FAILED,
+      updatedAt: dateFilter,
     });
 
-    const failedByNode = await this.prisma.job.groupBy({
-      by: ['nodeId'],
-      where: {
-        stage: JobStage.FAILED,
-        updatedAt: dateFilter,
-      },
-      _count: true,
-    });
-
-    const failedMap = new Map(failedByNode.map((f) => [f.nodeId, f._count]));
+    const failedMap = new Map(failedByNode.map((f) => [f.nodeId, f._count as number]));
 
     // Group by node
     const nodeData = new Map<
@@ -430,21 +420,26 @@ export class AnalyticsService {
   > {
     const dateFilter = this.getDateFilter(period);
 
-    const jobs = await this.prisma.job.findMany({
-      where: {
+    const jobs = await this.jobRepository.findManySelect<{
+      targetCodec: string;
+      beforeSizeBytes: bigint;
+      savedPercent: number | null;
+      startedAt: Date | null;
+      completedAt: Date | null;
+    }>(
+      {
         stage: JobStage.COMPLETED,
         completedAt: dateFilter,
         startedAt: { not: null },
       },
-      select: {
+      {
         targetCodec: true,
         beforeSizeBytes: true,
         savedPercent: true,
         startedAt: true,
         completedAt: true,
-      },
-      take: 10000,
-    });
+      }
+    );
 
     const codecData = new Map<
       string,
@@ -491,14 +486,10 @@ export class AnalyticsService {
   private async getPeakEncodingHour(period: TimePeriod): Promise<number> {
     const dateFilter = this.getDateFilter(period);
 
-    const jobs = await this.prisma.job.findMany({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: dateFilter,
-      },
-      select: { startedAt: true },
-      take: 10000,
-    });
+    const jobs = await this.jobRepository.findManySelect<{ startedAt: Date | null }>(
+      { stage: JobStage.COMPLETED, completedAt: dateFilter },
+      { startedAt: true }
+    );
 
     const hourCounts = new Array(24).fill(0);
 

@@ -3,8 +3,8 @@
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1 class="page-header__title">Nodes</h1>
-        <p class="page-header__subtitle">Manage and pair encoding nodes</p>
+        <h1 class="page-header__title">{{ 'nodes.title' | transloco }}</h1>
+        <p class="page-header__subtitle">{{ 'nodes.subtitle' | transloco }}</p>
       </div>
       <div class="header-right">
         @if (!isLoading && hasNodes) {
@@ -14,13 +14,13 @@
             class="nodes-count__icon"
           ></fa-icon>
           <span
-            >{{ totalNodes }} {{ totalNodes === 1 ? 'Node' : 'Nodes' }}</span
+            >{{ totalNodes }} {{ totalNodes === 1 ? ('nodes.nodeSingular' | transloco) : ('nodes.title' | transloco) }}</span
           >
           <span class="nodes-count__status-indicator online"
-            >{{ onlineNodes }} online</span
+            >{{ onlineNodes }} {{ 'nodes.online' | transloco }}</span
           >
           <span class="nodes-count__status-indicator offline"
-            >{{ offlineNodes }} offline</span
+            >{{ offlineNodes }} {{ 'nodes.offline' | transloco }}</span
           >
         </div>
         }
@@ -34,7 +34,7 @@
           tooltipPlacement="bottom"
         >
           <fa-icon [icon]="['fas', 'plus']"></fa-icon>
-          Register New Node
+          {{ 'nodes.registerNewNode' | transloco }}
         </button>
       </div>
     </div>
@@ -71,7 +71,7 @@
   <!-- Pending Requests Section -->
   @if (pendingRequests.length > 0) {
   <div class="pending-requests-section">
-    <h2>Pending Node Requests</h2>
+    <h2>{{ 'nodes.pendingRequests' | transloco }}</h2>
     <div class="pending-requests-grid">
       @for (request of pendingRequests; track request.id) {
       <div
@@ -115,7 +115,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">Node Name</div>
+                <div class="info-label">{{ 'nodes.nodeName' | transloco }}</div>
                 <div class="info-value">{{ request.childNodeName }}</div>
               </div>
             </div>
@@ -127,7 +127,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">IP Address</div>
+                <div class="info-label">{{ 'nodes.nodeIp' | transloco }}</div>
                 <div class="info-value">{{ request.ipAddress }}</div>
               </div>
             </div>
@@ -139,7 +139,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">Hostname</div>
+                <div class="info-label">{{ 'nodes.hostname' | transloco }}</div>
                 <div class="info-value">{{ request.hostname }}</div>
               </div>
             </div>
@@ -151,7 +151,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">Container Type</div>
+                <div class="info-label">{{ 'nodes.containerType' | transloco }}</div>
                 <div class="info-value">
                   {{ getContainerTypeLabel(request.containerType) }}
                 </div>
@@ -165,7 +165,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">CPU Cores</div>
+                <div class="info-label">{{ 'nodeSetup.cpuCores' | transloco }}</div>
                 <div class="info-value">
                   {{ request.hardwareSpecs.cpuCores }}
                 </div>
@@ -179,7 +179,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">RAM</div>
+                <div class="info-label">{{ 'nodes.ram' | transloco }}</div>
                 <div class="info-value">
                   {{ request.hardwareSpecs.ramGb }} GB
                 </div>
@@ -193,9 +193,9 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">Acceleration</div>
+                <div class="info-label">{{ 'nodes.acceleration' | transloco }}</div>
                 <div class="info-value">
-                  {{ request.acceleration || 'None' }}
+                  {{ request.acceleration || ('common.none' | transloco) }}
                 </div>
               </div>
             </div>
@@ -207,7 +207,7 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">Version</div>
+                <div class="info-label">{{ 'nodes.version' | transloco }}</div>
                 <div class="info-value">{{ request.childVersion }}</div>
               </div>
             </div>
@@ -226,7 +226,7 @@
             tooltipPlacement="top"
           >
             <fa-icon [icon]="['fas', 'check']"></fa-icon>
-            Approve
+            {{ 'discovery.approve' | transloco }}
           </button>
           <button
             class="btn btn-icon btn-danger"
@@ -238,7 +238,7 @@
             tooltipPlacement="top"
           >
             <fa-icon [icon]="['fas', 'times']"></fa-icon>
-            Reject
+            {{ 'nodes.reject' | transloco }}
           </button>
         </div>
       </div>
@@ -266,21 +266,17 @@
     </div>
     <h2 class="empty-state__title">{{ 'nodes.noNodesYet' | transloco }}</h2>
     <p class="empty-state__description">
-      Nodes are the workers that handle all your video encoding. They can be
-      your local machine, a dedicated server, or multiple computers working
-      together.
+      {{ 'nodes.emptyDescription' | transloco }}
     </p>
 
     <div class="getting-started">
       <h3>{{ 'nodes.gettingStarted' | transloco }}</h3>
       <ol>
         <li>{{ 'nodes.registerFirstNode' | transloco }}</li>
-        <li>A registration command will appear - copy it</li>
+        <li>{{ 'nodes.copyCommand' | transloco }}</li>
         <li>{{ 'nodes.openTerminal' | transloco }}</li>
         <li>{{ 'nodes.pasteCommand' | transloco }}</li>
-        <li>
-          Enter the 6-digit pairing code shown on your node into BitBonsai
-        </li>
+        <li>{{ 'nodes.enterPairingCode' | transloco }}</li>
         <li>{{ 'nodes.nodeAppear' | transloco }}</li>
       </ol>
     </div>
@@ -337,7 +333,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">Hardware</div>
+              <div class="info-label">{{ 'nodes.hardware' | transloco }}</div>
               <div class="info-value">
                 {{ NodeBo.getAccelerationLabel(node.acceleration) }}
               </div>
@@ -351,7 +347,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">Version</div>
+              <div class="info-label">{{ 'nodes.version' | transloco }}</div>
               <div class="info-value">{{ node.version }}</div>
             </div>
           </div>
@@ -363,7 +359,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">Uptime</div>
+              <div class="info-label">{{ 'nodeStats.uptime' | transloco }}</div>
               <div class="info-value">
                 {{ NodeBo.formatUptime(node.uptimeSeconds) }}
               </div>
@@ -377,7 +373,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">Last Heartbeat</div>
+              <div class="info-label">{{ 'nodeStats.lastHeartbeat' | transloco }}</div>
               <div class="info-value">
                 {{ NodeBo.formatLastHeartbeat(node.lastHeartbeat) }}
               </div>
@@ -391,7 +387,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">Active Jobs</div>
+              <div class="info-label">{{ 'nodeStats.activeJobs' | transloco }}</div>
               <div class="info-value">{{ node.activeJobCount || 0 }}</div>
             </div>
           </div>
@@ -403,7 +399,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">Max Workers</div>
+              <div class="info-label">{{ 'nodes.maxWorkers' | transloco }}</div>
               <div class="info-value">{{ node.maxWorkers }}</div>
             </div>
           </div>
@@ -415,7 +411,7 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">CPU Limit</div>
+              <div class="info-label">{{ 'nodeConfig.cpuLimit' | transloco }}</div>
               <div class="info-value">{{ node.cpuLimit }}%</div>
             </div>
           </div>
@@ -426,12 +422,12 @@
         <div class="node-score-section">
           <h4 class="score-section-title">
             <fa-icon [icon]="['fas', 'award']"></fa-icon>
-            Job Attribution Score
+            {{ 'nodes.jobAttributionScore' | transloco }}
           </h4>
 
           <div class="score-summary">
             <div class="total-score">
-              <span class="score-label">Total Score:</span>
+              <span class="score-label">{{ 'nodes.totalScore' | transloco }}</span>
               <span class="score-value"
                 >{{ score.totalScore.toFixed(1) }}/100</span
               >
@@ -439,7 +435,7 @@
             @if (!score.breakdown.scheduleAvailable) {
             <div class="schedule-warning">
               <fa-icon [icon]="['fas', 'clock']"></fa-icon>
-              Outside schedule window
+              {{ 'nodes.outsideScheduleWindow' | transloco }}
             </div>
             }
           </div>
@@ -451,7 +447,7 @@
               <div class="score-item-header">
                 <span class="score-item-label">
                   <fa-icon [icon]="['fas', 'tasks']"></fa-icon>
-                  Load
+                  {{ 'nodes.load' | transloco }}
                 </span>
                 <span class="score-item-value"
                   >{{ score.breakdown.loadScore.toFixed(1) }}/40</span
@@ -470,7 +466,7 @@
               <div class="score-item-header">
                 <span class="score-item-label">
                   <fa-icon [icon]="['fas', 'microchip']"></fa-icon>
-                  Hardware
+                  {{ 'nodes.hardware' | transloco }}
                 </span>
                 <span class="score-item-value"
                   >{{ score.breakdown.hardwareScore.toFixed(1) }}/30</span
@@ -489,7 +485,7 @@
               <div class="score-item-header">
                 <span class="score-item-label">
                   <fa-icon [icon]="['fas', 'bolt']"></fa-icon>
-                  Performance
+                  {{ 'nodes.performance' | transloco }}
                 </span>
                 <span class="score-item-value"
                   >{{ score.breakdown.performanceScore.toFixed(1) }}/30</span
@@ -520,7 +516,7 @@
           tooltipPlacement="top"
         >
           <fa-icon [icon]="['fas', 'cog']"></fa-icon>
-          Configure
+          {{ 'nodes.configure' | transloco }}
         </button>
         <button
           class="btn btn-icon"
@@ -532,7 +528,7 @@
           tooltipPlacement="top"
         >
           <fa-icon [icon]="['fas', 'chart-bar']"></fa-icon>
-          View Stats
+          {{ 'nodes.viewStats' | transloco }}
         </button>
         <button
           class="btn btn-icon"
@@ -544,7 +540,7 @@
           tooltipPlacement="top"
         >
           <fa-icon [icon]="['fas', 'folder-open']"></fa-icon>
-          Storage
+          {{ 'nodes.storage' | transloco }}
         </button>
         <button
           class="btn btn-icon btn-danger"
@@ -560,7 +556,7 @@
             [icon]="deletingNodeId === node.id ? ['fas', 'spinner'] : ['fas', 'trash']"
             [animation]="deletingNodeId === node.id ? 'spin' : undefined"
           ></fa-icon>
-          {{ deletingNodeId === node.id ? 'Removing...' : 'Remove' }}
+          {{ deletingNodeId === node.id ? ('nodes.removing' | transloco) : ('nodes.remove' | transloco) }}
         </button>
       </div>
     </div>

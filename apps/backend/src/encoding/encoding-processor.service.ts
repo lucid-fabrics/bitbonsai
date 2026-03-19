@@ -2,33 +2,21 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { Library, Policy } from '@prisma/client';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { PolicyRepository } from '../common/repositories/policy.repository';
 import { DataAccessService } from '../core/services/data-access.service';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { NodesService } from '../nodes/nodes.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
 import { FfmpegService } from './ffmpeg.service';
 import { PoolLockService } from './pool-lock.service';
 import { SystemResourceService } from './system-resource.service';
-
-interface WorkerState {
-  workerId: string; // Unique worker identifier: "nodeId-worker-1"
-  nodeId: string;
-  isRunning: boolean;
-  currentJobId: string | null;
-  startedAt: Date;
-  shutdownPromise?: Promise<void>; // Promise that resolves when worker loop exits
-  shutdownResolve?: () => void; // Function to resolve the shutdown promise
-}
-
-interface NodeWorkerPool {
-  nodeId: string;
-  maxWorkers: number;
-  activeWorkers: Set<string>; // Set of workerIds currently running
-}
+import { WorkerPoolService } from './worker-pool.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
@@ -49,10 +37,6 @@ interface NodeWorkerPool {
 export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EncodingProcessorService.name);
 
-  // Worker pool management
-  private readonly workerPools = new Map<string, NodeWorkerPool>();
-  private readonly workers = new Map<string, WorkerState>(); // workerId -> WorkerState
-
   // AUDIT #2 ISSUE #24 FIX: Store watchdog interval for cleanup
   private watchdogIntervalId?: NodeJS.Timeout;
 
@@ -68,7 +52,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly VOLUME_MOUNT_PROBE_DELAY_MS = 1000; // 1 second
   private readonly VOLUME_MOUNT_MAX_RETRIES = 10;
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly libraryRepository: LibraryRepository,
+    private readonly policyRepository: PolicyRepository,
     private readonly queueService: QueueService,
     readonly _dataAccessService: DataAccessService,
     private readonly ffmpegService: FfmpegService,
@@ -77,7 +63,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly fileRelocatorService: FileRelocatorService,
     private readonly poolLockService: PoolLockService,
     private readonly systemResourceService: SystemResourceService,
-    private readonly encodingFileService: EncodingFileService
+    private readonly encodingFileService: EncodingFileService,
+    private readonly workerPoolService: WorkerPoolService
   ) {}
 
   /**
@@ -159,7 +146,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         `🚀 MULTI-NODE: Starting ${maxWorkers} worker(s) for ${currentNode.role} node: ${currentNode.name}`
       );
 
-      const workersStarted = await this.startWorkerPool(currentNode.id, maxWorkers);
+      const workersStarted = await this.workerPoolService.startWorkerPool(
+        currentNode.id,
+        maxWorkers,
+        (workerId, nodeId) => this.processLoop(workerId, nodeId)
+      );
 
       if (workersStarted > 0) {
         this.logger.log(
@@ -173,7 +164,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // STEP 4: Start background watchdog to detect stuck jobs
       this.startStuckJobWatchdog();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to initialize encoding processor:', error);
     }
   }
@@ -285,7 +276,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // CRITICAL FIX: Only process jobs belonging to THIS node to prevent cross-node interference
       // Without this filter, CHILD node restart would reset MAIN node's actively encoding jobs
       // DEEP AUDIT P2: Added atomic claim pattern to prevent multi-node heal race
-      const orphanedJobs = await this.prisma.job.findMany({
+      const orphanedJobs = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        fileLabel: string;
+        stage: JobStage;
+        progress: number;
+        updatedAt: Date;
+        tempFilePath: string | null;
+        retryCount: number;
+        error: string | null;
+      }>({
         where: {
           nodeId, // CRITICAL: Only this node's jobs
           AND: [
@@ -346,7 +346,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Also log manually paused jobs that are being preserved (only for this node)
-      const manuallyPausedJobs = await this.prisma.job.findMany({
+      const manuallyPausedJobs = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        fileLabel: string;
+      }>({
         where: {
           nodeId, // Only this node's jobs
           stage: JobStage.PAUSED,
@@ -379,8 +382,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         try {
           // DEEP AUDIT P2: Atomic claim - try to claim job for healing
           // This prevents race condition where multiple nodes try to heal same job
-          const claimResult = await this.prisma.job.updateMany({
-            where: {
+          const claimResult = await this.jobRepository.atomicUpdateMany(
+            {
               id: job.id,
               OR: [
                 { autoHealClaimedAt: null },
@@ -388,11 +391,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
                 { autoHealClaimedAt: { lt: new Date(Date.now() - 2 * 60 * 1000) } },
               ],
             },
-            data: {
+            {
               autoHealClaimedAt: new Date(),
               autoHealClaimedBy: nodeId,
-            },
-          });
+            }
+          );
 
           if (claimResult.count === 0) {
             this.logger.debug(`  ⏭️ Job ${job.id} already claimed by another node, skipping`);
@@ -425,10 +428,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             try {
               // LOW #15 FIX: Use outer query job data instead of redundant inner query
               // The job object already has filePath from the outer findMany query
-              const videoJob = await this.prisma.job.findUnique({
-                where: { id: job.id },
-                select: { filePath: true },
-              });
+              const videoJob = await this.jobRepository.findUniqueSelect<{ filePath: string }>(
+                { id: job.id },
+                { filePath: true }
+              );
 
               const filePath = videoJob?.filePath;
               if (filePath) {
@@ -446,7 +449,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
                   `  🔄 Recalculated resumeTimestamp for job ${job.fileLabel}: progress=${job.progress.toFixed(1)}%, videoDuration=${videoDuration.toFixed(2)}s, resumeSeconds=${resumeSeconds.toFixed(2)}s, resumeTimestamp=${recalculatedResumeTimestamp}`
                 );
               }
-            } catch (error) {
+            } catch (error: unknown) {
               this.logger.warn(
                 `  ⚠️  Failed to recalculate resumeTimestamp for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`
               );
@@ -486,13 +489,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           this.logger.log(
             `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, ${tempFileExists ? `will resume from ${job.progress.toFixed(1)}%` : 'restarting from 0%'})`
           );
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
         }
       }
 
       this.logger.log(`✅ Auto-heal complete - recovered ${orphanedJobs.length} job(s)`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Auto-heal failed:', error);
     }
   }
@@ -537,7 +540,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
         const tenGB = BigInt(10 * 1024 * 1024 * 1024);
 
-        const stuckJobs = await this.prisma.job.findMany({
+        const stuckJobs = await this.jobRepository.findManyWithInclude<{
+          id: string;
+          fileLabel: string;
+          progress: number;
+          updatedAt: Date;
+          beforeSizeBytes: bigint;
+          lastStageChangeAt: Date | null;
+        }>({
           where: {
             stage: 'ENCODING',
             AND: [
@@ -630,7 +640,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             await this.queueService.failJob(job.id, errorMessage);
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Watchdog check failed:', error);
       }
     }, 60 * 1000); // Every 60 seconds
@@ -664,7 +674,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             (result.failed > 0 ? ` (${result.failed} failed)` : '')
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Silently handle errors - don't let zombie cleanup crash the watchdog
       this.logger.debug(`Zombie cleanup error (non-fatal): ${error}`);
     }
@@ -689,7 +699,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.debug(`  - No active FFmpeg process found for job ${jobId}`);
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`  ✗ Failed to kill FFmpeg process for job ${jobId}:`, error);
       return false;
     }
@@ -723,8 +733,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Count only THIS node's encoding jobs (not other nodes)
-    const encodingJobs = await this.prisma.job.count({
-      where: { stage: 'ENCODING', nodeId: currentNode.id },
+    const encodingJobs = await this.jobRepository.countWhere({
+      stage: 'ENCODING',
+      nodeId: currentNode.id,
     });
 
     // Determine target worker limit based on load ratio (load per CPU)
@@ -761,9 +772,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
     // Calculate jobs to pause/resume
     const jobsToPause = encodingJobs - targetWorkers;
-    const pausedJobs = await this.prisma.job.count({
-      where: { stage: 'PAUSED_LOAD' },
-    });
+    const pausedJobs = await this.jobRepository.countWhere({ stage: 'PAUSED_LOAD' });
 
     // SCENARIO 1: Load is high, need to pause jobs
     if (jobsToPause > 0 && encodingJobs > targetWorkers) {
@@ -775,7 +784,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       );
 
       // Get lowest priority QUEUED jobs to pause (don't interrupt encoding jobs)
-      const jobsToAutoPause = await this.prisma.job.findMany({
+      const jobsToAutoPause = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        fileLabel: string;
+        priority: number;
+      }>({
         where: { stage: 'QUEUED' },
         orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }], // Lowest priority, newest first
         take: jobsToPause,
@@ -808,7 +821,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       );
 
       // Get highest priority paused jobs to resume
-      const jobsToAutoResume = await this.prisma.job.findMany({
+      const jobsToAutoResume = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        fileLabel: string;
+        priority: number;
+      }>({
         where: { stage: 'PAUSED_LOAD' },
         orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }], // Highest priority, oldest first
         take: jobsToResume,
@@ -856,15 +873,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Active worker count
-      const activeWorkers = Array.from(this.workers.values()).filter(
-        (w) => w.currentJobId !== null
-      );
-      diagnostics.push(`- Active workers: ${activeWorkers.length}/${this.workers.size}`);
+      const allWorkers = Array.from(this.workerPoolService.getAllWorkers().values());
+      const activeWorkers = allWorkers.filter((w) => w.currentJobId !== null);
+      diagnostics.push(`- Active workers: ${activeWorkers.length}/${allWorkers.length}`);
 
       // FFmpeg process status
       const hasProcess = this.ffmpegService.hasActiveProcess(jobId);
       diagnostics.push(`- FFmpeg process active: ${hasProcess ? 'Yes' : 'No'}`);
-    } catch (error) {
+    } catch (error: unknown) {
       diagnostics.push(`- Diagnostic collection failed: ${error}`);
     }
 
@@ -872,288 +888,31 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Start a worker pool for a node
-   *
-   * Starts multiple concurrent workers for a single node.
-   * Each worker will independently poll for jobs and process them.
-   *
-   * ISSUE #10 FIX: Wrapped in mutex lock to prevent concurrent modifications
+   * Start a worker pool for a node.
+   * Delegates to WorkerPoolService — see WorkerPoolService.startWorkerPool for full implementation.
    *
    * @param nodeId - Node unique identifier
-   * @param maxWorkers - Maximum number of concurrent workers (default: 4, max: 12)
+   * @param maxWorkers - Maximum number of concurrent workers
    * @returns Number of workers actually started
    */
   async startWorkerPool(
     nodeId: string,
     maxWorkers = this.systemResourceService.defaultWorkersPerNode
   ): Promise<number> {
-    // CRITICAL #3 FIX: Use withPoolLock to ensure release on error
-    return await this.poolLockService.withLock(nodeId, 'startWorkerPool', async () => {
-      // Validate maxWorkers
-      const validatedMaxWorkers = Math.min(
-        Math.max(1, maxWorkers),
-        this.systemResourceService.maxWorkersPerNode
-      );
-
-      // Get or create worker pool for this node
-      let pool = this.workerPools.get(nodeId);
-
-      if (pool) {
-        // Pool already exists - check if we can add more workers
-        const currentWorkerCount = pool.activeWorkers.size;
-        if (currentWorkerCount >= validatedMaxWorkers) {
-          this.logger.warn(
-            `Worker pool for node ${nodeId} already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
-          );
-          return 0;
-        }
-
-        // Update max workers if different
-        pool.maxWorkers = validatedMaxWorkers;
-      } else {
-        // Create new worker pool
-        pool = {
-          nodeId,
-          maxWorkers: validatedMaxWorkers,
-          activeWorkers: new Set(),
-        };
-        this.workerPools.set(nodeId, pool);
-      }
-
-      // CRITICAL #29 FIX: Calculate how many workers needed
-      const currentWorkerCount = pool.activeWorkers.size;
-      const workersToStart = validatedMaxWorkers - currentWorkerCount;
-
-      if (workersToStart <= 0) {
-        this.logger.debug(
-          `Worker pool already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
-        );
-        return 0;
-      }
-
-      // CRITICAL #29 FIX: Start only the needed workers (not all from 1 to max)
-      let workersStarted = 0;
-      for (let i = currentWorkerCount + 1; i <= validatedMaxWorkers; i++) {
-        const workerId = `${nodeId}-worker-${i}`;
-
-        // HIGH #7 FIX: Add to Set BEFORE starting worker (prevents race)
-        // If startWorker fails, we remove from Set in the catch block
-        pool.activeWorkers.add(workerId);
-
-        try {
-          await this.startWorker(workerId, nodeId);
-          workersStarted++;
-        } catch (error) {
-          // HIGH #7 FIX: Rollback on error - remove from Set
-          pool.activeWorkers.delete(workerId);
-          this.logger.error(`Failed to start worker ${workerId}:`, error);
-        }
-      }
-
-      this.logger.log(
-        `Started ${workersStarted} worker(s) for node ${nodeId} (total: ${pool.activeWorkers.size}/${validatedMaxWorkers})`
-      );
-
-      return workersStarted;
-    });
+    return this.workerPoolService.startWorkerPool(nodeId, maxWorkers, (workerId, nodeId) =>
+      this.processLoop(workerId, nodeId)
+    );
   }
 
   /**
-   * Start a single worker with unique ID
-   *
-   * CRITICAL FIX: Wrap processLoop in try-catch to prevent worker pool memory leak
-   *
-   * Begins processing jobs from the queue for the specified node.
-   * Worker will continuously poll for new jobs while running.
-   *
-   * @param workerId - Unique worker identifier (e.g., "nodeId-worker-1")
-   * @param nodeId - Node unique identifier
-   * @private
-   */
-  private async startWorker(workerId: string, nodeId: string): Promise<void> {
-    if (this.workers.has(workerId)) {
-      this.logger.warn(`Worker ${workerId} already running`);
-      return;
-    }
-
-    const worker: WorkerState = {
-      workerId,
-      nodeId,
-      isRunning: true,
-      currentJobId: null,
-      startedAt: new Date(),
-    };
-
-    // Initialize shutdown promise for graceful shutdown support
-    worker.shutdownPromise = new Promise<void>((resolve) => {
-      worker.shutdownResolve = resolve;
-    });
-
-    this.workers.set(workerId, worker);
-
-    // Start processing loop (fire and forget - runs in background)
-    // CRITICAL #7 FIX: Comprehensive crash recovery with FFmpeg cleanup and worker restart
-    this.processLoop(workerId).catch(async (error) => {
-      this.logger.error(`[${workerId}] Worker crashed:`, error);
-
-      // CRITICAL #7 FIX: Get worker state BEFORE deleting
-      const worker = this.workers.get(workerId);
-      const pool = this.workerPools.get(nodeId);
-
-      if (!worker || !pool) {
-        this.logger.error(`[${workerId}] Worker or pool not found during crash cleanup`);
-        return;
-      }
-
-      // CRITICAL #7 FIX: Kill active FFmpeg process if encoding
-      if (worker.currentJobId) {
-        this.logger.warn(`[${workerId}] Killing orphaned FFmpeg for job ${worker.currentJobId}`);
-
-        try {
-          await this.ffmpegService.killProcess(worker.currentJobId);
-        } catch (killError) {
-          this.logger.error(
-            `[${workerId}] Failed to kill FFmpeg for job ${worker.currentJobId}`,
-            killError
-          );
-        }
-
-        // CRITICAL #7 FIX: Reset job to QUEUED for retry
-        try {
-          await this.prisma.job.update({
-            where: { id: worker.currentJobId },
-            data: {
-              stage: JobStage.QUEUED,
-              error: `Worker ${workerId} crashed during encoding`,
-              retryCount: { increment: 1 },
-            },
-          });
-          this.logger.log(`[${workerId}] Reset job ${worker.currentJobId} to QUEUED`);
-        } catch (jobError) {
-          this.logger.error(`[${workerId}] Failed to reset job ${worker.currentJobId}`, jobError);
-        }
-      }
-
-      // CLEANUP: Remove worker from tracking
-      pool.activeWorkers.delete(workerId);
-      this.workers.delete(workerId);
-
-      // Resolve shutdown promise
-      if (worker.shutdownResolve) {
-        worker.shutdownResolve();
-      }
-
-      // CRITICAL #7 FIX: Restart worker to maintain pool size
-      const remainingWorkers = pool.activeWorkers.size;
-      if (remainingWorkers < pool.maxWorkers) {
-        this.logger.warn(
-          `[${nodeId}] Worker pool degraded to ${remainingWorkers}/${pool.maxWorkers}, restarting worker`
-        );
-
-        try {
-          // LOW #2 FIX: Use crypto UUID to prevent ID collisions in rapid crash scenarios
-          const { randomUUID } = await import('crypto');
-          const newWorkerId = `${nodeId}-worker-${randomUUID().slice(0, 8)}`;
-          await this.startWorker(newWorkerId, nodeId);
-          this.logger.log(`[${nodeId}] Replacement worker ${newWorkerId} started`);
-        } catch (restartError) {
-          this.logger.error(`[${nodeId}] Failed to restart worker after crash`, restartError);
-        }
-      }
-
-      this.logger.log(`[${workerId}] Worker cleanup complete after crash`);
-    });
-  }
-
-  /**
-   * Stop worker pool for a node
-   *
-   * Gracefully stops all workers for a node after current jobs complete.
-   * Will not interrupt running jobs.
-   *
-   * ISSUE #10 FIX: Wrapped in mutex lock to prevent concurrent modifications
+   * Stop worker pool for a node.
+   * Delegates to WorkerPoolService — see WorkerPoolService.stopWorker for full implementation.
    *
    * @param nodeId - Node unique identifier
-   * @param workerId - Optional specific worker ID to stop (if not provided, stops all workers for node)
+   * @param workerId - Optional specific worker ID to stop (stops all if omitted)
    */
   async stopWorker(nodeId: string, workerId?: string): Promise<void> {
-    // CRITICAL #3 FIX: Acquire lock before modifying pool
-    const holder = workerId ? `stopWorker:${workerId}` : 'stopWorker:all';
-    await this.poolLockService.withLock(nodeId, holder, async () => {
-      const pool = this.workerPools.get(nodeId);
-
-      if (!pool) {
-        this.logger.warn(`No worker pool found for node ${nodeId}`);
-        return;
-      }
-
-      if (workerId) {
-        // Stop specific worker
-        const worker = this.workers.get(workerId);
-        if (!worker) {
-          this.logger.warn(`Worker ${workerId} not found`);
-          return;
-        }
-
-        this.logger.log(`Stopping worker ${workerId}...`);
-
-        // Signal worker to stop
-        worker.isRunning = false;
-
-        // Wait for current job to complete
-        if (worker.currentJobId) {
-          this.logger.log(
-            `Waiting for worker ${workerId} to complete job ${worker.currentJobId}...`
-          );
-          await worker.shutdownPromise;
-          this.logger.log(`Worker ${workerId} completed its job and stopped gracefully`);
-        } else {
-          await worker.shutdownPromise;
-          this.logger.log(`Worker ${workerId} stopped gracefully`);
-        }
-
-        // Clean up worker state
-        this.workers.delete(workerId);
-        pool.activeWorkers.delete(workerId);
-      } else {
-        // CRITICAL #6 FIX: Snapshot worker IDs to avoid concurrent modification during iteration
-        const workerIds = Array.from(pool.activeWorkers);
-        this.logger.log(`Stopping all ${workerIds.length} worker(s) for node ${nodeId}...`);
-
-        const shutdownPromises: Promise<void>[] = [];
-
-        // Signal all workers to stop
-        for (const wId of workerIds) {
-          const worker = this.workers.get(wId);
-          if (worker) {
-            worker.isRunning = false;
-
-            if (worker.currentJobId) {
-              this.logger.log(
-                `Waiting for worker ${wId} to complete job ${worker.currentJobId}...`
-              );
-            }
-
-            if (worker.shutdownPromise) {
-              shutdownPromises.push(worker.shutdownPromise);
-            }
-          }
-        }
-
-        // Wait for all workers to complete their current jobs
-        await Promise.all(shutdownPromises);
-        this.logger.log(`All workers for node ${nodeId} stopped gracefully`);
-
-        // NOW safe to delete (no concurrent modification)
-        for (const wId of workerIds) {
-          this.workers.delete(wId);
-          pool.activeWorkers.delete(wId);
-        }
-
-        // Clear the pool
-        this.workerPools.delete(nodeId);
-      }
-    });
+    return this.workerPoolService.stopWorker(nodeId, workerId);
   }
 
   /**
@@ -1166,7 +925,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @returns Processed job or null if none available
    */
   async processNextJob(workerId: string): Promise<JobWithPolicy | null> {
-    const worker = this.workers.get(workerId);
+    const worker = this.workerPoolService.getWorker(workerId);
     if (!worker) {
       this.logger.error(`Worker ${workerId} not found`);
       return null;
@@ -1201,15 +960,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Note: skipNodeThrottleCheck was removed - throttling is now automatic based on system load
 
       // Update worker state
-      worker.currentJobId = job.id;
+      this.workerPoolService.setWorkerJob(workerId, job.id);
 
       try {
         // DEEP AUDIT P2: Fresh check for pauseRequestedAt before starting encoding
         // This closes the window between getNextJob and actual encoding start
-        const freshJob = await this.prisma.job.findUnique({
-          where: { id: job.id },
-          select: { pauseRequestedAt: true, stage: true },
-        });
+        const freshJob = await this.jobRepository.findUniqueSelect<{
+          pauseRequestedAt: Date | null;
+          stage: JobStage;
+        }>({ id: job.id }, { pauseRequestedAt: true, stage: true });
 
         if (freshJob?.pauseRequestedAt) {
           this.logger.log(
@@ -1242,12 +1001,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             this.logger.log(`[${workerId}]    New path: ${relocationResult.newPath}`);
 
             // Update job path in database
-            await this.prisma.job.update({
-              where: { id: job.id },
-              data: {
-                filePath: relocationResult.newPath,
-                fileLabel: path.basename(relocationResult.newPath),
-              },
+            await this.jobRepository.updateById(job.id, {
+              filePath: relocationResult.newPath,
+              fileLabel: path.basename(relocationResult.newPath),
             });
 
             // Update local job object for this encoding session
@@ -1284,15 +1040,15 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         await this.handleJobCompletion(job, result);
 
         return job;
-      } catch (error) {
+      } catch (error: unknown) {
         // Handle failure with retry logic
         await this.handleJobFailure(job, error);
         return null;
       } finally {
         // Clear current job
-        worker.currentJobId = null;
+        this.workerPoolService.setWorkerJob(workerId, null);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // BULLETPROOF FIX: Log full error details including stack trace
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -1336,7 +1092,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         `Job ${job.id} saved ${this.formatBytes(Number(result.savedBytes))} (${result.savedPercent.toFixed(2)}%)`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Error completing job ${job.id}:`, error);
       throw error;
     }
@@ -1416,7 +1172,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Job ${job.id} permanently failed: ${failureReason}`);
         await this.queueService.failJob(job.id, failureReason);
       }
-    } catch (updateError) {
+    } catch (updateError: unknown) {
       this.logger.error(`Error updating failed job ${job.id}:`, updateError);
     }
   }
@@ -1440,9 +1196,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private async validateAndHealJobPolicy(job: JobWithPolicy): Promise<JobWithPolicy> {
     // Fetch current policy from database
-    const currentPolicy = job.policyId
-      ? await this.prisma.policy.findUnique({ where: { id: job.policyId } })
-      : null;
+    const currentPolicy = job.policyId ? await this.policyRepository.findById(job.policyId) : null;
 
     // Case 1: Policy exists and codec matches - no healing needed
     if (currentPolicy && job.targetCodec === currentPolicy.targetCodec) {
@@ -1455,15 +1209,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         `[${job.id}] POLICY HEAL: targetCodec mismatch (job: ${job.targetCodec}, policy: ${currentPolicy.targetCodec}) - updating job`
       );
 
-      const updatedJob = await this.prisma.job.update({
-        where: { id: job.id },
-        data: {
-          targetCodec: currentPolicy.targetCodec,
-        },
-        include: { policy: true },
-      });
+      const updatedJob = await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
+        job.id,
+        { targetCodec: currentPolicy.targetCodec },
+        { policy: true }
+      );
 
-      return updatedJob as JobWithPolicy;
+      return updatedJob;
     }
 
     // Case 3: Policy is missing - need to find alternative
@@ -1472,10 +1224,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     );
 
     // Get library for this job to find appropriate policy
-    const library = await this.prisma.library.findUnique({
-      where: { id: job.libraryId },
-      include: { defaultPolicy: true, policies: true },
-    });
+    const library = (await this.libraryRepository.findUniqueWithInclude(
+      { id: job.libraryId },
+      { defaultPolicy: true, policies: true }
+    )) as (Library & { defaultPolicy: Policy | null; policies: Policy[] }) | null;
 
     // Find replacement policy in priority order
     let newPolicy = null;
@@ -1492,7 +1244,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     }
     // Priority 3: First available policy in system
     else {
-      newPolicy = await this.prisma.policy.findFirst();
+      const allPolicies = await this.policyRepository.findAll();
+      newPolicy = allPolicies[0] ?? null;
       if (newPolicy) {
         this.logger.log(`[${job.id}] POLICY HEAL: Using system's first policy: ${newPolicy.name}`);
       }
@@ -1507,14 +1260,11 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Update job with new policy and matching targetCodec
-    const updatedJob = await this.prisma.job.update({
-      where: { id: job.id },
-      data: {
-        policyId: newPolicy.id,
-        targetCodec: newPolicy.targetCodec,
-      },
-      include: { policy: true },
-    });
+    const updatedJob = await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
+      job.id,
+      { policyId: newPolicy.id, targetCodec: newPolicy.targetCodec },
+      { policy: true }
+    );
 
     this.logger.log(
       `[${job.id}] POLICY HEAL: Job updated - policy: ${newPolicy.name}, codec: ${newPolicy.targetCodec}`
@@ -1533,8 +1283,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @param workerId - Unique worker identifier
    * @private
    */
-  private async processLoop(workerId: string): Promise<void> {
-    const worker = this.workers.get(workerId);
+  private async processLoop(workerId: string, _nodeId: string): Promise<void> {
+    const worker = this.workerPoolService.getWorker(workerId);
     if (!worker) return;
 
     this.logger.log(`[${workerId}] Started processing loop`);
@@ -1544,18 +1294,18 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const heartbeatInterval = setInterval(async () => {
       if (worker.currentJobId && worker.isRunning) {
         try {
-          await this.prisma.job.updateMany({
-            where: {
+          await this.jobRepository.atomicUpdateMany(
+            {
               id: worker.currentJobId,
               stage: { in: ['ENCODING', 'VERIFYING'] },
             },
-            data: {
+            {
               lastHeartbeat: new Date(),
               heartbeatNodeId: worker.nodeId,
-            },
-          });
+            }
+          );
           this.logger.debug(`[${workerId}] Heartbeat sent for job ${worker.currentJobId}`);
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.debug(`[${workerId}] Heartbeat update failed (non-fatal):`, error);
         }
       }
@@ -1577,7 +1327,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             // No job available, wait before polling again
             await this.sleep(5000);
           }
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.error(`[${workerId}] Error in processing loop:`, error);
           await this.sleep(5000);
         }
@@ -1590,16 +1340,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug(`[${workerId}] Heartbeat interval cleared`);
 
       // CRITICAL #12 FIX: ALWAYS cleanup, even if loop crashes unexpectedly
-      const pool = this.workerPools.get(worker.nodeId);
-      if (pool) {
-        pool.activeWorkers.delete(workerId);
-      }
-      this.workers.delete(workerId);
-
-      // Resolve shutdown promise if it exists
-      if (worker.shutdownResolve) {
-        worker.shutdownResolve();
-      }
+      this.workerPoolService.removeWorker(workerId);
+      this.workerPoolService.resolveShutdown(workerId);
 
       this.logger.debug(`[${workerId}] Worker cleanup complete in finally block`);
     }

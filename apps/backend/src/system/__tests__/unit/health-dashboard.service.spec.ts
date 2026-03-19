@@ -82,7 +82,7 @@ describe('HealthDashboardService', () => {
       const checks = await service.runHealthChecks();
       const cpuCheck = checks.find((c) => c.name === 'CPU Load');
 
-      expect(cpuCheck).toBeDefined();
+      expect(cpuCheck).not.toBeUndefined();
       expect(cpuCheck!.status).toBe(HealthStatus.HEALTHY);
     });
 
@@ -116,7 +116,7 @@ describe('HealthDashboardService', () => {
       const checks = await service.runHealthChecks();
       const memCheck = checks.find((c) => c.name === 'Memory Usage');
 
-      expect(memCheck).toBeDefined();
+      expect(memCheck).not.toBeUndefined();
       expect(memCheck!.status).toBe(HealthStatus.HEALTHY);
     });
 
@@ -137,7 +137,7 @@ describe('HealthDashboardService', () => {
       const checks = await service.runHealthChecks();
       const dbCheck = checks.find((c) => c.name === 'Database');
 
-      expect(dbCheck).toBeDefined();
+      expect(dbCheck).not.toBeUndefined();
       expect(dbCheck!.status).toBe(HealthStatus.HEALTHY);
     });
 
@@ -161,7 +161,7 @@ describe('HealthDashboardService', () => {
       const checks = await service.runHealthChecks();
       const queueCheck = checks.find((c) => c.name === 'Queue Health');
 
-      expect(queueCheck).toBeDefined();
+      expect(queueCheck).not.toBeUndefined();
       expect(queueCheck!.status).toBe(HealthStatus.HEALTHY);
     });
 
@@ -184,7 +184,7 @@ describe('HealthDashboardService', () => {
       const checks = await service.runHealthChecks();
       const nodeCheck = checks.find((c) => c.name === 'Node Status');
 
-      expect(nodeCheck).toBeDefined();
+      expect(nodeCheck).not.toBeUndefined();
       expect(nodeCheck!.status).toBe(HealthStatus.HEALTHY);
     });
   });
@@ -251,15 +251,15 @@ describe('HealthDashboardService', () => {
     it('should return complete dashboard', async () => {
       const dashboard = await service.getDashboard();
 
-      expect(dashboard.timestamp).toBeDefined();
-      expect(dashboard.overallStatus).toBeDefined();
+      expect(dashboard.timestamp).toBeInstanceOf(Date);
+      expect(typeof dashboard.overallStatus).toBe('string');
       expect(dashboard.checks).toBeInstanceOf(Array);
-      expect(dashboard.system).toBeDefined();
-      expect(dashboard.queue).toBeDefined();
+      expect(dashboard.system).not.toBeNull();
+      expect(dashboard.queue).not.toBeNull();
       expect(dashboard.storage).toBeInstanceOf(Array);
-      expect(dashboard.nodes).toBeDefined();
-      expect(dashboard.encoding).toBeDefined();
-      expect(dashboard.hardware).toBeDefined();
+      expect(dashboard.nodes).not.toBeNull();
+      expect(dashboard.encoding).not.toBeNull();
+      expect(dashboard.hardware).not.toBeNull();
     });
 
     it('should include system metrics', async () => {
@@ -305,8 +305,8 @@ describe('HealthDashboardService', () => {
 
       const dashboard = await service.getDashboard();
 
-      expect(dashboard.encoding.totalProcessed).toBeDefined();
-      expect(dashboard.encoding.totalSavedBytes).toBeDefined();
+      expect(typeof dashboard.encoding.totalProcessed).toBe('number');
+      expect(dashboard.encoding.totalSavedBytes).not.toBeNull();
     });
   });
 });

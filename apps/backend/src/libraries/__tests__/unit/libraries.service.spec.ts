@@ -289,7 +289,7 @@ describe('LibrariesService', () => {
 
       const result = await service.scan('lib-1');
 
-      expect(result.lastScanAt).toBeTruthy();
+      expect(result.lastScanAt).toBeInstanceOf(Date);
       expect(prisma.library.update).toHaveBeenCalledWith({
         where: { id: 'lib-1' },
         data: {

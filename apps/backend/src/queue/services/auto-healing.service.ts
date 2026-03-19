@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JobEventType, JobStage } from '@prisma/client';
 import { existsSync } from 'fs';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { SettingsRepository } from '../../common/repositories/settings.repository';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -22,7 +24,12 @@ export class AutoHealingService implements OnModuleInit {
   private settingsCache: { maxRetries: number; cachedAt: number } | null = null;
   private readonly SETTINGS_CACHE_TTL_MS = 60000; // 1 minute cache
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    // PrismaService retained for jobHistory.create (no JobHistoryRepository exists)
+    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly settingsRepository: SettingsRepository
+  ) {}
 
   /**
    * Runs automatically when the module initializes (container startup)
@@ -46,7 +53,7 @@ export class AutoHealingService implements OnModuleInit {
     }
 
     // Fetch fresh settings
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
     const maxRetries = settings?.maxAutoHealRetries ?? 15;
 
     // Update cache
@@ -75,13 +82,21 @@ export class AutoHealingService implements OnModuleInit {
 
       // PERF: Optimized query uses composite index (stage, retryCount, nextRetryAt)
       // Find eligible failed jobs
-      const eligibleJobs = await this.prisma.job.findMany({
-        where: {
+      const eligibleJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        retryCount: number;
+        nextRetryAt: Date | null;
+        progress: number;
+        tempFilePath: string | null;
+        resumeTimestamp: string | null;
+      }>(
+        {
           stage: JobStage.FAILED,
           retryCount: { lt: maxRetries },
           OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
         },
-        select: {
+        {
           id: true,
           fileLabel: true,
           retryCount: true,
@@ -89,12 +104,8 @@ export class AutoHealingService implements OnModuleInit {
           progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
           tempFilePath: true, // HEAL UX: needed to check if temp file exists
           resumeTimestamp: true, // HEAL UX: needed to preserve resume state if temp file exists
-        },
-        // PERF: Add orderBy to help query planner use index
-        orderBy: {
-          nextRetryAt: 'asc',
-        },
-      });
+        }
+      );
 
       if (eligibleJobs.length === 0) {
         this.logger.log('No failed jobs eligible for auto-healing');
@@ -133,22 +144,19 @@ export class AutoHealingService implements OnModuleInit {
           }
 
           // Update job with appropriate resume state
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.QUEUED,
-              progress: canResume ? job.progress : 0, // Keep progress if resuming
-              error: null,
-              completedAt: null,
-              startedAt: null,
-              retryCount: job.retryCount + 1,
-              // AUTO-HEAL TRACKING: Record when job was auto-healed and where it resumed from
-              autoHealedAt: new Date(),
-              autoHealedProgress: job.progress || 0, // Always record original progress for history
-              // HEAL UX: Only clear resume state if temp file doesn't exist
-              resumeTimestamp: canResume ? job.resumeTimestamp : null,
-              tempFilePath: canResume ? job.tempFilePath : null,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.QUEUED,
+            progress: canResume ? job.progress : 0, // Keep progress if resuming
+            error: null,
+            completedAt: null,
+            startedAt: null,
+            retryCount: job.retryCount + 1,
+            // AUTO-HEAL TRACKING: Record when job was auto-healed and where it resumed from
+            autoHealedAt: new Date(),
+            autoHealedProgress: job.progress || 0, // Always record original progress for history
+            // HEAL UX: Only clear resume state if temp file doesn't exist
+            resumeTimestamp: canResume ? job.resumeTimestamp : null,
+            tempFilePath: canResume ? job.tempFilePath : null,
           });
 
           // AUDIT TRAIL: Create history entry to track healing decision
@@ -167,7 +175,7 @@ export class AutoHealingService implements OnModuleInit {
           });
 
           healedCount++;
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.error(`Failed to heal job ${job.id} (${job.fileLabel})`, error);
         }
       }
@@ -175,7 +183,7 @@ export class AutoHealingService implements OnModuleInit {
       this.logger.log(`Auto-healing complete: ${healedCount} job(s) re-queued for retry`);
 
       return healedCount;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to heal failed jobs', error);
       return 0;
     }

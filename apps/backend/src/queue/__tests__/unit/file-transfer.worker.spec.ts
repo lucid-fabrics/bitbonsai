@@ -238,7 +238,7 @@ describe('FileTransferWorker', () => {
       const secondTimeout = (worker as any).circuitResetTimeout;
 
       // Should have created a new timeout (different reference)
-      expect(secondTimeout).toBeDefined();
+      expect(secondTimeout).not.toBeNull();
 
       jest.useRealTimers();
     });

@@ -1,5 +1,6 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DiscordNotificationService } from './integrations/discord.service';
 import { EmailNotificationService } from './integrations/email.service';
@@ -17,6 +18,7 @@ import { NotificationsService } from './notifications.service';
     DiscordNotificationService,
     SlackNotificationService,
     EmailNotificationService,
+    SettingsRepository,
   ],
   exports: [
     NotificationsService,

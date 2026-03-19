@@ -75,7 +75,7 @@ export class DockerVolumeDetectorService {
       });
 
       return filteredVolumes;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         'Failed to detect Docker volumes',
         error instanceof Error ? error.stack : error
@@ -98,7 +98,7 @@ export class DockerVolumeDetectorService {
       // Check cgroup
       const { stdout: cgroupOutput } = await execAsync('cat /proc/1/cgroup 2>/dev/null || echo ""');
       return cgroupOutput.includes('docker') || cgroupOutput.includes('kubepods');
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Docker detection check failed, assuming non-containerized', error);
       return false;
     }
@@ -133,7 +133,7 @@ export class DockerVolumeDetectorService {
           this.logger.debug(`Successfully inspected container using name: ${name}`);
           return parsed[0];
         }
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.debug(`Failed to inspect container with name: ${name}`, error);
       }
     }
@@ -149,7 +149,7 @@ export class DockerVolumeDetectorService {
         throw new Error('Docker inspect returned empty result');
       }
       return parsed[0];
-    } catch (cgroupError) {
+    } catch (cgroupError: unknown) {
       this.logger.debug('Cgroup container inspection failed', cgroupError);
       throw new Error('Could not inspect Docker container using any method');
     }

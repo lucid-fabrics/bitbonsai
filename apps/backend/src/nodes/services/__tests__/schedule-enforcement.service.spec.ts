@@ -69,9 +69,9 @@ describe('ScheduleEnforcementService', () => {
     _jobAttribution = module.get<JobAttributionService>(JobAttributionService);
 
     // Mock logger to prevent console output during tests
-    jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => {});
-    jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+    jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 
     jest.clearAllMocks();
   });

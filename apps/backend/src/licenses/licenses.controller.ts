@@ -68,7 +68,7 @@ export class LicensesController {
     description: 'Returns current license limits, usage, and whether upgrades are recommended.',
   })
   @ApiOkResponse({ description: 'Capabilities and usage retrieved' })
-  async getCapabilities() {
+  async getCapabilities(): Promise<unknown> {
     const capabilities = await this.licenseGuard.getCapabilities();
     const upgradeRecommendation = await this.licenseGuard.getUpgradeRecommendation();
 
@@ -84,7 +84,7 @@ export class LicensesController {
     description: 'Returns all available license tiers with their limits and features.',
   })
   @ApiOkResponse({ description: 'Available tiers retrieved' })
-  async getAvailableTiers() {
+  async getAvailableTiers(): Promise<unknown> {
     return {
       tiers: [
         {

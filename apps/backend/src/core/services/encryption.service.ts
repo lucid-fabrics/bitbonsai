@@ -69,7 +69,7 @@ export class EncryptionService {
       const result = `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted}`;
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Encryption failed:', error);
       throw new Error('Failed to encrypt data');
     }
@@ -110,7 +110,7 @@ export class EncryptionService {
       decrypted += decipher.final('utf8');
 
       return decrypted;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Decryption failed:', error);
       throw new Error('Failed to decrypt data');
     }

@@ -1,5 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { LicenseStatus, LicenseTier } from '@prisma/client';
+// PrismaService is used directly here intentionally: this is a bootstrap/migration
+// infrastructure service that must coordinate across License, Settings, and Node models
+// in a single initialization pass. Repository abstraction would add no value here.
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -41,7 +44,7 @@ export class DatabaseInitService implements OnModuleInit {
       // RECOVERY: Ensure MAIN node exists if setup was completed but node is missing
       // This can happen if setup was done before node creation logic was added
       await this.ensureMainNodeExists();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('❌ Failed to initialize database:', error);
       // Don't throw - allow app to continue even if initialization fails
     }

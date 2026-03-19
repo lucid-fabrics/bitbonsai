@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { type AccelerationType, JobStage } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobRepository } from '../common/repositories/job.repository';
 
 /**
  * Encoding Speed Profile
@@ -47,7 +47,7 @@ export class EncodingHistoryService {
   private readonly MIN_SAMPLES_HIGH_CONFIDENCE = 10;
   private readonly MIN_SAMPLES_MEDIUM_CONFIDENCE = 3;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly jobRepository: JobRepository) {}
 
   /**
    * Load historical data on service initialization
@@ -66,7 +66,13 @@ export class EncodingHistoryService {
       // Get completed jobs with timing data from the last 30 days
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const completedJobs = await this.prisma.job.findMany({
+      const completedJobs = await this.jobRepository.findManyWithInclude<{
+        targetCodec: string;
+        beforeSizeBytes: bigint;
+        startedAt: Date | null;
+        completedAt: Date | null;
+        node: { acceleration: AccelerationType } | null;
+      }>({
         where: {
           stage: JobStage.COMPLETED,
           startedAt: { not: null },
@@ -140,7 +146,7 @@ export class EncodingHistoryService {
       this.logger.log(
         `Loaded ${this.speedProfiles.size} encoding speed profile(s) from ${completedJobs.length} historical job(s)`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to load historical encoding data:', error);
     }
   }

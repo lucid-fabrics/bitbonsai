@@ -108,7 +108,7 @@ describe('NodeLimitGuard', () => {
     try {
       await guard.canActivate(mockExecutionContext());
       fail('Should have thrown');
-    } catch (error) {
+    } catch (error: unknown) {
       expect((error as ForbiddenException).message).toContain('Upgrade your license');
     }
   });

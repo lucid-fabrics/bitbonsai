@@ -82,7 +82,7 @@ export function isNodeInAllowedWindow(
     windows = Array.isArray(raw)
       ? (raw as unknown[] as TimeWindow[])
       : (JSON.parse(String(raw)) as TimeWindow[]);
-  } catch (error) {
+  } catch (error: unknown) {
     // Invalid JSON = treat as 24/7 (fail open for availability)
     logger.warn('Failed to parse scheduleWindows JSON, defaulting to 24/7', error);
     return true;

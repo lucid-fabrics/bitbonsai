@@ -355,7 +355,7 @@ describe('NodesService', () => {
       const result = await service.getNodeStats('node-1');
 
       expect(result.id).toBe('node-1');
-      expect(result.license).toBeDefined();
+      expect(result.license).toEqual(mockNodeWithStats.license);
       expect(result.libraries).toHaveLength(1);
       expect(result.activeJobCount).toBe(5);
       expect(prisma.node.findUnique).toHaveBeenCalledWith({
@@ -538,7 +538,7 @@ describe('NodesService', () => {
 
     beforeEach(() => {
       // Clear NODE_ID environment variable before each test
-      delete process.env.NODE_ID;
+      process.env.NODE_ID = undefined;
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {

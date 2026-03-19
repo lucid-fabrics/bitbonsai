@@ -100,7 +100,7 @@ export class StorageMountService {
         success: true,
         message: `Successfully mounted ${share.name}`,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during mount';
       this.logger.error(`Failed to mount ${share.name}: ${errorMessage}`);
 
@@ -168,7 +168,7 @@ export class StorageMountService {
         success: true,
         message: `Successfully unmounted ${share.name}`,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during unmount';
       this.logger.error(`Failed to unmount ${share.name}: ${errorMessage}`);
 
@@ -242,7 +242,7 @@ export class StorageMountService {
       }
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       result.error = error instanceof Error ? error.message : 'Connectivity test failed';
       return result;
     }
@@ -278,7 +278,7 @@ export class StorageMountService {
         availableBytes,
         usedPercent,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to get disk usage for ${mountPoint}: ${error instanceof Error ? error.message : 'unknown error'}`
       );
@@ -363,7 +363,7 @@ export class StorageMountService {
       await fs.appendFile(fstabPath, `\n${fstabEntry}\n`);
 
       this.logger.log(`✓ Added ${share.name} to /etc/fstab`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to add to fstab: ${error instanceof Error ? error.message : 'unknown error'}`
       );
@@ -402,7 +402,7 @@ export class StorageMountService {
       await fs.writeFile(fstabPath, filteredLines.join('\n'));
 
       this.logger.log(`✓ Removed ${share.name} from /etc/fstab`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to remove from fstab: ${error instanceof Error ? error.message : 'unknown error'}`
       );

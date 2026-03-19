@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { JobStage, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobRepository } from '../common/repositories/job.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 
 /**
  * Time window for encoding schedule
@@ -29,7 +30,10 @@ export interface TimeWindow {
 export class EncodingSchedulerService {
   private readonly logger = new Logger(EncodingSchedulerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository
+  ) {}
 
   /**
    * Check if encoding is currently allowed for a node
@@ -39,13 +43,10 @@ export class EncodingSchedulerService {
    */
   async isEncodingAllowed(nodeId: string): Promise<boolean> {
     try {
-      const node = await this.prisma.node.findUnique({
-        where: { id: nodeId },
-        select: {
-          scheduleEnabled: true,
-          scheduleWindows: true,
-        },
-      });
+      const node = await this.nodeRepository.findWithSelect<{
+        scheduleEnabled: boolean;
+        scheduleWindows: unknown;
+      }>(nodeId, { scheduleEnabled: true, scheduleWindows: true });
 
       if (!node) {
         this.logger.warn(`Node ${nodeId} not found`);
@@ -66,7 +67,7 @@ export class EncodingSchedulerService {
       }
 
       return this.isInAnyWindow(windows);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Error checking schedule for node ${nodeId}: ${error}`);
       return true; // Allow on error
     }
@@ -111,13 +112,10 @@ export class EncodingSchedulerService {
    */
   async getNextAllowedTime(nodeId: string): Promise<Date | null> {
     try {
-      const node = await this.prisma.node.findUnique({
-        where: { id: nodeId },
-        select: {
-          scheduleEnabled: true,
-          scheduleWindows: true,
-        },
-      });
+      const node = await this.nodeRepository.findWithSelect<{
+        scheduleEnabled: boolean;
+        scheduleWindows: unknown;
+      }>(nodeId, { scheduleEnabled: true, scheduleWindows: true });
 
       if (!node?.scheduleEnabled) {
         return null; // Always allowed
@@ -135,7 +133,7 @@ export class EncodingSchedulerService {
 
       // Find the next window start
       return this.findNextWindowStart(windows);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Error getting next allowed time for node ${nodeId}: ${error}`);
       return null;
     }
@@ -185,17 +183,14 @@ export class EncodingSchedulerService {
   async enforceSchedules(): Promise<void> {
     try {
       // Get all nodes with scheduling enabled
-      const nodesWithSchedules = await this.prisma.node.findMany({
-        where: {
-          scheduleEnabled: true,
-          scheduleWindows: { not: Prisma.JsonNull },
-        },
-        select: {
-          id: true,
-          name: true,
-          scheduleWindows: true,
-        },
-      });
+      const nodesWithSchedules = await this.nodeRepository.findManySelect<{
+        id: string;
+        name: string;
+        scheduleWindows: unknown;
+      }>(
+        { scheduleEnabled: true, scheduleWindows: { not: Prisma.JsonNull } },
+        { id: true, name: true, scheduleWindows: true }
+      );
 
       for (const node of nodesWithSchedules) {
         const windows = node.scheduleWindows as TimeWindow[] | null;
@@ -224,7 +219,7 @@ export class EncodingSchedulerService {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Error enforcing schedules: ${error}`);
     }
   }
@@ -233,18 +228,18 @@ export class EncodingSchedulerService {
    * Pause active jobs for a node (outside schedule)
    */
   private async pauseJobsForNode(nodeId: string): Promise<number> {
-    const result = await this.prisma.job.updateMany({
-      where: {
+    const result = await this.jobRepository.atomicUpdateMany(
+      {
         nodeId,
         stage: {
           in: [JobStage.QUEUED, JobStage.ENCODING],
         },
       },
-      data: {
+      {
         stage: JobStage.PAUSED,
         error: 'Paused: Outside scheduled encoding window',
-      },
-    });
+      }
+    );
 
     return result.count;
   }
@@ -253,17 +248,17 @@ export class EncodingSchedulerService {
    * Resume schedule-paused jobs for a node
    */
   private async resumeJobsForNode(nodeId: string): Promise<number> {
-    const result = await this.prisma.job.updateMany({
-      where: {
+    const result = await this.jobRepository.atomicUpdateMany(
+      {
         nodeId,
         stage: JobStage.PAUSED,
         error: { contains: 'Outside scheduled encoding window' },
       },
-      data: {
+      {
         stage: JobStage.QUEUED,
         error: null,
-      },
-    });
+      }
+    );
 
     return result.count;
   }
@@ -276,13 +271,10 @@ export class EncodingSchedulerService {
    * @param windows - Array of time windows (optional if disabled)
    */
   async setNodeSchedule(nodeId: string, enabled: boolean, windows?: TimeWindow[]): Promise<void> {
-    await this.prisma.node.update({
-      where: { id: nodeId },
-      data: {
-        scheduleEnabled: enabled,
-        scheduleWindows:
-          enabled && windows ? (windows as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
-      },
+    await this.nodeRepository.updateData(nodeId, {
+      scheduleEnabled: enabled,
+      scheduleWindows:
+        enabled && windows ? (windows as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
     });
 
     this.logger.log(`Updated schedule for node ${nodeId}: enabled=${enabled}`);

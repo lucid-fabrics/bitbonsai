@@ -8,11 +8,12 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { type Node, NodeRole } from '@prisma/client';
+import { type AccelerationType, type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
+import { LicenseRepository } from '../common/repositories/license.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { DataAccessService } from '../core/services/data-access.service';
-import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
 import type { NodeRegistrationResponseDto } from './dto/node-registration-response.dto';
 import type { NodeStatsDto } from './dto/node-stats.dto';
@@ -37,7 +38,8 @@ export class NodesService implements OnModuleInit {
   private readonly logger = new Logger(NodesService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly nodeRepository: NodeRepository,
+    private readonly licenseRepository: LicenseRepository,
     private readonly dataAccessService: DataAccessService,
     private readonly systemInfoService: SystemInfoService,
     private readonly storageShareService: StorageShareService
@@ -66,7 +68,7 @@ export class NodesService implements OnModuleInit {
   private async sendAutoHeartbeat(): Promise<void> {
     try {
       // Get the current node from local database (MAIN or LINKED)
-      const currentNode = await this.prisma.node.findFirst();
+      const currentNode = await this.nodeRepository.findFirstNode();
 
       if (!currentNode) {
         this.logger.warn('⚠️  No node found in local database - skipping heartbeat');
@@ -83,7 +85,7 @@ export class NodesService implements OnModuleInit {
         await this.dataAccessService.sendHeartbeat(currentNode.id);
         this.logger.debug(`💓 [LINKED] Heartbeat sent for ${currentNode.name} to MAIN API`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`❌ Failed to send auto-heartbeat: ${errorMessage}`);
@@ -113,10 +115,7 @@ export class NodesService implements OnModuleInit {
     // If no license key provided, use main node's license (for child node registration from main)
     let licenseKey = data.licenseKey;
     if (!licenseKey) {
-      const mainNode = await this.prisma.node.findFirst({
-        where: { role: NodeRole.MAIN },
-        include: { license: true },
-      });
+      const mainNode = await this.nodeRepository.findFirstWithLicense({ role: NodeRole.MAIN });
 
       if (!mainNode) {
         throw new BadRequestException(
@@ -129,14 +128,12 @@ export class NodesService implements OnModuleInit {
     }
 
     // Validate license
-    const license = await this.prisma.license.findUnique({
-      where: { key: licenseKey },
-      include: {
-        _count: {
-          select: { nodes: true },
-        },
-      },
-    });
+    const license = await this.licenseRepository.findByKeyWithInclude<{
+      id: string;
+      status: string;
+      maxNodes: number;
+      _count: { nodes: number };
+    }>(licenseKey, { _count: { select: { nodes: true } } });
 
     if (!license || license.status !== 'ACTIVE') {
       throw new BadRequestException('Invalid or inactive license key');
@@ -156,8 +153,9 @@ export class NodesService implements OnModuleInit {
     // CRITICAL: Validate no duplicate MAIN nodes (data integrity check)
     if (role === NodeRole.MAIN) {
       // Double-check that no MAIN node exists (prevents race conditions and data corruption)
-      const existingMainNode = await this.prisma.node.findFirst({
-        where: { role: NodeRole.MAIN, licenseId: license.id },
+      const existingMainNode = await this.nodeRepository.findFirstWithLicense({
+        role: NodeRole.MAIN,
+        licenseId: license.id,
       });
 
       if (existingMainNode) {
@@ -177,19 +175,17 @@ export class NodesService implements OnModuleInit {
     const nodeAcceleration = data.acceleration || 'CPU'; // Default to CPU (every node has a CPU)
 
     // Create node
-    const node = await this.prisma.node.create({
-      data: {
-        name: nodeName,
-        role,
-        status: 'ONLINE',
-        version: nodeVersion,
-        acceleration: nodeAcceleration,
-        apiKey: this.generateApiKey(),
-        pairingToken,
-        pairingExpiresAt,
-        lastHeartbeat: new Date(),
-        licenseId: license.id,
-      },
+    const node = await this.nodeRepository.createNode({
+      name: nodeName,
+      role,
+      status: 'ONLINE',
+      version: nodeVersion,
+      acceleration: nodeAcceleration,
+      apiKey: this.generateApiKey(),
+      pairingToken,
+      pairingExpiresAt,
+      lastHeartbeat: new Date(),
+      licenseId: license.id,
     });
 
     return {
@@ -220,7 +216,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if token is invalid or expired
    */
   async pairNode(pairingToken: string): Promise<Node> {
-    const node = await this.prisma.node.findFirst({
+    const node = await this.nodeRepository.findFirst<Node | null>({
       where: {
         pairingToken,
         pairingExpiresAt: {
@@ -234,12 +230,9 @@ export class NodesService implements OnModuleInit {
     }
 
     // Clear pairing token (pairing complete)
-    const pairedNode = await this.prisma.node.update({
-      where: { id: node.id },
-      data: {
-        pairingToken: null,
-        pairingExpiresAt: null,
-      },
+    const pairedNode = await this.nodeRepository.updateData(node.id, {
+      pairingToken: null,
+      pairingExpiresAt: null,
     });
 
     // CRITICAL FIX: Auto-detect and mount storage shares for LINKED nodes
@@ -281,9 +274,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async generatePairingTokenForNode(nodeId: string): Promise<NodeRegistrationResponseDto> {
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-    });
+    const node = await this.nodeRepository.findById(nodeId);
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
@@ -292,12 +283,9 @@ export class NodesService implements OnModuleInit {
     const pairingToken = this.generatePairingToken();
     const pairingExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    const updated = await this.prisma.node.update({
-      where: { id: nodeId },
-      data: {
-        pairingToken,
-        pairingExpiresAt,
-      },
+    const updated = await this.nodeRepository.updateData(nodeId, {
+      pairingToken,
+      pairingExpiresAt,
     });
 
     return {
@@ -330,9 +318,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async heartbeat(nodeId: string, data?: HeartbeatDto): Promise<Node> {
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-    });
+    const node = await this.nodeRepository.findById(nodeId);
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
@@ -361,14 +347,11 @@ export class NodesService implements OnModuleInit {
       );
     }
 
-    return this.prisma.node.update({
-      where: { id: nodeId },
-      data: {
-        status: data?.status || 'ONLINE',
-        lastHeartbeat: new Date(),
-        uptimeSeconds: { increment: 60 }, // Assuming 60s heartbeat interval
-        ...(ipAddressToUpdate && { ipAddress: ipAddressToUpdate }), // Only update if we have a valid IP
-      },
+    return this.nodeRepository.updateData(nodeId, {
+      status: data?.status || 'ONLINE',
+      lastHeartbeat: new Date(),
+      uptimeSeconds: { increment: 60 }, // Assuming 60s heartbeat interval
+      ...(ipAddressToUpdate && { ipAddress: ipAddressToUpdate }), // Only update if we have a valid IP
     });
   }
 
@@ -386,37 +369,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async getNodeStats(nodeId: string): Promise<NodeStatsDto> {
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      include: {
-        license: {
-          select: {
-            tier: true,
-            maxConcurrentJobs: true,
-            maxNodes: true,
-            status: true,
-          },
-        },
-        libraries: {
-          select: {
-            id: true,
-            name: true,
-            totalFiles: true,
-            totalSizeBytes: true,
-            mediaType: true,
-          },
-        },
-        _count: {
-          select: {
-            jobs: {
-              where: {
-                stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] },
-              },
-            },
-          },
-        },
-      },
-    });
+    const node = await this.nodeRepository.findWithStats(nodeId);
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
@@ -436,7 +389,7 @@ export class NodesService implements OnModuleInit {
       lastHeartbeat: node.lastHeartbeat,
       uptimeSeconds,
       createdAt: node.createdAt,
-      license: node.license,
+      license: node.license ?? undefined,
       libraries: node.libraries,
       activeJobCount: node._count.jobs,
     };
@@ -453,14 +406,11 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async getRecommendedConfig(nodeId: string): Promise<OptimalConfigDto> {
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      select: {
-        id: true,
-        maxWorkers: true,
-        acceleration: true,
-      },
-    });
+    const node = await this.nodeRepository.findWithSelect<{
+      id: string;
+      maxWorkers: number;
+      acceleration: AccelerationType;
+    }>(nodeId, { id: true, maxWorkers: true, acceleration: true });
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${nodeId} not found`);
@@ -495,21 +445,7 @@ export class NodesService implements OnModuleInit {
    * @returns List of all nodes with license information
    */
   async findAll(): Promise<Node[]> {
-    const nodes = await this.prisma.node.findMany({
-      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-      // PERF: Include license info to avoid N+1 queries if consumers need it
-      include: {
-        license: {
-          select: {
-            id: true,
-            tier: true,
-            maxNodes: true,
-            maxConcurrentJobs: true,
-            status: true,
-          },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findAllWithLicense();
 
     // Calculate uptime dynamically based on createdAt timestamp
     const now = new Date();
@@ -527,9 +463,7 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async findOne(id: string): Promise<Node> {
-    const node = await this.prisma.node.findUnique({
-      where: { id },
-    });
+    const node = await this.nodeRepository.findById(id);
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
@@ -545,9 +479,7 @@ export class NodesService implements OnModuleInit {
    * @returns Node details or null if not found
    */
   async findByApiKey(apiKey: string): Promise<Node | null> {
-    return this.prisma.node.findUnique({
-      where: { apiKey },
-    });
+    return this.nodeRepository.findByApiKey(apiKey);
   }
 
   /**
@@ -582,20 +514,14 @@ export class NodesService implements OnModuleInit {
         this.logger.warn(
           `🔄 AUTO-IP-UPDATE: Node "${node.name}" IP changed from ${node.ipAddress} to ${currentIpAddress}`
         );
-        const updatedNode = await this.prisma.node.update({
-          where: { id: node.id },
-          data: { ipAddress: currentIpAddress },
-        });
-        return updatedNode;
+        return this.nodeRepository.updateData(node.id, { ipAddress: currentIpAddress });
       }
       return node;
     };
 
     // Strategy 1: If NODE_ID is explicitly set, use it (highest priority)
     if (nodeId) {
-      const node = await this.prisma.node.findUnique({
-        where: { id: nodeId },
-      });
+      const node = await this.nodeRepository.findById(nodeId);
 
       if (!node) {
         throw new NotFoundException(`Node with ID ${nodeId} (from NODE_ID env) not found`);
@@ -608,10 +534,7 @@ export class NodesService implements OnModuleInit {
 
     if (currentIpAddress) {
       // Try to find nodes matching this IP address
-      const nodesByIp = await this.prisma.node.findMany({
-        where: { ipAddress: currentIpAddress },
-        orderBy: { createdAt: 'asc' }, // Order by creation date (oldest first)
-      });
+      const nodesByIp = await this.nodeRepository.findManyByIp(currentIpAddress);
 
       if (nodesByIp.length > 0) {
         // Prefer MAIN node over LINKED node (fixes duplicate node bug)
@@ -645,8 +568,7 @@ export class NodesService implements OnModuleInit {
     // IMPORTANT: When using role-based fallback, auto-update the IP so future restarts use Strategy 2
 
     // Check for MAIN node
-    const mainNodes = await this.prisma.node.findMany({
-      where: { role: 'MAIN' },
+    const mainNodes = await this.nodeRepository.findManyByRole(NodeRole.MAIN, {
       orderBy: { createdAt: 'asc' },
     });
 
@@ -673,9 +595,8 @@ export class NodesService implements OnModuleInit {
     }
 
     // No MAIN node found - check if this is a child-only instance (has LINKED node but no MAIN)
-    const linkedNode = await this.prisma.node.findFirst({
-      where: { role: 'LINKED' },
-      orderBy: { createdAt: 'desc' }, // Prefer newer if multiple exist
+    const linkedNode = await this.nodeRepository.findFirstByRole(NodeRole.LINKED, {
+      orderBy: { createdAt: 'desc' },
     });
 
     if (linkedNode) {
@@ -695,9 +616,7 @@ export class NodesService implements OnModuleInit {
    * @throws BadRequestException if maxWorkers will cause resource starvation
    */
   async update(id: string, data: UpdateNodeDto): Promise<Node> {
-    const node = await this.prisma.node.findUnique({
-      where: { id },
-    });
+    const node = await this.nodeRepository.findById(id);
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
@@ -727,21 +646,18 @@ export class NodesService implements OnModuleInit {
       }
     }
 
-    return this.prisma.node.update({
-      where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.maxWorkers !== undefined && { maxWorkers: data.maxWorkers }),
-        ...(data.cpuLimit !== undefined && { cpuLimit: data.cpuLimit }),
-        ...(data.publicUrl !== undefined && { publicUrl: data.publicUrl }),
-        ...(data.mainNodeUrl !== undefined && { mainNodeUrl: data.mainNodeUrl }),
-        ...(data.hasSharedStorage !== undefined && { hasSharedStorage: data.hasSharedStorage }),
-        ...(data.networkLocation !== undefined && { networkLocation: data.networkLocation }),
-        ...(data.loadThresholdMultiplier !== undefined && {
-          loadThresholdMultiplier: data.loadThresholdMultiplier,
-        }),
-        ...(data.ipAddress && { ipAddress: data.ipAddress }),
-      },
+    return this.nodeRepository.updateData(id, {
+      ...(data.name && { name: data.name }),
+      ...(data.maxWorkers !== undefined && { maxWorkers: data.maxWorkers }),
+      ...(data.cpuLimit !== undefined && { cpuLimit: data.cpuLimit }),
+      ...(data.publicUrl !== undefined && { publicUrl: data.publicUrl }),
+      ...(data.mainNodeUrl !== undefined && { mainNodeUrl: data.mainNodeUrl }),
+      ...(data.hasSharedStorage !== undefined && { hasSharedStorage: data.hasSharedStorage }),
+      ...(data.networkLocation !== undefined && { networkLocation: data.networkLocation }),
+      ...(data.loadThresholdMultiplier !== undefined && {
+        loadThresholdMultiplier: data.loadThresholdMultiplier,
+      }),
+      ...(data.ipAddress && { ipAddress: data.ipAddress }),
     });
   }
 
@@ -762,17 +678,14 @@ export class NodesService implements OnModuleInit {
    * @throws NotFoundException if node doesn't exist
    */
   async remove(id: string): Promise<void> {
-    const node = await this.prisma.node.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        publicUrl: true,
-        mainNodeUrl: true,
-        apiKey: true,
-      },
-    });
+    const node = await this.nodeRepository.findWithSelect<{
+      id: string;
+      name: string;
+      role: string;
+      publicUrl: string | null;
+      mainNodeUrl: string | null;
+      apiKey: string;
+    }>(id, { id: true, name: true, role: true, publicUrl: true, mainNodeUrl: true, apiKey: true });
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
@@ -814,7 +727,7 @@ export class NodesService implements OnModuleInit {
                 `⚠️ Child node ${node.name} returned status ${response.status} - may need manual reset`
               );
             }
-          } catch (fetchError) {
+          } catch (fetchError: unknown) {
             clearTimeout(timeoutId);
             if (fetchError instanceof Error && fetchError.name === 'AbortError') {
               this.logger.warn(
@@ -830,7 +743,7 @@ export class NodesService implements OnModuleInit {
               );
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           this.logger.warn(
             `⚠️ Failed to notify child node ${node.name} to reset: ${errorMessage} - child may need manual reset`
@@ -846,9 +759,7 @@ export class NodesService implements OnModuleInit {
 
     // Delete the node from main node's database
     // This will cascade delete all associated libraries and jobs
-    await this.prisma.node.delete({
-      where: { id },
-    });
+    await this.nodeRepository.deleteById(id);
 
     this.logger.log(`🗑️ Node ${node.name} (${id}) deleted from main node's database`);
   }
@@ -897,7 +808,7 @@ export class NodesService implements OnModuleInit {
             `⚠️ Main node returned status ${response.status} when removing child node`
           );
         }
-      } catch (error) {
+      } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         this.logger.error(`❌ Failed to notify main node: ${errorMessage}`);
         // Continue with local unregistration even if main node notification fails
@@ -907,14 +818,11 @@ export class NodesService implements OnModuleInit {
     }
 
     // Clear local configuration and reset to unconfigured state
-    await this.prisma.node.update({
-      where: { id: currentNode.id },
-      data: {
-        role: NodeRole.MAIN, // Reset to MAIN (will be determined on next setup)
-        pairingToken: null,
-        pairingExpiresAt: null,
-        mainNodeUrl: null, // Clear main node URL
-      },
+    await this.nodeRepository.updateData(currentNode.id, {
+      role: NodeRole.MAIN, // Reset to MAIN (will be determined on next setup)
+      pairingToken: null,
+      pairingExpiresAt: null,
+      mainNodeUrl: null, // Clear main node URL
     });
 
     const message = 'Node unregistered successfully. Please reconfigure this node.';

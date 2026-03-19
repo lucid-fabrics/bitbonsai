@@ -104,7 +104,7 @@ export class MediaAnalysisService {
       let data: FFprobeResponse;
       try {
         data = JSON.parse(stdout) as FFprobeResponse;
-      } catch (parseError) {
+      } catch (parseError: unknown) {
         this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
         return {
           status: FileHealthStatus.CORRUPTED,
@@ -145,7 +145,7 @@ export class MediaAnalysisService {
         status: FileHealthStatus.HEALTHY,
         message: 'File validated successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`File integrity check failed for ${filePath}:`, error);
       return {
         status: FileHealthStatus.CORRUPTED,
@@ -202,7 +202,7 @@ export class MediaAnalysisService {
       let probeData: FFprobeResponse;
       try {
         probeData = JSON.parse(stdout) as FFprobeResponse;
-      } catch (parseError) {
+      } catch (parseError: unknown) {
         this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
         return null;
       }
@@ -229,7 +229,7 @@ export class MediaAnalysisService {
         healthStatus: healthResult.status,
         healthMessage: healthResult.message,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to probe file: ${filePath}`, error);
       return null;
     }
@@ -281,7 +281,7 @@ export class MediaAnalysisService {
           try {
             const info = await this.probeVideoFile(filePath);
             return { filePath, info, error: null };
-          } catch (error) {
+          } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { filePath, info: null, error: errorMessage };
           }

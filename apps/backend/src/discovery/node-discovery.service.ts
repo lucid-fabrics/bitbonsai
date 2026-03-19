@@ -5,7 +5,6 @@ import { Bonjour, Browser, Service } from 'bonjour-service';
 import { NodesService } from '../nodes/nodes.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationPriority, NotificationType } from '../notifications/types/notification.types';
-import { PrismaService } from '../prisma/prisma.service';
 import { HardwareCapabilitiesDto } from '../system/dto/hardware-capabilities.dto';
 import { HardwareDetectionService } from '../system/hardware-detection.service';
 
@@ -59,7 +58,6 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   private scanTimeoutId: NodeJS.Timeout | null = null;
 
   constructor(
-    readonly _prisma: PrismaService,
     private readonly nodesService: NodesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly hardwareDetectionService: HardwareDetectionService,
@@ -150,7 +148,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         `   Acceleration: ${hardware.accelerationType} (${hardware.gpus.length} GPU(s))`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to start mDNS broadcast:', error);
       throw error;
     }
@@ -167,7 +165,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         }
         this.publishedService = null;
         this.logger.log('📡 Stopped mDNS broadcast');
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Failed to stop mDNS broadcast:', error);
       }
     }
@@ -310,7 +308,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
                   this.logger.error('Failed to create notification:', error);
                 });
             }
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.warn('Failed to process discovered service:', error);
           }
         });
@@ -332,7 +330,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         });
 
         this.browser.start();
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Failed to scan for nodes:', error);
         this.cleanup();
         reject(error);
@@ -389,7 +387,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`✅ Pairing token received successfully`);
 
       return data.pairingToken;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to request pairing:', error);
       throw error;
     }
@@ -461,7 +459,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       // Write updated .env
       try {
         fs.writeFileSync(envPath, envContent);
-      } catch (writeError) {
+      } catch (writeError: unknown) {
         this.logger.error(
           `Failed to write .env file at ${envPath}: ${writeError instanceof Error ? writeError.message : String(writeError)}`
         );
@@ -482,7 +480,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         message: 'Pairing successful! Node will restart in 2 seconds to apply configuration.',
         willRestart: true,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to complete pairing:', error);
       throw error;
     }

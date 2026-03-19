@@ -15,7 +15,7 @@
         tabindex="0"
       >
         <i class="fa fa-key"></i>
-        <span>License</span>
+        <span>{{ 'settings.license' | transloco }}</span>
       </a>
       <a
         class="tab-button"
@@ -25,7 +25,7 @@
         tabindex="0"
       >
         <i class="fa fa-server"></i>
-        <span>Environment</span>
+        <span>{{ 'settings.environment' | transloco }}</span>
       </a>
       <a
         class="tab-button"
@@ -35,7 +35,7 @@
         tabindex="0"
       >
         <i class="fa fa-cog"></i>
-        <span>System</span>
+        <span>{{ 'settings.system' | transloco }}</span>
       </a>
       <a
         class="tab-button"
@@ -45,7 +45,7 @@
         tabindex="0"
       >
         <i class="fa fa-microchip"></i>
-        <span>Resources</span>
+        <span>{{ 'settings.resources' | transloco }}</span>
       </a>
       <a
         class="tab-button"
@@ -55,7 +55,7 @@
         tabindex="0"
       >
         <i class="fa fa-flask"></i>
-        <span>Advanced</span>
+        <span>{{ 'settings.advanced' | transloco }}</span>
       </a>
       <a
         class="tab-button"
@@ -65,7 +65,7 @@
         tabindex="0"
       >
         <i class="fa fa-plug"></i>
-        <span>Integrations</span>
+        <span>{{ 'settings.integrations' | transloco }}</span>
       </a>
       <!-- Debug tab: Development OR advanced mode in production -->
       @if (showDebugTab()) {
@@ -77,7 +77,7 @@
         tabindex="0"
       >
         <i class="fa fa-stethoscope"></i>
-        <span>Diagnostics</span>
+        <span>{{ 'settings.diagnostics' | transloco }}</span>
       </a>
       }
       <a
@@ -88,7 +88,7 @@
         tabindex="0"
       >
         <i class="fa fa-book"></i>
-        <span>Documentation</span>
+        <span>{{ 'settings.documentation' | transloco }}</span>
       </a>
     </nav>
 

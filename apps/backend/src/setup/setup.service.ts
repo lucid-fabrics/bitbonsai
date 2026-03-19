@@ -1,6 +1,9 @@
 import { version } from '@bitbonsai/version';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { NodeRepository } from '../common/repositories/node.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
+import { UserRepository } from '../common/repositories/user.repository';
 import { PrismaService } from '../prisma/prisma.service';
 import { InitializeSetupDto, NodeType } from './dto/initialize-setup.dto';
 import type { SetupStatusDto } from './dto/setup-status.dto';
@@ -16,7 +19,12 @@ export class SetupService {
   // Security: bcrypt rounds (10 is recommended for production)
   private readonly BCRYPT_ROUNDS = 10;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly nodeRepository: NodeRepository,
+    private readonly settingsRepository: SettingsRepository,
+    private readonly userRepository: UserRepository
+  ) {}
 
   /**
    * Check if the initial setup has been completed
@@ -33,20 +41,20 @@ export class SetupService {
    */
   async getSetupStatus(): Promise<SetupStatusDto> {
     // Check if this is a LINKED (child) node
-    const linkedNode = await this.prisma.node.findFirst({
-      where: { role: 'LINKED' },
-    });
+    const linkedNode = await this.nodeRepository.findFirstByRole(
+      'LINKED' as import('@prisma/client').NodeRole
+    );
 
     // For child nodes, skip user check and just return the flag
     if (linkedNode) {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
       return {
         isSetupComplete: settings?.isSetupComplete ?? false,
       };
     }
 
     // For MAIN nodes: RECOVERY MODE if no users exist
-    const userCount = await this.prisma.user.count();
+    const userCount = await this.userRepository.count();
 
     // RECOVERY MODE: If no users exist on MAIN node, setup is NOT complete
     // This allows recovery even if the flag says setup is done
@@ -57,7 +65,7 @@ export class SetupService {
     }
 
     // Normal mode: Check the explicit flag
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
 
     return {
       isSetupComplete: settings?.isSetupComplete ?? false,
@@ -81,7 +89,7 @@ export class SetupService {
     dto: InitializeSetupDto
   ): Promise<{ message: string; pairingToken?: string }> {
     // Check if setup has already been completed
-    const userCount = await this.prisma.user.count();
+    const userCount = await this.userRepository.count();
 
     if (userCount > 0) {
       throw new BadRequestException('Setup has already been completed');
@@ -102,36 +110,19 @@ export class SetupService {
       // Create first admin user
       // Note: Using username as email since email is required in schema
       // This can be updated later through user management
-      await this.prisma.user.create({
-        data: {
-          username: dto.username,
-          email: `${dto.username}@local.bitbonsai`,
-          passwordHash,
-          role: 'ADMIN',
-          isActive: true,
-        },
+      await this.userRepository.create({
+        username: dto.username,
+        email: `${dto.username}@local.bitbonsai`,
+        passwordHash,
+        role: 'ADMIN',
       });
     }
 
     // Update or create security settings and mark setup as complete
-    const existingSettings = await this.prisma.settings.findFirst();
-
-    if (existingSettings) {
-      await this.prisma.settings.update({
-        where: { id: existingSettings.id },
-        data: {
-          isSetupComplete: true,
-          allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
-        },
-      });
-    } else {
-      await this.prisma.settings.create({
-        data: {
-          isSetupComplete: true,
-          allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
-        },
-      });
-    }
+    await this.settingsRepository.upsertSettings({
+      isSetupComplete: true,
+      allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
+    });
 
     // Find or create a license
     let license = await this.prisma.license.findFirst();
@@ -170,19 +161,17 @@ export class SetupService {
       const apiKey = `bb_${this.generateRandomString(64)}`;
       const pairingToken = (100000 + require('crypto').randomInt(900000)).toString(); // 6-digit token
 
-      await this.prisma.node.create({
-        data: {
-          name: `Main Node (${hostname})`,
-          role: 'MAIN',
-          status: 'ONLINE',
-          version, // Read from package.json
-          acceleration: 'CPU', // Will be updated after hardware detection
-          apiKey,
-          pairingToken,
-          pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
-          lastHeartbeat: new Date(),
-          licenseId: license.id,
-        },
+      await this.nodeRepository.createNode({
+        name: `Main Node (${hostname})`,
+        role: 'MAIN',
+        status: 'ONLINE',
+        version, // Read from package.json
+        acceleration: 'CPU', // Will be updated after hardware detection
+        apiKey,
+        pairingToken,
+        pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
+        lastHeartbeat: new Date(),
+        licenseId: license.id,
       });
 
       return {
@@ -194,18 +183,16 @@ export class SetupService {
     if (nodeType === NodeType.Child) {
       // Create a LINKED node entry (represents this child node)
       const hostname = process.env.HOSTNAME || 'child-node';
-      await this.prisma.node.create({
-        data: {
-          name: `Child Node (${hostname})`,
-          role: 'LINKED',
-          status: 'ONLINE',
-          version, // Read from package.json
-          acceleration: 'CPU', // Will be updated after hardware detection
-          apiKey: this.generateRandomString(32),
-          lastHeartbeat: new Date(),
-          licenseId: license.id,
-          mainNodeUrl: dto.mainNodeUrl, // Save main node URL for unregistration
-        },
+      await this.nodeRepository.createNode({
+        name: `Child Node (${hostname})`,
+        role: 'LINKED',
+        status: 'ONLINE',
+        version, // Read from package.json
+        acceleration: 'CPU', // Will be updated after hardware detection
+        apiKey: this.generateRandomString(32),
+        lastHeartbeat: new Date(),
+        licenseId: license.id,
+        mainNodeUrl: dto.mainNodeUrl, // Save main node URL for unregistration
       });
 
       const pairingToken = this.generatePairingToken();
@@ -269,15 +256,12 @@ export class SetupService {
     }
 
     // Delete all users
-    await this.prisma.user.deleteMany({});
+    await this.userRepository.deleteMany();
 
     // Reset setup complete flag
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
     if (settings) {
-      await this.prisma.settings.update({
-        where: { id: settings.id },
-        data: { isSetupComplete: false },
-      });
+      await this.settingsRepository.update({ id: settings.id }, { isSetupComplete: false });
     }
 
     return {

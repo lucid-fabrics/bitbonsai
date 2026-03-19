@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import type { AdvancedModeSettings } from '../../../core/clients/settings.client';
 import type { EnvironmentInfo } from '../models/environment-info.model';
 import type { SecuritySettings } from '../models/security-settings.model';
 import type { SystemResources } from '../models/system-resources.model';
@@ -54,6 +55,13 @@ export class SettingsService {
     return this.http.get<SystemResources>(`${environment.apiUrl}/system/resources`);
   }
 
-  // Note: Advanced mode methods are in SettingsClient to avoid duplication
-  // Effects use SettingsClient for advancedMode operations
+  getAdvancedMode(): Observable<AdvancedModeSettings> {
+    return this.http.get<AdvancedModeSettings>('/api/v1/settings/advanced-mode');
+  }
+
+  updateAdvancedMode(enabled: boolean): Observable<AdvancedModeSettings> {
+    return this.http.patch<AdvancedModeSettings>('/api/v1/settings/advanced-mode', {
+      advancedModeEnabled: enabled,
+    });
+  }
 }

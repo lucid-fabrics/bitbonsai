@@ -49,7 +49,7 @@ export class DebugController {
   })
   @ApiOkResponse({ description: 'System load information' })
   @ApiInternalServerErrorResponse({ description: 'Failed to get system load' })
-  async getSystemLoad() {
+  async getSystemLoad(): Promise<unknown> {
     return this.debugService.getSystemLoad();
   }
 
@@ -63,7 +63,7 @@ export class DebugController {
   })
   @ApiOkResponse({ description: 'List of FFmpeg processes' })
   @ApiInternalServerErrorResponse({ description: 'Failed to list processes' })
-  async getFfmpegProcesses() {
+  async getFfmpegProcesses(): Promise<unknown> {
     return this.debugService.getFfmpegProcesses();
   }
 
@@ -78,7 +78,7 @@ export class DebugController {
   @ApiParam({ name: 'pid', type: 'number', description: 'Process ID to kill' })
   @ApiOkResponse({ description: 'Process killed' })
   @ApiNotFoundResponse({ description: 'Process not found' })
-  async killFfmpegProcess(@Param('pid', ParseIntPipe) pid: number) {
+  async killFfmpegProcess(@Param('pid', ParseIntPipe) pid: number): Promise<unknown> {
     return this.debugService.killProcessByPid(pid);
   }
 
@@ -92,7 +92,7 @@ export class DebugController {
   })
   @ApiOkResponse({ description: 'Zombie processes killed' })
   @ApiInternalServerErrorResponse({ description: 'Failed to kill processes' })
-  async killAllZombies() {
+  async killAllZombies(): Promise<unknown> {
     return this.debugService.killAllZombies();
   }
 
@@ -108,7 +108,7 @@ export class DebugController {
   })
   @ApiOkResponse({ description: 'Load threshold updated' })
   @ApiInternalServerErrorResponse({ description: 'Failed to update threshold' })
-  async updateLoadThreshold(@Body() body: { loadThresholdMultiplier: number }) {
+  async updateLoadThreshold(@Body() body: { loadThresholdMultiplier: number }): Promise<unknown> {
     return this.debugService.updateLoadThreshold(body.loadThresholdMultiplier);
   }
 }

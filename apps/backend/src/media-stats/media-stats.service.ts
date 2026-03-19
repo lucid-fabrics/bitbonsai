@@ -239,7 +239,7 @@ export class MediaStatsService {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error reading directory ${dirPath}: ${errorMessage}`);
     }
@@ -280,7 +280,7 @@ export class MediaStatsService {
       };
       try {
         data = JSON.parse(result.stdout);
-      } catch (parseError) {
+      } catch (parseError: unknown) {
         throw new Error(
           `Failed to parse ffprobe output: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
         );
@@ -291,7 +291,7 @@ export class MediaStatsService {
       const size = statSync(filePath).size;
 
       return { codec, bitrate, size };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(`Failed to get info for ${filePath}: ${errorMessage}`);
       return { codec: 'unknown', bitrate: 0, size: 0 };

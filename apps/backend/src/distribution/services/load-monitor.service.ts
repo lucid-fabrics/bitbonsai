@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Node } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import type { HeartbeatLoadData, NodeCapacity } from '../interfaces/scoring-factors.interface';
 
 /**
@@ -16,7 +17,10 @@ export class LoadMonitorService {
   // In-memory cache for fast access (updated by heartbeats)
   private loadCache = new Map<string, HeartbeatLoadData>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository
+  ) {}
 
   /**
    * Update load data from heartbeat
@@ -42,13 +46,10 @@ export class LoadMonitorService {
     this.loadCache.set(nodeId, heartbeatData);
 
     // Update database
-    await this.prisma.node.update({
-      where: { id: nodeId },
-      data: {
-        currentSystemLoad: loadData.load1m,
-        currentMemoryFreeGB: loadData.memFreeGB,
-        lastHeartbeatLoad: loadData as object,
-      },
+    await this.nodeRepository.updateById(nodeId, {
+      currentSystemLoad: loadData.load1m,
+      currentMemoryFreeGB: loadData.memFreeGB,
+      lastHeartbeatLoad: loadData as object,
     });
 
     this.logger.debug(
@@ -71,15 +72,7 @@ export class LoadMonitorService {
     }
 
     // Fetch from database
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      select: {
-        lastHeartbeatLoad: true,
-        currentSystemLoad: true,
-        currentMemoryFreeGB: true,
-        cpuCores: true,
-      },
-    });
+    const node = await this.nodeRepository.findLoadData(nodeId);
 
     if (!node || !node.lastHeartbeatLoad) {
       return null;
@@ -162,30 +155,7 @@ export class LoadMonitorService {
    * Get capacity status for a node
    */
   async getNodeCapacity(nodeId: string): Promise<NodeCapacity | null> {
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        maxWorkers: true,
-        cpuCores: true,
-        loadThresholdMultiplier: true,
-        estimatedFreeAt: true,
-        lastHeartbeatLoad: true,
-        currentSystemLoad: true,
-        currentMemoryFreeGB: true,
-        _count: {
-          select: {
-            jobs: {
-              where: {
-                stage: { in: ['ENCODING', 'VERIFYING'] },
-              },
-            },
-          },
-        },
-      },
-    });
+    const node = await this.nodeRepository.findCapacityData(nodeId);
 
     if (!node) {
       return null;
@@ -195,12 +165,7 @@ export class LoadMonitorService {
     const overloadCheck = this.isOverloaded(node as unknown as Node, loadData);
 
     // Count queued jobs
-    const queuedCount = await this.prisma.job.count({
-      where: {
-        nodeId,
-        stage: 'QUEUED',
-      },
-    });
+    const queuedCount = await this.jobRepository.countForNode(nodeId, 'QUEUED');
 
     const maxWorkers = node.maxWorkers || 1;
     const activeJobs = node._count.jobs;
@@ -229,16 +194,7 @@ export class LoadMonitorService {
    * Get load data for all online nodes
    */
   async getAllNodesLoad(): Promise<Map<string, HeartbeatLoadData>> {
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      select: {
-        id: true,
-        lastHeartbeatLoad: true,
-        currentSystemLoad: true,
-        currentMemoryFreeGB: true,
-        cpuCores: true,
-      },
-    });
+    const nodes = await this.nodeRepository.findAllLoadData();
 
     const result = new Map<string, HeartbeatLoadData>();
 

@@ -103,7 +103,7 @@ async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMet
           audioTracks: audioStreams.length,
           subtitleTracks: subtitleStreams.length,
         });
-      } catch (err) {
+      } catch (err: unknown) {
         reject(err);
       }
     });

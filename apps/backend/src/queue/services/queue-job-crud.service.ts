@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { type Job, JobStage, Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { normalizeCodec } from '../../common/utils/codec.util';
 import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
@@ -29,6 +31,8 @@ export class QueueJobCrudService {
 
   constructor(
     private prisma: PrismaService,
+    private jobRepository: JobRepository,
+    private nodeRepository: NodeRepository,
     private nodeConfig: NodeConfigService,
     private httpService: HttpService,
     private contentFingerprint: ContentFingerprintService,
@@ -46,18 +50,19 @@ export class QueueJobCrudService {
     const isMainNode = this.nodeConfig.isMainNode();
 
     if (!currentNodeId) {
-      const job = await this.prisma.job.findUnique({
-        where: { id: jobId },
-        select: { nodeId: true, updatedAt: true },
-      });
+      const job = await this.jobRepository.findUniqueSelect<{
+        nodeId: string | null;
+        updatedAt: Date;
+      }>({ id: jobId }, { nodeId: true, updatedAt: true });
       if (!job) throw new NotFoundException(`Job ${jobId} not found`);
       return job;
     }
 
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      select: { nodeId: true, fileLabel: true, updatedAt: true },
-    });
+    const job = await this.jobRepository.findUniqueSelect<{
+      nodeId: string | null;
+      fileLabel: string;
+      updatedAt: Date;
+    }>({ id: jobId }, { nodeId: true, fileLabel: true, updatedAt: true });
 
     if (!job) {
       throw new NotFoundException(`Job ${jobId} not found`);
@@ -112,7 +117,7 @@ export class QueueJobCrudService {
       if (!realFile.startsWith(realLibrary + path.sep)) {
         throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP') {
         throw new BadRequestException('Symlink detected - operation rejected for security');
       }
@@ -132,7 +137,7 @@ export class QueueJobCrudService {
             }
 
             return;
-          } catch (parentErr) {
+          } catch (parentErr: unknown) {
             if (parentErr && typeof parentErr === 'object' && 'code' in parentErr) {
               if (parentErr.code === 'ENOENT') {
                 const nextParent = path.dirname(currentPath);
@@ -194,14 +199,14 @@ export class QueueJobCrudService {
         );
         this.logger.debug(`✅ MULTI-NODE: Job creation successful`);
         return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy job creation to MAIN:`, error);
         throw error;
       }
     }
 
     const [node, library, policy] = await Promise.all([
-      this.prisma.node.findUnique({ where: { id: createJobDto.nodeId } }),
+      this.nodeRepository.findById(createJobDto.nodeId),
       this.prisma.library.findUnique({ where: { id: createJobDto.libraryId } }),
       this.prisma.policy.findUnique({ where: { id: createJobDto.policyId } }),
     ]);
@@ -220,19 +225,17 @@ export class QueueJobCrudService {
 
     this.validateFilePath(createJobDto.filePath, library.path);
 
-    const existingActiveJob = await this.prisma.job.findFirst({
-      where: {
-        filePath: createJobDto.filePath,
-        stage: {
-          in: [
-            JobStage.DETECTED,
-            JobStage.HEALTH_CHECK,
-            JobStage.QUEUED,
-            JobStage.ENCODING,
-            JobStage.VERIFYING,
-            JobStage.COMPLETED,
-          ],
-        },
+    const existingActiveJob = await this.jobRepository.findFirstWhere({
+      filePath: createJobDto.filePath,
+      stage: {
+        in: [
+          JobStage.DETECTED,
+          JobStage.HEALTH_CHECK,
+          JobStage.QUEUED,
+          JobStage.ENCODING,
+          JobStage.VERIFYING,
+          JobStage.COMPLETED,
+        ],
       },
     });
 
@@ -282,7 +285,7 @@ export class QueueJobCrudService {
           );
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Re-throw BadRequestExceptions (our intentional blocks)
       if (error instanceof BadRequestException) {
         throw error;
@@ -293,7 +296,7 @@ export class QueueJobCrudService {
       );
     }
 
-    const oldJobs = await this.prisma.job.findMany({
+    const oldJobs = await this.jobRepository.findManyWithInclude<Job>({
       where: {
         filePath: createJobDto.filePath,
         stage: {
@@ -306,36 +309,32 @@ export class QueueJobCrudService {
       this.logger.log(
         `Deleting ${oldJobs.length} old job(s) for file: ${createJobDto.filePath} (stages: ${oldJobs.map((j) => j.stage).join(', ')})`
       );
-      await this.prisma.job.deleteMany({
-        where: {
-          id: {
-            in: oldJobs.map((j) => j.id),
-          },
+      await this.jobRepository.deleteManyWhere({
+        id: {
+          in: oldJobs.map((j) => j.id),
         },
       });
     }
 
     try {
-      const job = await this.prisma.job.create({
-        data: {
-          filePath: createJobDto.filePath,
-          fileLabel: createJobDto.fileLabel,
-          sourceCodec: createJobDto.sourceCodec,
-          targetCodec: createJobDto.targetCodec,
-          beforeSizeBytes: BigInt(createJobDto.beforeSizeBytes),
-          stage: JobStage.DETECTED,
-          nodeId: createJobDto.nodeId,
-          libraryId: createJobDto.libraryId,
-          policyId: createJobDto.policyId,
-          warning: createJobDto.warning,
-          resourceThrottled: createJobDto.resourceThrottled ?? false,
-          resourceThrottleReason: createJobDto.resourceThrottleReason,
-          ffmpegThreads: createJobDto.ffmpegThreads,
-          type: createJobDto.type || 'ENCODE',
-          sourceContainer: createJobDto.sourceContainer,
-          targetContainer: createJobDto.targetContainer,
-          contentFingerprint: fingerprint,
-        },
+      const job = await this.jobRepository.createJob({
+        filePath: createJobDto.filePath,
+        fileLabel: createJobDto.fileLabel,
+        sourceCodec: createJobDto.sourceCodec,
+        targetCodec: createJobDto.targetCodec,
+        beforeSizeBytes: BigInt(createJobDto.beforeSizeBytes),
+        stage: JobStage.DETECTED,
+        nodeId: createJobDto.nodeId,
+        libraryId: createJobDto.libraryId,
+        policyId: createJobDto.policyId,
+        warning: createJobDto.warning,
+        resourceThrottled: createJobDto.resourceThrottled ?? false,
+        resourceThrottleReason: createJobDto.resourceThrottleReason,
+        ffmpegThreads: createJobDto.ffmpegThreads,
+        type: createJobDto.type || 'ENCODE',
+        sourceContainer: createJobDto.sourceContainer,
+        targetContainer: createJobDto.targetContainer,
+        contentFingerprint: fingerprint,
       });
 
       this.logger.log(`Job created: ${job.id} (${job.fileLabel})`);
@@ -353,13 +352,11 @@ export class QueueJobCrudService {
         Array.isArray(error.meta.target) &&
         error.meta.target.includes('unique_active_job_per_file')
       ) {
-        const existingJob = await this.prisma.job.findFirst({
-          where: {
-            filePath: createJobDto.filePath,
-            libraryId: createJobDto.libraryId,
-            stage: {
-              notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED],
-            },
+        const existingJob = await this.jobRepository.findFirstWhere({
+          filePath: createJobDto.filePath,
+          libraryId: createJobDto.libraryId,
+          stage: {
+            notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED],
           },
         });
 
@@ -439,14 +436,14 @@ export class QueueJobCrudService {
       stage === 'FAILED' ? { failedAt: 'desc' as const } : { createdAt: 'asc' as const };
 
     const [jobs, total] = await Promise.all([
-      this.prisma.job.findMany({
+      this.jobRepository.findManyWithInclude<Job>({
         where,
         include: includeClause,
         orderBy: orderByClause,
         skip,
         take: pageSize,
       }),
-      this.prisma.job.count({ where }),
+      this.jobRepository.countWhere(where),
     ]);
 
     const totalPages = Math.ceil(total / pageSize);
@@ -466,37 +463,40 @@ export class QueueJobCrudService {
   async findOne(id: string): Promise<Job> {
     this.logger.log(`Fetching job: ${id}`);
 
-    const job = await this.prisma.job.findUnique({
-      where: { id },
-      include: {
-        node: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            acceleration: true,
+    const job = await this.jobRepository
+      .findManyWithInclude<Job>({
+        where: { id },
+        include: {
+          node: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              acceleration: true,
+            },
+          },
+          library: {
+            select: {
+              id: true,
+              name: true,
+              path: true,
+              mediaType: true,
+            },
+          },
+          policy: {
+            select: {
+              id: true,
+              name: true,
+              preset: true,
+              targetCodec: true,
+              targetQuality: true,
+              advancedSettings: true,
+            },
           },
         },
-        library: {
-          select: {
-            id: true,
-            name: true,
-            path: true,
-            mediaType: true,
-          },
-        },
-        policy: {
-          select: {
-            id: true,
-            name: true,
-            preset: true,
-            targetCodec: true,
-            targetQuality: true,
-            advancedSettings: true,
-          },
-        },
-      },
-    });
+        take: 1,
+      })
+      .then((results) => results[0] ?? null);
 
     if (!job) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -514,27 +514,15 @@ export class QueueJobCrudService {
     cancelRequestedAt: Date | null;
     cancelProcessedAt: Date | null;
   } | null> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      select: {
-        pauseRequestedAt: true,
-        pauseProcessedAt: true,
-        cancelRequestedAt: true,
-        cancelProcessedAt: true,
-      },
-    });
-
+    const job = await this.jobRepository.findStatusFields(jobId);
     return job;
   }
 
   /**
    * Raw job update for internal system operations
    */
-  async updateJobRaw(jobId: string, data: Record<string, any>): Promise<void> {
-    await this.prisma.job.update({
-      where: { id: jobId },
-      data,
-    });
+  async updateJobRaw(jobId: string, data: Record<string, unknown>): Promise<void> {
+    await this.jobRepository.updateRaw(jobId, data);
   }
 
   /**
@@ -561,7 +549,7 @@ export class QueueJobCrudService {
 
         this.logger.debug(`✅ MULTI-NODE: Progress update successful for ${id}`);
         return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy progress update to MAIN:`, error);
         if (error instanceof Error) {
           this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
@@ -570,9 +558,7 @@ export class QueueJobCrudService {
       }
     }
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -618,14 +604,11 @@ export class QueueJobCrudService {
         updateData.heartbeatNodeId = existingJob.nodeId;
       }
 
-      const job = await this.prisma.job.update({
-        where: { id },
-        data: updateData,
-      });
+      const job = await this.jobRepository.updateRaw(id, updateData);
 
       this.logger.debug(`Job ${id} progress updated: ${job.progress}%`);
       return job;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to update job progress: ${id}`, error);
       throw error;
     }
@@ -638,16 +621,13 @@ export class QueueJobCrudService {
     this.logger.debug(`Updating preview paths for job: ${id}`);
 
     try {
-      const job = await this.prisma.job.update({
-        where: { id },
-        data: {
-          previewImagePaths: JSON.stringify(previewPaths),
-        },
+      const job = await this.jobRepository.updateById(id, {
+        previewImagePaths: JSON.stringify(previewPaths),
       });
 
       this.logger.debug(`Job ${id} preview paths updated: ${previewPaths.length} images`);
       return job;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to update job preview paths: ${id}`, error);
       throw error;
     }
@@ -671,7 +651,7 @@ export class QueueJobCrudService {
 
         this.logger.log(`✅ MULTI-NODE: Job update successful for ${id}`);
         return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy job update to MAIN:`, error);
         if (error instanceof Error) {
           this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
@@ -687,19 +667,16 @@ export class QueueJobCrudService {
       updateData.lastStageChangeAt = new Date();
     }
 
-    const result = await this.prisma.job.updateMany({
-      where: {
-        id,
-        updatedAt: ownership.updatedAt,
-      },
-      data: updateData,
-    });
+    const result = await this.jobRepository.atomicUpdateMany(
+      { id, updatedAt: ownership.updatedAt },
+      updateData as Prisma.JobUncheckedUpdateInput
+    );
 
     if (result.count === 0) {
       throw new ConflictException(`Job ${id} was modified by another process - update failed`);
     }
 
-    const job = await this.prisma.job.findUnique({ where: { id } });
+    const job = await this.jobRepository.findById(id);
     if (!job) throw new NotFoundException(`Job ${id} not found after update`);
     return job;
   }
@@ -710,21 +687,17 @@ export class QueueJobCrudService {
   async remove(id: string): Promise<void> {
     this.logger.log(`Deleting job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
     }
 
     try {
-      await this.prisma.job.delete({
-        where: { id },
-      });
+      await this.jobRepository.deleteById(id);
 
       this.logger.log(`Job deleted: ${id}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to delete job: ${id}`, error);
       throw error;
     }
@@ -744,13 +717,11 @@ export class QueueJobCrudService {
     this.logger.warn(logMessage);
 
     try {
-      const result = await this.prisma.job.deleteMany({
-        where,
-      });
+      const result = await this.jobRepository.deleteManyWhere(where);
 
       this.logger.warn(`Deleted ${result.count} job(s)`);
       return result.count;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to clear jobs', error);
       throw error;
     }
@@ -778,50 +749,24 @@ export class QueueJobCrudService {
       cancelled,
       totalSaved,
     ] = await Promise.all([
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.DETECTED },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.HEALTH_CHECK },
-      }),
-      this.prisma.job.count({
+      this.jobRepository.countWhere({ ...where, stage: JobStage.DETECTED }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.HEALTH_CHECK }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.NEEDS_DECISION }),
+      this.jobRepository.findManyWithInclude<{ sourceCodec: string; targetCodec: string }>({
         where: { ...where, stage: JobStage.NEEDS_DECISION },
+        select: { sourceCodec: true, targetCodec: true },
       }),
-      this.prisma.job.findMany({
-        where: {
-          ...where,
-          stage: JobStage.NEEDS_DECISION,
-        },
-        select: {
-          sourceCodec: true,
-          targetCodec: true,
-        },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.QUEUED },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.TRANSFERRING },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.ENCODING },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.VERIFYING },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.COMPLETED },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.FAILED },
-      }),
-      this.prisma.job.count({
-        where: { ...where, stage: JobStage.CANCELLED },
-      }),
-      this.prisma.job.aggregate({
-        where: { ...where, stage: JobStage.COMPLETED },
-        _sum: { savedBytes: true },
-      }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.QUEUED }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.TRANSFERRING }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.ENCODING }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.VERIFYING }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.COMPLETED }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.FAILED }),
+      this.jobRepository.countWhere({ ...where, stage: JobStage.CANCELLED }),
+      this.jobRepository.aggregateSumWhere(
+        { ...where, stage: JobStage.COMPLETED },
+        { savedBytes: true }
+      ),
     ]);
 
     const codecMatchCount = needsDecisionJobs.filter((job) => {
@@ -842,7 +787,7 @@ export class QueueJobCrudService {
       completed,
       failed,
       cancelled,
-      totalSavedBytes: (totalSaved._sum.savedBytes || BigInt(0)).toString(),
+      totalSavedBytes: ((totalSaved._sum.savedBytes as bigint | null) || BigInt(0)).toString(),
       nodeId,
     };
   }

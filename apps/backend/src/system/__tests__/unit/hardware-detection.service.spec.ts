@@ -88,8 +88,8 @@ describe('HardwareDetectionService', () => {
 
       const result2 = await service.detectHardware();
 
-      expect(result2).toBeDefined();
-      expect(result2.cpu).toBeDefined();
+      expect(result2).not.toBeNull();
+      expect(result2.cpu).not.toBeNull();
     });
 
     it('should throw on detection failure', async () => {

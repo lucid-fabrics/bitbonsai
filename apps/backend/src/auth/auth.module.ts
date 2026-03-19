@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { SettingsRepository } from '../common/repositories/settings.repository';
+import { UserRepository } from '../common/repositories/user.repository';
 import { NodesModule } from '../nodes/nodes.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthController } from './auth.controller';
@@ -35,7 +37,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     NodesModule, // Required for ApiKeyGuard
     PrismaModule, // Required for database access
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, UserRepository, SettingsRepository],
   controllers: [AuthController],
   exports: [AuthService],
 })

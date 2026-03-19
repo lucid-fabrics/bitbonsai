@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { FileHealthStatus, type Job, JobEventType, JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -36,6 +37,7 @@ export class QueueJobStateService {
 
   constructor(
     private prisma: PrismaService,
+    private jobRepository: JobRepository,
     @Inject(forwardRef(() => FfmpegService))
     private ffmpegService: FfmpegService,
     private jobHistoryService: JobHistoryService,
@@ -68,7 +70,7 @@ export class QueueJobStateService {
         );
         this.logger.debug(`✅ MULTI-NODE: Job completion successful for ${id}`);
         return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy job completion to MAIN:`, error);
         throw error;
       }
@@ -77,6 +79,7 @@ export class QueueJobStateService {
     let job: Job;
 
     try {
+      // PrismaService retained for atomic $transaction — not replaceable with repository
       job = await this.prisma.$transaction(async (tx) => {
         const existingJob = await tx.job.findUnique({
           where: { id },
@@ -141,7 +144,7 @@ export class QueueJobStateService {
 
         return completedJob;
       });
-    } catch (txError) {
+    } catch (txError: unknown) {
       this.logger.error(`Transaction failed for job ${id}:`, txError);
       const errorMessage = txError instanceof Error ? txError.message : String(txError);
       throw new Error(`Failed to mark job as completed: ${errorMessage}`);
@@ -170,15 +173,13 @@ export class QueueJobStateService {
         );
         this.logger.debug(`✅ MULTI-NODE: Job failure recorded for ${id}`);
         return response.data;
-      } catch (err) {
+      } catch (err: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy job failure to MAIN:`, err);
         throw err;
       }
     }
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -189,14 +190,11 @@ export class QueueJobStateService {
       return existingJob;
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.FAILED,
-        completedAt: new Date(),
-        failedAt: new Date(),
-        error,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.FAILED,
+      completedAt: new Date(),
+      failedAt: new Date(),
+      error,
     });
 
     await this.jobHistoryService.recordEvent({
@@ -223,7 +221,7 @@ export class QueueJobStateService {
       if (wasBlacklisted) {
         this.logger.warn(`File auto-blacklisted after repeated failures: ${existingJob.fileLabel}`);
       }
-    } catch (trackingError) {
+    } catch (trackingError: unknown) {
       // Non-critical: don't let tracking failure break the main flow
       this.logger.error(
         'Failed to record file failure tracking',
@@ -252,15 +250,13 @@ export class QueueJobStateService {
         );
         this.logger.debug(`✅ MULTI-NODE: Job cancellation successful for ${id}`);
         return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy job cancellation to MAIN:`, error);
         throw error;
       }
     }
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -280,7 +276,7 @@ export class QueueJobStateService {
         } else {
           this.logger.warn(`FFmpeg process not found for job ${id}`);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.warn(`Failed to kill FFmpeg for job ${id}: ${error}`);
       }
     }
@@ -290,7 +286,7 @@ export class QueueJobStateService {
       try {
         await this.fileTransferService.cancelTransfer(id);
         this.logger.log(`Successfully cancelled transfer for job ${id}`);
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.warn(`Failed to cancel transfer for job ${id}: ${error}`);
       }
 
@@ -298,19 +294,16 @@ export class QueueJobStateService {
         try {
           await this.fileTransferService.cleanupRemoteTempFile(id);
           this.logger.log(`Cleaned up remote temp file for job ${id}`);
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.warn(`Failed to cleanup remote temp file for job ${id}: ${error}`);
         }
       }
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.CANCELLED,
-        completedAt: new Date(),
-        isBlacklisted: blacklist,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.CANCELLED,
+      completedAt: new Date(),
+      isBlacklisted: blacklist,
     });
 
     await this.jobHistoryService.recordEvent({
@@ -333,9 +326,7 @@ export class QueueJobStateService {
   async unblacklistJob(id: string): Promise<Job> {
     this.logger.log(`Unblacklisting job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -349,31 +340,29 @@ export class QueueJobStateService {
       throw new BadRequestException('Job is not blacklisted');
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        isBlacklisted: false,
-        // Reset retry caps so the job can actually be retried
-        corruptedRequeueCount: 0,
-        stuckRecoveryCount: 0,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      isBlacklisted: false,
+      // Reset retry caps so the job can actually be retried
+      corruptedRequeueCount: 0,
+      stuckRecoveryCount: 0,
     });
 
     // Clear cross-job failure tracking so the file can be retried fresh
     try {
       await this.fileFailureTracking.clearBlacklist(existingJob.filePath, existingJob.libraryId);
-    } catch (trackingError) {
+    } catch (trackingError: unknown) {
       this.logger.error('Failed to clear file failure tracking', trackingError);
     }
 
     // Clear ProcessedFileRecord so re-encoding is possible
+    // PrismaService retained for atomic $transaction — not replaceable with repository
     try {
       if (existingJob.contentFingerprint) {
         await this.prisma.processedFileRecord.deleteMany({
           where: { contentFingerprint: existingJob.contentFingerprint },
         });
       }
-    } catch (recordError) {
+    } catch (recordError: unknown) {
       this.logger.error('Failed to clear processed file record', recordError);
     }
 
@@ -387,9 +376,7 @@ export class QueueJobStateService {
   async pauseJob(id: string): Promise<Job> {
     this.logger.log(`Pausing job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -404,11 +391,8 @@ export class QueueJobStateService {
       throw new BadRequestException('Failed to pause encoding process');
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.PAUSED,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.PAUSED,
     });
 
     this.logger.log(`Job paused: ${id}`);
@@ -421,9 +405,7 @@ export class QueueJobStateService {
   async resumeJob(id: string): Promise<Job> {
     this.logger.log(`Resuming job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -440,26 +422,20 @@ export class QueueJobStateService {
         `FFmpeg process not found for job ${id} - resetting to QUEUED to restart encoding`
       );
 
-      const job = await this.prisma.job.update({
-        where: { id },
-        data: {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          etaSeconds: null,
-          startedAt: null,
-          error: 'Restarted from paused state (process was lost)',
-        },
+      const job = await this.jobRepository.updateById(id, {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        etaSeconds: null,
+        startedAt: null,
+        error: 'Restarted from paused state (process was lost)',
       });
 
       this.logger.log(`Job reset to QUEUED: ${id}`);
       return job;
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.ENCODING,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.ENCODING,
     });
 
     this.logger.log(`Job resumed: ${id}`);
@@ -472,9 +448,7 @@ export class QueueJobStateService {
   async retryJob(id: string): Promise<Job> {
     this.logger.log(`Retrying job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -505,21 +479,18 @@ export class QueueJobStateService {
       );
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.QUEUED,
-        progress: canResume ? existingJob.progress : 0,
-        error: null,
-        completedAt: null,
-        startedAt: null,
-        retryCount: existingJob.retryCount + 1,
-        resumeTimestamp: canResume ? existingJob.resumeTimestamp : null,
-        tempFilePath: canResume ? existingJob.tempFilePath : null,
-        // Reset retry caps on manual retry so the job gets fresh attempts
-        corruptedRequeueCount: 0,
-        stuckRecoveryCount: 0,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.QUEUED,
+      progress: canResume ? existingJob.progress : 0,
+      error: null,
+      completedAt: null,
+      startedAt: null,
+      retryCount: existingJob.retryCount + 1,
+      resumeTimestamp: canResume ? existingJob.resumeTimestamp : null,
+      tempFilePath: canResume ? existingJob.tempFilePath : null,
+      // Reset retry caps on manual retry so the job gets fresh attempts
+      corruptedRequeueCount: 0,
+      stuckRecoveryCount: 0,
     });
 
     await this.jobHistoryService.recordEvent({
@@ -543,9 +514,7 @@ export class QueueJobStateService {
   async forceStartJob(id: string): Promise<Job> {
     this.logger.log(`Force starting job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -557,12 +526,9 @@ export class QueueJobStateService {
       );
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.DETECTED,
-        createdAt: new Date(0),
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.DETECTED,
+      createdAt: new Date(0),
     });
 
     this.logger.log(
@@ -577,30 +543,25 @@ export class QueueJobStateService {
   async recheckHealth(id: string): Promise<Job> {
     this.logger.log(`Rechecking health for job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        stage: JobStage.DETECTED,
-        healthStatus: FileHealthStatus.UNKNOWN,
-        healthScore: 0,
-        healthMessage: null,
-        healthCheckedAt: null,
-        healthCheckStartedAt: null,
-        healthCheckRetries: 0,
-        decisionRequired: false,
-        decisionIssues: null,
-        decisionMadeAt: null,
-        decisionData: null,
-        error: null,
-      },
+    const job = await this.jobRepository.updateById(id, {
+      stage: JobStage.DETECTED,
+      healthStatus: FileHealthStatus.UNKNOWN,
+      healthScore: 0,
+      healthMessage: null,
+      healthCheckedAt: null,
+      healthCheckStartedAt: null,
+      healthCheckRetries: 0,
+      decisionRequired: false,
+      decisionIssues: null,
+      decisionMadeAt: null,
+      decisionData: null,
+      error: null,
     });
 
     this.logger.log(
@@ -615,9 +576,7 @@ export class QueueJobStateService {
   async updateJobPriority(id: string, priority: number): Promise<Job> {
     this.logger.log(`Updating priority for job ${id} to ${priority}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -628,14 +587,12 @@ export class QueueJobStateService {
     }
 
     if (priority === 2) {
-      const topPriorityCount = await this.prisma.job.count({
-        where: {
-          priority: 2,
-          stage: {
-            in: [JobStage.DETECTED, JobStage.HEALTH_CHECK, JobStage.QUEUED, JobStage.ENCODING],
-          },
-          id: { not: id },
+      const topPriorityCount = await this.jobRepository.countWhere({
+        priority: 2,
+        stage: {
+          in: [JobStage.DETECTED, JobStage.HEALTH_CHECK, JobStage.QUEUED, JobStage.ENCODING],
         },
+        id: { not: id },
       });
 
       if (topPriorityCount >= 3) {
@@ -645,19 +602,16 @@ export class QueueJobStateService {
       }
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: {
-        priority,
-        prioritySetAt: new Date(),
-      },
+    const job = await this.jobRepository.updateById(id, {
+      priority,
+      prioritySetAt: new Date(),
     });
 
     if (existingJob.stage === JobStage.ENCODING) {
       try {
         await this.ffmpegService.reniceProcess(id, priority);
         this.logger.log(`Reniced FFmpeg process for job ${id} to priority ${priority}`);
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.warn(
           `Failed to renice FFmpeg process for job ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
@@ -674,9 +628,7 @@ export class QueueJobStateService {
   async resolveDecision(id: string, decisionData?: Record<string, unknown>): Promise<Job> {
     this.logger.log(`Resolving decision for job: ${id}`);
 
-    const existingJob = await this.prisma.job.findUnique({
-      where: { id },
-    });
+    const existingJob = await this.jobRepository.findById(id);
 
     if (!existingJob) {
       throw new NotFoundException(`Job with ID "${id}" not found`);
@@ -692,34 +644,28 @@ export class QueueJobStateService {
       const config = decisionData.actionConfig as Record<string, unknown>;
 
       if (config.action === 'skip') {
-        const job = await this.prisma.job.update({
-          where: { id },
-          data: {
-            stage: JobStage.COMPLETED,
-            decisionRequired: false,
-            decisionIssues: null,
-            decisionMadeAt: new Date(),
-            decisionData: JSON.stringify(decisionData),
-            completedAt: new Date(),
-            afterSizeBytes: existingJob.beforeSizeBytes,
-            progress: 100,
-            healthMessage: '✅ Skipped - file already in target codec',
-          },
+        const job = await this.jobRepository.updateById(id, {
+          stage: JobStage.COMPLETED,
+          decisionRequired: false,
+          decisionIssues: null,
+          decisionMadeAt: new Date(),
+          decisionData: JSON.stringify(decisionData),
+          completedAt: new Date(),
+          afterSizeBytes: existingJob.beforeSizeBytes,
+          progress: 100,
+          healthMessage: '✅ Skipped - file already in target codec',
         });
         this.logger.log(`Decision resolved for job ${id} - SKIPPED (codec already matches target)`);
         return job;
       }
 
       if (config.action === 'cancel') {
-        const job = await this.prisma.job.update({
-          where: { id },
-          data: {
-            stage: JobStage.CANCELLED,
-            decisionRequired: false,
-            decisionIssues: null,
-            decisionMadeAt: new Date(),
-            decisionData: JSON.stringify(decisionData),
-          },
+        const job = await this.jobRepository.updateById(id, {
+          stage: JobStage.CANCELLED,
+          decisionRequired: false,
+          decisionIssues: null,
+          decisionMadeAt: new Date(),
+          decisionData: JSON.stringify(decisionData),
         });
         this.logger.log(
           `Decision resolved for job ${id} - CANCELLED by user (reason: ${config.reason || 'user_requested'})`
@@ -758,10 +704,7 @@ export class QueueJobStateService {
       }
     }
 
-    const job = await this.prisma.job.update({
-      where: { id },
-      data: updateData,
-    });
+    const job = await this.jobRepository.updateRaw(id, updateData);
 
     this.logger.log(
       `Decision resolved for job ${id} - moved to QUEUED stage (container: ${job.targetContainer}, type: ${job.type})`

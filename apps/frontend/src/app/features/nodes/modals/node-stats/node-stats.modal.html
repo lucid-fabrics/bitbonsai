@@ -11,7 +11,7 @@
           <p class="header-subtitle">{{ stats.name }}</p>
         </div>
       </div>
-      <button class="close-btn" (click)="onClose()" aria-label="Close modal">
+      <button class="close-btn" (click)="onClose()" [attr.aria-label]="'nodeStats.close' | transloco">
         <i class="fas fa-times"></i>
       </button>
     </div>

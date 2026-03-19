@@ -1,4 +1,8 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { CoreModule } from '../core/core.module';
 import { EncodingModule } from '../encoding/encoding.module';
 import { LibrariesModule } from '../libraries/libraries.module';
@@ -6,9 +10,13 @@ import { NodesModule } from '../nodes/nodes.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
 import { BatchController } from './batch.controller';
+import { JobController } from './controllers/job.controller';
+import { JobMetricsController } from './controllers/job-metrics.controller';
+import { JobPreviewController } from './controllers/job-preview.controller';
+import { JobTransferController } from './controllers/job-transfer.controller';
+import { QueueManagementController } from './controllers/queue-management.controller';
 import { FileTransferWorker } from './file-transfer.worker';
 import { HealthCheckWorker } from './health-check.worker';
-import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
 import { BatchOperationsService } from './services/batch-operations.service';
@@ -47,10 +55,23 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   imports: [
     CoreModule,
     EncodingModule,
+    // forwardRef required: QueueModule ↔ LibrariesModule circular dependency
+    // QueueProcessingService injects MediaAnalysisService from LibrariesModule
+    // LibrariesService injects QueueService from QueueModule to create encoding jobs
     forwardRef(() => LibrariesModule),
+    // forwardRef required: QueueModule ↔ NodesModule via shared cycle
+    // QueueModule imports EncodingModule which imports NodesModule
+    // NodesModule imports LibrariesModule which imports QueueModule
     forwardRef(() => NodesModule),
   ],
-  controllers: [QueueController, BatchController],
+  controllers: [
+    JobController,
+    JobMetricsController,
+    JobPreviewController,
+    JobTransferController,
+    QueueManagementController,
+    BatchController,
+  ],
   providers: [
     QueueService,
     FileFailureTrackingService,
@@ -74,6 +95,10 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     BatchOperationsService,
     WebhookNotificationService,
     PrismaService,
+    JobRepository,
+    LibraryRepository,
+    NodeRepository,
+    SettingsRepository,
   ],
   exports: [
     QueueService,

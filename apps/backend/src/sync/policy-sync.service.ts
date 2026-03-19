@@ -1,6 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SyncStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
+import { PolicyRepository } from '../common/repositories/policy.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import type { LibrarySyncDto } from './dto/receive-libraries.dto';
 import type { PolicySyncDto } from './dto/receive-policies.dto';
 import type { ReceiveSettingsDto } from './dto/receive-settings.dto';
@@ -12,7 +15,12 @@ export class PolicySyncService {
   private readonly logger = new Logger(PolicySyncService.name);
   private readonly MAX_RETRY_ATTEMPTS = 3;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly nodeRepository: NodeRepository,
+    private readonly settingsRepository: SettingsRepository,
+    private readonly policyRepository: PolicyRepository,
+    private readonly libraryRepository: LibraryRepository
+  ) {}
 
   /**
    * Sync all policies, libraries, and settings to a child node
@@ -36,21 +44,16 @@ export class PolicySyncService {
     this.logger.log(`🔄 Starting sync to child node ${childNodeId}`);
 
     // Get child node details
-    const childNode = await this.prisma.node.findUnique({
-      where: { id: childNodeId },
-    });
+    const childNode = await this.nodeRepository.findById(childNodeId);
 
     if (!childNode) {
       throw new NotFoundException(`Child node ${childNodeId} not found`);
     }
 
     // Update sync status to SYNCING
-    await this.prisma.node.update({
-      where: { id: childNodeId },
-      data: {
-        syncStatus: SyncStatus.SYNCING,
-        syncError: null,
-      },
+    await this.nodeRepository.updateData(childNodeId, {
+      syncStatus: SyncStatus.SYNCING,
+      syncError: null,
     });
 
     try {
@@ -74,20 +77,17 @@ export class PolicySyncService {
       };
 
       // Update sync status to COMPLETED
-      await this.prisma.node.update({
-        where: { id: childNodeId },
-        data: {
-          syncStatus: SyncStatus.COMPLETED,
-          lastSyncedAt: new Date(),
-          syncRetryCount: 0,
-          syncError: null,
-        },
+      await this.nodeRepository.updateData(childNodeId, {
+        syncStatus: SyncStatus.COMPLETED,
+        lastSyncedAt: new Date(),
+        syncRetryCount: 0,
+        syncError: null,
       });
 
       this.logger.log(`✅ Successfully synced to child node ${childNode.name}`);
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`❌ Failed to sync to child node ${childNode.name}: ${errorMessage}`);
 
@@ -100,12 +100,9 @@ export class PolicySyncService {
         );
 
         // Update retry count and keep status as SYNCING (will retry)
-        await this.prisma.node.update({
-          where: { id: childNodeId },
-          data: {
-            syncRetryCount: { increment: 1 },
-            syncError: errorMessage,
-          },
+        await this.nodeRepository.updateById(childNodeId, {
+          syncRetryCount: { increment: 1 },
+          syncError: errorMessage,
         });
 
         // Schedule retry with exponential backoff (1s, 2s, 4s)
@@ -116,12 +113,9 @@ export class PolicySyncService {
         return this.syncToChildNode(childNodeId); // Recursive retry
       } else {
         // Max retries reached, mark as FAILED
-        await this.prisma.node.update({
-          where: { id: childNodeId },
-          data: {
-            syncStatus: SyncStatus.FAILED,
-            syncError: errorMessage,
-          },
+        await this.nodeRepository.updateData(childNodeId, {
+          syncStatus: SyncStatus.FAILED,
+          syncError: errorMessage,
         });
 
         return {
@@ -144,15 +138,18 @@ export class PolicySyncService {
    * @returns Current sync status
    */
   async getSyncStatus(childNodeId: string): Promise<SyncStatusDto> {
-    const node = await this.prisma.node.findUnique({
-      where: { id: childNodeId },
-      select: {
-        id: true,
-        syncStatus: true,
-        lastSyncedAt: true,
-        syncRetryCount: true,
-        syncError: true,
-      },
+    const node = await this.nodeRepository.findWithSelect<{
+      id: string;
+      syncStatus: SyncStatus;
+      lastSyncedAt: Date | null;
+      syncRetryCount: number;
+      syncError: string | null;
+    }>(childNodeId, {
+      id: true,
+      syncStatus: true,
+      lastSyncedAt: true,
+      syncRetryCount: true,
+      syncError: true,
     });
 
     if (!node) {
@@ -180,12 +177,9 @@ export class PolicySyncService {
     this.logger.log(`🔄 Manual retry triggered for node ${childNodeId}`);
 
     // Reset retry count
-    await this.prisma.node.update({
-      where: { id: childNodeId },
-      data: {
-        syncRetryCount: 0,
-        syncStatus: SyncStatus.PENDING,
-      },
+    await this.nodeRepository.updateData(childNodeId, {
+      syncRetryCount: 0,
+      syncStatus: SyncStatus.PENDING,
     });
 
     // Trigger sync
@@ -198,7 +192,7 @@ export class PolicySyncService {
    * @returns List of policies in sync format
    */
   private async getPoliciesForSync(): Promise<PolicySyncDto[]> {
-    const policies = await this.prisma.policy.findMany();
+    const policies = await this.policyRepository.findAll();
 
     return policies.map((policy) => ({
       id: policy.id,
@@ -224,7 +218,7 @@ export class PolicySyncService {
    * @returns List of libraries in sync format
    */
   private async getLibrariesForSync(): Promise<LibrarySyncDto[]> {
-    const libraries = await this.prisma.library.findMany();
+    const libraries = await this.libraryRepository.findAllLibraries();
 
     return libraries.map((library) => ({
       id: library.id,
@@ -242,7 +236,7 @@ export class PolicySyncService {
    * @returns Settings in sync format
    */
   private async getSettingsForSync(): Promise<ReceiveSettingsDto> {
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
 
     if (!settings) {
       // Return default settings if none exist
@@ -274,34 +268,23 @@ export class PolicySyncService {
     this.logger.log(`📥 Receiving ${policies.length} policies from main node`);
 
     for (const policy of policies) {
-      await this.prisma.policy.upsert({
-        where: { id: policy.id },
-        create: {
-          id: policy.id,
-          name: policy.name,
-          preset: policy.preset,
-          targetCodec: policy.targetCodec,
-          targetQuality: policy.targetQuality,
-          deviceProfiles: policy.deviceProfiles,
-          advancedSettings: policy.advancedSettings,
-          atomicReplace: policy.atomicReplace,
-          verifyOutput: policy.verifyOutput,
-          skipSeeding: policy.skipSeeding,
-          libraryId: policy.libraryId,
-        },
-        update: {
-          name: policy.name,
-          preset: policy.preset,
-          targetCodec: policy.targetCodec,
-          targetQuality: policy.targetQuality,
-          deviceProfiles: policy.deviceProfiles,
-          advancedSettings: policy.advancedSettings,
-          atomicReplace: policy.atomicReplace,
-          verifyOutput: policy.verifyOutput,
-          skipSeeding: policy.skipSeeding,
-          libraryId: policy.libraryId,
-        },
-      });
+      const policyData = {
+        name: policy.name,
+        preset: policy.preset,
+        targetCodec: policy.targetCodec,
+        targetQuality: policy.targetQuality,
+        deviceProfiles: policy.deviceProfiles,
+        advancedSettings: policy.advancedSettings,
+        atomicReplace: policy.atomicReplace,
+        verifyOutput: policy.verifyOutput,
+        skipSeeding: policy.skipSeeding,
+        libraryId: policy.libraryId,
+      };
+      await this.policyRepository.upsert(
+        { id: policy.id },
+        { id: policy.id, ...policyData },
+        policyData
+      );
     }
 
     this.logger.log(`✅ Successfully stored ${policies.length} policies`);
@@ -319,18 +302,16 @@ export class PolicySyncService {
     this.logger.log(`📥 Receiving ${libraries.length} libraries from main node`);
 
     // Get current node ID
-    const currentNode = await this.prisma.node.findFirst({
-      where: { role: 'MAIN' },
-    });
+    const currentNode = await this.nodeRepository.findMain();
 
     if (!currentNode) {
       throw new NotFoundException('Current node not found');
     }
 
     for (const library of libraries) {
-      await this.prisma.library.upsert({
-        where: { id: library.id },
-        create: {
+      await this.libraryRepository.upsertLibrary(
+        { id: library.id },
+        {
           id: library.id,
           name: library.name,
           path: library.path,
@@ -339,14 +320,14 @@ export class PolicySyncService {
           nodeId: currentNode.id,
           defaultPolicyId: library.defaultPolicyId,
         },
-        update: {
+        {
           name: library.name,
           path: library.path,
           mediaType: library.mediaType,
           enabled: library.enabled,
           defaultPolicyId: library.defaultPolicyId,
-        },
-      });
+        }
+      );
     }
 
     this.logger.log(`✅ Successfully stored ${libraries.length} libraries`);
@@ -364,28 +345,12 @@ export class PolicySyncService {
     this.logger.log(`📥 Receiving settings from main node`);
 
     // Find or create settings
-    const existingSettings = await this.prisma.settings.findFirst();
-
-    if (existingSettings) {
-      await this.prisma.settings.update({
-        where: { id: existingSettings.id },
-        data: {
-          isSetupComplete: settings.isSetupComplete,
-          allowLocalNetworkWithoutAuth: settings.allowLocalNetworkWithoutAuth,
-          defaultQueueView: settings.defaultQueueView,
-          readyFilesCacheTtlMinutes: settings.readyFilesCacheTtlMinutes,
-        },
-      });
-    } else {
-      await this.prisma.settings.create({
-        data: {
-          isSetupComplete: settings.isSetupComplete,
-          allowLocalNetworkWithoutAuth: settings.allowLocalNetworkWithoutAuth,
-          defaultQueueView: settings.defaultQueueView,
-          readyFilesCacheTtlMinutes: settings.readyFilesCacheTtlMinutes,
-        },
-      });
-    }
+    await this.settingsRepository.upsertSettings({
+      isSetupComplete: settings.isSetupComplete,
+      allowLocalNetworkWithoutAuth: settings.allowLocalNetworkWithoutAuth,
+      defaultQueueView: settings.defaultQueueView,
+      readyFilesCacheTtlMinutes: settings.readyFilesCacheTtlMinutes,
+    });
 
     this.logger.log(`✅ Successfully updated settings`);
   }

@@ -1,33 +1,41 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AccelerationType } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
 import { EncodingHistoryService } from '../../encoding-history.service';
 
 describe('EncodingHistoryService', () => {
   let service: EncodingHistoryService;
-  let _prisma: jest.Mocked<PrismaService>;
+  let mockJobRepository: jest.Mocked<JobRepository>;
 
-  const mockPrismaService = {
-    job: {
-      findMany: jest.fn(),
-    },
+  const mockJobRepositoryInstance = {
+    findMany: jest.fn(),
+    findManyWithInclude: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+    aggregate: jest.fn(),
+    groupBy: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    mockJobRepository = mockJobRepositoryInstance as unknown as jest.Mocked<JobRepository>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EncodingHistoryService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: JobRepository,
+          useValue: mockJobRepository,
         },
       ],
     }).compile();
 
     service = module.get<EncodingHistoryService>(EncodingHistoryService);
-    _prisma = module.get(PrismaService);
   });
 
   describe('constructor', () => {
@@ -55,7 +63,7 @@ describe('EncodingHistoryService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
 
       await service.loadHistoricalData();
 
@@ -69,7 +77,7 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should handle empty job list', async () => {
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
 
       await service.loadHistoricalData();
 
@@ -95,7 +103,7 @@ describe('EncodingHistoryService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
 
       await service.loadHistoricalData();
 
@@ -114,7 +122,7 @@ describe('EncodingHistoryService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
 
       await service.loadHistoricalData();
 
@@ -147,7 +155,7 @@ describe('EncodingHistoryService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
 
       await service.loadHistoricalData();
 
@@ -164,13 +172,16 @@ describe('EncodingHistoryService', () => {
         (p) => p.codec === 'AV1' && p.accelerationType === AccelerationType.NVIDIA
       );
 
-      expect(hevcNvidia).toBeDefined();
-      expect(hevcCpu).toBeDefined();
-      expect(av1Nvidia).toBeDefined();
+      expect(hevcNvidia).not.toBeUndefined();
+      expect(hevcNvidia?.sampleCount).toBe(1);
+      expect(hevcCpu).not.toBeUndefined();
+      expect(hevcCpu?.sampleCount).toBe(1);
+      expect(av1Nvidia).not.toBeUndefined();
+      expect(av1Nvidia?.sampleCount).toBe(1);
     });
 
     it('should handle database errors gracefully', async () => {
-      mockPrismaService.job.findMany.mockRejectedValue(new Error('Database error'));
+      mockJobRepository.findManyWithInclude.mockRejectedValue(new Error('Database error'));
 
       // Should not throw
       await expect(service.loadHistoricalData()).resolves.not.toThrow();
@@ -203,7 +214,7 @@ describe('EncodingHistoryService', () => {
         });
       }
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
       await service.loadHistoricalData();
     });
 
@@ -261,7 +272,7 @@ describe('EncodingHistoryService', () => {
         });
       }
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
       await service.loadHistoricalData();
 
       const result = service.calculateETA('AV1', AccelerationType.CPU, 1024 * 1024 * 100);
@@ -284,7 +295,7 @@ describe('EncodingHistoryService', () => {
         });
       }
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
       await service.loadHistoricalData();
 
       const result = service.calculateETA('H264', AccelerationType.INTEL_QSV, 1024 * 1024 * 100);
@@ -373,7 +384,7 @@ describe('EncodingHistoryService', () => {
 
   describe('formatDuration (via calculateETA)', () => {
     beforeEach(async () => {
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       await service.loadHistoricalData();
     });
 
@@ -402,7 +413,7 @@ describe('EncodingHistoryService', () => {
 
   describe('fallback speed estimates', () => {
     beforeEach(async () => {
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       await service.loadHistoricalData();
     });
 

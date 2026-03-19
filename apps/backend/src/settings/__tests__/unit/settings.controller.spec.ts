@@ -106,7 +106,7 @@ describe('SettingsController', () => {
       expect(result.logLevel).toBe(LogLevel.INFO);
       expect(result.analyticsEnabled).toBe(true);
       expect(result.apiKey).toBe('bb_1234567890abcdef');
-      expect(result.version).toBeDefined();
+      expect(typeof result.version).toBe('string');
       expect(result.storageInfo).toEqual({
         usedGb: 15.3,
         totalGb: 100.0,
@@ -149,7 +149,6 @@ describe('SettingsController', () => {
 
       expect(result.backupPath).toContain('/config/backups/bitbonsai-');
       expect(result.backupPath).toMatch(/\.db$/);
-      expect(result.timestamp).toBeDefined();
       expect(new Date(result.timestamp).getTime()).not.toBeNaN();
     });
   });
@@ -500,6 +499,41 @@ describe('SettingsController', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Jellyfin URL and API key are required');
+    });
+  });
+
+  // ==========================================================================
+  // ERROR CASES
+  // ==========================================================================
+  describe('error propagation', () => {
+    it('should propagate error when getSecuritySettings throws', async () => {
+      settingsService.getSecuritySettings.mockRejectedValue(new Error('DB unavailable'));
+
+      await expect(controller.getSecuritySettings()).rejects.toThrow('DB unavailable');
+    });
+
+    it('should propagate error when updateSecuritySettings throws', async () => {
+      settingsService.updateSecuritySettings.mockRejectedValue(new Error('Validation failed'));
+
+      await expect(
+        controller.updateSecuritySettings({ allowLocalNetworkWithoutAuth: true })
+      ).rejects.toThrow('Validation failed');
+    });
+
+    it('should propagate error when getEnvironmentInfo throws', async () => {
+      environmentService.getEnvironmentInfo.mockRejectedValue(
+        new Error('Environment detection failed')
+      );
+
+      await expect(controller.getEnvironmentInfo()).rejects.toThrow('Environment detection failed');
+    });
+
+    it('should propagate error when updateJellyfinSettings throws', async () => {
+      settingsService.updateJellyfinSettings.mockRejectedValue(new Error('Invalid Jellyfin URL'));
+
+      await expect(controller.updateJellyfinSettings({ jellyfinUrl: 'bad-url' })).rejects.toThrow(
+        'Invalid Jellyfin URL'
+      );
     });
   });
 });

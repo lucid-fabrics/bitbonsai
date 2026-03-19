@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { SettingsClient } from '../../../core/clients/settings.client';
 import { LicenseService } from '../services/license.service';
 import { SettingsService } from '../services/settings.service';
 import { SettingsActions } from './settings.actions';
@@ -12,7 +11,6 @@ export class SettingsEffects {
   private readonly actions$ = inject(Actions);
   private readonly licenseService = inject(LicenseService);
   private readonly settingsService = inject(SettingsService);
-  private readonly settingsClient = inject(SettingsClient);
 
   loadLicense$ = createEffect(() =>
     this.actions$.pipe(
@@ -126,7 +124,7 @@ export class SettingsEffects {
     this.actions$.pipe(
       ofType(SettingsActions.loadAdvancedMode),
       switchMap(() =>
-        this.settingsClient.getAdvancedMode().pipe(
+        this.settingsService.getAdvancedMode().pipe(
           map((result) =>
             SettingsActions.loadAdvancedModeSuccess({ enabled: result.advancedModeEnabled })
           ),
@@ -142,7 +140,7 @@ export class SettingsEffects {
     this.actions$.pipe(
       ofType(SettingsActions.updateAdvancedMode),
       switchMap(({ enabled }) =>
-        this.settingsClient.updateAdvancedMode(enabled).pipe(
+        this.settingsService.updateAdvancedMode(enabled).pipe(
           map((result) =>
             SettingsActions.updateAdvancedModeSuccess({ enabled: result.advancedModeEnabled })
           ),

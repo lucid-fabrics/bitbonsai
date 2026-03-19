@@ -67,7 +67,7 @@ export class EnvironmentService {
       }
 
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Unraid detection failed', error);
       return false;
     }
@@ -105,7 +105,7 @@ export class EnvironmentService {
       }
 
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Docker detection failed', error);
       return false;
     }
@@ -123,7 +123,7 @@ export class EnvironmentService {
 
       const version = fs.readFileSync('/etc/unraid-version', 'utf8').trim();
       return version.replace('version=', '').replace(/"/g, '');
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Failed to read Unraid version', error);
       return undefined;
     }
@@ -160,7 +160,7 @@ export class EnvironmentService {
       }
 
       return 'docker'; // Default fallback
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Failed to detect container runtime', error);
       return undefined;
     }
@@ -233,7 +233,7 @@ export class EnvironmentService {
         return true;
       }
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('NVIDIA GPU not detected', error);
       return false;
     }
@@ -263,7 +263,7 @@ export class EnvironmentService {
       }
 
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Intel QSV not detected', error);
       return false;
     }
@@ -296,7 +296,7 @@ export class EnvironmentService {
       }
 
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('AMD GPU not detected', error);
       return false;
     }
@@ -328,7 +328,7 @@ export class EnvironmentService {
       }
 
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug('Apple VideoToolbox not detected', error);
       return false;
     }

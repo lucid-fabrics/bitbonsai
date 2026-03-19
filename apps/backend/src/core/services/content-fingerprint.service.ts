@@ -88,7 +88,7 @@ export class ContentFingerprintService {
 
       const hash = hasher.h64Raw(new Uint8Array(combined));
       return hash.toString(16).padStart(16, '0');
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `Failed to fingerprint ${filePath}: ${error instanceof Error ? error.message : String(error)}`
       );

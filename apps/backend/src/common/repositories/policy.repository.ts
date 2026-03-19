@@ -143,4 +143,12 @@ export class PolicyRepository {
   async countByLibrary(libraryId: string): Promise<number> {
     return this.prisma.policy.count({ where: { libraryId } });
   }
+
+  async upsert(
+    where: Prisma.PolicyWhereUniqueInput,
+    create: Prisma.PolicyUncheckedCreateInput,
+    update: Prisma.PolicyUncheckedUpdateInput
+  ): Promise<Policy> {
+    return this.prisma.policy.upsert({ where, create, update });
+  }
 }

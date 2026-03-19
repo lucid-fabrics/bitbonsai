@@ -1,7 +1,7 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { LicenseStatus, LicenseTier } from '@prisma/client';
 import Stripe from 'stripe';
-import { PrismaService } from '../../prisma/prisma.service';
+import { LicenseRepository } from '../../common/repositories/license.repository';
 
 /**
  * Stripe price ID to license tier mapping
@@ -50,7 +50,7 @@ export class StripeService {
     },
   };
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly licenseRepository: LicenseRepository) {
     const secretKey = process.env.STRIPE_SECRET_KEY;
     if (secretKey) {
       this.stripe = new Stripe(secretKey, {
@@ -120,7 +120,7 @@ export class StripeService {
     let event: Stripe.Event;
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    } catch (err) {
+    } catch (err: unknown) {
       this.logger.error('Webhook signature verification failed', err);
       throw new UnauthorizedException('Invalid webhook signature');
     }
@@ -177,9 +177,8 @@ export class StripeService {
     }
 
     // Find or create license
-    const license = await this.prisma.license.findFirst({
-      where: { email },
-    });
+    const licenseByEmail = await this.licenseRepository.findByEmail(email);
+    const license = licenseByEmail[0] ?? null;
 
     const features = {
       multiNode: true,
@@ -191,22 +190,21 @@ export class StripeService {
     };
 
     if (license) {
-      await this.prisma.license.update({
-        where: { id: license.id },
-        data: {
-          tier: config.tier,
-          status: LicenseStatus.ACTIVE,
-          maxNodes: config.maxNodes,
-          maxConcurrentJobs: config.maxConcurrentJobs,
-          stripeCustomerId: customerId,
-          stripeSubscriptionId: subscriptionId,
-          features,
-        },
+      await this.licenseRepository.updateByKey(license.key, {
+        tier: config.tier,
+        status: LicenseStatus.ACTIVE,
+        maxNodes: config.maxNodes,
+        maxConcurrentJobs: config.maxConcurrentJobs,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        features,
       });
       this.logger.log(`Updated license for ${email} to ${config.tier}`);
     } else {
-      await this.prisma.license.create({
-        data: {
+      await this.licenseRepository.upsertByEmail(
+        email,
+        {},
+        {
           key: this.generateLicenseKey(config.tier),
           tier: config.tier,
           status: LicenseStatus.ACTIVE,
@@ -216,8 +214,8 @@ export class StripeService {
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
           features,
-        },
-      });
+        }
+      );
       this.logger.log(`Created new license for ${email} at ${config.tier}`);
     }
   }
@@ -235,19 +233,16 @@ export class StripeService {
       return;
     }
 
-    const license = await this.prisma.license.findFirst({
-      where: { stripeSubscriptionId: subscriptionId },
+    const license = await this.licenseRepository.findFirstWhere({
+      stripeSubscriptionId: subscriptionId,
     });
 
     if (license) {
-      await this.prisma.license.update({
-        where: { id: license.id },
-        data: {
-          tier: config.tier,
-          maxNodes: config.maxNodes,
-          maxConcurrentJobs: config.maxConcurrentJobs,
-          status: subscription.status === 'active' ? LicenseStatus.ACTIVE : LicenseStatus.EXPIRED,
-        },
+      await this.licenseRepository.updateById(license.id, {
+        tier: config.tier,
+        maxNodes: config.maxNodes,
+        maxConcurrentJobs: config.maxConcurrentJobs,
+        status: subscription.status === 'active' ? LicenseStatus.ACTIVE : LicenseStatus.EXPIRED,
       });
       this.logger.log(`Updated subscription for license ${license.id} to ${config.tier}`);
     }
@@ -259,26 +254,23 @@ export class StripeService {
   private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     const subscriptionId = subscription.id;
 
-    const license = await this.prisma.license.findFirst({
-      where: { stripeSubscriptionId: subscriptionId },
+    const license = await this.licenseRepository.findFirstWhere({
+      stripeSubscriptionId: subscriptionId,
     });
 
     if (license) {
-      await this.prisma.license.update({
-        where: { id: license.id },
-        data: {
-          tier: LicenseTier.FREE,
-          status: LicenseStatus.EXPIRED,
-          maxNodes: 1,
-          maxConcurrentJobs: 2,
-          features: {
-            multiNode: false,
-            advancedPresets: false,
-            api: false,
-            priorityQueue: false,
-            cloudStorage: false,
-            webhooks: false,
-          },
+      await this.licenseRepository.updateById(license.id, {
+        tier: LicenseTier.FREE,
+        status: LicenseStatus.EXPIRED,
+        maxNodes: 1,
+        maxConcurrentJobs: 2,
+        features: {
+          multiNode: false,
+          advancedPresets: false,
+          api: false,
+          priorityQueue: false,
+          cloudStorage: false,
+          webhooks: false,
         },
       });
       this.logger.log(`Downgraded license ${license.id} to FREE (subscription cancelled)`);
@@ -291,9 +283,7 @@ export class StripeService {
   private async handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     const customerId = invoice.customer as string;
 
-    const license = await this.prisma.license.findFirst({
-      where: { stripeCustomerId: customerId },
-    });
+    const license = await this.licenseRepository.findFirstWhere({ stripeCustomerId: customerId });
 
     if (license) {
       this.logger.warn(`Payment failed for license ${license.id}`);

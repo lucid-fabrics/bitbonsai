@@ -242,7 +242,7 @@ describe('SetupService', () => {
         mainNodeUrl: 'http://192.168.1.100:3100',
       });
 
-      expect(result.pairingToken).toBeDefined();
+      expect(result.pairingToken).not.toBeNull();
       expect(result.pairingToken).toMatch(/^BITBONSAI-/);
       expect(prisma.node.create).toHaveBeenCalledWith(
         expect.objectContaining({

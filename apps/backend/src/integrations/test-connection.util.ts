@@ -53,7 +53,7 @@ export async function testIntegrationConnection(
       success: true,
       data: response.data as Record<string, unknown>,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Connection failed',

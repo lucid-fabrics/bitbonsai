@@ -268,11 +268,11 @@ describe('AnalyticsService', () => {
       const hevcResult = result.find((r) => r.codec === 'HEVC');
       const av1Result = result.find((r) => r.codec === 'AV1');
 
-      expect(hevcResult).toBeDefined();
+      expect(hevcResult).not.toBeUndefined();
       expect(hevcResult?.jobCount).toBe(2);
       expect(hevcResult?.avgSavedPercent).toBe(45); // (40 + 50) / 2
 
-      expect(av1Result).toBeDefined();
+      expect(av1Result).not.toBeUndefined();
       expect(av1Result?.jobCount).toBe(1);
       expect(av1Result?.avgSavedPercent).toBe(60);
     });
@@ -350,7 +350,7 @@ describe('AnalyticsService', () => {
 
       const result = await service.getSummary('24h');
 
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
 
     it('should accept 7d period', async () => {
@@ -366,7 +366,7 @@ describe('AnalyticsService', () => {
 
       const result = await service.getSummary('7d');
 
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
 
     it('should accept 90d period', async () => {
@@ -382,7 +382,7 @@ describe('AnalyticsService', () => {
 
       const result = await service.getSummary('90d');
 
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
 
     it('should accept all period', async () => {
@@ -398,7 +398,7 @@ describe('AnalyticsService', () => {
 
       const result = await service.getSummary('all');
 
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
   });
 });

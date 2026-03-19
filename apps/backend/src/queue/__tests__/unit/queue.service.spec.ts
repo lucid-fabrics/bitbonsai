@@ -322,7 +322,7 @@ describe('QueueService', () => {
 
       const result = await service.getNextJob('node-1');
 
-      expect(result).toBeTruthy();
+      expect(result).not.toBeNull();
       expect(result?.stage).toBe(JobStage.ENCODING);
       expect(processingService.getNextJob).toHaveBeenCalledWith('node-1');
     });

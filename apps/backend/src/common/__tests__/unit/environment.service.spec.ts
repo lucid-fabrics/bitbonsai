@@ -71,13 +71,13 @@ describe('EnvironmentService', () => {
     it('should return valid storage paths', async () => {
       const result = await service.getStoragePaths();
 
-      expect(result).toBeDefined();
-      expect(result.mediaPath).toBeDefined();
-      expect(result.downloadsPath).toBeDefined();
-      expect(result.configPath).toBeDefined();
+      expect(result).not.toBeNull();
       expect(typeof result.mediaPath).toBe('string');
       expect(typeof result.downloadsPath).toBe('string');
       expect(typeof result.configPath).toBe('string');
+      expect(result.mediaPath.length).toBeGreaterThan(0);
+      expect(result.downloadsPath.length).toBeGreaterThan(0);
+      expect(result.configPath.length).toBeGreaterThan(0);
     });
 
     it('should return different paths based on environment', async () => {
@@ -104,7 +104,7 @@ describe('EnvironmentService', () => {
     it('should return hardware acceleration capabilities', async () => {
       const result = await service.detectHardwareAcceleration();
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(typeof result.nvidia).toBe('boolean');
       expect(typeof result.intelQsv).toBe('boolean');
       expect(typeof result.amd).toBe('boolean');
@@ -116,10 +116,10 @@ describe('EnvironmentService', () => {
     it('should return system information', async () => {
       const result = await service.getSystemInfo();
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result.cpuCores).toBeGreaterThan(0);
-      expect(result.architecture).toBeDefined();
-      expect(result.platform).toBeDefined();
+      expect(typeof result.architecture).toBe('string');
+      expect(typeof result.platform).toBe('string');
       expect(result.totalMemoryGb).toBeGreaterThan(0);
       expect(['string', 'undefined']).toContain(typeof result.containerRuntime);
       expect(['string', 'undefined']).toContain(typeof result.unraidVersion);
@@ -131,9 +131,9 @@ describe('EnvironmentService', () => {
       const result1 = await service.getHardwareInfo();
       const result2 = await service.getHardwareInfo();
 
-      expect(result1).toBeDefined();
-      expect(result1.acceleration).toBeDefined();
-      expect(result1.systemInfo).toBeDefined();
+      expect(result1).not.toBeNull();
+      expect(result1.acceleration).not.toBeNull();
+      expect(result1.systemInfo).not.toBeNull();
       expect(result1).toBe(result2); // Should return same cached object
     });
   });
@@ -143,7 +143,7 @@ describe('EnvironmentService', () => {
       const environment = await service.detectEnvironment();
       const docsLink = await service.getDocsLink();
 
-      expect(docsLink).toBeDefined();
+      expect(typeof docsLink).toBe('string');
       expect(docsLink).toContain('https://docs.bitbonsai.com/setup/');
 
       if (environment === 'UNRAID') {
@@ -203,14 +203,14 @@ describe('EnvironmentService', () => {
     it('should return complete environment information', async () => {
       const result = await service.getEnvironmentInfo();
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(['UNRAID', 'DOCKER', 'BARE_METAL']).toContain(result.environment);
       expect(typeof result.isUnraid).toBe('boolean');
       expect(typeof result.isDocker).toBe('boolean');
-      expect(result.hardwareAcceleration).toBeDefined();
-      expect(result.defaultPaths).toBeDefined();
-      expect(result.systemInfo).toBeDefined();
-      expect(result.docsLink).toBeDefined();
+      expect(result.hardwareAcceleration).not.toBeNull();
+      expect(result.defaultPaths).not.toBeNull();
+      expect(result.systemInfo).not.toBeNull();
+      expect(typeof result.docsLink).toBe('string');
       expect(Array.isArray(result.recommendations)).toBe(true);
     });
 
@@ -233,19 +233,19 @@ describe('EnvironmentService', () => {
       const result = await service.getEnvironmentInfo();
 
       // Verify all DTOs have required fields
-      expect(result.hardwareAcceleration.nvidia).toBeDefined();
-      expect(result.hardwareAcceleration.intelQsv).toBeDefined();
-      expect(result.hardwareAcceleration.amd).toBeDefined();
-      expect(result.hardwareAcceleration.appleVideoToolbox).toBeDefined();
+      expect(typeof result.hardwareAcceleration.nvidia).toBe('boolean');
+      expect(typeof result.hardwareAcceleration.intelQsv).toBe('boolean');
+      expect(typeof result.hardwareAcceleration.amd).toBe('boolean');
+      expect(typeof result.hardwareAcceleration.appleVideoToolbox).toBe('boolean');
 
-      expect(result.defaultPaths.mediaPath).toBeDefined();
-      expect(result.defaultPaths.downloadsPath).toBeDefined();
-      expect(result.defaultPaths.configPath).toBeDefined();
+      expect(typeof result.defaultPaths.mediaPath).toBe('string');
+      expect(typeof result.defaultPaths.downloadsPath).toBe('string');
+      expect(typeof result.defaultPaths.configPath).toBe('string');
 
-      expect(result.systemInfo.cpuCores).toBeDefined();
-      expect(result.systemInfo.architecture).toBeDefined();
-      expect(result.systemInfo.platform).toBeDefined();
-      expect(result.systemInfo.totalMemoryGb).toBeDefined();
+      expect(result.systemInfo.cpuCores).toBeGreaterThan(0);
+      expect(typeof result.systemInfo.architecture).toBe('string');
+      expect(typeof result.systemInfo.platform).toBe('string');
+      expect(result.systemInfo.totalMemoryGb).toBeGreaterThan(0);
     });
   });
 });

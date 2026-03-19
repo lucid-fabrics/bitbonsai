@@ -141,7 +141,7 @@ describe('FilesystemService', () => {
       (fs.readdir as jest.Mock).mockResolvedValue([]);
 
       // Empty path normalizes to cwd, which should still work
-      await expect(service.listDirectories('')).resolves.toBeDefined();
+      await expect(service.listDirectories('')).resolves.not.toBeNull();
     });
   });
 });

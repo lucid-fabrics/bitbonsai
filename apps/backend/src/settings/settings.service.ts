@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { SystemSettings } from '../common/interfaces/system-settings.interface';
-import { PrismaService } from '../prisma/prisma.service';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import type { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import type { DefaultQueueViewDto } from './dto/default-queue-view.dto';
 import type { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
@@ -37,7 +37,7 @@ export interface OperationalSettings {
  */
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly settingsRepository: SettingsRepository) {}
 
   /**
    * Get security settings
@@ -46,19 +46,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getSecuritySettings(): Promise<SecuritySettingsDto> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      // Create default settings if they don't exist
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            allowLocalNetworkWithoutAuth: false,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.findOrCreateWithDefaults({
+      allowLocalNetworkWithoutAuth: false,
     });
 
     return {
@@ -73,26 +62,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateSecuritySettings(dto: SecuritySettingsDto): Promise<SecuritySettingsDto> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      // Get existing settings or create if doesn't exist
-      let s = await tx.settings.findFirst();
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
-          },
-        });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: {
-            allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.upsertSettings({
+      allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
     });
 
     return {
@@ -107,19 +78,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getDefaultQueueView(): Promise<DefaultQueueViewDto> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      // Create default settings if they don't exist
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            defaultQueueView: 'ENCODING',
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.findOrCreateWithDefaults({
+      defaultQueueView: 'ENCODING',
     });
 
     return {
@@ -134,26 +94,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateDefaultQueueView(dto: DefaultQueueViewDto): Promise<DefaultQueueViewDto> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      // Get existing settings or create if doesn't exist
-      let s = await tx.settings.findFirst();
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            defaultQueueView: dto.defaultQueueView,
-          },
-        });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: {
-            defaultQueueView: dto.defaultQueueView,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.upsertSettings({
+      defaultQueueView: dto.defaultQueueView,
     });
 
     return {
@@ -168,19 +110,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getReadyFilesCacheTtl(): Promise<ReadyFilesCacheTtlDto> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      // Create default settings if they don't exist
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            readyFilesCacheTtlMinutes: 5,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.findOrCreateWithDefaults({
+      readyFilesCacheTtlMinutes: 5,
     });
 
     return {
@@ -201,26 +132,8 @@ export class SettingsService {
       throw new BadRequestException('Cache TTL must be at least 5 minutes');
     }
 
-    const settings = await this.prisma.$transaction(async (tx) => {
-      // Get existing settings or create if doesn't exist
-      let s = await tx.settings.findFirst();
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            readyFilesCacheTtlMinutes: ttlMinutes,
-          },
-        });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: {
-            readyFilesCacheTtlMinutes: ttlMinutes,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.upsertSettings({
+      readyFilesCacheTtlMinutes: ttlMinutes,
     });
 
     return {
@@ -236,19 +149,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getAutoHealRetryLimit(): Promise<AutoHealRetryLimitDto> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      // Create default settings if they don't exist
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            maxAutoHealRetries: 15,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.findOrCreateWithDefaults({
+      maxAutoHealRetries: 15,
     });
 
     return {
@@ -269,26 +171,8 @@ export class SettingsService {
       throw new BadRequestException('Auto-heal retry limit must be at least 3');
     }
 
-    const settings = await this.prisma.$transaction(async (tx) => {
-      // Get existing settings or create if doesn't exist
-      let s = await tx.settings.findFirst();
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            maxAutoHealRetries: maxRetries,
-          },
-        });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: {
-            maxAutoHealRetries: maxRetries,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.upsertSettings({
+      maxAutoHealRetries: maxRetries,
     });
 
     return {
@@ -307,19 +191,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create if needed
    */
   async getAdvancedMode(): Promise<{ advancedModeEnabled: boolean }> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      // Create default settings if they don't exist
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            advancedModeEnabled: false,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.findOrCreateWithDefaults({
+      advancedModeEnabled: false,
     });
 
     return {
@@ -334,26 +207,8 @@ export class SettingsService {
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
   async updateAdvancedMode(enabled: boolean): Promise<{ advancedModeEnabled: boolean }> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      // Get existing settings or create if doesn't exist
-      let s = await tx.settings.findFirst();
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: {
-            advancedModeEnabled: enabled,
-          },
-        });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: {
-            advancedModeEnabled: enabled,
-          },
-        });
-      }
-
-      return s;
+    const settings = await this.settingsRepository.upsertSettings({
+      advancedModeEnabled: enabled,
     });
 
     return {
@@ -366,28 +221,15 @@ export class SettingsService {
   // ============================================================================
 
   async getQualityMetrics(): Promise<{ qualityMetricsEnabled: boolean }> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-      if (!s) {
-        s = await tx.settings.create({ data: { qualityMetricsEnabled: false } });
-      }
-      return s;
+    const settings = await this.settingsRepository.findOrCreateWithDefaults({
+      qualityMetricsEnabled: false,
     });
     return { qualityMetricsEnabled: settings.qualityMetricsEnabled };
   }
 
   async updateQualityMetrics(enabled: boolean): Promise<{ qualityMetricsEnabled: boolean }> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-      if (!s) {
-        s = await tx.settings.create({ data: { qualityMetricsEnabled: enabled } });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: { qualityMetricsEnabled: enabled },
-        });
-      }
-      return s;
+    const settings = await this.settingsRepository.upsertSettings({
+      qualityMetricsEnabled: enabled,
     });
     return { qualityMetricsEnabled: settings.qualityMetricsEnabled };
   }
@@ -404,17 +246,7 @@ export class SettingsService {
     jellyfinApiKey: string | null;
     jellyfinRefreshOnComplete: boolean;
   }> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: {},
-        });
-      }
-
-      return s;
-    });
+    const settings = await this.settingsRepository.findOrCreate();
 
     const s = settings as SystemSettings;
 
@@ -429,7 +261,7 @@ export class SettingsService {
    * Get unmasked Jellyfin API key (for internal use only)
    */
   async getUnmaskedJellyfinApiKey(): Promise<string | null> {
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
     return (settings as SystemSettings | null)?.jellyfinApiKey || null;
   }
 
@@ -445,33 +277,18 @@ export class SettingsService {
     jellyfinApiKey: string | null;
     jellyfinRefreshOnComplete: boolean;
   }> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
+    const updateData: Record<string, unknown> = {};
+    if (dto.jellyfinUrl !== undefined) {
+      updateData.jellyfinUrl = dto.jellyfinUrl || null;
+    }
+    if (dto.jellyfinApiKey !== undefined) {
+      updateData.jellyfinApiKey = dto.jellyfinApiKey || null;
+    }
+    if (dto.jellyfinRefreshOnComplete !== undefined) {
+      updateData.jellyfinRefreshOnComplete = dto.jellyfinRefreshOnComplete;
+    }
 
-      const updateData: Record<string, unknown> = {};
-      if (dto.jellyfinUrl !== undefined) {
-        updateData.jellyfinUrl = dto.jellyfinUrl || null;
-      }
-      if (dto.jellyfinApiKey !== undefined) {
-        updateData.jellyfinApiKey = dto.jellyfinApiKey || null;
-      }
-      if (dto.jellyfinRefreshOnComplete !== undefined) {
-        updateData.jellyfinRefreshOnComplete = dto.jellyfinRefreshOnComplete;
-      }
-
-      if (!s) {
-        s = await tx.settings.create({
-          data: updateData,
-        });
-      } else {
-        s = await tx.settings.update({
-          where: { id: s.id },
-          data: updateData,
-        });
-      }
-
-      return s;
-    });
+    const settings = await this.settingsRepository.upsertSettings(updateData);
 
     const s = settings as SystemSettings;
 
@@ -494,18 +311,7 @@ export class SettingsService {
    * Priority: DB value -> Default (no env var fallback for simplicity)
    */
   async getOperationalSettings(): Promise<OperationalSettings> {
-    const settings = await this.prisma.$transaction(async (tx) => {
-      let s = await tx.settings.findFirst();
-
-      // Create default settings if they don't exist
-      if (!s) {
-        s = await tx.settings.create({
-          data: {},
-        });
-      }
-
-      return s;
-    });
+    const settings = await this.settingsRepository.findOrCreate();
 
     // Type assertion for new fields that may not be in Prisma client yet
     const s = settings as typeof settings & Partial<OperationalSettings>;

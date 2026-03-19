@@ -33,8 +33,8 @@ describe('NotificationsService', () => {
 
       const notification = await service.createNotification(dto);
 
-      expect(notification).toBeDefined();
-      expect(notification.id).toBeDefined();
+      expect(notification).not.toBeNull();
+      expect(notification.id).toMatch(/\S+/);
       expect(notification.type).toBe(dto.type);
       expect(notification.priority).toBe(dto.priority);
       expect(notification.title).toBe(dto.title);
@@ -145,7 +145,7 @@ describe('NotificationsService', () => {
       });
 
       const found = await service.getNotificationById(created.id);
-      expect(found).toBeDefined();
+      expect(found).not.toBeUndefined();
       expect(found?.id).toBe(created.id);
     });
 

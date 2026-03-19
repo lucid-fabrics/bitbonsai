@@ -1,6 +1,8 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { IntegrationsModule } from '../integrations/integrations.module';
+import { StorageShareRepository } from '../nodes/repositories/storage-share.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ContentFingerprintService } from './services/content-fingerprint.service';
 import { DataAccessService } from './services/data-access.service';
@@ -43,6 +45,11 @@ import { StorageInitService } from './services/storage-init.service';
     NFSAutoExportService,
     StorageInitService,
     EnvironmentDetectorService,
+    NodeRepository,
+    {
+      provide: 'IStorageShareRepository',
+      useClass: StorageShareRepository,
+    },
   ],
   exports: [
     NodeConfigService,

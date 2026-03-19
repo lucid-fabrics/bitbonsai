@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { JobRepository } from '../common/repositories/job.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { EncodingModule } from '../encoding/encoding.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { NodesModule } from '../nodes/nodes.module';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaModule } from '../prisma/prisma.module';
 import { DashboardController } from './dashboard.controller';
 import { DebugController } from './debug.controller';
 import { DebugService } from './debug.service';
@@ -18,14 +20,15 @@ import { SystemService } from './system.service';
  * Includes hardware detection, system metrics, health dashboard, and debug endpoints.
  */
 @Module({
-  imports: [EncodingModule, NodesModule, LibrariesModule],
+  imports: [EncodingModule, NodesModule, LibrariesModule, PrismaModule],
   controllers: [SystemController, DashboardController, DebugController],
   providers: [
     SystemService,
     HardwareDetectionService,
     HealthDashboardService,
     DebugService,
-    PrismaService,
+    NodeRepository,
+    JobRepository,
   ],
   exports: [SystemService, HardwareDetectionService, HealthDashboardService, DebugService],
 })

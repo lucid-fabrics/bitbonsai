@@ -428,10 +428,10 @@ describe('OverviewService', () => {
 
       const result = await service.getOverviewStats();
 
-      expect(result.systemHealth).toBeDefined();
-      expect(result.queueStats).toBeDefined();
-      expect(result.recentActivity).toBeDefined();
-      expect(result.topLibraries).toBeDefined();
+      expect(result.systemHealth).not.toBeNull();
+      expect(result.queueStats).not.toBeNull();
+      expect(result.recentActivity).not.toBeNull();
+      expect(result.topLibraries).not.toBeNull();
       expect(result.timestamp).toBeInstanceOf(Date);
 
       expect(result.systemHealth.activeNodes).toBe(3);
@@ -606,11 +606,11 @@ describe('OverviewService', () => {
       const result = await service.getOverview();
 
       // Verify snake_case structure
-      expect(result.system_health).toBeDefined();
-      expect(result.queue_summary).toBeDefined();
-      expect(result.recent_activity).toBeDefined();
-      expect(result.top_libraries).toBeDefined();
-      expect(result.last_updated).toBeDefined();
+      expect(result.system_health).not.toBeNull();
+      expect(result.queue_summary).not.toBeNull();
+      expect(result.recent_activity).not.toBeNull();
+      expect(result.top_libraries).not.toBeNull();
+      expect(result.last_updated).toBeInstanceOf(Date);
 
       // Verify system health
       expect(result.system_health.active_nodes.current).toBe(3);
@@ -631,14 +631,14 @@ describe('OverviewService', () => {
       expect(result.recent_activity[0].file_name).toBe('Movie.mkv');
       expect(result.recent_activity[0].library).toBe('Movies');
       expect(result.recent_activity[0].source_codec).toBe('H.264');
-      expect(result.recent_activity[0].saved_bytes).toBeDefined();
+      expect(result.recent_activity[0].saved_bytes).toBe('1342177280');
       expect(result.recent_activity[0].completed_at).toBe('2025-09-30T21:45:32.123Z');
 
       // Verify top libraries
       expect(result.top_libraries).toHaveLength(1);
       expect(result.top_libraries[0].name).toBe('Main Library');
       expect(result.top_libraries[0].job_count).toBe(127);
-      expect(result.top_libraries[0].total_savings_bytes).toBeDefined();
+      expect(result.top_libraries[0].total_savings_bytes).toBe('16106127360');
     });
 
     it('should handle zero stats correctly', async () => {

@@ -158,7 +158,7 @@ describe('LicenseGuardService', () => {
       try {
         await service.assertCanAddNode();
         fail('Should have thrown');
-      } catch (error) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(ForbiddenException);
         const response = (error as ForbiddenException).getResponse();
         expect(response).toHaveProperty('upgradeUrl', '/settings?tab=license');
@@ -216,7 +216,7 @@ describe('LicenseGuardService', () => {
       try {
         await service.assertFeatureEnabled('cloudStorage');
         fail('Should have thrown');
-      } catch (error) {
+      } catch (error: unknown) {
         const response = (error as ForbiddenException).getResponse();
         expect(response).toHaveProperty('feature', 'cloudStorage');
         expect((response as Record<string, string>).message).toContain('Cloud Storage');

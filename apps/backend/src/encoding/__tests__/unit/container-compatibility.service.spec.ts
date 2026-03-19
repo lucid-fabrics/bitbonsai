@@ -201,15 +201,15 @@ describe('ContainerCompatibilityService', () => {
 
       const issues = await service.checkCompatibility('/test/file.mkv', 'mp4');
 
-      expect(issues[0].suggestedActions).toBeDefined();
+      expect(Array.isArray(issues[0].suggestedActions)).toBe(true);
       expect(issues[0].suggestedActions.length).toBeGreaterThanOrEqual(2);
 
       const mkv = issues[0].suggestedActions.find((a: any) => a.id === 'use_mkv_container');
-      expect(mkv).toBeDefined();
+      expect(mkv).not.toBeUndefined();
       expect(mkv!.recommended).toBe(true);
 
       const aac = issues[0].suggestedActions.find((a: any) => a.id === 'transcode_audio_aac');
-      expect(aac).toBeDefined();
+      expect(aac).not.toBeUndefined();
     });
 
     it('should return empty on ffprobe failure', async () => {

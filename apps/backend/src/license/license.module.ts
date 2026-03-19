@@ -1,5 +1,8 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LicenseRepository } from '../common/repositories/license.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JobLimitGuard } from './guards/job-limit.guard';
 import { NodeLimitGuard } from './guards/node-limit.guard';
@@ -30,6 +33,9 @@ import { LicenseGuardService } from './license-guard.service';
   ],
   controllers: [LicenseController],
   providers: [
+    LicenseRepository,
+    NodeRepository,
+    JobRepository,
     LicenseService,
     LicenseGuardService,
     LicenseClientService,
@@ -37,6 +43,7 @@ import { LicenseGuardService } from './license-guard.service';
     JobLimitGuard,
   ],
   exports: [
+    LicenseRepository,
     LicenseService,
     LicenseGuardService,
     LicenseClientService,

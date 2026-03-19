@@ -1,7 +1,8 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { type License, LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
+import { randomBytes } from 'crypto';
+import { LicenseRepository } from '../common/repositories/license.repository';
 import type { CreateLicenseDto } from './dto/create-license.dto';
 
 /**
@@ -14,7 +15,7 @@ import type { CreateLicenseDto } from './dto/create-license.dto';
  */
 @Injectable()
 export class LicenseService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly licenseRepository: LicenseRepository) {}
 
   /**
    * Validate a license key
@@ -30,8 +31,34 @@ export class LicenseService {
    * @throws NotFoundException if license not found
    * @throws BadRequestException if license is not active or has expired
    */
-  async validateLicense(key: string) {
-    const license = await this.prisma.license.findUnique({
+  async validateLicense(key: string): Promise<{
+    id: string;
+    key: string;
+    tier: LicenseTier;
+    status: LicenseStatus;
+    validUntil: Date | null;
+    maxNodes: number;
+    maxConcurrentJobs: number;
+    features: LicenseFeatures;
+    email: string;
+    createdAt: Date;
+    updatedAt: Date;
+    canAddNode: boolean;
+    activeNodes: number;
+  }> {
+    const license = await this.licenseRepository.findUnique<{
+      id: string;
+      tier: LicenseTier;
+      status: LicenseStatus;
+      validUntil: Date | null;
+      maxNodes: number;
+      maxConcurrentJobs: number;
+      features: unknown;
+      email: string;
+      createdAt: Date;
+      updatedAt: Date;
+      _count: { nodes: number };
+    }>({
       where: { key },
       select: {
         id: true,
@@ -94,7 +121,7 @@ export class LicenseService {
    * @param data - License creation data
    * @returns The created license
    */
-  async createLicense(data: CreateLicenseDto) {
+  async createLicense(data: CreateLicenseDto): Promise<License> {
     const tierConfig = {
       // Free tier - single node, limited concurrency
       [LicenseTier.FREE]: { maxNodes: 1, maxConcurrentJobs: 2 },
@@ -126,17 +153,15 @@ export class LicenseService {
       webhooks: isPatreonProOrHigher || isCommercial,
     };
 
-    return this.prisma.license.create({
-      data: {
-        key: this.generateLicenseKey(data.tier),
-        tier: data.tier,
-        status: LicenseStatus.ACTIVE,
-        email: data.email,
-        maxNodes: config.maxNodes,
-        maxConcurrentJobs: config.maxConcurrentJobs,
-        features: features as unknown as Prisma.InputJsonValue,
-        validUntil: data.validUntil ? new Date(data.validUntil) : null,
-      },
+    return this.licenseRepository.createLicense({
+      key: this.generateLicenseKey(data.tier),
+      tier: data.tier,
+      status: LicenseStatus.ACTIVE,
+      email: data.email,
+      maxNodes: config.maxNodes,
+      maxConcurrentJobs: config.maxConcurrentJobs,
+      features: features as unknown as Prisma.InputJsonValue,
+      validUntil: data.validUntil ? new Date(data.validUntil) : null,
     });
   }
 
@@ -150,7 +175,10 @@ export class LicenseService {
    * @throws NotFoundException if license not found
    */
   async checkCanAddNode(licenseId: string): Promise<boolean> {
-    const license = await this.prisma.license.findUnique({
+    const license = await this.licenseRepository.findUnique<{
+      maxNodes: number;
+      _count: { nodes: number };
+    }>({
       where: { id: licenseId },
       select: {
         maxNodes: true,
@@ -180,7 +208,7 @@ export class LicenseService {
    */
   private generateLicenseKey(tier: LicenseTier): string {
     const prefix = tier.substring(0, 3).toUpperCase();
-    const random = require('crypto').randomBytes(8).toString('hex').substring(0, 10);
+    const random = randomBytes(8).toString('hex').substring(0, 10);
     return `${prefix}-${random}`;
   }
 }

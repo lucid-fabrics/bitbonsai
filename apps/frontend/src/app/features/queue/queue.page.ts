@@ -60,6 +60,7 @@ import type { QueueJob } from './models/queue-job.model';
 import type { QueueResponse } from './models/queue-response.model';
 import { CodecBadgeClassPipe } from './pipes/codec-badge-class.pipe';
 import { StatusClassPipe } from './pipes/status-class.pipe';
+import { QueueService } from './services/queue.service';
 
 @Component({
   selector: 'app-queue',
@@ -88,6 +89,7 @@ import { StatusClassPipe } from './pipes/status-class.pipe';
 })
 export class QueueComponent implements OnInit {
   private readonly queueApi = inject(QueueClient);
+  private readonly queueService = inject(QueueService);
   private readonly nodesApi = inject(NodesClient);
   private readonly settingsApi = inject(SettingsClient);
   private readonly distributionApi = inject(DistributionClient);
@@ -214,7 +216,7 @@ export class QueueComponent implements OnInit {
         }
 
         // Fetch jobs from queue API
-        return this.queueApi.getQueue(this.buildFilters()).pipe(
+        return this.queueService.getQueue(this.buildFilters()).pipe(
           map((data) => {
             // Always clear loading when data arrives
             this.loadingSubject$.next(false);
@@ -1322,7 +1324,7 @@ export class QueueComponent implements OnInit {
           typeof issue.category === 'string' &&
           typeof issue.message === 'string'
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.errorLogger.error('Failed to parse decision issues', error);
       return [];
     }
@@ -1363,7 +1365,7 @@ export class QueueComponent implements OnInit {
 
       // Refresh the queue to show updated job status
       this.refreshQueue();
-    } catch (error) {
+    } catch (error: unknown) {
       this.errorLogger.error('Failed to resolve decision', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.toastService.error(`Failed to apply fix: ${errorMessage}`);

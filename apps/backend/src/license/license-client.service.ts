@@ -12,7 +12,7 @@ import { LicenseStatus, type Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import { firstValueFrom } from 'rxjs';
-import { PrismaService } from '../prisma/prisma.service';
+import { LicenseRepository } from '../common/repositories/license.repository';
 import { getTierFeatures, TIER_LIMITS } from './tier-config';
 import { mapExternalTier } from './tier-mapping';
 
@@ -54,7 +54,7 @@ export class LicenseClientService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly licenseRepository: LicenseRepository
   ) {
     const configuredUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
 
@@ -79,21 +79,16 @@ export class LicenseClientService {
   }
 
   async getLicenseKey(): Promise<string | null> {
-    const license = await this.prisma.license.findFirst();
+    const license = await this.licenseRepository.findFirst<{ key: string } | null>({});
     return license?.key || null;
   }
 
   async setLicenseKey(key: string): Promise<void> {
-    const existingLicense = await this.prisma.license.findUnique({
-      where: { key },
-    });
+    const existingLicense = await this.licenseRepository.findByKey(key);
 
     if (existingLicense) {
       // License already exists, just update it
-      await this.prisma.license.update({
-        where: { key },
-        data: { updatedAt: new Date() },
-      });
+      await this.licenseRepository.updateByKey(key, { updatedAt: new Date() });
     } else {
       // This should not happen - license creation happens via API
       throw new Error('License must be validated via API before use');
@@ -186,10 +181,7 @@ export class LicenseClientService {
       }
 
       // Fallback to local database license if API unreachable
-      const localLicense = await this.prisma.license.findFirst({
-        where: { status: LicenseStatus.ACTIVE },
-        orderBy: { createdAt: 'desc' },
-      });
+      const localLicense = await this.licenseRepository.findFirstActiveDesc();
 
       if (localLicense) {
         this.logger.warn('License API unreachable, using local database license');
@@ -266,35 +258,18 @@ export class LicenseClientService {
       const features = getTierFeatures(internalTier);
 
       // M6: Use transaction to prevent race conditions
-      const savedLicense = await this.prisma.$transaction(async (tx) => {
-        const existingLicense = await tx.license.findFirst();
-
-        const licenseData = {
-          key: licenseKey,
-          email: verifiedPayload.email || email || 'unknown@bitbonsai.app',
-          tier: internalTier,
-          status: LicenseStatus.ACTIVE,
-          maxNodes: limits.maxNodes,
-          maxConcurrentJobs: limits.maxConcurrentJobs,
-          features: features as unknown as Prisma.InputJsonValue,
-          validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
-        };
-
-        if (existingLicense) {
-          const updated = await tx.license.update({
-            where: { id: existingLicense.id },
-            data: licenseData,
-          });
-          this.logger.log(`Updated existing license to ${internalTier}`);
-          return updated;
-        } else {
-          const created = await tx.license.create({
-            data: licenseData,
-          });
-          this.logger.log(`Created new license: ${internalTier}`);
-          return created;
-        }
-      });
+      const licenseData = {
+        key: licenseKey,
+        email: verifiedPayload.email || email || 'unknown@bitbonsai.app',
+        tier: internalTier,
+        status: LicenseStatus.ACTIVE,
+        maxNodes: limits.maxNodes,
+        maxConcurrentJobs: limits.maxConcurrentJobs,
+        features: features as unknown as Prisma.InputJsonValue,
+        validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
+      };
+      const savedLicense = await this.licenseRepository.transactionFindFirstAndUpsert(licenseData);
+      this.logger.log(`Saved license to ${internalTier}`);
 
       // Update cache with full key (for internal use)
       const licenseInfo: LicenseInfo = {

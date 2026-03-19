@@ -1,5 +1,4 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
-import type { Job } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import { normalizeCodec } from '../../common/utils/codec.util';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
@@ -41,7 +40,7 @@ export class JobBulkOperationsService {
           try {
             await this.ffmpegService.killProcess(job.id);
             this.logger.log(`  ✓ Killed FFmpeg for: ${job.fileLabel}`);
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.warn(`  ✗ Failed to kill FFmpeg for ${job.id}: ${error}`);
           }
         });
@@ -70,7 +69,7 @@ export class JobBulkOperationsService {
 
       this.logger.log(`Cancelled ${result.count} job(s) (all stages including encoding)`);
       return { cancelledCount: result.count };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to cancel all jobs', error);
       throw error;
     }
@@ -122,7 +121,7 @@ export class JobBulkOperationsService {
         totalSizeBytes: totalSize.toString(),
         jobs: cancelledJobs,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to retry all cancelled jobs', error);
       throw error;
     }
@@ -263,7 +262,7 @@ export class JobBulkOperationsService {
           error: job.error || 'Unknown error',
         })),
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to retry failed jobs', error);
       throw error;
     }
@@ -347,7 +346,7 @@ export class JobBulkOperationsService {
           targetCodec: job.targetCodec,
         })),
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to skip codec-match jobs', error);
       throw error;
     }
@@ -419,7 +418,7 @@ export class JobBulkOperationsService {
           targetCodec: job.targetCodec,
         })),
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to force encode codec-match jobs', error);
       throw error;
     }

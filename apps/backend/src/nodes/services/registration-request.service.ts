@@ -20,6 +20,7 @@ interface NodeRegistrationRequestWithApiKey extends NodeRegistrationRequest {
 
 import { randomBytes } from 'crypto';
 import * as os from 'os';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { NotificationsGateway } from '../../notifications/notifications.gateway';
 import { NotificationsService } from '../../notifications/notifications.service';
 import {
@@ -27,6 +28,7 @@ import {
   NotificationType,
 } from '../../notifications/types/notification.types';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RegistrationRequestRepository } from '../repositories/registration-request.repository';
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
 import { SshKeyService } from './ssh-key.service';
 import { StorageShareService } from './storage-share.service';
@@ -72,12 +74,14 @@ export class RegistrationRequestService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly registrationRequestRepository: RegistrationRequestRepository,
     readonly _systemInfoService: SystemInfoService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly sshKeyService: SshKeyService,
-    private readonly storageShareService: StorageShareService
+    private readonly storageShareService: StorageShareService,
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   /**
@@ -93,13 +97,11 @@ export class RegistrationRequestService {
 
     // Check if a pending request already exists from this machine
     if (data.macAddress) {
-      const existingRequest = await this.prisma.nodeRegistrationRequest.findFirst({
-        where: {
-          mainNodeId: data.mainNodeId,
-          macAddress: data.macAddress,
-          status: RegistrationRequestStatus.PENDING,
-        },
-      });
+      const existingRequest = await this.registrationRequestRepository.findFirstByMac(
+        data.mainNodeId,
+        data.macAddress,
+        RegistrationRequestStatus.PENDING
+      );
 
       if (existingRequest) {
         this.logger.log(
@@ -117,22 +119,20 @@ export class RegistrationRequestService {
     const childVersion = process.env.APP_VERSION || '1.0.0';
 
     // Create new registration request using system info from CHILD node
-    const request = await this.prisma.nodeRegistrationRequest.create({
-      data: {
-        mainNodeId: data.mainNodeId,
-        childNodeName: data.childNodeName,
-        childVersion,
-        ipAddress: data.ipAddress,
-        hostname: data.hostname,
-        containerType: data.containerType,
-        hardwareSpecs: data.hardwareSpecs,
-        acceleration: data.acceleration,
-        macAddress: data.macAddress,
-        subnet: data.subnet,
-        pairingToken,
-        tokenExpiresAt,
-        message: data.message,
-      },
+    const request = await this.registrationRequestRepository.createRequest({
+      mainNodeId: data.mainNodeId,
+      childNodeName: data.childNodeName,
+      childVersion,
+      ipAddress: data.ipAddress,
+      hostname: data.hostname,
+      containerType: data.containerType,
+      hardwareSpecs: data.hardwareSpecs,
+      acceleration: data.acceleration,
+      macAddress: data.macAddress,
+      subnet: data.subnet,
+      pairingToken,
+      tokenExpiresAt,
+      message: data.message,
     });
 
     this.logger.log(
@@ -163,14 +163,11 @@ export class RegistrationRequestService {
   async resetRequestTTL(requestId: string): Promise<NodeRegistrationRequest> {
     const newExpiresAt = new Date(Date.now() + this.TTL_HOURS * 60 * 60 * 1000);
 
-    const request = await this.prisma.nodeRegistrationRequest.update({
-      where: { id: requestId },
-      data: {
-        tokenExpiresAt: newExpiresAt,
-        tokenGeneratedAt: new Date(),
-        requestedAt: new Date(), // Reset requested timestamp too
-        status: RegistrationRequestStatus.PENDING, // Reset status if it was expired
-      },
+    const request = await this.registrationRequestRepository.updateById(requestId, {
+      tokenExpiresAt: newExpiresAt,
+      tokenGeneratedAt: new Date(),
+      requestedAt: new Date(), // Reset requested timestamp too
+      status: RegistrationRequestStatus.PENDING, // Reset status if it was expired
     });
 
     this.logger.log(
@@ -184,24 +181,14 @@ export class RegistrationRequestService {
    * Get all pending registration requests for a MAIN node
    */
   async getPendingRequests(mainNodeId: string): Promise<NodeRegistrationRequest[]> {
-    return this.prisma.nodeRegistrationRequest.findMany({
-      where: {
-        mainNodeId,
-        status: RegistrationRequestStatus.PENDING,
-        tokenExpiresAt: { gt: new Date() }, // Not expired
-      },
-      orderBy: { requestedAt: 'desc' },
-    });
+    return this.registrationRequestRepository.findManyPending(mainNodeId);
   }
 
   /**
    * Get a specific registration request by ID
    */
   async getRequest(requestId: string): Promise<NodeRegistrationRequest> {
-    const request = await this.prisma.nodeRegistrationRequest.findUnique({
-      where: { id: requestId },
-      include: { mainNode: true },
-    });
+    const request = await this.registrationRequestRepository.findUniqueById(requestId);
 
     if (!request) {
       throw new NotFoundException(`Registration request ${requestId} not found`);
@@ -209,7 +196,7 @@ export class RegistrationRequestService {
 
     // If request is APPROVED, fetch the child node's API key
     if (request.status === RegistrationRequestStatus.APPROVED && request.childNodeId) {
-      const childNode = await this.prisma.node.findUnique({
+      const childNode = await this.nodeRepository.findUnique<{ apiKey: string } | null>({
         where: { id: request.childNodeId },
         select: { apiKey: true },
       });
@@ -230,10 +217,7 @@ export class RegistrationRequestService {
    * Get a registration request by pairing token
    */
   async getRequestByToken(pairingToken: string): Promise<NodeRegistrationRequest> {
-    const request = await this.prisma.nodeRegistrationRequest.findUnique({
-      where: { pairingToken },
-      include: { mainNode: true },
-    });
+    const request = await this.registrationRequestRepository.findUniqueByToken(pairingToken);
 
     if (!request) {
       throw new NotFoundException(`Invalid pairing token`);
@@ -410,7 +394,7 @@ export class RegistrationRequestService {
         mainNodePublicKey = this.sshKeyService.getPublicKey();
 
         this.logger.log('✅ SSH keys exchanged successfully');
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Failed to setup SSH keys:', error);
         // Don't fail the approval if SSH setup fails - it can be done manually
       }
@@ -422,9 +406,7 @@ export class RegistrationRequestService {
       this.logger.log('🗄️  Setting up automatic storage sharing for new child node...');
 
       // Get the main node ID
-      const mainNode = await this.prisma.node.findFirst({
-        where: { role: NodeRole.MAIN },
-      });
+      const mainNode = await this.nodeRepository.findMain();
 
       if (mainNode) {
         // Create storage shares for all main node libraries
@@ -434,10 +416,7 @@ export class RegistrationRequestService {
           this.logger.log(`✅ Created ${shares.length} storage shares for child node to access`);
 
           // Update child node's hasSharedStorage flag if shares were created
-          await this.prisma.node.update({
-            where: { id: result.newNode.id },
-            data: { hasSharedStorage: true },
-          });
+          await this.nodeRepository.updateData(result.newNode.id, { hasSharedStorage: true });
 
           this.logger.log(`✅ Child node marked as having shared storage access`);
         } else {
@@ -446,7 +425,7 @@ export class RegistrationRequestService {
           );
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to setup automatic storage:', error);
       // Don't fail the approval if storage setup fails - it can be done manually
     }
@@ -490,13 +469,10 @@ export class RegistrationRequestService {
       throw new BadRequestException(`Request is not in PENDING state (current: ${request.status})`);
     }
 
-    const updatedRequest = await this.prisma.nodeRegistrationRequest.update({
-      where: { id: requestId },
-      data: {
-        status: RegistrationRequestStatus.REJECTED,
-        respondedAt: new Date(),
-        rejectionReason: rejectDto.reason,
-      },
+    const updatedRequest = await this.registrationRequestRepository.updateById(requestId, {
+      status: RegistrationRequestStatus.REJECTED,
+      respondedAt: new Date(),
+      rejectionReason: rejectDto.reason,
     });
 
     this.logger.log(
@@ -519,12 +495,9 @@ export class RegistrationRequestService {
       );
     }
 
-    const updatedRequest = await this.prisma.nodeRegistrationRequest.update({
-      where: { id: requestId },
-      data: {
-        status: RegistrationRequestStatus.CANCELLED,
-        respondedAt: new Date(),
-      },
+    const updatedRequest = await this.registrationRequestRepository.updateById(requestId, {
+      status: RegistrationRequestStatus.CANCELLED,
+      respondedAt: new Date(),
     });
 
     this.logger.log(
@@ -551,20 +524,12 @@ export class RegistrationRequestService {
     try {
       const now = new Date();
 
-      const result = await this.prisma.nodeRegistrationRequest.updateMany({
-        where: {
-          status: RegistrationRequestStatus.PENDING,
-          tokenExpiresAt: { lt: now },
-        },
-        data: {
-          status: RegistrationRequestStatus.EXPIRED,
-        },
-      });
+      const result = await this.registrationRequestRepository.updateManyExpired(now);
 
       if (result.count > 0) {
         this.logger.log(`🧹 Marked ${result.count} expired registration request(s)`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to cleanup expired requests', error);
     }
   }
@@ -578,24 +543,17 @@ export class RegistrationRequestService {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const result = await this.prisma.nodeRegistrationRequest.deleteMany({
-        where: {
-          createdAt: { lt: thirtyDaysAgo },
-          status: {
-            in: [
-              RegistrationRequestStatus.APPROVED,
-              RegistrationRequestStatus.REJECTED,
-              RegistrationRequestStatus.EXPIRED,
-              RegistrationRequestStatus.CANCELLED,
-            ],
-          },
-        },
-      });
+      const result = await this.registrationRequestRepository.deleteManyOld(thirtyDaysAgo, [
+        RegistrationRequestStatus.APPROVED,
+        RegistrationRequestStatus.REJECTED,
+        RegistrationRequestStatus.EXPIRED,
+        RegistrationRequestStatus.CANCELLED,
+      ]);
 
       if (result.count > 0) {
         this.logger.log(`🗑️  Deleted ${result.count} old registration request(s)`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to delete old requests', error);
     }
   }

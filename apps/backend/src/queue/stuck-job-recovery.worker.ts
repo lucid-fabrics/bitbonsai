@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { JobStage } from '@prisma/client';
+import { JobStage, Prisma } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
 import { FfmpegService } from '../encoding/ffmpeg.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 
 /**
@@ -52,7 +52,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   private readonly MAX_TRANSFER_RETRIES = 3;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
     private readonly ffmpegService: FfmpegService,
     private readonly fileFailureTracking: FileFailureTrackingService
   ) {}
@@ -85,7 +85,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     while (this.isRunning) {
       try {
         await this.recoverStuckJobs();
-      } catch (error) {
+      } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(`Recovery worker error: ${errorMessage}`);
       }
@@ -103,19 +103,17 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
     // Scenario 1: Jobs stuck in HEALTH_CHECK for too long
     const healthCheckCutoff = new Date(now.getTime() - this.HEALTH_CHECK_TIMEOUT_MIN * 60 * 1000);
-    const stuckHealthCheck = await this.prisma.job.findMany({
-      where: {
+    const stuckHealthCheck = await this.jobRepository.findManySelect<{
+      id: string;
+      fileLabel: string;
+      updatedAt: Date;
+    }>(
+      {
         stage: JobStage.HEALTH_CHECK,
-        updatedAt: {
-          lt: healthCheckCutoff,
-        },
+        updatedAt: { lt: healthCheckCutoff },
       },
-      select: {
-        id: true,
-        fileLabel: true,
-        updatedAt: true,
-      },
-    });
+      { id: true, fileLabel: true, updatedAt: true }
+    );
 
     if (stuckHealthCheck.length > 0) {
       this.logger.warn(
@@ -123,12 +121,9 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckHealthCheck) {
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: JobStage.DETECTED,
-            healthCheckRetries: { increment: 1 },
-          },
+        await this.jobRepository.updateById(job.id, {
+          stage: JobStage.DETECTED,
+          healthCheckRetries: { increment: 1 },
         });
 
         this.logger.log(
@@ -140,26 +135,25 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     // Scenario 2: Jobs stuck in ENCODING for too long without progress
     // CAPA FIX: Use lastProgressUpdate instead of updatedAt for more accurate stuck detection
     const encodingCutoff = new Date(now.getTime() - this.ENCODING_TIMEOUT_MIN * 60 * 1000);
-    const stuckEncoding = await this.prisma.job.findMany({
-      where: {
+    const stuckEncoding = await this.jobRepository.findManySelect<{
+      id: string;
+      fileLabel: string;
+      filePath: string;
+      libraryId: string;
+      updatedAt: Date;
+      lastProgressUpdate: Date | null;
+      progress: number;
+      stuckRecoveryCount: number;
+      contentFingerprint: string | null;
+    }>(
+      {
         stage: JobStage.ENCODING,
         OR: [
-          // No progress update for X minutes
-          {
-            lastProgressUpdate: {
-              lt: encodingCutoff,
-            },
-          },
-          // Or lastProgressUpdate is null (should never happen but safety net)
-          {
-            lastProgressUpdate: null,
-            updatedAt: {
-              lt: encodingCutoff,
-            },
-          },
+          { lastProgressUpdate: { lt: encodingCutoff } },
+          { lastProgressUpdate: null, updatedAt: { lt: encodingCutoff } },
         ],
-      },
-      select: {
+      } satisfies Prisma.JobWhereInput,
+      {
         id: true,
         fileLabel: true,
         filePath: true,
@@ -169,8 +163,8 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         progress: true,
         stuckRecoveryCount: true,
         contentFingerprint: true,
-      },
-    });
+      }
+    );
 
     if (stuckEncoding.length > 0) {
       this.logger.warn(
@@ -190,13 +184,10 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
           }
 
           const errorMsg = `Encoding repeatedly gets stuck - recovered ${job.stuckRecoveryCount} times without completing. File may be problematic. Manual intervention required.`;
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.FAILED,
-              failedAt: new Date(),
-              error: errorMsg,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.FAILED,
+            failedAt: new Date(),
+            error: errorMsg,
           });
 
           // Record in cross-job failure tracking for auto-blacklist
@@ -207,7 +198,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
               errorMsg,
               job.contentFingerprint ?? undefined
             );
-          } catch (trackingErr) {
+          } catch (trackingErr: unknown) {
             this.logger.error(
               `Failed to record failure tracking for ${job.fileLabel}`,
               trackingErr instanceof Error ? trackingErr.stack : String(trackingErr)
@@ -258,14 +249,11 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
         // CAPA CRITICAL FIX: Preserve temp file and resume state when recovering frozen jobs
         // DO NOT reset progress or startedAt - this allows job to resume from where it froze
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: JobStage.QUEUED,
-            stuckRecoveryCount: { increment: 1 },
-            // Keep progress, tempFilePath, resumeTimestamp intact for resume capability
-            error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}). Job will resume from ${job.progress}%.`,
-          },
+        await this.jobRepository.updateById(job.id, {
+          stage: JobStage.QUEUED,
+          stuckRecoveryCount: { increment: 1 },
+          // Keep progress, tempFilePath, resumeTimestamp intact for resume capability
+          error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}). Job will resume from ${job.progress}%.`,
         });
 
         // CAPA FIX: Show lastProgressUpdate time for better visibility
@@ -279,19 +267,17 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
     // Scenario 3: Jobs stuck in VERIFYING for too long
     const verifyingCutoff = new Date(now.getTime() - this.VERIFYING_TIMEOUT_MIN * 60 * 1000);
-    const stuckVerifying = await this.prisma.job.findMany({
-      where: {
+    const stuckVerifying = await this.jobRepository.findManySelect<{
+      id: string;
+      fileLabel: string;
+      updatedAt: Date;
+    }>(
+      {
         stage: JobStage.VERIFYING,
-        updatedAt: {
-          lt: verifyingCutoff,
-        },
+        updatedAt: { lt: verifyingCutoff },
       },
-      select: {
-        id: true,
-        fileLabel: true,
-        updatedAt: true,
-      },
-    });
+      { id: true, fileLabel: true, updatedAt: true }
+    );
 
     if (stuckVerifying.length > 0) {
       this.logger.warn(
@@ -299,14 +285,11 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckVerifying) {
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: JobStage.QUEUED,
-            progress: 0,
-            startedAt: null,
-            error: `Verification timed out (${this.VERIFYING_TIMEOUT_MIN}min). Job reset to queue.`,
-          },
+        await this.jobRepository.updateById(job.id, {
+          stage: JobStage.QUEUED,
+          progress: 0,
+          startedAt: null,
+          error: `Verification timed out (${this.VERIFYING_TIMEOUT_MIN}min). Job reset to queue.`,
         });
 
         this.logger.log(
@@ -318,34 +301,30 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     // DEEP AUDIT P0: Scenario 4 - Jobs stuck in TRANSFERRING (no progress for >15 min)
     // This catches file transfers that stall mid-progress (e.g., network issues, rsync hangs)
     const transferringCutoff = new Date(now.getTime() - this.TRANSFERRING_TIMEOUT_MIN * 60 * 1000);
-    const stuckTransferring = await this.prisma.job.findMany({
-      where: {
+    const stuckTransferring = await this.jobRepository.findManySelect<{
+      id: string;
+      fileLabel: string;
+      transferStartedAt: Date | null;
+      transferLastProgressAt: Date | null;
+      transferProgress: number;
+      transferRetryCount: number;
+    }>(
+      {
         stage: JobStage.TRANSFERRING,
         OR: [
-          // No progress update for X minutes
-          {
-            transferLastProgressAt: {
-              lt: transferringCutoff,
-            },
-          },
-          // Or transferLastProgressAt is null but transferStartedAt is old
-          {
-            transferLastProgressAt: null,
-            transferStartedAt: {
-              lt: transferringCutoff,
-            },
-          },
+          { transferLastProgressAt: { lt: transferringCutoff } },
+          { transferLastProgressAt: null, transferStartedAt: { lt: transferringCutoff } },
         ],
-      },
-      select: {
+      } satisfies Prisma.JobWhereInput,
+      {
         id: true,
         fileLabel: true,
         transferStartedAt: true,
         transferLastProgressAt: true,
         transferProgress: true,
         transferRetryCount: true,
-      },
-    });
+      }
+    );
 
     if (stuckTransferring.length > 0) {
       this.logger.warn(
@@ -359,30 +338,24 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
         if (retryCount >= this.MAX_TRANSFER_RETRIES) {
           // Max retries reached, mark as failed
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.FAILED,
-              failedAt: new Date(),
-              error: `File transfer stalled after ${this.MAX_TRANSFER_RETRIES} attempts (last progress: ${job.transferProgress}% at ${stuckMinutes}min ago)`,
-              transferError: `Transfer stalled - no progress for ${stuckMinutes} minutes`,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.FAILED,
+            failedAt: new Date(),
+            error: `File transfer stalled after ${this.MAX_TRANSFER_RETRIES} attempts (last progress: ${job.transferProgress}% at ${stuckMinutes}min ago)`,
+            transferError: `Transfer stalled - no progress for ${stuckMinutes} minutes`,
           });
           this.logger.error(
             `✗ Transfer failed (max retries): ${job.fileLabel} (progress: ${job.transferProgress}%) → FAILED`
           );
         } else {
           // Reset to DETECTED for retry
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.DETECTED,
-              transferRetryCount: retryCount,
-              transferProgress: 0,
-              transferStartedAt: null,
-              transferLastProgressAt: null,
-              transferError: `Transfer stalled at ${job.transferProgress}% (no progress for ${stuckMinutes}min). Retrying...`,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.DETECTED,
+            transferRetryCount: retryCount,
+            transferProgress: 0,
+            transferStartedAt: null,
+            transferLastProgressAt: null,
+            transferError: `Transfer stalled at ${job.transferProgress}% (no progress for ${stuckMinutes}min). Retrying...`,
           });
           this.logger.log(
             `🔄 Recovered stuck TRANSFERRING job: ${job.fileLabel} (progress: ${job.transferProgress}%, no progress for ${stuckMinutes}min, retry ${retryCount}/${this.MAX_TRANSFER_RETRIES}) → DETECTED`

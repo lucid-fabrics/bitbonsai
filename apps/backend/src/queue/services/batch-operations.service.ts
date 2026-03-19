@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
 
 /**
  * Batch Operation Result
@@ -28,7 +28,7 @@ export interface BatchOperationResult {
 export class BatchOperationsService {
   private readonly logger = new Logger(BatchOperationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly jobRepository: JobRepository) {}
 
   /**
    * Pause all queued and encoding jobs
@@ -55,24 +55,21 @@ export class BatchOperationsService {
 
       // CRITICAL #3 FIX: Two-phase pause to prevent QUEUED→ENCODING race
       // Phase 1: Mark all jobs with pause request timestamp
-      await this.prisma.job.updateMany({
-        where,
-        data: { pauseRequestedAt: now },
-      });
+      await this.jobRepository.atomicUpdateMany(where, { pauseRequestedAt: now });
 
       // Phase 2: Only transition jobs still in QUEUED stage
       // Workers check pauseRequestedAt before starting encoding
-      const result = await this.prisma.job.updateMany({
-        where: {
+      const result = await this.jobRepository.atomicUpdateMany(
+        {
           ...where,
           pauseRequestedAt: now, // Only jobs we just marked
           stage: { in: [JobStage.QUEUED] }, // Don't forcibly stop ENCODING
         },
-        data: {
+        {
           stage: JobStage.PAUSED,
           error: 'Batch paused by user',
-        },
-      });
+        }
+      );
 
       this.logger.log(
         `✅ Paused ${result.count} job(s) (workers will stop ENCODING jobs at next checkpoint)`
@@ -83,7 +80,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to pause jobs: ${errorMsg}`);
       return {
@@ -114,12 +111,9 @@ export class BatchOperationsService {
         where.nodeId = nodeId;
       }
 
-      const result = await this.prisma.job.updateMany({
-        where,
-        data: {
-          stage: JobStage.QUEUED,
-          error: 'Batch resumed by user',
-        },
+      const result = await this.jobRepository.atomicUpdateMany(where, {
+        stage: JobStage.QUEUED,
+        error: 'Batch resumed by user',
       });
 
       this.logger.log(`✅ Resumed ${result.count} job(s)`);
@@ -129,7 +123,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to resume jobs: ${errorMsg}`);
       return {
@@ -170,14 +164,11 @@ export class BatchOperationsService {
         where.nodeId = nodeId;
       }
 
-      const result = await this.prisma.job.updateMany({
-        where,
-        data: {
-          stage: JobStage.CANCELLED,
-          cancelRequestedAt: now, // CRITICAL #5 FIX: Workers check this flag
-          error: 'Batch cancelled by user',
-          completedAt: now,
-        },
+      const result = await this.jobRepository.atomicUpdateMany(where, {
+        stage: JobStage.CANCELLED,
+        cancelRequestedAt: now, // CRITICAL #5 FIX: Workers check this flag
+        error: 'Batch cancelled by user',
+        completedAt: now,
       });
 
       this.logger.log(`✅ Cancelled ${result.count} job(s)`);
@@ -187,7 +178,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to cancel jobs: ${errorMsg}`);
       return {
@@ -220,15 +211,12 @@ export class BatchOperationsService {
         where.nodeId = nodeId;
       }
 
-      const result = await this.prisma.job.updateMany({
-        where,
-        data: {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          error: 'Batch retry requested by user',
-          startedAt: null,
-          completedAt: null,
-        },
+      const result = await this.jobRepository.atomicUpdateMany(where, {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        error: 'Batch retry requested by user',
+        startedAt: null,
+        completedAt: null,
       });
 
       this.logger.log(`✅ Queued ${result.count} failed job(s) for retry`);
@@ -238,7 +226,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to retry jobs: ${errorMsg}`);
       return {
@@ -279,7 +267,7 @@ export class BatchOperationsService {
         where.nodeId = nodeId;
       }
 
-      const result = await this.prisma.job.deleteMany({ where });
+      const result = await this.jobRepository.deleteManyWhere(where);
 
       this.logger.log(`✅ Deleted ${result.count} old completed job(s)`);
 
@@ -288,7 +276,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to delete jobs: ${errorMsg}`);
       return {
@@ -317,7 +305,7 @@ export class BatchOperationsService {
         where.nodeId = nodeId;
       }
 
-      const result = await this.prisma.job.deleteMany({ where });
+      const result = await this.jobRepository.deleteManyWhere(where);
 
       this.logger.log(`✅ Deleted ${result.count} failed job(s)`);
 
@@ -326,7 +314,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to delete jobs: ${errorMsg}`);
       return {
@@ -354,17 +342,16 @@ export class BatchOperationsService {
     const counts: Record<string, number> = {};
 
     for (const stage of stages) {
-      counts[stage] = await this.prisma.job.count({
-        where: { ...where, stage },
-      });
+      counts[stage] = await this.jobRepository.countWhere({ ...where, stage });
     }
 
     // Add PAUSED_LOAD count (it's a string not enum)
-    counts.PAUSED_LOAD = await this.prisma.job.count({
-      where: { ...where, stage: 'PAUSED_LOAD' as JobStage },
+    counts.PAUSED_LOAD = await this.jobRepository.countWhere({
+      ...where,
+      stage: 'PAUSED_LOAD' as JobStage,
     });
 
-    counts.TOTAL = await this.prisma.job.count({ where });
+    counts.TOTAL = await this.jobRepository.countWhere(where);
 
     return counts;
   }
@@ -387,7 +374,7 @@ export class BatchOperationsService {
     this.logger.warn('⚠️ CLEARING ALL JOBS - This action is irreversible!');
 
     try {
-      const result = await this.prisma.job.deleteMany({});
+      const result = await this.jobRepository.deleteManyWhere({});
 
       this.logger.log(`✅ Cleared ${result.count} job(s) from queue`);
 
@@ -396,7 +383,7 @@ export class BatchOperationsService {
         affectedCount: result.count,
         errors: [],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to clear queue: ${errorMsg}`);
       return {

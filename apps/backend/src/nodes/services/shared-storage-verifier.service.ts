@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { type Node, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import { promisify } from 'util';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
+import { type IStorageShareRepository } from '../repositories/storage-share.repository.interface';
 
 const execAsync = promisify(exec);
 
@@ -32,7 +33,11 @@ export interface StorageVerificationResult {
 export class SharedStorageVerifierService {
   private readonly logger = new Logger(SharedStorageVerifierService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject('IStorageShareRepository')
+    private readonly storageShareRepository: IStorageShareRepository,
+    private readonly nodeRepository: NodeRepository
+  ) {}
 
   /**
    * Periodic health check for shared storage on all nodes
@@ -57,14 +62,7 @@ export class SharedStorageVerifierService {
       }
 
       // Get all StorageShares that claim to be mounted
-      const shares = await this.prisma.storageShare.findMany({
-        where: {
-          isMounted: true,
-        },
-        include: {
-          node: true,
-        },
-      });
+      const shares = await this.storageShareRepository.findMountedWithNode();
 
       if (shares.length === 0) {
         this.logger.debug('No mounted storage shares to verify');
@@ -92,10 +90,7 @@ export class SharedStorageVerifierService {
           availableCount++;
 
           // Update health check timestamp
-          await this.prisma.storageShare.update({
-            where: { id: share.id },
-            data: { lastHealthCheckAt: new Date() },
-          });
+          await this.storageShareRepository.update(share.id, { lastHealthCheckAt: new Date() });
         } else {
           unavailableCount++;
           this.logger.warn(
@@ -103,21 +98,18 @@ export class SharedStorageVerifierService {
           );
 
           // Update share status to reflect actual state
-          await this.prisma.storageShare.update({
-            where: { id: share.id },
-            data: {
-              isMounted: false,
-              status: StorageShareStatus.UNMOUNTED,
-              lastHealthCheckAt: new Date(),
-              lastError: 'Mount point not found in system mounts during health check',
-            },
+          await this.storageShareRepository.update(share.id, {
+            isMounted: false,
+            status: StorageShareStatus.UNMOUNTED,
+            lastHealthCheckAt: new Date(),
+            lastError: 'Mount point not found in system mounts during health check',
           });
         }
       }
 
       // Update hasSharedStorage flag for nodes that lost all mounts
       for (const nodeId of nodesChecked) {
-        const node = await this.prisma.node.findUnique({ where: { id: nodeId } });
+        const node = await this.nodeRepository.findById(nodeId);
         if (!node) continue;
 
         const hasWorkingMount = nodesWithWorkingMounts.has(nodeId);
@@ -126,23 +118,17 @@ export class SharedStorageVerifierService {
           this.logger.warn(
             `⚠️  Node ${node.name} has no working mounts. Setting hasSharedStorage=false`
           );
-          await this.prisma.node.update({
-            where: { id: nodeId },
-            data: {
-              hasSharedStorage: false,
-              lastHeartbeat: new Date(),
-            },
+          await this.nodeRepository.updateData(nodeId, {
+            hasSharedStorage: false,
+            lastHeartbeat: new Date(),
           });
         } else if (hasWorkingMount && !node.hasSharedStorage) {
           this.logger.log(
             `✅ Node ${node.name} has working mounts. Setting hasSharedStorage=true (recovered)`
           );
-          await this.prisma.node.update({
-            where: { id: nodeId },
-            data: {
-              hasSharedStorage: true,
-              lastHeartbeat: new Date(),
-            },
+          await this.nodeRepository.updateData(nodeId, {
+            hasSharedStorage: true,
+            lastHeartbeat: new Date(),
           });
           recoveredCount++;
         }
@@ -151,7 +137,7 @@ export class SharedStorageVerifierService {
       this.logger.log(
         `Health check complete: ${availableCount} available, ${recoveredCount} recovered, ${unavailableCount} unavailable`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to perform shared storage health check: ${error instanceof Error ? error.message : 'unknown error'}`
       );
@@ -241,7 +227,7 @@ export class SharedStorageVerifierService {
         error: null,
         translatedPath,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to verify shared storage access: ${errorMessage}`);
 
@@ -276,12 +262,7 @@ export class SharedStorageVerifierService {
       const { stdout } = await execAsync('mount');
 
       // First, check StorageShare records for this node
-      const shares = await this.prisma.storageShare.findMany({
-        where: {
-          nodeId: node.id,
-          isMounted: true,
-        },
-      });
+      const shares = await this.storageShareRepository.findMountedByNodeId(node.id);
 
       // Check each share's mount point
       for (const share of shares) {
@@ -324,7 +305,7 @@ export class SharedStorageVerifierService {
         mountPoint: shares[0]?.mountPoint || node.storageBasePath || null,
         error: errorMsg,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         isMounted: false,
@@ -355,7 +336,7 @@ export class SharedStorageVerifierService {
       }
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `File not accessible on ${node.name}: ${filePath} - ${error instanceof Error ? error.message : 'unknown error'}`
       );

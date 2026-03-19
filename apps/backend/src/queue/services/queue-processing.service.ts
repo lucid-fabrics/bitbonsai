@@ -11,6 +11,8 @@ import {
 import { OnEvent } from '@nestjs/event-emitter';
 import { type Job, JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { normalizeCodec } from '../../common/utils/codec.util';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
@@ -32,6 +34,8 @@ export class QueueProcessingService implements OnModuleInit {
 
   constructor(
     private prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository,
     @Inject(forwardRef(() => MediaAnalysisService))
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => FfmpegService))
@@ -56,7 +60,7 @@ export class QueueProcessingService implements OnModuleInit {
 
     try {
       await this.healOrphanedJobs();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('POLICY HEAL: Failed to complete startup scan', error);
     }
   }
@@ -65,6 +69,7 @@ export class QueueProcessingService implements OnModuleInit {
    * SELF-HEALING: Find and fix all jobs with orphaned or mismatched policies
    */
   private async healOrphanedJobs(): Promise<void> {
+    // PrismaService retained for atomic $transaction — not replaceable with repository
     const allPolicies = await this.prisma.policy.findMany();
     const policyMap = new Map(allPolicies.map((p) => [p.id, p]));
 
@@ -73,7 +78,17 @@ export class QueueProcessingService implements OnModuleInit {
       return;
     }
 
-    const jobsToCheck = await this.prisma.job.findMany({
+    type JobWithLibraryPolicies = {
+      id: string;
+      policyId: string | null;
+      targetCodec: string;
+      library: {
+        nodeId: string;
+        defaultPolicy: { id: string; targetCodec: string; name: string } | null;
+        policies: { id: string; targetCodec: string; name: string }[];
+      } | null;
+    };
+    const jobsToCheck = await this.jobRepository.findManyWithInclude<JobWithLibraryPolicies>({
       where: {
         stage: {
           in: [JobStage.QUEUED, JobStage.DETECTED, JobStage.PAUSED_LOAD],
@@ -101,10 +116,7 @@ export class QueueProcessingService implements OnModuleInit {
         }
 
         if (currentPolicy && job.targetCodec !== currentPolicy.targetCodec) {
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: { targetCodec: currentPolicy.targetCodec },
-          });
+          await this.jobRepository.updateById(job.id, { targetCodec: currentPolicy.targetCodec });
           this.logger.log(
             `POLICY HEAL: Fixed codec mismatch for job ${job.id} (${job.targetCodec} → ${currentPolicy.targetCodec})`
           );
@@ -133,18 +145,15 @@ export class QueueProcessingService implements OnModuleInit {
           continue;
         }
 
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            policyId: newPolicy.id,
-            targetCodec: newPolicy.targetCodec,
-          },
+        await this.jobRepository.updateById(job.id, {
+          policyId: newPolicy.id,
+          targetCodec: newPolicy.targetCodec,
         });
         this.logger.log(
           `POLICY HEAL: Assigned policy "${newPolicy.name}" to orphaned job ${job.id}`
         );
         healedCount++;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`POLICY HEAL: Failed to heal job ${job.id}`, error);
         errorCount++;
       }
@@ -187,7 +196,7 @@ export class QueueProcessingService implements OnModuleInit {
         }
 
         return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy getNextJob to MAIN node:`, error);
         if (error instanceof Error) {
           this.logger.error(`❌ MULTI-NODE: Error message: ${error.message}`);
@@ -199,7 +208,14 @@ export class QueueProcessingService implements OnModuleInit {
       }
     }
 
-    const node = await this.prisma.node.findUnique({
+    const node = await this.nodeRepository.findUnique<{
+      id: string;
+      name: string;
+      ipAddress: string | null;
+      hasSharedStorage: boolean;
+      license: { maxConcurrentJobs: number };
+      _count: { jobs: number };
+    } | null>({
       where: { id: nodeId },
       include: {
         license: true,
@@ -238,6 +254,8 @@ export class QueueProcessingService implements OnModuleInit {
     while (attempt < maxAttempts) {
       attempt++;
 
+      // PrismaService retained for atomic $transaction — not replaceable with repository
+      // Uses pg_advisory_xact_lock + optimistic claim (updateMany) to prevent double-claim
       const result = await this.prisma.$transaction(
         async (tx) => {
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${nodeId}))`;
@@ -375,6 +393,7 @@ export class QueueProcessingService implements OnModuleInit {
     this.logger.log(`Handling file.detected event for: ${payload.fileName}`);
 
     try {
+      // PrismaService retained for atomic $transaction — not replaceable with repository
       const library = await this.prisma.library.findUnique({
         where: { id: payload.libraryId },
         include: {
@@ -472,13 +491,9 @@ export class QueueProcessingService implements OnModuleInit {
         );
       }
 
-      const targetNode = await this.prisma.node.findUnique({
-        where: { id: assignedNodeId },
-      });
+      const targetNode = await this.nodeRepository.findById(assignedNodeId);
 
-      const sourceNode = await this.prisma.node.findUnique({
-        where: { id: library.nodeId },
-      });
+      const sourceNode = await this.nodeRepository.findById(library.nodeId);
 
       const transferRequired =
         targetNode && sourceNode && !targetNode.hasSharedStorage && targetNode.id !== sourceNode.id;
@@ -514,7 +529,7 @@ export class QueueProcessingService implements OnModuleInit {
       }
 
       this.logger.log(`Successfully created job for detected file: ${payload.fileName}`);
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof BadRequestException && error.message.includes('already exists')) {
         this.logger.log(`Job already exists for ${payload.fileName}, skipping`);
       } else {

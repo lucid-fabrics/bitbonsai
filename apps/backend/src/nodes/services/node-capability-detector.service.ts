@@ -4,7 +4,6 @@ import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import { promisify } from 'util';
 import { LibrariesService } from '../../libraries/libraries.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 const execAsync = promisify(exec);
 
@@ -43,10 +42,7 @@ export class NodeCapabilityDetectorService {
   // Local network latency threshold
   private readonly LOCAL_LATENCY_THRESHOLD_MS = 50;
 
-  constructor(
-    readonly _prisma: PrismaService,
-    private readonly librariesService: LibrariesService
-  ) {}
+  constructor(private readonly librariesService: LibrariesService) {}
 
   /**
    * Detect all capabilities for a node during pairing
@@ -221,7 +217,7 @@ export class NodeCapabilityDetectorService {
           hasSharedStorage: true,
           storageBasePath: testPath,
         };
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.warn(`❌ Local storage NOT accessible: ${testPath} - ${error}`);
       }
     }
@@ -252,7 +248,7 @@ export class NodeCapabilityDetectorService {
 
       this.logger.log(`Found ${exports.length} NFS exports: ${exports.join(', ')}`);
       return exports;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`No NFS exports found or /etc/exports not readable: ${error}`);
       return [];
     }
@@ -283,7 +279,7 @@ export class NodeCapabilityDetectorService {
 
       this.logger.log(`Found ${shares.length} SMB shares: ${shares.join(', ')}`);
       return shares;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`No SMB shares found or smb.conf not readable: ${error}`);
       return [];
     }
@@ -331,7 +327,7 @@ export class NodeCapabilityDetectorService {
 
       this.logger.log(`✅ Latency (fallback): ${avgLatency.toFixed(2)}ms`);
       return Math.round(avgLatency);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Failed to measure latency to ${nodeIp}: ${error}`);
       // Return default latency for private IPs (assume local network)
       return this.isPrivateIP(nodeIp) ? 10 : 100;

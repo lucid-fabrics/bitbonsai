@@ -121,7 +121,7 @@ describe('HealthService', () => {
 
       const result = await service.checkRedisHealth();
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result?.status).toBe('ok');
 
       // Restore
@@ -136,7 +136,7 @@ describe('HealthService', () => {
 
       const result = await service.checkRedisHealth();
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result?.status).toBe('ok');
 
       // Restore

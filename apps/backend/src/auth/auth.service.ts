@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
+import { UserRepository } from '../common/repositories/user.repository';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -31,7 +31,7 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     readonly _configService: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly userRepository: UserRepository
   ) {}
 
   /**
@@ -50,9 +50,7 @@ export class AuthService {
    */
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     // Find user by username
-    const user = await this.prisma.user.findUnique({
-      where: { username: loginDto.username },
-    });
+    const user = await this.userRepository.findByUsername(loginDto.username);
 
     // Security: Use generic error message to prevent username enumeration
     if (!user) {
@@ -82,13 +80,10 @@ export class AuthService {
     const refreshTokenExpiry = new Date();
     refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7); // 7 days
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        refreshToken,
-        refreshTokenExpiresAt: refreshTokenExpiry,
-        lastLoginAt: new Date(),
-      },
+    await this.userRepository.update(user.id, {
+      refreshToken,
+      refreshTokenExpiresAt: refreshTokenExpiry,
+      lastLoginAt: new Date(),
     });
 
     return new AuthResponseDto(accessToken, refreshToken, user.id, user.username, user.role);
@@ -109,12 +104,7 @@ export class AuthService {
    */
   async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
     // Find user by refresh token
-    const user = await this.prisma.user.findFirst({
-      where: {
-        refreshToken: refreshTokenDto.refreshToken,
-        isActive: true,
-      },
-    });
+    const user = await this.userRepository.findByRefreshToken(refreshTokenDto.refreshToken);
 
     if (!user) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -136,12 +126,9 @@ export class AuthService {
     const refreshTokenExpiry = new Date();
     refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7); // 7 days
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        refreshToken,
-        refreshTokenExpiresAt: refreshTokenExpiry,
-      },
+    await this.userRepository.update(user.id, {
+      refreshToken,
+      refreshTokenExpiresAt: refreshTokenExpiry,
     });
 
     return new AuthResponseDto(accessToken, refreshToken, user.id, user.username, user.role);
@@ -153,12 +140,9 @@ export class AuthService {
    * @param userId User ID
    */
   async logout(userId: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        refreshToken: null,
-        refreshTokenExpiresAt: null,
-      },
+    await this.userRepository.update(userId, {
+      refreshToken: null,
+      refreshTokenExpiresAt: null,
     });
   }
 

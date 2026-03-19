@@ -2,19 +2,19 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { NodesClient } from '../../../core/clients/nodes.client';
+import { NodesService } from '../services/nodes.service';
 import { NodesActions } from './nodes.actions';
 
 @Injectable()
 export class NodesEffects {
   private readonly actions$ = inject(Actions);
-  private readonly nodesClient = inject(NodesClient);
+  private readonly nodesService = inject(NodesService);
 
   loadNodes$ = createEffect(() =>
     this.actions$.pipe(
       ofType(NodesActions.loadNodes),
       switchMap(() =>
-        this.nodesClient.getNodes().pipe(
+        this.nodesService.getNodes().pipe(
           map((nodes) => NodesActions.loadNodesSuccess({ nodes })),
           catchError((error) => of(NodesActions.loadNodesFailure({ error: error.message })))
         )
@@ -26,7 +26,7 @@ export class NodesEffects {
     this.actions$.pipe(
       ofType(NodesActions.registerNode),
       switchMap(() =>
-        this.nodesClient.register().pipe(
+        this.nodesService.register().pipe(
           map((response) => NodesActions.registerNodeSuccess({ response })),
           catchError((error) => of(NodesActions.registerNodeFailure({ error: error.message })))
         )
@@ -38,7 +38,7 @@ export class NodesEffects {
     this.actions$.pipe(
       ofType(NodesActions.pairNode),
       switchMap(({ request }) =>
-        this.nodesClient.pair(request).pipe(
+        this.nodesService.pair(request).pipe(
           map((response) => NodesActions.pairNodeSuccess({ response })),
           catchError((error) => of(NodesActions.pairNodeFailure({ error: error.message })))
         )
@@ -50,7 +50,7 @@ export class NodesEffects {
     this.actions$.pipe(
       ofType(NodesActions.deleteNode),
       switchMap(({ id }) =>
-        this.nodesClient.deleteNode(id).pipe(
+        this.nodesService.deleteNode(id).pipe(
           map(() => NodesActions.deleteNodeSuccess({ id })),
           catchError((error) => of(NodesActions.deleteNodeFailure({ error: error.message })))
         )

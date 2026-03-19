@@ -1,8 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { DiscoveredNode } from '../../features/discovery/models/discovered-node.model';
-import type { ManagedNode } from '../../features/discovery/models/managed-node.model';
+import type { DiscoveredNode, ManagedNode } from '../models/discovery.model';
 
 export interface ApproveNodeRequest {
   discoveredNodeId: string;

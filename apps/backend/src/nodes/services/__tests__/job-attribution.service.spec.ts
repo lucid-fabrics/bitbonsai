@@ -234,7 +234,7 @@ describe('JobAttributionService', () => {
 
         const result = await service.findOptimalNode('job-1');
 
-        expect(result).toBeDefined();
+        expect(result).not.toBeNull();
         expect(result?.id).toBe('node-1');
       });
     });

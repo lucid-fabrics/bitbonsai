@@ -43,7 +43,7 @@ export class DistributionController {
   @ApiParam({ name: 'jobId', description: 'Job ID to score' })
   @ApiOkResponse({ description: 'Node scores retrieved' })
   @ApiNotFoundResponse({ description: 'Job not found' })
-  async getNodeScores(@Param('jobId') jobId: string) {
+  async getNodeScores(@Param('jobId') jobId: string): Promise<unknown> {
     const scores = await this.orchestrator.getAllNodeScores(jobId);
 
     if (scores.length === 0) {
@@ -72,7 +72,10 @@ export class DistributionController {
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
   @ApiOkResponse({ description: 'Detailed score retrieved' })
   @ApiNotFoundResponse({ description: 'Node score not found' })
-  async getNodeScoreDetail(@Param('jobId') jobId: string, @Param('nodeId') nodeId: string) {
+  async getNodeScoreDetail(
+    @Param('jobId') jobId: string,
+    @Param('nodeId') nodeId: string
+  ): Promise<unknown> {
     const scores = await this.orchestrator.getAllNodeScores(jobId);
     const nodeScore = scores.find((s) => s.nodeId === nodeId);
 
@@ -99,7 +102,7 @@ export class DistributionController {
   @ApiParam({ name: 'jobId', description: 'Job ID to assign' })
   @ApiOkResponse({ description: 'Job assigned successfully' })
   @ApiNotFoundResponse({ description: 'Job or node not found' })
-  async assignJob(@Param('jobId') jobId: string, @Body() dto: AssignJobDto) {
+  async assignJob(@Param('jobId') jobId: string, @Body() dto: AssignJobDto): Promise<unknown> {
     const result = await this.orchestrator.assignJob(jobId, dto.nodeId);
 
     if (!result) {
@@ -117,7 +120,7 @@ export class DistributionController {
   })
   @ApiOkResponse({ description: 'Rebalance complete' })
   @ApiInternalServerErrorResponse({ description: 'Rebalance failed' })
-  async rebalanceJobs() {
+  async rebalanceJobs(): Promise<{ success: boolean; migratedCount: number; reasons: unknown[] }> {
     const result = await this.orchestrator.rebalanceJobs();
 
     return {
@@ -133,7 +136,7 @@ export class DistributionController {
     description: 'Returns current scoring weights and behavior settings.',
   })
   @ApiOkResponse({ description: 'Distribution config retrieved' })
-  async getConfig() {
+  async getConfig(): Promise<unknown> {
     return this.orchestrator.getActiveConfig();
   }
 
@@ -144,7 +147,7 @@ export class DistributionController {
   })
   @ApiOkResponse({ description: 'Config updated' })
   @ApiInternalServerErrorResponse({ description: 'Failed to update config' })
-  async updateConfig(@Body() dto: UpdateConfigDto) {
+  async updateConfig(@Body() dto: UpdateConfigDto): Promise<unknown> {
     return this.orchestrator.updateConfig(dto as unknown as Record<string, unknown>);
   }
 
@@ -154,7 +157,7 @@ export class DistributionController {
     description: 'Returns summary of job distribution across nodes for dashboard.',
   })
   @ApiOkResponse({ description: 'Distribution summary retrieved' })
-  async getSummary() {
+  async getSummary(): Promise<unknown> {
     return this.orchestrator.getDistributionSummary();
   }
 
@@ -166,7 +169,7 @@ export class DistributionController {
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
   @ApiOkResponse({ description: 'Reliability stats retrieved' })
   @ApiNotFoundResponse({ description: 'Node not found' })
-  async getNodeReliability(@Param('nodeId') nodeId: string) {
+  async getNodeReliability(@Param('nodeId') nodeId: string): Promise<unknown> {
     const summary = await this.reliabilityTracker.getFailureSummary(nodeId);
     const isUnreliable = this.reliabilityTracker.isUnreliable(
       summary.count24h,
@@ -186,7 +189,7 @@ export class DistributionController {
     description: 'Returns current capacity and load status for all online nodes.',
   })
   @ApiOkResponse({ description: 'Node capacity status' })
-  async getNodesCapacity() {
+  async getNodesCapacity(): Promise<unknown> {
     return this.orchestrator.getNodesCapacity();
   }
 
@@ -198,7 +201,7 @@ export class DistributionController {
   @ApiParam({ name: 'jobId', description: 'Job ID to simulate' })
   @ApiOkResponse({ description: 'Simulation result' })
   @ApiNotFoundResponse({ description: 'No eligible nodes found' })
-  async simulateAssignment(@Param('jobId') jobId: string) {
+  async simulateAssignment(@Param('jobId') jobId: string): Promise<unknown> {
     const result = await this.orchestrator.findOptimalNode(jobId);
 
     if (!result) {

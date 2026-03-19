@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
-import { PrismaService } from '../prisma/prisma.service';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 
 /**
  * Torrent client types
@@ -97,7 +97,7 @@ export class TorrentIntegrationService {
   private qbCookie: string | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly settingsRepository: SettingsRepository,
     private readonly httpService: HttpService
   ) {}
 
@@ -134,7 +134,7 @@ export class TorrentIntegrationService {
       }
 
       return false;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`Torrent check failed for ${filePath}: ${error}`);
       return false; // Don't block on error
     }
@@ -451,7 +451,7 @@ export class TorrentIntegrationService {
    */
   private async getTorrentConfig(): Promise<TorrentConfig | null> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
 
       if (!settings?.torrentClient || !settings?.torrentUrl) {
         return null;
@@ -492,7 +492,7 @@ export class TorrentIntegrationService {
       return {
         success: true,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Connection failed',

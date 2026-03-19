@@ -2,9 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job, Policy } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
 import { QualityMetricsService } from './quality-metrics.service';
@@ -37,7 +38,8 @@ export class EncodingFileService {
   private readonly logger = new Logger(EncodingFileService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly settingsRepository: SettingsRepository,
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService,
     readonly _fileRelocatorService: FileRelocatorService,
@@ -68,7 +70,7 @@ export class EncodingFileService {
         this.logger.log(
           `  ⏳ TRUE RESUME: Temp file not found (attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}), retrying...`
         );
-      } catch (error) {
+      } catch (error: unknown) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         this.logger.warn(
           `  ⚠️  TRUE RESUME: Error checking temp file (attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}): ${errorMsg}`
@@ -161,7 +163,7 @@ export class EncodingFileService {
               `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${job.resumeTimestamp}`
             );
           }
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.warn(`  ⚠️  TRUE RESUME: Error parsing resumeTimestamp:`, error);
           // Continue without resume - will restart from 0%
         }
@@ -196,7 +198,7 @@ export class EncodingFileService {
               `  ⚠️  TRUE RESUME: Could not determine video duration, starting from beginning`
             );
           }
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.warn(`  ⚠️  TRUE RESUME: Error calculating resume position:`, error);
           // Continue without resume - will restart from 0%
         }
@@ -266,7 +268,7 @@ export class EncodingFileService {
         savedBytes,
         savedPercent,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       // TRUE RESUME: Only delete temp file on validation/corruption errors
       // Keep temp file for resumable errors (interrupts, crashes, EXDEV, etc.)
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -302,7 +304,7 @@ export class EncodingFileService {
           try {
             fs.unlinkSync(tmpPath);
             this.logger.debug(`Cleaned up temp file: ${tmpPath}`);
-          } catch (cleanupError) {
+          } catch (cleanupError: unknown) {
             this.logger.warn(`Failed to clean temp file ${tmpPath}:`, cleanupError);
           }
         }
@@ -658,7 +660,7 @@ export class EncodingFileService {
         `Disk space check passed: ${availableGB.toFixed(2)}GB available, ` +
           `${requiredGB.toFixed(2)}GB needed for atomic replacement`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof Error && error.message.includes('Insufficient disk space')) {
         throw error; // Re-throw our custom error
       }
@@ -702,7 +704,7 @@ export class EncodingFileService {
           }
           this.crossFsSafeRenameSync(originalBackupPath, originalPath);
           this.logger.log(`KEEP ORIGINAL: Successfully rolled back to original`);
-        } catch (_rollbackError) {
+        } catch (_rollbackError: unknown) {
           this.logger.error(`KEEP ORIGINAL: Rollback failed! Backup at: ${originalBackupPath}`);
         }
 
@@ -778,7 +780,7 @@ export class EncodingFileService {
     try {
       // Attempt fast rename (works if same filesystem)
       fs.renameSync(sourcePath, destPath);
-    } catch (error) {
+    } catch (error: unknown) {
       // Check if error is EXDEV (cross-device link not permitted)
       if ((error as NodeJS.ErrnoException).code === 'EXDEV') {
         this.logger.warn(
@@ -822,12 +824,12 @@ export class EncodingFileService {
           this.logger.log(
             `Successfully moved file across filesystems: ${sourcePath} -> ${destPath} (${sourceSize} bytes verified)`
           );
-        } catch (fallbackError) {
+        } catch (fallbackError: unknown) {
           // Clean up partial copy if it exists
           if (fs.existsSync(destPath)) {
             try {
               fs.unlinkSync(destPath);
-            } catch (cleanupError) {
+            } catch (cleanupError: unknown) {
               this.logger.error(`Failed to cleanup partial copy: ${cleanupError}`);
             }
           }
@@ -875,7 +877,7 @@ export class EncodingFileService {
           }
           this.crossFsSafeRenameSync(backupPath, originalPath);
           this.logger.log(`Successfully rolled back to backup for ${originalPath}`);
-        } catch (rollbackError) {
+        } catch (rollbackError: unknown) {
           this.logger.error(`CRITICAL: Rollback failed! Backup at: ${backupPath}`);
           throw new Error(
             `Post-replacement verification failed AND rollback failed.\n` +
@@ -893,19 +895,19 @@ export class EncodingFileService {
       // Step 4: Delete backup only after successful verification
       try {
         fs.unlinkSync(backupPath);
-      } catch (cleanupError) {
+      } catch (cleanupError: unknown) {
         // Non-fatal: Log warning but don't fail the operation
         this.logger.warn(`Failed to cleanup backup file ${backupPath}: ${cleanupError}`);
       }
 
       this.logger.log(`Atomic replacement complete with verification for ${originalPath}`);
-    } catch (error) {
+    } catch (error: unknown) {
       // If backup exists and original doesn't, try to restore
       if (fs.existsSync(backupPath) && !fs.existsSync(originalPath)) {
         try {
           this.crossFsSafeRenameSync(backupPath, originalPath);
           this.logger.log(`Restored backup after error for ${originalPath}`);
-        } catch (restoreError) {
+        } catch (restoreError: unknown) {
           this.logger.error(`Failed to restore backup after error: ${restoreError}`);
         }
       }
@@ -925,7 +927,7 @@ export class EncodingFileService {
     encodedPath: string
   ): Promise<void> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
       if (!settings?.qualityMetricsEnabled) return;
 
       this.logger.log(`Calculating quality metrics for job ${job.id}...`);
@@ -934,18 +936,15 @@ export class EncodingFileService {
         encodedPath
       );
 
-      await this.prisma.job.update({
-        where: { id: job.id },
-        data: {
-          qualityMetrics: {
-            vmaf: metrics.vmaf,
-            psnr: metrics.psnr,
-            ssim: metrics.ssim,
-          },
-          qualityMetricsAt: metrics.calculatedAt,
+      await this.jobRepository.updateById(job.id, {
+        qualityMetrics: {
+          vmaf: metrics.vmaf,
+          psnr: metrics.psnr,
+          ssim: metrics.ssim,
         },
+        qualityMetricsAt: metrics.calculatedAt,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `Quality metrics calculation failed for job ${job.id}, continuing: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -962,7 +961,7 @@ export class EncodingFileService {
       await this.librariesService.update(libraryId, {
         totalSizeBytes: newTotalSize,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to update library stats for ${libraryId}:`, error);
       // Don't throw - library stats update failure shouldn't fail job
     }

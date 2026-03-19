@@ -344,7 +344,7 @@ describe('LicenseClientService', () => {
       const result = await service.lookupLicenseByEmail('user@test.com');
 
       expect(result.found).toBe(true);
-      expect(result.license).toBeDefined();
+      expect(result.license).toEqual(expect.objectContaining({ tier: 'SUPPORTER', maxNodes: 2 }));
     });
 
     it('should return not found when email has no license', async () => {

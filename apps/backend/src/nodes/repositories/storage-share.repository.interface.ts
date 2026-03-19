@@ -1,4 +1,6 @@
-import { type StorageShare, type StorageShareStatus } from '@prisma/client';
+import { type Node, type StorageShare, type StorageShareStatus } from '@prisma/client';
+
+export type StorageShareWithNode = StorageShare & { node: Node | null };
 
 /**
  * Repository interface for StorageShare entity
@@ -93,4 +95,14 @@ export interface IStorageShareRepository {
    * Find a storage share by share path and node
    */
   findBySharePath(nodeId: string, sharePath: string): Promise<StorageShare | null>;
+
+  /**
+   * Find all mounted shares including their associated node
+   */
+  findMountedWithNode(): Promise<StorageShareWithNode[]>;
+
+  /**
+   * Delete all auto-managed shares globally
+   */
+  deleteAllAutoManaged(): Promise<number>;
 }

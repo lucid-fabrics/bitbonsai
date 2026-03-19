@@ -1,12 +1,17 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LicenseRepository } from '../common/repositories/license.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { CoreModule } from '../core/core.module';
 import { DistributionModule } from '../distribution/distribution.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { NodeRegistrationController } from './controllers/node-registration.controller';
 import { StorageSharesController } from './controllers/storage-shares.controller';
 import { NodesController } from './nodes.controller';
 import { NodesService } from './nodes.service';
+import { RegistrationRequestRepository } from './repositories/registration-request.repository';
 import { StorageShareRepository } from './repositories/storage-share.repository';
 import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
@@ -35,11 +40,23 @@ import { SystemInfoService } from './services/system-info.service';
  * - System information collection (hardware, network, container type)
  */
 @Module({
-  imports: [CoreModule, NotificationsModule, DistributionModule, forwardRef(() => LibrariesModule)],
-  controllers: [NodesController, StorageSharesController],
+  imports: [
+    CoreModule,
+    NotificationsModule,
+    DistributionModule,
+    // forwardRef required: NodesModule ↔ LibrariesModule circular dependency
+    // NodeCapabilityDetectorService injects LibrariesService.getAllLibraryPaths()
+    // LibrariesModule imports QueueModule which imports EncodingModule which imports NodesModule
+    forwardRef(() => LibrariesModule),
+  ],
+  controllers: [NodesController, NodeRegistrationController, StorageSharesController],
   providers: [
     NodesService,
     PrismaService,
+    NodeRepository,
+    JobRepository,
+    LicenseRepository,
+    RegistrationRequestRepository,
     {
       provide: 'IStorageShareRepository',
       useClass: StorageShareRepository,

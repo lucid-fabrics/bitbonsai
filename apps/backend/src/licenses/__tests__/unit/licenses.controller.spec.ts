@@ -147,7 +147,7 @@ describe('LicensesController', () => {
       const result = await controller.getAvailableTiers();
 
       const freeTier = result.tiers.find((t) => t.id === LicenseTier.FREE);
-      expect(freeTier).toBeDefined();
+      expect(freeTier).not.toBeUndefined();
       expect(freeTier?.price).toBe(0);
       expect(freeTier?.maxNodes).toBe(1);
       expect(freeTier?.maxConcurrentJobs).toBe(2);
@@ -157,7 +157,7 @@ describe('LicensesController', () => {
       const result = await controller.getAvailableTiers();
 
       const enterprise = result.tiers.find((t) => t.id === LicenseTier.COMMERCIAL_ENTERPRISE);
-      expect(enterprise).toBeDefined();
+      expect(enterprise).not.toBeUndefined();
       expect(enterprise?.maxNodes).toBe(999);
     });
   });

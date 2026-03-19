@@ -216,7 +216,7 @@ export class SystemResourceService {
       checks.push(
         `Disk space sufficient (${availableGB.toFixed(1)}GB available, ${requiredGB.toFixed(1)}GB needed)`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof Error && error.message.includes('Insufficient disk space')) {
         throw error;
       }
@@ -280,7 +280,7 @@ export class SystemResourceService {
         this.encodingTempPath = null;
         this.logger.debug('No encoding temp path configured, using source directory');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.loadThresholdMultiplier = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
       this.encodingTempPath = process.env.ENCODING_TEMP_PATH || null;
       this.logger.warn(`Failed to load settings from database, using defaults`, error);

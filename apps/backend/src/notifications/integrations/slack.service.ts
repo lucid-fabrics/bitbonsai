@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import type { SystemSettings } from '../../common/interfaces/system-settings.interface';
-import { PrismaService } from '../../prisma/prisma.service';
+import { SettingsRepository } from '../../common/repositories/settings.repository';
 
 /**
  * Slack block structure
@@ -57,7 +57,7 @@ export class SlackNotificationService {
   };
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly settingsRepository: SettingsRepository,
     private readonly httpService: HttpService
   ) {}
 
@@ -260,7 +260,7 @@ export class SlackNotificationService {
 
       await this.sendWebhook(webhookUrl, payload);
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -273,7 +273,7 @@ export class SlackNotificationService {
    */
   private async getWebhookUrl(): Promise<string | null> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
       return (settings as SystemSettings | null)?.slackWebhookUrl || null;
     } catch {
       return null;
@@ -294,7 +294,7 @@ export class SlackNotificationService {
         );
         this.logger.debug('Slack webhook sent successfully');
         return;
-      } catch (error) {
+      } catch (error: unknown) {
         if (attempt < this.MAX_RETRIES) {
           await new Promise((r) => setTimeout(r, 1000 * attempt));
         } else {

@@ -1,7 +1,9 @@
 import * as os from 'node:os';
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage, NodeStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import type { NodeStatusModel, OverviewResponseDto } from './dto/overview-response.dto';
 import type {
   OverviewStatsDto,
@@ -22,7 +24,11 @@ export class OverviewService {
   private readonly logger = new Logger(OverviewService.name);
   private lastCpuMeasure: { idle: number; total: number; timestamp: number } | null = null;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository,
+    private readonly libraryRepository: LibraryRepository
+  ) {}
 
   /**
    * Calculate current CPU utilization percentage using delta measurement
@@ -204,12 +210,7 @@ export class OverviewService {
     this.logger.debug('Calculating system health');
 
     // Get node counts by status
-    const nodeStats = await this.prisma.node.groupBy({
-      by: ['status'],
-      _count: {
-        status: true,
-      },
-    });
+    const nodeStats = await this.nodeRepository.groupByStatusCount();
 
     const activeNodes = nodeStats.find((s) => s.status === NodeStatus.ONLINE)?._count.status || 0;
     const offlineNodes =
@@ -227,11 +228,7 @@ export class OverviewService {
     }
 
     // Get storage statistics
-    const storageStats = await this.prisma.library.aggregate({
-      _sum: {
-        totalSizeBytes: true,
-      },
-    });
+    const storageStats = await this.libraryRepository.aggregateTotalSizeBytes();
 
     // For total storage, we'll use 5TB as default capacity
     // In production, this should be calculated from actual disk capacity
@@ -264,34 +261,23 @@ export class OverviewService {
     this.logger.debug('Calculating queue summary');
 
     // Get job counts by stage
-    const jobsByStage = await this.prisma.job.groupBy({
-      by: ['stage'],
-      _count: {
-        stage: true,
-      },
-    });
+    const jobsByStage = await this.jobRepository.groupByStageCount({});
 
-    const queued = jobsByStage.find((s) => s.stage === JobStage.QUEUED)?._count.stage || 0;
-    const encoding = jobsByStage.find((s) => s.stage === JobStage.ENCODING)?._count.stage || 0;
-    const completed = jobsByStage.find((s) => s.stage === JobStage.COMPLETED)?._count.stage || 0;
-    const failed = jobsByStage.find((s) => s.stage === JobStage.FAILED)?._count.stage || 0;
+    const queued = jobsByStage.find((s) => s.stage === JobStage.QUEUED)?._count || 0;
+    const encoding = jobsByStage.find((s) => s.stage === JobStage.ENCODING)?._count || 0;
+    const completed = jobsByStage.find((s) => s.stage === JobStage.COMPLETED)?._count || 0;
+    const failed = jobsByStage.find((s) => s.stage === JobStage.FAILED)?._count || 0;
 
     // Calculate total savings from completed jobs
-    const savingsStats = await this.prisma.job.aggregate({
-      where: {
-        stage: JobStage.COMPLETED,
-        savedBytes: {
-          not: null,
-        },
-      },
-      _sum: {
-        savedBytes: true,
-        beforeSizeBytes: true,
-      },
-    });
+    const savingsStats = await this.jobRepository.aggregateSumWhere(
+      { stage: JobStage.COMPLETED, savedBytes: { not: null } },
+      { savedBytes: true, beforeSizeBytes: true }
+    );
 
-    const totalSavedBytes = savingsStats._sum.savedBytes || BigInt(0);
-    const totalBeforeBytes = savingsStats._sum.beforeSizeBytes || BigInt(1);
+    const totalSavedBytes =
+      (savingsStats._sum as Record<string, bigint | null>).savedBytes || BigInt(0);
+    const totalBeforeBytes =
+      (savingsStats._sum as Record<string, bigint | null>).beforeSizeBytes || BigInt(1);
 
     // Calculate percentage saved
     const totalSavedPercent =
@@ -317,35 +303,15 @@ export class OverviewService {
   async getRecentActivity(): Promise<RecentActivityDto[]> {
     this.logger.debug('Fetching recent activity');
 
-    const recentJobs = await this.prisma.job.findMany({
+    const recentJobs = await this.jobRepository.findManyWithInclude<any>({
       where: {
         OR: [
-          {
-            stage: JobStage.COMPLETED,
-            completedAt: {
-              not: null,
-            },
-          },
-          {
-            stage: JobStage.ENCODING,
-          },
+          { stage: JobStage.COMPLETED, completedAt: { not: null } },
+          { stage: JobStage.ENCODING },
         ],
       },
-      include: {
-        library: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: [
-        {
-          stage: 'asc', // ENCODING jobs first (they come before COMPLETED alphabetically)
-        },
-        {
-          updatedAt: 'desc', // Then by most recent
-        },
-      ],
+      include: { library: { select: { name: true } } },
+      orderBy: [{ stage: 'asc' }, { updatedAt: 'desc' }],
       take: 10,
     });
 
@@ -381,83 +347,35 @@ export class OverviewService {
     this.logger.debug('Fetching node status with statistics');
 
     // Get all nodes with their job counts
-    const nodes = await this.prisma.node.findMany({
-      include: {
-        _count: {
-          select: {
-            jobs: true,
-          },
-        },
-      },
-      orderBy: [
-        { role: 'asc' }, // MAIN first
-        { name: 'asc' },
-      ],
-    });
+    const nodes = await this.nodeRepository.findManyWithJobCountOrdered();
 
     // Get encoding job counts per node
-    const encodingCounts = await this.prisma.job.groupBy({
-      by: ['nodeId'],
-      where: {
-        stage: JobStage.ENCODING,
-      },
-      _count: {
-        id: true,
-      },
+    const encodingCounts = await this.jobRepository.groupByNodeIdCount({
+      stage: JobStage.ENCODING,
     });
 
     // Get completed job counts and savings per node
-    const completedStats = await this.prisma.job.groupBy({
-      by: ['nodeId'],
-      where: {
-        stage: JobStage.COMPLETED,
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        savedBytes: true,
-      },
-    });
+    const completedStats = await this.jobRepository.groupByNodeIdSum(
+      { stage: JobStage.COMPLETED },
+      { savedBytes: true }
+    );
 
     // Get failed job counts per node
-    const failedCounts = await this.prisma.job.groupBy({
-      by: ['nodeId'],
-      where: {
-        stage: JobStage.FAILED,
-      },
-      _count: {
-        id: true,
-      },
-    });
+    const failedCounts = await this.jobRepository.groupByNodeIdCount({ stage: JobStage.FAILED });
 
     // Get queued jobs per node (for time estimation)
-    const queuedJobsByNode = await this.prisma.job.groupBy({
-      by: ['nodeId'],
-      where: {
-        stage: JobStage.QUEUED,
-      },
-      _count: {
-        id: true,
-      },
+    const queuedJobsByNode = await this.jobRepository.groupByNodeIdCount({
+      stage: JobStage.QUEUED,
     });
 
     // Calculate average encoding time per job (in seconds)
-    const completedJobs = await this.prisma.job.findMany({
-      where: {
-        stage: JobStage.COMPLETED,
-        startedAt: { not: null },
-        completedAt: { not: null },
-      },
-      select: {
-        startedAt: true,
-        completedAt: true,
-      },
-      take: 100, // Sample last 100 completed jobs
-      orderBy: {
-        completedAt: 'desc',
-      },
-    });
+    const completedJobs = await this.jobRepository.findManySelect<{
+      startedAt: Date | null;
+      completedAt: Date | null;
+    }>(
+      { stage: JobStage.COMPLETED, startedAt: { not: null }, completedAt: { not: null } },
+      { startedAt: true, completedAt: true }
+    );
 
     let avgEncodingTime = 0;
     if (completedJobs.length > 0) {
@@ -475,11 +393,12 @@ export class OverviewService {
 
     // Map nodes to response format
     return nodes.map((node) => {
-      const encodingCount = encodingCounts.find((c) => c.nodeId === node.id)?._count.id || 0;
+      const encodingCount = encodingCounts.find((c) => c.nodeId === node.id)?._count || 0;
       const completedStat = completedStats.find((s) => s.nodeId === node.id);
-      const completedCount = completedStat?._count.id || 0;
-      const failedCount = failedCounts.find((f) => f.nodeId === node.id)?._count.id || 0;
-      const totalSavedBytes = completedStat?._sum.savedBytes || BigInt(0);
+      const completedCount = completedStat?._count?.id || 0;
+      const failedCount = failedCounts.find((f) => f.nodeId === node.id)?._count || 0;
+      const totalSavedBytes =
+        (completedStat?._sum as Record<string, bigint | null> | undefined)?.savedBytes || BigInt(0);
 
       // Calculate success rate (show 0% if no jobs completed yet)
       const totalJobs = completedCount + failedCount;
@@ -487,7 +406,7 @@ export class OverviewService {
         totalJobs > 0 ? Number(((completedCount / totalJobs) * 100).toFixed(1)) : 0;
 
       // Calculate total queue time for this specific node
-      const queuedForNode = queuedJobsByNode.find((q) => q.nodeId === node.id)?._count.id || 0;
+      const queuedForNode = queuedJobsByNode.find((q) => q.nodeId === node.id)?._count || 0;
       const totalQueueTime =
         queuedForNode > 0 && avgEncodingTime > 0
           ? Math.ceil(queuedForNode * avgEncodingTime)
@@ -523,21 +442,7 @@ export class OverviewService {
     this.logger.debug('Fetching top libraries');
 
     // Get top 5 libraries with total job counts only (no job data)
-    const libraries = await this.prisma.library.findMany({
-      include: {
-        _count: {
-          select: {
-            jobs: true,
-          },
-        },
-      },
-      orderBy: {
-        jobs: {
-          _count: 'desc',
-        },
-      },
-      take: 5,
-    });
+    const libraries = await this.libraryRepository.findManyWithJobCountOrdered(5);
 
     // If no libraries, return empty array
     if (libraries.length === 0) {
@@ -547,46 +452,27 @@ export class OverviewService {
     const libraryIds = libraries.map((l) => l.id);
 
     // Aggregate completed job counts per library
-    const completedCounts = await this.prisma.job.groupBy({
-      by: ['libraryId'],
-      where: {
-        stage: JobStage.COMPLETED,
-        libraryId: { in: libraryIds },
-      },
-      _count: {
-        id: true,
-      },
+    const completedCounts = await this.jobRepository.groupByLibraryIdCount({
+      stage: JobStage.COMPLETED,
+      libraryId: { in: libraryIds },
     });
 
     // Aggregate encoding job counts per library
-    const encodingCounts = await this.prisma.job.groupBy({
-      by: ['libraryId'],
-      where: {
-        stage: JobStage.ENCODING,
-        libraryId: { in: libraryIds },
-      },
-      _count: {
-        id: true,
-      },
+    const encodingCounts = await this.jobRepository.groupByLibraryIdCount({
+      stage: JobStage.ENCODING,
+      libraryId: { in: libraryIds },
     });
 
     // Aggregate savings per library
-    const librarySavings = await this.prisma.job.groupBy({
-      by: ['libraryId'],
-      where: {
-        stage: JobStage.COMPLETED,
-        libraryId: { in: libraryIds },
-      },
-      _sum: {
-        savedBytes: true,
-        beforeSizeBytes: true,
-      },
-    });
+    const librarySavings = await this.jobRepository.groupByLibraryIdSum(
+      { stage: JobStage.COMPLETED, libraryId: { in: libraryIds } },
+      { savedBytes: true, beforeSizeBytes: true }
+    );
 
     // Combine the data
     return libraries.map((library) => {
-      const completed = completedCounts.find((c) => c.libraryId === library.id)?._count.id || 0;
-      const encoding = encodingCounts.find((e) => e.libraryId === library.id)?._count.id || 0;
+      const completed = completedCounts.find((c) => c.libraryId === library.id)?._count?.id || 0;
+      const encoding = encodingCounts.find((e) => e.libraryId === library.id)?._count?.id || 0;
       const savings = librarySavings.find((s) => s.libraryId === library.id);
 
       return {
@@ -597,8 +483,12 @@ export class OverviewService {
         jobCount: library._count.jobs,
         completedJobs: completed,
         encodingJobs: encoding,
-        totalSavedBytes: (savings?._sum?.savedBytes || BigInt(0)).toString(),
-        totalBeforeBytes: (savings?._sum?.beforeSizeBytes || BigInt(0)).toString(),
+        totalSavedBytes: (
+          (savings?._sum as Record<string, bigint | null> | undefined)?.savedBytes || BigInt(0)
+        ).toString(),
+        totalBeforeBytes: (
+          (savings?._sum as Record<string, bigint | null> | undefined)?.beforeSizeBytes || BigInt(0)
+        ).toString(),
       };
     });
   }

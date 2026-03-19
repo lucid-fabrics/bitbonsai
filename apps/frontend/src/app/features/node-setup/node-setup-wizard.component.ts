@@ -18,7 +18,7 @@ import { CapabilityResultsComponent } from './components/capability-results/capa
 import { CapabilityTestComponent } from './components/capability-test/capability-test.component';
 import type { DiscoveredNode, HardwareDetection } from './models/discovery.model';
 import { PairingStatus } from './models/discovery.model';
-import { DiscoveryService } from './services/discovery.service';
+import { NodeSetupService } from './services/node-setup.service';
 
 /**
  * Pairing Method Selection
@@ -77,7 +77,7 @@ enum WizardStep {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NodeSetupWizardComponent implements OnInit {
-  private readonly discoveryService = inject(DiscoveryService);
+  private readonly nodeSetupService = inject(NodeSetupService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -152,42 +152,33 @@ export class NodeSetupWizardComponent implements OnInit {
    * Validates the pending request before resuming to avoid stale state
    */
   ngOnInit(): void {
-    const pendingRequestId = localStorage.getItem('bitbonsai_pending_pairing_request_id');
-    const pendingPairingCode = localStorage.getItem('bitbonsai_pending_pairing_code');
-    const pendingMainNodeUrl = localStorage.getItem('bitbonsai_pending_main_node_url');
+    const pending = this.nodeSetupService.loadPendingPairingState();
 
-    if (pendingRequestId && pendingPairingCode && pendingMainNodeUrl) {
-      // Validate the pending request before resuming
-      this.discoveryService.setMainNodeUrl(pendingMainNodeUrl);
+    if (pending) {
+      this.nodeSetupService.setMainNodeUrl(pending.mainNodeUrl);
 
-      // Check if the request is still valid (not expired, already approved, or rejected)
-      this.discoveryService
-        .getRegistrationRequest(pendingMainNodeUrl, pendingRequestId)
+      this.nodeSetupService
+        .getRegistrationRequest(pending.mainNodeUrl, pending.requestId)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (request) => {
             if (request.status === 'PENDING') {
-              // Valid pending request - resume polling
               this.currentStep.set(WizardStep.Pairing);
-              this.pairingRequestId.set(pendingRequestId);
-              this.pairingCode.set(pendingPairingCode);
+              this.pairingRequestId.set(pending.requestId);
+              this.pairingCode.set(pending.pairingCode);
               this.pairingStatus.set(PairingStatus.WAITING_APPROVAL);
 
-              // Start elapsed timer
               this.pairingTimerInterval = setInterval(() => {
                 this.pairingElapsedSeconds.update((s) => s + 1);
               }, 1000);
 
-              // Resume polling
-              this.startPollingPairingStatus(pendingRequestId);
+              this.startPollingPairingStatus(pending.requestId);
             } else {
-              // Request already processed or expired - clear stale state
-              this.clearPendingPairingState();
+              this.nodeSetupService.clearPendingPairingState();
             }
           },
           error: () => {
-            // Request not found or network error - clear stale state
-            this.clearPendingPairingState();
+            this.nodeSetupService.clearPendingPairingState();
           },
         });
     }
@@ -243,9 +234,7 @@ export class NodeSetupWizardComponent implements OnInit {
     this.discoveredNodes.set([]);
     this.scanDuration.set(0);
 
-    const _startTime = Date.now();
-
-    this.discoveryService
+    this.nodeSetupService
       .startScan()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -259,7 +248,6 @@ export class NodeSetupWizardComponent implements OnInit {
               'No main nodes detected. Make sure your main node is running on the same network.'
             );
           } else {
-            // Auto-advance to selection after brief delay
             setTimeout(() => {
               this.currentStep.set(WizardStep.SelectNode);
             }, 1000);
@@ -338,22 +326,14 @@ export class NodeSetupWizardComponent implements OnInit {
     this.errorMessage.set(null);
     this.pairingElapsedSeconds.set(0);
 
-    // Build main node URL for polling
-    const mainNodeUrl = `http://${selectedNode.ipAddress}:${selectedNode.apiPort}`;
+    const mainNodeUrl = this.nodeSetupService.buildMainNodeUrl(selectedNode);
 
-    // Start elapsed time timer
     this.pairingTimerInterval = setInterval(() => {
       this.pairingElapsedSeconds.update((s) => s + 1);
     }, 1000);
 
-    this.discoveryService
-      .initiatePairing(
-        {
-          mainNodeId: selectedNodeId,
-          childNodeName,
-        },
-        mainNodeUrl
-      )
+    this.nodeSetupService
+      .initiatePairing({ mainNodeId: selectedNodeId, childNodeName }, mainNodeUrl)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -363,7 +343,6 @@ export class NodeSetupWizardComponent implements OnInit {
           this.pairingMessage.set(response.message ?? null);
           this.pairingRequestId.set(response.requestId ?? null);
 
-          // Handle immediate approval or rejection
           if (response.status === PairingStatus.APPROVED) {
             this.handlePairingApproved(response);
           } else if (response.status === PairingStatus.REJECTED) {
@@ -371,12 +350,11 @@ export class NodeSetupWizardComponent implements OnInit {
           } else if (response.status === PairingStatus.ERROR) {
             this.handlePairingError(response);
           } else if (response.status === PairingStatus.WAITING_APPROVAL && response.requestId) {
-            // Store pairing info to localStorage for persistence across refreshes
-            localStorage.setItem('bitbonsai_pending_pairing_request_id', response.requestId);
-            localStorage.setItem('bitbonsai_pending_pairing_code', response.pairingCode || '');
-            localStorage.setItem('bitbonsai_pending_main_node_url', mainNodeUrl);
-
-            // Start polling for approval
+            this.nodeSetupService.savePendingPairingState(
+              response.requestId,
+              response.pairingCode || '',
+              mainNodeUrl
+            );
             this.startPollingPairingStatus(response.requestId);
           }
         },
@@ -398,38 +376,32 @@ export class NodeSetupWizardComponent implements OnInit {
     childNodeId?: string;
   }): void {
     this.stopPairingTimer();
-    this.clearPendingPairingState();
+    this.nodeSetupService.clearPendingPairingState();
 
     if (response.connectionToken && response.mainNodeInfo) {
       this.connectedMainNode.set(response.mainNodeInfo);
 
-      // Store the approved node ID for capability testing
       if (response.childNodeId) {
         this.approvedNodeId.set(response.childNodeId);
       }
 
-      // Complete setup (save connection token and mark backend setup as complete)
-      this.discoveryService
+      this.nodeSetupService
         .completeSetup(response.connectionToken, response.mainNodeInfo)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
-            // Transition to capability testing instead of going to Complete
             if (this.approvedNodeId()) {
               this.currentStep.set(WizardStep.CapabilityTest);
             } else {
-              // Fallback to old behavior if no node ID
               this.currentStep.set(WizardStep.Complete);
             }
           },
           error: (error) => {
-            // If setup finalization fails, show error
             this.handleError(error, 'Failed to finalize setup. Please refresh and try again.');
           },
         });
     } else {
-      // Fallback behavior
-      this.discoveryService
+      this.nodeSetupService
         .getHardwareDetection()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
@@ -438,7 +410,6 @@ export class NodeSetupWizardComponent implements OnInit {
             this.currentStep.set(WizardStep.Complete);
           },
           error: () => {
-            // Even if hardware detection fails, proceed to complete
             this.currentStep.set(WizardStep.Complete);
           },
         });
@@ -450,7 +421,7 @@ export class NodeSetupWizardComponent implements OnInit {
    */
   private handlePairingRejected(response: { message?: string }): void {
     this.stopPairingTimer();
-    this.clearPendingPairingState();
+    this.nodeSetupService.clearPendingPairingState();
     this.errorMessage.set(
       response.message || 'Connection was rejected by the main node. Please try again.'
     );
@@ -480,14 +451,13 @@ export class NodeSetupWizardComponent implements OnInit {
    * Start polling for pairing status
    */
   private startPollingPairingStatus(requestId: string): void {
-    this.discoveryService
+    this.nodeSetupService
       .pollPairingStatus(requestId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           this.pairingStatus.set(response.status);
 
-          // Handle status changes
           if (response.status === PairingStatus.APPROVED) {
             this.handlePairingApproved(response);
           } else if (response.status === PairingStatus.REJECTED) {
@@ -504,15 +474,6 @@ export class NodeSetupWizardComponent implements OnInit {
           this.handleError(error, 'Error checking pairing status. Please try again.');
         },
       });
-  }
-
-  /**
-   * Clear pending pairing state from localStorage
-   */
-  private clearPendingPairingState(): void {
-    localStorage.removeItem('bitbonsai_pending_pairing_request_id');
-    localStorage.removeItem('bitbonsai_pending_pairing_code');
-    localStorage.removeItem('bitbonsai_pending_main_node_url');
   }
 
   /**
@@ -535,7 +496,7 @@ export class NodeSetupWizardComponent implements OnInit {
       }
     } else if (current === WizardStep.Pairing) {
       this.stopPairingTimer();
-      this.clearPendingPairingState();
+      this.nodeSetupService.clearPendingPairingState();
       this.currentStep.set(WizardStep.SelectNode);
     }
   }
@@ -561,7 +522,7 @@ export class NodeSetupWizardComponent implements OnInit {
    * Finalizes setup and proceeds to completion screen
    */
   handleCapabilityResultsComplete(config: { maxWorkers: number; cpuLimit: number }): void {
-    const mainNodeUrl = this.discoveryService.getMainNodeUrl();
+    const mainNodeUrl = this.nodeSetupService.getMainNodeUrl();
     const nodeId = this.approvedNodeId();
 
     if (!mainNodeUrl || !nodeId) {
@@ -569,29 +530,13 @@ export class NodeSetupWizardComponent implements OnInit {
       return;
     }
 
-    // Save maxWorkers and cpuLimit to the node via MAIN node's backend
-    this.discoveryService
-      .updateNodeConfig(mainNodeUrl, nodeId, {
-        maxWorkers: config.maxWorkers,
-        cpuLimit: config.cpuLimit,
-      })
+    this.nodeSetupService
+      .finalizeCapabilityConfig(mainNodeUrl, nodeId, config)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          // Fetch hardware detection for completion screen
-          this.discoveryService
-            .getHardwareDetection()
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: (hardware) => {
-                this.hardwareDetection.set(hardware);
-                this.currentStep.set(WizardStep.Complete);
-              },
-              error: () => {
-                // Even if hardware detection fails, proceed to complete
-                this.currentStep.set(WizardStep.Complete);
-              },
-            });
+        next: (hardware) => {
+          this.hardwareDetection.set(hardware);
+          this.currentStep.set(WizardStep.Complete);
         },
         error: (err) => {
           this.errorMessage.set(
@@ -637,6 +582,6 @@ export class NodeSetupWizardComponent implements OnInit {
    */
   ngOnDestroy(): void {
     this.stopPairingTimer();
-    this.discoveryService.reset();
+    this.nodeSetupService.reset();
   }
 }

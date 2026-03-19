@@ -1,7 +1,8 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { DistributionOrchestratorService } from '../../distribution/services/distribution-orchestrator.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import { isNodeInAllowedWindow } from '../utils/schedule-checker';
 import { JobAttributionService } from './job-attribution.service';
 
@@ -22,7 +23,8 @@ export class ScheduleEnforcementService {
   private readonly useDistributionV2: boolean;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository,
     private readonly jobAttribution: JobAttributionService,
     @Optional() private readonly distributionOrchestrator?: DistributionOrchestratorService
   ) {
@@ -43,13 +45,12 @@ export class ScheduleEnforcementService {
 
     try {
       // Get all encoding jobs with their nodes
-      const encodingJobs = await this.prisma.job.findMany({
-        where: {
-          stage: 'ENCODING',
-        },
-        include: {
-          node: true,
-        },
+      const encodingJobs = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        node: import('@prisma/client').Node;
+      }>({
+        where: { stage: 'ENCODING' },
+        include: { node: true },
       });
 
       // Collect job IDs to pause in memory first
@@ -67,18 +68,14 @@ export class ScheduleEnforcementService {
 
       // Batch update all jobs to pause in a single query
       if (jobIdsToPause.length > 0) {
-        await this.prisma.job.updateMany({
-          where: {
-            id: { in: jobIdsToPause },
-          },
-          data: {
-            stage: 'PAUSED',
-          },
-        });
+        await this.jobRepository.atomicUpdateMany(
+          { id: { in: jobIdsToPause } },
+          { stage: 'PAUSED' }
+        );
 
         this.logger.log(`Paused ${jobIdsToPause.length} job(s) due to schedule constraints`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error enforcing schedules:', error);
     }
   }
@@ -111,7 +108,7 @@ export class ScheduleEnforcementService {
 
       // LEGACY: Fall back to JobAttributionService
       await this.autoAssignQueuedJobsLegacy();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error auto-assigning jobs:', error);
     }
   }
@@ -122,12 +119,9 @@ export class ScheduleEnforcementService {
    */
   private async autoAssignQueuedJobsLegacy(): Promise<void> {
     // Get unassigned queued jobs (not manually assigned)
-    const queuedJobs = await this.prisma.job.findMany({
-      where: {
-        stage: 'QUEUED',
-        manualAssignment: false,
-      },
-      take: 50, // Process in batches of 50
+    const queuedJobs = await this.jobRepository.findManyWithInclude<import('@prisma/client').Job>({
+      where: { stage: 'QUEUED', manualAssignment: false },
+      take: 50,
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
     });
 
@@ -136,17 +130,7 @@ export class ScheduleEnforcementService {
     }
 
     // OPTIMIZATION: Fetch all nodes ONCE (not per job)
-    const nodes = await this.prisma.node.findMany({
-      where: {
-        status: 'ONLINE',
-        role: { in: ['MAIN', 'LINKED'] },
-      },
-      include: {
-        _count: {
-          select: { jobs: true },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findOnlineWithActiveJobCount();
 
     if (nodes.length === 0) {
       this.logger.debug('No online nodes available for job assignment');
@@ -195,26 +179,15 @@ export class ScheduleEnforcementService {
       }
     }
 
-    // OPTIMIZATION: Batch update using Prisma's updateMany in transaction
-    // Use individual updates for safety - batch raw SQL was vulnerable to SQL injection
     if (jobUpdates.length > 0) {
-      // Process in batches of 50 to avoid transaction timeout
-      const batchSize = 50;
-      for (let i = 0; i < jobUpdates.length; i += batchSize) {
-        const batch = jobUpdates.slice(i, i + batchSize);
-
-        await this.prisma.$transaction(
-          batch.map((update) =>
-            this.prisma.job.update({
-              where: { id: update.id },
-              data: {
-                nodeId: update.nodeId,
-                originalNodeId: update.originalNodeId,
-              },
-            })
-          )
-        );
-      }
+      await Promise.all(
+        jobUpdates.map((update) =>
+          this.jobRepository.updateById(update.id, {
+            nodeId: update.nodeId,
+            originalNodeId: update.originalNodeId,
+          })
+        )
+      );
 
       this.logger.log(
         `Auto-assigned ${queuedJobs.length} job(s), moved ${jobUpdates.length} to optimal nodes`
@@ -232,15 +205,12 @@ export class ScheduleEnforcementService {
 
     try {
       // Get paused jobs with their nodes
-      const pausedJobs = await this.prisma.job.findMany({
-        where: {
-          stage: 'PAUSED',
-          // Only auto-resume jobs that were paused by schedule enforcement
-          // (not manually paused by user)
-        },
-        include: {
-          node: true,
-        },
+      const pausedJobs = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        node: import('@prisma/client').Node;
+      }>({
+        where: { stage: 'PAUSED' },
+        include: { node: true },
       });
 
       // Collect job IDs to resume in memory first
@@ -258,18 +228,14 @@ export class ScheduleEnforcementService {
 
       // Batch update all jobs to resume in a single query
       if (jobIdsToResume.length > 0) {
-        await this.prisma.job.updateMany({
-          where: {
-            id: { in: jobIdsToResume },
-          },
-          data: {
-            stage: 'QUEUED', // Move back to queued, will be picked up by queue service
-          },
-        });
+        await this.jobRepository.atomicUpdateMany(
+          { id: { in: jobIdsToResume } },
+          { stage: 'QUEUED' }
+        );
 
         this.logger.log(`Resumed ${jobIdsToResume.length} job(s) - nodes back in schedule`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error resuming jobs:', error);
     }
   }

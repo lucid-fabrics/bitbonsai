@@ -11,15 +11,18 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import type { Job, Library } from '@prisma/client';
+import type { Job, Library, Node, Policy } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import {
   LibraryWatcherDisableEvent,
   LibraryWatcherEnableEvent,
   LibraryWatcherStopEvent,
 } from '../common/events';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
+import { PolicyRepository } from '../common/repositories/policy.repository';
 import { DistributionOrchestratorService } from '../distribution/services/distribution-orchestrator.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FileFailureTrackingService } from '../queue/services/file-failure-tracking.service';
 import { SettingsService } from '../settings/settings.service';
@@ -74,7 +77,6 @@ export class LibrariesService {
   };
 
   constructor(
-    private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
     private mediaAnalysis: MediaAnalysisService,
     @Inject(forwardRef(() => QueueService))
@@ -82,7 +84,11 @@ export class LibrariesService {
     private settingsService: SettingsService,
     @Inject(forwardRef(() => DistributionOrchestratorService))
     private distributionOrchestrator: DistributionOrchestratorService,
-    private fileFailureTracking: FileFailureTrackingService
+    private fileFailureTracking: FileFailureTrackingService,
+    private readonly libraryRepository: LibraryRepository,
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository,
+    private readonly policyRepository: PolicyRepository
   ) {}
 
   /**
@@ -212,7 +218,7 @@ export class LibrariesService {
           yield fullPath;
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Handle permission errors and other read errors gracefully
       this.logger.warn(`Failed to read directory: ${dirPath}`, error);
     }
@@ -238,7 +244,7 @@ export class LibrariesService {
     // Auto-assign to first available node if nodeId not provided
     let nodeId = createLibraryDto.nodeId;
     if (!nodeId) {
-      const firstNode = await this.prisma.node.findFirst({
+      const firstNode = await this.nodeRepository.findFirst<Node | null>({
         orderBy: { createdAt: 'asc' },
       });
 
@@ -253,22 +259,16 @@ export class LibrariesService {
     }
 
     // Check if node exists
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-    });
+    const node = await this.nodeRepository.findById(nodeId);
 
     if (!node) {
       throw new NotFoundException(`Node with ID "${nodeId}" not found`);
     }
 
     // Check for duplicate path on the same node (use sanitized path)
-    const existingLibrary = await this.prisma.library.findUnique({
-      where: {
-        nodeId_path: {
-          nodeId: nodeId,
-          path: sanitizedPath,
-        },
-      },
+    const existingLibrary = await this.libraryRepository.findFirstWhere({
+      nodeId,
+      path: sanitizedPath,
     });
 
     if (existingLibrary) {
@@ -278,18 +278,16 @@ export class LibrariesService {
     }
 
     try {
-      const library = await this.prisma.library.create({
-        data: {
-          name: createLibraryDto.name,
-          path: sanitizedPath, // SECURITY: Use sanitized path
-          mediaType: createLibraryDto.mediaType,
-          nodeId: nodeId,
-        },
+      const library = await this.libraryRepository.createLibrary({
+        name: createLibraryDto.name,
+        path: sanitizedPath, // SECURITY: Use sanitized path
+        mediaType: createLibraryDto.mediaType,
+        nodeId: nodeId as string,
       });
 
       this.logger.log(`Library created: ${library.id}`);
       return library;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to create library', error);
       throw error;
     }
@@ -302,38 +300,36 @@ export class LibrariesService {
    */
   async findAll(): Promise<Library[]> {
     this.logger.log('Fetching all libraries');
-    return this.prisma.library.findMany({
-      include: {
-        node: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-          },
-        },
-        defaultPolicy: {
-          select: {
-            id: true,
-            name: true,
-            targetCodec: true,
-            preset: true,
-          },
-        },
-        policies: {
-          select: {
-            id: true,
-            name: true,
-            preset: true,
-          },
-        },
-        _count: {
-          select: {
-            jobs: true,
-            policies: true,
-          },
+    return this.libraryRepository.findAllLibraries(undefined, {
+      node: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
         },
       },
-    });
+      defaultPolicy: {
+        select: {
+          id: true,
+          name: true,
+          targetCodec: true,
+          preset: true,
+        },
+      },
+      policies: {
+        select: {
+          id: true,
+          name: true,
+          preset: true,
+        },
+      },
+      _count: {
+        select: {
+          jobs: true,
+          policies: true,
+        },
+      },
+    }) as Promise<Library[]>;
   }
 
   /**
@@ -347,10 +343,9 @@ export class LibrariesService {
    * @returns Array of unique library paths
    */
   async getAllLibraryPaths(nodeId?: string): Promise<string[]> {
-    const libraries = await this.prisma.library.findMany({
-      where: nodeId ? { nodeId } : undefined,
-      select: { path: true },
-    });
+    const libraries = await this.libraryRepository.findAllLibraries(
+      nodeId ? { nodeId } : undefined
+    );
 
     // Return unique paths
     const paths = [...new Set(libraries.map((lib) => lib.path))];
@@ -368,9 +363,9 @@ export class LibrariesService {
   async findOne(id: string): Promise<LibraryStatsDto> {
     this.logger.log(`Fetching library: ${id}`);
 
-    const library = await this.prisma.library.findUnique({
-      where: { id },
-      include: {
+    const library = await this.libraryRepository.findUniqueWithInclude(
+      { id },
+      {
         node: {
           select: {
             id: true,
@@ -398,8 +393,8 @@ export class LibrariesService {
             jobs: true,
           },
         },
-      },
-    });
+      }
+    );
 
     if (!library) {
       throw new NotFoundException(`Library with ID "${id}" not found`);
@@ -420,9 +415,7 @@ export class LibrariesService {
     this.logger.log(`Updating library: ${id}`);
 
     // Check if library exists
-    const existingLibrary = await this.prisma.library.findUnique({
-      where: { id },
-    });
+    const existingLibrary = await this.libraryRepository.findByWhere({ id });
 
     if (!existingLibrary) {
       throw new NotFoundException(`Library with ID "${id}" not found`);
@@ -447,29 +440,25 @@ export class LibrariesService {
         }
       }
 
-      const library = await this.prisma.library.update({
-        where: { id },
-        data: updateLibraryDto,
-        include: {
-          node: {
-            select: {
-              id: true,
-              name: true,
-              status: true,
-            },
+      const library = await this.libraryRepository.updateWithInclude({ id }, updateLibraryDto, {
+        node: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
           },
-          _count: {
-            select: {
-              jobs: true,
-              policies: true,
-            },
+        },
+        _count: {
+          select: {
+            jobs: true,
+            policies: true,
           },
         },
       });
 
       this.logger.log(`Library updated: ${id}`);
       return library;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to update library: ${id}`, error);
       throw error;
     }
@@ -486,9 +475,7 @@ export class LibrariesService {
     this.logger.log(`Deleting library: ${id}`);
 
     // Check if library exists
-    const existingLibrary = await this.prisma.library.findUnique({
-      where: { id },
-    });
+    const existingLibrary = await this.libraryRepository.findByWhere({ id });
 
     if (!existingLibrary) {
       throw new NotFoundException(`Library with ID "${id}" not found`);
@@ -500,12 +487,10 @@ export class LibrariesService {
         this.eventEmitter.emit(LibraryWatcherStopEvent.event, new LibraryWatcherStopEvent(id));
       }
 
-      await this.prisma.library.delete({
-        where: { id },
-      });
+      await this.libraryRepository.deleteLibrary({ id });
 
       this.logger.log(`Library deleted: ${id}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to delete library: ${id}`, error);
       throw error;
     }
@@ -525,9 +510,7 @@ export class LibrariesService {
     this.logger.log(`Scanning library: ${id}`);
 
     // Check if library exists
-    const existingLibrary = await this.prisma.library.findUnique({
-      where: { id },
-    });
+    const existingLibrary = await this.libraryRepository.findByWhere({ id });
 
     if (!existingLibrary) {
       throw new NotFoundException(`Library with ID "${id}" not found`);
@@ -559,14 +542,10 @@ export class LibrariesService {
       const { totalFiles, totalSizeBytes } = stats;
 
       // Update library with scan results
-      const library = await this.prisma.library.update({
-        where: { id },
-        data: {
-          totalFiles,
-          totalSizeBytes,
-          lastScanAt: new Date(),
-        },
-        include: {
+      const library = await this.libraryRepository.updateWithInclude(
+        { id },
+        { totalFiles, totalSizeBytes, lastScanAt: new Date() },
+        {
           node: {
             select: {
               id: true,
@@ -580,14 +559,14 @@ export class LibrariesService {
               policies: true,
             },
           },
-        },
-      });
+        }
+      );
 
       this.logger.log(
         `Library scan completed: ${id} - Found ${totalFiles} files, ${totalSizeBytes} bytes`
       );
       return library;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to scan library: ${id}`, error);
       throw error;
     }
@@ -609,7 +588,7 @@ export class LibrariesService {
           const fileStats = await fs.stat(filePath);
           stats.totalFiles++;
           stats.totalSizeBytes += BigInt(fileStats.size);
-        } catch (statError) {
+        } catch (statError: unknown) {
           this.logger.warn(`Failed to stat file: ${filePath}`, statError);
         }
       })
@@ -631,12 +610,10 @@ export class LibrariesService {
   async scanPreview(id: string): Promise<ScanPreviewDto> {
     this.logger.log(`Generating scan preview for library: ${id}`);
 
-    const library = await this.prisma.library.findUnique({
-      where: { id },
-      include: {
-        defaultPolicy: true, // Get the library's default policy
-      },
-    });
+    const library = (await this.libraryRepository.findUniqueWithInclude(
+      { id },
+      { defaultPolicy: true }
+    )) as (Library & { defaultPolicy: Policy | null }) | null;
 
     if (!library) {
       throw new NotFoundException(`Library with ID "${id}" not found`);
@@ -664,18 +641,16 @@ export class LibrariesService {
     const analysis = await this.mediaAnalysis.analyzeFiles(videoFiles, policy.targetCodec);
 
     // Get ALL jobs for this library to annotate files with status
-    const allJobs = await this.prisma.job.findMany({
-      where: {
-        libraryId: library.id,
-      },
-      select: {
-        id: true,
-        filePath: true,
-        stage: true,
-        progress: true,
-        isBlacklisted: true,
-      },
-    });
+    const allJobs = await this.jobRepository.findManySelect<{
+      id: string;
+      filePath: string;
+      stage: string;
+      progress: number | null;
+      isBlacklisted: boolean;
+    }>(
+      { libraryId: library.id },
+      { id: true, filePath: true, stage: true, progress: true, isBlacklisted: true }
+    );
 
     // Create a map of filePath -> job info
     const jobMap = new Map(
@@ -737,7 +712,7 @@ export class LibrariesService {
         fileName,
         jobId: job.id,
         jobStage: job.stage,
-        jobProgress: job.progress,
+        jobProgress: job.progress ?? undefined,
         canAddToQueue: canAdd,
         blockedReason: !canAdd ? stageLabels[job.stage] : undefined,
       };
@@ -807,10 +782,10 @@ export class LibrariesService {
       `Creating jobs for library: ${libraryId} with policy: ${policyId || 'default'}`
     );
 
-    const library = await this.prisma.library.findUnique({
-      where: { id: libraryId },
-      include: { node: true, defaultPolicy: true },
-    });
+    const library = (await this.libraryRepository.findUniqueWithInclude(
+      { id: libraryId },
+      { node: true, defaultPolicy: true }
+    )) as (Library & { node: Node | null; defaultPolicy: Policy | null }) | null;
 
     if (!library) {
       throw new NotFoundException(`Library with ID "${libraryId}" not found`);
@@ -826,9 +801,7 @@ export class LibrariesService {
       );
     }
 
-    const policy = await this.prisma.policy.findUnique({
-      where: { id: effectivePolicyId },
-    });
+    const policy = await this.policyRepository.findById(effectivePolicyId);
 
     if (!policy) {
       throw new NotFoundException(`Policy with ID "${effectivePolicyId}" not found`);
@@ -851,15 +824,10 @@ export class LibrariesService {
     }
 
     // Get blacklisted file paths for this library to skip them
-    const blacklistedJobs = await this.prisma.job.findMany({
-      where: {
-        libraryId: library.id,
-        isBlacklisted: true,
-      },
-      select: {
-        filePath: true,
-      },
-    });
+    const blacklistedJobs = await this.jobRepository.findManySelect<{ filePath: string }>(
+      { libraryId: library.id, isBlacklisted: true },
+      { filePath: true }
+    );
 
     const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
 
@@ -1020,17 +988,15 @@ export class LibrariesService {
     this.logger.log('Cache miss or expired - fetching ready files from all libraries');
 
     // Get all enabled libraries with at least one policy
-    const libraries = await this.prisma.library.findMany({
-      where: {
-        enabled: true,
-      },
-      include: {
-        defaultPolicy: true, // Get the library's default policy
-      },
-    });
+    const libraries = await this.libraryRepository.findAllLibraries(
+      { enabled: true },
+      { defaultPolicy: true }
+    );
 
     // Filter libraries that have a default policy
-    const librariesWithPolicies = libraries.filter((lib) => lib.defaultPolicy !== null);
+    const librariesWithPolicies = (libraries as (Library & { defaultPolicy: unknown })[]).filter(
+      (lib) => lib.defaultPolicy !== null
+    );
 
     if (librariesWithPolicies.length === 0) {
       this.logger.log('No libraries with policies found');
@@ -1093,7 +1059,7 @@ export class LibrariesService {
         `Scheduled cache refresh completed in ${duration}s - ` +
           `${previews.length} libraries, ${totalFiles} ready files`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to refresh ready files cache via cron job', error);
     }
   }
@@ -1119,18 +1085,16 @@ export class LibrariesService {
       `Creating jobs for all files in library: ${libraryId} with policy: ${policyId}`
     );
 
-    const library = await this.prisma.library.findUnique({
-      where: { id: libraryId },
-      include: { node: true },
-    });
+    const library = await this.libraryRepository.findUniqueWithInclude(
+      { id: libraryId },
+      { node: true }
+    );
 
     if (!library) {
       throw new NotFoundException(`Library with ID "${libraryId}" not found`);
     }
 
-    const policy = await this.prisma.policy.findUnique({
-      where: { id: policyId },
-    });
+    const policy = await this.policyRepository.findById(policyId);
 
     if (!policy) {
       throw new NotFoundException(`Policy with ID "${policyId}" not found`);
@@ -1146,8 +1110,11 @@ export class LibrariesService {
     this.logger.log(`Found ${videoFiles.length} video files, creating jobs...`);
 
     // Get existing jobs and blacklisted files
-    const existingJobs = await this.prisma.job.findMany({
-      where: {
+    const existingJobs = await this.jobRepository.findManySelect<{
+      filePath: string;
+      isBlacklisted: boolean;
+    }>(
+      {
         libraryId: library.id,
         OR: [
           {
@@ -1165,11 +1132,8 @@ export class LibrariesService {
           { isBlacklisted: true },
         ],
       },
-      select: {
-        filePath: true,
-        isBlacklisted: true,
-      },
-    });
+      { filePath: true, isBlacklisted: true }
+    );
 
     const existingPaths = new Set(existingJobs.map((job) => job.filePath));
     const blacklistedPaths = new Set(
@@ -1239,7 +1203,7 @@ export class LibrariesService {
         });
 
         result.jobsCreated++;
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(`Failed to process file ${filePath}`, error);
         result.filesSkipped++;
         result.skippedFiles.push({
@@ -1268,9 +1232,7 @@ export class LibrariesService {
   async getLibraryFiles(libraryId: string): Promise<LibraryFilesDto> {
     this.logger.log(`Getting all files for library: ${libraryId}`);
 
-    const library = await this.prisma.library.findUnique({
-      where: { id: libraryId },
-    });
+    const library = await this.libraryRepository.findByWhere({ id: libraryId });
 
     if (!library) {
       throw new NotFoundException(`Library with ID "${libraryId}" not found`);
@@ -1322,7 +1284,7 @@ export class LibrariesService {
                   ? videoInfo.healthMessage
                   : undefined,
             };
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.error(`Failed to analyze file ${filePath}`, error);
             return null;
           }
