@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # Concurrency control: cancel in-progress runs for the same PR/branch
 concurrency:
