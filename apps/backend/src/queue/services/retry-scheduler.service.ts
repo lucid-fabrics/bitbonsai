@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { JobStage } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
 
 /**
  * RetrySchedulerService
@@ -25,7 +25,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class RetrySchedulerService {
   private readonly logger = new Logger(RetrySchedulerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly jobRepository: JobRepository) {}
 
   /**
    * Background job that runs every 5 minutes
@@ -39,20 +39,20 @@ export class RetrySchedulerService {
 
       // PERF: Optimized query uses composite index (stage, retryCount, nextRetryAt)
       // Find eligible failed jobs
-      const eligibleJobs = await this.prisma.job.findMany({
-        where: {
+      const eligibleJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        retryCount: number;
+        nextRetryAt: Date | null;
+        error: string | null;
+      }>(
+        {
           stage: JobStage.FAILED,
           retryCount: { lt: 3 },
           nextRetryAt: { lte: now },
         },
-        select: {
-          id: true,
-          fileLabel: true,
-          retryCount: true,
-          nextRetryAt: true,
-          error: true,
-        },
-      });
+        { id: true, fileLabel: true, retryCount: true, nextRetryAt: true, error: true }
+      );
 
       if (eligibleJobs.length === 0) {
         this.logger.debug('No failed jobs ready for retry');
@@ -62,21 +62,17 @@ export class RetrySchedulerService {
       this.logger.log(`Found ${eligibleJobs.length} failed job(s) ready for retry`);
 
       // Reset jobs back to QUEUED
-      const result = await this.prisma.job.updateMany({
-        where: {
-          id: {
-            in: eligibleJobs.map((j) => j.id),
-          },
-        },
-        data: {
+      const result = await this.jobRepository.updateManyByIds(
+        eligibleJobs.map((j) => j.id),
+        {
           stage: JobStage.QUEUED,
           progress: 0,
           error: null,
           completedAt: null,
           startedAt: null,
           retryCount: { increment: 1 },
-        },
-      });
+        }
+      );
 
       this.logger.log(`Background retry scheduler: ${result.count} job(s) re-queued`);
 
@@ -84,7 +80,7 @@ export class RetrySchedulerService {
       for (const job of eligibleJobs) {
         this.logger.log(`Retrying job: ${job.fileLabel} (attempt ${job.retryCount + 2}/4)`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to retry jobs in background scheduler', error);
     }
   }
@@ -98,12 +94,10 @@ export class RetrySchedulerService {
 
     // Return count of retried jobs
     const now = new Date();
-    const eligibleJobs = await this.prisma.job.count({
-      where: {
-        stage: JobStage.QUEUED,
-        retryCount: { gt: 0 },
-        updatedAt: { gte: new Date(now.getTime() - 60000) }, // Last minute
-      },
+    const eligibleJobs = await this.jobRepository.countWhere({
+      stage: JobStage.QUEUED,
+      retryCount: { gt: 0 },
+      updatedAt: { gte: new Date(now.getTime() - 60000) }, // Last minute
     });
 
     return eligibleJobs;

@@ -1,11 +1,11 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { AccelerationType, NodeStatus } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { MetricsRepository } from '../../../common/repositories/metrics.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { InsightsService } from '../../insights.service';
 
 describe('InsightsService', () => {
   let service: InsightsService;
-  let prisma: PrismaService;
 
   const mockMetrics = [
     {
@@ -51,36 +51,33 @@ describe('InsightsService', () => {
     },
   ];
 
-  const mockPrismaService = {
-    metric: {
-      findMany: jest.fn(),
-      aggregate: jest.fn(),
-    },
-    node: {
-      findMany: jest.fn(),
-    },
+  const mockMetricsRepository = {
+    findByDateRange: jest.fn(),
+    aggregateByLicense: jest.fn(),
+    findCodecDistributions: jest.fn(),
+    findByDateRangeOrdered: jest.fn(),
+  };
+
+  const mockNodeRepository = {
+    findAllWithMetrics: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InsightsService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
+        { provide: MetricsRepository, useValue: mockMetricsRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
       ],
     }).compile();
 
     service = module.get<InsightsService>(InsightsService);
-    prisma = module.get<PrismaService>(PrismaService);
 
-    // Reset all mocks before each test
     jest.clearAllMocks();
   });
 
   it('should be defined', () => {
-    expect(service).toBeDefined();
+    expect(service).toBeInstanceOf(InsightsService);
   });
 
   describe('getTimeSeriesMetrics', () => {
@@ -88,89 +85,66 @@ describe('InsightsService', () => {
       const startDate = new Date('2024-09-01');
       const endDate = new Date('2024-09-30');
 
-      mockPrismaService.metric.findMany.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findByDateRange.mockResolvedValue(mockMetrics);
 
-      const result = await service.getTimeSeriesMetrics({
-        startDate,
-        endDate,
-      });
+      const result = await service.getTimeSeriesMetrics({ startDate, endDate });
 
       expect(result).toEqual(mockMetrics);
-      expect(prisma.metric.findMany).toHaveBeenCalledWith({
-        where: {
-          date: {
-            gte: startDate,
-            lte: endDate,
-          },
-          nodeId: undefined,
-          licenseId: undefined,
-        },
-        orderBy: {
-          date: 'asc',
-        },
+      expect(mockMetricsRepository.findByDateRange).toHaveBeenCalledWith({
+        startDate,
+        endDate,
+        nodeId: undefined,
+        licenseId: undefined,
       });
     });
 
     it('should filter metrics by nodeId', async () => {
       const startDate = new Date('2024-09-01');
       const endDate = new Date('2024-09-30');
-      const nodeId = 'node1';
 
-      mockPrismaService.metric.findMany.mockResolvedValue([mockMetrics[0]]);
+      mockMetricsRepository.findByDateRange.mockResolvedValue([mockMetrics[0]]);
 
-      await service.getTimeSeriesMetrics({
+      await service.getTimeSeriesMetrics({ startDate, endDate, nodeId: 'node1' });
+
+      expect(mockMetricsRepository.findByDateRange).toHaveBeenCalledWith({
         startDate,
         endDate,
-        nodeId,
-      });
-
-      expect(prisma.metric.findMany).toHaveBeenCalledWith({
-        where: {
-          date: {
-            gte: startDate,
-            lte: endDate,
-          },
-          nodeId: 'node1',
-          licenseId: undefined,
-        },
-        orderBy: {
-          date: 'asc',
-        },
+        nodeId: 'node1',
+        licenseId: undefined,
       });
     });
 
     it('should filter metrics by licenseId', async () => {
       const startDate = new Date('2024-09-01');
       const endDate = new Date('2024-09-30');
-      const licenseId = 'license1';
 
-      mockPrismaService.metric.findMany.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findByDateRange.mockResolvedValue(mockMetrics);
 
-      await service.getTimeSeriesMetrics({
+      await service.getTimeSeriesMetrics({ startDate, endDate, licenseId: 'license1' });
+
+      expect(mockMetricsRepository.findByDateRange).toHaveBeenCalledWith({
         startDate,
         endDate,
-        licenseId,
+        nodeId: undefined,
+        licenseId: 'license1',
       });
+    });
 
-      expect(prisma.metric.findMany).toHaveBeenCalledWith({
-        where: {
-          date: {
-            gte: startDate,
-            lte: endDate,
-          },
-          nodeId: undefined,
-          licenseId: 'license1',
-        },
-        orderBy: {
-          date: 'asc',
-        },
-      });
+    it('should propagate errors from repository', async () => {
+      mockMetricsRepository.findByDateRange.mockRejectedValue(new Error('Query timeout'));
+
+      await expect(
+        service.getTimeSeriesMetrics({
+          startDate: new Date('2024-09-01'),
+          endDate: new Date('2024-09-30'),
+        })
+      ).rejects.toThrow('Query timeout');
     });
   });
 
   describe('getAggregatedStats', () => {
     it('should calculate aggregated statistics', async () => {
-      mockPrismaService.metric.aggregate.mockResolvedValue({
+      mockMetricsRepository.aggregateByLicense.mockResolvedValue({
         _sum: {
           jobsCompleted: 80,
           jobsFailed: 3,
@@ -191,11 +165,12 @@ describe('InsightsService', () => {
         avgThroughput: 11.9,
         successRate: 96.39,
       });
-      expect(result.timestamp).toBeDefined();
+      expect(typeof result.timestamp).toBe('string');
+      expect(new Date(result.timestamp).getTime()).not.toBeNaN();
     });
 
     it('should handle zero values', async () => {
-      mockPrismaService.metric.aggregate.mockResolvedValue({
+      mockMetricsRepository.aggregateByLicense.mockResolvedValue({
         _sum: {
           jobsCompleted: 0,
           jobsFailed: 0,
@@ -219,7 +194,7 @@ describe('InsightsService', () => {
     });
 
     it('should filter by licenseId when provided', async () => {
-      mockPrismaService.metric.aggregate.mockResolvedValue({
+      mockMetricsRepository.aggregateByLicense.mockResolvedValue({
         _sum: {
           jobsCompleted: 42,
           jobsFailed: 1,
@@ -232,23 +207,19 @@ describe('InsightsService', () => {
 
       await service.getAggregatedStats('license1');
 
-      expect(prisma.metric.aggregate).toHaveBeenCalledWith({
-        where: { licenseId: 'license1' },
-        _sum: {
-          jobsCompleted: true,
-          jobsFailed: true,
-          totalSavedBytes: true,
-        },
-        _avg: {
-          avgThroughputFilesPerHour: true,
-        },
-      });
+      expect(mockMetricsRepository.aggregateByLicense).toHaveBeenCalledWith('license1');
+    });
+
+    it('should propagate errors from repository', async () => {
+      mockMetricsRepository.aggregateByLicense.mockRejectedValue(new Error('Prisma error'));
+
+      await expect(service.getAggregatedStats()).rejects.toThrow('Prisma error');
     });
   });
 
   describe('getCodecDistribution', () => {
     it('should calculate codec distribution from metrics', async () => {
-      mockPrismaService.metric.findMany.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findCodecDistributions.mockResolvedValue(mockMetrics);
 
       const result = await service.getCodecDistribution();
 
@@ -260,7 +231,7 @@ describe('InsightsService', () => {
     });
 
     it('should handle empty metrics', async () => {
-      mockPrismaService.metric.findMany.mockResolvedValue([]);
+      mockMetricsRepository.findCodecDistributions.mockResolvedValue([]);
 
       const result = await service.getCodecDistribution();
 
@@ -269,7 +240,7 @@ describe('InsightsService', () => {
     });
 
     it('should sort by count descending', async () => {
-      mockPrismaService.metric.findMany.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findCodecDistributions.mockResolvedValue(mockMetrics);
 
       const result = await service.getCodecDistribution();
 
@@ -277,39 +248,43 @@ describe('InsightsService', () => {
       expect(result.distribution[0].count).toBeGreaterThanOrEqual(result.distribution[1].count);
       expect(result.distribution[1].count).toBeGreaterThanOrEqual(result.distribution[2].count);
     });
+
+    it('should propagate errors from repository', async () => {
+      mockMetricsRepository.findCodecDistributions.mockRejectedValue(new Error('Query timeout'));
+
+      await expect(service.getCodecDistribution()).rejects.toThrow('Query timeout');
+    });
   });
 
   describe('getSavingsTrend', () => {
     it('should calculate savings trend for specified days', async () => {
-      mockPrismaService.metric.findMany.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue(mockMetrics);
 
       const result = await service.getSavingsTrend(7);
 
       expect(result.trend.length).toBeGreaterThan(0);
       expect(result.days).toBeGreaterThan(0);
-      expect(result.totalSavedBytes).toBeDefined();
+      expect(result.totalSavedBytes).toBe('11811160064');
       expect(result.totalSavedGB).toBeGreaterThan(0);
     });
 
     it('should group metrics by date', async () => {
-      // Both metrics on same date
       const sameDay = new Date('2024-09-30');
       const metricsOnSameDay = [
         { ...mockMetrics[0], date: sameDay },
         { ...mockMetrics[1], date: sameDay },
       ];
 
-      mockPrismaService.metric.findMany.mockResolvedValue(metricsOnSameDay);
+      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue(metricsOnSameDay);
 
       const result = await service.getSavingsTrend(7);
 
-      // Should combine metrics from same date
       expect(result.trend.length).toBe(1);
       expect(result.trend[0].jobsCompleted).toBe(80); // 42 + 38
     });
 
     it('should handle empty metrics for trend', async () => {
-      mockPrismaService.metric.findMany.mockResolvedValue([]);
+      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue([]);
 
       const result = await service.getSavingsTrend(30);
 
@@ -318,11 +293,17 @@ describe('InsightsService', () => {
       expect(result.totalSavedGB).toBe(0);
       expect(result.days).toBe(0);
     });
+
+    it('should propagate errors from repository', async () => {
+      mockMetricsRepository.findByDateRangeOrdered.mockRejectedValue(new Error('DB unavailable'));
+
+      await expect(service.getSavingsTrend(7)).rejects.toThrow('DB unavailable');
+    });
   });
 
   describe('getNodeComparison', () => {
     it('should compare performance across nodes', async () => {
-      mockPrismaService.node.findMany.mockResolvedValue(mockNodes);
+      mockNodeRepository.findAllWithMetrics.mockResolvedValue(mockNodes);
 
       const result = await service.getNodeComparison();
 
@@ -336,24 +317,24 @@ describe('InsightsService', () => {
     });
 
     it('should calculate node metrics correctly', async () => {
-      mockPrismaService.node.findMany.mockResolvedValue(mockNodes);
+      mockNodeRepository.findAllWithMetrics.mockResolvedValue(mockNodes);
 
       const result = await service.getNodeComparison();
 
       const mainNode = result.nodes.find((n) => n.nodeId === 'node1');
-      expect(mainNode).toBeDefined();
+      expect(mainNode).toMatchObject({ nodeId: 'node1', nodeName: 'Main Server' });
       expect(mainNode?.jobsCompleted).toBe(80); // Sum of both metrics
       expect(mainNode?.jobsFailed).toBe(3);
       expect(mainNode?.successRate).toBeCloseTo(96.39, 1);
     });
 
     it('should handle nodes with no metrics', async () => {
-      mockPrismaService.node.findMany.mockResolvedValue(mockNodes);
+      mockNodeRepository.findAllWithMetrics.mockResolvedValue(mockNodes);
 
       const result = await service.getNodeComparison();
 
       const secondaryNode = result.nodes.find((n) => n.nodeId === 'node2');
-      expect(secondaryNode).toBeDefined();
+      expect(secondaryNode).toMatchObject({ nodeId: 'node2', nodeName: 'Secondary Server' });
       expect(secondaryNode?.jobsCompleted).toBe(0);
       expect(secondaryNode?.successRate).toBe(0);
       expect(secondaryNode?.avgThroughput).toBe(0);
@@ -371,7 +352,7 @@ describe('InsightsService', () => {
         ],
       };
 
-      mockPrismaService.node.findMany.mockResolvedValue([node1, node2]);
+      mockNodeRepository.findAllWithMetrics.mockResolvedValue([node1, node2]);
 
       const result = await service.getNodeComparison();
 
@@ -379,6 +360,12 @@ describe('InsightsService', () => {
       expect(BigInt(result.nodes[0].totalSavedBytes)).toBeGreaterThan(
         BigInt(result.nodes[1].totalSavedBytes)
       );
+    });
+
+    it('should propagate errors from repository', async () => {
+      mockNodeRepository.findAllWithMetrics.mockRejectedValue(new Error('DB connection lost'));
+
+      await expect(service.getNodeComparison()).rejects.toThrow('DB connection lost');
     });
   });
 });

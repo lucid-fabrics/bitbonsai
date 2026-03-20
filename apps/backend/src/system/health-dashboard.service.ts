@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { LibrariesService } from '../libraries/libraries.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { HardwareDetectionService } from './hardware-detection.service';
@@ -114,7 +116,10 @@ export class HealthDashboardService {
   private readonly LOAD_CRITICAL_MULTIPLIER = 2.0;
 
   constructor(
+    // PrismaService retained for $queryRaw — raw SQL not expressible via ORM
     private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository,
     private readonly hardwareDetection: HardwareDetectionService,
     private readonly librariesService: LibrariesService
   ) {}
@@ -209,7 +214,7 @@ export class HealthDashboardService {
         status: HealthStatus.HEALTHY,
         message: 'Database connection healthy',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       checks.push({
         name: 'Database',
         status: HealthStatus.CRITICAL,
@@ -218,13 +223,9 @@ export class HealthDashboardService {
     }
 
     // Queue Health Check
-    const stuckJobs = await this.prisma.job.count({
-      where: {
-        stage: JobStage.ENCODING,
-        updatedAt: {
-          lt: new Date(Date.now() - 10 * 60 * 1000), // Not updated in 10 minutes
-        },
-      },
+    const stuckJobs = await this.jobRepository.countWhere({
+      stage: JobStage.ENCODING,
+      updatedAt: { lt: new Date(Date.now() - 10 * 60 * 1000) },
     });
 
     checks.push({
@@ -244,9 +245,7 @@ export class HealthDashboardService {
     });
 
     // Node Status Check
-    const offlineNodes = await this.prisma.node.count({
-      where: { status: 'OFFLINE' },
-    });
+    const offlineNodes = await this.nodeRepository.count({ where: { status: 'OFFLINE' } });
 
     checks.push({
       name: 'Node Status',
@@ -262,7 +261,16 @@ export class HealthDashboardService {
   /**
    * Get system metrics
    */
-  private async getSystemMetrics() {
+  private async getSystemMetrics(): Promise<{
+    platform: string;
+    hostname: string;
+    uptime: number;
+    loadAverage: number[];
+    cpuUsage: number;
+    memoryUsed: number;
+    memoryTotal: number;
+    memoryPercent: number;
+  }> {
     const cpus = os.cpus();
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
@@ -296,16 +304,10 @@ export class HealthDashboardService {
    */
   private async getQueueStats(): Promise<QueueStats> {
     // Count by stage (single query instead of N+1)
-    const stageCounts = await this.prisma.job.groupBy({
-      by: ['stage'],
-      _count: true,
-    });
+    const rawStageCounts = await this.jobRepository.countByStage();
     const byStage: Record<string, number> = {};
     for (const stage of Object.values(JobStage)) {
-      byStage[stage] = 0;
-    }
-    for (const row of stageCounts) {
-      byStage[row.stage] = row._count;
+      byStage[stage] = rawStageCounts[stage as JobStage] ?? 0;
     }
 
     // Active workers (jobs currently encoding)
@@ -313,18 +315,7 @@ export class HealthDashboardService {
 
     // Calculate average processing time (completed jobs in last 24h)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const completedJobs = await this.prisma.job.findMany({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: { gte: oneDayAgo },
-        startedAt: { not: null },
-      },
-      select: {
-        startedAt: true,
-        completedAt: true,
-        createdAt: true,
-      },
-    });
+    const completedJobs = await this.jobRepository.findCompletedSince(oneDayAgo);
 
     let avgProcessingTimeMs = 0;
     let avgWaitTimeMs = 0;
@@ -388,7 +379,7 @@ export class HealthDashboardService {
           usedBytes,
           usedPercent: Math.round(usedPercent * 10) / 10,
         });
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.warn(`Failed to get storage stats for ${mediaPath}: ${error}`);
       }
     }
@@ -399,12 +390,14 @@ export class HealthDashboardService {
   /**
    * Get node statistics
    */
-  private async getNodeStats() {
-    const nodes = await this.prisma.node.findMany({
-      select: {
-        status: true,
-        role: true,
-      },
+  private async getNodeStats(): Promise<{
+    total: number;
+    online: number;
+    offline: number;
+    byRole: Record<string, number>;
+  }> {
+    const nodes = await this.nodeRepository.findMany<{ status: string; role: string }>({
+      select: { status: true, role: true },
     });
 
     const byRole: Record<string, number> = {};
@@ -431,34 +424,31 @@ export class HealthDashboardService {
   /**
    * Get encoding statistics
    */
-  private async getEncodingStats() {
+  private async getEncodingStats(): Promise<{
+    totalProcessed: number;
+    totalSavedBytes: string;
+    avgSavedPercent: number;
+    failureRate: number;
+    last24hCompleted: number;
+    last24hFailed: number;
+  }> {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Total processed
-    const totalProcessed = await this.prisma.job.count({
-      where: { stage: JobStage.COMPLETED },
-    });
+    const totalProcessed = await this.jobRepository.countWhere({ stage: JobStage.COMPLETED });
 
-    // Total saved bytes
-    const savedAgg = await this.prisma.job.aggregate({
-      where: { stage: JobStage.COMPLETED },
-      _sum: { savedBytes: true },
-      _avg: { savedPercent: true },
-    });
+    // Total saved bytes and avg saved percent
+    const savedAgg = await this.jobRepository.aggregateWithAvgCount({ stage: JobStage.COMPLETED });
 
     // Last 24h stats
-    const last24hCompleted = await this.prisma.job.count({
-      where: {
-        stage: JobStage.COMPLETED,
-        completedAt: { gte: oneDayAgo },
-      },
+    const last24hCompleted = await this.jobRepository.countWhere({
+      stage: JobStage.COMPLETED,
+      completedAt: { gte: oneDayAgo },
     });
 
-    const last24hFailed = await this.prisma.job.count({
-      where: {
-        stage: JobStage.FAILED,
-        updatedAt: { gte: oneDayAgo },
-      },
+    const last24hFailed = await this.jobRepository.countWhere({
+      stage: JobStage.FAILED,
+      updatedAt: { gte: oneDayAgo },
     });
 
     // Failure rate
@@ -478,7 +468,13 @@ export class HealthDashboardService {
   /**
    * Get hardware information
    */
-  private async getHardwareInfo() {
+  private async getHardwareInfo(): Promise<{
+    accelerationType: string;
+    cpuCores: number;
+    cpuModel: string;
+    gpuDetected: boolean;
+    gpuModel?: string;
+  }> {
     try {
       const hwInfo = await this.hardwareDetection.detectHardware();
       const gpus = hwInfo.gpus || [];
@@ -490,7 +486,10 @@ export class HealthDashboardService {
         gpuDetected: gpus.length > 0,
         gpuModel: gpus.length > 0 ? gpus[0].model : undefined,
       };
-    } catch (_error) {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[getHardwareInfo] Hardware detection failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return {
         accelerationType: 'CPU',
         cpuCores: os.cpus().length,

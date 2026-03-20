@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { LibraryRepository } from '../../../common/repositories/library.repository';
 import { BackupCleanupWorker } from '../../backup-cleanup.worker';
 
 // Mock fs
@@ -17,17 +17,18 @@ import { existsSync, promises as fsMock } from 'node:fs';
 describe('BackupCleanupWorker', () => {
   let worker: BackupCleanupWorker;
 
-  const mockPrismaService = {
-    library: {
-      findMany: jest.fn(),
-    },
+  const mockLibraryRepository = {
+    findAllLibraries: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BackupCleanupWorker, { provide: PrismaService, useValue: mockPrismaService }],
+      providers: [
+        BackupCleanupWorker,
+        { provide: LibraryRepository, useValue: mockLibraryRepository },
+      ],
     }).compile();
 
     worker = module.get<BackupCleanupWorker>(BackupCleanupWorker);
@@ -40,7 +41,9 @@ describe('BackupCleanupWorker', () => {
   describe('onModuleInit', () => {
     it('should call start', async () => {
       // Mock start to prevent infinite loop
-      const startSpy = jest.spyOn(worker as any, 'start').mockImplementation(() => {});
+      const startSpy = jest.spyOn(worker as any, 'start').mockImplementation(() => {
+        /* noop */
+      });
 
       await worker.onModuleInit();
 
@@ -58,7 +61,7 @@ describe('BackupCleanupWorker', () => {
 
   describe('cleanupOrphanedBackups (private, tested via reflection)', () => {
     it('should skip when no enabled libraries', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([]);
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([]);
 
       await (worker as any).cleanupOrphanedBackups();
 
@@ -66,7 +69,7 @@ describe('BackupCleanupWorker', () => {
     });
 
     it('should skip when library path does not exist', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'l1', name: 'Movies', path: '/media/movies' },
       ]);
       (existsSync as jest.Mock).mockReturnValue(false);
@@ -77,7 +80,7 @@ describe('BackupCleanupWorker', () => {
     });
 
     it('should delete old backup files', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'l1', name: 'Movies', path: '/media/movies' },
       ]);
       (existsSync as jest.Mock).mockReturnValue(true);
@@ -98,7 +101,7 @@ describe('BackupCleanupWorker', () => {
     });
 
     it('should skip recent backup files', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'l1', name: 'Movies', path: '/media/movies' },
       ]);
       (existsSync as jest.Mock).mockReturnValue(true);
@@ -117,7 +120,7 @@ describe('BackupCleanupWorker', () => {
     });
 
     it('should skip non-backup files', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'l1', name: 'Movies', path: '/media/movies' },
       ]);
       (existsSync as jest.Mock).mockReturnValue(true);
@@ -134,7 +137,7 @@ describe('BackupCleanupWorker', () => {
     });
 
     it('should recurse into subdirectories', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'l1', name: 'Movies', path: '/media/movies' },
       ]);
       (existsSync as jest.Mock).mockReturnValue(true);
@@ -157,7 +160,7 @@ describe('BackupCleanupWorker', () => {
     });
 
     it('should continue on individual file errors', async () => {
-      mockPrismaService.library.findMany.mockResolvedValue([
+      mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'l1', name: 'Movies', path: '/media/movies' },
       ]);
       (existsSync as jest.Mock).mockReturnValue(true);

@@ -80,8 +80,8 @@ async function migrateData() {
         });
 
         console.log(`   ✅ Migrated ${records.length} ${table} records`);
-      } catch (error: any) {
-        console.error(`   ❌ Failed to migrate ${table}:`, error.message);
+      } catch (error: unknown) {
+        console.error(`   ❌ Failed to migrate ${table}:`, (error as Error).message);
         throw error;
       }
     }
@@ -93,10 +93,10 @@ async function migrateData() {
     console.log('1. Update main node DATABASE_URL to PostgreSQL');
     console.log('2. Update child nodes to connect to main node PostgreSQL');
     console.log('3. Restart all nodes');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('');
-    console.error('❌ Migration failed:', error.message);
-    console.error(error.stack);
+    console.error('❌ Migration failed:', (error as Error).message);
+    console.error((error as Error).stack);
     process.exit(1);
   } finally {
     await sqliteClient.$disconnect();

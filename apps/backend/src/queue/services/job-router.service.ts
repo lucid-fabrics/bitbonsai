@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NetworkLocation } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 
 export interface NodeScore {
   nodeId: string;
@@ -32,7 +33,10 @@ export class JobRouterService {
   private readonly LARGE_FILE_THRESHOLD_GB = 10; // Files >10GB are "large"
   private readonly LARGE_FILE_BYTES = this.LARGE_FILE_THRESHOLD_GB * 1024 * 1024 * 1024;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository
+  ) {}
 
   /**
    * Find the best node to execute a job
@@ -54,11 +58,19 @@ export class JobRouterService {
     );
 
     // Get all online nodes with their capabilities
-    const nodes = await this.prisma.node.findMany({
-      where: {
-        status: 'ONLINE',
-      },
-      select: {
+    const nodes = await this.nodeRepository.findManySelect<{
+      id: string;
+      name: string;
+      role: string;
+      networkLocation: NetworkLocation;
+      hasSharedStorage: boolean;
+      maxWorkers: number;
+      maxTransferSizeMB: number;
+      latencyMs: number | null;
+      _count: { jobs: number };
+    }>(
+      { status: 'ONLINE' },
+      {
         id: true,
         name: true,
         role: true,
@@ -70,14 +82,12 @@ export class JobRouterService {
         _count: {
           select: {
             jobs: {
-              where: {
-                stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] },
-              },
+              where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } },
             },
           },
         },
-      },
-    });
+      }
+    );
 
     if (nodes.length === 0) {
       this.logger.warn('No online nodes available');
@@ -254,26 +264,20 @@ export class JobRouterService {
     this.logger.log('⚖️  Rebalancing jobs across nodes...');
 
     // STEP 1: Get all eligible nodes (ONLINE + LOCAL only)
-    const nodes = await this.prisma.node.findMany({
-      where: {
-        status: 'ONLINE',
-        networkLocation: NetworkLocation.LOCAL, // Only rebalance LOCAL nodes (have shared storage)
-      },
-      select: {
+    const nodes = await this.nodeRepository.findManySelect<{
+      id: string;
+      name: string;
+      maxWorkers: number;
+      _count: { jobs: number };
+    }>(
+      { status: 'ONLINE', networkLocation: NetworkLocation.LOCAL },
+      {
         id: true,
         name: true,
         maxWorkers: true,
-        _count: {
-          select: {
-            jobs: {
-              where: {
-                stage: { in: ['QUEUED'] }, // Only count queued jobs (not ENCODING or COMPLETED)
-              },
-            },
-          },
-        },
-      },
-    });
+        _count: { select: { jobs: { where: { stage: { in: ['QUEUED'] } } } } },
+      }
+    );
 
     if (nodes.length < 2) {
       this.logger.log('Not enough nodes for rebalancing (need at least 2)');
@@ -307,24 +311,18 @@ export class JobRouterService {
     // STEP 6: Move jobs from overloaded to underutilized nodes
     for (const overloadedNode of overloaded) {
       // Get up to 5 queued jobs from this overloaded node
-      const jobsToMove = await this.prisma.job.findMany({
-        where: {
-          nodeId: overloadedNode.id,
-          stage: 'QUEUED',
-        },
-        take: 5, // Limit batch size to prevent overwhelming target nodes
-        select: { id: true, fileLabel: true },
-      });
+      const jobsToMove = await this.jobRepository.findManySelect<{ id: string; fileLabel: string }>(
+        { nodeId: overloadedNode.id, stage: 'QUEUED' },
+        { id: true, fileLabel: true }
+      );
+      const limitedJobs = jobsToMove.slice(0, 5); // Limit batch size to prevent overwhelming target nodes
 
-      for (const job of jobsToMove) {
+      for (const job of limitedJobs) {
         // Round-robin distribution across underutilized nodes
         const targetNode = underutilized[movedCount % underutilized.length];
 
         // Reassign job to target node (workers will pick it up automatically)
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: { nodeId: targetNode.id },
-        });
+        await this.jobRepository.updateById(job.id, { nodeId: targetNode.id });
 
         this.logger.log(
           `Moved job ${job.fileLabel} from ${overloadedNode.name} to ${targetNode.name}`

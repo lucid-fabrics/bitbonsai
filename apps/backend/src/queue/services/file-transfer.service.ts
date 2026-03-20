@@ -1,7 +1,7 @@
 import { exec, spawn } from 'node:child_process';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { type Node } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
 
 export interface TransferProgress {
   jobId: string;
@@ -32,7 +32,7 @@ export class FileTransferService implements OnModuleInit {
   private readonly logger = new Logger(FileTransferService.name);
   private activeTransfers = new Map<string, AbortController>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly jobRepository: JobRepository) {}
 
   /**
    * CRITICAL #2 FIX: Kill orphaned SSH/rsync processes from previous crash
@@ -48,7 +48,7 @@ export class FileTransferService implements OnModuleInit {
           this.logger.warn(`Failed to kill orphaned processes: ${stderr}`);
         }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`CRITICAL #2 FIX: Error killing orphaned SSH: ${error}`);
     }
   }
@@ -63,7 +63,7 @@ export class FileTransferService implements OnModuleInit {
   private validateRsyncPath(path: string): void {
     // CRITICAL #4 FIX: Reject ALL control chars including newlines (\n, \r)
     // Newlines allow injecting arbitrary rsync arguments
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional security validation — rejecting control chars in paths
+    // eslint-disable-next-line no-control-regex
     if (/[\x00-\x1f\x7f]/.test(path)) {
       throw new Error('Path contains control characters or newlines');
     }
@@ -138,17 +138,14 @@ export class FileTransferService implements OnModuleInit {
 
       // Update job to TRANSFERRING stage
       // DEEP AUDIT P0: Initialize transferLastProgressAt for stall detection
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: {
-          stage: 'TRANSFERRING',
-          transferRequired: true,
-          transferStartedAt: new Date(),
-          transferLastProgressAt: new Date(), // P0 FIX: Track progress timestamp for stall detection
-          transferProgress: 0,
-          transferError: null,
-          originalFilePath: sourceFilePath, // CRITICAL: Preserve original path before transfer changes filePath
-        },
+      await this.jobRepository.updateById(jobId, {
+        stage: 'TRANSFERRING',
+        transferRequired: true,
+        transferStartedAt: new Date(),
+        transferLastProgressAt: new Date(), // P0 FIX: Track progress timestamp for stall detection
+        transferProgress: 0,
+        transferError: null,
+        originalFilePath: sourceFilePath, // CRITICAL: Preserve original path before transfer changes filePath
       });
 
       // Determine remote temp path (use /tmp on target node)
@@ -156,10 +153,7 @@ export class FileTransferService implements OnModuleInit {
       const remoteTempPath = `/tmp/bitbonsai-transfer/${fileName}`;
 
       // Update job with remote temp path
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: { remoteTempPath },
-      });
+      await this.jobRepository.updateById(jobId, { remoteTempPath });
 
       // Create temp directory on target node
       await this.executeRemoteCommand(targetNode, `mkdir -p /tmp/bitbonsai-transfer`);
@@ -168,16 +162,13 @@ export class FileTransferService implements OnModuleInit {
       await this.rsyncTransfer(jobId, sourceFilePath, remoteTempPath, targetNode);
 
       // Mark transfer as completed
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: {
-          stage: 'QUEUED', // Move to QUEUED stage after successful transfer
-          transferProgress: 100,
-          transferCompletedAt: new Date(),
-          transferError: null,
-          // Update filePath to point to remote temp path for encoding
-          filePath: remoteTempPath,
-        },
+      await this.jobRepository.updateById(jobId, {
+        stage: 'QUEUED', // Move to QUEUED stage after successful transfer
+        transferProgress: 100,
+        transferCompletedAt: new Date(),
+        transferError: null,
+        // Update filePath to point to remote temp path for encoding
+        filePath: remoteTempPath,
       });
 
       this.logger.log(`File transfer completed for job ${jobId}`);
@@ -186,34 +177,28 @@ export class FileTransferService implements OnModuleInit {
       this.logger.error(`File transfer failed for job ${jobId}:`, error);
 
       // Increment retry count
-      const job = await this.prisma.job.findUnique({
-        where: { id: jobId },
-        select: { transferRetryCount: true },
-      });
+      const job = await this.jobRepository.findUniqueSelect<{ transferRetryCount: number }>(
+        { id: jobId },
+        { transferRetryCount: true }
+      );
 
       const retryCount = (job?.transferRetryCount || 0) + 1;
       const maxRetries = 3;
 
       if (retryCount >= maxRetries) {
         // Max retries reached, mark as failed
-        await this.prisma.job.update({
-          where: { id: jobId },
-          data: {
-            stage: 'FAILED',
-            transferError: `Transfer failed after ${maxRetries} attempts: ${errorMessage}`,
-            transferRetryCount: retryCount,
-            failedAt: new Date(),
-          },
+        await this.jobRepository.updateById(jobId, {
+          stage: 'FAILED',
+          transferError: `Transfer failed after ${maxRetries} attempts: ${errorMessage}`,
+          transferRetryCount: retryCount,
+          failedAt: new Date(),
         });
       } else {
         // Retry transfer
-        await this.prisma.job.update({
-          where: { id: jobId },
-          data: {
-            transferError: `Transfer attempt ${retryCount} failed: ${errorMessage}`,
-            transferRetryCount: retryCount,
-            stage: 'DETECTED', // Reset to DETECTED for retry
-          },
+        await this.jobRepository.updateById(jobId, {
+          transferError: `Transfer attempt ${retryCount} failed: ${errorMessage}`,
+          transferRetryCount: retryCount,
+          stage: 'DETECTED', // Reset to DETECTED for retry
         });
 
         this.logger.log(`Will retry transfer for job ${jobId} (attempt ${retryCount + 1})`);
@@ -338,13 +323,10 @@ export class FileTransferService implements OnModuleInit {
             // CRITICAL #3 FIX: Wrap DB update with 5s timeout to prevent deadlock
             // DEEP AUDIT P0: Update transferLastProgressAt for stall detection
             const updatePromise = Promise.race([
-              this.prisma.job.update({
-                where: { id: jobId },
-                data: {
-                  transferProgress: progress,
-                  transferSpeedMBps: speedMBps,
-                  transferLastProgressAt: new Date(), // P0 FIX: Track progress for stall detection
-                },
+              this.jobRepository.updateById(jobId, {
+                transferProgress: progress,
+                transferSpeedMBps: speedMBps,
+                transferLastProgressAt: new Date(), // P0 FIX: Track progress for stall detection
               }),
               new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Progress update timeout (5s)')), 5000)
@@ -539,9 +521,17 @@ export class FileTransferService implements OnModuleInit {
    * @returns Transfer progress
    */
   async getTransferProgress(jobId: string): Promise<TransferProgress> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      select: {
+    const job = await this.jobRepository.findUniqueSelect<{
+      id: string;
+      stage: string;
+      transferRequired: boolean;
+      transferProgress: number;
+      transferSpeedMBps: number | null;
+      transferError: string | null;
+      beforeSizeBytes: bigint;
+    }>(
+      { id: jobId },
+      {
         id: true,
         stage: true,
         transferRequired: true,
@@ -549,8 +539,8 @@ export class FileTransferService implements OnModuleInit {
         transferSpeedMBps: true,
         transferError: true,
         beforeSizeBytes: true,
-      },
-    });
+      }
+    );
 
     if (!job) {
       throw new Error(`Job ${jobId} not found`);
@@ -602,12 +592,9 @@ export class FileTransferService implements OnModuleInit {
       abortController.abort();
       this.activeTransfers.delete(jobId);
 
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: {
-          stage: 'CANCELLED',
-          transferError: 'Transfer cancelled by user',
-        },
+      await this.jobRepository.updateById(jobId, {
+        stage: 'CANCELLED',
+        transferError: 'Transfer cancelled by user',
       });
     } else {
       this.logger.warn(`No active transfer found for job ${jobId}`);
@@ -620,19 +607,16 @@ export class FileTransferService implements OnModuleInit {
    * @param jobId - Job ID
    */
   async cleanupRemoteTempFile(jobId: string): Promise<void> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      select: {
+    const job = await this.jobRepository.findUniqueSelect<{
+      remoteTempPath: string | null;
+      node: { id: string; name: string; ipAddress: string | null };
+    }>(
+      { id: jobId },
+      {
         remoteTempPath: true,
-        node: {
-          select: {
-            id: true,
-            name: true,
-            ipAddress: true,
-          },
-        },
-      },
-    });
+        node: { select: { id: true, name: true, ipAddress: true } },
+      }
+    );
 
     if (!job?.remoteTempPath) {
       return;
@@ -643,13 +627,10 @@ export class FileTransferService implements OnModuleInit {
 
       await this.executeRemoteCommand(job.node as Node, `rm -f "${job.remoteTempPath}"`);
 
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: { remoteTempPath: null },
-      });
+      await this.jobRepository.updateById(jobId, { remoteTempPath: null });
 
       this.logger.log(`Remote temp file cleaned up for job ${jobId}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to clean up remote temp file for job ${jobId}:`, error);
     }
   }

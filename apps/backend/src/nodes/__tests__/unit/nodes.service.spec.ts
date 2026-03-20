@@ -1,15 +1,25 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { AccelerationType, LicenseStatus, NodeRole, NodeStatus } from '@prisma/client';
+import {
+  AccelerationType,
+  LicenseStatus,
+  NetworkLocation,
+  NodeRole,
+  NodeStatus,
+} from '@prisma/client';
+import { LicenseRepository } from '../../../common/repositories/license.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { DataAccessService } from '../../../core/services/data-access.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { NodesService } from '../../nodes.service';
+import { NodeCapabilityDetectorService } from '../../services/node-capability-detector.service';
+import { NodeRegistrationService } from '../../services/node-registration.service';
 import { StorageShareService } from '../../services/storage-share.service';
 import { SystemInfoService } from '../../services/system-info.service';
 
 describe('NodesService', () => {
   let service: NodesService;
-  let prisma: PrismaService;
+  let mockNodeRepo: Record<string, jest.Mock>;
+  let mockLicenseRepo: Record<string, jest.Mock>;
 
   const mockLicense = {
     id: 'license-1',
@@ -36,6 +46,7 @@ describe('NodesService', () => {
     lastHeartbeat: new Date(),
     uptimeSeconds: 0,
     licenseId: 'license-1',
+    ipAddress: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -63,12 +74,41 @@ describe('NodesService', () => {
   };
 
   beforeEach(async () => {
+    mockNodeRepo = {
+      findFirstNode: jest.fn(),
+      findFirstWithLicense: jest.fn(),
+      createNode: jest.fn(),
+      findFirst: jest.fn(),
+      updateData: jest.fn(),
+      findById: jest.fn(),
+      findWithStats: jest.fn(),
+      findWithSelect: jest.fn(),
+      findAllWithLicense: jest.fn(),
+      findByApiKey: jest.fn(),
+      findManyByIp: jest.fn(),
+      findManyByRole: jest.fn(),
+      findFirstByRole: jest.fn(),
+      deleteById: jest.fn(),
+    };
+
+    mockLicenseRepo = {
+      findByKeyWithInclude: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NodesService,
+        NodeRegistrationService,
+        { provide: NodeRepository, useValue: mockNodeRepo },
+        { provide: LicenseRepository, useValue: mockLicenseRepo },
         {
           provide: DataAccessService,
-          useValue: { getNextJob: jest.fn(), updateJobProgress: jest.fn(), findJobById: jest.fn() },
+          useValue: {
+            getNextJob: jest.fn(),
+            updateJobProgress: jest.fn(),
+            findJobById: jest.fn(),
+            sendHeartbeat: jest.fn(),
+          },
         },
         {
           provide: SystemInfoService,
@@ -92,26 +132,15 @@ describe('NodesService', () => {
           },
         },
         {
-          provide: PrismaService,
+          provide: NodeCapabilityDetectorService,
           useValue: {
-            license: {
-              findUnique: jest.fn(),
-            },
-            node: {
-              create: jest.fn(),
-              findFirst: jest.fn(),
-              findUnique: jest.fn(),
-              findMany: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
+            detectCapabilities: jest.fn(),
           },
         },
       ],
     }).compile();
 
     service = module.get<NodesService>(NodesService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -127,8 +156,9 @@ describe('NodesService', () => {
     };
 
     it('should register a new node as MAIN role when no nodes exist', async () => {
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null); // no duplicate MAIN
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
 
@@ -137,11 +167,11 @@ describe('NodesService', () => {
       expect(result.apiKey).toMatch(/^bb_[a-f0-9]{64}$/);
       expect(result.pairingToken).toMatch(/^\d{6}$/);
       expect(result.pairingExpiresAt).toBeInstanceOf(Date);
-      expect(prisma.node.create).toHaveBeenCalledWith({
-        data: {
+      expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
           name: registerDto.name,
           role: NodeRole.MAIN,
-          status: NodeStatus.ONLINE,
+          status: 'ONLINE',
           version: registerDto.version,
           acceleration: registerDto.acceleration,
           apiKey: expect.any(String),
@@ -149,8 +179,8 @@ describe('NodesService', () => {
           pairingExpiresAt: expect.any(Date),
           lastHeartbeat: expect.any(Date),
           licenseId: mockLicense.id,
-        },
-      });
+        })
+      );
     });
 
     it('should register a new node as LINKED role when nodes already exist', async () => {
@@ -160,21 +190,21 @@ describe('NodesService', () => {
       };
       const linkedNode = { ...mockNode, role: NodeRole.LINKED };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(licenseWithNodes as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(linkedNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(licenseWithNodes);
+      mockNodeRepo.createNode.mockResolvedValue(linkedNode);
 
       const result = await service.registerNode(registerDto);
 
       expect(result.role).toBe(NodeRole.LINKED);
-      expect(prisma.node.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
           role: NodeRole.LINKED,
-        }),
-      });
+        })
+      );
     });
 
     it('should throw BadRequestException if license is invalid', async () => {
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(null);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(null);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -187,7 +217,7 @@ describe('NodesService', () => {
         ...mockLicense,
         status: LicenseStatus.EXPIRED,
       };
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(inactiveLicense as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(inactiveLicense);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -201,7 +231,7 @@ describe('NodesService', () => {
         maxNodes: 3,
         _count: { nodes: 3 },
       };
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue(fullLicense as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(fullLicense);
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(ConflictException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
@@ -212,7 +242,7 @@ describe('NodesService', () => {
 
   describe('pairNode', () => {
     it('should pair a node successfully with valid token', async () => {
-      const futureExpiration = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+      const futureExpiration = new Date(Date.now() + 5 * 60 * 1000);
       const nodeWithToken = {
         ...mockNode,
         pairingToken: '123456',
@@ -220,35 +250,33 @@ describe('NodesService', () => {
       };
       const pairedNode = {
         ...mockNode,
+        role: NodeRole.MAIN,
         pairingToken: null,
         pairingExpiresAt: null,
       };
 
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(nodeWithToken as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(pairedNode as never);
+      mockNodeRepo.findFirst.mockResolvedValue(nodeWithToken);
+      mockNodeRepo.updateData.mockResolvedValue(pairedNode);
 
       const result = await service.pairNode('123456');
 
       expect(result.pairingToken).toBeNull();
       expect(result.pairingExpiresAt).toBeNull();
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
-          pairingToken: null,
-          pairingExpiresAt: null,
-        },
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith('node-1', {
+        pairingToken: null,
+        pairingExpiresAt: null,
       });
     });
 
     it('should throw NotFoundException if token is invalid', async () => {
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+      mockNodeRepo.findFirst.mockResolvedValue(null);
 
       await expect(service.pairNode('999999')).rejects.toThrow(NotFoundException);
       await expect(service.pairNode('999999')).rejects.toThrow('Invalid or expired pairing token');
     });
 
     it('should throw NotFoundException if token is expired', async () => {
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+      mockNodeRepo.findFirst.mockResolvedValue(null);
 
       await expect(service.pairNode('123456')).rejects.toThrow(NotFoundException);
       await expect(service.pairNode('123456')).rejects.toThrow('Invalid or expired pairing token');
@@ -263,24 +291,21 @@ describe('NodesService', () => {
         pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       const result = await service.generatePairingTokenForNode('node-1');
 
       expect(result.pairingToken).toMatch(/^\d{6}$/);
       expect(result.pairingExpiresAt).toBeInstanceOf(Date);
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: {
-          pairingToken: expect.any(String),
-          pairingExpiresAt: expect.any(Date),
-        },
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith('node-1', {
+        pairingToken: expect.any(String),
+        pairingExpiresAt: expect.any(Date),
       });
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.generatePairingTokenForNode('non-existent')).rejects.toThrow(
         NotFoundException
@@ -299,19 +324,17 @@ describe('NodesService', () => {
         uptimeSeconds: 60,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       const result = await service.heartbeat('node-1');
 
       expect(result.lastHeartbeat).toBeInstanceOf(Date);
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
         expect.objectContaining({
-          where: { id: 'node-1' },
-          data: expect.objectContaining({
-            status: NodeStatus.ONLINE,
-            uptimeSeconds: { increment: 60 },
-          }),
+          status: NodeStatus.ONLINE,
+          uptimeSeconds: { increment: 60 },
         })
       );
     });
@@ -322,24 +345,22 @@ describe('NodesService', () => {
         status: NodeStatus.ERROR,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       await service.heartbeat('node-1', { status: NodeStatus.ERROR });
 
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
         expect.objectContaining({
-          where: { id: 'node-1' },
-          data: expect.objectContaining({
-            status: NodeStatus.ERROR,
-            uptimeSeconds: { increment: 60 },
-          }),
+          status: NodeStatus.ERROR,
+          uptimeSeconds: { increment: 60 },
         })
       );
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.heartbeat('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.heartbeat('non-existent')).rejects.toThrow(
@@ -350,49 +371,19 @@ describe('NodesService', () => {
 
   describe('getNodeStats', () => {
     it('should return node with comprehensive statistics', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNodeWithStats as never);
+      mockNodeRepo.findWithStats.mockResolvedValue(mockNodeWithStats);
 
       const result = await service.getNodeStats('node-1');
 
       expect(result.id).toBe('node-1');
-      expect(result.license).toBeDefined();
+      expect(result.license).toEqual(mockNodeWithStats.license);
       expect(result.libraries).toHaveLength(1);
       expect(result.activeJobCount).toBe(5);
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        include: {
-          license: {
-            select: {
-              tier: true,
-              maxConcurrentJobs: true,
-              maxNodes: true,
-              status: true,
-            },
-          },
-          libraries: {
-            select: {
-              id: true,
-              name: true,
-              totalFiles: true,
-              totalSizeBytes: true,
-              mediaType: true,
-            },
-          },
-          _count: {
-            select: {
-              jobs: {
-                where: {
-                  stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] },
-                },
-              },
-            },
-          },
-        },
-      });
+      expect(mockNodeRepo.findWithStats).toHaveBeenCalledWith('node-1');
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findWithStats.mockResolvedValue(null);
 
       await expect(service.getNodeStats('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.getNodeStats('non-existent')).rejects.toThrow(
@@ -408,33 +399,27 @@ describe('NodesService', () => {
         { ...mockNode, id: 'node-2', role: NodeRole.LINKED },
       ];
 
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue(mockNodes as never);
+      mockNodeRepo.findAllWithLicense.mockResolvedValue(mockNodes);
 
       const result = await service.findAll();
 
       expect(result).toHaveLength(2);
-      expect(prisma.node.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-        })
-      );
+      expect(mockNodeRepo.findAllWithLicense).toHaveBeenCalled();
     });
   });
 
   describe('findOne', () => {
     it('should return a specific node by ID', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
 
       const result = await service.findOne('node-1');
 
       expect(result.id).toBe('node-1');
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-      });
+      expect(mockNodeRepo.findById).toHaveBeenCalledWith('node-1');
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent')).rejects.toThrow(
@@ -445,18 +430,16 @@ describe('NodesService', () => {
 
   describe('remove', () => {
     it('should delete a node successfully', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'delete').mockResolvedValue(mockNode as never);
+      mockNodeRepo.findWithSelect.mockResolvedValue(mockNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
 
       await service.remove('node-1');
 
-      expect(prisma.node.delete).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-      });
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findWithSelect.mockResolvedValue(null);
 
       await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.remove('non-existent')).rejects.toThrow(
@@ -474,12 +457,12 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
 
-      // API key should be bb_ followed by 64 hex characters
       expect(result.apiKey).toMatch(/^bb_[a-f0-9]{64}$/);
     });
   });
@@ -493,12 +476,12 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
-      jest.spyOn(prisma.node, 'create').mockResolvedValue(mockNode as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
 
-      // Pairing token should be exactly 6 digits
       expect(result.pairingToken).toMatch(/^\d{6}$/);
     });
 
@@ -511,18 +494,19 @@ describe('NodesService', () => {
       };
 
       const now = Date.now();
-      jest.spyOn(prisma.license, 'findUnique').mockResolvedValue({ ...mockLicense } as never);
       const futureExpiration = new Date(now + 10 * 60 * 1000);
-      jest
-        .spyOn(prisma.node, 'create')
-        .mockResolvedValue({ ...mockNode, pairingExpiresAt: futureExpiration } as never);
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue({
+        ...mockNode,
+        pairingExpiresAt: futureExpiration,
+      });
 
       const result = await service.registerNode(registerDto);
 
       const expirationTime = result.pairingExpiresAt.getTime();
       const expectedExpiration = now + 10 * 60 * 1000;
 
-      // Allow 1 second tolerance for test execution time
       expect(expirationTime).toBeGreaterThanOrEqual(expectedExpiration - 1000);
       expect(expirationTime).toBeLessThanOrEqual(expectedExpiration + 1000);
     });
@@ -537,14 +521,17 @@ describe('NodesService', () => {
     };
 
     beforeEach(() => {
-      // Clear NODE_ID environment variable before each test
-      delete process.env.NODE_ID;
+      process.env.NODE_ID = '';
+    });
+
+    afterEach(() => {
+      process.env.NODE_ID = '';
     });
 
     it('should return node specified by NODE_ID environment variable', async () => {
       process.env.NODE_ID = 'node-2';
       const linkedNodeWithIp = { ...linkedNode, ipAddress: '192.168.1.100' };
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(linkedNodeWithIp as never);
+      mockNodeRepo.findById.mockResolvedValue(linkedNodeWithIp);
 
       const result = await service.getCurrentNode();
 
@@ -554,7 +541,7 @@ describe('NodesService', () => {
 
     it('should return MAIN node when NODE_ID is not set via IP detection', async () => {
       const mainNodeWithIp = { ...mockNode, ipAddress: '192.168.1.100' };
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([mainNodeWithIp] as never);
+      mockNodeRepo.findManyByIp.mockResolvedValue([mainNodeWithIp]);
 
       const result = await service.getCurrentNode();
 
@@ -564,7 +551,7 @@ describe('NodesService', () => {
 
     it('should throw NotFoundException if NODE_ID is set but node does not exist', async () => {
       process.env.NODE_ID = 'invalid-node-id';
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
       await expect(service.getCurrentNode()).rejects.toThrow(
@@ -573,10 +560,898 @@ describe('NodesService', () => {
     });
 
     it('should throw NotFoundException if no node exists when NODE_ID is not set', async () => {
-      jest.spyOn(prisma.node, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(null);
+      mockNodeRepo.findManyByIp.mockResolvedValue([]);
+      mockNodeRepo.findFirstNode.mockResolvedValue(null);
+      mockNodeRepo.findFirstByRole.mockResolvedValue(null);
+      mockNodeRepo.findManyByRole.mockResolvedValue([]);
 
       await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
+    });
+
+    it('should auto-update IP when NODE_ID node has different IP than detected', async () => {
+      process.env.NODE_ID = 'node-1';
+      const nodeWithOldIp = { ...mockNode, ipAddress: '10.0.0.1' };
+      const nodeWithNewIp = { ...mockNode, ipAddress: '192.168.1.100' };
+      mockNodeRepo.findById.mockResolvedValue(nodeWithOldIp);
+      mockNodeRepo.updateData.mockResolvedValue(nodeWithNewIp);
+
+      const result = await service.getCurrentNode();
+
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith('node-1', {
+        ipAddress: '192.168.1.100',
+      });
+      expect(result.ipAddress).toBe('192.168.1.100');
+    });
+
+    it('should not update IP when it matches detected IP', async () => {
+      process.env.NODE_ID = 'node-1';
+      const nodeWithCurrentIp = { ...mockNode, ipAddress: '192.168.1.100' };
+      mockNodeRepo.findById.mockResolvedValue(nodeWithCurrentIp);
+
+      await service.getCurrentNode();
+
+      expect(mockNodeRepo.updateData).not.toHaveBeenCalled();
+    });
+
+    it('should prefer MAIN node when multiple nodes share same IP', async () => {
+      const mainNodeWithIp = {
+        ...mockNode,
+        id: 'node-main',
+        role: NodeRole.MAIN,
+        ipAddress: '192.168.1.100',
+      };
+      const linkedNodeWithIp = {
+        ...mockNode,
+        id: 'node-linked',
+        role: NodeRole.LINKED,
+        ipAddress: '192.168.1.100',
+      };
+      mockNodeRepo.findManyByIp.mockResolvedValue([linkedNodeWithIp, mainNodeWithIp]);
+
+      const result = await service.getCurrentNode();
+
+      expect(result.id).toBe('node-main');
+      expect(result.role).toBe(NodeRole.MAIN);
+    });
+
+    it('should fall back to role-based detection when no IP match', async () => {
+      mockNodeRepo.findManyByIp.mockResolvedValue([]);
+      const mainNodeNoIp = { ...mockNode, ipAddress: null };
+      mockNodeRepo.findManyByRole.mockResolvedValue([mainNodeNoIp]);
+      mockNodeRepo.updateData.mockResolvedValue({ ...mainNodeNoIp, ipAddress: '192.168.1.100' });
+
+      const result = await service.getCurrentNode();
+
+      expect(mockNodeRepo.findManyByRole).toHaveBeenCalledWith(NodeRole.MAIN, expect.anything());
+      expect(result.id).toBe('node-1');
+    });
+
+    it('should warn and use newest when multiple MAIN nodes exist', async () => {
+      mockNodeRepo.findManyByIp.mockResolvedValue([]);
+      const mainNode1 = {
+        ...mockNode,
+        id: 'node-old',
+        createdAt: new Date('2024-01-01'),
+        ipAddress: null,
+      };
+      const mainNode2 = {
+        ...mockNode,
+        id: 'node-new',
+        createdAt: new Date('2024-06-01'),
+        ipAddress: null,
+      };
+      mockNodeRepo.findManyByRole.mockResolvedValue([mainNode1, mainNode2]);
+      mockNodeRepo.updateData.mockResolvedValue({ ...mainNode2, ipAddress: '192.168.1.100' });
+
+      const result = await service.getCurrentNode();
+
+      expect(result.id).toBe('node-new');
+    });
+
+    it('should fall back to LINKED node when no MAIN nodes exist', async () => {
+      mockNodeRepo.findManyByIp.mockResolvedValue([]);
+      mockNodeRepo.findManyByRole.mockResolvedValue([]);
+      const lNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: null };
+      mockNodeRepo.findFirstByRole.mockResolvedValue(lNode);
+      mockNodeRepo.updateData.mockResolvedValue({ ...lNode, ipAddress: '192.168.1.100' });
+
+      const result = await service.getCurrentNode();
+
+      expect(result.role).toBe(NodeRole.LINKED);
+    });
+  });
+
+  describe('update', () => {
+    it('should update node name', async () => {
+      const updatedNode = { ...mockNode, name: 'New Name' };
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
+
+      const result = await service.update('node-1', { name: 'New Name' });
+
+      expect(result.name).toBe('New Name');
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ name: 'New Name' })
+      );
+    });
+
+    it('should throw NotFoundException if node does not exist', async () => {
+      mockNodeRepo.findById.mockResolvedValue(null);
+
+      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should throw BadRequestException when maxWorkers is critically too high', async () => {
+      mockNodeRepo.findById.mockResolvedValue({ ...mockNode, acceleration: AccelerationType.CPU });
+
+      // Set absurdly high workers (>2x recommended for any CPU count)
+      await expect(service.update('node-1', { maxWorkers: 9999 })).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('should allow updating maxWorkers at or below 2x recommended', async () => {
+      const updatedNode = { ...mockNode, maxWorkers: 2 };
+      mockNodeRepo.findById.mockResolvedValue({ ...mockNode, acceleration: AccelerationType.CPU });
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
+
+      // 2 workers should be safe for any CPU count
+      const result = await service.update('node-1', { maxWorkers: 2 });
+
+      expect(result.maxWorkers).toBe(2);
+    });
+
+    it('should update optional fields when provided', async () => {
+      const updatedNode = { ...mockNode, publicUrl: 'https://node.example.com', cpuLimit: 80 };
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
+
+      await service.update('node-1', {
+        publicUrl: 'https://node.example.com',
+        cpuLimit: 80,
+        hasSharedStorage: true,
+        networkLocation: NetworkLocation.LOCAL,
+      });
+
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({
+          publicUrl: 'https://node.example.com',
+          cpuLimit: 80,
+          hasSharedStorage: true,
+          networkLocation: NetworkLocation.LOCAL,
+        })
+      );
+    });
+  });
+
+  describe('findByApiKey', () => {
+    it('should return node when apiKey matches', async () => {
+      mockNodeRepo.findByApiKey.mockResolvedValue(mockNode);
+
+      const result = await service.findByApiKey('bb_somekey');
+
+      expect(result).toEqual(mockNode);
+      expect(mockNodeRepo.findByApiKey).toHaveBeenCalledWith('bb_somekey');
+    });
+
+    it('should return null when no node matches apiKey', async () => {
+      mockNodeRepo.findByApiKey.mockResolvedValue(null);
+
+      const result = await service.findByApiKey('invalid-key');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getRecommendedConfig', () => {
+    it('should return recommended config for existing node', async () => {
+      mockNodeRepo.findWithSelect.mockResolvedValue({
+        id: 'node-1',
+        maxWorkers: 2,
+        acceleration: AccelerationType.CPU,
+      });
+
+      const result = await service.getRecommendedConfig('node-1');
+
+      expect(result).toHaveProperty('recommendedMaxWorkers');
+      expect(result).toHaveProperty('currentMaxWorkers', 2);
+      expect(result).toHaveProperty('cpuCoresPerJob');
+      expect(result).toHaveProperty('totalCpuCores');
+      expect(result.acceleration).toBe(AccelerationType.CPU);
+    });
+
+    it('should throw NotFoundException if node does not exist', async () => {
+      mockNodeRepo.findWithSelect.mockResolvedValue(null);
+
+      await expect(service.getRecommendedConfig('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.getRecommendedConfig('non-existent')).rejects.toThrow(
+        'Node with ID non-existent not found'
+      );
+    });
+  });
+
+  describe('heartbeat', () => {
+    it('should use IP from heartbeat payload for LINKED nodes', async () => {
+      const linkedNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: '10.0.0.2' };
+      const updatedNode = { ...linkedNode, ipAddress: '192.168.2.50' };
+      mockNodeRepo.findById.mockResolvedValue(linkedNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
+
+      await service.heartbeat('node-1', { ipAddress: '192.168.2.50' });
+
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ ipAddress: '192.168.2.50' })
+      );
+    });
+
+    it('should auto-detect IP for MAIN node heartbeat when no IP in payload', async () => {
+      const mainNode = { ...mockNode, role: NodeRole.MAIN, ipAddress: '10.0.0.1' };
+      const updatedNode = { ...mainNode, ipAddress: '192.168.1.100' };
+      mockNodeRepo.findById.mockResolvedValue(mainNode);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
+
+      await service.heartbeat('node-1');
+
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ ipAddress: '192.168.1.100' })
+      );
+    });
+
+    it('should include ipAddress in update for MAIN node auto-detect even when unchanged', async () => {
+      const mainNode = { ...mockNode, role: NodeRole.MAIN, ipAddress: '192.168.1.100' };
+      mockNodeRepo.findById.mockResolvedValue(mainNode);
+      mockNodeRepo.updateData.mockResolvedValue(mainNode);
+
+      await service.heartbeat('node-1');
+
+      // MAIN node always auto-detects and includes ipAddress in the update
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ ipAddress: '192.168.1.100' })
+      );
+    });
+  });
+
+  describe('pairNode', () => {
+    it('should trigger async storage auto-mount for LINKED nodes', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        pairingToken: null,
+        pairingExpiresAt: null,
+      };
+      mockNodeRepo.findFirst.mockResolvedValue({ ...mockNode, pairingToken: '123456' });
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+
+      const nodeRegistration = (
+        service as unknown as {
+          nodeRegistration: { storageShareService: { autoDetectAndMount: jest.Mock } };
+        }
+      ).nodeRegistration;
+      nodeRegistration.storageShareService.autoDetectAndMount = jest.fn().mockResolvedValue({
+        detected: 2,
+        created: 1,
+        mounted: 1,
+        errors: [],
+      });
+
+      await service.pairNode('123456');
+
+      // Give async operation a tick to start
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(nodeRegistration.storageShareService.autoDetectAndMount).toHaveBeenCalledWith(
+        mockNode.id
+      );
+    });
+
+    it('should not trigger storage mount for MAIN nodes', async () => {
+      const mainNode = {
+        ...mockNode,
+        role: NodeRole.MAIN,
+        pairingToken: null,
+        pairingExpiresAt: null,
+      };
+      mockNodeRepo.findFirst.mockResolvedValue({ ...mockNode, pairingToken: '123456' });
+      mockNodeRepo.updateData.mockResolvedValue(mainNode);
+
+      const nodeRegistration = (
+        service as unknown as {
+          nodeRegistration: { storageShareService: { autoDetectAndMount: jest.Mock } };
+        }
+      ).nodeRegistration;
+      nodeRegistration.storageShareService.autoDetectAndMount = jest.fn();
+
+      await service.pairNode('123456');
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(nodeRegistration.storageShareService.autoDetectAndMount).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('registerNode', () => {
+    it('should use main node license when no licenseKey provided', async () => {
+      const mainNodeWithLicense = {
+        ...mockNode,
+        license: { key: 'BB-MAIN-LICENSE' },
+      };
+      mockNodeRepo.findFirstWithLicense
+        .mockResolvedValueOnce(mainNodeWithLicense) // find main node for license
+        .mockResolvedValueOnce(null); // duplicate MAIN check
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+        _count: { nodes: 1 },
+      });
+      mockNodeRepo.createNode.mockResolvedValue({ ...mockNode, role: NodeRole.LINKED });
+
+      const result = await service.registerNode({ name: 'Child Node' } as any);
+
+      expect(result.role).toBe(NodeRole.LINKED);
+      expect(mockLicenseRepo.findByKeyWithInclude).toHaveBeenCalledWith(
+        'BB-MAIN-LICENSE',
+        expect.anything()
+      );
+    });
+
+    it('should throw BadRequestException when no licenseKey and no main node found', async () => {
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+
+      await expect(service.registerNode({} as any)).rejects.toThrow(BadRequestException);
+      await expect(service.registerNode({} as any)).rejects.toThrow(
+        'No main node found. License key is required for first node registration.'
+      );
+    });
+
+    it('should throw ConflictException when duplicate MAIN node detected', async () => {
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+        _count: { nodes: 0 },
+      });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(mockNode); // existing MAIN found
+
+      await expect(
+        service.registerNode({ name: 'Duplicate', licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX' } as any)
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should use default name when name not provided', async () => {
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+        _count: { nodes: 0 },
+      });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
+
+      await service.registerNode({ licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX' } as any);
+
+      expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Main Node 1' })
+      );
+    });
+
+    it('should use default acceleration CPU when not provided', async () => {
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+        _count: { nodes: 0 },
+      });
+      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.createNode.mockResolvedValue(mockNode);
+
+      await service.registerNode({ licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX', name: 'Test' } as any);
+
+      expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({ acceleration: 'CPU' })
+      );
+    });
+  });
+
+  describe('remove', () => {
+    it('should skip notification for MAIN node removal', async () => {
+      const mainNode = {
+        ...mockNode,
+        role: NodeRole.MAIN,
+        publicUrl: 'http://main.example.com',
+        mainNodeUrl: null,
+        apiKey: 'bb_key',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(mainNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+
+      await service.remove('node-1');
+
+      // No fetch should be called for MAIN node
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+
+    it('should warn when LINKED node has no URL configured', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        publicUrl: null,
+        mainNodeUrl: null,
+        apiKey: 'bb_key',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(linkedNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+
+      await service.remove('node-1');
+
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+  });
+
+  describe('unregisterSelf', () => {
+    it('should throw BadRequestException when called on MAIN node', async () => {
+      // getCurrentNode falls back to role-based: finds MAIN node
+      const mainNode = { ...mockNode, role: NodeRole.MAIN, ipAddress: '192.168.1.100' };
+      mockNodeRepo.findManyByIp.mockResolvedValue([mainNode]);
+
+      await expect(service.unregisterSelf()).rejects.toThrow(BadRequestException);
+      await expect(service.unregisterSelf()).rejects.toThrow('MAIN nodes cannot unregister');
+    });
+
+    it('should clear local config and return success for LINKED node', async () => {
+      const linkedNode = {
+        ...mockNode,
+        id: 'node-linked',
+        role: NodeRole.LINKED,
+        ipAddress: '192.168.1.200',
+        mainNodeUrl: null,
+      };
+      // Make getCurrentNode find the linked node by IP
+      mockNodeRepo.findManyByIp.mockResolvedValue([linkedNode]);
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+
+      const result = await service.unregisterSelf();
+
+      expect(result.success).toBe(true);
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-linked',
+        expect.objectContaining({
+          role: NodeRole.MAIN,
+          pairingToken: null,
+          pairingExpiresAt: null,
+          mainNodeUrl: null,
+        })
+      );
+    });
+  });
+
+  describe('findAll', () => {
+    it('should calculate uptimeSeconds dynamically from createdAt', async () => {
+      const pastDate = new Date(Date.now() - 120 * 1000); // 2 minutes ago
+      const nodeCreatedRecently = { ...mockNode, createdAt: pastDate };
+      mockNodeRepo.findAllWithLicense.mockResolvedValue([nodeCreatedRecently]);
+
+      const result = await service.findAll();
+
+      expect(result[0].uptimeSeconds).toBeGreaterThanOrEqual(119);
+      expect(result[0].uptimeSeconds).toBeLessThanOrEqual(125);
+    });
+
+    it('should return empty array when no nodes exist', async () => {
+      mockNodeRepo.findAllWithLicense.mockResolvedValue([]);
+
+      const result = await service.findAll();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('heartbeat (IP logic edge cases)', () => {
+    it('should not include ipAddress in update for LINKED node with no IP in payload', async () => {
+      const linkedNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: '10.0.0.5' };
+      mockNodeRepo.findById.mockResolvedValue(linkedNode);
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+
+      await service.heartbeat('node-1');
+
+      // No ipAddress in payload, not MAIN node → no ipAddress field
+      const callArg = mockNodeRepo.updateData.mock.calls[0][1];
+      expect(callArg).not.toHaveProperty('ipAddress');
+    });
+
+    it('should not call updateData with ipAddress when LINKED node IP payload matches stored IP', async () => {
+      const linkedNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: '192.168.2.50' };
+      mockNodeRepo.findById.mockResolvedValue(linkedNode);
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+
+      // IP matches stored value — still included because payload sent it
+      await service.heartbeat('node-1', { ipAddress: '192.168.2.50' });
+
+      // ipAddress is present in payload so it goes into update even if unchanged
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ ipAddress: '192.168.2.50' })
+      );
+    });
+  });
+
+  describe('getNodeStats (additional)', () => {
+    it('should compute uptimeSeconds from createdAt timestamp', async () => {
+      const twoMinutesAgo = new Date(Date.now() - 120 * 1000);
+      const nodeWithOldDate = { ...mockNodeWithStats, createdAt: twoMinutesAgo };
+      mockNodeRepo.findWithStats.mockResolvedValue(nodeWithOldDate);
+
+      const result = await service.getNodeStats('node-1');
+
+      expect(result.uptimeSeconds).toBeGreaterThanOrEqual(119);
+      expect(result.uptimeSeconds).toBeLessThanOrEqual(125);
+    });
+
+    it('should return license as undefined when node has no license (null)', async () => {
+      const nodeNoLicense = { ...mockNodeWithStats, license: null };
+      mockNodeRepo.findWithStats.mockResolvedValue(nodeNoLicense);
+
+      const result = await service.getNodeStats('node-1');
+
+      expect(result.license).toBeUndefined();
+    });
+  });
+
+  describe('remove (fetch notification)', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      (global.fetch as jest.Mock).mockRestore?.();
+    });
+
+    it('should notify LINKED node via fetch when publicUrl is set and delete it', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        publicUrl: 'http://child.example.com',
+        mainNodeUrl: null,
+        apiKey: 'bb_key123',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(linkedNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
+
+      await service.remove('node-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://child.example.com/api/v1/nodes/unregister-self',
+        expect.objectContaining({ method: 'POST' })
+      );
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+
+    it('should still delete node when fetch throws AbortError (timeout)', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        publicUrl: 'http://child.example.com',
+        mainNodeUrl: null,
+        apiKey: 'bb_key123',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(linkedNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+      (global.fetch as jest.Mock).mockRejectedValue(abortError);
+
+      await service.remove('node-1');
+
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+
+    it('should still delete node when fetch returns non-ok status', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        publicUrl: 'http://child.example.com',
+        mainNodeUrl: null,
+        apiKey: 'bb_key123',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(linkedNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+
+      await service.remove('node-1');
+
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+  });
+
+  describe('update (maxWorkers boundary)', () => {
+    it('should not throw when maxWorkers is exactly 2x recommended', async () => {
+      // Get the actual recommended value first by calling with a low count
+      mockNodeRepo.findById.mockResolvedValue({ ...mockNode, acceleration: AccelerationType.CPU });
+      const updatedNode = { ...mockNode, maxWorkers: 4 };
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode);
+
+      // 4 workers: should be within 2x for any reasonable CPU count
+      // (recommended is typically cpuCount / coresPerJob which is at least 1)
+      // Using 4 which is well within 2x recommended for any system
+      const result = await service.update('node-1', { maxWorkers: 4 });
+
+      expect(result.maxWorkers).toBe(4);
+    });
+
+    it('should not include name in update when name is undefined', async () => {
+      mockNodeRepo.findById.mockResolvedValue(mockNode);
+      mockNodeRepo.updateData.mockResolvedValue({ ...mockNode, cpuLimit: 50 });
+
+      await service.update('node-1', { cpuLimit: 50 });
+
+      const callArg = mockNodeRepo.updateData.mock.calls[0][1];
+      expect(callArg).not.toHaveProperty('name');
+    });
+  });
+
+  describe('unregisterSelf (with mainNodeUrl)', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      (global.fetch as jest.Mock).mockRestore?.();
+    });
+
+    it('should notify main node via fetch when mainNodeUrl is set', async () => {
+      const linkedNode = {
+        ...mockNode,
+        id: 'node-linked',
+        role: NodeRole.LINKED,
+        ipAddress: '192.168.1.200',
+        mainNodeUrl: 'http://main.example.com',
+      };
+      mockNodeRepo.findManyByIp.mockResolvedValue([linkedNode]);
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
+
+      const result = await service.unregisterSelf();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `http://main.example.com/api/v1/nodes/node-linked`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('should still unregister locally when fetch to main node fails', async () => {
+      const linkedNode = {
+        ...mockNode,
+        id: 'node-linked',
+        role: NodeRole.LINKED,
+        ipAddress: '192.168.1.200',
+        mainNodeUrl: 'http://main.example.com',
+      };
+      mockNodeRepo.findManyByIp.mockResolvedValue([linkedNode]);
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Connection refused'));
+
+      const result = await service.unregisterSelf();
+
+      expect(result.success).toBe(true);
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-linked',
+        expect.objectContaining({ pairingToken: null, mainNodeUrl: null })
+      );
+    });
+
+    it('should warn when main node returns non-ok status but still succeed', async () => {
+      const linkedNode = {
+        ...mockNode,
+        id: 'node-linked',
+        role: NodeRole.LINKED,
+        ipAddress: '192.168.1.200',
+        mainNodeUrl: 'http://main.example.com',
+      };
+      mockNodeRepo.findManyByIp.mockResolvedValue([linkedNode]);
+      mockNodeRepo.updateData.mockResolvedValue(linkedNode);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 404 });
+
+      const result = await service.unregisterSelf();
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('remove (mainNodeUrl fallback)', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      (global.fetch as jest.Mock).mockRestore?.();
+    });
+
+    it('should use mainNodeUrl when publicUrl is null for LINKED node notification', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        publicUrl: null,
+        mainNodeUrl: 'http://child-via-main.example.com',
+        apiKey: 'bb_key123',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(linkedNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
+
+      await service.remove('node-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://child-via-main.example.com/api/v1/nodes/unregister-self',
+        expect.objectContaining({ method: 'POST' })
+      );
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+
+    it('should still delete when fetch throws a generic (non-Abort) error', async () => {
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        publicUrl: 'http://child.example.com',
+        mainNodeUrl: null,
+        apiKey: 'bb_key123',
+      };
+      mockNodeRepo.findWithSelect.mockResolvedValue(linkedNode);
+      mockNodeRepo.deleteById.mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+
+      await service.remove('node-1');
+
+      expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
+    });
+  });
+
+  describe('getCurrentNode (no IP)', () => {
+    beforeEach(() => {
+      process.env.NODE_ID = '';
+    });
+
+    afterEach(() => {
+      process.env.NODE_ID = '';
+    });
+
+    it('should skip IP match when systemInfo returns no IP address', async () => {
+      // Override systemInfoService to return no IP
+      const systemInfoService = (
+        service as unknown as { systemInfoService: { collectSystemInfo: jest.Mock } }
+      ).systemInfoService;
+      systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: null });
+
+      const mainNode = { ...mockNode, ipAddress: null };
+      mockNodeRepo.findManyByRole.mockResolvedValue([mainNode]);
+      mockNodeRepo.updateData.mockResolvedValue(mainNode);
+
+      const result = await service.getCurrentNode();
+
+      // Should not call findManyByIp since IP is null
+      expect(mockNodeRepo.findManyByIp).not.toHaveBeenCalled();
+      expect(result.id).toBe('node-1');
+    });
+
+    it('should skip IP update in autoUpdateIpIfNeeded when currentIpAddress is 127.0.0.1', async () => {
+      process.env.NODE_ID = 'node-1';
+      const systemInfoService = (
+        service as unknown as { systemInfoService: { collectSystemInfo: jest.Mock } }
+      ).systemInfoService;
+      systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' });
+
+      const node = { ...mockNode, ipAddress: '192.168.1.100' };
+      mockNodeRepo.findById.mockResolvedValue(node);
+
+      await service.getCurrentNode();
+
+      // Should NOT update IP because currentIpAddress is 127.0.0.1
+      expect(mockNodeRepo.updateData).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('testNodeCapabilities', () => {
+    it('should return capability results with test phases', async () => {
+      const nodeWithIp = { ...mockNode, ipAddress: '192.168.1.50', cpuCores: 4, ramGB: 16 };
+      mockNodeRepo.findById.mockResolvedValue(nodeWithIp);
+
+      const capabilityDetector = (
+        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+      ).capabilityDetector;
+      capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
+        latencyMs: 5,
+        isPrivateIP: true,
+        hasSharedStorage: true,
+        storageBasePath: '/mnt/user',
+        networkLocation: 'LOCAL',
+      });
+
+      const result = await service.testNodeCapabilities('node-1');
+
+      expect(result).toHaveProperty('nodeId', 'node-1');
+      expect(result).toHaveProperty('nodeName');
+      expect((result as any).tests).toHaveProperty('networkConnection');
+      expect((result as any).tests).toHaveProperty('sharedStorage');
+      expect((result as any).tests).toHaveProperty('hardwareDetection');
+      expect((result as any).tests).toHaveProperty('networkType');
+      expect((result as any).tests.sharedStorage.status).toBe('success');
+    });
+
+    it('should use publicUrl hostname when node has no ipAddress', async () => {
+      const nodeNoIp = {
+        ...mockNode,
+        ipAddress: null,
+        publicUrl: 'http://node.example.com:8080',
+        mainNodeUrl: null,
+        cpuCores: 4,
+        ramGB: 8,
+      };
+      mockNodeRepo.findById.mockResolvedValue(nodeNoIp);
+
+      const capabilityDetector = (
+        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+      ).capabilityDetector;
+      capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
+        latencyMs: 10,
+        isPrivateIP: false,
+        hasSharedStorage: false,
+        storageBasePath: null,
+        networkLocation: 'REMOTE',
+      });
+
+      await service.testNodeCapabilities('node-1');
+
+      expect(capabilityDetector.detectCapabilities).toHaveBeenCalledWith(
+        'node-1',
+        'node.example.com'
+      );
+    });
+
+    it('should fall back to 127.0.0.1 when node has no IP and invalid URL', async () => {
+      const nodeNoIp = {
+        ...mockNode,
+        ipAddress: null,
+        publicUrl: 'not-a-valid-url',
+        mainNodeUrl: null,
+        cpuCores: 2,
+        ramGB: 4,
+      };
+      mockNodeRepo.findById.mockResolvedValue(nodeNoIp);
+
+      const capabilityDetector = (
+        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+      ).capabilityDetector;
+      capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
+        latencyMs: 1,
+        isPrivateIP: true,
+        hasSharedStorage: false,
+        storageBasePath: null,
+        networkLocation: 'LOCAL',
+      });
+
+      await service.testNodeCapabilities('node-1');
+
+      expect(capabilityDetector.detectCapabilities).toHaveBeenCalledWith('node-1', '127.0.0.1');
+    });
+
+    it('should report sharedStorage status as warning when hasSharedStorage is false', async () => {
+      const nodeWithIp = { ...mockNode, ipAddress: '192.168.1.50', cpuCores: 4, ramGB: 16 };
+      mockNodeRepo.findById.mockResolvedValue(nodeWithIp);
+
+      const capabilityDetector = (
+        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+      ).capabilityDetector;
+      capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
+        latencyMs: 5,
+        isPrivateIP: true,
+        hasSharedStorage: false,
+        storageBasePath: null,
+        networkLocation: 'LOCAL',
+      });
+
+      const result = await service.testNodeCapabilities('node-1');
+
+      expect((result as any).tests.sharedStorage.status).toBe('warning');
+      expect((result as any).tests.sharedStorage.message).toBe('No shared storage access');
     });
   });
 });

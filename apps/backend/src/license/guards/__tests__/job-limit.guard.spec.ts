@@ -1,14 +1,17 @@
 import { type ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
 import { LicenseClientService } from '../../license-client.service';
 import { JobLimitGuard } from '../job-limit.guard';
 
 describe('JobLimitGuard', () => {
   let guard: JobLimitGuard;
   let licenseClient: Record<string, jest.Mock>;
-  let prisma: Record<string, Record<string, jest.Mock>>;
+  let jobRepo: Record<string, jest.Mock>;
+
+  // Shim so existing `prisma.job.count` references still work
+  let prisma: { job: Record<string, jest.Mock> };
 
   const mockExecutionContext = (): ExecutionContext => {
     return {
@@ -31,17 +34,22 @@ describe('JobLimitGuard', () => {
       getCurrentLimits: jest.fn(),
     };
 
+    jobRepo = {
+      countWhere: jest.fn(),
+    };
+
     prisma = {
       job: {
-        count: jest.fn(),
+        count: jobRepo.countWhere,
       },
     };
+    jobRepo.countWhere = prisma.job.count;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobLimitGuard,
         { provide: LicenseClientService, useValue: licenseClient },
-        { provide: PrismaService, useValue: prisma },
+        { provide: JobRepository, useValue: jobRepo },
       ],
     }).compile();
 
@@ -96,9 +104,7 @@ describe('JobLimitGuard', () => {
     await guard.canActivate(mockExecutionContext());
 
     expect(prisma.job.count).toHaveBeenCalledWith({
-      where: {
-        stage: JobStage.ENCODING,
-      },
+      stage: JobStage.ENCODING,
     });
   });
 
@@ -109,7 +115,7 @@ describe('JobLimitGuard', () => {
     try {
       await guard.canActivate(mockExecutionContext());
       fail('Should have thrown');
-    } catch (error) {
+    } catch (error: unknown) {
       expect((error as ForbiddenException).message).toContain('Upgrade your license');
     }
   });

@@ -76,4 +76,7 @@ export interface QueueJobApiModel {
   // Decision Feature (Phase 3)
   decisionRequired?: boolean;
   decisionIssues?: string | null; // JSON string of HealthCheckIssue[]
+  // Quality Metrics Feature (VMAF/PSNR/SSIM)
+  qualityMetrics?: { vmaf?: number; psnr?: number; ssim?: number } | null;
+  qualityMetricsAt?: string;
 }

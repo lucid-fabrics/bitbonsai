@@ -1,25 +1,40 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { FileFailureRecordRepository } from '../common/repositories/file-failure-record.repository';
+import { JobRepository } from '../common/repositories/job.repository';
+import { JobHistoryRepository } from '../common/repositories/job-history.repository';
+import { LibraryRepository } from '../common/repositories/library.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { CoreModule } from '../core/core.module';
 import { EncodingModule } from '../encoding/encoding.module';
-import { LibrariesModule } from '../libraries/libraries.module';
+import { MediaModule } from '../media/media.module';
 import { NodesModule } from '../nodes/nodes.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
 import { BatchController } from './batch.controller';
+import { JobController } from './controllers/job.controller';
+import { JobMetricsController } from './controllers/job-metrics.controller';
+import { JobPreviewController } from './controllers/job-preview.controller';
+import { JobTransferController } from './controllers/job-transfer.controller';
+import { QueueManagementController } from './controllers/queue-management.controller';
 import { FileTransferWorker } from './file-transfer.worker';
 import { HealthCheckWorker } from './health-check.worker';
-import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
 import { BatchOperationsService } from './services/batch-operations.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { FileTransferService } from './services/file-transfer.service';
+import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
+import { JobBulkOperationsService } from './services/job-bulk-operations.service';
 import { JobCleanupService } from './services/job-cleanup.service';
+import { JobFileOperationsService } from './services/job-file-operations.service';
 import { JobHistoryService } from './services/job-history.service';
+import { JobMetricsService } from './services/job-metrics.service';
 import { JobRouterService } from './services/job-router.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
 import { QueueJobCrudService } from './services/queue-job-crud.service';
 import { QueueJobStateService } from './services/queue-job-state.service';
+import { QueueJobStatsService } from './services/queue-job-stats.service';
 import { QueueProcessingService } from './services/queue-processing.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
 import { WebhookNotificationService } from './services/webhook-notification.service';
@@ -41,18 +56,24 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Webhook notifications for job events via WebhookNotificationService.
  */
 @Module({
-  imports: [
-    CoreModule,
-    EncodingModule,
-    forwardRef(() => LibrariesModule),
-    forwardRef(() => NodesModule),
+  imports: [CoreModule, EncodingModule, MediaModule, NodesModule],
+  controllers: [
+    JobController,
+    JobMetricsController,
+    JobPreviewController,
+    JobTransferController,
+    QueueManagementController,
+    BatchController,
   ],
-  controllers: [QueueController, BatchController],
   providers: [
     QueueService,
     FileFailureTrackingService,
     QueueJobCrudService,
+    QueueJobStatsService,
     QueueJobStateService,
+    JobMetricsService,
+    JobBulkOperationsService,
+    JobFileOperationsService,
     QueueDelegationService,
     QueueProcessingService,
     JobCleanupService,
@@ -61,6 +82,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     FileTransferService,
     FileTransferWorker,
     HealthCheckWorker,
+    HealthCheckCodecAnalyzerService,
     AutoHealingService,
     RetrySchedulerService,
     StuckJobRecoveryWorker,
@@ -68,6 +90,12 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     BatchOperationsService,
     WebhookNotificationService,
     PrismaService,
+    FileFailureRecordRepository,
+    JobHistoryRepository,
+    JobRepository,
+    LibraryRepository,
+    NodeRepository,
+    SettingsRepository,
   ],
   exports: [
     QueueService,

@@ -68,6 +68,37 @@ import { SettingsService } from '../services/settings.service';
             </div>
           </div>
 
+          <!-- Quality Metrics Toggle Card -->
+          <div class="info-card setting-card">
+            <div class="setting-card-header">
+              <div class="setting-icon analytics-icon">
+                <i class="fa fa-chart-bar"></i>
+              </div>
+              <div class="setting-header-text">
+                <h3>Quality Metrics</h3>
+                <p>VMAF / PSNR / SSIM after encoding</p>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  id="qualityMetrics"
+                  [ngModel]="qualityMetricsEnabled()"
+                  (ngModelChange)="onQualityMetricsToggle($event)"
+                  [ngModelOptions]="{ standalone: true }"
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-note">
+              <i class="fa fa-info-circle"></i>
+              @if (qualityMetricsEnabled()) {
+                Calculating quality metrics after each encode (adds CPU overhead)
+              } @else {
+                Enable to measure encoding quality with industry-standard metrics
+              }
+            </div>
+          </div>
+
           <!-- Security Toggle Card -->
           <div class="info-card setting-card">
             <div class="setting-card-header">
@@ -319,6 +350,7 @@ export class AdvancedTabComponent implements OnInit {
   readyFilesCacheTtl = signal(5);
   maxAutoHealRetries = signal(15);
   advancedModeEnabled = signal(false);
+  qualityMetricsEnabled = signal(false);
 
   settingsForm!: FormGroup<{
     ffmpegPath: FormControl<string | null>;
@@ -336,6 +368,7 @@ export class AdvancedTabComponent implements OnInit {
     this.loadReadyFilesCacheTtl();
     this.loadAutoHealRetryLimit();
     this.loadAdvancedMode();
+    this.loadQualityMetrics();
   }
 
   private initializeForm(): void {
@@ -419,6 +452,42 @@ export class AdvancedTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((enabled) => {
         this.advancedModeEnabled.set(enabled);
+      });
+  }
+
+  private loadQualityMetrics(): void {
+    this.settingsClient
+      .getQualityMetrics()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.qualityMetricsEnabled.set(settings.qualityMetricsEnabled);
+        },
+        error: () => {
+          // Silent fail - uses default value from signal (false)
+        },
+      });
+  }
+
+  onQualityMetricsToggle(enabled: boolean): void {
+    this.qualityMetricsEnabled.set(enabled);
+    this.loading.set(true);
+    this.error.set(null);
+    this.successMessage.set(null);
+
+    this.settingsClient
+      .updateQualityMetrics(enabled)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.successMessage.set(enabled ? 'Quality metrics enabled' : 'Quality metrics disabled');
+        },
+        error: () => {
+          this.loading.set(false);
+          this.error.set('Failed to update quality metrics setting');
+          this.qualityMetricsEnabled.set(!enabled);
+        },
       });
   }
 

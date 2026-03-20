@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job, Node } from '@prisma/client';
+import { DistributionConfigRepository } from '../../common/repositories/distribution-config.repository';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { isNodeInAllowedWindow } from '../../nodes/utils/schedule-checker';
-import { PrismaService } from '../../prisma/prisma.service';
 import type {
   DistributionConfigData,
   HeartbeatLoadData,
@@ -56,7 +58,9 @@ export class JobScorerService {
   private maxSpeedCache: { value: number; expiresAt: number } | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository,
+    private readonly distributionConfigRepository: DistributionConfigRepository,
     private readonly loadMonitor: LoadMonitorService
   ) {}
 
@@ -183,9 +187,7 @@ export class JobScorerService {
    * Fewer queued jobs = higher score
    */
   private async calculateQueueDepth(node: NodeWithCounts): Promise<number> {
-    const queuedJobs = await this.prisma.job.count({
-      where: { nodeId: node.id, stage: 'QUEUED' },
-    });
+    const queuedJobs = await this.jobRepository.countForNode(node.id, 'QUEUED');
 
     const maxWorkers = node.maxWorkers || 1;
 
@@ -285,14 +287,7 @@ export class JobScorerService {
    * Bonus for keeping jobs from same library together
    */
   private async calculateLibraryAffinity(node: Node, job: JobWithRelations): Promise<number> {
-    // Count jobs from same library on this node
-    const sameLibraryJobs = await this.prisma.job.count({
-      where: {
-        nodeId: node.id,
-        libraryId: job.libraryId,
-        stage: { in: ['QUEUED', 'ENCODING'] },
-      },
-    });
+    const sameLibraryJobs = await this.jobRepository.countByLibraryAndNode(node.id, job.libraryId);
 
     // Bonus: 5 points if any jobs from same library, up to 10 for 3+
     if (sameLibraryJobs >= 3) return 10;
@@ -333,14 +328,10 @@ export class JobScorerService {
       return 8; // Neutral score for small files
     }
 
-    // Check how many large files are already on this node
-    const largeFilesOnNode = await this.prisma.job.count({
-      where: {
-        nodeId: node.id,
-        stage: { in: ['QUEUED', 'ENCODING'] },
-        beforeSizeBytes: { gt: BigInt(5 * 1024 * 1024 * 1024) },
-      },
-    });
+    const largeFilesOnNode = await this.jobRepository.countLargeFilesForNode(
+      node.id,
+      BigInt(5 * 1024 * 1024 * 1024)
+    );
 
     // Penalty for nodes with many large files
     if (largeFilesOnNode >= 3) return 0;
@@ -419,16 +410,7 @@ export class JobScorerService {
       return this.configCache.config;
     }
 
-    let config = await this.prisma.distributionConfig.findFirst({
-      where: { isActive: true },
-    });
-
-    if (!config) {
-      // Create default config
-      config = await this.prisma.distributionConfig.create({
-        data: { id: 'default' },
-      });
-    }
+    const config = await this.distributionConfigRepository.findOrCreateDefault();
 
     this.configCache = {
       config: config as DistributionConfigData,
@@ -446,12 +428,7 @@ export class JobScorerService {
       return this.maxSpeedCache.value;
     }
 
-    const result = await this.prisma.node.aggregate({
-      _max: { avgEncodingSpeed: true },
-      where: { avgEncodingSpeed: { not: null } },
-    });
-
-    const maxSpeed = result._max.avgEncodingSpeed || 0;
+    const maxSpeed = await this.nodeRepository.aggregateMaxEncodingSpeed();
 
     this.maxSpeedCache = {
       value: maxSpeed,

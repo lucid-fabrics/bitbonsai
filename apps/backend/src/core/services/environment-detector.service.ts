@@ -122,8 +122,10 @@ export class EnvironmentDetectorService {
         if (virt === 'none') {
           return ContainerType.BARE_METAL;
         }
-      } catch {
-        // systemd-detect-virt not available
+      } catch (error: unknown) {
+        this.logger.warn(
+          `[detectContainerType] systemd-detect-virt unavailable: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
 
       // Check /run/systemd/container
@@ -136,8 +138,11 @@ export class EnvironmentDetectorService {
 
       // If no container detected, assume bare metal
       return ContainerType.BARE_METAL;
-    } catch (error) {
-      this.logger.warn('Error detecting container type', error);
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Error detecting container type',
+        error instanceof Error ? error.message : String(error)
+      );
       return ContainerType.UNKNOWN;
     }
   }
@@ -161,7 +166,10 @@ export class EnvironmentDetectorService {
       }
 
       return false;
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[isPrivilegedContainer] Failed to read capabilities: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
   }
@@ -211,7 +219,10 @@ export class EnvironmentDetectorService {
       }
 
       return cidr;
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[detectNetworkSubnet] Failed to detect subnet: ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
@@ -223,7 +234,10 @@ export class EnvironmentDetectorService {
     try {
       const { stdout } = await execAsync('hostname');
       return stdout.trim();
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[getHostname] Failed to get hostname: ${error instanceof Error ? error.message : String(error)}`
+      );
       return 'unknown';
     }
   }
@@ -295,7 +309,10 @@ export class EnvironmentDetectorService {
     try {
       await fs.access(path);
       return true;
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[fileExists] Cannot access ${path}: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
   }
@@ -303,7 +320,10 @@ export class EnvironmentDetectorService {
   private async readFile(path: string): Promise<string> {
     try {
       return await fs.readFile(path, 'utf-8');
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[readFile] Cannot read ${path}: ${error instanceof Error ? error.message : String(error)}`
+      );
       return '';
     }
   }

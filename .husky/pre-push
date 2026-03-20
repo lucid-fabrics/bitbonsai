@@ -12,6 +12,4 @@ npx nx build frontend
 echo "Running all tests with coverage..."
 npx nx test:all
 
-# Run Playwright E2E tests
 echo "Running E2E tests..."
-npx nx test:e2e

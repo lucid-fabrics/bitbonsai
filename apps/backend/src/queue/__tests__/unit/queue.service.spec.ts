@@ -10,6 +10,13 @@ import {
   PolicyPreset,
   TargetCodec,
 } from '@prisma/client';
+import {
+  EncodingCancelledEvent,
+  EncodingFailedEvent,
+  EncodingPreviewUpdateEvent,
+  EncodingProcessMarkedEvent,
+  EncodingProgressUpdateEvent,
+} from '../../../common/events';
 import { QueueService } from '../../queue.service';
 import { QueueDelegationService } from '../../services/queue-delegation.service';
 import { QueueJobCrudService } from '../../services/queue-job-crud.service';
@@ -20,6 +27,7 @@ describe('QueueService', () => {
   let service: QueueService;
   let jobCrudService: Record<string, jest.Mock>;
   let jobStateService: Record<string, jest.Mock>;
+  let delegationService: Record<string, jest.Mock>;
   let processingService: Record<string, jest.Mock>;
 
   const mockLicense = {
@@ -136,7 +144,7 @@ describe('QueueService', () => {
       resolveDecision: jest.fn(),
     };
 
-    const delegationService = {
+    delegationService = {
       delegateJob: jest.fn(),
       rebalanceJobs: jest.fn(),
       fixStuckTransfers: jest.fn(),
@@ -322,7 +330,7 @@ describe('QueueService', () => {
 
       const result = await service.getNextJob('node-1');
 
-      expect(result).toBeTruthy();
+      expect(result).not.toBeNull();
       expect(result?.stage).toBe(JobStage.ENCODING);
       expect(processingService.getNextJob).toHaveBeenCalledWith('node-1');
     });
@@ -519,6 +527,585 @@ describe('QueueService', () => {
       expect(result.queued).toBe(10);
       expect(result.totalSavedBytes).toBe('100000000000');
       expect(jobCrudService.getJobStats).toHaveBeenCalledWith('node-1');
+    });
+  });
+
+  // ─── QueueJobCrudService additional methods ─────────────────────────
+
+  describe('getJobStatus', () => {
+    it('should return job status object when job exists', async () => {
+      const mockStatus = {
+        pauseRequestedAt: null,
+        pauseProcessedAt: null,
+        cancelRequestedAt: new Date(),
+        cancelProcessedAt: null,
+      };
+      jobCrudService.getJobStatus.mockResolvedValue(mockStatus);
+
+      const result = await service.getJobStatus('job-1');
+
+      expect(result).toEqual(mockStatus);
+      expect(jobCrudService.getJobStatus).toHaveBeenCalledWith('job-1');
+    });
+
+    it('should return null when job does not exist', async () => {
+      jobCrudService.getJobStatus.mockResolvedValue(null);
+
+      const result = await service.getJobStatus('non-existent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateJobRaw', () => {
+    it('should delegate raw update to jobCrudService', async () => {
+      jobCrudService.updateJobRaw.mockResolvedValue(undefined);
+
+      await service.updateJobRaw('job-1', { cancelRequestedAt: new Date() });
+
+      expect(jobCrudService.updateJobRaw).toHaveBeenCalledWith('job-1', {
+        cancelRequestedAt: expect.any(Date),
+      });
+    });
+  });
+
+  describe('updateJobPreview', () => {
+    it('should update preview paths and return updated job', async () => {
+      const previewPaths = ['/tmp/preview_1.jpg', '/tmp/preview_2.jpg'];
+      const updatedJob = { ...mockJob, previewPaths };
+      jobCrudService.updateJobPreview.mockResolvedValue(updatedJob);
+
+      const result = await service.updateJobPreview('job-1', previewPaths);
+
+      expect(result).toEqual(updatedJob);
+      expect(jobCrudService.updateJobPreview).toHaveBeenCalledWith('job-1', previewPaths);
+    });
+  });
+
+  describe('update', () => {
+    it('should update job with Prisma input and return updated job', async () => {
+      const updateData = { progress: 75 };
+      const updatedJob = { ...mockJob, progress: 75 };
+      jobCrudService.update.mockResolvedValue(updatedJob);
+
+      const result = await service.update('job-1', updateData);
+
+      expect(result).toEqual(updatedJob);
+      expect(jobCrudService.update).toHaveBeenCalledWith('job-1', updateData);
+    });
+  });
+
+  describe('clearJobs', () => {
+    it('should clear all jobs when no stage filter provided', async () => {
+      jobCrudService.clearJobs.mockResolvedValue(42);
+
+      const result = await service.clearJobs();
+
+      expect(result).toBe(42);
+      expect(jobCrudService.clearJobs).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should clear jobs for specified stages', async () => {
+      jobCrudService.clearJobs.mockResolvedValue(10);
+
+      const result = await service.clearJobs([JobStage.COMPLETED, JobStage.CANCELLED]);
+
+      expect(result).toBe(10);
+      expect(jobCrudService.clearJobs).toHaveBeenCalledWith([
+        JobStage.COMPLETED,
+        JobStage.CANCELLED,
+      ]);
+    });
+  });
+
+  // ─── QueueJobStateService additional methods ────────────────────────
+
+  describe('unblacklistJob', () => {
+    it('should unblacklist a job and return updated job', async () => {
+      const unblacklistedJob = { ...mockJob, stage: JobStage.QUEUED };
+      jobStateService.unblacklistJob.mockResolvedValue(unblacklistedJob);
+
+      const result = await service.unblacklistJob('job-1');
+
+      expect(result).toEqual(unblacklistedJob);
+      expect(jobStateService.unblacklistJob).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('cancelAllQueued', () => {
+    it('should cancel all queued jobs and return count', async () => {
+      jobStateService.cancelAllQueued.mockResolvedValue({ cancelledCount: 15 });
+
+      const result = await service.cancelAllQueued();
+
+      expect(result.cancelledCount).toBe(15);
+      expect(jobStateService.cancelAllQueued).toHaveBeenCalled();
+    });
+
+    it('should return zero when no queued jobs exist', async () => {
+      jobStateService.cancelAllQueued.mockResolvedValue({ cancelledCount: 0 });
+
+      const result = await service.cancelAllQueued();
+
+      expect(result.cancelledCount).toBe(0);
+    });
+  });
+
+  describe('pauseJob', () => {
+    it('should pause a job and return updated job', async () => {
+      const pausedJob = { ...mockJob, stage: JobStage.ENCODING };
+      jobStateService.pauseJob.mockResolvedValue(pausedJob);
+
+      const result = await service.pauseJob('job-1');
+
+      expect(result).toEqual(pausedJob);
+      expect(jobStateService.pauseJob).toHaveBeenCalledWith('job-1');
+    });
+
+    it('should throw NotFoundException if job does not exist', async () => {
+      jobStateService.pauseJob.mockRejectedValue(new NotFoundException('Job not found'));
+
+      await expect(service.pauseJob('non-existent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('resumeJob', () => {
+    it('should resume a paused job', async () => {
+      const resumedJob = { ...mockJob, stage: JobStage.ENCODING };
+      jobStateService.resumeJob.mockResolvedValue(resumedJob);
+
+      const result = await service.resumeJob('job-1');
+
+      expect(result).toEqual(resumedJob);
+      expect(jobStateService.resumeJob).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('retryJob', () => {
+    it('should retry a failed job and requeue it', async () => {
+      const requeuedJob = { ...mockJob, stage: JobStage.QUEUED, error: null };
+      jobStateService.retryJob.mockResolvedValue(requeuedJob);
+
+      const result = await service.retryJob('job-1');
+
+      expect(result.stage).toBe(JobStage.QUEUED);
+      expect(jobStateService.retryJob).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('forceStartJob', () => {
+    it('should force start a job bypassing normal queue order', async () => {
+      const startedJob = { ...mockJob, stage: JobStage.ENCODING };
+      jobStateService.forceStartJob.mockResolvedValue(startedJob);
+
+      const result = await service.forceStartJob('job-1');
+
+      expect(result).toEqual(startedJob);
+      expect(jobStateService.forceStartJob).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('recheckHealth', () => {
+    it('should trigger health recheck for a job', async () => {
+      const recheckedJob = { ...mockJob, stage: JobStage.HEALTH_CHECK };
+      jobStateService.recheckHealth.mockResolvedValue(recheckedJob);
+
+      const result = await service.recheckHealth('job-1');
+
+      expect(result).toEqual(recheckedJob);
+      expect(jobStateService.recheckHealth).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('retryAllCancelled', () => {
+    it('should retry all cancelled jobs and return summary', async () => {
+      const mockResult = {
+        retriedCount: 3,
+        totalSizeBytes: '32212254720',
+        jobs: [
+          { id: 'job-1', fileLabel: 'Avatar.mkv', beforeSizeBytes: BigInt(10737418240) },
+          { id: 'job-2', fileLabel: 'Dune.mkv', beforeSizeBytes: BigInt(10737418240) },
+          { id: 'job-3', fileLabel: 'Interstellar.mkv', beforeSizeBytes: BigInt(10737418240) },
+        ],
+      };
+      jobStateService.retryAllCancelled.mockResolvedValue(mockResult);
+
+      const result = await service.retryAllCancelled();
+
+      expect(result.retriedCount).toBe(3);
+      expect(result.jobs).toHaveLength(3);
+      expect(jobStateService.retryAllCancelled).toHaveBeenCalled();
+    });
+  });
+
+  describe('retryAllFailed', () => {
+    it('should retry all failed jobs without error filter', async () => {
+      const mockResult = {
+        retriedCount: 2,
+        jobs: [
+          { id: 'job-1', fileLabel: 'Avatar.mkv', error: 'FFmpeg crash' },
+          { id: 'job-2', fileLabel: 'Dune.mkv', error: 'FFmpeg crash' },
+        ],
+      };
+      jobStateService.retryAllFailed.mockResolvedValue(mockResult);
+
+      const result = await service.retryAllFailed();
+
+      expect(result.retriedCount).toBe(2);
+      expect(jobStateService.retryAllFailed).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should filter by error string when provided', async () => {
+      const mockResult = {
+        retriedCount: 1,
+        jobs: [{ id: 'job-1', fileLabel: 'Avatar.mkv', error: 'FFmpeg crash' }],
+      };
+      jobStateService.retryAllFailed.mockResolvedValue(mockResult);
+
+      await service.retryAllFailed('FFmpeg crash');
+
+      expect(jobStateService.retryAllFailed).toHaveBeenCalledWith('FFmpeg crash');
+    });
+  });
+
+  describe('skipAllCodecMatch', () => {
+    it('should skip all codec-match jobs and return summary', async () => {
+      const mockResult = {
+        skippedCount: 5,
+        jobs: [{ id: 'job-1', fileLabel: 'Avatar.mkv', sourceCodec: 'HEVC', targetCodec: 'HEVC' }],
+      };
+      jobStateService.skipAllCodecMatch.mockResolvedValue(mockResult);
+
+      const result = await service.skipAllCodecMatch();
+
+      expect(result.skippedCount).toBe(5);
+      expect(jobStateService.skipAllCodecMatch).toHaveBeenCalled();
+    });
+  });
+
+  describe('forceEncodeAllCodecMatch', () => {
+    it('should force encode all codec-match jobs and return summary', async () => {
+      const mockResult = {
+        queuedCount: 4,
+        jobs: [{ id: 'job-1', fileLabel: 'Avatar.mkv', sourceCodec: 'HEVC', targetCodec: 'HEVC' }],
+      };
+      jobStateService.forceEncodeAllCodecMatch.mockResolvedValue(mockResult);
+
+      const result = await service.forceEncodeAllCodecMatch();
+
+      expect(result.queuedCount).toBe(4);
+      expect(jobStateService.forceEncodeAllCodecMatch).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateJobPriority', () => {
+    it('should update job priority and return updated job', async () => {
+      const updatedJob = { ...mockJob };
+      jobStateService.updateJobPriority.mockResolvedValue(updatedJob);
+
+      const result = await service.updateJobPriority('job-1', 1);
+
+      expect(result).toEqual(updatedJob);
+      expect(jobStateService.updateJobPriority).toHaveBeenCalledWith('job-1', 1);
+    });
+  });
+
+  describe('requestKeepOriginal', () => {
+    it('should request keep-original flag on a job', async () => {
+      const updatedJob = { ...mockJob };
+      jobStateService.requestKeepOriginal.mockResolvedValue(updatedJob);
+
+      const result = await service.requestKeepOriginal('job-1');
+
+      expect(result).toEqual(updatedJob);
+      expect(jobStateService.requestKeepOriginal).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('deleteOriginalBackup', () => {
+    it('should delete original backup and return freed space', async () => {
+      jobStateService.deleteOriginalBackup.mockResolvedValue({ freedSpace: BigInt(5368709120) });
+
+      const result = await service.deleteOriginalBackup('job-1');
+
+      expect(result.freedSpace).toBe(BigInt(5368709120));
+      expect(jobStateService.deleteOriginalBackup).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('restoreOriginal', () => {
+    it('should restore original file and return updated job', async () => {
+      const restoredJob = { ...mockJob };
+      jobStateService.restoreOriginal.mockResolvedValue(restoredJob);
+
+      const result = await service.restoreOriginal('job-1');
+
+      expect(result).toEqual(restoredJob);
+      expect(jobStateService.restoreOriginal).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('recheckFailedJob', () => {
+    it('should re-check a failed job and return updated job', async () => {
+      const recheckedJob = { ...mockJob, stage: JobStage.HEALTH_CHECK };
+      jobStateService.recheckFailedJob.mockResolvedValue(recheckedJob);
+
+      const result = await service.recheckFailedJob('job-1');
+
+      expect(result).toEqual(recheckedJob);
+      expect(jobStateService.recheckFailedJob).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('detectAndRequeueIfUncompressed', () => {
+    it('should detect and requeue an uncompressed job', async () => {
+      const requeuedJob = { ...mockJob, stage: JobStage.QUEUED };
+      jobStateService.detectAndRequeueIfUncompressed.mockResolvedValue(requeuedJob);
+
+      const result = await service.detectAndRequeueIfUncompressed('job-1');
+
+      expect(result).toEqual(requeuedJob);
+      expect(jobStateService.detectAndRequeueIfUncompressed).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  describe('resolveDecision', () => {
+    it('should resolve a decision without data', async () => {
+      const resolvedJob = { ...mockJob, stage: JobStage.QUEUED };
+      jobStateService.resolveDecision.mockResolvedValue(resolvedJob);
+
+      const result = await service.resolveDecision('job-1');
+
+      expect(result).toEqual(resolvedJob);
+      expect(jobStateService.resolveDecision).toHaveBeenCalledWith('job-1', undefined);
+    });
+
+    it('should resolve a decision with data payload', async () => {
+      const resolvedJob = { ...mockJob, stage: JobStage.QUEUED };
+      const decisionData = { action: 'encode', keepOriginal: true };
+      jobStateService.resolveDecision.mockResolvedValue(resolvedJob);
+
+      const result = await service.resolveDecision('job-1', decisionData);
+
+      expect(result).toEqual(resolvedJob);
+      expect(jobStateService.resolveDecision).toHaveBeenCalledWith('job-1', decisionData);
+    });
+  });
+
+  // ─── QueueDelegationService methods ────────────────────────────────
+
+  describe('delegateJob', () => {
+    it('should delegate a job to a target node', async () => {
+      const delegatedJob = { ...mockJob, nodeId: 'node-2' };
+      delegationService.delegateJob.mockResolvedValue(delegatedJob);
+
+      const result = await service.delegateJob('job-1', 'node-2');
+
+      expect(result).toEqual(delegatedJob);
+      expect(delegationService.delegateJob).toHaveBeenCalledWith('job-1', 'node-2');
+    });
+
+    it('should throw NotFoundException if target node does not exist', async () => {
+      delegationService.delegateJob.mockRejectedValue(
+        new NotFoundException('Node "node-99" not found')
+      );
+
+      await expect(service.delegateJob('job-1', 'node-99')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('rebalanceJobs', () => {
+    it('should rebalance jobs across nodes and return moved count', async () => {
+      delegationService.rebalanceJobs.mockResolvedValue(3);
+
+      const result = await service.rebalanceJobs();
+
+      expect(result).toBe(3);
+      expect(delegationService.rebalanceJobs).toHaveBeenCalled();
+    });
+
+    it('should return zero when no rebalancing is needed', async () => {
+      delegationService.rebalanceJobs.mockResolvedValue(0);
+
+      const result = await service.rebalanceJobs();
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('fixStuckTransfers', () => {
+    it('should fix stuck transfers and return fixed count', async () => {
+      delegationService.fixStuckTransfers.mockResolvedValue(2);
+
+      const result = await service.fixStuckTransfers();
+
+      expect(result).toBe(2);
+      expect(delegationService.fixStuckTransfers).toHaveBeenCalled();
+    });
+  });
+
+  // ─── Event Handlers ─────────────────────────────────────────────────
+
+  describe('handleEncodingProgressUpdate', () => {
+    it('should update progress when encoding progress event is received', async () => {
+      jobCrudService.updateProgress.mockResolvedValue(mockJob);
+      const event = new EncodingProgressUpdateEvent('job-1', {
+        progress: 60,
+        etaSeconds: 300,
+        fps: 24,
+        resumeTimestamp: '00:01:00.000',
+        tempFilePath: '/tmp/job-1.mkv',
+      });
+
+      await service.handleEncodingProgressUpdate(event);
+
+      expect(jobCrudService.updateProgress).toHaveBeenCalledWith('job-1', {
+        progress: 60,
+        etaSeconds: 300,
+        fps: 24,
+        resumeTimestamp: '00:01:00.000',
+        tempFilePath: '/tmp/job-1.mkv',
+      });
+    });
+
+    it('should silently swallow errors from updateProgress', async () => {
+      jobCrudService.updateProgress.mockRejectedValue(new Error('DB write failed'));
+      const event = new EncodingProgressUpdateEvent('job-1', {
+        progress: 60,
+        etaSeconds: 300,
+        fps: 24,
+      });
+
+      await expect(service.handleEncodingProgressUpdate(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingPreviewUpdate', () => {
+    it('should update preview paths when preview event is received', async () => {
+      jobCrudService.updateJobPreview.mockResolvedValue(mockJob);
+      const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg', '/tmp/p2.jpg']);
+
+      await service.handleEncodingPreviewUpdate(event);
+
+      expect(jobCrudService.updateJobPreview).toHaveBeenCalledWith('job-1', [
+        '/tmp/p1.jpg',
+        '/tmp/p2.jpg',
+      ]);
+    });
+
+    it('should silently swallow errors from updateJobPreview', async () => {
+      jobCrudService.updateJobPreview.mockRejectedValue(new Error('Storage unavailable'));
+      const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg']);
+
+      await expect(service.handleEncodingPreviewUpdate(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingFailed', () => {
+    it('should fail the job when encoding failed event is received', async () => {
+      jobStateService.failJob.mockResolvedValue({ ...mockJob, stage: JobStage.FAILED });
+      const event = new EncodingFailedEvent('job-1', 'FFmpeg: codec not supported');
+
+      await service.handleEncodingFailed(event);
+
+      expect(jobStateService.failJob).toHaveBeenCalledWith('job-1', 'FFmpeg: codec not supported');
+    });
+
+    it('should silently swallow errors from failJob', async () => {
+      jobStateService.failJob.mockRejectedValue(new Error('Job already deleted'));
+      const event = new EncodingFailedEvent('job-1', 'FFmpeg crash');
+
+      await expect(service.handleEncodingFailed(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingCancelled', () => {
+    it('should cancel the job when encoding cancelled event is received', async () => {
+      jobStateService.cancelJob.mockResolvedValue({ ...mockJob, stage: JobStage.CANCELLED });
+      const event = new EncodingCancelledEvent('job-1');
+
+      await service.handleEncodingCancelled(event);
+
+      expect(jobStateService.cancelJob).toHaveBeenCalledWith('job-1', false);
+    });
+
+    it('should silently swallow errors from cancelJob', async () => {
+      jobStateService.cancelJob.mockRejectedValue(new Error('Job not found'));
+      const event = new EncodingCancelledEvent('job-1');
+
+      await expect(service.handleEncodingCancelled(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingProcessMarked', () => {
+    it('should update raw job fields when process-marked event is received', async () => {
+      jobCrudService.updateJobRaw.mockResolvedValue(undefined);
+      const updates = { cancelProcessedAt: new Date('2024-01-01T00:00:00.000Z') };
+      const event = new EncodingProcessMarkedEvent('job-1', updates);
+
+      await service.handleEncodingProcessMarked(event);
+
+      expect(jobCrudService.updateJobRaw).toHaveBeenCalledWith('job-1', updates);
+    });
+
+    it('should silently swallow errors from updateJobRaw', async () => {
+      jobCrudService.updateJobRaw.mockRejectedValue(new Error('Prisma error'));
+      const event = new EncodingProcessMarkedEvent('job-1', {
+        pauseProcessedAt: new Date(),
+      });
+
+      await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
+    });
+  });
+
+  // ── non-Error thrown values (covers `instanceof Error ? ... : 'Unknown error'`) ──
+
+  describe('handleEncodingProgressUpdate — non-Error thrown value', () => {
+    it('handles string thrown without crashing', async () => {
+      jobCrudService.updateProgress.mockRejectedValue('string error');
+      const event = new EncodingProgressUpdateEvent('job-1', {
+        progress: 50,
+        etaSeconds: 100,
+        fps: 24,
+      });
+
+      await expect(service.handleEncodingProgressUpdate(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingPreviewUpdate — non-Error thrown value', () => {
+    it('handles plain object thrown without crashing', async () => {
+      jobCrudService.updateJobPreview.mockRejectedValue({ code: 500 });
+      const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg']);
+
+      await expect(service.handleEncodingPreviewUpdate(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingFailed — non-Error thrown value', () => {
+    it('handles number thrown without crashing', async () => {
+      jobStateService.failJob.mockRejectedValue(42);
+      const event = new EncodingFailedEvent('job-1', 'crash');
+
+      await expect(service.handleEncodingFailed(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingCancelled — non-Error thrown value', () => {
+    it('handles null thrown without crashing', async () => {
+      jobStateService.cancelJob.mockRejectedValue(null);
+      const event = new EncodingCancelledEvent('job-1');
+
+      await expect(service.handleEncodingCancelled(event)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleEncodingProcessMarked — non-Error thrown value', () => {
+    it('handles string thrown without crashing', async () => {
+      jobCrudService.updateJobRaw.mockRejectedValue('unexpected string');
+      const event = new EncodingProcessMarkedEvent('job-1', { pauseProcessedAt: new Date() });
+
+      await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
     });
   });
 });

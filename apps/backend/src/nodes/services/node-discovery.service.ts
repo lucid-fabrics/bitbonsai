@@ -1,8 +1,7 @@
+import { version as APP_VERSION } from '@bitbonsai/version';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { NodeRole } from '@prisma/client';
 import Bonjour, { Service } from 'bonjour-service';
-import { version as APP_VERSION } from '../../../../../package.json';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
 
 export interface DiscoveredMainNode {
   nodeId: string;
@@ -26,16 +25,14 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   private service: Service | null = null;
   private readonly SERVICE_TYPE = 'bitbonsai-main';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly nodeRepository: NodeRepository) {}
 
   /**
    * Initialize mDNS broadcasting if this is a MAIN node
    */
   async onModuleInit() {
     // Check if this node is a MAIN node
-    const mainNode = await this.prisma.node.findFirst({
-      where: { role: NodeRole.MAIN },
-    });
+    const mainNode = await this.nodeRepository.findMain();
 
     if (mainNode) {
       await this.startBroadcasting(mainNode.id, mainNode.name);
@@ -71,7 +68,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log(`🌐 Broadcasting MAIN node "${nodeName}" via mDNS on port ${port}`);
       this.logger.debug(`API URL: ${apiUrl}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to start mDNS broadcasting', error);
     }
   }
@@ -91,7 +88,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         this.bonjour.destroy();
         this.bonjour = null;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to stop mDNS broadcasting', error);
     }
   }
@@ -150,7 +147,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
             this.logger.debug(
               `✅ Discovered MAIN node: ${mainNode.nodeName} (${mainNode.ipAddress}:${mainNode.port})`
             );
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.warn('Failed to parse discovered service', error);
           }
         });
@@ -163,7 +160,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
           this.logger.log(`🎯 Discovery completed. Found ${nodes.length} MAIN node(s)`);
           resolve(nodes);
         }, timeoutMs);
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Failed to discover MAIN nodes', error);
         reject(error);
       }

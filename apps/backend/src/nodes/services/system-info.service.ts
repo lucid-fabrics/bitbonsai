@@ -83,7 +83,7 @@ export class SystemInfoService {
       // Fallback to localhost
       this.logger.warn('No external IP found, using localhost');
       return '127.0.0.1';
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to get IP address', error);
       return '127.0.0.1';
     }
@@ -95,7 +95,7 @@ export class SystemInfoService {
   private async getHostname(): Promise<string> {
     try {
       return os.hostname();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to get hostname', error);
       return 'unknown';
     }
@@ -121,7 +121,7 @@ export class SystemInfoService {
       }
 
       return null;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to get MAC address', error);
       return null;
     }
@@ -148,7 +148,7 @@ export class SystemInfoService {
       }
 
       return null;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to get subnet', error);
       return null;
     }
@@ -211,7 +211,7 @@ export class SystemInfoService {
 
       // Default to bare metal
       return ContainerType.BARE_METAL;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn('Failed to detect container type, assuming bare metal', error);
       return ContainerType.UNKNOWN;
     }
@@ -235,7 +235,7 @@ export class SystemInfoService {
         diskGb,
         gpuModel,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to get hardware specs', error);
       return {
         cpuCores: os.cpus().length,
@@ -255,7 +255,7 @@ export class SystemInfoService {
       const { stdout } = await execAsync("df -BG / | tail -1 | awk '{print $2}'");
       const diskGb = parseInt(stdout.replace('G', ''), 10);
       return Number.isNaN(diskGb) ? 0 : diskGb;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn('Failed to get disk space', error);
       return 0;
     }
@@ -291,7 +291,7 @@ export class SystemInfoService {
       }
 
       return null;
-    } catch (_error) {
+    } catch {
       this.logger.debug('No GPU detected');
       return null;
     }
@@ -335,7 +335,7 @@ export class SystemInfoService {
 
       // Default to CPU
       return AccelerationType.CPU;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn('Failed to detect acceleration type, defaulting to CPU', error);
       return AccelerationType.CPU;
     }

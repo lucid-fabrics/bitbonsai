@@ -1,16 +1,18 @@
-import { AsyncPipe, NgClass } from '@angular/common';
+import { NgClass } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   EventEmitter,
   Input,
   inject,
   Output,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@ngneat/transloco';
-import { BehaviorSubject, catchError, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { LibrariesClient } from '../../../../core/clients/libraries.client';
 import { BytesBo } from '../../../nodes/bos/bytes.bo';
 import { DurationBo } from '../../../queue/bos/duration.bo';
@@ -19,7 +21,7 @@ import type { LibraryFile, LibraryFiles } from '../../models/library.model';
 @Component({
   selector: 'app-library-files-modal',
   standalone: true,
-  imports: [AsyncPipe, NgClass, TranslocoModule],
+  imports: [NgClass, TranslocoModule],
   templateUrl: './library-files-modal.component.html',
   styleUrls: ['./library-files-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,119 +43,104 @@ export class LibraryFilesModalComponent {
   protected readonly DurationBo = DurationBo;
 
   // State
-  protected libraryFiles$ = new BehaviorSubject<LibraryFiles | null>(null);
-  protected isLoading$ = new BehaviorSubject<boolean>(false);
-  protected error$ = new BehaviorSubject<string | null>(null);
-  protected searchTerm$ = new BehaviorSubject<string>('');
-  protected sortBy$ = new BehaviorSubject<'name' | 'size' | 'codec' | 'resolution'>('name');
-  protected sortDirection$ = new BehaviorSubject<'asc' | 'desc'>('asc');
+  protected readonly libraryFiles = signal<LibraryFiles | null>(null);
+  protected readonly isLoading = signal(false);
+  protected readonly error = signal<string | null>(null);
+  protected readonly searchTerm = signal('');
+  protected readonly sortBy = signal<'name' | 'size' | 'codec' | 'resolution'>('name');
+  protected readonly sortDirection = signal<'asc' | 'desc'>('asc');
+
+  // Derived: filtered and sorted files
+  protected readonly filteredFiles = computed<LibraryFile[]>(() => {
+    const files = this.libraryFiles()?.files ?? [];
+    const term = this.searchTerm().toLowerCase();
+    const sortBy = this.sortBy();
+    const dir = this.sortDirection();
+
+    const filtered = term ? files.filter((f) => f.fileName.toLowerCase().includes(term)) : files;
+
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case 'name':
+          cmp = a.fileName.localeCompare(b.fileName);
+          break;
+        case 'size':
+          cmp = a.sizeBytes - b.sizeBytes;
+          break;
+        case 'codec':
+          cmp = a.codec.localeCompare(b.codec);
+          break;
+        case 'resolution':
+          cmp = a.resolution.localeCompare(b.resolution);
+          break;
+      }
+      return dir === 'asc' ? cmp : -cmp;
+    });
+  });
 
   // Load library files
   private loadLibraryFiles(libraryId: string): void {
-    this.isLoading$.next(true);
-    this.error$.next(null);
+    this.isLoading.set(true);
+    this.error.set(null);
 
     this.librariesApi
       .getLibraryFiles(libraryId)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        catchError((error) => {
-          this.isLoading$.next(false);
-          this.error$.next(error?.message || 'Failed to load library files. Please try again.');
+        catchError((err) => {
+          this.isLoading.set(false);
+          this.error.set(err?.message || 'Failed to load library files. Please try again.');
           return of(null);
         })
       )
       .subscribe((files) => {
         if (files) {
-          this.libraryFiles$.next(files);
-          this.isLoading$.next(false);
+          this.libraryFiles.set(files);
+          this.isLoading.set(false);
         }
       });
   }
 
-  // Get filtered and sorted files
-  protected getFilteredFiles(): LibraryFile[] {
-    const files = this.libraryFiles$.value?.files || [];
-    const searchTerm = this.searchTerm$.value.toLowerCase();
-    const sortBy = this.sortBy$.value;
-    const sortDirection = this.sortDirection$.value;
-
-    // Filter by search term
-    let filtered = files;
-    if (searchTerm) {
-      filtered = files.filter((file) => file.fileName.toLowerCase().includes(searchTerm));
-    }
-
-    // Sort
-    const sorted = [...filtered].sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortBy) {
-        case 'name':
-          comparison = a.fileName.localeCompare(b.fileName);
-          break;
-        case 'size':
-          comparison = a.sizeBytes - b.sizeBytes;
-          break;
-        case 'codec':
-          comparison = a.codec.localeCompare(b.codec);
-          break;
-        case 'resolution':
-          comparison = a.resolution.localeCompare(b.resolution);
-          break;
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
-    return sorted;
-  }
-
   // Sorting
   protected setSortBy(field: 'name' | 'size' | 'codec' | 'resolution'): void {
-    const currentSortBy = this.sortBy$.value;
-    const currentDirection = this.sortDirection$.value;
-
-    if (currentSortBy === field) {
-      // Toggle direction
-      this.sortDirection$.next(currentDirection === 'asc' ? 'desc' : 'asc');
+    if (this.sortBy() === field) {
+      this.sortDirection.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
     } else {
-      // New field, default to ascending
-      this.sortBy$.next(field);
-      this.sortDirection$.next('asc');
+      this.sortBy.set(field);
+      this.sortDirection.set('asc');
     }
   }
 
   protected getSortIcon(field: 'name' | 'size' | 'codec' | 'resolution'): string {
-    if (this.sortBy$.value !== field) return 'fa-sort';
-    return this.sortDirection$.value === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+    if (this.sortBy() !== field) return 'fa-sort';
+    return this.sortDirection() === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
   }
 
   // Search
   protected onSearchChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.searchTerm$.next(target.value);
+    this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
   protected clearSearch(): void {
-    this.searchTerm$.next('');
+    this.searchTerm.set('');
   }
 
   // Modal controls
   protected closeModal(): void {
-    if (!this.isLoading$.value) {
+    if (!this.isLoading()) {
       this.resetModal();
       this.close.emit();
     }
   }
 
   private resetModal(): void {
-    this.libraryFiles$.next(null);
-    this.isLoading$.next(false);
-    this.error$.next(null);
-    this.searchTerm$.next('');
-    this.sortBy$.next('name');
-    this.sortDirection$.next('asc');
+    this.libraryFiles.set(null);
+    this.isLoading.set(false);
+    this.error.set(null);
+    this.searchTerm.set('');
+    this.sortBy.set('name');
+    this.sortDirection.set('asc');
   }
 
   // Helper methods for file details

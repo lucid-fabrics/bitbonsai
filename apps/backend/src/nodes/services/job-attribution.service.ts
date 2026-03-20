@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Node } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { isNodeInAllowedWindow } from '../utils/schedule-checker';
 
 /**
@@ -47,16 +48,23 @@ export class JobAttributionService {
   private maxSpeedCache: { value: number; expiresAt: number } | null = null;
   private readonly MAX_SPEED_CACHE_TTL_MS = 300000; // 5 minutes
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository
+  ) {}
 
   /**
    * Find the optimal node for a job using weighted scoring
    */
   async findOptimalNode(jobId: string): Promise<Node | null> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      include: { library: true },
-    });
+    const job = await this.jobRepository
+      .findManyWithInclude<
+        import('@prisma/client').Job & { library: import('@prisma/client').Library }
+      >({
+        where: { id: jobId },
+        include: { library: true },
+      })
+      .then((results) => results[0] ?? null);
 
     if (!job) {
       this.logger.warn(`Job ${jobId} not found`);
@@ -64,23 +72,7 @@ export class JobAttributionService {
     }
 
     // Get all available nodes
-    const nodes = await this.prisma.node.findMany({
-      where: {
-        status: 'ONLINE',
-        role: { in: ['MAIN', 'LINKED'] },
-      },
-      include: {
-        _count: {
-          select: {
-            jobs: {
-              where: {
-                stage: { in: ['ENCODING', 'QUEUED'] },
-              },
-            },
-          },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findOnlineWithAllJobCount();
 
     if (nodes.length === 0) {
       this.logger.warn('No online nodes available');
@@ -252,23 +244,7 @@ export class JobAttributionService {
    * Get all node scores (for visualization)
    */
   async getAllNodeScores(): Promise<NodeScore[]> {
-    const nodes = await this.prisma.node.findMany({
-      where: {
-        status: 'ONLINE',
-        role: { in: ['MAIN', 'LINKED'] },
-      },
-      include: {
-        _count: {
-          select: {
-            jobs: {
-              where: {
-                stage: { in: ['ENCODING', 'QUEUED'] },
-              },
-            },
-          },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findOnlineWithAllJobCount();
 
     return Promise.all(nodes.map((node) => this.calculateNodeScore(node)));
   }
@@ -283,16 +259,7 @@ export class JobAttributionService {
     }
 
     // Cache miss or expired - fetch from database
-    const result = await this.prisma.node.aggregate({
-      _max: {
-        avgEncodingSpeed: true,
-      },
-      where: {
-        avgEncodingSpeed: { not: null },
-      },
-    });
-
-    const maxSpeed = result._max.avgEncodingSpeed || 0;
+    const maxSpeed = await this.nodeRepository.aggregateMaxEncodingSpeed();
 
     // Update cache
     this.maxSpeedCache = {

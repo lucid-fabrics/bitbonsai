@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { DistributionConfigRepository } from '../common/repositories/distribution-config.repository';
+import { JobRepository } from '../common/repositories/job.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
+import { NodeFailureLogRepository } from '../common/repositories/node-failure-log.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DistributionController } from './distribution.controller';
 import { DistributionOrchestratorService } from './services/distribution-orchestrator.service';
@@ -25,6 +29,10 @@ import { ReliabilityTrackerService } from './services/reliability-tracker.servic
   imports: [PrismaModule],
   controllers: [DistributionController],
   providers: [
+    JobRepository,
+    NodeRepository,
+    DistributionConfigRepository,
+    NodeFailureLogRepository,
     LoadMonitorService,
     JobScorerService,
     EtaCalculatorService,

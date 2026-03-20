@@ -69,7 +69,7 @@ describe('envValidationSchema', () => {
         ...validConfig,
         ENCRYPTION_KEY: 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=',
       });
-      expect(result.ENCRYPTION_KEY).toBeDefined();
+      expect(result.ENCRYPTION_KEY).toBe('YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=');
     });
 
     it('should throw when ENCRYPTION_KEY is too short', () => {
@@ -116,7 +116,7 @@ describe('envValidationSchema', () => {
         ...validConfig,
         MAIN_API_URL: 'http://192.168.1.100:3100',
       });
-      expect(result.MAIN_API_URL).toBeDefined();
+      expect(result.MAIN_API_URL).toBe('http://192.168.1.100:3100');
     });
 
     it('should throw for invalid MAIN_API_URL', () => {
@@ -142,7 +142,7 @@ describe('envValidationSchema', () => {
         ...validConfig,
         LICENSE_API_URL: 'https://api.bitbonsai.app',
       });
-      expect(result.LICENSE_API_URL).toBeDefined();
+      expect(result.LICENSE_API_URL).toBe('https://api.bitbonsai.app');
     });
 
     it('should pass with valid FRONTEND_URL', () => {
@@ -150,7 +150,7 @@ describe('envValidationSchema', () => {
         ...validConfig,
         FRONTEND_URL: 'http://localhost:4200',
       });
-      expect(result.FRONTEND_URL).toBeDefined();
+      expect(result.FRONTEND_URL).toBe('http://localhost:4200');
     });
   });
 

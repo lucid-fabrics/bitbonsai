@@ -1,12 +1,11 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { NodeRole } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { NodeConfigService } from '../../node-config.service';
 
-// Mock fs and os
 jest.mock('node:fs', () => ({
   existsSync: jest.fn().mockReturnValue(false),
-  readFileSync: jest.fn(),
+  readFileSync: jest.fn().mockReturnValue(''),
   writeFileSync: jest.fn(),
   unlinkSync: jest.fn(),
   mkdirSync: jest.fn(),
@@ -16,43 +15,35 @@ jest.mock('node:os', () => ({
   networkInterfaces: jest.fn().mockReturnValue({}),
 }));
 
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-
-const mockExistsSync = fs.existsSync as jest.Mock;
-const mockReadFileSync = fs.readFileSync as jest.Mock;
-const mockWriteFileSync = fs.writeFileSync as jest.Mock;
-const mockNetworkInterfaces = os.networkInterfaces as jest.Mock;
-
-function createMockPrisma() {
-  return {
-    node: {
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-    },
-  };
-}
+// Import mocked versions AFTER jest.mock declarations
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mockFs = require('node:fs') as {
+  existsSync: jest.Mock;
+  readFileSync: jest.Mock;
+  writeFileSync: jest.Mock;
+};
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mockOs = require('node:os') as { networkInterfaces: jest.Mock };
 
 describe('NodeConfigService', () => {
   let service: NodeConfigService;
-  let prisma: ReturnType<typeof createMockPrisma>;
+  let module: TestingModule;
   const originalEnv = process.env;
 
-  beforeEach(async () => {
-    prisma = createMockPrisma();
+  const mockNodeRepository = {
+    findWithSelect: jest.fn(),
+    findFirstByRole: jest.fn(),
+    findFirst: jest.fn(),
+    findManyByIp: jest.fn(),
+  };
 
-    // Reset env
-    process.env = { ...originalEnv };
-    process.env.NODE_ID = undefined;
+  beforeAll(async () => {
+    mockNodeRepository.findWithSelect.mockResolvedValue(null);
+    mockNodeRepository.findFirstByRole.mockResolvedValue(null);
+    mockNodeRepository.findFirst.mockResolvedValue(null);
 
-    // Default fs mocks
-    mockExistsSync.mockReturnValue(false);
-    mockReadFileSync.mockReturnValue('');
-    mockWriteFileSync.mockImplementation();
-    mockNetworkInterfaces.mockReturnValue({});
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [NodeConfigService, { provide: PrismaService, useValue: prisma }],
+    module = await Test.createTestingModule({
+      providers: [NodeConfigService, { provide: NodeRepository, useValue: mockNodeRepository }],
     }).compile();
 
     service = module.get<NodeConfigService>(NodeConfigService);
@@ -63,9 +54,33 @@ describe('NodeConfigService', () => {
     jest.spyOn((service as any).logger, 'error').mockImplementation();
   });
 
+  afterAll(async () => {
+    await module.close();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = { ...originalEnv };
+    process.env.NODE_ID = '';
+
+    mockFs.existsSync.mockReturnValue(false);
+    mockFs.readFileSync.mockReturnValue('');
+    mockFs.writeFileSync.mockImplementation(() => undefined);
+    mockOs.networkInterfaces.mockReturnValue({});
+
+    // Re-apply logger silencing after clearAllMocks
+    jest.spyOn((service as any).logger, 'log').mockImplementation();
+    jest.spyOn((service as any).logger, 'warn').mockImplementation();
+    jest.spyOn((service as any).logger, 'debug').mockImplementation();
+    jest.spyOn((service as any).logger, 'error').mockImplementation();
+
+    // Reset internal service state
+    (service as any).config = { nodeId: null, role: null, mainApiUrl: null, apiKey: null };
+    (service as any).isLoaded = false;
+  });
+
   afterEach(() => {
     process.env = originalEnv;
-    jest.clearAllMocks();
   });
 
   describe('getters (before loadConfig)', () => {
@@ -100,8 +115,8 @@ describe('NodeConfigService', () => {
 
   describe('loadConfig', () => {
     it('should warn when no node found', async () => {
-      prisma.node.findFirst.mockResolvedValue(null);
-      prisma.node.findUnique.mockResolvedValue(null);
+      mockNodeRepository.findFirstByRole.mockResolvedValue(null);
+      mockNodeRepository.findWithSelect.mockResolvedValue(null);
 
       await service.loadConfig();
 
@@ -117,7 +132,7 @@ describe('NodeConfigService', () => {
         apiKey: 'api-key-123',
         name: 'Main Node',
       };
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      mockNodeRepository.findWithSelect.mockResolvedValue(mockNode);
 
       await service.loadConfig();
 
@@ -137,7 +152,7 @@ describe('NodeConfigService', () => {
         apiKey: 'linked-key',
         name: 'Worker 1',
       };
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      mockNodeRepository.findWithSelect.mockResolvedValue(mockNode);
 
       await service.loadConfig();
 
@@ -148,8 +163,8 @@ describe('NodeConfigService', () => {
     });
 
     it('should use persisted node ID when no env var', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockReadFileSync.mockReturnValue('persisted-id');
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue('persisted-id');
       const mockNode = {
         id: 'persisted-id',
         role: NodeRole.MAIN,
@@ -157,7 +172,7 @@ describe('NodeConfigService', () => {
         apiKey: 'key',
         name: 'Main',
       };
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      mockNodeRepository.findWithSelect.mockResolvedValue(mockNode);
 
       await service.loadConfig();
 
@@ -172,16 +187,12 @@ describe('NodeConfigService', () => {
         apiKey: 'key',
         name: 'Main',
       };
-      prisma.node.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
-        if (where.id === 'fallback-main') return Promise.resolve(mockNode);
+      // findWithSelect must return the node so loadConfig() doesn't retry infinitely
+      mockNodeRepository.findWithSelect.mockResolvedValue(mockNode);
+      mockNodeRepository.findFirstByRole.mockImplementation((role: NodeRole) => {
+        if (role === NodeRole.MAIN) return Promise.resolve(mockNode);
         return Promise.resolve(null);
       });
-      prisma.node.findFirst.mockImplementation(
-        ({ where }: { where: { role?: NodeRole; ipAddress?: string } }) => {
-          if (where.role === NodeRole.MAIN) return Promise.resolve(mockNode);
-          return Promise.resolve(null);
-        }
-      );
 
       await service.loadConfig();
 
@@ -190,7 +201,7 @@ describe('NodeConfigService', () => {
 
     it('should persist node ID on successful load', async () => {
       process.env.NODE_ID = 'node-1';
-      prisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findWithSelect.mockResolvedValue({
         id: 'node-1',
         role: NodeRole.MAIN,
         mainNodeUrl: null,
@@ -200,11 +211,11 @@ describe('NodeConfigService', () => {
 
       await service.loadConfig();
 
-      expect(mockWriteFileSync).toHaveBeenCalledWith(expect.any(String), 'node-1', 'utf-8');
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(expect.any(String), 'node-1', 'utf-8');
     });
 
     it('should detect node by IP address', async () => {
-      mockNetworkInterfaces.mockReturnValue({
+      mockOs.networkInterfaces.mockReturnValue({
         eth0: [{ family: 'IPv4', internal: false, address: '192.168.1.100' }],
       });
       const mockNode = {
@@ -214,13 +225,9 @@ describe('NodeConfigService', () => {
         apiKey: 'key',
         name: 'IP Node',
       };
-      prisma.node.findFirst.mockImplementation(
-        ({ where }: { where: { ipAddress?: string; role?: NodeRole } }) => {
-          if (where.ipAddress === '192.168.1.100') return Promise.resolve(mockNode);
-          return Promise.resolve(null);
-        }
-      );
-      prisma.node.findUnique.mockResolvedValue(mockNode);
+      // findManyByIp returns the node for IP strategy; findWithSelect loads its full config
+      mockNodeRepository.findManyByIp.mockResolvedValue([mockNode]);
+      mockNodeRepository.findWithSelect.mockResolvedValue(mockNode);
 
       await service.loadConfig();
 
@@ -231,7 +238,7 @@ describe('NodeConfigService', () => {
   describe('getConfig', () => {
     it('should return full config object', async () => {
       process.env.NODE_ID = 'node-1';
-      prisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findWithSelect.mockResolvedValue({
         id: 'node-1',
         role: NodeRole.MAIN,
         mainNodeUrl: null,
@@ -256,7 +263,7 @@ describe('NodeConfigService', () => {
   describe('reload', () => {
     it('should reload configuration', async () => {
       process.env.NODE_ID = 'node-1';
-      prisma.node.findUnique.mockResolvedValue({
+      mockNodeRepository.findWithSelect.mockResolvedValue({
         id: 'node-1',
         role: NodeRole.MAIN,
         mainNodeUrl: null,

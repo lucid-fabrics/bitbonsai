@@ -87,7 +87,7 @@ export class DataAccessService {
       }
 
       return job;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[LINKED] Failed to get next job from MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -133,7 +133,7 @@ export class DataAccessService {
       );
 
       this.logger.debug(`[LINKED] Successfully updated job ${jobId} progress on MAIN API`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[LINKED] Failed to update job progress on MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -181,7 +181,7 @@ export class DataAccessService {
       );
 
       this.logger.log(`[LINKED] Successfully updated job ${jobId} stage to ${stage} on MAIN API`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[LINKED] Failed to update job stage on MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -227,7 +227,7 @@ export class DataAccessService {
       );
 
       this.logger.debug(`[LINKED] Successfully sent heartbeat for node ${nodeId} to MAIN API`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[LINKED] Failed to send heartbeat to MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -258,7 +258,7 @@ export class DataAccessService {
 
       this.logger.warn('[LINKED] No external IP found');
       return null;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('[LINKED] Failed to detect local IP', error);
       return null;
     }
@@ -293,7 +293,7 @@ export class DataAccessService {
 
       this.logger.debug(`[LINKED] Successfully retrieved node ${nodeId} info from MAIN API`);
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `[LINKED] Failed to get node info from MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );

@@ -103,7 +103,7 @@ async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMet
           audioTracks: audioStreams.length,
           subtitleTracks: subtitleStreams.length,
         });
-      } catch (err) {
+      } catch (err: unknown) {
         reject(err);
       }
     });
@@ -220,7 +220,7 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
 
       // ASSERT: Job completed
-      expect(completedJob).toBeTruthy();
+      expect(completedJob).not.toBeNull();
       expect(completedJob?.stage).toBe(JobStage.COMPLETED);
 
       // CRITICAL: Output file exists
@@ -422,7 +422,7 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
       const completedJob = await waitForJobCompletion(prisma, job.id);
 
       // CRITICAL: Size reduced
-      expect(completedJob?.savedBytes).toBeTruthy();
+      expect(completedJob?.savedBytes).not.toBeNull();
       expect(Number(completedJob?.savedBytes)).toBeGreaterThan(0);
 
       // CRITICAL: Saved percentage is reasonable (5-60% reduction)

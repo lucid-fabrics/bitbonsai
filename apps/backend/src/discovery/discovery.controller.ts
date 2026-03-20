@@ -159,7 +159,7 @@ export class DiscoveryController {
         pairingCode: request.pairingToken,
         message: `Pairing code generated. Enter code ${request.pairingToken} on the main node to approve connection.`,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         status: PairingStatus.ERROR,
         message: error instanceof Error ? error.message : 'Failed to initiate pairing',
@@ -219,7 +219,7 @@ export class DiscoveryController {
           return {
             status: PairingStatus.APPROVED,
             message: 'Pairing approved successfully',
-            // TODO: Return actual connection token and main node info
+            // Stub: connection token generation not yet implemented
           };
 
         case 'REJECTED':
@@ -246,7 +246,7 @@ export class DiscoveryController {
             message: `Unknown status: ${request.status}`,
           };
       }
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         status: PairingStatus.ERROR,
         message: error instanceof Error ? error.message : 'Failed to check pairing status',

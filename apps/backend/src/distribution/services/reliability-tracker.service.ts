@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Job, JobStage } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
+import { NodeFailureLogRepository } from '../../common/repositories/node-failure-log.repository';
 
 /**
  * Reliability Tracker Service
@@ -13,7 +15,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ReliabilityTrackerService {
   private readonly logger = new Logger(ReliabilityTrackerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly nodeFailureLogRepository: NodeFailureLogRepository,
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository
+  ) {}
 
   /**
    * Record a job failure for a node
@@ -21,24 +27,22 @@ export class ReliabilityTrackerService {
   async recordFailure(nodeId: string, job: Job, reason: string, errorCode?: string): Promise<void> {
     try {
       // Create failure log entry
-      await this.prisma.nodeFailureLog.create({
-        data: {
-          nodeId,
-          reason,
-          errorCode,
-          stage: job.stage as JobStage,
-          progress: job.progress,
-          jobId: job.id,
-          filePath: job.filePath,
-          fileSize: job.beforeSizeBytes,
-        },
+      await this.nodeFailureLogRepository.createLog({
+        nodeId,
+        reason,
+        errorCode,
+        stage: job.stage as JobStage,
+        progress: job.progress,
+        jobId: job.id,
+        filePath: job.filePath,
+        fileSize: job.beforeSizeBytes,
       });
 
       // Update node's failure count
       await this.updateNodeFailureStats(nodeId);
 
       this.logger.warn(`Recorded failure for node ${nodeId}: ${reason} (job: ${job.id})`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to record failure for node ${nodeId}`, error);
     }
   }
@@ -50,40 +54,28 @@ export class ReliabilityTrackerService {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Count failures in last 24 hours
-    const failureCount = await this.prisma.nodeFailureLog.count({
-      where: {
-        nodeId,
-        createdAt: { gte: twentyFourHoursAgo },
-      },
-    });
+    const failureCount = await this.nodeFailureLogRepository.countForNodeSince(
+      nodeId,
+      twentyFourHoursAgo
+    );
 
     // Get last failure
-    const lastFailure = await this.prisma.nodeFailureLog.findFirst({
-      where: { nodeId },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
-    });
+    const lastFailure = await this.nodeFailureLogRepository.findLastForNode(nodeId);
 
     // Calculate failure rate (failures per 100 jobs)
-    const jobsCompleted24h = await this.prisma.job.count({
-      where: {
-        nodeId,
-        completedAt: { gte: twentyFourHoursAgo },
-        stage: 'COMPLETED',
-      },
-    });
+    const jobsCompleted24h = await this.jobRepository.countCompletedForNodeSince(
+      nodeId,
+      twentyFourHoursAgo
+    );
 
     const totalJobs24h = jobsCompleted24h + failureCount;
     const failureRate = totalJobs24h > 0 ? (failureCount / totalJobs24h) * 100 : 0;
 
     // Update node
-    await this.prisma.node.update({
-      where: { id: nodeId },
-      data: {
-        recentFailureCount: failureCount,
-        lastFailureAt: lastFailure?.createdAt || null,
-        failureRate24h: Math.round(failureRate * 100) / 100,
-      },
+    await this.nodeRepository.updateById(nodeId, {
+      recentFailureCount: failureCount,
+      lastFailureAt: lastFailure?.createdAt || null,
+      failureRate24h: Math.round(failureRate * 100) / 100,
     });
 
     this.logger.debug(
@@ -103,16 +95,10 @@ export class ReliabilityTrackerService {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Get failures in last 24h
-    const failures = await this.prisma.nodeFailureLog.findMany({
-      where: {
-        nodeId,
-        createdAt: { gte: twentyFourHoursAgo },
-      },
-      select: {
-        reason: true,
-        createdAt: true,
-      },
-    });
+    const failures = await this.nodeFailureLogRepository.findRecentForNode(
+      nodeId,
+      twentyFourHoursAgo
+    );
 
     // Count by reason
     const reasonCounts = new Map<string, number>();
@@ -134,10 +120,10 @@ export class ReliabilityTrackerService {
       .slice(0, 5);
 
     // Get node stats
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      select: { failureRate24h: true },
-    });
+    const node = await this.nodeRepository.findWithSelect<{ failureRate24h: number | null }>(
+      nodeId,
+      { failureRate24h: true }
+    );
 
     return {
       count24h: failures.length,
@@ -156,16 +142,12 @@ export class ReliabilityTrackerService {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     try {
-      const result = await this.prisma.nodeFailureLog.deleteMany({
-        where: {
-          createdAt: { lt: sevenDaysAgo },
-        },
-      });
+      const result = await this.nodeFailureLogRepository.deleteOlderThan(sevenDaysAgo);
 
       if (result.count > 0) {
         this.logger.log(`Cleaned up ${result.count} old failure logs`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to cleanup old failure logs', error);
     }
   }
@@ -176,10 +158,7 @@ export class ReliabilityTrackerService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async refreshAllNodeStats(): Promise<void> {
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      select: { id: true },
-    });
+    const nodes = await this.nodeRepository.findOnlineIds();
 
     for (const node of nodes) {
       await this.updateNodeFailureStats(node.id);

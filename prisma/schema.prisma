@@ -181,6 +181,7 @@ model Settings {
   readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
   maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
   advancedModeEnabled          Boolean  @default(false) // Show advanced UI controls (default: minimal mode for simple UX)
+  qualityMetricsEnabled        Boolean  @default(false) // Calculate VMAF/PSNR/SSIM after encoding (CPU-intensive, opt-in)
 
   // ============ License Settings ============
   licenseKey                   String?   @map("license_key") // License key (stored in DB for seamless UX)
@@ -789,6 +790,10 @@ model Job {
   corruptedRequeueCount Int @default(0) // Times auto-requeued from CORRUPTED (cap: 3)
   stuckRecoveryCount    Int @default(0) // Times recovered from stuck ENCODING (cap: 5)
   contentFingerprint    String? // xxHash fingerprint for rename detection (Phase 3)
+
+  // Quality Metrics Fields (VMAF/PSNR/SSIM - opt-in post-encoding analysis)
+  qualityMetrics      Json?     // { vmaf?: number, psnr?: number, ssim?: number }
+  qualityMetricsAt    DateTime? // When quality metrics were calculated
 
   // Distribution scoring (for debugging/visibility)
   lastScoreBreakdown  Json?    // Last scoring breakdown when assigned: {load: 24, hw: 25, ...}

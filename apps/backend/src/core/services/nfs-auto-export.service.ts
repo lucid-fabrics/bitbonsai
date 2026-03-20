@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { StorageProtocol, StorageShareStatus } from '@prisma/client';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
+import { type IStorageShareRepository } from '../../nodes/repositories/storage-share.repository.interface';
 import type { DockerVolumeMount } from '../interfaces/file-transport.interface';
 import { DockerVolumeDetectorService } from './docker-volume-detector.service';
 
@@ -32,7 +33,9 @@ export class NFSAutoExportService {
   private readonly logger = new Logger(NFSAutoExportService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly nodeRepository: NodeRepository,
+    @Inject('IStorageShareRepository')
+    private readonly storageShareRepository: IStorageShareRepository,
     private readonly volumeDetector: DockerVolumeDetectorService
   ) {}
 
@@ -54,11 +57,9 @@ export class NFSAutoExportService {
       }
 
       // Clean up old auto-managed shares first
-      const deletedCount = await this.prisma.storageShare.deleteMany({
-        where: { autoManaged: true },
-      });
-      if (deletedCount.count > 0) {
-        this.logger.log(`Cleaned up ${deletedCount.count} old auto-managed shares`);
+      const deletedCount = await this.storageShareRepository.deleteAllAutoManaged();
+      if (deletedCount > 0) {
+        this.logger.log(`Cleaned up ${deletedCount} old auto-managed shares`);
       }
 
       // Detect Docker volumes
@@ -123,7 +124,7 @@ export class NFSAutoExportService {
         this.logger.warn('═══════════════════════════════════════════════════════════════');
         this.logger.warn('');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         'Failed to detect Docker volumes',
         error instanceof Error ? error.stack : error
@@ -157,14 +158,19 @@ export class NFSAutoExportService {
             this.logger.debug(`Found ${exports.length} NFS exports on host (${host})`);
             return exports;
           }
-        } catch {
-          // This host address didn't work, try next
+        } catch (error: unknown) {
+          this.logger.warn(
+            `[getHostNFSExports] showmount failed for ${host}: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
 
       this.logger.debug('Could not query host NFS exports - assuming none configured');
       return [];
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[getHostNFSExports] Failed to query NFS exports: ${error instanceof Error ? error.message : String(error)}`
+      );
       return [];
     }
   }
@@ -179,13 +185,7 @@ export class NFSAutoExportService {
   ): Promise<void> {
     try {
       // Check if already exists
-      const existing = await this.prisma.storageShare.findFirst({
-        where: {
-          ownerNodeId: mainNodeId,
-          sharePath: volume.source,
-          autoManaged: true,
-        },
-      });
+      const existing = await this.storageShareRepository.findBySharePath(mainNodeId, volume.source);
 
       if (existing) {
         this.logger.debug(`Volume ${volume.source} already has StorageShare record`);
@@ -204,35 +204,33 @@ export class NFSAutoExportService {
       // Status depends on whether HOST has NFS export configured
       const status = isExportedOnHost ? StorageShareStatus.AVAILABLE : StorageShareStatus.ERROR;
 
-      await this.prisma.storageShare.create({
-        data: {
-          nodeId: mainNodeId,
-          ownerNodeId: mainNodeId,
-          name: `${shareName} (Auto)`,
-          protocol: StorageProtocol.NFS,
-          status,
-          serverAddress,
-          sharePath: volume.source, // HOST path for NFS export
-          exportPath,
-          mountPoint: volume.destination, // Container path for child nodes
-          readOnly: volume.readOnly,
-          mountOptions: volume.readOnly ? 'ro,nolock,soft' : 'rw,nolock,soft',
-          autoMount: true,
-          addToFstab: true,
-          mountOnDetection: true,
-          autoManaged: true,
-          isMounted: true, // Main node has direct access via Docker volume
-          lastError: isExportedOnHost
-            ? null
-            : 'NFS export not configured on host - child nodes will use file transfer',
-        },
+      await this.storageShareRepository.create({
+        nodeId: mainNodeId,
+        ownerNodeId: mainNodeId,
+        name: `${shareName} (Auto)`,
+        protocol: StorageProtocol.NFS,
+        status,
+        serverAddress,
+        sharePath: volume.source, // HOST path for NFS export
+        exportPath,
+        mountPoint: volume.destination, // Container path for child nodes
+        readOnly: volume.readOnly,
+        mountOptions: volume.readOnly ? 'ro,nolock,soft' : 'rw,nolock,soft',
+        autoMount: true,
+        addToFstab: true,
+        mountOnDetection: true,
+        autoManaged: true,
+        isMounted: true, // Main node has direct access via Docker volume
+        lastError: isExportedOnHost
+          ? null
+          : 'NFS export not configured on host - child nodes will use file transfer',
       });
 
       const statusIcon = isExportedOnHost ? '✓' : '⚠️';
       this.logger.log(
         `${statusIcon} Created share record: ${volume.destination} → ${volume.source}`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to create share record for ${volume.destination}`,
         error instanceof Error ? error.stack : error
@@ -246,12 +244,9 @@ export class NFSAutoExportService {
    */
   async removeAutoManagedExports(): Promise<void> {
     try {
-      const deleted = await this.prisma.storageShare.deleteMany({
-        where: { autoManaged: true },
-      });
-
-      this.logger.log(`✓ Removed ${deleted.count} auto-managed StorageShare record(s)`);
-    } catch (error) {
+      const deleted = await this.storageShareRepository.deleteAllAutoManaged();
+      this.logger.log(`✓ Removed ${deleted} auto-managed StorageShare record(s)`);
+    } catch (error: unknown) {
       this.logger.error(
         'Failed to remove auto-managed shares',
         error instanceof Error ? error.stack : error
@@ -277,8 +272,10 @@ export class NFSAutoExportService {
       }
 
       return ip;
-    } catch {
-      this.logger.warn('Failed to get main node IP, using localhost');
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[getMainNodeIP] Failed to get main node IP, using localhost: ${error instanceof Error ? error.message : String(error)}`
+      );
       return 'localhost';
     }
   }
@@ -287,8 +284,6 @@ export class NFSAutoExportService {
    * Get the main node from database
    */
   private async getMainNode() {
-    return this.prisma.node.findFirst({
-      where: { role: 'MAIN' },
-    });
+    return this.nodeRepository.findMain();
   }
 }

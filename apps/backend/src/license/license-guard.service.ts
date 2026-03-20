@@ -1,7 +1,9 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { LicenseStatus, LicenseTier } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { LicenseTier } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LicenseRepository } from '../common/repositories/license.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 
 /**
  * License feature flags
@@ -45,23 +47,24 @@ export class LicenseGuardService {
     } as LicenseFeatures,
   };
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly licenseRepository: LicenseRepository,
+    private readonly nodeRepository: NodeRepository,
+    private readonly jobRepository: JobRepository
+  ) {}
 
   /**
    * Get current license capabilities
    */
   async getCapabilities(): Promise<LicenseCapabilities> {
     // Find active license
-    const license = await this.prisma.license.findFirst({
-      where: { status: LicenseStatus.ACTIVE },
-      select: {
-        tier: true,
-        maxNodes: true,
-        maxConcurrentJobs: true,
-        features: true,
-        validUntil: true,
-      },
-    });
+    const license = await this.licenseRepository.findFirstActiveWithSelect<{
+      tier: LicenseTier;
+      maxNodes: number;
+      maxConcurrentJobs: number;
+      features: unknown;
+      validUntil: Date | null;
+    }>({ tier: true, maxNodes: true, maxConcurrentJobs: true, features: true, validUntil: true });
 
     // Check expiration
     if (license?.validUntil && license.validUntil < new Date()) {
@@ -71,8 +74,8 @@ export class LicenseGuardService {
 
     // Count current usage
     const [nodeCount, activeJobCount] = await Promise.all([
-      this.prisma.node.count({ where: { status: 'ONLINE' } }),
-      this.prisma.job.count({ where: { stage: 'ENCODING' } }),
+      this.nodeRepository.count({ where: { status: 'ONLINE' } }),
+      this.jobRepository.countWhere({ stage: 'ENCODING' }),
     ]);
 
     if (!license) {
@@ -107,8 +110,8 @@ export class LicenseGuardService {
    */
   private async getFreeTierCapabilities(): Promise<LicenseCapabilities> {
     const [nodeCount, activeJobCount] = await Promise.all([
-      this.prisma.node.count({ where: { status: 'ONLINE' } }),
-      this.prisma.job.count({ where: { stage: 'ENCODING' } }),
+      this.nodeRepository.count({ where: { status: 'ONLINE' } }),
+      this.jobRepository.countWhere({ stage: 'ENCODING' }),
     ]);
 
     return {

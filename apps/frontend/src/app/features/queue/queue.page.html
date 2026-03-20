@@ -1234,6 +1234,23 @@
                               <span class="info-value">{{ job.healthMessage }}</span>
                             </div>
                           }
+                          @if (advancedMode() && job.status === 'COMPLETED' && job.qualityMetrics) {
+                            <div class="info-row">
+                              <i class="fas fa-chart-bar"></i>
+                              <span class="info-label">Quality</span>
+                              <span class="info-value">
+                                @if (job.qualityMetrics.vmaf != null) {
+                                  VMAF: {{ job.qualityMetrics.vmaf.toFixed(1) }}/100
+                                }
+                                @if (job.qualityMetrics.psnr != null) {
+                                  &nbsp;· PSNR: {{ job.qualityMetrics.psnr.toFixed(1) }} dB
+                                }
+                                @if (job.qualityMetrics.ssim != null) {
+                                  &nbsp;· SSIM: {{ job.qualityMetrics.ssim.toFixed(4) }}
+                                }
+                              </span>
+                            </div>
+                          }
                         </div>
                       </div>
                     </div>

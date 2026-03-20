@@ -67,7 +67,7 @@ export class HardwareDetectionService {
 
       this.logger.log(`✅ Hardware detection complete - Acceleration: ${accelerationType}`);
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to detect hardware:', error);
       throw error;
     }
@@ -116,7 +116,7 @@ export class HardwareDetectionService {
       if (gpus.length === 0) {
         this.logger.warn('No GPU acceleration detected - falling back to CPU-only');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error during GPU detection:', error);
     }
 
@@ -146,7 +146,7 @@ export class HardwareDetectionService {
           driverVersion,
         };
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('NVIDIA GPU not detected');
     }
 
@@ -191,7 +191,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('Intel Quick Sync not detected');
     }
 
@@ -225,7 +225,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('AMD GPU not detected');
     }
 
@@ -254,7 +254,7 @@ export class HardwareDetectionService {
           }
         }
       }
-    } catch (_error) {
+    } catch {
       this.logger.debug('Apple Silicon not detected');
     }
 

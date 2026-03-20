@@ -21,7 +21,7 @@ describe('EncryptionService', () => {
   afterEach(() => {
     // Restore original env
     if (originalEnv === undefined) {
-      process.env.ENCRYPTION_KEY = undefined;
+      process.env.ENCRYPTION_KEY = '';
     } else {
       process.env.ENCRYPTION_KEY = originalEnv;
     }
@@ -36,7 +36,6 @@ describe('EncryptionService', () => {
       const plaintext = 'Hello, World!';
       const encrypted = service.encrypt(plaintext);
 
-      expect(encrypted).toBeDefined();
       expect(encrypted).not.toEqual(plaintext);
       expect(encrypted).toMatch(/^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/);
     });
@@ -57,8 +56,6 @@ describe('EncryptionService', () => {
     it('should handle special characters', () => {
       const plaintext = 'Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?';
       const encrypted = service.encrypt(plaintext);
-
-      expect(encrypted).toBeDefined();
       const decrypted = service.decrypt(encrypted);
       expect(decrypted).toEqual(plaintext);
     });
@@ -66,8 +63,6 @@ describe('EncryptionService', () => {
     it('should handle Unicode characters', () => {
       const plaintext = 'Unicode: مرحبا 中文 🎉';
       const encrypted = service.encrypt(plaintext);
-
-      expect(encrypted).toBeDefined();
       const decrypted = service.decrypt(encrypted);
       expect(decrypted).toEqual(plaintext);
     });
@@ -75,8 +70,6 @@ describe('EncryptionService', () => {
     it('should handle long strings', () => {
       const plaintext = 'A'.repeat(10000);
       const encrypted = service.encrypt(plaintext);
-
-      expect(encrypted).toBeDefined();
       const decrypted = service.decrypt(encrypted);
       expect(decrypted).toEqual(plaintext);
     });
@@ -147,7 +140,7 @@ describe('EncryptionService', () => {
 
   describe('error handling', () => {
     it('should throw error when ENCRYPTION_KEY is not set', () => {
-      process.env.ENCRYPTION_KEY = undefined;
+      process.env.ENCRYPTION_KEY = '';
 
       const newService = new EncryptionService();
       expect(() => newService.encrypt('test')).toThrow('Failed to encrypt data');

@@ -251,7 +251,7 @@ describe('GlobalExceptionFilter', () => {
       filter.catch(error, mockHost);
 
       const jsonArg = mockResponse.json.mock.calls[0][0];
-      expect(jsonArg.timestamp).toBeDefined();
+      expect(jsonArg.timestamp).not.toBeNull();
       expect(new Date(jsonArg.timestamp).getTime()).not.toBeNaN();
     });
 

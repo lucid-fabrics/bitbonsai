@@ -158,11 +158,11 @@ describe('Level 3: Concurrent Encoding', () => {
       const totalTime = Date.now() - startTime;
 
       // ASSERT: All jobs completed
-      expect(completed1).toBeTruthy();
+      expect(completed1).not.toBeNull();
       expect(completed1?.stage).toBe(JobStage.COMPLETED);
-      expect(completed2).toBeTruthy();
+      expect(completed2).not.toBeNull();
       expect(completed2?.stage).toBe(JobStage.COMPLETED);
-      expect(completed3).toBeTruthy();
+      expect(completed3).not.toBeNull();
       expect(completed3?.stage).toBe(JobStage.COMPLETED);
 
       // Concurrent processing should be faster than sequential
@@ -226,9 +226,9 @@ describe('Level 3: Concurrent Encoding', () => {
 
       // ASSERT: All 5 jobs completed successfully
       completedJobs.forEach((completedJob, index) => {
-        expect(completedJob).toBeTruthy();
+        expect(completedJob).not.toBeNull();
         expect(completedJob?.stage).toBe(JobStage.COMPLETED);
-        expect(completedJob?.savedBytes).toBeTruthy();
+        expect(completedJob?.savedBytes).not.toBeNull();
       });
 
       // Cleanup
@@ -317,7 +317,7 @@ describe('Level 3: Concurrent Encoding', () => {
       const library = await prisma.library.findUnique({
         where: { id: testLibraryId },
       });
-      expect(library).toBeTruthy();
+      expect(library).not.toBeNull();
 
       // Cleanup
       await encodingProcessor.stopWorker(testNodeId);

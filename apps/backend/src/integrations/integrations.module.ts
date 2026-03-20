@@ -1,5 +1,7 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { JobRepository } from '../common/repositories/job.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JellyfinIntegrationService } from './jellyfin.service';
 import { PlexIntegrationService } from './plex.service';
@@ -14,6 +16,8 @@ import { TorrentIntegrationService } from './torrent.service';
     PlexIntegrationService,
     TorrentIntegrationService,
     RadarrSonarrIntegrationService,
+    SettingsRepository,
+    JobRepository,
   ],
   exports: [
     JellyfinIntegrationService,

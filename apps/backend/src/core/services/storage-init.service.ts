@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { StorageAutoDetectMountEvent } from '../../common/events';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { NFSAutoExportService } from './nfs-auto-export.service';
 
 const execAsync = promisify(exec);
@@ -23,7 +23,7 @@ export class StorageInitService implements OnModuleInit {
   private readonly logger = new Logger(StorageInitService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly nodeRepository: NodeRepository,
     private readonly nfsAutoExport: NFSAutoExportService,
     private readonly eventEmitter: EventEmitter2
   ) {}
@@ -39,7 +39,7 @@ export class StorageInitService implements OnModuleInit {
   private async initializeStorage(): Promise<void> {
     try {
       // Get the current node from database
-      const currentNode = await this.prisma.node.findFirst();
+      const currentNode = await this.nodeRepository.findFirstNode();
 
       if (!currentNode) {
         this.logger.debug('No node found in database - skipping storage initialization');
@@ -62,12 +62,9 @@ export class StorageInitService implements OnModuleInit {
           this.logger.log('✅ NFS mounts detected - enabling shared storage mode');
 
           // Update node to enable shared storage
-          await this.prisma.node.update({
-            where: { id: currentNode.id },
-            data: {
-              hasSharedStorage: true,
-              networkLocation: 'LOCAL',
-            },
+          await this.nodeRepository.updateData(currentNode.id, {
+            hasSharedStorage: true,
+            networkLocation: 'LOCAL',
           });
 
           this.logger.log('✅ LINKED node: Zero-copy shared storage ENABLED');
@@ -75,12 +72,7 @@ export class StorageInitService implements OnModuleInit {
           this.logger.warn('⚠️  No NFS mounts detected - will use file transfer mode');
 
           // Ensure hasSharedStorage is false
-          await this.prisma.node.update({
-            where: { id: currentNode.id },
-            data: {
-              hasSharedStorage: false,
-            },
-          });
+          await this.nodeRepository.updateData(currentNode.id, { hasSharedStorage: false });
 
           // Try to auto-detect and mount shares from main node (via event)
           if (currentNode.mainNodeUrl) {
@@ -94,7 +86,7 @@ export class StorageInitService implements OnModuleInit {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         '❌ Failed to initialize storage:',
         error instanceof Error ? error.stack : error

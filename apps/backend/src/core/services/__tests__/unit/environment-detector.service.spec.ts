@@ -186,7 +186,9 @@ describe('EnvironmentDetectorService', () => {
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);
       expect(result.warning).toContain('LXC');
-      expect(result.actionRequired).toBeDefined();
+      expect(result.actionRequired).toBe(
+        'Enable privileged mode on LXC container for NFS support (see documentation), or use rsync file transfer'
+      );
     });
 
     it('should recommend RSYNC when target cannot mount NFS', async () => {

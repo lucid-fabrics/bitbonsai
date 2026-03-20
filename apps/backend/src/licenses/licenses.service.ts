@@ -11,8 +11,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+import { LicenseRepository } from '../common/repositories/license.repository';
 import { mapExternalTier } from '../license/tier-mapping';
-import { PrismaService } from '../prisma/prisma.service';
 import type { ActivateLicenseDto } from './dto/activate-license.dto';
 
 interface VerifyLicenseResponse {
@@ -44,7 +44,7 @@ export class LicensesService {
   private readonly licenseApiUrl: string;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly licenseRepository: LicenseRepository,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService
   ) {
@@ -80,7 +80,7 @@ export class LicensesService {
         )
       );
       verifyResponse = response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       // Distinguish between different error types for better UX
       const axiosError = error as { code?: string; response?: { status?: number } };
 
@@ -123,32 +123,27 @@ export class LicensesService {
     const features = this.getTierFeatures(internalTier);
 
     // Atomic upsert in transaction with timeout to prevent long-running queries
-    await this.prisma.$transaction(
-      async (tx) => {
-        await tx.license.upsert({
-          where: { email: dto.email },
-          update: {
-            key: dto.licenseKey,
-            tier: internalTier,
-            status: LicenseStatus.ACTIVE,
-            maxNodes: externalLicense.maxNodes,
-            maxConcurrentJobs: externalLicense.maxConcurrentJobs,
-            features: features as unknown as Prisma.InputJsonValue,
-            validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
-          },
-          create: {
-            key: dto.licenseKey,
-            tier: internalTier,
-            status: LicenseStatus.ACTIVE,
-            email: dto.email,
-            maxNodes: externalLicense.maxNodes,
-            maxConcurrentJobs: externalLicense.maxConcurrentJobs,
-            features: features as unknown as Prisma.InputJsonValue,
-            validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
-          },
-        });
+    await this.licenseRepository.upsertByEmail(
+      dto.email,
+      {
+        key: dto.licenseKey,
+        tier: internalTier,
+        status: LicenseStatus.ACTIVE,
+        maxNodes: externalLicense.maxNodes,
+        maxConcurrentJobs: externalLicense.maxConcurrentJobs,
+        features: features as unknown as Prisma.InputJsonValue,
+        validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
       },
-      { timeout: 5000 }
+      {
+        key: dto.licenseKey,
+        tier: internalTier,
+        status: LicenseStatus.ACTIVE,
+        email: dto.email,
+        maxNodes: externalLicense.maxNodes,
+        maxConcurrentJobs: externalLicense.maxConcurrentJobs,
+        features: features as unknown as Prisma.InputJsonValue,
+        validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
+      }
     );
     this.logger.log(`Upserted license for ${dto.email} with tier ${internalTier}`);
 
@@ -174,7 +169,7 @@ export class LicensesService {
         )
       );
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       // Distinguish between different error types for better UX
       const axiosError = error as { code?: string; response?: { status?: number } };
 

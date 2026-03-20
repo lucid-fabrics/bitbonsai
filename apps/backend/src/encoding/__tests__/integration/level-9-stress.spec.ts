@@ -69,44 +69,11 @@ describe('Level 9: Stress Testing', () => {
     await cleanupTestJobs(prisma, testLibraryId);
   });
 
-  describe('Concurrent Processing', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and 10+ video fixtures
-    it.skip('should handle 10 concurrent encoding jobs', async () => {
-      // TODO: Generate 10 test videos
-      // Create 10 jobs
-      // Process all concurrently
-      // Verify all complete successfully
-      // Monitor memory usage during execution
-    });
-
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and 20+ video fixtures
-    it.skip('should handle 20 concurrent encoding jobs', async () => {
-      // TODO: Generate 20 test videos
-      // Create 20 jobs
-      // Process all concurrently
-      // Verify all complete successfully
-      // Check for memory leaks or crashes
-    });
-  });
-
-  describe('Large File Handling', () => {
-    // Skipped: unimplemented stub requiring FFmpeg and 100MB+ video fixtures
-    it.skip('should process large video files (100MB+)', async () => {
-      // TODO: Generate large test videos (100MB each)
-      // Process them sequentially
-      // Verify encoding completes without memory issues
-      // Check performance metrics
-    });
-  });
+  // Future: Concurrent processing at scale (10/20 concurrent jobs, requires heavy fixtures)
+  // Future: Large file handling (100MB+, requires significant disk space)
 
   describe('System Stability', () => {
-    // Skipped: unimplemented stub requiring extended FFmpeg runtime
-    it.skip('should maintain stability under continuous load', async () => {
-      // TODO: Run continuous encoding for extended period
-      // Monitor system resources
-      // Verify no memory leaks
-      // Check worker pool remains stable
-    });
+    // Future: Extended stability testing (continuous load, memory leak detection)
 
     it('should handle basic stress test scenario', async () => {
       // Simplified stress test with 2 concurrent jobs
@@ -143,19 +110,11 @@ describe('Level 9: Stress Testing', () => {
       // Wait for all jobs to complete
       for (const job of jobs) {
         const completedJob = await waitForJobCompletion(prisma, job.id, 120000);
-        expect(completedJob).toBeDefined();
+        expect(completedJob).not.toBeNull();
         expect(completedJob?.stage).toBe('COMPLETED');
       }
     }, 300000);
   });
 
-  describe('Performance Metrics', () => {
-    // Skipped: unimplemented stub requiring FFmpeg and performance monitoring setup
-    it.skip('should track encoding performance under load', async () => {
-      // TODO: Process multiple jobs
-      // Track FPS, bitrate, speed metrics
-      // Verify performance stays within acceptable range
-      // Alert if performance degrades significantly
-    });
-  });
+  // Future: Performance metrics tracking under load (FPS, bitrate, speed)
 });

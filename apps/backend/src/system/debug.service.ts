@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobStage } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 
 /**
  * DebugService
@@ -13,12 +15,26 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DebugService {
   private readonly logger = new Logger(DebugService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository
+  ) {}
 
   /**
    * Get current system load information
    */
-  async getSystemLoad() {
+  async getSystemLoad(): Promise<{
+    loadAvg1m: number;
+    loadAvg5m: number;
+    loadAvg15m: number;
+    cpuCount: number;
+    loadThreshold: number;
+    loadThresholdMultiplier: number;
+    freeMemoryGB: number;
+    totalMemoryGB: number;
+    isOverloaded: boolean;
+    reason: string;
+  }> {
     const loadAvg = os.loadavg();
     const cpuCount = os.cpus().length;
     const totalMemory = os.totalmem();
@@ -27,12 +43,14 @@ export class DebugService {
     // Get load threshold from current node or use default
     let loadThresholdMultiplier = parseFloat(process.env.LOAD_THRESHOLD_MULTIPLIER || '5.0');
     try {
-      const node = await this.getCurrentNode();
+      const node = (await this.getCurrentNode()) as { loadThresholdMultiplier?: number } | null;
       if (node?.loadThresholdMultiplier) {
         loadThresholdMultiplier = node.loadThresholdMultiplier;
       }
-    } catch {
-      // Use default
+    } catch (error: unknown) {
+      this.logger.warn(
+        `[getSystemLoad] Failed to read node load threshold, using default: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     const loadThreshold = cpuCount * loadThresholdMultiplier;
@@ -60,12 +78,32 @@ export class DebugService {
   /**
    * Get encoding jobs and system FFmpeg processes
    */
-  async getFfmpegProcesses() {
+  async getFfmpegProcesses(): Promise<{
+    trackedEncodings: Array<{
+      jobId: string;
+      pid: undefined;
+      startTime: Date | null;
+      lastProgress: number;
+      runtimeSeconds: number;
+    }>;
+    systemProcesses: Array<{
+      pid: number;
+      command: string;
+      cpuPercent: number;
+      memPercent: number;
+      runtimeSeconds: number;
+      isZombie: boolean;
+      trackedJobId: null;
+    }>;
+    zombieCount: number;
+    note: string;
+  }> {
     // Get jobs that are currently encoding
-    const encodingJobs = await this.prisma.job.findMany({
-      where: { stage: 'ENCODING' },
-      select: { id: true, startedAt: true, progress: true },
-    });
+    const encodingJobs = await this.jobRepository.findManySelect<{
+      id: string;
+      startedAt: Date | null;
+      progress: number | null;
+    }>({ stage: JobStage.ENCODING }, { id: true, startedAt: true, progress: true });
 
     // Get system FFmpeg processes
     const systemProcesses = await this.findSystemFfmpegProcesses();
@@ -107,8 +145,10 @@ export class DebugService {
       // SECURITY: Use execFileSync with array args to prevent shell injection
       try {
         execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
-      } catch {
-        // Process may not exist or already dead - continue
+      } catch (error: unknown) {
+        this.logger.warn(
+          `[killProcessByPid] SIGTERM failed for PID ${pid}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -118,12 +158,14 @@ export class DebugService {
         execFileSync('kill', ['-0', pid.toString()], { timeout: 1000 });
         // Process still exists, force kill
         execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
-      } catch {
-        // Process already dead - this is expected
+      } catch (error: unknown) {
+        this.logger.warn(
+          `[killProcessByPid] Process PID ${pid} already dead: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
 
       return { success: true, message: `Killed FFmpeg process PID ${pid}` };
-    } catch (error) {
+    } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       return { success: false, message: `Failed to kill PID ${pid}: ${msg}` };
     }
@@ -175,10 +217,7 @@ export class DebugService {
         return { success: false, message: 'Current node not found' };
       }
 
-      await this.prisma.node.update({
-        where: { id: node.id },
-        data: { loadThresholdMultiplier },
-      });
+      await this.nodeRepository.updateById(node.id, { loadThresholdMultiplier });
 
       const cpuCount = os.cpus().length;
       return {
@@ -188,7 +227,7 @@ export class DebugService {
         cpuCount,
         message: 'Load threshold updated. Changes take effect immediately.',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to update load threshold', error);
       return { success: false, message: 'Failed to update load threshold' };
     }
@@ -198,9 +237,7 @@ export class DebugService {
 
   private async getCurrentNode() {
     const ipAddresses = this.getLocalIpAddresses();
-    return this.prisma.node.findFirst({
-      where: { ipAddress: { in: ipAddresses } },
-    });
+    return this.nodeRepository.findFirstByIpAddresses(ipAddresses);
   }
 
   private getLocalIpAddresses(): string[] {
@@ -271,7 +308,7 @@ export class DebugService {
       }
 
       return processes;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Failed to find system FFmpeg processes: ${error}`);
       return [];
     }

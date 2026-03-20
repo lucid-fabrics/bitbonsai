@@ -1,8 +1,9 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobEventType, JobStage } from '@prisma/client';
 import * as fs from 'fs';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { JobRepository } from '../../../../common/repositories/job.repository';
+import { JobHistoryRepository } from '../../../../common/repositories/job-history.repository';
+import { SettingsRepository } from '../../../../common/repositories/settings.repository';
 import { AutoHealingService } from '../../auto-healing.service';
 
 jest.mock('fs', () => ({
@@ -12,13 +13,29 @@ jest.mock('fs', () => ({
 
 describe('AutoHealingService', () => {
   let service: AutoHealingService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let jobHistoryRepository: { createEntry: jest.Mock };
+  let jobRepository: { findManySelect: jest.Mock; updateById: jest.Mock };
+  let settingsRepository: { findFirst: jest.Mock };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    jobHistoryRepository = {
+      createEntry: jest.fn(),
+    };
+    jobRepository = {
+      findManySelect: jest.fn(),
+      updateById: jest.fn(),
+    };
+    settingsRepository = {
+      findFirst: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AutoHealingService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        AutoHealingService,
+        { provide: JobHistoryRepository, useValue: jobHistoryRepository },
+        { provide: JobRepository, useValue: jobRepository },
+        { provide: SettingsRepository, useValue: settingsRepository },
+      ],
     }).compile();
 
     // Get service WITHOUT calling onModuleInit
@@ -48,8 +65,8 @@ describe('AutoHealingService', () => {
 
   describe('healFailedJobs', () => {
     it('should return 0 when no eligible failed jobs', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockResolvedValue([]);
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.healFailedJobs();
 
@@ -60,24 +77,24 @@ describe('AutoHealingService', () => {
     });
 
     it('should heal failed jobs by resetting to QUEUED', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockResolvedValue([
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', { retryCount: 2, progress: 30 }),
         createFailedJob('job-2', { retryCount: 0, progress: 0 }),
       ]);
-      prisma.job.update.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobRepository.updateById.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(2);
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
+      expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
 
       // Verify first job reset
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: expect.objectContaining({
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({
           stage: JobStage.QUEUED,
           progress: 0, // Reset since no temp file
           error: null,
@@ -88,13 +105,13 @@ describe('AutoHealingService', () => {
           autoHealedProgress: 30,
           resumeTimestamp: null,
           tempFilePath: null,
-        }),
-      });
+        })
+      );
     });
 
     it('should preserve progress when temp file exists for resume', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockResolvedValue([
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', {
           retryCount: 1,
           progress: 65,
@@ -102,28 +119,28 @@ describe('AutoHealingService', () => {
           resumeTimestamp: '00:45:30',
         }),
       ]);
-      prisma.job.update.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobRepository.updateById.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(1);
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: expect.objectContaining({
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({
           stage: JobStage.QUEUED,
           progress: 65, // Preserved for resume
           resumeTimestamp: '00:45:30',
           tempFilePath: '/tmp/encode-job-1.mkv',
           autoHealedProgress: 65,
-        }),
-      });
+        })
+      );
     });
 
     it('should clear resume state when temp file is missing', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockResolvedValue([
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', {
           retryCount: 1,
           progress: 40,
@@ -131,60 +148,58 @@ describe('AutoHealingService', () => {
           resumeTimestamp: '00:20:00',
         }),
       ]);
-      prisma.job.update.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobRepository.updateById.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(1);
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: expect.objectContaining({
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({
           progress: 0, // Reset since temp file gone
           resumeTimestamp: null,
           tempFilePath: null,
-        }),
-      });
+        })
+      );
     });
 
     it('should create audit trail history entry', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockResolvedValue([
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', { retryCount: 0, progress: 20 }),
       ]);
-      prisma.job.update.mockResolvedValue({});
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobRepository.updateById.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       await service.healFailedJobs();
 
-      expect(prisma.jobHistory.create).toHaveBeenCalledWith({
-        data: {
-          jobId: 'job-1',
-          eventType: JobEventType.AUTO_HEALED,
-          stage: JobStage.FAILED,
-          progress: 20,
-          wasAutoHealed: true,
-          tempFileExists: false,
-          retryNumber: 1,
-          triggeredBy: 'BACKEND_RESTART',
-          systemMessage: expect.stringContaining('starting encoding from scratch'),
-        },
+      expect(jobHistoryRepository.createEntry).toHaveBeenCalledWith({
+        jobId: 'job-1',
+        eventType: JobEventType.AUTO_HEALED,
+        stage: JobStage.FAILED,
+        progress: 20,
+        wasAutoHealed: true,
+        tempFileExists: false,
+        retryNumber: 1,
+        triggeredBy: 'BACKEND_RESTART',
+        systemMessage: expect.stringContaining('starting encoding from scratch'),
       });
     });
 
     it('should continue processing if one job fails to heal', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockResolvedValue([
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1'),
         createFailedJob('job-2'),
         createFailedJob('job-3'),
       ]);
       (fs.existsSync as jest.Mock).mockReturnValue(false);
-      prisma.jobHistory.create.mockResolvedValue({});
+      jobHistoryRepository.createEntry.mockResolvedValue({});
 
-      prisma.job.update
+      jobRepository.updateById
         .mockResolvedValueOnce({}) // job-1 succeeds
         .mockRejectedValueOnce(new Error('DB error')) // job-2 fails
         .mockResolvedValueOnce({}); // job-3 succeeds
@@ -199,8 +214,8 @@ describe('AutoHealingService', () => {
     });
 
     it('should use default max retries (15) when settings not found', async () => {
-      prisma.settings.findFirst.mockResolvedValue(null);
-      prisma.job.findMany.mockResolvedValue([]);
+      settingsRepository.findFirst.mockResolvedValue(null);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.healFailedJobs();
 
@@ -208,8 +223,8 @@ describe('AutoHealingService', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      prisma.job.findMany.mockRejectedValue(new Error('DB connection lost'));
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection lost'));
 
       const result = await service.healFailedJobs();
 
@@ -233,33 +248,33 @@ describe('AutoHealingService', () => {
 
   describe('settings cache', () => {
     it('should cache maxRetries for 1 minute', async () => {
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 10 });
-      prisma.job.findMany.mockResolvedValue([]);
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 10 });
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.healFailedJobs();
       await service.healFailedJobs();
 
       // Settings queried only once due to cache
-      expect(prisma.settings.findFirst).toHaveBeenCalledTimes(1);
+      expect(settingsRepository.findFirst).toHaveBeenCalledTimes(1);
     });
 
     it('should refresh cache after TTL expires', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-02-21T12:00:00Z'));
 
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 10 });
-      prisma.job.findMany.mockResolvedValue([]);
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 10 });
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.healFailedJobs();
 
       // Advance past cache TTL (60 seconds)
       jest.advanceTimersByTime(61000);
 
-      prisma.settings.findFirst.mockResolvedValue({ maxAutoHealRetries: 20 });
+      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 20 });
 
       await service.healFailedJobs();
 
-      expect(prisma.settings.findFirst).toHaveBeenCalledTimes(2);
+      expect(settingsRepository.findFirst).toHaveBeenCalledTimes(2);
 
       jest.useRealTimers();
     });

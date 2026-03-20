@@ -1,11 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { NodeRole } from '@prisma/client';
+import { type Node, NodeRole } from '@prisma/client';
 import { Bonjour, Browser, Service } from 'bonjour-service';
 import { NodesService } from '../nodes/nodes.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationPriority, NotificationType } from '../notifications/types/notification.types';
-import { PrismaService } from '../prisma/prisma.service';
 import { HardwareCapabilitiesDto } from '../system/dto/hardware-capabilities.dto';
 import { HardwareDetectionService } from '../system/hardware-detection.service';
 
@@ -59,7 +58,6 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   private scanTimeoutId: NodeJS.Timeout | null = null;
 
   constructor(
-    readonly _prisma: PrismaService,
     private readonly nodesService: NodesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly hardwareDetectionService: HardwareDetectionService,
@@ -150,7 +148,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         `   Acceleration: ${hardware.accelerationType} (${hardware.gpus.length} GPU(s))`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to start mDNS broadcast:', error);
       throw error;
     }
@@ -167,7 +165,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         }
         this.publishedService = null;
         this.logger.log('📡 Stopped mDNS broadcast');
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Failed to stop mDNS broadcast:', error);
       }
     }
@@ -310,7 +308,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
                   this.logger.error('Failed to create notification:', error);
                 });
             }
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.warn('Failed to process discovered service:', error);
           }
         });
@@ -332,7 +330,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         });
 
         this.browser.start();
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error('Failed to scan for nodes:', error);
         this.cleanup();
         reject(error);
@@ -389,7 +387,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`✅ Pairing token received successfully`);
 
       return data.pairingToken;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to request pairing:', error);
       throw error;
     }
@@ -449,7 +447,8 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       };
 
       for (const [key, value] of Object.entries(updates)) {
-        const regex = new RegExp(`^${key}=.*$`, 'm');
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
         if (regex.test(envContent)) {
           envContent = envContent.replace(regex, `${key}=${value}`);
         } else {
@@ -458,7 +457,16 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Write updated .env
-      fs.writeFileSync(envPath, envContent);
+      try {
+        fs.writeFileSync(envPath, envContent);
+      } catch (writeError: unknown) {
+        this.logger.error(
+          `Failed to write .env file at ${envPath}: ${writeError instanceof Error ? writeError.message : String(writeError)}`
+        );
+        throw new Error(
+          `Failed to write configuration file: ${writeError instanceof Error ? writeError.message : String(writeError)}`
+        );
+      }
       this.logger.log(`✅ Configuration written successfully`);
 
       // Return success response and trigger restart after 2 seconds
@@ -472,7 +480,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         message: 'Pairing successful! Node will restart in 2 seconds to apply configuration.',
         willRestart: true,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to complete pairing:', error);
       throw error;
     }
@@ -488,7 +496,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    * @param nodeId ID of the node to approve
    * @returns Approved node details
    */
-  async approveNode(nodeId: string): Promise<any> {
+  async approveNode(nodeId: string): Promise<Node> {
     // For now, just return the node from the nodes service
     // In a real implementation, this would update a DiscoveredNode status
     return this.nodesService.findOne(nodeId);

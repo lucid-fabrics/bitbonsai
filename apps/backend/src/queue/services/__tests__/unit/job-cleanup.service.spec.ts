@@ -1,14 +1,13 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { type Job, JobStage } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { JobStage } from '@prisma/client';
+import { JobRepository } from '../../../../common/repositories/job.repository';
 import { JobCleanupService } from '../../job-cleanup.service';
 
 describe('JobCleanupService', () => {
   let service: JobCleanupService;
-  let prisma: PrismaService;
+  let jobRepository: { findManySelect: jest.Mock; updateById: jest.Mock };
 
   const now = new Date('2025-10-05T12:00:00Z');
-  const fiveMinutesAgo = new Date('2025-10-05T11:55:00Z');
   const tenMinutesAgo = new Date('2025-10-05T11:50:00Z');
   const twoHoursAgo = new Date('2025-10-05T10:00:00Z');
   const threeHoursAgo = new Date('2025-10-05T09:00:00Z');
@@ -49,24 +48,16 @@ describe('JobCleanupService', () => {
     jest.useFakeTimers();
     jest.setSystemTime(now);
 
+    jobRepository = {
+      findManySelect: jest.fn(),
+      updateById: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JobCleanupService,
-        {
-          provide: PrismaService,
-          useValue: {
-            job: {
-              findMany: jest.fn(),
-              updateMany: jest.fn(),
-              update: jest.fn(),
-            },
-          },
-        },
-      ],
+      providers: [JobCleanupService, { provide: JobRepository, useValue: jobRepository }],
     }).compile();
 
     service = module.get<JobCleanupService>(JobCleanupService);
-    prisma = module.get<PrismaService>(PrismaService);
 
     // Suppress logger output during tests
     // Access private logger via bracket notation
@@ -104,55 +95,46 @@ describe('JobCleanupService', () => {
         }),
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(stuckJobs as any);
-      jest.spyOn(prisma.job, 'updateMany').mockResolvedValue({ count: 2 } as any);
+      jobRepository.findManySelect.mockResolvedValue(stuckJobs);
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.cleanupStuckJobs();
 
       expect(result).toBe(2);
-      expect(prisma.job.findMany).toHaveBeenCalledWith({
-        where: {
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
+        {
           stage: JobStage.ENCODING,
-          updatedAt: expect.objectContaining({
-            lt: expect.any(Date),
-          }),
+          updatedAt: expect.objectContaining({ lt: expect.any(Date) }),
         },
-        select: {
+        {
           id: true,
           fileLabel: true,
           nodeId: true,
           updatedAt: true,
           progress: true,
           retryCount: true,
-        },
-      });
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
+        }
+      );
+      expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
     });
 
     it('should not reset recent ENCODING jobs', async () => {
-      const _recentJobs = [
-        createMockJob('job-1', JobStage.ENCODING, fiveMinutesAgo, {
-          startedAt: fiveMinutesAgo,
-          progress: 30,
-        }),
-      ];
-
-      // Mock findMany to return empty array (recent jobs are filtered by DB query)
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
+      // Mock findManySelect to return empty array (recent jobs are filtered by DB query)
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.cleanupStuckJobs();
 
       expect(result).toBe(0);
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
 
     it('should return 0 when no stuck jobs found', async () => {
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.cleanupStuckJobs();
 
       expect(result).toBe(0);
-      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
       expect((service as any).logger.log).toHaveBeenCalledWith(
         'No stuck jobs found during cleanup'
       );
@@ -160,7 +142,7 @@ describe('JobCleanupService', () => {
 
     it('should handle errors gracefully', async () => {
       const error = new Error('Database error');
-      jest.spyOn(prisma.job, 'findMany').mockRejectedValue(error);
+      jobRepository.findManySelect.mockRejectedValue(error);
 
       await expect(service.cleanupStuckJobs()).rejects.toThrow('Database error');
       expect((service as any).logger.error).toHaveBeenCalledWith(
@@ -170,17 +152,13 @@ describe('JobCleanupService', () => {
     });
 
     it('should only affect ENCODING jobs, not other stages', async () => {
-      // This test ensures the query filters correctly
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.cleanupStuckJobs();
 
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            stage: JobStage.ENCODING,
-          }),
-        })
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: JobStage.ENCODING }),
+        expect.anything()
       );
     });
   });
@@ -194,45 +172,36 @@ describe('JobCleanupService', () => {
         }),
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(timedOutJobs as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue({
-        ...timedOutJobs[0],
-        stage: JobStage.FAILED,
-        completedAt: now,
-        error:
-          'Encoding timeout - exceeded maximum duration of 2 hours (was encoding for 3 hours as any)',
-      } as any);
+      jobRepository.findManySelect.mockResolvedValue(timedOutJobs);
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.detectTimedOutJobs();
 
       expect(result).toBe(1);
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: {
-          stage: JobStage.FAILED,
-          completedAt: expect.any(Date),
-          error: expect.stringContaining('Encoding timeout'),
-        },
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', {
+        stage: JobStage.FAILED,
+        completedAt: expect.any(Date),
+        error: expect.stringContaining('Encoding timeout'),
       });
     });
 
     it('should not mark jobs that are still within timeout threshold', async () => {
-      // Mock findMany to return empty (jobs within 2 hours are filtered by query)
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
+      // Mock findManySelect to return empty (jobs within 2 hours are filtered by query)
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.detectTimedOutJobs();
 
       expect(result).toBe(0);
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
 
     it('should return 0 when no timed-out jobs found', async () => {
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue([]);
+      jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.detectTimedOutJobs();
 
       expect(result).toBe(0);
-      expect(prisma.job.update).not.toHaveBeenCalled();
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
       expect((service as any).logger.debug).toHaveBeenCalledWith('No timed-out jobs found');
     });
 
@@ -243,18 +212,13 @@ describe('JobCleanupService', () => {
         createMockJob('job-3', JobStage.ENCODING, twoHoursAgo, { startedAt: twoHoursAgo }),
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(timedOutJobs as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue({
-        ...timedOutJobs[0],
-        stage: JobStage.FAILED,
-        completedAt: now,
-        error: 'Encoding timeout',
-      } as Job as any);
+      jobRepository.findManySelect.mockResolvedValue(timedOutJobs);
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.detectTimedOutJobs();
 
       expect(result).toBe(3);
-      expect(prisma.job.update).toHaveBeenCalledTimes(3);
+      expect(jobRepository.updateById).toHaveBeenCalledTimes(3);
     });
 
     it('should continue processing if one job update fails', async () => {
@@ -263,21 +227,15 @@ describe('JobCleanupService', () => {
         createMockJob('job-2', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(timedOutJobs as any);
-      jest
-        .spyOn(prisma.job, 'update')
+      jobRepository.findManySelect.mockResolvedValue(timedOutJobs);
+      jobRepository.updateById
         .mockRejectedValueOnce(new Error('Update failed'))
-        .mockResolvedValueOnce({
-          ...timedOutJobs[1],
-          stage: JobStage.FAILED,
-          completedAt: now,
-          error: 'Encoding timeout',
-        } as any);
+        .mockResolvedValueOnce({});
 
       const result = await service.detectTimedOutJobs();
 
       expect(result).toBe(1); // Only one succeeded
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
+      expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to mark job'),
         expect.any(Error)
@@ -286,7 +244,7 @@ describe('JobCleanupService', () => {
 
     it('should handle findMany errors gracefully', async () => {
       const error = new Error('Database error');
-      jest.spyOn(prisma.job, 'findMany').mockRejectedValue(error);
+      jobRepository.findManySelect.mockRejectedValue(error);
 
       await expect(service.detectTimedOutJobs()).rejects.toThrow('Database error');
       expect((service as any).logger.error).toHaveBeenCalledWith(
@@ -331,14 +289,8 @@ describe('JobCleanupService', () => {
         providers: [
           JobCleanupService,
           {
-            provide: PrismaService,
-            useValue: {
-              job: {
-                findMany: jest.fn(),
-                updateMany: jest.fn(),
-                update: jest.fn(),
-              },
-            },
+            provide: JobRepository,
+            useValue: { findManySelect: jest.fn(), updateById: jest.fn() },
           },
         ],
       }).compile();
@@ -352,12 +304,12 @@ describe('JobCleanupService', () => {
       if (originalStuck) {
         process.env.JOB_STUCK_THRESHOLD_MINUTES = originalStuck;
       } else {
-        process.env.JOB_STUCK_THRESHOLD_MINUTES = undefined;
+        process.env.JOB_STUCK_THRESHOLD_MINUTES = '';
       }
       if (originalTimeout) {
         process.env.JOB_ENCODING_TIMEOUT_HOURS = originalTimeout;
       } else {
-        process.env.JOB_ENCODING_TIMEOUT_HOURS = undefined;
+        process.env.JOB_ENCODING_TIMEOUT_HOURS = '';
       }
     });
   });
@@ -371,13 +323,13 @@ describe('JobCleanupService', () => {
         }),
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(stuckJobs as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue({} as any);
+      jobRepository.findManySelect.mockResolvedValue(stuckJobs);
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.cleanupStuckJobs();
 
       expect(result).toBe(1);
-      expect(prisma.job.update).toHaveBeenCalled();
+      expect(jobRepository.updateById).toHaveBeenCalled();
     });
 
     it('should calculate correct time differences for logging', async () => {
@@ -387,8 +339,8 @@ describe('JobCleanupService', () => {
         }),
       ];
 
-      jest.spyOn(prisma.job, 'findMany').mockResolvedValue(stuckJobs as any);
-      jest.spyOn(prisma.job, 'update').mockResolvedValue({} as any);
+      jobRepository.findManySelect.mockResolvedValue(stuckJobs);
+      jobRepository.updateById.mockResolvedValue({});
 
       await service.cleanupStuckJobs();
 

@@ -16,7 +16,11 @@ import { LookupLicenseDto } from './dto/lookup-license.dto';
 import { SetLicenseKeyDto } from './dto/set-license-key.dto';
 import type { ValidateLicenseDto } from './dto/validate-license.dto';
 import { LicenseService } from './license.service';
-import { LicenseClientService, type LookupLicenseResponse } from './license-client.service';
+import {
+  LicenseClientService,
+  type LicenseInfo,
+  type LookupLicenseResponse,
+} from './license-client.service';
 
 /**
  * LicenseController
@@ -48,7 +52,7 @@ export class LicenseController {
   })
   @ApiCreatedResponse({ description: 'License created successfully' })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
-  async create(@Body() createLicenseDto: CreateLicenseDto) {
+  async create(@Body() createLicenseDto: CreateLicenseDto): Promise<unknown> {
     return this.licenseService.createLicense(createLicenseDto);
   }
 
@@ -68,7 +72,7 @@ export class LicenseController {
   @ApiOkResponse({ description: 'License is valid' })
   @ApiBadRequestResponse({ description: 'License inactive or expired' })
   @ApiNotFoundResponse({ description: 'License not found' })
-  async validate(@Body() validateLicenseDto: ValidateLicenseDto) {
+  async validate(@Body() validateLicenseDto: ValidateLicenseDto): Promise<unknown> {
     return this.licenseService.validateLicense(validateLicenseDto.key);
   }
 
@@ -89,7 +93,7 @@ export class LicenseController {
   })
   @ApiOkResponse({ description: 'Node limit check result' })
   @ApiNotFoundResponse({ description: 'License not found' })
-  async canAddNode(@Param('id') id: string) {
+  async canAddNode(@Param('id') id: string): Promise<{ canAddNode: boolean }> {
     const canAdd = await this.licenseService.checkCanAddNode(id);
     return { canAddNode: canAdd };
   }
@@ -108,7 +112,7 @@ export class LicenseController {
   })
   @ApiOkResponse({ description: 'Current license info' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async getCurrentLicense() {
+  async getCurrentLicense(): Promise<LicenseInfo> {
     return this.licenseClient.verifyLicense();
   }
 
@@ -126,7 +130,7 @@ export class LicenseController {
   })
   @ApiOkResponse({ description: 'Current license limits' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async getCurrentLimits() {
+  async getCurrentLimits(): Promise<{ maxNodes: number; maxConcurrentJobs: number }> {
     return this.licenseClient.getCurrentLimits();
   }
 
@@ -145,7 +149,9 @@ export class LicenseController {
   @ApiOkResponse({ description: 'License key updated' })
   @ApiBadRequestResponse({ description: 'Invalid license key' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async setLicenseKey(@Body() dto: SetLicenseKeyDto) {
+  async setLicenseKey(
+    @Body() dto: SetLicenseKeyDto
+  ): Promise<{ success: boolean; message: string }> {
     await this.licenseClient.setLicenseKey(dto.key);
     return { success: true, message: 'License key updated and verified' };
   }
@@ -167,7 +173,7 @@ export class LicenseController {
   @ApiOkResponse({ description: 'License activated' })
   @ApiBadRequestResponse({ description: 'Invalid license key' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async activateLicense(@Body() dto: ActivateLicenseDto) {
+  async activateLicense(@Body() dto: ActivateLicenseDto): Promise<LicenseInfo> {
     return this.licenseClient.activateLicense(dto.key, dto.email);
   }
 

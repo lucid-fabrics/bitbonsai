@@ -1,27 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { SettingsService } from '../../settings.service';
 
 describe('SettingsService', () => {
   let service: SettingsService;
-  let mockTx: Record<string, Record<string, jest.Mock>>;
+  let mockSettingsRepository: {
+    findOrCreateWithDefaults: jest.Mock;
+    upsertSettings: jest.Mock;
+    findOrCreate: jest.Mock;
+    findFirst: jest.Mock;
+  };
 
-  /**
-   * Creates a mock transaction context with settings model methods.
-   * The $transaction mock calls the provided function with this context.
-   */
-  function createMockTx() {
-    return {
-      settings: {
-        findFirst: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-      },
-    };
-  }
-
-  /** Base settings record returned by Prisma */
+  /** Base settings record returned by the repository */
   function createSettingsRecord(overrides: Record<string, unknown> = {}) {
     return {
       id: 'settings-1',
@@ -50,19 +41,18 @@ describe('SettingsService', () => {
   }
 
   beforeEach(async () => {
-    mockTx = createMockTx();
-
-    const mockPrisma = {
-      $transaction: jest
-        .fn()
-        .mockImplementation((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
-      settings: {
-        findFirst: jest.fn(),
-      },
+    mockSettingsRepository = {
+      findOrCreateWithDefaults: jest.fn(),
+      upsertSettings: jest.fn(),
+      findOrCreate: jest.fn(),
+      findFirst: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SettingsService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        SettingsService,
+        { provide: SettingsRepository, useValue: mockSettingsRepository },
+      ],
     }).compile();
 
     service = module.get<SettingsService>(SettingsService);
@@ -77,35 +67,32 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getSecuritySettings', () => {
     it('should return existing security settings', async () => {
-      const existing = createSettingsRecord({ allowLocalNetworkWithoutAuth: true });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
+        createSettingsRecord({ allowLocalNetworkWithoutAuth: true })
+      );
 
       const result = await service.getSecuritySettings();
 
       expect(result).toEqual({ allowLocalNetworkWithoutAuth: true });
-      expect(mockTx.settings.create).not.toHaveBeenCalled();
     });
 
     it('should create default settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
         createSettingsRecord({ allowLocalNetworkWithoutAuth: false })
       );
 
       const result = await service.getSecuritySettings();
 
       expect(result).toEqual({ allowLocalNetworkWithoutAuth: false });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { allowLocalNetworkWithoutAuth: false },
+      expect(mockSettingsRepository.findOrCreateWithDefaults).toHaveBeenCalledWith({
+        allowLocalNetworkWithoutAuth: false,
       });
     });
   });
 
   describe('updateSecuritySettings', () => {
     it('should update existing security settings', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ allowLocalNetworkWithoutAuth: true })
       );
 
@@ -114,15 +101,13 @@ describe('SettingsService', () => {
       });
 
       expect(result).toEqual({ allowLocalNetworkWithoutAuth: true });
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { allowLocalNetworkWithoutAuth: true },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        allowLocalNetworkWithoutAuth: true,
       });
     });
 
     it('should create settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ allowLocalNetworkWithoutAuth: true })
       );
 
@@ -131,9 +116,6 @@ describe('SettingsService', () => {
       });
 
       expect(result).toEqual({ allowLocalNetworkWithoutAuth: true });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { allowLocalNetworkWithoutAuth: true },
-      });
     });
   });
 
@@ -142,8 +124,9 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getDefaultQueueView', () => {
     it('should return existing default queue view', async () => {
-      const existing = createSettingsRecord({ defaultQueueView: 'COMPLETED' });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
+        createSettingsRecord({ defaultQueueView: 'COMPLETED' })
+      );
 
       const result = await service.getDefaultQueueView();
 
@@ -151,47 +134,41 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings with ENCODING view when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
         createSettingsRecord({ defaultQueueView: 'ENCODING' })
       );
 
       const result = await service.getDefaultQueueView();
 
       expect(result).toEqual({ defaultQueueView: 'ENCODING' });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { defaultQueueView: 'ENCODING' },
+      expect(mockSettingsRepository.findOrCreateWithDefaults).toHaveBeenCalledWith({
+        defaultQueueView: 'ENCODING',
       });
     });
   });
 
   describe('updateDefaultQueueView', () => {
     it('should update existing queue view', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ defaultQueueView: 'FAILED' })
       );
 
       const result = await service.updateDefaultQueueView({ defaultQueueView: 'FAILED' });
 
       expect(result).toEqual({ defaultQueueView: 'FAILED' });
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { defaultQueueView: 'FAILED' },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        defaultQueueView: 'FAILED',
       });
     });
 
     it('should create settings with specified queue view when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(createSettingsRecord({ defaultQueueView: 'ALL' }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ defaultQueueView: 'ALL' })
+      );
 
       const result = await service.updateDefaultQueueView({ defaultQueueView: 'ALL' });
 
       expect(result).toEqual({ defaultQueueView: 'ALL' });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { defaultQueueView: 'ALL' },
-      });
     });
   });
 
@@ -200,8 +177,9 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getReadyFilesCacheTtl', () => {
     it('should return existing cache TTL', async () => {
-      const existing = createSettingsRecord({ readyFilesCacheTtlMinutes: 30 });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
+        createSettingsRecord({ readyFilesCacheTtlMinutes: 30 })
+      );
 
       const result = await service.getReadyFilesCacheTtl();
 
@@ -209,49 +187,38 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings with 5-minute TTL when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
         createSettingsRecord({ readyFilesCacheTtlMinutes: 5 })
       );
 
       const result = await service.getReadyFilesCacheTtl();
 
       expect(result).toEqual({ readyFilesCacheTtlMinutes: 5 });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { readyFilesCacheTtlMinutes: 5 },
-      });
     });
   });
 
   describe('updateReadyFilesCacheTtl', () => {
     it('should update existing cache TTL', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ readyFilesCacheTtlMinutes: 60 })
       );
 
       const result = await service.updateReadyFilesCacheTtl(60);
 
       expect(result).toEqual({ readyFilesCacheTtlMinutes: 60 });
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { readyFilesCacheTtlMinutes: 60 },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        readyFilesCacheTtlMinutes: 60,
       });
     });
 
     it('should create settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ readyFilesCacheTtlMinutes: 10 })
       );
 
       const result = await service.updateReadyFilesCacheTtl(10);
 
       expect(result).toEqual({ readyFilesCacheTtlMinutes: 10 });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { readyFilesCacheTtlMinutes: 10 },
-      });
     });
 
     it('should throw BadRequestException when TTL is less than 5', async () => {
@@ -262,9 +229,7 @@ describe('SettingsService', () => {
     });
 
     it('should accept exactly 5 minutes as minimum valid TTL', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ readyFilesCacheTtlMinutes: 5 })
       );
 
@@ -279,8 +244,9 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getAutoHealRetryLimit', () => {
     it('should return existing auto-heal retry limit', async () => {
-      const existing = createSettingsRecord({ maxAutoHealRetries: 20 });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
+        createSettingsRecord({ maxAutoHealRetries: 20 })
+      );
 
       const result = await service.getAutoHealRetryLimit();
 
@@ -288,43 +254,38 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings with limit of 15 when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(createSettingsRecord({ maxAutoHealRetries: 15 }));
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
+        createSettingsRecord({ maxAutoHealRetries: 15 })
+      );
 
       const result = await service.getAutoHealRetryLimit();
 
       expect(result).toEqual({ maxAutoHealRetries: 15 });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { maxAutoHealRetries: 15 },
-      });
     });
   });
 
   describe('updateAutoHealRetryLimit', () => {
     it('should update existing retry limit', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(createSettingsRecord({ maxAutoHealRetries: 25 }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ maxAutoHealRetries: 25 })
+      );
 
       const result = await service.updateAutoHealRetryLimit(25);
 
       expect(result).toEqual({ maxAutoHealRetries: 25 });
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { maxAutoHealRetries: 25 },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        maxAutoHealRetries: 25,
       });
     });
 
     it('should create settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(createSettingsRecord({ maxAutoHealRetries: 10 }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ maxAutoHealRetries: 10 })
+      );
 
       const result = await service.updateAutoHealRetryLimit(10);
 
       expect(result).toEqual({ maxAutoHealRetries: 10 });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { maxAutoHealRetries: 10 },
-      });
     });
 
     it('should throw BadRequestException when retry limit is less than 3', async () => {
@@ -335,9 +296,9 @@ describe('SettingsService', () => {
     });
 
     it('should accept exactly 3 as minimum valid retry limit', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(createSettingsRecord({ maxAutoHealRetries: 3 }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ maxAutoHealRetries: 3 })
+      );
 
       const result = await service.updateAutoHealRetryLimit(3);
 
@@ -350,8 +311,9 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getAdvancedMode', () => {
     it('should return existing advanced mode setting', async () => {
-      const existing = createSettingsRecord({ advancedModeEnabled: true });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
+        createSettingsRecord({ advancedModeEnabled: true })
+      );
 
       const result = await service.getAdvancedMode();
 
@@ -359,39 +321,32 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings with advanced mode disabled when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
+      mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
         createSettingsRecord({ advancedModeEnabled: false })
       );
 
       const result = await service.getAdvancedMode();
 
       expect(result).toEqual({ advancedModeEnabled: false });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { advancedModeEnabled: false },
-      });
     });
   });
 
   describe('updateAdvancedMode', () => {
     it('should enable advanced mode', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(createSettingsRecord({ advancedModeEnabled: true }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ advancedModeEnabled: true })
+      );
 
       const result = await service.updateAdvancedMode(true);
 
       expect(result).toEqual({ advancedModeEnabled: true });
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { advancedModeEnabled: true },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        advancedModeEnabled: true,
       });
     });
 
     it('should disable advanced mode', async () => {
-      const existing = createSettingsRecord({ advancedModeEnabled: true });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ advancedModeEnabled: false })
       );
 
@@ -401,15 +356,13 @@ describe('SettingsService', () => {
     });
 
     it('should create settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(createSettingsRecord({ advancedModeEnabled: true }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ advancedModeEnabled: true })
+      );
 
       const result = await service.updateAdvancedMode(true);
 
       expect(result).toEqual({ advancedModeEnabled: true });
-      expect(mockTx.settings.create).toHaveBeenCalledWith({
-        data: { advancedModeEnabled: true },
-      });
     });
   });
 
@@ -418,12 +371,13 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getJellyfinSettings', () => {
     it('should return Jellyfin settings with masked API key', async () => {
-      const existing = createSettingsRecord({
-        jellyfinUrl: 'http://192.168.1.100:8096',
-        jellyfinApiKey: 'secret-api-key-123',
-        jellyfinRefreshOnComplete: true,
-      });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreate.mockResolvedValue(
+        createSettingsRecord({
+          jellyfinUrl: 'http://192.168.1.100:8096',
+          jellyfinApiKey: 'secret-api-key-123',
+          jellyfinRefreshOnComplete: true,
+        })
+      );
 
       const result = await service.getJellyfinSettings();
 
@@ -435,12 +389,13 @@ describe('SettingsService', () => {
     });
 
     it('should return null for empty Jellyfin settings', async () => {
-      const existing = createSettingsRecord({
-        jellyfinUrl: null,
-        jellyfinApiKey: null,
-        jellyfinRefreshOnComplete: true,
-      });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreate.mockResolvedValue(
+        createSettingsRecord({
+          jellyfinUrl: null,
+          jellyfinApiKey: null,
+          jellyfinRefreshOnComplete: true,
+        })
+      );
 
       const result = await service.getJellyfinSettings();
 
@@ -452,8 +407,7 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(createSettingsRecord());
+      mockSettingsRepository.findOrCreate.mockResolvedValue(createSettingsRecord());
 
       const result = await service.getJellyfinSettings();
 
@@ -463,10 +417,9 @@ describe('SettingsService', () => {
     });
 
     it('should default jellyfinRefreshOnComplete to true when undefined', async () => {
-      const existing = createSettingsRecord({
-        jellyfinRefreshOnComplete: undefined,
-      });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreate.mockResolvedValue(
+        createSettingsRecord({ jellyfinRefreshOnComplete: undefined })
+      );
 
       const result = await service.getJellyfinSettings();
 
@@ -474,11 +427,9 @@ describe('SettingsService', () => {
     });
 
     it('should return null for empty string URL', async () => {
-      const existing = createSettingsRecord({
-        jellyfinUrl: '',
-        jellyfinApiKey: '',
-      });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreate.mockResolvedValue(
+        createSettingsRecord({ jellyfinUrl: '', jellyfinApiKey: '' })
+      );
 
       const result = await service.getJellyfinSettings();
 
@@ -488,25 +439,26 @@ describe('SettingsService', () => {
   });
 
   describe('getUnmaskedJellyfinApiKey', () => {
-    let prisma: { settings: { findFirst: jest.Mock }; $transaction: jest.Mock };
+    let localMockRepo: { findFirst: jest.Mock };
 
     beforeEach(async () => {
-      prisma = {
-        settings: { findFirst: jest.fn() },
-        $transaction: jest
-          .fn()
-          .mockImplementation((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
-      };
+      localMockRepo = { findFirst: jest.fn() };
 
       const module: TestingModule = await Test.createTestingModule({
-        providers: [SettingsService, { provide: PrismaService, useValue: prisma }],
+        providers: [
+          SettingsService,
+          {
+            provide: SettingsRepository,
+            useValue: { ...mockSettingsRepository, findFirst: localMockRepo.findFirst },
+          },
+        ],
       }).compile();
 
       service = module.get<SettingsService>(SettingsService);
     });
 
     it('should return the actual API key unmasked', async () => {
-      prisma.settings.findFirst.mockResolvedValue(
+      localMockRepo.findFirst.mockResolvedValue(
         createSettingsRecord({ jellyfinApiKey: 'real-secret-key' })
       );
 
@@ -516,7 +468,7 @@ describe('SettingsService', () => {
     });
 
     it('should return null when no settings exist', async () => {
-      prisma.settings.findFirst.mockResolvedValue(null);
+      localMockRepo.findFirst.mockResolvedValue(null);
 
       const result = await service.getUnmaskedJellyfinApiKey();
 
@@ -524,7 +476,7 @@ describe('SettingsService', () => {
     });
 
     it('should return null when API key is empty', async () => {
-      prisma.settings.findFirst.mockResolvedValue(createSettingsRecord({ jellyfinApiKey: '' }));
+      localMockRepo.findFirst.mockResolvedValue(createSettingsRecord({ jellyfinApiKey: '' }));
 
       const result = await service.getUnmaskedJellyfinApiKey();
 
@@ -534,9 +486,7 @@ describe('SettingsService', () => {
 
   describe('updateJellyfinSettings', () => {
     it('should update URL, API key, and refresh setting', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({
           jellyfinUrl: 'http://jellyfin.local:8096',
           jellyfinApiKey: 'new-key',
@@ -556,42 +506,32 @@ describe('SettingsService', () => {
     });
 
     it('should only update provided fields', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ jellyfinUrl: 'http://new-url:8096' })
       );
 
-      await service.updateJellyfinSettings({
-        jellyfinUrl: 'http://new-url:8096',
-      });
+      await service.updateJellyfinSettings({ jellyfinUrl: 'http://new-url:8096' });
 
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { jellyfinUrl: 'http://new-url:8096' },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        jellyfinUrl: 'http://new-url:8096',
       });
     });
 
     it('should set null when empty string URL provided', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(createSettingsRecord({ jellyfinUrl: null }));
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ jellyfinUrl: null })
+      );
 
       await service.updateJellyfinSettings({ jellyfinUrl: '' });
 
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { jellyfinUrl: null },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        jellyfinUrl: null,
       });
     });
 
     it('should create settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue(
-        createSettingsRecord({
-          jellyfinUrl: 'http://jf:8096',
-          jellyfinApiKey: 'key',
-        })
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
+        createSettingsRecord({ jellyfinUrl: 'http://jf:8096', jellyfinApiKey: 'key' })
       );
 
       const result = await service.updateJellyfinSettings({
@@ -604,35 +544,24 @@ describe('SettingsService', () => {
     });
 
     it('should skip undefined fields in update data', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ jellyfinRefreshOnComplete: false })
       );
 
-      await service.updateJellyfinSettings({
-        jellyfinRefreshOnComplete: false,
-      });
+      await service.updateJellyfinSettings({ jellyfinRefreshOnComplete: false });
 
-      // Only jellyfinRefreshOnComplete should be in updateData
-      expect(mockTx.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: { jellyfinRefreshOnComplete: false },
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
+        jellyfinRefreshOnComplete: false,
       });
     });
 
     it('should handle jellyfinRefreshOnComplete undefined in response', async () => {
-      const existing = createSettingsRecord();
-      mockTx.settings.findFirst.mockResolvedValue(existing);
-      mockTx.settings.update.mockResolvedValue(
+      mockSettingsRepository.upsertSettings.mockResolvedValue(
         createSettingsRecord({ jellyfinRefreshOnComplete: undefined })
       );
 
-      const result = await service.updateJellyfinSettings({
-        jellyfinUrl: 'http://jf:8096',
-      });
+      const result = await service.updateJellyfinSettings({ jellyfinUrl: 'http://jf:8096' });
 
-      // Should default to true via ?? operator
       expect(result.jellyfinRefreshOnComplete).toBe(true);
     });
   });
@@ -642,20 +571,21 @@ describe('SettingsService', () => {
   // ==========================================================================
   describe('getOperationalSettings', () => {
     it('should return all operational settings from DB', async () => {
-      const existing = createSettingsRecord({
-        jobStuckThresholdMinutes: 10,
-        jobEncodingTimeoutHours: 4,
-        recoveryIntervalMs: 240000,
-        healthCheckTimeoutMin: 10,
-        encodingTimeoutMin: 20,
-        verifyingTimeoutMin: 60,
-        healthCheckConcurrency: 20,
-        healthCheckIntervalMs: 4000,
-        maxRetryAttempts: 5,
-        backupCleanupIntervalMs: 7200000,
-        backupRetentionHours: 48,
-      });
-      mockTx.settings.findFirst.mockResolvedValue(existing);
+      mockSettingsRepository.findOrCreate.mockResolvedValue(
+        createSettingsRecord({
+          jobStuckThresholdMinutes: 10,
+          jobEncodingTimeoutHours: 4,
+          recoveryIntervalMs: 240000,
+          healthCheckTimeoutMin: 10,
+          encodingTimeoutMin: 20,
+          verifyingTimeoutMin: 60,
+          healthCheckConcurrency: 20,
+          healthCheckIntervalMs: 4000,
+          maxRetryAttempts: 5,
+          backupCleanupIntervalMs: 7200000,
+          backupRetentionHours: 48,
+        })
+      );
 
       const result = await service.getOperationalSettings();
 
@@ -675,9 +605,7 @@ describe('SettingsService', () => {
     });
 
     it('should use defaults for missing fields', async () => {
-      // Simulate minimal settings record without operational fields
-      const minimal = { id: 'settings-1' };
-      mockTx.settings.findFirst.mockResolvedValue(minimal);
+      mockSettingsRepository.findOrCreate.mockResolvedValue({ id: 'settings-1' } as any);
 
       const result = await service.getOperationalSettings();
 
@@ -697,29 +625,24 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings when none exist', async () => {
-      mockTx.settings.findFirst.mockResolvedValue(null);
-      mockTx.settings.create.mockResolvedValue({ id: 'settings-1' });
+      mockSettingsRepository.findOrCreate.mockResolvedValue({ id: 'settings-1' } as any);
 
       const result = await service.getOperationalSettings();
 
-      expect(mockTx.settings.create).toHaveBeenCalledWith({ data: {} });
-      // Should still return defaults
       expect(result.jobStuckThresholdMinutes).toBe(5);
       expect(result.backupRetentionHours).toBe(24);
     });
 
     it('should use DB value when present and default when null', async () => {
-      const partial = {
+      mockSettingsRepository.findOrCreate.mockResolvedValue({
         id: 'settings-1',
         jobStuckThresholdMinutes: 15,
-        // All other fields undefined/missing → should use defaults
-      };
-      mockTx.settings.findFirst.mockResolvedValue(partial);
+      } as any);
 
       const result = await service.getOperationalSettings();
 
       expect(result.jobStuckThresholdMinutes).toBe(15);
-      expect(result.jobEncodingTimeoutHours).toBe(2); // default
+      expect(result.jobEncodingTimeoutHours).toBe(2);
     });
   });
 });

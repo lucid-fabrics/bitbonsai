@@ -62,7 +62,7 @@ export class FilesystemService {
         parentPath,
         directories,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to browse directory ${path}`, error);
       throw error;
     }

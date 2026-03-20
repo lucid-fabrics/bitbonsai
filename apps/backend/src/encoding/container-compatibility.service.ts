@@ -47,7 +47,7 @@ export class ContainerCompatibilityService {
       }
 
       return issues;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Compatibility check failed: ${errorMessage}`);
       return [];
@@ -253,7 +253,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
           const json = JSON.parse(stdout);
           const streams: MediaStream[] = json.streams || [];
           resolve(streams);
-        } catch (error) {
+        } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           reject(new Error(`Failed to parse ffprobe output: ${errorMessage}`));
         }

@@ -67,4 +67,7 @@ export interface QueueJob {
   stuckRecoveryCount?: number;
   isBlacklisted?: boolean;
   originalNodeId?: string | null; // ID of the node where the file originally exists (for delegated jobs)
+  // Quality Metrics Feature (VMAF/PSNR/SSIM)
+  qualityMetrics?: { vmaf?: number; psnr?: number; ssim?: number } | null;
+  qualityMetricsAt?: string;
 }

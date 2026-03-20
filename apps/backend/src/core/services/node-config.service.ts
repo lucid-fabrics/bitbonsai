@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { NodeRole } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
 
 /**
  * NodeConfigService
@@ -44,7 +44,7 @@ export class NodeConfigService implements OnModuleInit {
 
   private isLoaded = false;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly nodeRepository: NodeRepository) {}
 
   /**
    * Load configuration on module initialization
@@ -72,16 +72,13 @@ export class NodeConfigService implements OnModuleInit {
       }
 
       // Step 2: Load the node configuration
-      const node = await this.prisma.node.findUnique({
-        where: { id: nodeId },
-        select: {
-          id: true,
-          role: true,
-          mainNodeUrl: true,
-          apiKey: true,
-          name: true,
-        },
-      });
+      const node = await this.nodeRepository.findWithSelect<{
+        id: string;
+        role: NodeRole;
+        mainNodeUrl: string | null;
+        apiKey: string | null;
+        name: string;
+      }>(nodeId, { id: true, role: true, mainNodeUrl: true, apiKey: true, name: true });
 
       if (!node) {
         this.logger.error(`Node with ID ${nodeId} not found in database - ID may be stale`);
@@ -109,7 +106,7 @@ export class NodeConfigService implements OnModuleInit {
       this.logger.log(
         `✅ Node configuration loaded: ${node.name} (${node.role}), id=${node.id}, mainApiUrl=${node.mainNodeUrl || 'N/A'}`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to load node configuration from database:', error);
       throw error;
     }
@@ -139,9 +136,8 @@ export class NodeConfigService implements OnModuleInit {
     const persistedNodeId = this.getPersistedNodeId();
     if (persistedNodeId) {
       // Verify the persisted ID still exists in database
-      const exists = await this.prisma.node.findUnique({
-        where: { id: persistedNodeId },
-        select: { id: true },
+      const exists = await this.nodeRepository.findWithSelect<{ id: string }>(persistedNodeId, {
+        id: true,
       });
       if (exists) {
         this.logger.log(`📁 Using persisted NODE_ID from ${this.NODE_ID_FILE}: ${persistedNodeId}`);
@@ -154,11 +150,9 @@ export class NodeConfigService implements OnModuleInit {
     // Strategy 3: IP address matching
     const currentIp = this.getCurrentIpAddress();
     if (currentIp) {
-      const nodeByIp = await this.prisma.node.findFirst({
-        where: { ipAddress: currentIp },
-        select: { id: true, name: true, role: true },
-        orderBy: { createdAt: 'asc' },
-      });
+      const nodeByIp = await this.nodeRepository
+        .findManyByIp(currentIp)
+        .then((nodes) => nodes[0] ?? null);
       if (nodeByIp) {
         this.logger.log(
           `🌐 Detected node by IP address ${currentIp}: ${nodeByIp.name} (${nodeByIp.role})`
@@ -169,10 +163,8 @@ export class NodeConfigService implements OnModuleInit {
 
     // Strategy 4: Role-based fallback
     // First try MAIN node (for main deployments)
-    const mainNode = await this.prisma.node.findFirst({
-      where: { role: NodeRole.MAIN },
-      select: { id: true, name: true },
-      orderBy: { createdAt: 'desc' }, // Newest MAIN node
+    const mainNode = await this.nodeRepository.findFirstByRole(NodeRole.MAIN, {
+      orderBy: { createdAt: 'desc' },
     });
     if (mainNode) {
       this.logger.log(`🏠 Falling back to MAIN node: ${mainNode.name} (${mainNode.id})`);
@@ -180,9 +172,7 @@ export class NodeConfigService implements OnModuleInit {
     }
 
     // Then try first LINKED node
-    const linkedNode = await this.prisma.node.findFirst({
-      where: { role: NodeRole.LINKED },
-      select: { id: true, name: true },
+    const linkedNode = await this.nodeRepository.findFirstByRole(NodeRole.LINKED, {
       orderBy: { createdAt: 'asc' },
     });
     if (linkedNode) {
@@ -210,7 +200,7 @@ export class NodeConfigService implements OnModuleInit {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn('Failed to detect IP address:', error);
     }
     return null;
@@ -228,7 +218,7 @@ export class NodeConfigService implements OnModuleInit {
           return nodeId;
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Failed to read persisted node ID from ${this.NODE_ID_FILE}:`, error);
     }
     return null;
@@ -247,7 +237,7 @@ export class NodeConfigService implements OnModuleInit {
       }
       fs.writeFileSync(this.NODE_ID_FILE, nodeId, 'utf-8');
       this.logger.debug(`📁 Persisted node ID to ${this.NODE_ID_FILE}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Failed to persist node ID to ${this.NODE_ID_FILE}:`, error);
       // Non-fatal - continue without persistence
     }
@@ -263,7 +253,7 @@ export class NodeConfigService implements OnModuleInit {
         fs.unlinkSync(this.NODE_ID_FILE);
         this.logger.debug(`🗑️ Cleared persisted node ID from ${this.NODE_ID_FILE}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Failed to clear persisted node ID from ${this.NODE_ID_FILE}:`, error);
     }
   }

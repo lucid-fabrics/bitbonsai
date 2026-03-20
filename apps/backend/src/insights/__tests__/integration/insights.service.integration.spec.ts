@@ -247,7 +247,7 @@ describe('InsightsService Integration Tests', () => {
 
       const nodeStats = result.find((item) => item.nodeId === testNode.id);
 
-      expect(nodeStats).toBeDefined();
+      expect(nodeStats).not.toBeUndefined();
       expect(nodeStats?.nodeName).toBe(testNode.name);
       expect(nodeStats?.jobsCompleted).toBe(2);
       expect(nodeStats?.successRate).toBeCloseTo(66.67, 1);

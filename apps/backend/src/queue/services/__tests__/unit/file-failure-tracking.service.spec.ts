@@ -1,4 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { FileFailureRecordRepository } from '../../../../common/repositories/file-failure-record.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { FileFailureTrackingService } from '../../file-failure-tracking.service';
 
@@ -7,28 +8,33 @@ describe('FileFailureTrackingService', () => {
   let prisma: {
     $queryRaw: jest.Mock;
     $executeRaw: jest.Mock;
-    fileFailureRecord: {
-      findFirst: jest.Mock;
-      findMany: jest.Mock;
-      findUnique: jest.Mock;
-      updateMany: jest.Mock;
-    };
+  };
+  let fileFailureRecordRepository: {
+    isBlacklisted: jest.Mock;
+    getBlacklistedPaths: jest.Mock;
+    clearBlacklist: jest.Mock;
+    getFailureCount: jest.Mock;
   };
 
   beforeEach(async () => {
     prisma = {
       $queryRaw: jest.fn(),
       $executeRaw: jest.fn(),
-      fileFailureRecord: {
-        findFirst: jest.fn(),
-        findMany: jest.fn().mockResolvedValue([]),
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
-      },
+    };
+
+    fileFailureRecordRepository = {
+      isBlacklisted: jest.fn().mockResolvedValue(false),
+      getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
+      clearBlacklist: jest.fn().mockResolvedValue(undefined),
+      getFailureCount: jest.fn().mockResolvedValue(0),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FileFailureTrackingService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        FileFailureTrackingService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: FileFailureRecordRepository, useValue: fileFailureRecordRepository },
+      ],
     }).compile();
 
     service = module.get<FileFailureTrackingService>(FileFailureTrackingService);
@@ -126,6 +132,16 @@ describe('FileFailureTrackingService', () => {
 
       expect(result).toBe(false);
     });
+
+    it('should return false when autoBlacklisted is true but totalFailures below threshold', async () => {
+      prisma.$queryRaw.mockResolvedValue([
+        { id: 'record-1', totalFailures: 3, autoBlacklisted: true },
+      ]);
+
+      const result = await service.recordFailure(filePath, libraryId, 'error');
+
+      expect(result).toBe(false);
+    });
   });
 
   describe('isBlacklisted', () => {
@@ -133,30 +149,20 @@ describe('FileFailureTrackingService', () => {
     const libraryId = 'lib-1';
 
     it('should return false when no record exists', async () => {
-      prisma.fileFailureRecord.findFirst.mockResolvedValue(null);
+      fileFailureRecordRepository.isBlacklisted.mockResolvedValue(false);
 
       const result = await service.isBlacklisted(filePath, libraryId);
 
       expect(result).toBe(false);
-      expect(prisma.fileFailureRecord.findFirst).toHaveBeenCalledWith({
-        where: {
-          autoBlacklisted: true,
-          OR: [{ filePath, libraryId }],
-        },
-        select: { id: true },
-      });
-    });
-
-    it('should return false when record exists but not blacklisted', async () => {
-      prisma.fileFailureRecord.findFirst.mockResolvedValue(null);
-
-      const result = await service.isBlacklisted(filePath, libraryId);
-
-      expect(result).toBe(false);
+      expect(fileFailureRecordRepository.isBlacklisted).toHaveBeenCalledWith(
+        filePath,
+        libraryId,
+        undefined
+      );
     });
 
     it('should return true when blacklisted by path', async () => {
-      prisma.fileFailureRecord.findFirst.mockResolvedValue({ id: 'record-1' });
+      fileFailureRecordRepository.isBlacklisted.mockResolvedValue(true);
 
       const result = await service.isBlacklisted(filePath, libraryId);
 
@@ -164,33 +170,24 @@ describe('FileFailureTrackingService', () => {
     });
 
     it('should return true when blacklisted by contentFingerprint', async () => {
-      prisma.fileFailureRecord.findFirst.mockResolvedValue({ id: 'record-1' });
+      fileFailureRecordRepository.isBlacklisted.mockResolvedValue(true);
 
       const result = await service.isBlacklisted(filePath, libraryId, 'fingerprint-abc123');
 
       expect(result).toBe(true);
-      expect(prisma.fileFailureRecord.findFirst).toHaveBeenCalledWith({
-        where: {
-          autoBlacklisted: true,
-          OR: [{ filePath, libraryId }, { contentFingerprint: 'fingerprint-abc123' }],
-        },
-        select: { id: true },
-      });
+      expect(fileFailureRecordRepository.isBlacklisted).toHaveBeenCalledWith(
+        filePath,
+        libraryId,
+        'fingerprint-abc123'
+      );
     });
 
     it('should return false when contentFingerprint not provided and path not blacklisted', async () => {
-      prisma.fileFailureRecord.findFirst.mockResolvedValue(null);
+      fileFailureRecordRepository.isBlacklisted.mockResolvedValue(false);
 
       const result = await service.isBlacklisted(filePath, libraryId);
 
       expect(result).toBe(false);
-      expect(prisma.fileFailureRecord.findFirst).toHaveBeenCalledWith({
-        where: {
-          autoBlacklisted: true,
-          OR: [{ filePath, libraryId }],
-        },
-        select: { id: true },
-      });
     });
   });
 
@@ -198,18 +195,19 @@ describe('FileFailureTrackingService', () => {
     const libraryId = 'lib-1';
 
     it('should return empty set for empty input', async () => {
+      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(new Set());
+
       const result = await service.getBlacklistedPaths([], libraryId);
 
       expect(result).toEqual(new Set());
-      expect(prisma.fileFailureRecord.findMany).not.toHaveBeenCalled();
+      expect(fileFailureRecordRepository.getBlacklistedPaths).toHaveBeenCalledWith([], libraryId);
     });
 
     it('should return set of blacklisted paths', async () => {
       const paths = ['/path/a.mkv', '/path/b.mkv', '/path/c.mkv'];
-      prisma.fileFailureRecord.findMany.mockResolvedValue([
-        { filePath: '/path/a.mkv' },
-        { filePath: '/path/c.mkv' },
-      ]);
+      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(
+        new Set(['/path/a.mkv', '/path/c.mkv'])
+      );
 
       const result = await service.getBlacklistedPaths(paths, libraryId);
 
@@ -217,20 +215,16 @@ describe('FileFailureTrackingService', () => {
       expect(result.has('/path/b.mkv')).toBe(false);
     });
 
-    it('should filter by libraryId', async () => {
+    it('should delegate to repository with correct arguments', async () => {
       const paths = ['/path/a.mkv'];
-      prisma.fileFailureRecord.findMany.mockResolvedValue([{ filePath: '/path/a.mkv' }]);
+      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(new Set(['/path/a.mkv']));
 
       await service.getBlacklistedPaths(paths, libraryId);
 
-      expect(prisma.fileFailureRecord.findMany).toHaveBeenCalledWith({
-        where: {
-          libraryId,
-          autoBlacklisted: true,
-          filePath: { in: paths },
-        },
-        select: { filePath: true },
-      });
+      expect(fileFailureRecordRepository.getBlacklistedPaths).toHaveBeenCalledWith(
+        paths,
+        libraryId
+      );
     });
   });
 
@@ -238,20 +232,13 @@ describe('FileFailureTrackingService', () => {
     const filePath = '/mnt/user/media/Movies/Test.mkv';
     const libraryId = 'lib-1';
 
-    it('should reset totalFailures and autoBlacklisted', async () => {
-      prisma.fileFailureRecord.updateMany.mockResolvedValue({ count: 1 });
-
+    it('should delegate to repository', async () => {
       await service.clearBlacklist(filePath, libraryId);
 
-      expect(prisma.fileFailureRecord.updateMany).toHaveBeenCalledWith({
-        where: { filePath, libraryId },
-        data: { totalFailures: 0, autoBlacklisted: false },
-      });
+      expect(fileFailureRecordRepository.clearBlacklist).toHaveBeenCalledWith(filePath, libraryId);
     });
 
     it('should log the clear action', async () => {
-      prisma.fileFailureRecord.updateMany.mockResolvedValue({ count: 1 });
-
       await service.clearBlacklist(filePath, libraryId);
 
       expect((service as any).logger.log).toHaveBeenCalledWith(
@@ -265,19 +252,16 @@ describe('FileFailureTrackingService', () => {
     const libraryId = 'lib-1';
 
     it('should return 0 when no record exists', async () => {
-      prisma.fileFailureRecord.findUnique.mockResolvedValue(null);
+      fileFailureRecordRepository.getFailureCount.mockResolvedValue(0);
 
       const result = await service.getFailureCount(filePath, libraryId);
 
       expect(result).toBe(0);
-      expect(prisma.fileFailureRecord.findUnique).toHaveBeenCalledWith({
-        where: { filePath_libraryId: { filePath, libraryId } },
-        select: { totalFailures: true },
-      });
+      expect(fileFailureRecordRepository.getFailureCount).toHaveBeenCalledWith(filePath, libraryId);
     });
 
     it('should return correct count when record exists', async () => {
-      prisma.fileFailureRecord.findUnique.mockResolvedValue({ totalFailures: 3 });
+      fileFailureRecordRepository.getFailureCount.mockResolvedValue(3);
 
       const result = await service.getFailureCount(filePath, libraryId);
 

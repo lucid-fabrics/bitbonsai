@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { type Job, JobStage } from '@prisma/client';
+import { JobRepository } from '../../common/repositories/job.repository';
 import { SharedStorageVerifierService } from '../../nodes/services/shared-storage-verifier.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileTransferService } from './file-transfer.service';
@@ -13,12 +14,15 @@ import { QueueJobStateService } from './queue-job-state.service';
  *
  * Handles multi-node job delegation, rebalancing, and stuck transfer cleanup.
  */
+const MAX_TRANSFER_RETRIES = 3;
+
 @Injectable()
 export class QueueDelegationService {
   private readonly logger = new Logger(QueueDelegationService.name);
 
   constructor(
     private prisma: PrismaService,
+    private jobRepository: JobRepository,
     private jobRouterService: JobRouterService,
     private fileTransferService: FileTransferService,
     private sharedStorageVerifier: SharedStorageVerifierService,
@@ -36,7 +40,13 @@ export class QueueDelegationService {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-      const stuckJobs = await this.prisma.job.findMany({
+      const stuckJobs = await this.jobRepository.findManyWithInclude<{
+        id: string;
+        fileLabel: string;
+        transferRetryCount: number | null;
+        transferProgress: number | null;
+        transferStartedAt: Date | null;
+      }>({
         where: {
           stage: 'TRANSFERRING',
           transferStartedAt: { lt: oneHourAgo },
@@ -65,7 +75,7 @@ export class QueueDelegationService {
           (Date.now() - new Date(job.transferStartedAt || 0).getTime()) / (60 * 1000)
         );
 
-        if (retryCount >= 3) {
+        if (retryCount >= MAX_TRANSFER_RETRIES) {
           this.logger.error(
             `  ✗ Job ${job.fileLabel}: Transfer failed after ${retryCount} retries (stuck ${stuckDuration}min)`
           );
@@ -77,12 +87,12 @@ export class QueueDelegationService {
           );
         } else {
           this.logger.warn(
-            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/3 (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`
+            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/${MAX_TRANSFER_RETRIES} (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`
           );
 
           await this.jobCrudService.update(job.id, {
             stage: JobStage.DETECTED,
-            transferError: `Transfer timeout after ${stuckDuration} minutes - retry ${retryCount + 1}/3`,
+            transferError: `Transfer timeout after ${stuckDuration} minutes - retry ${retryCount + 1}/${MAX_TRANSFER_RETRIES}`,
             transferRetryCount: retryCount + 1,
             transferProgress: 0,
             transferStartedAt: null,
@@ -93,7 +103,7 @@ export class QueueDelegationService {
       this.logger.log(
         `✅ CRITICAL #27 FIX: Stuck transfer cleanup complete - processed ${stuckJobs.length} job(s)`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('CRITICAL #27 FIX: Failed to cleanup stuck transfers:', error);
     }
   }
@@ -102,6 +112,7 @@ export class QueueDelegationService {
    * Manually delegate a job to a specific node
    */
   async delegateJob(jobId: string, targetNodeId: string): Promise<Job> {
+    // PrismaService retained for atomic $transaction — not replaceable with repository
     return await this.prisma.$transaction(async (tx) => {
       const job = await tx.job.findUnique({
         where: { id: jobId },
@@ -275,7 +286,12 @@ export class QueueDelegationService {
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-    const stuckJobs = await this.prisma.job.findMany({
+    const stuckJobs = await this.jobRepository.findManyWithInclude<{
+      id: string;
+      fileLabel: string;
+      nodeId: string | null;
+      node: { name: string; hasSharedStorage: boolean } | null;
+    }>({
       where: {
         stage: 'TRANSFERRING',
         transferProgress: 0,
@@ -306,17 +322,14 @@ export class QueueDelegationService {
         `Resetting stuck transfer: ${job.fileLabel} (node: ${job.node?.name}, hasSharedStorage: ${job.node?.hasSharedStorage})`
       );
 
-      await this.prisma.job.update({
-        where: { id: job.id },
-        data: {
-          stage: 'QUEUED',
-          transferProgress: 0,
-          transferError: null,
-          transferStartedAt: null,
-          transferCompletedAt: null,
-          transferSpeedMBps: null,
-          transferRequired: !job.node?.hasSharedStorage,
-        },
+      await this.jobRepository.updateById(job.id, {
+        stage: 'QUEUED',
+        transferProgress: 0,
+        transferError: null,
+        transferStartedAt: null,
+        transferCompletedAt: null,
+        transferSpeedMBps: null,
+        transferRequired: !job.node?.hasSharedStorage,
       });
     }
 

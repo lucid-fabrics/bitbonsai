@@ -125,7 +125,7 @@ export class FileRelocatorService {
           this.logger.warn(`Jellyfin reported path doesn't exist: ${jellyfinResult.path}`);
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`Jellyfin lookup failed, falling back to filesystem: ${error}`);
     }
 

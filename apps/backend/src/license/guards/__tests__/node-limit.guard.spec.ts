@@ -1,13 +1,16 @@
 import { type ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { LicenseClientService } from '../../license-client.service';
 import { NodeLimitGuard } from '../node-limit.guard';
 
 describe('NodeLimitGuard', () => {
   let guard: NodeLimitGuard;
   let licenseClient: Record<string, jest.Mock>;
-  let prisma: Record<string, Record<string, jest.Mock>>;
+  let nodeRepo: Record<string, jest.Mock>;
+
+  // Shim so existing `prisma.node.count` references still work
+  let prisma: { node: Record<string, jest.Mock> };
 
   const mockExecutionContext = (): ExecutionContext => {
     return {
@@ -30,17 +33,22 @@ describe('NodeLimitGuard', () => {
       getCurrentLimits: jest.fn(),
     };
 
+    nodeRepo = {
+      count: jest.fn(),
+    };
+
     prisma = {
       node: {
-        count: jest.fn(),
+        count: nodeRepo.count,
       },
     };
+    nodeRepo.count = prisma.node.count;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NodeLimitGuard,
         { provide: LicenseClientService, useValue: licenseClient },
-        { provide: PrismaService, useValue: prisma },
+        { provide: NodeRepository, useValue: nodeRepo },
       ],
     }).compile();
 
@@ -108,7 +116,7 @@ describe('NodeLimitGuard', () => {
     try {
       await guard.canActivate(mockExecutionContext());
       fail('Should have thrown');
-    } catch (error) {
+    } catch (error: unknown) {
       expect((error as ForbiddenException).message).toContain('Upgrade your license');
     }
   });

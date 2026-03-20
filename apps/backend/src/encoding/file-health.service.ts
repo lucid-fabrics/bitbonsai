@@ -33,6 +33,8 @@ export interface FileHealthResult {
  */
 @Injectable()
 export class FileHealthService {
+  private static readonly MAX_HEALTH_SCORE = 100;
+
   private readonly logger = new Logger(FileHealthService.name);
 
   /**
@@ -94,7 +96,7 @@ export class FileHealthService {
       }
 
       return healthResult;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`File health analysis failed: ${errorMessage}`);
       return {
@@ -164,7 +166,7 @@ export class FileHealthService {
             };
             try {
               json = JSON.parse(stdout);
-            } catch (parseError) {
+            } catch (parseError: unknown) {
               reject(
                 new Error(
                   `Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
@@ -190,7 +192,7 @@ export class FileHealthService {
           }
 
           resolve(result);
-        } catch (error) {
+        } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           reject(new Error(`Failed to parse ffprobe output: ${errorMessage}`));
         }
@@ -231,7 +233,7 @@ export class FileHealthService {
   }): FileHealthResult {
     const issues: string[] = [];
     const warnings: string[] = [];
-    let score = 100;
+    let score = FileHealthService.MAX_HEALTH_SCORE;
 
     // Critical: Exit code non-zero
     if (probeResult.exitCode !== 0) {

@@ -128,7 +128,7 @@ describe('LibrariesController (E2E)', () => {
         .get('/api/v1/libraries')
         .expect(200)
         .expect((res) => {
-          expect(res.body[0].node).toBeDefined();
+          expect(res.body[0].node).not.toBeNull();
           expect(res.body[0].node.name).toBe(testNode.name);
         });
     });
@@ -180,7 +180,7 @@ describe('LibrariesController (E2E)', () => {
         .expect((res) => {
           expect(res.body.name).toBe(createDto.name);
           expect(res.body.path).toBe(createDto.path);
-          expect(res.body.id).toBeDefined();
+          expect(typeof res.body.id).toBe('string');
         });
     });
 
@@ -193,7 +193,7 @@ describe('LibrariesController (E2E)', () => {
         })
         .expect(400)
         .expect((res) => {
-          expect(res.body.message).toBeDefined();
+          expect(typeof res.body.message).toBe('string');
         });
     });
 

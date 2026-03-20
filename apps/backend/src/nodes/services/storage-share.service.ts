@@ -4,8 +4,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { StorageAutoDetectMountEvent } from '../../common/events';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { EncryptionService } from '../../core/services/encryption.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import { type IStorageShareRepository } from '../repositories/storage-share.repository.interface';
 import { StorageMountService } from './storage-mount.service';
 
@@ -70,7 +70,7 @@ export class StorageShareService {
   constructor(
     @Inject('IStorageShareRepository')
     private readonly repository: IStorageShareRepository,
-    private readonly prisma: PrismaService, // For accessing Node entity
+    private readonly nodeRepository: NodeRepository,
     private readonly encryptionService: EncryptionService,
     private readonly mountService: StorageMountService,
     private readonly httpService: HttpService
@@ -216,12 +216,9 @@ export class StorageShareService {
       // This enables zero-copy job execution via shared storage
       const share = await this.repository.findById(id);
       if (share) {
-        await this.prisma.node.update({
-          where: { id: share.nodeId },
-          data: {
-            hasSharedStorage: true,
-            networkLocation: 'LOCAL',
-          },
+        await this.nodeRepository.updateData(share.nodeId, {
+          hasSharedStorage: true,
+          networkLocation: 'LOCAL',
         });
         this.logger.log(
           `✅ Auto-set hasSharedStorage=true for node ${share.nodeId} after mounting ${share.name}`
@@ -317,9 +314,7 @@ export class StorageShareService {
     this.logger.log(`Auto-detecting storage shares for node ${nodeId}`);
 
     // Get current node
-    const currentNode = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-    });
+    const currentNode = await this.nodeRepository.findById(nodeId);
 
     if (!currentNode) {
       throw new NotFoundException(`Node ${nodeId} not found`);
@@ -364,7 +359,7 @@ export class StorageShareService {
         this.logger.debug(
           `Shared by main: ${JSON.stringify(sharedByMain.map((s: StorageShare) => ({ name: s.name, mountPoint: s.mountPoint, ownerNodeId: s.ownerNodeId })))}`
         );
-      } catch (error) {
+      } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         this.logger.error(`Error fetching shares from main node: ${errorMessage}`);
         this.logger.error(`Error details:`, error);
@@ -428,9 +423,7 @@ export class StorageShareService {
 
     try {
       // Get current node
-      const currentNode = await this.prisma.node.findUnique({
-        where: { id: nodeId },
-      });
+      const currentNode = await this.nodeRepository.findById(nodeId);
 
       if (!currentNode) {
         throw new NotFoundException(`Node ${nodeId} not found`);
@@ -568,7 +561,7 @@ export class StorageShareService {
             this.logger.debug(`Share ${mainShare.name} is already mounted`);
             result.mounted++; // Count as mounted since it's already working
           }
-        } catch (error) {
+        } catch (error: unknown) {
           const errorMsg = `Failed to auto-mount ${mainShare.name}: ${
             error instanceof Error ? error.message : 'unknown error'
           }`;
@@ -582,7 +575,7 @@ export class StorageShareService {
       );
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Auto-detect and mount failed: ${errorMsg}`);
       result.errors.push(errorMsg);
@@ -618,14 +611,7 @@ export class StorageShareService {
 
     try {
       // Get the main node
-      const mainNode = await this.prisma.node.findUnique({
-        where: { id: mainNodeId },
-        include: {
-          libraries: {
-            where: { enabled: true },
-          },
-        },
-      });
+      const mainNode = await this.nodeRepository.findById(mainNodeId);
 
       if (!mainNode) {
         throw new NotFoundException(`Node ${mainNodeId} not found`);
@@ -650,7 +636,7 @@ export class StorageShareService {
 
       // Return empty array instead of creating broken shares
       return [];
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Auto-create shares failed:`,
         error instanceof Error ? error.message : 'unknown error'
@@ -671,7 +657,7 @@ export class StorageShareService {
       if (result.errors.length > 0) {
         this.logger.warn(`Mount errors: ${result.errors.join(', ')}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Auto-detect mount failed for node ${event.nodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );

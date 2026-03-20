@@ -4,7 +4,8 @@ import { Interval } from '@nestjs/schedule';
 import { JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import type { SystemSettings } from '../common/interfaces/system-settings.interface';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobRepository } from '../common/repositories/job.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { testIntegrationConnection } from './test-connection.util';
 
 /**
@@ -37,7 +38,8 @@ export class PlexIntegrationService {
   private wasPlaybackActive = false;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly settingsRepository: SettingsRepository,
+    private readonly jobRepository: JobRepository,
     private readonly httpService: HttpService
   ) {}
 
@@ -64,7 +66,7 @@ export class PlexIntegrationService {
       const activeSessions = sessions.filter((s: PlexSession) => s.Player?.state === 'playing');
 
       return activeSessions.length > 0;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`Plex session check failed: ${error}`);
       return false;
     }
@@ -129,7 +131,7 @@ export class PlexIntegrationService {
       this.logger.log(
         `📺 Plex library refresh triggered${sectionId ? ` (section ${sectionId})` : ''}`
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to refresh Plex library: ${error}`);
     }
   }
@@ -181,7 +183,7 @@ export class PlexIntegrationService {
         }
         this.wasPlaybackActive = false;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`Playback check failed: ${error}`);
     }
   }
@@ -190,17 +192,10 @@ export class PlexIntegrationService {
    * Pause all encoding jobs (Plex playback active)
    */
   private async pauseAllEncoding(): Promise<number> {
-    const result = await this.prisma.job.updateMany({
-      where: {
-        stage: {
-          in: [JobStage.QUEUED, JobStage.ENCODING],
-        },
-      },
-      data: {
-        stage: JobStage.PAUSED,
-        error: 'Paused: Plex playback detected',
-      },
-    });
+    const result = await this.jobRepository.updateManyWhere(
+      { stage: { in: [JobStage.QUEUED, JobStage.ENCODING] } },
+      { stage: JobStage.PAUSED, error: 'Paused: Plex playback detected' }
+    );
 
     return result.count;
   }
@@ -209,16 +204,10 @@ export class PlexIntegrationService {
    * Resume encoding jobs paused due to Plex playback
    */
   private async resumeAllEncoding(): Promise<number> {
-    const result = await this.prisma.job.updateMany({
-      where: {
-        stage: JobStage.PAUSED,
-        error: { contains: 'Plex playback detected' },
-      },
-      data: {
-        stage: JobStage.QUEUED,
-        error: null,
-      },
-    });
+    const result = await this.jobRepository.updateManyWhere(
+      { stage: JobStage.PAUSED, error: { contains: 'Plex playback detected' } },
+      { stage: JobStage.QUEUED, error: null }
+    );
 
     return result.count;
   }
@@ -265,7 +254,7 @@ export class PlexIntegrationService {
     refreshOnComplete: boolean;
   } | null> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
       const s = settings as SystemSettings | null;
 
       if (!s?.plexUrl || !s?.plexToken) {

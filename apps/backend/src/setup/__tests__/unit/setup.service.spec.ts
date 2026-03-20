@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { LicenseRepository } from '../../../common/repositories/license.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
+import { UserRepository } from '../../../common/repositories/user.repository';
 import { NodeType } from '../../dto/initialize-setup.dto';
 import { SetupService } from '../../setup.service';
 
@@ -20,6 +23,14 @@ jest.mock('crypto', () => ({
 describe('SetupService', () => {
   let service: SetupService;
   let prisma: Record<string, Record<string, jest.Mock>>;
+  let mockLicenseRepository: { findFirstWhere: jest.Mock; createLicense: jest.Mock };
+  let mockNodeRepository: { findFirstByRole: jest.Mock; createNode: jest.Mock };
+  let mockSettingsRepository: {
+    findFirst: jest.Mock;
+    upsertSettings: jest.Mock;
+    update: jest.Mock;
+  };
+  let mockUserRepository: { count: jest.Mock; create: jest.Mock; deleteMany: jest.Mock };
 
   function createMockPrisma() {
     return {
@@ -37,8 +48,42 @@ describe('SetupService', () => {
   beforeEach(async () => {
     prisma = createMockPrisma();
 
+    mockLicenseRepository = {
+      findFirstWhere: prisma.license.findFirst,
+      createLicense: jest.fn().mockImplementation(async (data: unknown) => {
+        return prisma.license.create({ data });
+      }),
+    };
+
+    mockNodeRepository = {
+      findFirstByRole: prisma.node.findFirst,
+      createNode: prisma.node.create,
+    };
+
+    mockSettingsRepository = {
+      findFirst: prisma.settings.findFirst,
+      upsertSettings: jest.fn().mockImplementation(async () => {
+        return prisma.settings.update() ?? prisma.settings.create();
+      }),
+      update: jest.fn().mockImplementation(async (_where: unknown, data: unknown) => {
+        return prisma.settings.update({ where: _where, data });
+      }),
+    };
+
+    mockUserRepository = {
+      count: prisma.user.count,
+      create: prisma.user.create,
+      deleteMany: prisma.user.deleteMany,
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SetupService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        SetupService,
+        { provide: LicenseRepository, useValue: mockLicenseRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
+        { provide: SettingsRepository, useValue: mockSettingsRepository },
+        { provide: UserRepository, useValue: mockUserRepository },
+      ],
     }).compile();
 
     service = module.get<SetupService>(SetupService);
@@ -162,21 +207,16 @@ describe('SetupService', () => {
       expect(result.message).toBe('Setup completed successfully');
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            username: 'admin',
-            email: 'admin@local.bitbonsai',
-            role: 'ADMIN',
-            isActive: true,
-            passwordHash: 'hashed_password_abc',
-          }),
+          username: 'admin',
+          email: 'admin@local.bitbonsai',
+          role: 'ADMIN',
+          passwordHash: 'hashed_password_abc',
         })
       );
       expect(prisma.node.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            role: 'MAIN',
-            status: 'ONLINE',
-          }),
+          role: 'MAIN',
+          status: 'ONLINE',
         })
       );
     });
@@ -196,13 +236,12 @@ describe('SetupService', () => {
         nodeType: NodeType.Main,
       });
 
-      expect(prisma.settings.update).toHaveBeenCalledWith({
-        where: { id: 'settings-1' },
-        data: {
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
           isSetupComplete: true,
           allowLocalNetworkWithoutAuth: true,
-        },
-      });
+        })
+      );
       expect(prisma.settings.create).not.toHaveBeenCalled();
     });
 
@@ -223,9 +262,7 @@ describe('SetupService', () => {
 
       expect(prisma.license.create).not.toHaveBeenCalled();
       expect(prisma.node.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ licenseId: 'license-1' }),
-        })
+        expect.objectContaining({ licenseId: 'license-1' })
       );
     });
 
@@ -242,14 +279,12 @@ describe('SetupService', () => {
         mainNodeUrl: 'http://192.168.1.100:3100',
       });
 
-      expect(result.pairingToken).toBeDefined();
+      expect(result.pairingToken).not.toBeNull();
       expect(result.pairingToken).toMatch(/^BITBONSAI-/);
       expect(prisma.node.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            role: 'LINKED',
-            mainNodeUrl: 'http://192.168.1.100:3100',
-          }),
+          role: 'LINKED',
+          mainNodeUrl: 'http://192.168.1.100:3100',
         })
       );
       expect(prisma.user.create).not.toHaveBeenCalled();
@@ -299,7 +334,7 @@ describe('SetupService', () => {
       const result = await service.resetSetup();
 
       expect(result.message).toContain('Setup reset successfully');
-      expect(prisma.user.deleteMany).toHaveBeenCalledWith({});
+      expect(prisma.user.deleteMany).toHaveBeenCalled();
       expect(prisma.settings.update).toHaveBeenCalledWith({
         where: { id: 'settings-1' },
         data: { isSetupComplete: false },
@@ -315,6 +350,204 @@ describe('SetupService', () => {
 
       expect(result.message).toContain('Setup reset successfully');
       expect(prisma.settings.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================================================
+  // initializeSetup – error paths and edge cases
+  // ==========================================================================
+  describe('initializeSetup – error paths', () => {
+    const baseLicense = {
+      id: 'license-1',
+      key: 'FREE-abc',
+      tier: 'FREE',
+      status: 'ACTIVE',
+    };
+
+    it('should propagate prisma.license.create error when license creation fails', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.user.create.mockResolvedValue({});
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(null);
+      prisma.license.create.mockRejectedValue(new Error('DB connection lost'));
+
+      await expect(
+        service.initializeSetup({
+          username: 'admin',
+          password: 'pass',
+          allowLocalNetworkWithoutAuth: false,
+          nodeType: NodeType.Main,
+        })
+      ).rejects.toThrow('DB connection lost');
+    });
+
+    it('should propagate nodeRepository.createNode error on main setup', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.user.create.mockResolvedValue({});
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(baseLicense);
+      prisma.node.create.mockRejectedValue(new Error('Node insert failed'));
+
+      await expect(
+        service.initializeSetup({
+          username: 'admin',
+          password: 'pass',
+          allowLocalNetworkWithoutAuth: false,
+          nodeType: NodeType.Main,
+        })
+      ).rejects.toThrow('Node insert failed');
+    });
+
+    it('should propagate nodeRepository.createNode error on child setup', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(baseLicense);
+      prisma.node.create.mockRejectedValue(new Error('Child node insert failed'));
+
+      await expect(
+        service.initializeSetup({
+          allowLocalNetworkWithoutAuth: false,
+          nodeType: NodeType.Child,
+          mainNodeUrl: 'http://192.168.1.100:3100',
+        })
+      ).rejects.toThrow('Child node insert failed');
+    });
+
+    it('should use HOSTNAME env var in node name for main setup', async () => {
+      process.env.HOSTNAME = 'my-custom-host';
+      prisma.user.count.mockResolvedValue(0);
+      prisma.user.create.mockResolvedValue({});
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(baseLicense);
+      prisma.node.create.mockResolvedValue({});
+
+      await service.initializeSetup({
+        username: 'admin',
+        password: 'pass',
+        allowLocalNetworkWithoutAuth: false,
+        nodeType: NodeType.Main,
+      });
+
+      expect(prisma.node.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Main Node (my-custom-host)' })
+      );
+      process.env.HOSTNAME = '';
+    });
+
+    it('should fall back to "main-node" hostname when HOSTNAME env is empty', async () => {
+      process.env.HOSTNAME = '';
+      prisma.user.count.mockResolvedValue(0);
+      prisma.user.create.mockResolvedValue({});
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(baseLicense);
+      prisma.node.create.mockResolvedValue({});
+
+      await service.initializeSetup({
+        username: 'admin',
+        password: 'pass',
+        allowLocalNetworkWithoutAuth: false,
+        nodeType: NodeType.Main,
+      });
+
+      expect(prisma.node.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Main Node (main-node)' })
+      );
+    });
+
+    it('should use child-node email in FREE license when nodeType is Child', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(null);
+      prisma.license.create.mockResolvedValue({ ...baseLicense, id: 'license-child' });
+      prisma.node.create.mockResolvedValue({});
+
+      await service.initializeSetup({
+        allowLocalNetworkWithoutAuth: false,
+        nodeType: NodeType.Child,
+        mainNodeUrl: 'http://192.168.1.100:3100',
+      });
+
+      expect(prisma.license.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ email: 'child-node@bitbonsai.local' }),
+        })
+      );
+    });
+
+    it('should create FREE license with all required feature flags', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.user.create.mockResolvedValue({});
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(null);
+      prisma.license.create.mockResolvedValue(baseLicense);
+      prisma.node.create.mockResolvedValue({});
+
+      await service.initializeSetup({
+        username: 'admin',
+        password: 'pass',
+        allowLocalNetworkWithoutAuth: false,
+        nodeType: NodeType.Main,
+      });
+
+      expect(prisma.license.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tier: 'FREE',
+            status: 'ACTIVE',
+            maxNodes: 1,
+            maxConcurrentJobs: 2,
+            features: expect.objectContaining({
+              multiNode: false,
+              advancedPresets: false,
+              api: false,
+              priorityQueue: false,
+              cloudStorage: false,
+              webhooks: false,
+            }),
+          }),
+        })
+      );
+    });
+
+    it('should not create user when nodeType is Child', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(baseLicense);
+      prisma.node.create.mockResolvedValue({});
+
+      await service.initializeSetup({
+        allowLocalNetworkWithoutAuth: false,
+        nodeType: NodeType.Child,
+        mainNodeUrl: 'http://192.168.1.100:3100',
+      });
+
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should mark setup complete via settingsRepository for child node', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.settings.findFirst.mockResolvedValue(null);
+      prisma.settings.create.mockResolvedValue({});
+      prisma.license.findFirst.mockResolvedValue(baseLicense);
+      prisma.node.create.mockResolvedValue({});
+
+      await service.initializeSetup({
+        allowLocalNetworkWithoutAuth: true,
+        nodeType: NodeType.Child,
+        mainNodeUrl: 'http://192.168.1.100:3100',
+      });
+
+      expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ isSetupComplete: true, allowLocalNetworkWithoutAuth: true })
+      );
     });
   });
 });

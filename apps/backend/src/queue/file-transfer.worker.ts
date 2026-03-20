@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { JobStage } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { type Job, JobStage, type Library, type Node, Prisma } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
 import { FileTransferService } from './services/file-transfer.service';
+
+type JobWithTransferIncludes = Job & {
+  library: Library & { node: Node | null };
+  node: Node | null;
+};
 
 /**
  * CRITICAL #5 FIX: Dedicated worker for file transfers
@@ -25,7 +30,7 @@ export class FileTransferWorker {
   private circuitResetTimeout?: NodeJS.Timeout;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
     private readonly fileTransferService: FileTransferService
   ) {}
 
@@ -42,7 +47,7 @@ export class FileTransferWorker {
       }
 
       // Find jobs needing transfer
-      const jobs = await this.prisma.job.findMany({
+      const jobs = await this.jobRepository.findManyWithInclude<JobWithTransferIncludes>({
         where: {
           transferRequired: true,
           stage: JobStage.DETECTED,
@@ -57,7 +62,7 @@ export class FileTransferWorker {
           node: true,
         },
         take: this.MAX_CONCURRENT_TRANSFERS,
-      });
+      } satisfies Prisma.JobFindManyArgs);
 
       if (jobs.length === 0) {
         return;
@@ -118,7 +123,7 @@ export class FileTransferWorker {
             this.activeTransfers.delete(job.id);
           });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error processing transfers:', error);
     }
   }

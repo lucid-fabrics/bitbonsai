@@ -1,7 +1,7 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { StorageAutoDetectMountEvent } from '../../../../common/events';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { NFSAutoExportService } from '../../nfs-auto-export.service';
 import { StorageInitService } from '../../storage-init.service';
 
@@ -15,34 +15,21 @@ import { exec } from 'child_process';
 
 const mockExec = exec as unknown as jest.Mock;
 
-function createMockPrisma() {
-  return {
-    node: {
-      findFirst: jest.fn(),
-      update: jest.fn(),
-      count: jest.fn(),
-    },
-    settings: {
-      findFirst: jest.fn(),
-    },
-  };
-}
-
 describe('StorageInitService', () => {
   let service: StorageInitService;
-  let prisma: ReturnType<typeof createMockPrisma>;
+  let nodeRepository: { findFirstNode: jest.Mock; updateData: jest.Mock };
   let nfsAutoExport: { autoExportDockerVolumes: jest.Mock };
   let eventEmitter: { emit: jest.Mock };
 
   beforeEach(async () => {
-    prisma = createMockPrisma();
+    nodeRepository = { findFirstNode: jest.fn(), updateData: jest.fn() };
     nfsAutoExport = { autoExportDockerVolumes: jest.fn().mockResolvedValue(undefined) };
     eventEmitter = { emit: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StorageInitService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: NodeRepository, useValue: nodeRepository },
         { provide: NFSAutoExportService, useValue: nfsAutoExport },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
@@ -90,7 +77,7 @@ describe('StorageInitService', () => {
     const callInit = (svc: StorageInitService) => (svc as any).initializeStorage();
 
     it('should skip when no node found', async () => {
-      prisma.node.findFirst.mockResolvedValue(null);
+      nodeRepository.findFirstNode.mockResolvedValue(null);
 
       await callInit(service);
 
@@ -98,7 +85,7 @@ describe('StorageInitService', () => {
     });
 
     it('should auto-export volumes for MAIN node', async () => {
-      prisma.node.findFirst.mockResolvedValue({ id: 'node-1', role: 'MAIN' });
+      nodeRepository.findFirstNode.mockResolvedValue({ id: 'node-1', role: 'MAIN' });
 
       await callInit(service);
 
@@ -106,7 +93,7 @@ describe('StorageInitService', () => {
     });
 
     it('should verify NFS mounts for LINKED node with mounts', async () => {
-      prisma.node.findFirst.mockResolvedValue({
+      nodeRepository.findFirstNode.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
         mainNodeUrl: 'http://192.168.1.100:3100',
@@ -125,18 +112,17 @@ describe('StorageInitService', () => {
 
       await callInit(service);
 
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(nodeRepository.updateData).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({
-          data: expect.objectContaining({
-            hasSharedStorage: true,
-            networkLocation: 'LOCAL',
-          }),
+          hasSharedStorage: true,
+          networkLocation: 'LOCAL',
         })
       );
     });
 
     it('should set hasSharedStorage false for LINKED node without NFS mounts', async () => {
-      prisma.node.findFirst.mockResolvedValue({
+      nodeRepository.findFirstNode.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
         mainNodeUrl: null,
@@ -152,17 +138,16 @@ describe('StorageInitService', () => {
 
       await callInit(service);
 
-      expect(prisma.node.update).toHaveBeenCalledWith(
+      expect(nodeRepository.updateData).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({
-          data: expect.objectContaining({
-            hasSharedStorage: false,
-          }),
+          hasSharedStorage: false,
         })
       );
     });
 
     it('should emit auto-detect event for LINKED node with mainNodeUrl', async () => {
-      prisma.node.findFirst.mockResolvedValue({
+      nodeRepository.findFirstNode.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
         mainNodeUrl: 'http://192.168.1.100:3100',
@@ -185,13 +170,13 @@ describe('StorageInitService', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      prisma.node.findFirst.mockRejectedValue(new Error('DB error'));
+      nodeRepository.findFirstNode.mockRejectedValue(new Error('DB error'));
 
       await expect(callInit(service)).resolves.not.toThrow();
     });
 
     it('should emit event for LINKED node needing auto-detect', async () => {
-      prisma.node.findFirst.mockResolvedValue({
+      nodeRepository.findFirstNode.mockResolvedValue({
         id: 'node-2',
         role: 'LINKED',
         mainNodeUrl: 'http://192.168.1.100:3100',

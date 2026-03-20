@@ -8,7 +8,7 @@ import {
   LibraryWatcherEnableEvent,
   LibraryWatcherStopEvent,
 } from '../common/events';
-import { PrismaService } from '../prisma/prisma.service';
+import { LibraryRepository } from '../common/repositories/library.repository';
 
 interface WatcherInstance {
   watcher: FSWatcher;
@@ -55,7 +55,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
   private readonly debounceMs = 5000; // 5 seconds
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly libraryRepository: LibraryRepository,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -87,14 +87,9 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    */
   private async initializeWatchers(): Promise<void> {
     try {
-      const libraries = await this.prisma.library.findMany({
-        where: {
-          enabled: true,
-          watchEnabled: true,
-        },
-        include: {
-          node: true,
-        },
+      const libraries = await this.libraryRepository.findAllLibraries({
+        enabled: true,
+        watchEnabled: true,
       });
 
       for (const library of libraries) {
@@ -102,7 +97,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.logger.log(`Started ${libraries.length} file watcher(s)`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to initialize watchers', error);
     }
   }
@@ -139,7 +134,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
 
       this.watchers.set(libraryId, { watcher, libraryId, path });
       this.logger.log(`Started watcher for library ${libraryId} at ${path}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to start watcher for library ${libraryId}`, error);
       throw error;
     }
@@ -159,7 +154,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
       await instance.watcher.close();
       this.watchers.delete(libraryId);
       this.logger.log(`Stopped watcher for library ${libraryId}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to stop watcher for library ${libraryId}`, error);
       throw error;
     }
@@ -220,7 +215,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
       });
 
       this.logger.log(`Job creation event emitted for ${filePath}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to create job for file ${filePath}`, error);
     }
   }
@@ -229,9 +224,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    * Enable watcher for a library
    */
   async enableWatcher(libraryId: string): Promise<void> {
-    const library = await this.prisma.library.findUnique({
-      where: { id: libraryId },
-    });
+    const library = await this.libraryRepository.findById(libraryId);
 
     if (!library) {
       throw new Error(`Library ${libraryId} not found`);
@@ -242,10 +235,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Update database
-    await this.prisma.library.update({
-      where: { id: libraryId },
-      data: { watchEnabled: true },
-    });
+    await this.libraryRepository.updateLibrary({ id: libraryId }, { watchEnabled: true });
 
     // Start watcher
     await this.startWatcher(libraryId, library.path);
@@ -256,10 +246,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    */
   async disableWatcher(libraryId: string): Promise<void> {
     // Update database
-    await this.prisma.library.update({
-      where: { id: libraryId },
-      data: { watchEnabled: false },
-    });
+    await this.libraryRepository.updateLibrary({ id: libraryId }, { watchEnabled: false });
 
     // Stop watcher
     await this.stopWatcher(libraryId);

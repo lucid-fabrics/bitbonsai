@@ -213,8 +213,8 @@ describe('QueueController (E2E)', () => {
         .get('/api/v1/queue')
         .expect(200)
         .expect((res) => {
-          expect(res.body[0].library).toBeDefined();
-          expect(res.body[0].policy).toBeDefined();
+          expect(res.body[0].library).not.toBeNull();
+          expect(res.body[0].policy).not.toBeNull();
           expect(res.body[0].library.name).toBe(testLibrary.name);
           expect(res.body[0].policy.name).toBe(testPolicy.name);
         });
@@ -281,7 +281,7 @@ describe('QueueController (E2E)', () => {
           expect(res.body.stage).toBe('COMPLETED');
           expect(res.body.originalSize).toBe(completeDto.originalSize);
           expect(res.body.finalSize).toBe(completeDto.finalSize);
-          expect(res.body.completedAt).toBeDefined();
+          expect(res.body.completedAt).not.toBeNull();
         });
     });
 

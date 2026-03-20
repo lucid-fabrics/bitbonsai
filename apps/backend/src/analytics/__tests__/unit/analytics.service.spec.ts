@@ -1,17 +1,22 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { JobRepository } from '../../../common/repositories/job.repository';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AnalyticsService } from '../../analytics.service';
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
 
+  const mockJobRepository = {
+    countWhere: jest.fn(),
+    aggregateSumWhere: jest.fn(),
+    aggregateWithAvgCount: jest.fn(),
+    aggregateCount: jest.fn(),
+    groupByTargetCodecAvg: jest.fn(),
+    groupByNodeIdCount: jest.fn(),
+    findManySelect: jest.fn(),
+  };
+
   const mockPrismaService = {
-    job: {
-      count: jest.fn(),
-      aggregate: jest.fn(),
-      findMany: jest.fn(),
-      groupBy: jest.fn(),
-    },
     $queryRaw: jest.fn(),
   };
 
@@ -21,6 +26,10 @@ describe('AnalyticsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalyticsService,
+        {
+          provide: JobRepository,
+          useValue: mockJobRepository,
+        },
         {
           provide: PrismaService,
           useValue: mockPrismaService,
@@ -62,7 +71,7 @@ describe('AnalyticsService', () => {
 
   describe('getCostSavings', () => {
     it('should calculate cost savings for AWS S3', async () => {
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      mockJobRepository.aggregateSumWhere.mockResolvedValue({
         _sum: { savedBytes: BigInt(1024 * 1024 * 1024 * 100) }, // 100GB
       });
 
@@ -76,7 +85,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should use default cost if provider not found', async () => {
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      mockJobRepository.aggregateSumWhere.mockResolvedValue({
         _sum: { savedBytes: BigInt(1024 * 1024 * 1024 * 100) },
       });
 
@@ -87,7 +96,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should handle zero saved bytes', async () => {
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      mockJobRepository.aggregateSumWhere.mockResolvedValue({
         _sum: { savedBytes: BigInt(0) },
       });
 
@@ -99,7 +108,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should handle null saved bytes', async () => {
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      mockJobRepository.aggregateSumWhere.mockResolvedValue({
         _sum: { savedBytes: null },
       });
 
@@ -111,19 +120,22 @@ describe('AnalyticsService', () => {
 
   describe('getSummary', () => {
     beforeEach(() => {
-      // Default mocks for summary
-      mockPrismaService.job.count.mockResolvedValue(100);
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      mockJobRepository.countWhere.mockResolvedValue(100);
+      mockJobRepository.aggregateWithAvgCount.mockResolvedValue({
         _sum: { savedBytes: BigInt(1024 * 1024 * 1024 * 500) }, // 500GB
         _avg: { savedPercent: 45 },
         _count: { id: 100 },
       });
+      mockJobRepository.aggregateCount.mockResolvedValue({
+        _count: { id: 100 },
+      });
       mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 3600000 }]); // 1 hour avg
-      mockPrismaService.job.groupBy.mockResolvedValue([
+      mockJobRepository.groupByTargetCodecAvg.mockResolvedValue([
         { targetCodec: 'HEVC', _avg: { savedPercent: 50 }, _count: 80 },
         { targetCodec: 'AV1', _avg: { savedPercent: 60 }, _count: 20 },
       ]);
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+      mockJobRepository.findManySelect.mockResolvedValue([]);
     });
 
     it('should return analytics summary', async () => {
@@ -136,7 +148,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should calculate success rate correctly', async () => {
-      mockPrismaService.job.count
+      mockJobRepository.countWhere
         .mockResolvedValueOnce(90) // Completed
         .mockResolvedValueOnce(10); // Failed
 
@@ -146,7 +158,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should handle 100% success rate', async () => {
-      mockPrismaService.job.count
+      mockJobRepository.countWhere
         .mockResolvedValueOnce(100) // Completed
         .mockResolvedValueOnce(0); // Failed
 
@@ -156,13 +168,14 @@ describe('AnalyticsService', () => {
     });
 
     it('should handle zero jobs', async () => {
-      mockPrismaService.job.count.mockResolvedValue(0);
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      mockJobRepository.countWhere.mockResolvedValue(0);
+      mockJobRepository.aggregateWithAvgCount.mockResolvedValue({
         _sum: { savedBytes: null },
         _avg: { savedPercent: null },
         _count: { id: 0 },
       });
-      mockPrismaService.job.groupBy.mockResolvedValue([]);
+      mockJobRepository.aggregateCount.mockResolvedValue({ _count: { id: 0 } });
+      mockJobRepository.groupByTargetCodecAvg.mockResolvedValue([]);
 
       const result = await service.getSummary();
 
@@ -174,7 +187,7 @@ describe('AnalyticsService', () => {
 
   describe('getEncodingSpeedTrends', () => {
     it('should return empty array for no jobs', async () => {
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.getEncodingSpeedTrends('30d');
 
@@ -197,7 +210,7 @@ describe('AnalyticsService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
 
       const result = await service.getEncodingSpeedTrends('30d');
 
@@ -217,7 +230,7 @@ describe('AnalyticsService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
 
       const result = await service.getEncodingSpeedTrends('30d');
 
@@ -227,7 +240,7 @@ describe('AnalyticsService', () => {
 
   describe('getCodecPerformance', () => {
     it('should return empty array for no jobs', async () => {
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.getCodecPerformance('30d');
 
@@ -259,7 +272,7 @@ describe('AnalyticsService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
 
       const result = await service.getCodecPerformance('30d');
 
@@ -268,11 +281,11 @@ describe('AnalyticsService', () => {
       const hevcResult = result.find((r) => r.codec === 'HEVC');
       const av1Result = result.find((r) => r.codec === 'AV1');
 
-      expect(hevcResult).toBeDefined();
+      expect(hevcResult).not.toBeUndefined();
       expect(hevcResult?.jobCount).toBe(2);
       expect(hevcResult?.avgSavedPercent).toBe(45); // (40 + 50) / 2
 
-      expect(av1Result).toBeDefined();
+      expect(av1Result).not.toBeUndefined();
       expect(av1Result?.jobCount).toBe(1);
       expect(av1Result?.avgSavedPercent).toBe(60);
     });
@@ -280,8 +293,8 @@ describe('AnalyticsService', () => {
 
   describe('getNodePerformance', () => {
     it('should return empty array for no jobs', async () => {
-      mockPrismaService.job.findMany.mockResolvedValue([]);
-      mockPrismaService.job.groupBy.mockResolvedValue([]);
+      mockJobRepository.findManySelect.mockResolvedValue([]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
 
       const result = await service.getNodePerformance('30d');
 
@@ -300,8 +313,8 @@ describe('AnalyticsService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
-      mockPrismaService.job.groupBy.mockResolvedValue([]); // No failed jobs
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]); // No failed jobs
 
       const result = await service.getNodePerformance('30d');
 
@@ -324,8 +337,8 @@ describe('AnalyticsService', () => {
         },
       ];
 
-      mockPrismaService.job.findMany.mockResolvedValue(mockJobs);
-      mockPrismaService.job.groupBy.mockResolvedValue([
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([
         { nodeId: 'node-1', _count: 4 }, // 4 failed jobs
       ]);
 
@@ -337,68 +350,362 @@ describe('AnalyticsService', () => {
   });
 
   describe('time period filtering', () => {
-    it('should accept 24h period', async () => {
-      mockPrismaService.job.count.mockResolvedValue(10);
-      mockPrismaService.job.aggregate.mockResolvedValue({
+    const setupSummaryMocks = () => {
+      mockJobRepository.countWhere.mockResolvedValue(10);
+      mockJobRepository.aggregateWithAvgCount.mockResolvedValue({
         _sum: { savedBytes: BigInt(0) },
         _avg: { savedPercent: 0 },
         _count: { id: 0 },
       });
+      mockJobRepository.aggregateCount.mockResolvedValue({ _count: { id: 0 } });
       mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 0 }]);
-      mockPrismaService.job.groupBy.mockResolvedValue([]);
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.groupByTargetCodecAvg.mockResolvedValue([]);
+      mockJobRepository.findManySelect.mockResolvedValue([]);
+    };
 
+    it('should accept 24h period', async () => {
+      setupSummaryMocks();
       const result = await service.getSummary('24h');
-
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
 
     it('should accept 7d period', async () => {
-      mockPrismaService.job.count.mockResolvedValue(10);
-      mockPrismaService.job.aggregate.mockResolvedValue({
-        _sum: { savedBytes: BigInt(0) },
-        _avg: { savedPercent: 0 },
-        _count: { id: 0 },
-      });
-      mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 0 }]);
-      mockPrismaService.job.groupBy.mockResolvedValue([]);
-      mockPrismaService.job.findMany.mockResolvedValue([]);
-
+      setupSummaryMocks();
       const result = await service.getSummary('7d');
-
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
 
     it('should accept 90d period', async () => {
-      mockPrismaService.job.count.mockResolvedValue(10);
-      mockPrismaService.job.aggregate.mockResolvedValue({
-        _sum: { savedBytes: BigInt(0) },
-        _avg: { savedPercent: 0 },
-        _count: { id: 0 },
-      });
-      mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 0 }]);
-      mockPrismaService.job.groupBy.mockResolvedValue([]);
-      mockPrismaService.job.findMany.mockResolvedValue([]);
-
+      setupSummaryMocks();
       const result = await service.getSummary('90d');
-
-      expect(result).toBeDefined();
+      expect(result.totalJobsProcessed).toBe(10);
     });
 
     it('should accept all period', async () => {
-      mockPrismaService.job.count.mockResolvedValue(10);
-      mockPrismaService.job.aggregate.mockResolvedValue({
+      setupSummaryMocks();
+      const result = await service.getSummary('all');
+      expect(result.totalJobsProcessed).toBe(10);
+    });
+  });
+
+  describe('getSpaceSavingsOverTime', () => {
+    it('should return empty array when no completed jobs', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([]);
+
+      const result = await service.getSpaceSavingsOverTime('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should map raw SQL results to data points', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        {
+          date_group: new Date('2024-01-15T00:00:00Z'),
+          total_saved_bytes: BigInt(1024 * 1024 * 1024),
+          avg_saved_percent: 42.5,
+          job_count: 5,
+        },
+      ]);
+
+      const result = await service.getSpaceSavingsOverTime('30d');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].savedBytes).toBe(1024 * 1024 * 1024);
+      expect(result[0].savedPercent).toBe(42.5);
+      expect(result[0].jobCount).toBe(5);
+      expect(result[0].date).toBe('2024-01-15');
+    });
+
+    it('should use hour grouping for 24h period', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([]);
+
+      await service.getSpaceSavingsOverTime('24h');
+
+      // $queryRaw is called — just verify it resolves without error
+      expect(mockPrismaService.$queryRaw).toHaveBeenCalled();
+    });
+
+    it('should use week grouping for 90d period', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([]);
+
+      await service.getSpaceSavingsOverTime('90d');
+
+      expect(mockPrismaService.$queryRaw).toHaveBeenCalled();
+    });
+
+    it('should use month grouping for all period', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([]);
+
+      await service.getSpaceSavingsOverTime('all');
+
+      expect(mockPrismaService.$queryRaw).toHaveBeenCalled();
+    });
+  });
+
+  describe('getEncodingSpeedTrends - additional branches', () => {
+    it('should skip jobs with zero or negative duration', async () => {
+      const mockJobs = [
+        {
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+          startedAt: new Date('2024-01-15T10:00:00Z'), // Same time = 0 duration
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          targetCodec: 'HEVC',
+        },
+      ];
+
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+
+      const result = await service.getEncodingSpeedTrends('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should skip jobs with null startedAt', async () => {
+      const mockJobs = [
+        {
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+          startedAt: null,
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          targetCodec: 'HEVC',
+        },
+      ];
+
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+
+      const result = await service.getEncodingSpeedTrends('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should group multiple jobs with same codec on same day', async () => {
+      const mockJobs = [
+        {
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+          startedAt: new Date('2024-01-15T09:00:00Z'),
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          targetCodec: 'HEVC',
+        },
+        {
+          completedAt: new Date('2024-01-15T12:00:00Z'),
+          startedAt: new Date('2024-01-15T11:00:00Z'),
+          beforeSizeBytes: BigInt(2 * 1024 * 1024 * 1024),
+          targetCodec: 'HEVC',
+        },
+        {
+          completedAt: new Date('2024-01-15T14:00:00Z'),
+          startedAt: new Date('2024-01-15T12:00:00Z'),
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          targetCodec: 'AV1',
+        },
+      ];
+
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+
+      const result = await service.getEncodingSpeedTrends('30d');
+
+      expect(result).toHaveLength(2);
+      const hevcResult = result.find((r) => r.codec === 'HEVC');
+      expect(hevcResult?.jobCount).toBe(2);
+    });
+
+    it('should use 7d period (day grouping)', async () => {
+      mockJobRepository.findManySelect.mockResolvedValue([]);
+
+      const result = await service.getEncodingSpeedTrends('7d');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getCodecPerformance - additional branches', () => {
+    it('should skip jobs with null timing data', async () => {
+      const mockJobs = [
+        {
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: null,
+          startedAt: null,
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+        },
+      ];
+
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+
+      const result = await service.getCodecPerformance('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should skip jobs with zero duration', async () => {
+      const ts = new Date('2024-01-15T10:00:00Z');
+      const mockJobs = [
+        {
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: 40,
+          startedAt: ts,
+          completedAt: ts, // Same time = 0 duration
+        },
+      ];
+
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+
+      const result = await service.getCodecPerformance('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle null savedPercent', async () => {
+      const mockJobs = [
+        {
+          targetCodec: 'HEVC',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: null,
+          startedAt: new Date('2024-01-15T09:00:00Z'),
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+        },
+      ];
+
+      mockJobRepository.findManySelect.mockResolvedValue(mockJobs);
+
+      const result = await service.getCodecPerformance('30d');
+
+      expect(result[0].avgSavedPercent).toBe(0);
+    });
+  });
+
+  describe('getNodePerformance - additional branches', () => {
+    it('should skip jobs with null startedAt or completedAt', async () => {
+      mockJobRepository.findManySelect.mockResolvedValue([
+        {
+          nodeId: 'node-1',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: 40,
+          startedAt: null,
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+          node: { name: 'Main' },
+        },
+      ]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+
+      const result = await service.getNodePerformance('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should skip jobs with zero duration', async () => {
+      const ts = new Date('2024-01-15T10:00:00Z');
+      mockJobRepository.findManySelect.mockResolvedValue([
+        {
+          nodeId: 'node-1',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: 40,
+          startedAt: ts,
+          completedAt: ts,
+          node: { name: 'Main' },
+        },
+      ]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+
+      const result = await service.getNodePerformance('30d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should use Unknown when node name is missing', async () => {
+      mockJobRepository.findManySelect.mockResolvedValue([
+        {
+          nodeId: 'node-1',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: 40,
+          startedAt: new Date('2024-01-15T09:00:00Z'),
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+          node: null,
+        },
+      ]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+
+      const result = await service.getNodePerformance('30d');
+
+      expect(result[0].nodeName).toBe('Unknown');
+    });
+
+    it('should handle null savedPercent in node jobs', async () => {
+      mockJobRepository.findManySelect.mockResolvedValue([
+        {
+          nodeId: 'node-1',
+          beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+          savedPercent: null,
+          startedAt: new Date('2024-01-15T09:00:00Z'),
+          completedAt: new Date('2024-01-15T10:00:00Z'),
+          node: { name: 'Main' },
+        },
+      ]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+
+      const result = await service.getNodePerformance('30d');
+
+      expect(result[0].avgSavedPercent).toBe(0);
+    });
+  });
+
+  describe('getSummary - fastestNode', () => {
+    it('should return N/A when no node performance data', async () => {
+      mockJobRepository.countWhere.mockResolvedValue(0);
+      mockJobRepository.aggregateWithAvgCount.mockResolvedValue({
+        _sum: { savedBytes: null },
+        _avg: { savedPercent: null },
+        _count: { id: 0 },
+      });
+      mockJobRepository.aggregateCount.mockResolvedValue({ _count: { id: 0 } });
+      mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 0 }]);
+      mockJobRepository.groupByTargetCodecAvg.mockResolvedValue([]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+      mockJobRepository.findManySelect.mockResolvedValue([]);
+
+      const result = await service.getSummary('all');
+
+      expect(result.fastestNode).toBe('N/A');
+    });
+
+    it('should return fastest node by avgBytesPerSecond', async () => {
+      mockJobRepository.countWhere.mockResolvedValue(10);
+      mockJobRepository.aggregateWithAvgCount.mockResolvedValue({
         _sum: { savedBytes: BigInt(0) },
         _avg: { savedPercent: 0 },
         _count: { id: 0 },
       });
+      mockJobRepository.aggregateCount.mockResolvedValue({ _count: { id: 0 } });
       mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 0 }]);
-      mockPrismaService.job.groupBy.mockResolvedValue([]);
-      mockPrismaService.job.findMany.mockResolvedValue([]);
+      mockJobRepository.groupByTargetCodecAvg.mockResolvedValue([]);
+      mockJobRepository.groupByNodeIdCount.mockResolvedValue([]);
+
+      // Two nodes: node-2 is faster
+      mockJobRepository.findManySelect
+        .mockResolvedValueOnce([
+          // For getNodePerformance
+          {
+            nodeId: 'node-1',
+            beforeSizeBytes: BigInt(1024 * 1024 * 1024),
+            savedPercent: 40,
+            startedAt: new Date('2024-01-15T09:00:00Z'),
+            completedAt: new Date('2024-01-15T10:00:00Z'), // 3600s → slow
+            node: { name: 'Slow Node' },
+          },
+          {
+            nodeId: 'node-2',
+            beforeSizeBytes: BigInt(10 * 1024 * 1024 * 1024),
+            savedPercent: 50,
+            startedAt: new Date('2024-01-15T09:00:00Z'),
+            completedAt: new Date('2024-01-15T09:30:00Z'), // 1800s → fast
+            node: { name: 'Fast Node' },
+          },
+        ])
+        .mockResolvedValueOnce([]); // For getPeakEncodingHour
 
       const result = await service.getSummary('all');
 
-      expect(result).toBeDefined();
+      expect(result.fastestNode).toBe('Fast Node');
     });
   });
 });

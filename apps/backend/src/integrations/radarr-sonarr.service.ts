@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
-import { PrismaService } from '../prisma/prisma.service';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { testIntegrationConnection } from './test-connection.util';
 
 /**
@@ -98,7 +98,7 @@ export class RadarrSonarrIntegrationService {
   private readonly logger = new Logger(RadarrSonarrIntegrationService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly settingsRepository: SettingsRepository,
     private readonly httpService: HttpService
   ) {}
 
@@ -126,7 +126,7 @@ export class RadarrSonarrIntegrationService {
         monitored: m.monitored,
         qualityProfileId: m.qualityProfileId,
       }));
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to get Radarr movies: ${error}`);
       return [];
     }
@@ -156,7 +156,7 @@ export class RadarrSonarrIntegrationService {
         monitored: s.monitored,
         qualityProfileId: s.qualityProfileId,
       }));
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to get Sonarr series: ${error}`);
       return [];
     }
@@ -191,7 +191,7 @@ export class RadarrSonarrIntegrationService {
       }
 
       return null;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.debug(`Failed to get Radarr movie file: ${error}`);
       return null;
     }
@@ -220,7 +220,7 @@ export class RadarrSonarrIntegrationService {
       );
 
       this.logger.log(`🎬 Triggered Radarr rescan for movie ${movieId}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to trigger Radarr rescan: ${error}`);
     }
   }
@@ -248,7 +248,7 @@ export class RadarrSonarrIntegrationService {
       );
 
       this.logger.log(`📺 Triggered Sonarr rescan for series ${seriesId}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to trigger Sonarr rescan: ${error}`);
     }
   }
@@ -397,7 +397,7 @@ export class RadarrSonarrIntegrationService {
     skipQualityMet?: boolean;
   } | null> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
 
       if (!settings) {
         return null;
@@ -508,7 +508,7 @@ export class RadarrSonarrIntegrationService {
 
       this.logger.log(`✅ Registered BitBonsai webhook with ${type}`);
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to register webhook',

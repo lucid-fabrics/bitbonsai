@@ -2,17 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { interval, of } from 'rxjs';
 import { catchError, map, mergeMap, startWith, switchMap, takeUntil } from 'rxjs/operators';
-import { NodesClient } from '../../../core/clients/nodes.client';
-import { OverviewClient } from '../../../core/clients/overview.client';
-import { SettingsService } from '../../settings/services/settings.service';
+import { OverviewService } from '../services/overview.service';
 import { OverviewActions } from './overview.actions';
 
 @Injectable()
 export class OverviewEffects {
   private readonly actions$ = inject(Actions);
-  private readonly overviewClient = inject(OverviewClient);
-  private readonly nodesClient = inject(NodesClient);
-  private readonly settingsService = inject(SettingsService);
+  private readonly overviewService = inject(OverviewService);
 
   // Initialize overview page - load all data once
   initOverview$ = createEffect(() =>
@@ -31,7 +27,7 @@ export class OverviewEffects {
     this.actions$.pipe(
       ofType(OverviewActions.loadOverview),
       switchMap(() =>
-        this.overviewClient.getOverview().pipe(
+        this.overviewService.getOverview().pipe(
           map((data) => OverviewActions.loadOverviewSuccess({ data })),
           catchError((error) => of(OverviewActions.loadOverviewFailure({ error: error.message })))
         )
@@ -44,7 +40,7 @@ export class OverviewEffects {
     this.actions$.pipe(
       ofType(OverviewActions.loadNodes),
       switchMap(() =>
-        this.nodesClient.getNodes().pipe(
+        this.overviewService.getNodes().pipe(
           map((nodes) => OverviewActions.loadNodesSuccess({ nodes })),
           catchError((error) => of(OverviewActions.loadNodesFailure({ error: error.message })))
         )
@@ -57,7 +53,7 @@ export class OverviewEffects {
     this.actions$.pipe(
       ofType(OverviewActions.loadEnvironmentInfo),
       switchMap(() =>
-        this.settingsService.getEnvironmentInfo().pipe(
+        this.overviewService.getEnvironmentInfo().pipe(
           map((environmentInfo) => OverviewActions.loadEnvironmentInfoSuccess({ environmentInfo })),
           catchError((error) =>
             of(OverviewActions.loadEnvironmentInfoFailure({ error: error.message }))

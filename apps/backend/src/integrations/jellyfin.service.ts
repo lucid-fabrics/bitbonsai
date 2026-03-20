@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import type { SystemSettings } from '../common/interfaces/system-settings.interface';
-import { PrismaService } from '../prisma/prisma.service';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { testIntegrationConnection } from './test-connection.util';
 
 /**
@@ -49,7 +49,7 @@ export class JellyfinIntegrationService {
   private readonly logger = new Logger(JellyfinIntegrationService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly settingsRepository: SettingsRepository,
     private readonly httpService: HttpService
   ) {}
 
@@ -167,7 +167,7 @@ export class JellyfinIntegrationService {
 
       this.logger.debug(`Jellyfin: Found ${items.length} items but no size/path match`);
       return { found: false };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(`Jellyfin search failed: ${error instanceof Error ? error.message : error}`);
       return { found: false };
     }
@@ -202,7 +202,7 @@ export class JellyfinIntegrationService {
   /**
    * Trigger library scan for a specific path
    */
-  async refreshLibrary(filePath?: string): Promise<void> {
+  async refreshLibrary(): Promise<void> {
     const config = await this.getJellyfinConfig();
     if (!config || !config.refreshOnComplete) return;
 
@@ -222,7 +222,7 @@ export class JellyfinIntegrationService {
       );
 
       this.logger.log(`📺 Jellyfin: Library refresh triggered`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Failed to refresh Jellyfin library: ${error}`);
     }
   }
@@ -321,7 +321,7 @@ export class JellyfinIntegrationService {
     refreshOnComplete: boolean;
   } | null> {
     try {
-      const settings = await this.prisma.settings.findFirst();
+      const settings = await this.settingsRepository.findFirst();
       const s = settings as SystemSettings | null;
 
       if (!s?.jellyfinUrl || !s?.jellyfinApiKey) {

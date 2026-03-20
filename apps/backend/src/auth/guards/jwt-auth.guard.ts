@@ -1,7 +1,7 @@
 import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import { PrismaService } from '../../prisma/prisma.service';
+import { SettingsRepository } from '../../common/repositories/settings.repository';
 import { extractClientIp, isLocalNetworkIp } from '../utils/ip-detector.util';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
@@ -21,7 +21,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   constructor(
     private reflector: Reflector,
-    private prisma: PrismaService
+    private settingsRepository: SettingsRepository
   ) {
     super();
   }
@@ -36,7 +36,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     // SECURITY: Check if local network bypass is enabled (requires explicit setting)
-    const settings = await this.prisma.settings.findFirst();
+    const settings = await this.settingsRepository.findFirst();
     if (settings?.allowLocalNetworkWithoutAuth) {
       const request = context.switchToHttp().getRequest();
       const clientIp = extractClientIp(request);

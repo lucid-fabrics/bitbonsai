@@ -1,23 +1,21 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
 import { FileTransferWorker } from '../../file-transfer.worker';
 import { FileTransferService } from '../../services/file-transfer.service';
 
 describe('FileTransferWorker', () => {
   let worker: FileTransferWorker;
-  let prisma: Record<string, Record<string, jest.Mock>>;
+  let jobRepository: Record<string, jest.Mock>;
   let fileTransferService: { transferFile: jest.Mock };
 
-  function createMockPrisma() {
+  function createMockJobRepository() {
     return {
-      job: {
-        findMany: jest.fn(),
-      },
+      findManyWithInclude: jest.fn(),
     };
   }
 
   beforeEach(async () => {
-    prisma = createMockPrisma();
+    jobRepository = createMockJobRepository();
     fileTransferService = {
       transferFile: jest.fn(),
     };
@@ -25,7 +23,7 @@ describe('FileTransferWorker', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FileTransferWorker,
-        { provide: PrismaService, useValue: prisma },
+        { provide: JobRepository, useValue: jobRepository },
         { provide: FileTransferService, useValue: fileTransferService },
       ],
     }).compile();
@@ -42,7 +40,7 @@ describe('FileTransferWorker', () => {
   // ==========================================================================
   describe('processTransfers', () => {
     it('should do nothing when no jobs need transfer', async () => {
-      prisma.job.findMany.mockResolvedValue([]);
+      jobRepository.findManyWithInclude.mockResolvedValue([]);
 
       await worker.processTransfers();
 
@@ -58,7 +56,7 @@ describe('FileTransferWorker', () => {
         },
         node: { id: 'tgt-1', name: 'Child' },
       };
-      prisma.job.findMany.mockResolvedValue([mockJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
       fileTransferService.transferFile.mockResolvedValue(undefined);
 
       await worker.processTransfers();
@@ -88,7 +86,7 @@ describe('FileTransferWorker', () => {
         library: { node: { id: 'src-1' } },
         node: null,
       };
-      prisma.job.findMany.mockResolvedValue([jobNoLibraryNode, jobNoTargetNode]);
+      jobRepository.findManyWithInclude.mockResolvedValue([jobNoLibraryNode, jobNoTargetNode]);
 
       await worker.processTransfers();
 
@@ -102,7 +100,7 @@ describe('FileTransferWorker', () => {
         library: { node: { id: 'src-1' } },
         node: { id: 'tgt-1' },
       };
-      prisma.job.findMany.mockResolvedValue([mockJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
 
       // Mark job as already active via internal Set
       (worker as any).activeTransfers.add('job-1');
@@ -113,7 +111,7 @@ describe('FileTransferWorker', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      prisma.job.findMany.mockRejectedValue(new Error('DB connection lost'));
+      jobRepository.findManyWithInclude.mockRejectedValue(new Error('DB connection lost'));
 
       // Should not throw
       await worker.processTransfers();
@@ -126,7 +124,7 @@ describe('FileTransferWorker', () => {
         library: { node: { id: 'src-1' } },
         node: { id: 'tgt-1' },
       };
-      prisma.job.findMany.mockResolvedValue([mockJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
       fileTransferService.transferFile.mockResolvedValue(undefined);
 
       await worker.processTransfers();
@@ -144,7 +142,7 @@ describe('FileTransferWorker', () => {
         library: { node: { id: 'src-1' } },
         node: { id: 'tgt-1' },
       };
-      prisma.job.findMany.mockResolvedValue([mockJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
       fileTransferService.transferFile.mockRejectedValue(new Error('rsync failed'));
 
       await worker.processTransfers();
@@ -165,7 +163,7 @@ describe('FileTransferWorker', () => {
 
       await worker.processTransfers();
 
-      expect(prisma.job.findMany).not.toHaveBeenCalled();
+      expect(jobRepository.findManyWithInclude).not.toHaveBeenCalled();
     });
 
     it('should open circuit after MAX_TIMEOUT_COUNT timeouts', async () => {
@@ -179,7 +177,7 @@ describe('FileTransferWorker', () => {
       // Simulate timeout errors reaching the threshold
       (worker as any).timeoutCount = 2; // Already at threshold - 1
 
-      prisma.job.findMany.mockResolvedValue([mockJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
       fileTransferService.transferFile.mockRejectedValue(new Error('Transfer timeout (30min)'));
 
       await worker.processTransfers();
@@ -200,7 +198,7 @@ describe('FileTransferWorker', () => {
 
       (worker as any).timeoutCount = 2;
 
-      prisma.job.findMany.mockResolvedValue([mockJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
       fileTransferService.transferFile.mockResolvedValue(undefined);
 
       await worker.processTransfers();
@@ -238,7 +236,7 @@ describe('FileTransferWorker', () => {
       const secondTimeout = (worker as any).circuitResetTimeout;
 
       // Should have created a new timeout (different reference)
-      expect(secondTimeout).toBeDefined();
+      expect(secondTimeout).not.toBeNull();
 
       jest.useRealTimers();
     });

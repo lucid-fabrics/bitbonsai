@@ -1,4 +1,4 @@
-<div class="notification-container">
+<div class="notification-container" [attr.aria-label]="'notifications.ariaLabel' | transloco">
   @for (notification of notifications(); track notification.id) {
     <app-notification-toast
       [notification]="notification"

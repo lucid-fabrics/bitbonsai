@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import type { DurationEstimate } from '../interfaces/scoring-factors.interface';
 
 /**
@@ -17,7 +18,10 @@ export class EtaCalculatorService {
   private encodingRatesCache: Map<string, number> | null = null;
   private cacheExpiresAt = 0;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository
+  ) {}
 
   /**
    * Estimate encoding duration for a job
@@ -114,22 +118,7 @@ export class EtaCalculatorService {
       // Get completed jobs from last 30 days
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const completedJobs = await this.prisma.job.findMany({
-        where: {
-          stage: 'COMPLETED',
-          completedAt: { gte: thirtyDaysAgo },
-          startedAt: { not: null },
-          beforeSizeBytes: { gt: 0 },
-        },
-        select: {
-          sourceCodec: true,
-          targetCodec: true,
-          beforeSizeBytes: true,
-          startedAt: true,
-          completedAt: true,
-        },
-        take: 1000,
-      });
+      const completedJobs = await this.jobRepository.findCompletedSince(thirtyDaysAgo, 1000);
 
       // Group by codec pair and calculate average rate
       const codecData = new Map<string, { totalGB: number; totalHours: number }>();
@@ -158,7 +147,7 @@ export class EtaCalculatorService {
       }
 
       this.logger.debug(`Calculated encoding rates for ${rates.size} codec pairs`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to calculate encoding rates', error);
     }
 
@@ -174,13 +163,11 @@ export class EtaCalculatorService {
    */
   async calculateNodeFreeAt(nodeId: string): Promise<Date | null> {
     // Get all active and queued jobs for this node
-    const jobs = await this.prisma.job.findMany({
-      where: {
-        nodeId,
-        stage: { in: ['ENCODING', 'QUEUED', 'VERIFYING'] },
-      },
-      orderBy: { priority: 'desc' },
-    });
+    const jobs = await this.jobRepository.findActiveForNode(nodeId, [
+      'ENCODING',
+      'QUEUED',
+      'VERIFYING',
+    ]);
 
     if (jobs.length === 0) {
       return null; // Already free
@@ -203,9 +190,8 @@ export class EtaCalculatorService {
     }
 
     // Get node worker count
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      select: { maxWorkers: true },
+    const node = await this.nodeRepository.findWithSelect<{ maxWorkers: number | null }>(nodeId, {
+      maxWorkers: true,
     });
 
     const workers = node?.maxWorkers || 1;
@@ -220,22 +206,14 @@ export class EtaCalculatorService {
    * Update estimated completion times for all jobs on a node
    */
   async updateNodeETAs(nodeId: string): Promise<void> {
-    const jobs = await this.prisma.job.findMany({
-      where: {
-        nodeId,
-        stage: { in: ['QUEUED', 'ENCODING'] },
-      },
-      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
-    });
+    const jobs = await this.jobRepository.findQueuedAndEncodingForNode(nodeId);
 
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      select: { maxWorkers: true },
+    const node = await this.nodeRepository.findWithSelect<{ maxWorkers: number | null }>(nodeId, {
+      maxWorkers: true,
     });
 
     const workers = node?.maxWorkers || 1;
     const currentTime = new Date();
-    const _activeSlots = 0;
 
     // Track when each slot becomes free
     const slotFreeTimes: Date[] = new Array(workers).fill(currentTime);
@@ -263,13 +241,10 @@ export class EtaCalculatorService {
       const endTime = new Date(startTime.getTime() + durationSeconds * 1000);
 
       // Update job
-      await this.prisma.job.update({
-        where: { id: job.id },
-        data: {
-          estimatedDuration: durationSeconds,
-          estimatedStartAt: startTime,
-          estimatedCompleteAt: endTime,
-        },
+      await this.jobRepository.updateById(job.id, {
+        estimatedDuration: durationSeconds,
+        estimatedStartAt: startTime,
+        estimatedCompleteAt: endTime,
       });
 
       // Update slot free time
@@ -278,10 +253,7 @@ export class EtaCalculatorService {
 
     // Update node's estimated free time
     const latestSlotFree = new Date(Math.max(...slotFreeTimes.map((d) => d.getTime())));
-    await this.prisma.node.update({
-      where: { id: nodeId },
-      data: { estimatedFreeAt: latestSlotFree },
-    });
+    await this.nodeRepository.updateById(nodeId, { estimatedFreeAt: latestSlotFree });
 
     this.logger.debug(`Updated ETAs for ${jobs.length} jobs on node ${nodeId}`);
   }

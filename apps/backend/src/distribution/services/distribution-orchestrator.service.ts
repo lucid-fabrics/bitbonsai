@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import type { Job, Node } from '@prisma/client';
+import { DistributionConfigRepository } from '../../common/repositories/distribution-config.repository';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
 // HIGH #3 FIX: Import at top level instead of dynamic require in hot loop
 import * as scheduleChecker from '../../nodes/utils/schedule-checker';
-import { PrismaService } from '../../prisma/prisma.service';
 import type {
   JobAssignmentResult,
   NodeScore,
@@ -35,7 +37,9 @@ export class DistributionOrchestratorService {
   private readonly logger = new Logger(DistributionOrchestratorService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
+    private readonly nodeRepository: NodeRepository,
+    private readonly distributionConfigRepository: DistributionConfigRepository,
     private readonly scorer: JobScorerService,
     readonly _loadMonitor: LoadMonitorService,
     private readonly etaCalculator: EtaCalculatorService,
@@ -47,10 +51,7 @@ export class DistributionOrchestratorService {
    * Returns the best node and the scoring breakdown
    */
   async findOptimalNode(jobId: string): Promise<JobAssignmentResult | null> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      include: { library: { select: { nodeId: true } } },
-    });
+    const job = await this.jobRepository.findByIdWithLibrary(jobId);
 
     if (!job) {
       this.logger.warn(`Job ${jobId} not found`);
@@ -58,14 +59,7 @@ export class DistributionOrchestratorService {
     }
 
     // Get all online nodes
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      include: {
-        _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findOnlineWithActiveJobCount();
 
     if (nodes.length === 0) {
       this.logger.warn('No online nodes available');
@@ -113,22 +107,10 @@ export class DistributionOrchestratorService {
       nodeId = optimal.nodeId;
     }
 
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      include: { library: { select: { nodeId: true } } },
-    });
-
+    const job = await this.jobRepository.findByIdWithLibrary(jobId);
     if (!job) return null;
 
-    const node = await this.prisma.node.findUnique({
-      where: { id: nodeId },
-      include: {
-        _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
-        },
-      },
-    });
-
+    const node = await this.nodeRepository.findByIdWithActiveJobCount(nodeId);
     if (!node) return null;
 
     // Calculate score for the assignment
@@ -143,13 +125,13 @@ export class DistributionOrchestratorService {
 
     // CRITICAL #1 FIX: Atomic job assignment with optimistic locking
     // Use updatedAt timestamp to prevent race conditions
-    const updateResult = await this.prisma.job.updateMany({
-      where: {
+    const updateResult = await this.jobRepository.atomicUpdateMany(
+      {
         id: jobId,
         nodeId: job.nodeId, // Exact match prevents race if job was reassigned
         updatedAt: job.updatedAt, // Optimistic lock - fails if job modified elsewhere
       },
-      data: {
+      {
         nodeId,
         assignedAt: now,
         stickyUntil,
@@ -157,8 +139,8 @@ export class DistributionOrchestratorService {
         estimatedDuration: durationEstimate.estimatedSeconds,
         lastScoreBreakdown: score.factors as object,
         assignmentReason: this.generateAssignmentReason(score),
-      },
-    });
+      }
+    );
 
     // Check if update succeeded (count === 1 means we won the race)
     if (updateResult.count === 0) {
@@ -199,21 +181,10 @@ export class DistributionOrchestratorService {
    * Get scores for all online nodes (for a specific job)
    */
   async getAllNodeScores(jobId: string): Promise<NodeScore[]> {
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      include: { library: { select: { nodeId: true } } },
-    });
-
+    const job = await this.jobRepository.findByIdWithLibrary(jobId);
     if (!job) return [];
 
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      include: {
-        _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findOnlineWithActiveJobCount();
 
     // Score all nodes in parallel for better performance
     const scores = await Promise.all(
@@ -331,14 +302,7 @@ export class DistributionOrchestratorService {
     let migratedCount = 0;
 
     // Get all QUEUED jobs that can be migrated
-    const eligibleJobs = await this.prisma.job.findMany({
-      where: {
-        stage: 'QUEUED',
-        OR: [{ stickyUntil: null }, { stickyUntil: { lt: new Date() } }],
-      },
-      include: { library: { select: { nodeId: true } } },
-      take: 500, // Process larger batches for faster distribution
-    });
+    const eligibleJobs = await this.jobRepository.findEligibleForRebalance(500);
 
     for (const job of eligibleJobs) {
       const optimal = await this.findOptimalNode(job.id);
@@ -357,26 +321,10 @@ export class DistributionOrchestratorService {
       }
 
       // Get current node score
-      const currentNode = await this.prisma.node.findUnique({
-        where: { id: job.nodeId },
-        include: {
-          _count: {
-            select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
-          },
-        },
-      });
-
+      const currentNode = await this.nodeRepository.findByIdWithActiveJobCount(job.nodeId);
       if (!currentNode) continue;
 
-      const candidateNode = await this.prisma.node.findUnique({
-        where: { id: optimal.nodeId },
-        include: {
-          _count: {
-            select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
-          },
-        },
-      });
-
+      const candidateNode = await this.nodeRepository.findByIdWithActiveJobCount(optimal.nodeId);
       if (!candidateNode) continue;
 
       // Check migration decision
@@ -407,18 +355,7 @@ export class DistributionOrchestratorService {
   async autoDistributeJobs(): Promise<void> {
     try {
       // Get nodes with available slots (not at capacity)
-      const nodes = await this.prisma.node.findMany({
-        where: { status: 'ONLINE' },
-        include: {
-          _count: {
-            select: {
-              jobs: {
-                where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } },
-              },
-            },
-          },
-        },
-      });
+      const nodes = await this.nodeRepository.findOnlineWithAllJobCount();
 
       // Find nodes with available capacity
       const nodesWithSlots = nodes.filter((node) => {
@@ -443,15 +380,10 @@ export class DistributionOrchestratorService {
 
         // Find QUEUED jobs from OTHER nodes that can be moved here
         // Prioritize moving from overloaded nodes
-        const jobsToMove = await this.prisma.job.findMany({
-          where: {
-            stage: 'QUEUED',
-            nodeId: { not: targetNode.id }, // From other nodes
-            OR: [{ stickyUntil: null }, { stickyUntil: { lt: new Date() } }],
-          },
-          orderBy: { createdAt: 'asc' }, // FIFO
-          take: availableSlots,
-        });
+        const jobsToMove = await this.jobRepository.findQueuedExcludingNode(
+          targetNode.id,
+          availableSlots
+        );
 
         if (jobsToMove.length === 0) continue;
 
@@ -466,19 +398,19 @@ export class DistributionOrchestratorService {
 
         for (const job of jobsToMove) {
           // Atomic update with optimistic lock - prevents double assignment
-          const result = await this.prisma.job.updateMany({
-            where: {
+          const result = await this.jobRepository.atomicUpdateMany(
+            {
               id: job.id,
               nodeId: { not: targetNode.id }, // Skip if already moved
               updatedAt: job.updatedAt, // Optimistic lock
               stage: 'QUEUED', // Only QUEUED jobs
             },
-            data: {
+            {
               nodeId: targetNode.id,
               assignedAt: new Date(),
               stickyUntil: new Date(Date.now() + 5 * 60 * 1000), // 5 min sticky
-            },
-          });
+            }
+          );
 
           if (result.count === 0) {
             this.logger.debug(`Job ${job.id} already reassigned by another process, skipping`);
@@ -493,7 +425,7 @@ export class DistributionOrchestratorService {
         // Update node queue count
         await this.updateNodeQueueCount(targetNode.id);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Auto-distribute error:', error);
     }
   }
@@ -511,14 +443,9 @@ export class DistributionOrchestratorService {
    * Update node's queued job count
    */
   private async updateNodeQueueCount(nodeId: string): Promise<void> {
-    const count = await this.prisma.job.count({
-      where: { nodeId, stage: 'QUEUED' },
-    });
+    const count = await this.jobRepository.countForNode(nodeId, 'QUEUED');
 
-    await this.prisma.node.update({
-      where: { id: nodeId },
-      data: { queuedJobCount: count },
-    });
+    await this.nodeRepository.updateById(nodeId, { queuedJobCount: count });
   }
 
   /**
@@ -550,17 +477,7 @@ export class DistributionOrchestratorService {
    * Get or create the active distribution config
    */
   async getActiveConfig() {
-    let config = await this.prisma.distributionConfig.findFirst({
-      where: { isActive: true },
-    });
-
-    if (!config) {
-      config = await this.prisma.distributionConfig.create({
-        data: { id: 'default' },
-      });
-    }
-
-    return config;
+    return this.distributionConfigRepository.findOrCreateDefault();
   }
 
   /**
@@ -568,21 +485,14 @@ export class DistributionOrchestratorService {
    */
   async updateConfig(dto: Record<string, unknown>) {
     const config = await this.getActiveConfig();
-
-    return this.prisma.distributionConfig.update({
-      where: { id: config.id },
-      data: dto,
-    });
+    return this.distributionConfigRepository.updateById(config.id, dto);
   }
 
   /**
    * Get capacity status for all online nodes
    */
   async getNodesCapacity(): Promise<{ nodes: unknown[] }> {
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      select: { id: true, name: true },
-    });
+    const nodes = await this.nodeRepository.findOnlineIds();
 
     const capacities = [];
     for (const node of nodes) {
@@ -604,29 +514,14 @@ export class DistributionOrchestratorService {
     totalQueuedJobs: number;
     jobsPerNode: { nodeId: string; nodeName: string; queued: number; encoding: number }[];
   }> {
-    const nodes = await this.prisma.node.findMany({
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        _count: {
-          select: {
-            jobs: true,
-          },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findAllSummary();
 
     // Get job counts per node and stage in parallel for better performance
     const jobsPerNode = await Promise.all(
       nodes.map(async (node) => {
         const [queued, encoding] = await Promise.all([
-          this.prisma.job.count({
-            where: { nodeId: node.id, stage: 'QUEUED' },
-          }),
-          this.prisma.job.count({
-            where: { nodeId: node.id, stage: { in: ['ENCODING', 'VERIFYING'] } },
-          }),
+          this.jobRepository.countForNode(node.id, 'QUEUED'),
+          this.jobRepository.countForNodeStages(node.id, ['ENCODING', 'VERIFYING']),
         ]);
 
         return {
@@ -659,18 +554,7 @@ export class DistributionOrchestratorService {
     hasSharedStoragePreference = true
   ): Promise<string> {
     // Get all online nodes with schedule check
-    const nodes = await this.prisma.node.findMany({
-      where: { status: 'ONLINE' },
-      include: {
-        _count: {
-          select: {
-            jobs: {
-              where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } },
-            },
-          },
-        },
-      },
-    });
+    const nodes = await this.nodeRepository.findOnlineWithAllJobCount();
 
     if (nodes.length === 0) {
       this.logger.warn('No online nodes, falling back to library node');

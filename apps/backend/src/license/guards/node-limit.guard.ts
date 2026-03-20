@@ -1,18 +1,18 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { NodeRepository } from '../../common/repositories/node.repository';
 import { LicenseClientService } from '../license-client.service';
 
 @Injectable()
 export class NodeLimitGuard implements CanActivate {
   constructor(
     private readonly licenseClient: LicenseClientService,
-    private readonly prisma: PrismaService
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const { maxNodes } = await this.licenseClient.getCurrentLimits();
 
-    const activeNodeCount = await this.prisma.node.count({
+    const activeNodeCount = await this.nodeRepository.count({
       where: {
         status: { in: ['ONLINE', 'OFFLINE'] }, // Exclude ERROR nodes
       },

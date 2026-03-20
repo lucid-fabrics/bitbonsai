@@ -23,7 +23,7 @@ import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileWatcherService } from '../file-watcher/file-watcher.service';
 import { JellyfinIntegrationService } from '../integrations/jellyfin.service';
 import { LibrariesService } from '../libraries/libraries.service';
-import { MediaAnalysisService } from '../libraries/services/media-analysis.service';
+import { MediaAnalysisService } from '../media/media-analysis.service';
 import { NodesService } from '../nodes/nodes.service';
 import { SharedStorageVerifierService } from '../nodes/services/shared-storage-verifier.service';
 import { StorageShareService } from '../nodes/services/storage-share.service';

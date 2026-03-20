@@ -1,11 +1,16 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Job, Node } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JobRepository } from '../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../common/repositories/node.repository';
 import { JobAttributionService } from '../job-attribution.service';
 
 describe('JobAttributionService', () => {
   let service: JobAttributionService;
-  let prisma: PrismaService;
+  // 'prisma' is kept as the shared mock object so existing jest.spyOn() calls work
+  let prisma: {
+    job: { findUnique: jest.Mock };
+    node: { findMany: jest.Mock; aggregate: jest.Mock };
+  };
 
   /**
    * Mock data factories
@@ -134,26 +139,39 @@ describe('JobAttributionService', () => {
   };
 
   beforeEach(async () => {
+    // Shared mock object — tests use jest.spyOn(prisma.job, 'findUnique') etc.
+    // Repository methods are aliased to the same jest.fn() instances.
+    prisma = {
+      job: { findUnique: jest.fn() },
+      node: { findMany: jest.fn(), aggregate: jest.fn() },
+    };
+
+    // jobRepository.findManyWithInclude wraps prisma.job.findUnique and returns array
+    const mockJobRepository = {
+      findManyWithInclude: jest.fn().mockImplementation(async (args: any) => {
+        const result = await prisma.job.findUnique(args);
+        return result ? [result] : [];
+      }),
+    };
+
+    // nodeRepository aliases to same jest.fn() instances
+    const mockNodeRepository = {
+      findOnlineWithAllJobCount: prisma.node.findMany,
+      aggregateMaxEncodingSpeed: jest.fn().mockImplementation(async () => {
+        const result = await prisma.node.aggregate({});
+        return (result as any)?._max?.avgEncodingSpeed ?? null;
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobAttributionService,
-        {
-          provide: PrismaService,
-          useValue: {
-            job: {
-              findUnique: jest.fn(),
-            },
-            node: {
-              findMany: jest.fn(),
-              aggregate: jest.fn(),
-            },
-          },
-        },
+        { provide: JobRepository, useValue: mockJobRepository },
+        { provide: NodeRepository, useValue: mockNodeRepository },
       ],
     }).compile();
 
     service = module.get<JobAttributionService>(JobAttributionService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   /**
@@ -200,22 +218,27 @@ describe('JobAttributionService', () => {
 
       it('should return null if all nodes are outside schedule window', async () => {
         const job = createMockJob();
+        // Use a fixed past time (Tuesday Jan 1 2019 12:00) to make day-of-week deterministic
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2019-01-01T12:00:00Z')); // Tuesday = dayOfWeek 2
         const node1 = createMockNode({
           id: 'node-1',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 5, startHour: 9, endHour: 17 }] as any, // Friday only
+          scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
         });
         const node2 = createMockNode({
           id: 'node-2',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
+          scheduleWindows: [{ dayOfWeek: 0, startHour: 9, endHour: 17 }] as any, // Sunday only
         });
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
+        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
+        jest.useRealTimers();
         expect(result).toBeNull();
       });
 
@@ -229,7 +252,7 @@ describe('JobAttributionService', () => {
 
         const result = await service.findOptimalNode('job-1');
 
-        expect(result).toBeDefined();
+        expect(result).not.toBeNull();
         expect(result?.id).toBe('node-1');
       });
     });
@@ -305,23 +328,8 @@ describe('JobAttributionService', () => {
 
         await service.findOptimalNode('job-1');
 
-        expect(prisma.node.findMany).toHaveBeenCalledWith({
-          where: {
-            status: 'ONLINE',
-            role: { in: ['MAIN', 'LINKED'] },
-          },
-          include: {
-            _count: {
-              select: {
-                jobs: {
-                  where: {
-                    stage: { in: ['ENCODING', 'QUEUED'] },
-                  },
-                },
-              },
-            },
-          },
-        });
+        // findOnlineWithAllJobCount() encapsulates the query internally
+        expect(prisma.node.findMany).toHaveBeenCalled();
       });
     });
 
@@ -760,23 +768,8 @@ describe('JobAttributionService', () => {
 
       await service.getAllNodeScores();
 
-      expect(prisma.node.findMany).toHaveBeenCalledWith({
-        where: {
-          status: 'ONLINE',
-          role: { in: ['MAIN', 'LINKED'] },
-        },
-        include: {
-          _count: {
-            select: {
-              jobs: {
-                where: {
-                  stage: { in: ['ENCODING', 'QUEUED'] },
-                },
-              },
-            },
-          },
-        },
-      });
+      // findOnlineWithAllJobCount() encapsulates the query internally
+      expect(prisma.node.findMany).toHaveBeenCalled();
     });
   });
 
@@ -1217,16 +1210,21 @@ describe('JobAttributionService', () => {
     it('should log when no nodes in schedule', async () => {
       const loggerSpy = jest.spyOn((service as any).logger, 'warn');
       const job = createMockJob();
+      // Use a fixed past time (Tuesday Jan 1 2019 12:00) to make day-of-week deterministic
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2019-01-01T12:00:00Z')); // Tuesday = dayOfWeek 2
       const offlineNode = createMockNode({
         scheduleEnabled: true,
-        scheduleWindows: [{ dayOfWeek: 5, startHour: 9, endHour: 17 }] as any,
+        scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
       });
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([offlineNode]);
+      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
 
       await service.findOptimalNode('job-1');
 
+      jest.useRealTimers();
       expect(loggerSpy).toHaveBeenCalledWith('No nodes available within their schedule windows');
     });
 

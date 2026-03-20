@@ -53,7 +53,7 @@ describe('Custom Error Classes', () => {
       expect(error.isOperational).toBe(true);
       expect(error.context).toEqual({ key: 'val' });
       expect(error.name).toBe('TestError');
-      expect(error.stack).toBeDefined();
+      expect(error.stack).not.toBeNull();
     });
 
     it('should default isOperational to true', () => {

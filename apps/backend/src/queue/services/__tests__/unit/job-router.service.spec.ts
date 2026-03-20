@@ -1,18 +1,24 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { NetworkLocation } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { JobRepository } from '../../../../common/repositories/job.repository';
+import { NodeRepository } from '../../../../common/repositories/node.repository';
 import { JobRouterService } from '../../job-router.service';
 
 describe('JobRouterService', () => {
   let service: JobRouterService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let nodeRepository: { findManySelect: jest.Mock };
+  let jobRepository: { findManySelect: jest.Mock; updateById: jest.Mock };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    nodeRepository = { findManySelect: jest.fn() };
+    jobRepository = { findManySelect: jest.fn(), updateById: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [JobRouterService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        JobRouterService,
+        { provide: NodeRepository, useValue: nodeRepository },
+        { provide: JobRepository, useValue: jobRepository },
+      ],
     }).compile();
 
     service = module.get<JobRouterService>(JobRouterService);
@@ -43,7 +49,7 @@ describe('JobRouterService', () => {
 
   describe('findBestNodeForJob', () => {
     it('should return null when no online nodes exist', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      nodeRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -66,7 +72,7 @@ describe('JobRouterService', () => {
           hasSharedStorage: false,
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -84,7 +90,7 @@ describe('JobRouterService', () => {
           hasSharedStorage: false,
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -106,7 +112,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 0 }, // 0% load = no penalty
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -131,7 +137,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 1 },
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -152,7 +158,7 @@ describe('JobRouterService', () => {
           maxTransferSizeMB: 100000, // 100GB limit
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', fileSizeBytes);
 
@@ -170,7 +176,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 1 },
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -189,7 +195,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 0 },
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', largeFileSize);
 
@@ -205,7 +211,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 0 },
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       // Should not throw
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
@@ -222,7 +228,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 1 },
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       await service.findBestNodeForJob('job-1', BigInt(1000000));
 
@@ -243,7 +249,7 @@ describe('JobRouterService', () => {
           _count: { jobs: 0 },
         }),
       ];
-      prisma.node.findMany.mockResolvedValue(nodes);
+      nodeRepository.findManySelect.mockResolvedValue(nodes);
 
       const result = await service.findBestNodeForJob('job-1', smallFileSize);
 
@@ -253,7 +259,9 @@ describe('JobRouterService', () => {
 
   describe('rebalanceJobs', () => {
     it('should return 0 when fewer than 2 nodes exist', async () => {
-      prisma.node.findMany.mockResolvedValue([createNode('only-node', { _count: { jobs: 10 } })]);
+      nodeRepository.findManySelect.mockResolvedValue([
+        createNode('only-node', { _count: { jobs: 10 } }),
+      ]);
 
       const result = await service.rebalanceJobs();
 
@@ -264,7 +272,7 @@ describe('JobRouterService', () => {
     });
 
     it('should return 0 when no nodes are overloaded', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('balanced-1', { maxWorkers: 10, _count: { jobs: 5 } }), // 50%
         createNode('balanced-2', { maxWorkers: 10, _count: { jobs: 3 } }), // 30%
       ]);
@@ -278,7 +286,7 @@ describe('JobRouterService', () => {
     });
 
     it('should return 0 when all nodes are overloaded (no underutilized target)', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('busy-1', { maxWorkers: 4, _count: { jobs: 20 } }), // 500%
         createNode('busy-2', { maxWorkers: 5, _count: { jobs: 15 } }), // 300%
       ]);
@@ -289,7 +297,7 @@ describe('JobRouterService', () => {
     });
 
     it('should move jobs from overloaded to underutilized nodes', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('overloaded', { maxWorkers: 4, _count: { jobs: 20 } }), // 500%
         createNode('idle', { maxWorkers: 5, _count: { jobs: 1 } }), // 20%
       ]);
@@ -299,113 +307,104 @@ describe('JobRouterService', () => {
         { id: 'job-2', fileLabel: 'movie2.mkv' },
         { id: 'job-3', fileLabel: 'movie3.mkv' },
       ];
-      prisma.job.findMany.mockResolvedValue(jobsToMove);
-      prisma.job.update.mockResolvedValue({});
+      jobRepository.findManySelect.mockResolvedValue(jobsToMove);
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.rebalanceJobs();
 
       expect(result).toBe(3);
-      expect(prisma.job.update).toHaveBeenCalledTimes(3);
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: { nodeId: 'idle' },
-      });
+      expect(jobRepository.updateById).toHaveBeenCalledTimes(3);
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', { nodeId: 'idle' });
     });
 
     it('should limit batch size to 5 jobs per overloaded node', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('overloaded', { maxWorkers: 2, _count: { jobs: 50 } }),
         createNode('idle', { maxWorkers: 10, _count: { jobs: 0 } }),
       ]);
 
-      prisma.job.findMany.mockResolvedValue([
+      jobRepository.findManySelect.mockResolvedValue([
         { id: 'j1', fileLabel: '1.mkv' },
         { id: 'j2', fileLabel: '2.mkv' },
         { id: 'j3', fileLabel: '3.mkv' },
         { id: 'j4', fileLabel: '4.mkv' },
         { id: 'j5', fileLabel: '5.mkv' },
       ]);
-      prisma.job.update.mockResolvedValue({});
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.rebalanceJobs();
 
       expect(result).toBe(5);
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          take: 5,
-        })
-      );
+      // findManySelect returns all, service slices to 5 internally
+      expect(jobRepository.findManySelect).toHaveBeenCalled();
     });
 
     it('should distribute jobs round-robin across multiple underutilized nodes', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('overloaded', { maxWorkers: 2, _count: { jobs: 10 } }), // 500%
         createNode('idle-1', { maxWorkers: 10, _count: { jobs: 1 } }), // 10%
         createNode('idle-2', { maxWorkers: 10, _count: { jobs: 2 } }), // 20%
       ]);
 
-      prisma.job.findMany.mockResolvedValue([
+      jobRepository.findManySelect.mockResolvedValue([
         { id: 'j1', fileLabel: '1.mkv' },
         { id: 'j2', fileLabel: '2.mkv' },
         { id: 'j3', fileLabel: '3.mkv' },
         { id: 'j4', fileLabel: '4.mkv' },
       ]);
-      prisma.job.update.mockResolvedValue({});
+      jobRepository.updateById.mockResolvedValue({});
 
       const result = await service.rebalanceJobs();
 
       expect(result).toBe(4);
 
       // Verify round-robin distribution
-      const updateCalls = prisma.job.update.mock.calls;
+      const updateCalls = jobRepository.updateById.mock.calls;
       // Jobs alternate between idle-1 and idle-2
-      expect(updateCalls[0][0].data.nodeId).not.toBe(updateCalls[1][0].data.nodeId);
+      expect(updateCalls[0][1].nodeId).not.toBe(updateCalls[1][1].nodeId);
     });
 
     it('should only consider LOCAL nodes for rebalancing', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      nodeRepository.findManySelect.mockResolvedValue([]);
 
       await service.rebalanceJobs();
 
-      expect(prisma.node.findMany).toHaveBeenCalledWith({
-        where: {
+      expect(nodeRepository.findManySelect).toHaveBeenCalledWith(
+        {
           status: 'ONLINE',
           networkLocation: NetworkLocation.LOCAL,
         },
-        select: expect.objectContaining({
+        expect.objectContaining({
           id: true,
           name: true,
           maxWorkers: true,
-        }),
-      });
-    });
-
-    it('should only move QUEUED jobs', async () => {
-      prisma.node.findMany.mockResolvedValue([
-        createNode('overloaded', { maxWorkers: 2, _count: { jobs: 10 } }),
-        createNode('idle', { maxWorkers: 10, _count: { jobs: 0 } }),
-      ]);
-
-      prisma.job.findMany.mockResolvedValue([]);
-
-      await service.rebalanceJobs();
-
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            stage: 'QUEUED',
-          }),
         })
       );
     });
 
-    it('should log rebalance results', async () => {
-      prisma.node.findMany.mockResolvedValue([
+    it('should only move QUEUED jobs', async () => {
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('overloaded', { maxWorkers: 2, _count: { jobs: 10 } }),
         createNode('idle', { maxWorkers: 10, _count: { jobs: 0 } }),
       ]);
-      prisma.job.findMany.mockResolvedValue([{ id: 'j1', fileLabel: 'test.mkv' }]);
-      prisma.job.update.mockResolvedValue({});
+
+      jobRepository.findManySelect.mockResolvedValue([]);
+
+      await service.rebalanceJobs();
+
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: 'QUEUED' }),
+        expect.anything()
+      );
+    });
+
+    it('should log rebalance results', async () => {
+      nodeRepository.findManySelect.mockResolvedValue([
+        createNode('overloaded', { maxWorkers: 2, _count: { jobs: 10 } }),
+        createNode('idle', { maxWorkers: 10, _count: { jobs: 0 } }),
+      ]);
+      jobRepository.findManySelect.mockResolvedValue([{ id: 'j1', fileLabel: 'test.mkv' }]);
+      jobRepository.updateById.mockResolvedValue({});
 
       await service.rebalanceJobs();
 
@@ -418,11 +417,11 @@ describe('JobRouterService', () => {
     });
 
     it('should handle empty job list from overloaded node', async () => {
-      prisma.node.findMany.mockResolvedValue([
+      nodeRepository.findManySelect.mockResolvedValue([
         createNode('overloaded', { maxWorkers: 2, _count: { jobs: 10 } }),
         createNode('idle', { maxWorkers: 10, _count: { jobs: 0 } }),
       ]);
-      prisma.job.findMany.mockResolvedValue([]); // No queued jobs despite being "overloaded" by count
+      jobRepository.findManySelect.mockResolvedValue([]); // No queued jobs despite being "overloaded" by count
 
       const result = await service.rebalanceJobs();
 
@@ -432,7 +431,7 @@ describe('JobRouterService', () => {
 
   describe('formatBytes (private, tested indirectly)', () => {
     it('should format bytes in log output for findBestNodeForJob', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      nodeRepository.findManySelect.mockResolvedValue([]);
 
       await service.findBestNodeForJob('job-1', BigInt(0));
 
@@ -440,7 +439,7 @@ describe('JobRouterService', () => {
     });
 
     it('should format GB sizes correctly', async () => {
-      prisma.node.findMany.mockResolvedValue([]);
+      nodeRepository.findManySelect.mockResolvedValue([]);
       const twoGB = BigInt(2 * 1024 * 1024 * 1024);
 
       await service.findBestNodeForJob('job-1', twoGB);

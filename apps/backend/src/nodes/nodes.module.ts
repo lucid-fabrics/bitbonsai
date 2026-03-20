@@ -1,16 +1,22 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { JobRepository } from '../common/repositories/job.repository';
+import { LicenseRepository } from '../common/repositories/license.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import { CoreModule } from '../core/core.module';
 import { DistributionModule } from '../distribution/distribution.module';
-import { LibrariesModule } from '../libraries/libraries.module';
+import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { NodeRegistrationController } from './controllers/node-registration.controller';
 import { StorageSharesController } from './controllers/storage-shares.controller';
 import { NodesController } from './nodes.controller';
 import { NodesService } from './nodes.service';
+import { RegistrationRequestRepository } from './repositories/registration-request.repository';
 import { StorageShareRepository } from './repositories/storage-share.repository';
 import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
+import { NodeRegistrationService } from './services/node-registration.service';
 import { RegistrationRequestService } from './services/registration-request.service';
 import { ScheduleEnforcementService } from './services/schedule-enforcement.service';
 import { SharedStorageVerifierService } from './services/shared-storage-verifier.service';
@@ -35,16 +41,21 @@ import { SystemInfoService } from './services/system-info.service';
  * - System information collection (hardware, network, container type)
  */
 @Module({
-  imports: [CoreModule, NotificationsModule, DistributionModule, forwardRef(() => LibrariesModule)],
-  controllers: [NodesController, StorageSharesController],
+  imports: [CoreModule, NotificationsModule, DistributionModule, MediaModule],
+  controllers: [NodesController, NodeRegistrationController, StorageSharesController],
   providers: [
     NodesService,
     PrismaService,
+    NodeRepository,
+    JobRepository,
+    LicenseRepository,
+    RegistrationRequestRepository,
     {
       provide: 'IStorageShareRepository',
       useClass: StorageShareRepository,
     },
     NodeDiscoveryService,
+    NodeRegistrationService,
     RegistrationRequestService,
     SystemInfoService,
     NodeCapabilityDetectorService,

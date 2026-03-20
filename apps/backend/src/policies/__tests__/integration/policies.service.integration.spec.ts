@@ -97,8 +97,8 @@ describe('PoliciesService Integration Tests', () => {
 
       const result = await service.create(createDto);
 
-      expect(result).toBeDefined();
-      expect(result.id).toBeDefined();
+      expect(result).not.toBeNull();
+      expect(typeof result.id).toBe('string');
       expect(result.name).toBe(createDto.name);
       expect(result.targetCodec).toBe(createDto.targetCodec);
       expect(result.crf).toBe(createDto.crf);
@@ -133,7 +133,7 @@ describe('PoliciesService Integration Tests', () => {
         where: { id: created.id },
       });
 
-      expect(retrieved).toBeDefined();
+      expect(retrieved).not.toBeNull();
       expect(retrieved?.name).toBe('Persistent Test');
     });
 
@@ -147,8 +147,8 @@ describe('PoliciesService Integration Tests', () => {
       });
 
       expect(result.enabled).toBe(true); // Default enabled
-      expect(result.createdAt).toBeDefined();
-      expect(result.updatedAt).toBeDefined();
+      expect(result.createdAt).toBeInstanceOf(Date);
+      expect(result.updatedAt).toBeInstanceOf(Date);
     });
 
     it('should allow custom ffmpeg arguments', async () => {
@@ -193,7 +193,7 @@ describe('PoliciesService Integration Tests', () => {
       const result = await service.findAll();
 
       expect(result).toHaveLength(2);
-      expect(result[0].library).toBeDefined();
+      expect(result[0].library).not.toBeNull();
       expect(result[0].library?.name).toBe(testLibrary.name);
     });
 
@@ -237,7 +237,7 @@ describe('PoliciesService Integration Tests', () => {
       const result = await service.findAll();
       const foundPolicy = result.find((p) => p.id === policy.id);
 
-      expect(foundPolicy).toBeDefined();
+      expect(foundPolicy).not.toBeUndefined();
       expect(foundPolicy?._count?.jobs).toBe(2);
     });
   });
@@ -254,9 +254,9 @@ describe('PoliciesService Integration Tests', () => {
 
       const result = await service.findOne(created.id);
 
-      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result.id).toBe(created.id);
-      expect(result.library).toBeDefined();
+      expect(result.library).not.toBeNull();
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
@@ -367,23 +367,22 @@ describe('PoliciesService Integration Tests', () => {
     it('should return list of available presets', async () => {
       const result = await service.getPresets();
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
 
       // Check preset structure
       const firstPreset = result[0];
-      expect(firstPreset.name).toBeDefined();
-      expect(firstPreset.targetCodec).toBeDefined();
-      expect(firstPreset.crf).toBeDefined();
-      expect(firstPreset.preset).toBeDefined();
+      expect(typeof firstPreset.name).toBe('string');
+      expect(typeof firstPreset.targetCodec).toBe('string');
+      expect(typeof firstPreset.crf).toBe('number');
+      expect(typeof firstPreset.preset).toBe('string');
     });
 
     it('should include recommended preset', async () => {
       const result = await service.getPresets();
 
       const recommendedPreset = result.find((p) => p.recommended === true);
-      expect(recommendedPreset).toBeDefined();
+      expect(recommendedPreset).not.toBeUndefined();
     });
   });
 });

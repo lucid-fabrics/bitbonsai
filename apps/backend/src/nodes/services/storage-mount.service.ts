@@ -73,7 +73,7 @@ export class StorageMountService {
       this.logger.debug(`Executing mount command: ${mountCommand}`);
 
       // Execute mount command
-      const { stdout, stderr } = await execAsync(mountCommand);
+      const { stderr } = await execAsync(mountCommand);
 
       if (stderr && !stderr.includes('warning')) {
         this.logger.warn(`Mount stderr: ${stderr}`);
@@ -100,7 +100,7 @@ export class StorageMountService {
         success: true,
         message: `Successfully mounted ${share.name}`,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during mount';
       this.logger.error(`Failed to mount ${share.name}: ${errorMessage}`);
 
@@ -141,7 +141,7 @@ export class StorageMountService {
       this.logger.debug(`Executing unmount command: ${unmountCommand}`);
 
       // Execute unmount command
-      const { stdout, stderr } = await execAsync(unmountCommand);
+      const { stderr } = await execAsync(unmountCommand);
 
       if (stderr && !stderr.includes('warning')) {
         this.logger.warn(`Unmount stderr: ${stderr}`);
@@ -168,7 +168,7 @@ export class StorageMountService {
         success: true,
         message: `Successfully unmounted ${share.name}`,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during unmount';
       this.logger.error(`Failed to unmount ${share.name}: ${errorMessage}`);
 
@@ -242,7 +242,7 @@ export class StorageMountService {
       }
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       result.error = error instanceof Error ? error.message : 'Connectivity test failed';
       return result;
     }
@@ -278,7 +278,7 @@ export class StorageMountService {
         availableBytes,
         usedPercent,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to get disk usage for ${mountPoint}: ${error instanceof Error ? error.message : 'unknown error'}`
       );
@@ -297,7 +297,7 @@ export class StorageMountService {
       // Use grep with fixed-string mode (-F) to prevent regex injection
       const { stdout } = await execAsync(`mount | grep -F ${escapeShellArg(safeMountPoint)}`);
       return stdout.includes(safeMountPoint);
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -308,7 +308,7 @@ export class StorageMountService {
   private async ensureMountPoint(mountPoint: string): Promise<void> {
     try {
       await fs.access(mountPoint);
-    } catch (_error) {
+    } catch {
       // Directory doesn't exist, create it
       this.logger.debug(`Creating mount point directory: ${mountPoint}`);
       await fs.mkdir(mountPoint, { recursive: true, mode: 0o755 });
@@ -326,7 +326,7 @@ export class StorageMountService {
       let fstabContent = '';
       try {
         fstabContent = await fs.readFile(fstabPath, 'utf-8');
-      } catch (_error) {
+      } catch {
         // fstab doesn't exist, will create it
         this.logger.debug('/etc/fstab does not exist, will create it');
       }
@@ -363,7 +363,7 @@ export class StorageMountService {
       await fs.appendFile(fstabPath, `\n${fstabEntry}\n`);
 
       this.logger.log(`✓ Added ${share.name} to /etc/fstab`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to add to fstab: ${error instanceof Error ? error.message : 'unknown error'}`
       );
@@ -402,7 +402,7 @@ export class StorageMountService {
       await fs.writeFile(fstabPath, filteredLines.join('\n'));
 
       this.logger.log(`✓ Removed ${share.name} from /etc/fstab`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to remove from fstab: ${error instanceof Error ? error.message : 'unknown error'}`
       );

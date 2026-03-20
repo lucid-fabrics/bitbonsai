@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Metric } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { MetricsRepository } from '../common/repositories/metrics.repository';
+import { NodeRepository } from '../common/repositories/node.repository';
 import type { CodecDistributionDto } from './dto/codec-distribution.dto';
 import type { InsightsStatsDto } from './dto/insights-stats.dto';
 import type { NodeComparisonDto } from './dto/node-comparison.dto';
@@ -13,8 +14,12 @@ import type { SavingsTrendDto } from './dto/savings-trend.dto';
 @Injectable()
 export class InsightsService {
   private readonly logger = new Logger(InsightsService.name);
+  private readonly BYTES_PER_GB = 1024 * 1024 * 1024;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly metricsRepository: MetricsRepository,
+    private readonly nodeRepository: NodeRepository
+  ) {}
 
   /**
    * Get time-series metrics for a date range with optional filters
@@ -29,19 +34,7 @@ export class InsightsService {
       `Fetching time-series metrics from ${params.startDate.toISOString()} to ${params.endDate.toISOString()}`
     );
 
-    return this.prisma.metric.findMany({
-      where: {
-        date: {
-          gte: params.startDate,
-          lte: params.endDate,
-        },
-        nodeId: params.nodeId || undefined,
-        licenseId: params.licenseId || undefined,
-      },
-      orderBy: {
-        date: 'asc',
-      },
-    });
+    return this.metricsRepository.findByDateRange(params);
   }
 
   /**
@@ -50,19 +43,7 @@ export class InsightsService {
   async getAggregatedStats(licenseId?: string): Promise<InsightsStatsDto> {
     this.logger.log(`Calculating aggregated stats${licenseId ? ` for license ${licenseId}` : ''}`);
 
-    const where = licenseId ? { licenseId } : {};
-
-    const result = await this.prisma.metric.aggregate({
-      where,
-      _sum: {
-        jobsCompleted: true,
-        jobsFailed: true,
-        totalSavedBytes: true,
-      },
-      _avg: {
-        avgThroughputFilesPerHour: true,
-      },
-    });
+    const result = await this.metricsRepository.aggregateByLicense(licenseId);
 
     const totalCompleted = result._sum.jobsCompleted || 0;
     const totalFailed = result._sum.jobsFailed || 0;
@@ -71,7 +52,7 @@ export class InsightsService {
 
     // Convert BigInt to string and GB
     const totalSavedBytes = result._sum.totalSavedBytes || BigInt(0);
-    const totalSavedGB = Number(totalSavedBytes) / (1024 * 1024 * 1024);
+    const totalSavedGB = Number(totalSavedBytes) / this.BYTES_PER_GB;
 
     return {
       totalJobsCompleted: totalCompleted,
@@ -92,15 +73,8 @@ export class InsightsService {
       `Calculating codec distribution${licenseId ? ` for license ${licenseId}` : ''}`
     );
 
-    const where = licenseId ? { licenseId } : {};
-
     // Aggregate codec counts from metrics
-    const metrics = await this.prisma.metric.findMany({
-      where,
-      select: {
-        codecDistribution: true,
-      },
-    });
+    const metrics = await this.metricsRepository.findCodecDistributions(licenseId);
 
     // Merge all codec distributions
     const codecCounts: Record<string, number> = {};
@@ -145,22 +119,10 @@ export class InsightsService {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const where: { date: { gte: Date; lte: Date }; licenseId?: string } = {
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
-
-    if (licenseId) {
-      where.licenseId = licenseId;
-    }
-
-    const metrics = await this.prisma.metric.findMany({
-      where,
-      orderBy: {
-        date: 'asc',
-      },
+    const metrics = await this.metricsRepository.findByDateRangeOrdered({
+      startDate,
+      endDate,
+      licenseId,
     });
 
     // Group by date and sum metrics
@@ -181,7 +143,7 @@ export class InsightsService {
       .map(([date, data]) => ({
         date,
         savedBytes: data.savedBytes.toString(),
-        savedGB: Math.round((Number(data.savedBytes) / (1024 * 1024 * 1024)) * 100) / 100,
+        savedGB: Math.round((Number(data.savedBytes) / this.BYTES_PER_GB) * 100) / 100,
         jobsCompleted: data.jobsCompleted,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -192,7 +154,7 @@ export class InsightsService {
       totalSavedBytes += BigInt(point.savedBytes);
     }
 
-    const totalSavedGB = Math.round((Number(totalSavedBytes) / (1024 * 1024 * 1024)) * 100) / 100;
+    const totalSavedGB = Math.round((Number(totalSavedBytes) / this.BYTES_PER_GB) * 100) / 100;
 
     return {
       trend,
@@ -210,12 +172,9 @@ export class InsightsService {
     this.logger.log(`Calculating node comparison${licenseId ? ` for license ${licenseId}` : ''}`);
 
     // Get all nodes with their metrics
-    const nodes = await this.prisma.node.findMany({
-      where: licenseId ? { licenseId } : undefined,
-      include: {
-        metrics: true,
-      },
-    });
+    const nodes = await this.nodeRepository.findAllWithMetrics(
+      licenseId ? { licenseId } : undefined
+    );
 
     const nodeMetrics = nodes.map((node) => {
       // Aggregate metrics for this node
@@ -236,7 +195,7 @@ export class InsightsService {
       const totalJobs = jobsCompleted + jobsFailed;
       const successRate = totalJobs > 0 ? (jobsCompleted / totalJobs) * 100 : 0;
       const avgThroughput = metricCount > 0 ? totalThroughput / metricCount : 0;
-      const totalSavedGB = Number(totalSavedBytes) / (1024 * 1024 * 1024);
+      const totalSavedGB = Number(totalSavedBytes) / this.BYTES_PER_GB;
 
       return {
         nodeId: node.id,

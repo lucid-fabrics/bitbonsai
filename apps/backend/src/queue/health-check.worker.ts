@@ -2,18 +2,15 @@ import * as path from 'node:path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { FileHealthStatus, JobStage } from '@prisma/client';
+import { JobRepository } from '../common/repositories/job.repository';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { ContainerCompatibilityService } from '../encoding/container-compatibility.service';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  HealthCheckIssue,
-  HealthCheckIssueCategory,
-  HealthCheckIssueSeverity,
-  HealthCheckSuggestedAction,
-} from './models/health-check-issue.model';
+import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
+import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 
 /**
  * HealthCheckWorker
@@ -54,12 +51,15 @@ export class HealthCheckWorker implements OnModuleInit {
   private readonly MAX_POOL_UTILIZATION = 0.8;
 
   constructor(
+    // PrismaService retained for $executeRaw (atomic job claim via raw SQL — not expressible via repository)
     private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
     private readonly fileHealthService: FileHealthService,
     private readonly containerCompatibilityService: ContainerCompatibilityService,
-    private readonly ffmpegService: FfmpegService,
+    readonly _ffmpegService: FfmpegService,
     private readonly fileRelocatorService: FileRelocatorService,
-    private readonly fileFailureTracking: FileFailureTrackingService
+    private readonly fileFailureTracking: FileFailureTrackingService,
+    private readonly codecAnalyzer: HealthCheckCodecAnalyzerService
   ) {}
 
   /**
@@ -121,17 +121,21 @@ export class HealthCheckWorker implements OnModuleInit {
       // Find CORRUPTED jobs that are stuck (not actively being processed)
       // Only requeue jobs that haven't exceeded the requeue cap
       // Only requeue QUEUED and DETECTED jobs (not FAILED - those were explicitly failed)
-      const corruptedJobs = await this.prisma.job.findMany({
-        where: {
+      const corruptedJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        healthMessage: string | null;
+        healthCheckedAt: Date | null;
+        corruptedRequeueCount: number;
+        filePath: string;
+        libraryId: string;
+      }>(
+        {
           healthStatus: FileHealthStatus.CORRUPTED,
-          stage: {
-            in: [JobStage.QUEUED, JobStage.DETECTED],
-          },
-          corruptedRequeueCount: {
-            lt: this.MAX_CORRUPTED_REQUEUE,
-          },
+          stage: { in: [JobStage.QUEUED, JobStage.DETECTED] },
+          corruptedRequeueCount: { lt: this.MAX_CORRUPTED_REQUEUE },
         },
-        select: {
+        {
           id: true,
           fileLabel: true,
           healthMessage: true,
@@ -139,29 +143,32 @@ export class HealthCheckWorker implements OnModuleInit {
           corruptedRequeueCount: true,
           filePath: true,
           libraryId: true,
-        },
-      });
+        }
+      );
 
       // Also find jobs that have hit the cap - permanently fail them
-      const exhaustedJobs = await this.prisma.job.findMany({
-        where: {
+      const exhaustedJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        corruptedRequeueCount: number;
+        filePath: string;
+        libraryId: string;
+        contentFingerprint: string | null;
+      }>(
+        {
           healthStatus: FileHealthStatus.CORRUPTED,
-          stage: {
-            in: [JobStage.QUEUED, JobStage.DETECTED],
-          },
-          corruptedRequeueCount: {
-            gte: this.MAX_CORRUPTED_REQUEUE,
-          },
+          stage: { in: [JobStage.QUEUED, JobStage.DETECTED] },
+          corruptedRequeueCount: { gte: this.MAX_CORRUPTED_REQUEUE },
         },
-        select: {
+        {
           id: true,
           fileLabel: true,
           corruptedRequeueCount: true,
           filePath: true,
           libraryId: true,
           contentFingerprint: true,
-        },
-      });
+        }
+      );
 
       // Permanently fail exhausted jobs
       if (exhaustedJobs.length > 0) {
@@ -171,13 +178,10 @@ export class HealthCheckWorker implements OnModuleInit {
 
         for (const job of exhaustedJobs) {
           const errorMsg = `File is genuinely corrupted - auto-requeued ${job.corruptedRequeueCount} times without recovery. Manual intervention required.`;
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.FAILED,
-              failedAt: new Date(),
-              error: errorMsg,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.FAILED,
+            failedAt: new Date(),
+            error: errorMsg,
           });
 
           // Record in cross-job failure tracking for auto-blacklist
@@ -188,7 +192,7 @@ export class HealthCheckWorker implements OnModuleInit {
               errorMsg,
               job.contentFingerprint ?? undefined
             );
-          } catch (trackingErr) {
+          } catch (trackingErr: unknown) {
             this.logger.error(
               `Failed to record failure tracking for ${job.fileLabel}`,
               trackingErr instanceof Error ? trackingErr.stack : String(trackingErr)
@@ -214,14 +218,11 @@ export class HealthCheckWorker implements OnModuleInit {
       // Increment corruptedRequeueCount for each job individually
       let resetCount = 0;
       for (const job of corruptedJobs) {
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: JobStage.DETECTED,
-            healthStatus: FileHealthStatus.UNKNOWN,
-            corruptedRequeueCount: { increment: 1 },
-            error: `Auto-requeued for re-validation (attempt ${job.corruptedRequeueCount + 1}/${this.MAX_CORRUPTED_REQUEUE})`,
-          },
+        await this.jobRepository.updateById(job.id, {
+          stage: JobStage.DETECTED,
+          healthStatus: FileHealthStatus.UNKNOWN,
+          corruptedRequeueCount: { increment: 1 },
+          error: `Auto-requeued for re-validation (attempt ${job.corruptedRequeueCount + 1}/${this.MAX_CORRUPTED_REQUEUE})`,
         });
         resetCount++;
       }
@@ -235,7 +236,7 @@ export class HealthCheckWorker implements OnModuleInit {
           `Auto-requeue sample: ${sampleFiles.join(', ')}${corruptedJobs.length > 5 ? '...' : ''}`
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Auto-requeue failed: ${errorMessage}`);
     }
@@ -293,7 +294,7 @@ export class HealthCheckWorker implements OnModuleInit {
         // CRITICAL FIX: Timeout watchdog for stuck health checks (10 min max)
         await this.timeoutStuckHealthChecks();
         await this.processHealthChecks();
-      } catch (error) {
+      } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(`Worker loop error: ${errorMessage}`);
       }
@@ -310,20 +311,15 @@ export class HealthCheckWorker implements OnModuleInit {
   private async timeoutStuckHealthChecks(): Promise<void> {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-    const stuckJobs = await this.prisma.job.findMany({
-      where: {
-        stage: JobStage.HEALTH_CHECK,
-        healthCheckStartedAt: {
-          lt: tenMinutesAgo,
-        },
-      },
-      select: {
-        id: true,
-        fileLabel: true,
-        healthCheckStartedAt: true,
-        retryCount: true,
-      },
-    });
+    const stuckJobs = await this.jobRepository.findManySelect<{
+      id: string;
+      fileLabel: string;
+      healthCheckStartedAt: Date | null;
+      retryCount: number;
+    }>(
+      { stage: JobStage.HEALTH_CHECK, healthCheckStartedAt: { lt: tenMinutesAgo } },
+      { id: true, fileLabel: true, healthCheckStartedAt: true, retryCount: true }
+    );
 
     for (const job of stuckJobs) {
       const stuckMinutes = job.healthCheckStartedAt
@@ -335,14 +331,11 @@ export class HealthCheckWorker implements OnModuleInit {
         this.logger.warn(
           `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min, max retries (${this.MAX_RETRY_ATTEMPTS}) exhausted - marking FAILED`
         );
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: JobStage.FAILED,
-            failedAt: new Date(),
-            error: `Health check timed out after ${stuckMinutes} minutes (${this.MAX_RETRY_ATTEMPTS} retries exhausted)`,
-            healthStatus: FileHealthStatus.CORRUPTED,
-          },
+        await this.jobRepository.updateById(job.id, {
+          stage: JobStage.FAILED,
+          failedAt: new Date(),
+          error: `Health check timed out after ${stuckMinutes} minutes (${this.MAX_RETRY_ATTEMPTS} retries exhausted)`,
+          healthStatus: FileHealthStatus.CORRUPTED,
         });
       } else {
         // Retry by resetting to DETECTED with exponential backoff
@@ -352,15 +345,12 @@ export class HealthCheckWorker implements OnModuleInit {
         this.logger.warn(
           `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min - resetting to DETECTED (retry ${job.retryCount + 1}/${this.MAX_RETRY_ATTEMPTS}, next retry in ${backoffMs / 1000}s)`
         );
-        await this.prisma.job.update({
-          where: { id: job.id },
-          data: {
-            stage: JobStage.DETECTED,
-            retryCount: job.retryCount + 1,
-            healthCheckStartedAt: null,
-            error: `Health check timed out after ${stuckMinutes} minutes, retrying...`,
-            nextRetryAt,
-          },
+        await this.jobRepository.updateById(job.id, {
+          stage: JobStage.DETECTED,
+          retryCount: job.retryCount + 1,
+          healthCheckStartedAt: null,
+          error: `Health check timed out after ${stuckMinutes} minutes, retrying...`,
+          nextRetryAt,
         });
       }
 
@@ -412,32 +402,32 @@ export class HealthCheckWorker implements OnModuleInit {
     // - DETECTED: New jobs waiting for health check
     // - HEALTH_CHECK: Orphaned jobs stuck in this stage (safety net for recovery)
     //   BUT: Exclude recently started checks (dynamic timeout based on file size)
-    const jobs = await this.prisma.job.findMany({
+    const jobs = await this.jobRepository.findManyWithInclude<{
+      id: string;
+      stage: JobStage;
+      healthCheckStartedAt: Date | null;
+      beforeSizeBytes: bigint;
+      filePath: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+      targetContainer: string | null;
+      policy: { allowSameCodec: boolean; minSavingsPercent: number } | null;
+    }>({
       where: {
         AND: [
-          {
-            stage: {
-              in: [JobStage.DETECTED, JobStage.HEALTH_CHECK],
-            },
-          },
-          {
-            id: {
-              notIn: Array.from(this.currentlyChecking),
-            },
-          },
+          { stage: { in: [JobStage.DETECTED, JobStage.HEALTH_CHECK] } },
+          { id: { notIn: Array.from(this.currentlyChecking) } },
           {
             // MEDIUM #1 FIX: Use conservative 60min timeout in WHERE clause
             // Dynamic per-file timeout filtering happens in-memory after fetch
             OR: [
+              { stage: JobStage.DETECTED },
               {
-                stage: JobStage.DETECTED, // Always include DETECTED jobs
-              },
-              {
-                // For HEALTH_CHECK stage, fetch all started >60min ago (conservative)
                 stage: JobStage.HEALTH_CHECK,
                 OR: [
-                  { healthCheckStartedAt: null }, // No start time (orphaned before fix)
-                  { healthCheckStartedAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } }, // 60min
+                  { healthCheckStartedAt: null },
+                  { healthCheckStartedAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } },
                 ],
               },
             ],
@@ -445,9 +435,7 @@ export class HealthCheckWorker implements OnModuleInit {
         ],
       },
       take: availableSlots,
-      orderBy: {
-        createdAt: 'asc', // FIFO order
-      },
+      orderBy: { createdAt: 'asc' },
     });
 
     if (jobs.length === 0) {
@@ -496,16 +484,18 @@ export class HealthCheckWorker implements OnModuleInit {
 
     try {
       // Get job details including policy for allowSameCodec and minSavingsPercent check
-      const job = await this.prisma.job.findUnique({
-        where: { id: jobId },
-        include: {
-          policy: {
-            select: {
-              allowSameCodec: true,
-              minSavingsPercent: true,
-            },
-          },
-        },
+      const job = await this.jobRepository.findUniqueWithInclude<{
+        id: string;
+        filePath: string;
+        fileLabel: string;
+        stage: JobStage;
+        sourceCodec: string;
+        targetCodec: string;
+        targetContainer: string | null;
+        beforeSizeBytes: bigint;
+        policy: { allowSameCodec: boolean; minSavingsPercent: number } | null;
+      }>(jobId, {
+        policy: { select: { allowSameCodec: true, minSavingsPercent: true } },
       });
 
       if (!job) {
@@ -551,12 +541,9 @@ export class HealthCheckWorker implements OnModuleInit {
           );
 
           // Update job path in database
-          await this.prisma.job.update({
-            where: { id: jobId },
-            data: {
-              filePath: relocationResult.newPath,
-              fileLabel: path.basename(relocationResult.newPath),
-            },
+          await this.jobRepository.updateById(jobId, {
+            filePath: relocationResult.newPath,
+            fileLabel: path.basename(relocationResult.newPath),
           });
 
           // Update local job object for the rest of this health check
@@ -564,16 +551,13 @@ export class HealthCheckWorker implements OnModuleInit {
           job.fileLabel = path.basename(relocationResult.newPath);
         } else {
           // Could not relocate - mark as FAILED
-          await this.prisma.job.update({
-            where: { id: jobId },
-            data: {
-              stage: JobStage.FAILED,
-              healthStatus: FileHealthStatus.CORRUPTED,
-              healthScore: 0,
-              healthMessage: '❌ Source file was deleted before health check could run',
-              healthCheckedAt: new Date(),
-              error: `File not found at expected path: ${job.filePath}\n\nThe file may have been moved or deleted after the job was created. (Checked ${FILE_ACCESS_MAX_RETRIES} times over ${(FILE_ACCESS_MAX_RETRIES * FILE_ACCESS_RETRY_DELAY_MS) / 1000}s)\n\n(Auto-relocation searched ${relocationResult.searchedPaths} files but could not find a match)`,
-            },
+          await this.jobRepository.updateById(jobId, {
+            stage: JobStage.FAILED,
+            healthStatus: FileHealthStatus.CORRUPTED,
+            healthScore: 0,
+            healthMessage: '❌ Source file was deleted before health check could run',
+            healthCheckedAt: new Date(),
+            error: `File not found at expected path: ${job.filePath}\n\nThe file may have been moved or deleted after the job was created. (Checked ${FILE_ACCESS_MAX_RETRIES} times over ${(FILE_ACCESS_MAX_RETRIES * FILE_ACCESS_RETRY_DELAY_MS) / 1000}s)\n\n(Auto-relocation searched ${relocationResult.searchedPaths} files but could not find a match)`,
           });
           this.logger.error(
             `✗ ${job.fileLabel} - FILE MISSING after ${FILE_ACCESS_MAX_RETRIES} retries and auto-relocation → FAILED`
@@ -621,14 +605,17 @@ export class HealthCheckWorker implements OnModuleInit {
 
       if (!allowSameCodec) {
         // allowSameCodec is disabled - always check for codec match
-        const codecMatchIssue = this.checkCodecMatch(job.sourceCodec, job.targetCodec);
+        const codecMatchIssue = this.codecAnalyzer.checkCodecMatch(
+          job.sourceCodec,
+          job.targetCodec
+        );
         if (codecMatchIssue) {
           compatibilityIssues.push(codecMatchIssue);
         }
       } else if (minSavingsPercent > 0) {
         // allowSameCodec is enabled but has a savings threshold
         // Calculate expected savings and compare against threshold
-        const expectedSavings = this.calculateExpectedSavingsPercent(
+        const expectedSavings = this.codecAnalyzer.calculateExpectedSavingsPercent(
           job.sourceCodec,
           job.targetCodec,
           job.beforeSizeBytes
@@ -636,7 +623,7 @@ export class HealthCheckWorker implements OnModuleInit {
 
         if (expectedSavings < minSavingsPercent) {
           // Expected savings is below threshold - show NEEDS_DECISION
-          const codecMatchIssue = this.checkCodecMatchWithThreshold(
+          const codecMatchIssue = this.codecAnalyzer.checkCodecMatchWithThreshold(
             job.sourceCodec,
             job.targetCodec,
             expectedSavings,
@@ -679,7 +666,7 @@ export class HealthCheckWorker implements OnModuleInit {
       }
 
       // Build health message
-      const healthMessage = this.buildHealthMessage(healthResult);
+      const healthMessage = this.codecAnalyzer.buildHealthMessage(healthResult);
 
       // Prepare decision data if there are compatibility issues
       const decisionData: {
@@ -693,27 +680,24 @@ export class HealthCheckWorker implements OnModuleInit {
       }
 
       // Update job with health results
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: {
-          stage: nextStage,
-          healthStatus: healthResult.status,
-          healthScore: Math.min(100, healthResult.score),
-          healthMessage,
-          healthCheckedAt: new Date(),
-          error: errorMessage,
-          ...decisionData,
-        },
+      await this.jobRepository.updateById(jobId, {
+        stage: nextStage,
+        healthStatus: healthResult.status,
+        healthScore: Math.min(100, healthResult.score),
+        healthMessage,
+        healthCheckedAt: new Date(),
+        error: errorMessage,
+        ...decisionData,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Health check failed for job ${jobId}: ${errorMessage}`);
 
       // Get current retry count
-      const job = await this.prisma.job.findUnique({
-        where: { id: jobId },
-        select: { healthCheckRetries: true, fileLabel: true },
-      });
+      const job = await this.jobRepository.findUniqueSelect<{
+        healthCheckRetries: number;
+        fileLabel: string;
+      }>({ id: jobId }, { healthCheckRetries: true, fileLabel: true });
 
       if (!job) {
         return;
@@ -723,26 +707,20 @@ export class HealthCheckWorker implements OnModuleInit {
 
       if (retries >= this.MAX_RETRY_ATTEMPTS) {
         // Max retries reached, mark as failed
-        await this.prisma.job.update({
-          where: { id: jobId },
-          data: {
-            stage: JobStage.FAILED,
-            healthStatus: FileHealthStatus.CORRUPTED,
-            healthScore: 0,
-            healthMessage: `Health check failed after ${retries} attempts`,
-            healthCheckRetries: retries,
-            error: `Health check error: ${errorMessage}`,
-          },
+        await this.jobRepository.updateById(jobId, {
+          stage: JobStage.FAILED,
+          healthStatus: FileHealthStatus.CORRUPTED,
+          healthScore: 0,
+          healthMessage: `Health check failed after ${retries} attempts`,
+          healthCheckRetries: retries,
+          error: `Health check error: ${errorMessage}`,
         });
         this.logger.error(`Job ${job.fileLabel} failed health check after ${retries} attempts`);
       } else {
         // Retry later - reset to DETECTED
-        await this.prisma.job.update({
-          where: { id: jobId },
-          data: {
-            stage: JobStage.DETECTED,
-            healthCheckRetries: retries,
-          },
+        await this.jobRepository.updateById(jobId, {
+          stage: JobStage.DETECTED,
+          healthCheckRetries: retries,
         });
         this.logger.debug(
           `Job ${job.fileLabel} health check retry ${retries}/${this.MAX_RETRY_ATTEMPTS}`
@@ -767,253 +745,6 @@ export class HealthCheckWorker implements OnModuleInit {
    * @param targetCodec - The job's target codec
    * @returns A BLOCKER issue if codecs match, null otherwise
    */
-  private checkCodecMatch(sourceCodec: string, targetCodec: string): HealthCheckIssue | null {
-    const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
-    const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
-
-    if (normalizedSource === normalizedTarget) {
-      const codecDisplayName = this.getCodecDisplayName(normalizedSource);
-
-      const suggestedActions: HealthCheckSuggestedAction[] = [
-        {
-          id: 'skip_encoding',
-          label: 'Skip Encoding',
-          description: `Mark this job as completed without encoding - the file is already in ${codecDisplayName} format`,
-          impact: 'Job will be marked as COMPLETED with no changes to the file',
-          recommended: true,
-          config: {
-            action: 'skip',
-            reason: 'codec_already_matches',
-          },
-        },
-        {
-          id: 'force_reencode',
-          label: 'Force Re-encode Anyway',
-          description: `Re-encode the file from ${codecDisplayName} to ${codecDisplayName} (same codec)`,
-          impact:
-            'File will be re-encoded, potentially resulting in quality loss with no size benefit',
-          recommended: false,
-          config: {
-            action: 'force_encode',
-            reason: 'user_requested',
-          },
-        },
-        {
-          id: 'cancel_job',
-          label: 'Cancel Job',
-          description: 'Remove this job from the queue entirely',
-          impact: 'Job will be cancelled and the file left unchanged',
-          recommended: false,
-          config: {
-            action: 'cancel',
-            reason: 'codec_already_matches',
-          },
-        },
-      ];
-
-      return {
-        category: HealthCheckIssueCategory.CODEC,
-        severity: HealthCheckIssueSeverity.BLOCKER,
-        code: 'CODEC_ALREADY_MATCHES_TARGET',
-        message: `This file is already encoded in ${codecDisplayName} format`,
-        technicalDetails: `
-Source codec: ${sourceCodec} (normalized: ${normalizedSource})
-Target codec: ${targetCodec} (normalized: ${normalizedTarget})
-
-The file's current codec matches the target codec for this job. This typically happens when:
-• The encoding policy was changed after the job was created
-• The file was already optimized and re-added to the queue
-• The policy's target codec was set incorrectly
-
-Re-encoding a file to the same codec offers no benefit and may actually increase file size or reduce quality.
-`.trim(),
-        suggestedActions,
-        metadata: {
-          sourceCodec: normalizedSource,
-          targetCodec: normalizedTarget,
-          codecMatch: true,
-        },
-      };
-    }
-
-    return null;
-  }
-
-  /**
-   * Get user-friendly display name for a codec
-   */
-  private getCodecDisplayName(codec: string): string {
-    const displayNames: Record<string, string> = {
-      hevc: 'HEVC (H.265)',
-      h264: 'H.264 (AVC)',
-      av1: 'AV1',
-      vp9: 'VP9',
-    };
-    return displayNames[codec.toLowerCase()] || codec.toUpperCase();
-  }
-
-  /**
-   * Calculate expected savings percentage based on codec compression ratios
-   *
-   * Uses typical compression ratios between codecs:
-   * - H.264 → HEVC: ~30-50% savings
-   * - H.264 → AV1: ~40-60% savings
-   * - HEVC → AV1: ~20-30% savings
-   * - Same codec: ~0-5% savings (minimal)
-   */
-  private calculateExpectedSavingsPercent(
-    sourceCodec: string,
-    targetCodec: string,
-    _beforeSizeBytes: bigint
-  ): number {
-    const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
-    const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
-
-    // Same codec typically yields minimal savings
-    if (normalizedSource === normalizedTarget) {
-      return 5; // Conservative estimate for same-codec re-encoding
-    }
-
-    // Compression ratio estimates (conservative)
-    const compressionRatios: Record<string, Record<string, number>> = {
-      h264: {
-        hevc: 35, // H.264 → HEVC: ~35% savings
-        av1: 50, // H.264 → AV1: ~50% savings
-        vp9: 30, // H.264 → VP9: ~30% savings
-      },
-      hevc: {
-        av1: 25, // HEVC → AV1: ~25% savings
-        vp9: 10, // HEVC → VP9: ~10% savings
-        h264: -30, // HEVC → H.264: negative savings (quality loss)
-      },
-      av1: {
-        hevc: -10, // AV1 → HEVC: negative savings
-        vp9: 0, // AV1 → VP9: similar
-        h264: -50, // AV1 → H.264: significant increase
-      },
-      vp9: {
-        hevc: 10, // VP9 → HEVC: ~10% savings
-        av1: 20, // VP9 → AV1: ~20% savings
-        h264: -20, // VP9 → H.264: negative savings
-      },
-    };
-
-    return compressionRatios[normalizedSource]?.[normalizedTarget] ?? 0;
-  }
-
-  /**
-   * Check codec match with savings threshold - creates a BLOCKER issue
-   * when expected savings is below the policy's minimum threshold
-   */
-  private checkCodecMatchWithThreshold(
-    sourceCodec: string,
-    targetCodec: string,
-    expectedSavings: number,
-    minSavingsThreshold: number
-  ): HealthCheckIssue | null {
-    const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
-    const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
-    const codecDisplayName = this.getCodecDisplayName(normalizedTarget);
-
-    const suggestedActions: HealthCheckSuggestedAction[] = [
-      {
-        id: 'skip_encoding',
-        label: 'Skip Encoding',
-        description: `Skip this job - expected savings (${expectedSavings}%) is below the ${minSavingsThreshold}% threshold`,
-        impact: 'Job will be marked as COMPLETED with no changes to the file',
-        recommended: true,
-        config: {
-          action: 'skip',
-          reason: 'savings_below_threshold',
-        },
-      },
-      {
-        id: 'force_reencode',
-        label: 'Force Re-encode Anyway',
-        description: `Re-encode despite low expected savings (${expectedSavings}%)`,
-        impact: `File will be re-encoded but savings may be less than ${minSavingsThreshold}%`,
-        recommended: false,
-        config: {
-          action: 'force_encode',
-          reason: 'user_requested',
-        },
-      },
-      {
-        id: 'cancel_job',
-        label: 'Cancel Job',
-        description: 'Remove this job from the queue entirely',
-        impact: 'Job will be cancelled and the file left unchanged',
-        recommended: false,
-        config: {
-          action: 'cancel',
-          reason: 'savings_below_threshold',
-        },
-      },
-    ];
-
-    return {
-      category: HealthCheckIssueCategory.CODEC,
-      severity: HealthCheckIssueSeverity.BLOCKER,
-      code: 'SAVINGS_BELOW_THRESHOLD',
-      message: `Expected savings (${expectedSavings}%) is below the policy threshold (${minSavingsThreshold}%)`,
-      technicalDetails: `
-Source codec: ${sourceCodec} (normalized: ${normalizedSource})
-Target codec: ${targetCodec} (normalized: ${normalizedTarget})
-Expected savings: ${expectedSavings}%
-Policy threshold: ${minSavingsThreshold}%
-
-The expected file size reduction from encoding this file to ${codecDisplayName} is below your policy's minimum savings threshold.
-
-This typically means the encoding would take significant time with minimal space benefit.
-`.trim(),
-      suggestedActions,
-      metadata: {
-        sourceCodec: normalizedSource,
-        targetCodec: normalizedTarget,
-        expectedSavings,
-        minSavingsThreshold,
-      },
-    };
-  }
-
-  /**
-   * Build a user-friendly health message
-   *
-   * @param result - Health check result
-   * @returns Formatted health message
-   */
-  private buildHealthMessage(result: {
-    status: FileHealthStatus;
-    score: number;
-    issues: string[];
-    warnings: string[];
-  }): string {
-    const parts: string[] = [];
-
-    // Add status emoji
-    const emoji = {
-      [FileHealthStatus.HEALTHY]: '✅',
-      [FileHealthStatus.WARNING]: '⚠️',
-      [FileHealthStatus.AT_RISK]: '⚠️',
-      [FileHealthStatus.CORRUPTED]: '❌',
-      [FileHealthStatus.UNKNOWN]: '❓',
-    };
-
-    parts.push(`${emoji[result.status]} Score: ${result.score}/100`);
-
-    // Add issues
-    if (result.issues.length > 0) {
-      parts.push(`Issues: ${result.issues.join('; ')}`);
-    }
-
-    // Add warnings
-    if (result.warnings.length > 0) {
-      parts.push(`Warnings: ${result.warnings.join('; ')}`);
-    }
-
-    return parts.join(' | ');
-  }
-
   /**
    * Helper: Sleep for specified milliseconds
    */

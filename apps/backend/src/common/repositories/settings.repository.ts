@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { type Settings } from '@prisma/client';
+import { type Prisma, type Settings } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class SettingsRepository {
     return this.prisma.settings.upsert({
       where,
       update: data,
-      create: data as any,
+      create: data as Prisma.SettingsCreateInput,
     });
   }
 
@@ -42,5 +42,38 @@ export class SettingsRepository {
     const existing = await this.findFirst();
     if (existing) return existing;
     return this.create({});
+  }
+
+  /**
+   * Atomically find-or-create, then optionally update.
+   * Replaces the prisma.$transaction(findFirst + create/update) pattern.
+   */
+  async upsertSettings(data: Record<string, unknown>): Promise<Settings> {
+    return this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+
+      if (!s) {
+        s = await tx.settings.create({ data });
+      } else {
+        s = await tx.settings.update({ where: { id: s.id }, data });
+      }
+
+      return s;
+    });
+  }
+
+  /**
+   * Atomically find-or-create with default data, without updating if already exists.
+   */
+  async findOrCreateWithDefaults(defaults: Record<string, unknown>): Promise<Settings> {
+    return this.prisma.$transaction(async (tx) => {
+      let s = await tx.settings.findFirst();
+
+      if (!s) {
+        s = await tx.settings.create({ data: defaults });
+      }
+
+      return s;
+    });
   }
 }

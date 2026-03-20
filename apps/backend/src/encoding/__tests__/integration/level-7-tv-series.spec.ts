@@ -112,7 +112,7 @@ describe('Level 7: TV Series Processing', () => {
         await encodingProcessor.processNextJob('test-worker-1');
         const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
 
-        expect(completedJob).toBeDefined();
+        expect(completedJob).not.toBeNull();
         expect(completedJob?.stage).toBe('COMPLETED');
       }
 
@@ -126,35 +126,7 @@ describe('Level 7: TV Series Processing', () => {
     }, 180000);
   });
 
-  describe('Season-wide Encoding', () => {
-    // Skipped: unimplemented stub requiring FFmpeg, Prisma DB, and 10 video fixtures
-    it.skip('should process an entire season of episodes', async () => {
-      // TODO: Implement full season processing (10 episodes)
-      // Generate all episodes for a season
-      // Process them concurrently or sequentially
-      // Verify all complete successfully
-      // Check total space savings across season
-    });
-  });
-
-  describe('Episode Naming Conventions', () => {
-    // Skipped: unimplemented stub requiring FFmpeg and video fixtures
-    it.skip('should handle various episode naming formats', async () => {
-      // TODO: Test different naming conventions:
-      // - Show.Name.S01E01.mkv
-      // - Show Name - 1x01 - Episode Title.mkv
-      // - Show.Name.101.mkv
-      // Verify naming is preserved in encoded files
-    });
-  });
-
-  describe('Progress Tracking', () => {
-    // Skipped: unimplemented stub requiring FFmpeg and progress monitoring
-    it.skip('should track progress across multiple episodes', async () => {
-      // TODO: Implement progress tracking
-      // Process multiple episodes
-      // Verify progress updates for each episode
-      // Check overall season progress
-    });
-  });
+  // Future: Season-wide encoding (requires 10+ video fixtures)
+  // Future: Episode naming convention preservation
+  // Future: Multi-episode progress tracking
 });

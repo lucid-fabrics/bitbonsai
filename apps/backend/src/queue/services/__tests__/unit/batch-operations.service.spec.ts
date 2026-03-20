@@ -1,18 +1,25 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { createMockPrismaService } from '../../../../testing/mock-providers';
+import { JobRepository } from '../../../../common/repositories/job.repository';
 import { BatchOperationsService } from '../../batch-operations.service';
 
 describe('BatchOperationsService', () => {
   let service: BatchOperationsService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  let jobRepository: {
+    atomicUpdateMany: jest.Mock;
+    deleteManyWhere: jest.Mock;
+    countWhere: jest.Mock;
+  };
 
   beforeEach(async () => {
-    prisma = createMockPrismaService();
+    jobRepository = {
+      atomicUpdateMany: jest.fn(),
+      deleteManyWhere: jest.fn(),
+      countWhere: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BatchOperationsService, { provide: PrismaService, useValue: prisma }],
+      providers: [BatchOperationsService, { provide: JobRepository, useValue: jobRepository }],
     }).compile();
 
     service = module.get<BatchOperationsService>(BatchOperationsService);
@@ -30,33 +37,32 @@ describe('BatchOperationsService', () => {
 
   describe('pauseAll', () => {
     it('should pause all queued jobs', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 5 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 5 });
 
       const result = await service.pauseAll();
 
       expect(result.success).toBe(true);
       expect(result.errors).toEqual([]);
-      expect(prisma.job.updateMany).toHaveBeenCalledTimes(2); // Phase 1 + Phase 2
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledTimes(2); // Phase 1 + Phase 2
     });
 
     it('should pause jobs for a specific node', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 2 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 2 });
 
       const result = await service.pauseAll('node-1');
 
       expect(result.success).toBe(true);
       // Verify nodeId was included in the where clause
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            nodeId: 'node-1',
-          }),
-        })
+          nodeId: 'node-1',
+        }),
+        expect.anything()
       );
     });
 
     it('should handle database errors gracefully', async () => {
-      prisma.job.updateMany.mockRejectedValue(new Error('Connection lost'));
+      jobRepository.atomicUpdateMany.mockRejectedValue(new Error('Connection lost'));
 
       const result = await service.pauseAll();
 
@@ -68,38 +74,36 @@ describe('BatchOperationsService', () => {
 
   describe('resumeAll', () => {
     it('should resume all paused jobs', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 3 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 3 });
 
       const result = await service.resumeAll();
 
       expect(result.success).toBe(true);
       expect(result.affectedCount).toBe(3);
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({
-          data: expect.objectContaining({
-            stage: JobStage.QUEUED,
-          }),
+          stage: JobStage.QUEUED,
         })
       );
     });
 
     it('should resume jobs for a specific node', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.resumeAll('node-2');
 
       expect(result.success).toBe(true);
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            nodeId: 'node-2',
-          }),
-        })
+          nodeId: 'node-2',
+        }),
+        expect.anything()
       );
     });
 
     it('should handle database errors', async () => {
-      prisma.job.updateMany.mockRejectedValue(new Error('Timeout'));
+      jobRepository.atomicUpdateMany.mockRejectedValue(new Error('Timeout'));
 
       const result = await service.resumeAll();
 
@@ -110,38 +114,36 @@ describe('BatchOperationsService', () => {
 
   describe('cancelAll', () => {
     it('should cancel all active jobs', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 10 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 10 });
 
       const result = await service.cancelAll();
 
       expect(result.success).toBe(true);
       expect(result.affectedCount).toBe(10);
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({
-          data: expect.objectContaining({
-            stage: JobStage.CANCELLED,
-            error: 'Batch cancelled by user',
-          }),
+          stage: JobStage.CANCELLED,
+          error: 'Batch cancelled by user',
         })
       );
     });
 
     it('should include cancelRequestedAt timestamp', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
 
       await service.cancelAll();
 
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({
-          data: expect.objectContaining({
-            cancelRequestedAt: expect.any(Date),
-          }),
+          cancelRequestedAt: expect.any(Date),
         })
       );
     });
 
     it('should cancel jobs for specific node', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 3 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 3 });
 
       const result = await service.cancelAll('node-1');
 
@@ -149,7 +151,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      prisma.job.updateMany.mockRejectedValue(new Error('DB error'));
+      jobRepository.atomicUpdateMany.mockRejectedValue(new Error('DB error'));
 
       const result = await service.cancelAll();
 
@@ -160,42 +162,39 @@ describe('BatchOperationsService', () => {
 
   describe('retryAllFailed', () => {
     it('should retry all failed jobs under retry limit', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 4 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 4 });
 
       const result = await service.retryAllFailed();
 
       expect(result.success).toBe(true);
       expect(result.affectedCount).toBe(4);
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            stage: JobStage.FAILED,
-            retryCount: { lt: 3 },
-          }),
-          data: expect.objectContaining({
-            stage: JobStage.QUEUED,
-            progress: 0,
-          }),
+          stage: JobStage.FAILED,
+          retryCount: { lt: 3 },
+        }),
+        expect.objectContaining({
+          stage: JobStage.QUEUED,
+          progress: 0,
         })
       );
     });
 
     it('should respect custom maxRetries', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 2 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 2 });
 
       await service.retryAllFailed(undefined, 5);
 
-      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect(jobRepository.atomicUpdateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            retryCount: { lt: 5 },
-          }),
-        })
+          retryCount: { lt: 5 },
+        }),
+        expect.anything()
       );
     });
 
     it('should retry only for specific node', async () => {
-      prisma.job.updateMany.mockResolvedValue({ count: 1 });
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.retryAllFailed('node-3');
 
@@ -203,7 +202,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      prisma.job.updateMany.mockRejectedValue(new Error('Retry failed'));
+      jobRepository.atomicUpdateMany.mockRejectedValue(new Error('Retry failed'));
 
       const result = await service.retryAllFailed();
 
@@ -213,24 +212,24 @@ describe('BatchOperationsService', () => {
 
   describe('deleteCompletedOlderThan', () => {
     it('should delete completed jobs older than specified days', async () => {
-      prisma.job.deleteMany.mockResolvedValue({ count: 15 });
+      jobRepository.deleteManyWhere.mockResolvedValue({ count: 15 });
 
       const result = await service.deleteCompletedOlderThan(30);
 
       expect(result.success).toBe(true);
       expect(result.affectedCount).toBe(15);
-      expect(prisma.job.deleteMany).toHaveBeenCalledWith({
-        where: expect.objectContaining({
+      expect(jobRepository.deleteManyWhere).toHaveBeenCalledWith(
+        expect.objectContaining({
           stage: JobStage.COMPLETED,
           completedAt: {
             lt: expect.any(Date),
           },
-        }),
-      });
+        })
+      );
     });
 
     it('should delete for specific node', async () => {
-      prisma.job.deleteMany.mockResolvedValue({ count: 5 });
+      jobRepository.deleteManyWhere.mockResolvedValue({ count: 5 });
 
       const result = await service.deleteCompletedOlderThan(7, 'node-1');
 
@@ -239,7 +238,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      prisma.job.deleteMany.mockRejectedValue(new Error('Delete failed'));
+      jobRepository.deleteManyWhere.mockRejectedValue(new Error('Delete failed'));
 
       const result = await service.deleteCompletedOlderThan(30);
 
@@ -249,21 +248,21 @@ describe('BatchOperationsService', () => {
 
   describe('deleteAllFailed', () => {
     it('should delete all failed jobs', async () => {
-      prisma.job.deleteMany.mockResolvedValue({ count: 8 });
+      jobRepository.deleteManyWhere.mockResolvedValue({ count: 8 });
 
       const result = await service.deleteAllFailed();
 
       expect(result.success).toBe(true);
       expect(result.affectedCount).toBe(8);
-      expect(prisma.job.deleteMany).toHaveBeenCalledWith({
-        where: expect.objectContaining({
+      expect(jobRepository.deleteManyWhere).toHaveBeenCalledWith(
+        expect.objectContaining({
           stage: JobStage.FAILED,
-        }),
-      });
+        })
+      );
     });
 
     it('should delete failed jobs for specific node', async () => {
-      prisma.job.deleteMany.mockResolvedValue({ count: 2 });
+      jobRepository.deleteManyWhere.mockResolvedValue({ count: 2 });
 
       const result = await service.deleteAllFailed('node-2');
 
@@ -271,7 +270,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      prisma.job.deleteMany.mockRejectedValue(new Error('DB down'));
+      jobRepository.deleteManyWhere.mockRejectedValue(new Error('DB down'));
 
       const result = await service.deleteAllFailed();
 
@@ -281,17 +280,17 @@ describe('BatchOperationsService', () => {
 
   describe('getStats', () => {
     it('should return counts for all stages', async () => {
-      prisma.job.count.mockResolvedValue(5);
+      jobRepository.countWhere.mockResolvedValue(5);
 
       const stats = await service.getStats();
 
       // Should have counts for each stage + PAUSED_LOAD + TOTAL
       expect(stats.TOTAL).toBe(5);
-      expect(prisma.job.count).toHaveBeenCalled();
+      expect(jobRepository.countWhere).toHaveBeenCalled();
     });
 
     it('should filter by nodeId', async () => {
-      prisma.job.count.mockResolvedValue(2);
+      jobRepository.countWhere.mockResolvedValue(2);
 
       const stats = await service.getStats('node-1');
 
@@ -307,21 +306,21 @@ describe('BatchOperationsService', () => {
       expect(result.errors).toContain(
         'Invalid confirmation token. Use "CLEAR_ALL_JOBS" to confirm.'
       );
-      expect(prisma.job.deleteMany).not.toHaveBeenCalled();
+      expect(jobRepository.deleteManyWhere).not.toHaveBeenCalled();
     });
 
     it('should clear all jobs with correct token', async () => {
-      prisma.job.deleteMany.mockResolvedValue({ count: 100 });
+      jobRepository.deleteManyWhere.mockResolvedValue({ count: 100 });
 
       const result = await service.clearAll('CLEAR_ALL_JOBS');
 
       expect(result.success).toBe(true);
       expect(result.affectedCount).toBe(100);
-      expect(prisma.job.deleteMany).toHaveBeenCalledWith({});
+      expect(jobRepository.deleteManyWhere).toHaveBeenCalledWith({});
     });
 
     it('should handle database errors', async () => {
-      prisma.job.deleteMany.mockRejectedValue(new Error('Clear failed'));
+      jobRepository.deleteManyWhere.mockRejectedValue(new Error('Clear failed'));
 
       const result = await service.clearAll('CLEAR_ALL_JOBS');
 

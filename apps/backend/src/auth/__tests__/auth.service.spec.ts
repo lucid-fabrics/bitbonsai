@@ -2,15 +2,12 @@ import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../prisma/prisma.service';
+import { UserRepository } from '../../common/repositories/user.repository';
 import { AuthService } from '../auth.service';
 import { LoginDto } from '../dto/login.dto';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let _jwtService: JwtService;
-  let _configService: ConfigService;
-  let _prisma: PrismaService;
 
   const mockJwtService = {
     sign: jest.fn(),
@@ -21,12 +18,10 @@ describe('AuthService', () => {
     get: jest.fn(),
   };
 
-  const mockPrismaService = {
-    user: {
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
-    },
+  const mockUserRepository = {
+    findByUsername: jest.fn(),
+    findByRefreshToken: jest.fn(),
+    update: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -35,14 +30,11 @@ describe('AuthService', () => {
         AuthService,
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: UserRepository, useValue: mockUserRepository },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    _jwtService = module.get<JwtService>(JwtService);
-    _configService = module.get<ConfigService>(ConfigService);
-    _prisma = module.get<PrismaService>(PrismaService);
 
     // Reset mocks
     jest.clearAllMocks();
@@ -69,7 +61,7 @@ describe('AuthService', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockUserRepository.findByUsername.mockResolvedValue(mockUser);
       // Mock bcrypt.compare to return true
       jest.spyOn(require('bcrypt'), 'compare').mockResolvedValue(true as never);
       mockJwtService.sign.mockReturnValue('mock-jwt-token');
@@ -86,7 +78,7 @@ describe('AuthService', () => {
         password: 'test-password',
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockUserRepository.findByUsername.mockResolvedValue(null);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
       await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
@@ -109,7 +101,7 @@ describe('AuthService', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockUserRepository.findByUsername.mockResolvedValue(mockUser);
       jest.spyOn(require('bcrypt'), 'compare').mockResolvedValue(false as never);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
@@ -133,7 +125,7 @@ describe('AuthService', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockUserRepository.findByUsername.mockResolvedValue(mockUser);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
       await expect(service.login(loginDto)).rejects.toThrow('Account is disabled');

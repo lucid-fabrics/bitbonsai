@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import type { AccelerationType, Job, Policy } from '@prisma/client';
+import type { Job, Policy } from '@prisma/client';
 import {
   EncodingCancelledEvent,
   EncodingFailedEvent,
@@ -10,19 +10,19 @@ import {
   EncodingProcessMarkedEvent,
   EncodingProgressUpdateEvent,
 } from '../common/events';
+import { JobRepository } from '../common/repositories/job.repository';
 import { normalizeCodec as normalizeCodecUtil } from '../common/utils/codec.util';
-import { PrismaService } from '../prisma/prisma.service';
 import type { EncodingProgressDto } from './dto/encoding-progress.dto';
 import { EncodingPreviewService } from './encoding-preview.service';
-
-/**
- * Hardware acceleration configuration for different platforms
- */
-interface HardwareAccelConfig {
-  type: AccelerationType;
-  flags: string[];
-  videoCodec: string;
-}
+import { FfmpegFileVerificationService } from './ffmpeg-file-verification.service';
+import { FfmpegFlagBuilderService } from './ffmpeg-flag-builder.service';
+import { FfmpegProcessCleanupService } from './ffmpeg-process-cleanup.service';
+import { FfmpegProgressParserService } from './ffmpeg-progress-parser.service';
+import { FfprobeService } from './ffprobe.service';
+import {
+  type HardwareAccelConfig,
+  HardwareAccelerationService,
+} from './hardware-acceleration.service';
 
 /**
  * Active encoding process tracking
@@ -35,23 +35,6 @@ interface ActiveEncoding {
   lastStderr: string; // Last 2000 chars of stderr for error reporting
   lastOutputTime: Date; // Last time FFmpeg produced ANY output (for stuck detection)
 }
-
-/**
- * Extended Job type with remux-specific fields
- * Uses intersection type to add optional fields without conflicts
- */
-type JobWithRemuxFields = Job & {
-  sourceContainer?: string;
-  targetContainer?: string;
-};
-
-/**
- * Extended Job type with thread configuration fields
- */
-type JobWithThreadsFields = Job & {
-  ffmpegThreads?: number;
-  resourceThrottleReason?: string;
-};
 
 /**
  * Extended Job type with library relation
@@ -112,6 +95,10 @@ export interface FfmpegProgress {
  * - AMD: VAAPI (Video Acceleration API)
  * - Apple M: VideoToolbox
  * - CPU: Software encoding fallback
+ *
+ * Sub-services:
+ * - FfmpegProcessCleanupService: OS-level process scanning and PID-based kill
+ * - FfmpegFileVerificationService: retry-based file existence and integrity checks
  */
 @Injectable()
 export class FfmpegService implements OnModuleInit, OnModuleDestroy {
@@ -128,85 +115,26 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   private readonly lastPreviewGeneration = new Map<string, number>();
   private readonly PREVIEW_THROTTLE_MS = 30 * 1000; // 30 seconds
 
-  // PERFORMANCE: FFprobe result caching (filePath -> video info)
-  private readonly codecCache = new Map<
-    string,
-    { codec: string; container: string; timestamp: Date }
-  >();
-  private readonly CODEC_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-  private readonly CODEC_CACHE_MAX_SIZE = 5000; // ~500KB max
   private readonly CODEC_CACHE_CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
   private codecCacheCleanupInterval?: NodeJS.Timeout; // CRITICAL #9 FIX
-  private lastCacheCleanup = 0; // Track last cleanup timestamp
-
-  // Regex for parsing ffmpeg progress output
-  // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
-  private readonly progressRegex = /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
 
   /**
-   * SECURITY: Whitelist of allowed FFmpeg flags
-   * Prevents command injection by only allowing safe, predefined flags
-   * LOW PRIORITY FIX #18: Expanded whitelist for more encoding options
+   * SECURITY: Whitelist of allowed FFmpeg flags — delegated to FfmpegFlagBuilderService
    */
-  private readonly ALLOWED_FFMPEG_FLAGS = new Set([
-    // Video encoding options
-    '-preset',
-    '-crf',
-    '-maxrate',
-    '-bufsize',
-    '-pix_fmt',
-    '-profile:v',
-    '-level',
-    '-g',
-    '-keyint_min',
-    '-sc_threshold',
-    '-tune', // LOW PRIORITY FIX #18: Tune for film/animation/grain
-    '-refs', // LOW PRIORITY FIX #18: Reference frames
-    '-rc_lookahead', // LOW PRIORITY FIX #18: Rate control lookahead
-    '-b:v', // LOW PRIORITY FIX #18: Video bitrate
-    '-minrate', // LOW PRIORITY FIX #18: Minimum bitrate
-    '-x265-params', // LOW PRIORITY FIX #18: x265 encoder params
-    '-x264-params', // LOW PRIORITY FIX #18: x264 encoder params
-
-    // Audio encoding options
-    '-c:a',
-    '-b:a',
-    '-ar',
-    '-ac',
-
-    // Filtering options (safe filters only)
-    '-vf',
-    '-af',
-
-    // Format options
-    '-f',
-    '-movflags',
-
-    // Subtitle options
-    '-c:s',
-    '-scodec', // LOW PRIORITY FIX #18: Subtitle codec
-
-    // Metadata options
-    '-metadata',
-    '-map_metadata',
-
-    // Mapping options
-    '-map', // LOW PRIORITY FIX #18: Stream mapping
-
-    // Threading options
-    '-threads',
-
-    // Quality/compression options
-    '-qmin',
-    '-qmax',
-    '-qdiff',
-    '-qcomp', // LOW PRIORITY FIX #18: Quantizer compression
-  ]);
+  private get ALLOWED_FFMPEG_FLAGS(): Set<string> {
+    return this.flagBuilder.ALLOWED_FFMPEG_FLAGS;
+  }
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly jobRepository: JobRepository,
     private readonly eventEmitter: EventEmitter2,
-    private readonly previewService: EncodingPreviewService
+    private readonly previewService: EncodingPreviewService,
+    private readonly hardwareAccelerationService: HardwareAccelerationService,
+    private readonly flagBuilder: FfmpegFlagBuilderService,
+    private readonly progressParser: FfmpegProgressParserService,
+    private readonly ffprobe: FfprobeService,
+    private readonly processCleanup: FfmpegProcessCleanupService,
+    private readonly fileVerification: FfmpegFileVerificationService
   ) {}
 
   /**
@@ -214,7 +142,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    */
   async onModuleInit() {
     // MEDIUM #13 FIX: Clean up orphaned temp files on startup
-    await this.cleanupOrphanedTempFiles();
+    await this.processCleanup.cleanupOrphanedTempFiles();
 
     // Start stderr cache cleanup every 15 minutes
     this.stderrCleanupInterval = setInterval(
@@ -226,51 +154,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
     // Start codec cache cleanup every 15 minutes
     this.codecCacheCleanupInterval = setInterval(() => {
-      this.cleanupCodecCache();
+      this.ffprobe.cleanupCodecCache();
     }, this.CODEC_CACHE_CLEANUP_INTERVAL_MS);
 
     this.logger.log('✅ Cache cleanup intervals started');
-  }
-
-  /**
-   * MEDIUM #13 FIX: Clean up orphaned temp files from previous crash/restart
-   * Removes *.tmp.* files that were left behind when encoding was interrupted
-   * @private
-   */
-  private async cleanupOrphanedTempFiles(): Promise<void> {
-    try {
-      const { glob } = await import('glob');
-      const { unlink } = await import('fs/promises');
-
-      // Find all .tmp. files in /tmp directory (typical temp file location)
-      const tempFiles = await glob('/tmp/**/*.tmp.*', {
-        nodir: true,
-        absolute: true,
-      });
-
-      if (tempFiles.length === 0) {
-        this.logger.log('🧹 No orphaned temp files found');
-        return;
-      }
-
-      this.logger.log(`🧹 Found ${tempFiles.length} orphaned temp files, cleaning up...`);
-
-      let removed = 0;
-      for (const file of tempFiles) {
-        try {
-          await unlink(file);
-          removed++;
-        } catch (error) {
-          // File may have been deleted already or permission denied - skip it
-          this.logger.debug(`Failed to delete temp file ${file}: ${error}`);
-        }
-      }
-
-      this.logger.log(`✅ Cleaned up ${removed}/${tempFiles.length} orphaned temp files`);
-    } catch (error) {
-      // Don't crash on cleanup failure - log and continue
-      this.logger.warn(`Failed to cleanup orphaned temp files: ${error}`);
-    }
   }
 
   /**
@@ -290,42 +177,6 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
     if (removed > 0) {
       this.logger.debug(`🧹 Cleaned up ${removed} stale stderr cache entries`);
-    }
-  }
-
-  /**
-   * CRITICAL #9 FIX: Cleanup stale codec cache entries
-   * @private
-   */
-  private cleanupCodecCache(): void {
-    const now = Date.now();
-    let removed = 0;
-
-    // Step 1: Remove stale entries
-    for (const [filePath, entry] of this.codecCache.entries()) {
-      if (now - entry.timestamp.getTime() > this.CODEC_CACHE_TTL_MS) {
-        this.codecCache.delete(filePath);
-        removed++;
-      }
-    }
-
-    // MEDIUM #2 FIX: Enforce max size by removing oldest entries
-    if (this.codecCache.size > this.CODEC_CACHE_MAX_SIZE) {
-      const entries = Array.from(this.codecCache.entries());
-      // Sort by timestamp ascending (oldest first)
-      entries.sort((a, b) => a[1].timestamp.getTime() - b[1].timestamp.getTime());
-
-      const toRemove = this.codecCache.size - this.CODEC_CACHE_MAX_SIZE;
-      for (let i = 0; i < toRemove; i++) {
-        this.codecCache.delete(entries[i][0]);
-        removed++;
-      }
-    }
-
-    if (removed > 0) {
-      this.logger.debug(
-        `🧹 Cleaned ${removed} codec cache entries (size: ${this.codecCache.size}/${this.CODEC_CACHE_MAX_SIZE})`
-      );
     }
   }
 
@@ -377,7 +228,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
               this.logger.log(`Force killed FFmpeg process group for job ${jobId}`);
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           // ESRCH error means process already dead - that's fine
           const err = error as NodeJS.ErrnoException;
           if (err.code !== 'ESRCH') {
@@ -396,116 +247,24 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
     // CRITICAL #2, #9, #11 FIX: Clear all caches to prevent memory leaks
     this.stderrCache.clear();
-    this.codecCache.clear();
+    this.ffprobe.clearCache();
     this.lastPreviewGeneration.clear();
     this.logger.log('✅ All caches cleared');
   }
 
   /**
-   * SECURITY: Validate and filter FFmpeg flags
-   * Only allows whitelisted flags to prevent command injection
-   *
-   * @param flags - Array of FFmpeg flags from policy advanced settings
-   * @returns Filtered array of safe flags
-   * @throws Error if any disallowed flags are found
+   * SECURITY: Validate and filter FFmpeg flags — delegates to FfmpegFlagBuilderService
    */
   private validateFfmpegFlags(flags: string[]): string[] {
-    const validatedFlags: string[] = [];
-
-    for (let i = 0; i < flags.length; i++) {
-      const flag = flags[i];
-
-      // Check if flag is in whitelist
-      if (!this.ALLOWED_FFMPEG_FLAGS.has(flag)) {
-        this.logger.warn(`Blocked disallowed FFmpeg flag: ${flag}`);
-        throw new Error(`FFmpeg flag '${flag}' is not allowed for security reasons`);
-      }
-
-      validatedFlags.push(flag);
-
-      // If flag takes a value, include the next argument
-      // (e.g., "-preset fast" -> ["-preset", "fast"])
-      if (i + 1 < flags.length && !flags[i + 1].startsWith('-')) {
-        const value = flags[i + 1];
-
-        // SECURITY: Special validation for -map flag to prevent file path injection
-        if (flag === '-map') {
-          // -map values must match pattern: [input_index]:[stream_type]:[stream_index]
-          // Examples: "0:v:0", "1:a:1", "0:s:0"
-          // Reject file paths like "file:/etc/passwd" or "../sensitive/file"
-          if (!/^[0-9]+:[vascdt]:[0-9]+$/.test(value) && value !== '0') {
-            throw new Error(
-              `FFmpeg -map flag value '${value}' is invalid. Must match pattern [input]:[type]:[index] (e.g., "0:v:0")`
-            );
-          }
-        } else {
-          // SECURITY: Sanitize value to prevent command injection
-          // Only allow alphanumeric, dash, underscore, colon, dot, and comma
-          if (!/^[a-zA-Z0-9\-_:.,=]+$/.test(value)) {
-            throw new Error(`FFmpeg flag value '${value}' contains invalid characters`);
-          }
-        }
-
-        validatedFlags.push(value);
-        i++; // Skip next iteration since we already processed the value
-      }
-    }
-
-    return validatedFlags;
+    return this.flagBuilder.validateFfmpegFlags(flags);
   }
 
   /**
    * Select the appropriate FFmpeg codec based on policy target and available hardware
-   *
-   * Maps policy codec preferences (HEVC, AV1, VP9, H264) to hardware-accelerated
-   * variants when available, falling back to software encoding if needed.
-   *
-   * @param targetCodec - Target codec from encoding policy (HEVC, AV1, VP9, H264)
-   * @param hwType - Hardware acceleration type (NVIDIA, INTEL_QSV, AMD, APPLE_M, CPU)
-   * @returns FFmpeg codec name (e.g., hevc_nvenc, libx265, av1_nvenc, etc.)
+   * Delegates to FfmpegFlagBuilderService
    */
   private selectCodecForPolicy(targetCodec: string, hwType: string): string {
-    // Codec mapping: policy codec -> hardware type -> FFmpeg codec name
-    const codecMap: Record<string, Record<string, string>> = {
-      HEVC: {
-        NVIDIA: 'hevc_nvenc',
-        INTEL_QSV: 'hevc_qsv',
-        AMD: 'hevc_vaapi',
-        APPLE_M: 'hevc_videotoolbox',
-        CPU: 'libx265',
-      },
-      AV1: {
-        NVIDIA: 'av1_nvenc', // Available on RTX 40 series and newer
-        INTEL_QSV: 'av1_qsv', // Available on Arc and 12th gen Intel
-        AMD: 'av1_vaapi', // Limited hardware support
-        APPLE_M: 'libaom-av1', // No native AV1 hardware encoder, use CPU
-        CPU: 'libaom-av1',
-      },
-      VP9: {
-        NVIDIA: 'libvpx-vp9', // No hardware support, use CPU
-        INTEL_QSV: 'vp9_qsv', // Limited QSV support
-        AMD: 'libvpx-vp9', // No hardware support, use CPU
-        APPLE_M: 'libvpx-vp9', // No hardware support, use CPU
-        CPU: 'libvpx-vp9',
-      },
-      H264: {
-        NVIDIA: 'h264_nvenc',
-        INTEL_QSV: 'h264_qsv',
-        AMD: 'h264_vaapi',
-        APPLE_M: 'h264_videotoolbox',
-        CPU: 'libx264',
-      },
-    };
-
-    // Get the codec for this combination, with fallbacks
-    const selectedCodec =
-      codecMap[targetCodec]?.[hwType] || codecMap[targetCodec]?.CPU || 'libx265';
-
-    this.logger.log(
-      `Codec selection: ${targetCodec} (policy) + ${hwType} (hardware) = ${selectedCodec}`
-    );
-
-    return selectedCodec;
+    return this.flagBuilder.selectCodecForPolicy(targetCodec, hwType);
   }
 
   /**
@@ -521,80 +280,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @returns Hardware acceleration configuration
    */
   async detectHardwareAcceleration(): Promise<HardwareAccelConfig> {
-    this.logger.log('Detecting hardware acceleration capabilities...');
-
-    // Check NVIDIA GPU
-    try {
-      const nvidiaSmi = spawn('nvidia-smi', ['--query-gpu=name', '--format=csv,noheader']);
-
-      const timeoutId = setTimeout(() => {
-        nvidiaSmi.kill('SIGKILL');
-      }, 5000);
-
-      const nvidiaAvailable = await new Promise<boolean>((resolve) => {
-        nvidiaSmi.on('error', () => {
-          clearTimeout(timeoutId);
-          nvidiaSmi.stdout?.destroy();
-          nvidiaSmi.stderr?.destroy();
-          resolve(false);
-        });
-        nvidiaSmi.on('close', (code) => {
-          clearTimeout(timeoutId);
-          nvidiaSmi.stdout?.destroy();
-          nvidiaSmi.stderr?.destroy();
-          resolve(code === 0);
-        });
-      });
-
-      if (nvidiaAvailable) {
-        this.logger.log('NVIDIA GPU detected - using NVENC acceleration');
-        return {
-          type: 'NVIDIA',
-          flags: ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'],
-          videoCodec: 'hevc_nvenc',
-        };
-      }
-    } catch {
-      // NVIDIA not available
-    }
-
-    // Check Intel QSV
-    if (existsSync('/dev/dri/renderD128')) {
-      this.logger.log('Intel QSV detected - using Quick Sync Video acceleration');
-      return {
-        type: 'INTEL_QSV',
-        flags: ['-hwaccel', 'qsv', '-c:v', 'h264_qsv'],
-        videoCodec: 'hevc_qsv',
-      };
-    }
-
-    // Check AMD VAAPI
-    if (existsSync('/dev/dri/renderD129')) {
-      this.logger.log('AMD GPU detected - using VAAPI acceleration');
-      return {
-        type: 'AMD',
-        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD128'],
-        videoCodec: 'hevc_vaapi',
-      };
-    }
-
-    // Check Apple M (macOS)
-    if (process.platform === 'darwin') {
-      this.logger.log('macOS detected - using VideoToolbox acceleration');
-      return {
-        type: 'APPLE_M',
-        flags: ['-hwaccel', 'videotoolbox'],
-        videoCodec: 'hevc_videotoolbox',
-      };
-    }
-
-    // Fallback to CPU
-    this.logger.log('No hardware acceleration detected - using CPU encoding');
-    return {
-      type: 'CPU',
-      flags: [],
-      videoCodec: 'libx265',
-    };
+    return this.hardwareAccelerationService.detectHardwareAcceleration();
   }
 
   /**
@@ -621,152 +307,13 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     outputPath: string,
     resumeFromTimestamp?: string
   ): string[] {
-    const args: string[] = [];
-
-    // Check if this is a REMUX job (container change only, no re-encoding)
-    const jobWithType = job as JobWithRemuxFields;
-    const isRemux = jobWithType.type === 'REMUX';
-
-    if (isRemux) {
-      // REMUX MODE: Fast stream copy (no re-encoding)
-      this.logger.log(
-        `REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`
-      );
-
-      // Input file
-      args.push('-i', job.filePath);
-
-      // Stream copy for video and audio (no re-encoding)
-      args.push('-c:v', 'copy');
-      args.push('-c:a', 'copy');
-
-      // Copy all streams (subtitles, metadata, etc.)
-      args.push('-map', '0');
-    } else {
-      // ENCODE MODE: Full transcode with quality settings
-      this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
-
-      // TRUE RESUME: Add input seeking BEFORE -i for accurate frame seeking
-      // This skips the already-encoded portion of the input file
-      if (resumeFromTimestamp) {
-        args.push('-ss', resumeFromTimestamp);
-        this.logger.log(`TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`);
-      }
-
-      // Hardware acceleration flags (if available)
-      args.push(...hwaccel.flags);
-
-      // Input file
-      args.push('-i', job.filePath);
-
-      // Video codec and quality
-      // Select codec based on policy target and available hardware acceleration
-      const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
-      args.push('-c:v', selectedCodec);
-      args.push('-crf', policy.targetQuality.toString());
-
-      // Audio codec (from decision config or policy advanced settings)
-      // DECISION FIX: Check if decisionData has audio config overrides
-      let audioCodec = 'copy';
-      let audioBitrate: string | undefined;
-
-      if (job.decisionData) {
-        try {
-          const decisionData = JSON.parse(job.decisionData as string);
-          if (decisionData?.actionConfig?.audioCodec) {
-            audioCodec = decisionData.actionConfig.audioCodec;
-            this.logger.log(`Using audio codec from decision: ${audioCodec}`);
-          }
-          if (decisionData?.actionConfig?.audioBitrate) {
-            audioBitrate = decisionData.actionConfig.audioBitrate;
-            this.logger.log(`Using audio bitrate from decision: ${audioBitrate}`);
-          }
-        } catch {
-          // Ignore JSON parse errors
-        }
-      }
-
-      // Fall back to policy settings if not overridden by decision
-      const advancedSettings = policy.advancedSettings as Record<string, unknown>;
-      if (audioCodec === 'copy' && advancedSettings.audioCodec) {
-        audioCodec = advancedSettings.audioCodec as string;
-      }
-
-      args.push('-c:a', audioCodec);
-
-      // Apply audio bitrate if specified
-      if (audioBitrate) {
-        args.push('-b:a', audioBitrate);
-      }
-
-      // AV1 THROTTLING: Apply thread limit if specified on job
-      const jobWithThreads = job as JobWithThreadsFields;
-      if (jobWithThreads.ffmpegThreads) {
-        args.push('-threads', jobWithThreads.ffmpegThreads.toString());
-        this.logger.warn(
-          `[${job.id}] Using ${jobWithThreads.ffmpegThreads} threads (resource throttled: ${jobWithThreads.resourceThrottleReason || 'unknown reason'})`
-        );
-      }
-
-      // SECURITY: Validate and add additional ffmpeg flags from policy
-      if (advancedSettings.ffmpegFlags) {
-        const customFlags = advancedSettings.ffmpegFlags as string[];
-        try {
-          const validatedFlags = this.validateFfmpegFlags(customFlags);
-          args.push(...validatedFlags);
-        } catch (error) {
-          this.logger.error(
-            `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-          throw error;
-        }
-      }
-
-      // DECISION FIX: Apply additional FFmpeg flags from decision config
-      if (job.decisionData) {
-        try {
-          const decisionData = JSON.parse(job.decisionData as string);
-          if (decisionData?.actionConfig?.ffmpegFlags) {
-            const decisionFlags = decisionData.actionConfig.ffmpegFlags as string[];
-            const validatedFlags = this.validateFfmpegFlags(decisionFlags);
-            args.push(...validatedFlags);
-            this.logger.log(`Applied decision FFmpeg flags: ${validatedFlags.join(' ')}`);
-          }
-        } catch {
-          // Ignore JSON parse errors
-        }
-      }
-    }
-
-    // Progress reporting - FFmpeg progress format to stderr
-    // Uses -progress pipe:2 to write structured progress data (frame=X, fps=Y, out_time=HH:MM:SS)
-    // This format is much easier to parse than -stats and works in all environments (including LXC)
-    args.push('-progress', 'pipe:2'); // Structured progress output to stderr
-    args.push('-nostdin'); // Disable interactive input
-
-    // Output to specified path (temp file that will be renamed atomically)
-    // Determine output format based on job type and target container
-    const targetContainer = jobWithType.targetContainer || 'mkv';
-
-    if (targetContainer === 'mp4' || targetContainer.includes('mp4')) {
-      // MP4 format with fragmentation for streaming compatibility
-      // Use fragmented MP4 for instant readability (moov atom at start)
-      // This allows preview captures to work at any encoding progress
-      args.push('-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4');
-    } else if (targetContainer === 'mkv' || targetContainer.includes('matroska')) {
-      // MKV format (no special flags needed)
-      args.push('-f', 'matroska');
-    } else {
-      // Default to MKV for unknown containers
-      this.logger.warn(`Unknown target container '${targetContainer}', defaulting to MKV`);
-      args.push('-f', 'matroska');
-    }
-
-    // Overwrite output file if it exists
-    args.push('-y', outputPath);
-
-    this.logger.debug(`ffmpeg command: ffmpeg ${args.join(' ')}`);
-    return args;
+    return this.flagBuilder.buildFfmpegCommand(
+      job,
+      policy,
+      hwaccel,
+      outputPath,
+      resumeFromTimestamp
+    );
   }
 
   /**
@@ -781,16 +328,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @returns Parsed progress data or null if not a progress line
    */
   parseProgress(line: string): Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'> | null {
-    const match = this.progressRegex.exec(line);
-    if (!match) {
-      return null;
-    }
-
-    return {
-      frame: Number.parseInt(match[1], 10),
-      fps: Number.parseFloat(match[2]),
-      currentTime: match[3],
-    };
+    return this.progressParser.parseProgress(line);
   }
 
   /**
@@ -804,32 +342,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @returns Progress percentage (0-100)
    */
   private calculateProgressPercentage(currentTime: string, totalDurationSeconds: number): number {
-    // Handle N/A or invalid time - FFmpeg outputs N/A during initial decoding phase
-    if (!currentTime || currentTime === 'N/A' || currentTime === 'n/a') {
-      return 0;
-    }
-
-    // Parse HH:MM:SS.MS format
-    const parts = currentTime.split(':');
-    if (parts.length !== 3) {
-      // Try parsing as microseconds (out_time_us format)
-      const microseconds = Number.parseInt(currentTime, 10);
-      if (!Number.isNaN(microseconds) && microseconds > 0) {
-        const currentSeconds = microseconds / 1_000_000;
-        const percentage = (currentSeconds / totalDurationSeconds) * 100;
-        return Math.min(100, Math.max(0, percentage));
-      }
-      return 0;
-    }
-
-    const hours = Number.parseInt(parts[0], 10);
-    const minutes = Number.parseInt(parts[1], 10);
-    const seconds = Number.parseFloat(parts[2]);
-
-    const currentSeconds = hours * 3600 + minutes * 60 + seconds;
-    const percentage = (currentSeconds / totalDurationSeconds) * 100;
-
-    return Math.min(100, Math.max(0, percentage));
+    return this.progressParser.calculateProgressPercentage(currentTime, totalDurationSeconds);
   }
 
   /**
@@ -855,15 +368,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     resumeFromPercent = 0
   ): Promise<void> {
     // CRITICAL #1 FIX: Check for pause/cancel requests before processing progress
-    const jobStatus = await this.prisma.job.findUnique({
-      where: { id: job.id },
-      select: {
-        pauseRequestedAt: true,
-        pauseProcessedAt: true,
-        cancelRequestedAt: true,
-        cancelProcessedAt: true,
-      },
-    });
+    const jobStatus = await this.jobRepository.findStatusFields(job.id);
     if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
       this.logger.warn(`[${job.id}] Pause requested, killing FFmpeg gracefully...`);
       await this.killProcess(job.id);
@@ -991,10 +496,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   private async handleEncodingSuccess(job: Job, policy: Policy, tempOutput: string): Promise<void> {
     // ROCK SOLID FIX: Wait for filesystem to flush (FFmpeg may not have fully closed the file)
     this.logger.log(`Waiting 5 seconds for filesystem flush after FFmpeg completion...`);
-    await this.sleep(5000);
+    await this.fileVerification.sleep(5000);
 
     // ROCK SOLID FIX: Verify temp file EXISTS with retries (filesystem may need time to sync)
-    const fileExists = await this.waitForFileExists(tempOutput, 10, 2000);
+    const fileExists = await this.fileVerification.waitForFileExists(tempOutput, 10, 2000);
     if (!fileExists) {
       throw new Error(
         `Temp file missing after 20 seconds: ${tempOutput}\n` +
@@ -1005,7 +510,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // ROCK SOLID FIX: Verify temp file is VALID before rename with retries
     if (policy.verifyOutput) {
       this.logger.log(`Verifying temp file with retries: ${tempOutput}`);
-      const verifyResult = await this.verifyFileWithRetries(tempOutput, 10);
+      const verifyResult = await this.fileVerification.verifyFileWithRetries(tempOutput, 10);
       if (!verifyResult.isValid) {
         throw new Error(
           `Temp file verification failed after retries: ${verifyResult.error || 'File is not playable'}`
@@ -1076,273 +581,36 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * ISSUE #11 FIX: Get video duration from FFprobe before encoding
-   *
-   * Uses ffprobe to extract the actual video duration for accurate progress calculation.
-   * Falls back to 3600 seconds if ffprobe fails or duration cannot be determined.
-   *
-   * AUDIT FIX: Now uses stream duration (actual frame timestamps) instead of container
-   * metadata duration. This is more accurate for VFR (Variable Frame Rate) videos where
-   * container duration can differ from actual playback duration.
+   * Get video duration from FFprobe before encoding.
+   * Delegates to FfprobeService.
    *
    * @param filePath - Path to video file
    * @returns Duration in seconds, or 3600 if unable to determine
    */
   async getVideoDuration(filePath: string): Promise<number> {
-    return new Promise((resolve) => {
-      // AUDIT FIX: Use stream duration for more accurate VFR video handling
-      // -select_streams v:0 = first video stream only
-      // stream=duration gives actual frame-based duration, not container metadata
-      const ffprobe = spawn('ffprobe', [
-        '-v',
-        'error',
-        '-select_streams',
-        'v:0',
-        '-show_entries',
-        'stream=duration',
-        '-of',
-        'default=noprint_wrappers=1:nokey=1',
-        filePath,
-      ]);
-
-      let output = '';
-
-      ffprobe.stdout?.on('data', (data) => {
-        output += data.toString();
-      });
-
-      // AUDIT #2 ISSUE #26 FIX: Store timeout ID for cleanup to prevent orphaned timeouts
-      const timeoutId = setTimeout(() => {
-        ffprobe.kill();
-        this.logger.warn(`[${filePath}] FFprobe timeout, using fallback 3600s`);
-        resolve(3600);
-      }, 10000);
-
-      ffprobe.on('close', (code) => {
-        // AUDIT #2 ISSUE #26 FIX: Clear timeout on completion
-        clearTimeout(timeoutId);
-        // Clean up streams to prevent memory leaks
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-
-        if (code === 0 && output.trim()) {
-          try {
-            const duration = Number.parseFloat(output.trim());
-            if (!Number.isNaN(duration) && duration > 0) {
-              this.logger.debug(
-                `[${filePath}] FFprobe detected stream duration: ${duration.toFixed(2)}s`
-              );
-              resolve(duration);
-              return;
-            }
-          } catch {
-            // Fall through to format duration fallback
-          }
-        }
-
-        // AUDIT FIX: Stream duration not available (common for MKV, some MP4)
-        // Fall back to format/container duration as secondary source
-        this.logger.debug(
-          `[${filePath}] Stream duration not available (code: ${code}), trying format duration`
-        );
-        this.getFormatDuration(filePath).then(resolve);
-      });
-
-      ffprobe.on('error', (err) => {
-        // AUDIT #2 ISSUE #26 FIX: Clear timeout on error
-        clearTimeout(timeoutId);
-        // Clean up streams on error
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-        this.logger.warn(`[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`);
-        resolve(3600);
-      });
-    });
+    return this.ffprobe.getVideoDuration(filePath);
   }
 
   /**
-   * AUDIT FIX: Get format/container duration as fallback when stream duration unavailable
-   *
-   * Some containers (MKV, certain MP4) don't store duration in the video stream metadata,
-   * only in the container/format level. This is the fallback for getVideoDuration().
-   *
-   * @param filePath - Path to video file
-   * @returns Duration in seconds, or 3600 if unable to determine
-   * @private
-   */
-  private async getFormatDuration(filePath: string): Promise<number> {
-    return new Promise((resolve) => {
-      const ffprobe = spawn('ffprobe', [
-        '-v',
-        'error',
-        '-show_entries',
-        'format=duration',
-        '-of',
-        'default=noprint_wrappers=1:nokey=1',
-        filePath,
-      ]);
-
-      let output = '';
-
-      ffprobe.stdout?.on('data', (data) => {
-        output += data.toString();
-      });
-
-      const timeoutId = setTimeout(() => {
-        ffprobe.kill();
-        this.logger.warn(`[${filePath}] FFprobe format duration timeout, using fallback 3600s`);
-        resolve(3600);
-      }, 10000);
-
-      ffprobe.on('close', (code) => {
-        clearTimeout(timeoutId);
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-
-        if (code === 0 && output.trim()) {
-          try {
-            const duration = Number.parseFloat(output.trim());
-            if (!Number.isNaN(duration) && duration > 0) {
-              this.logger.debug(
-                `[${filePath}] FFprobe detected format duration: ${duration.toFixed(2)}s`
-              );
-              resolve(duration);
-              return;
-            }
-          } catch {
-            // Fall through to default
-          }
-        }
-
-        this.logger.warn(
-          `[${filePath}] Failed to get format duration from ffprobe (code: ${code}), using fallback 3600s`
-        );
-        resolve(3600);
-      });
-
-      ffprobe.on('error', (err) => {
-        clearTimeout(timeoutId);
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-        this.logger.warn(
-          `[${filePath}] FFprobe format duration error: ${err.message}, using fallback 3600s`
-        );
-        resolve(3600);
-      });
-    });
-  }
-
-  /**
-   * Get video codec and container information using ffprobe
+   * Get video codec and container information using ffprobe.
+   * Delegates to FfprobeService.
    *
    * @param filePath - Path to video file
    * @returns Object with codec name and container format
    */
   async getVideoInfo(filePath: string): Promise<{ codec: string; container: string }> {
-    return new Promise((resolve, reject) => {
-      const ffprobe = spawn('ffprobe', [
-        '-v',
-        'error',
-        '-select_streams',
-        'v:0',
-        '-show_entries',
-        'stream=codec_name:format=format_name',
-        '-of',
-        'json',
-        filePath,
-      ]);
-
-      let output = '';
-
-      ffprobe.stdout?.on('data', (data) => {
-        output += data.toString();
-      });
-
-      const timeoutId = setTimeout(() => {
-        ffprobe.kill();
-        reject(new Error('FFprobe timeout'));
-      }, 10000);
-
-      ffprobe.on('close', (code) => {
-        clearTimeout(timeoutId);
-        // Clean up streams to prevent memory leaks
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-
-        if (code === 0 && output.trim()) {
-          try {
-            const data = JSON.parse(output);
-            const codec = data.streams?.[0]?.codec_name || 'unknown';
-            const container = data.format?.format_name?.split(',')[0] || 'unknown';
-
-            resolve({ codec, container });
-            return;
-          } catch {
-            reject(new Error('Failed to parse ffprobe output'));
-          }
-        }
-
-        reject(new Error(`FFprobe failed with code ${code}`));
-      });
-
-      ffprobe.on('error', (err) => {
-        clearTimeout(timeoutId);
-        // Clean up streams on error
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-        reject(err);
-      });
-    });
+    return this.ffprobe.getVideoInfo(filePath);
   }
 
   /**
-   * PERFORMANCE: Get video info with caching (1-hour TTL)
-   * Reduces repeated FFprobe calls for the same file
+   * Get video info with caching (1-hour TTL).
+   * Delegates to FfprobeService.
    *
    * @param filePath - Path to video file
    * @returns Object with codec name and container format
    */
   async getVideoInfoCached(filePath: string): Promise<{ codec: string; container: string }> {
-    // Check cache first
-    const cached = this.codecCache.get(filePath);
-    if (cached) {
-      const age = Date.now() - cached.timestamp.getTime();
-      if (age < this.CODEC_CACHE_TTL_MS) {
-        this.logger.debug(`[CACHE HIT] Using cached codec info for: ${filePath}`);
-        return { codec: cached.codec, container: cached.container };
-      }
-      // Cache expired - remove it
-      this.codecCache.delete(filePath);
-    }
-
-    // Cache miss - fetch from FFprobe
-    this.logger.debug(`[CACHE MISS] Fetching codec info via FFprobe: ${filePath}`);
-    const result = await this.getVideoInfo(filePath);
-
-    // Enforce max cache size with LRU eviction (remove oldest entry)
-    if (this.codecCache.size >= this.CODEC_CACHE_MAX_SIZE) {
-      const oldestKey = this.codecCache.keys().next().value;
-      if (oldestKey) {
-        this.codecCache.delete(oldestKey);
-        this.logger.debug(`Cache full - evicted oldest entry: ${oldestKey}`);
-      }
-    }
-
-    // Store in cache
-    this.codecCache.set(filePath, {
-      codec: result.codec,
-      container: result.container,
-      timestamp: new Date(),
-    });
-
-    // Periodic cleanup (only every 15 minutes instead of per-write)
-    const now = Date.now();
-    if (now - this.lastCacheCleanup > this.CODEC_CACHE_CLEANUP_INTERVAL_MS) {
-      this.cleanupCodecCache();
-      this.lastCacheCleanup = now;
-    }
-
-    return result;
+    return this.ffprobe.getVideoInfoCached(filePath);
   }
 
   /**
@@ -1388,7 +656,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       if (!realFile.startsWith(realLibrary + path.sep)) {
         throw new Error(`File path '${filePath}' is outside library boundary`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
         // File doesn't exist yet - validate parent directory
         const parent = path.dirname(resolvedFile);
@@ -1399,7 +667,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           if (!realParent.startsWith(realLibrary + path.sep)) {
             throw new Error(`File path '${filePath}' is outside library boundary`);
           }
-        } catch (parentErr) {
+        } catch (parentErr: unknown) {
           const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
           throw new Error(`Invalid file path: ${message}`);
         }
@@ -1410,16 +678,12 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * TRUE RESUME: Verify partial encoded file is valid (not corrupted)
-   *
-   * @param filePath - Path to partial temp file
-   * @returns True if file is valid and can be used for resume
-   * @private
+   * Verify partial encoded file is valid (not corrupted).
+   * Delegates to FfprobeService.
    */
   private async verifyPartialEncode(filePath: string): Promise<boolean> {
     try {
-      // Use ffprobe to check if file has valid video stream
-      const result = await this.verifyFile(filePath);
+      const result = await this.ffprobe.verifyFile(filePath);
       return result.isValid;
     } catch {
       return false;
@@ -1427,38 +691,19 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * TRUE RESUME: Parse HH:MM:SS.MS timestamp to seconds
-   *
-   * @param timestamp - Time string in HH:MM:SS.MS format
-   * @returns Time in seconds
-   * @private
+   * Parse HH:MM:SS.MS timestamp to seconds.
+   * Delegates to FfmpegProgressParserService.
    */
   private parseTimestampToSeconds(timestamp: string): number {
-    const parts = timestamp.split(':');
-    if (parts.length !== 3) {
-      return 0;
-    }
-
-    const hours = Number.parseInt(parts[0], 10);
-    const minutes = Number.parseInt(parts[1], 10);
-    const seconds = Number.parseFloat(parts[2]);
-
-    return hours * 3600 + minutes * 60 + seconds;
+    return this.progressParser.parseTimestampToSeconds(timestamp);
   }
 
   /**
-   * TRUE RESUME: Convert seconds to HH:MM:SS.MS timestamp format
-   *
-   * @param totalSeconds - Time in seconds
-   * @returns Time string in HH:MM:SS.MS format
+   * Convert seconds to HH:MM:SS.MS timestamp format.
+   * Delegates to FfmpegProgressParserService.
    */
   formatSecondsToTimestamp(totalSeconds: number): string {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const milliseconds = Math.floor((seconds % 1) * 100);
-
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${Math.floor(seconds).toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+    return this.progressParser.formatSecondsToTimestamp(totalSeconds);
   }
 
   /**
@@ -1560,7 +805,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     if (jobWithLibrary.library?.path) {
       try {
         this.validateFilePath(job.filePath, jobWithLibrary.library.path);
-      } catch (error) {
+      } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(`[${job.id}] File path validation failed: ${message}`);
         throw new Error(`Security validation failed: ${message}`);
@@ -1780,7 +1025,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           try {
             await this.handleEncodingSuccess(job, policy, tempOutput);
             resolve();
-          } catch (error) {
+          } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             await this.handleEncodingFailure(job, tempOutput, errorMessage);
             reject(error);
@@ -1848,15 +1093,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     try {
       // CRITICAL #1 FIX: Mark pause/cancel as processed before killing
       if (markProcessed) {
-        const jobStatus = await this.prisma.job.findUnique({
-          where: { id: jobId },
-          select: {
-            pauseRequestedAt: true,
-            pauseProcessedAt: true,
-            cancelRequestedAt: true,
-            cancelProcessedAt: true,
-          },
-        });
+        const jobStatus = await this.jobRepository.findStatusFields(jobId);
         const updateData: Record<string, Date> = {};
         if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
           updateData.pauseProcessedAt = new Date();
@@ -1884,7 +1121,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to kill FFmpeg process for job ${jobId}: ${errorMessage}`);
       return false;
@@ -1936,8 +1173,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Find system FFmpeg processes using ps command
-   * Returns list of FFmpeg processes running on the system
+   * Find system FFmpeg processes using ps command.
+   * Delegates to FfmpegProcessCleanupService.
    */
   async findSystemFfmpegProcesses(): Promise<
     Array<{
@@ -1948,59 +1185,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       runtimeSeconds: number;
     }>
   > {
-    const { execFileSync } = await import('node:child_process');
-
-    try {
-      // SECURITY: Use execFileSync to avoid shell injection
-      // Get all processes first, then filter for ffmpeg in code
-      const psOutput = execFileSync('ps', ['-eo', 'pid,%cpu,%mem,etime,args'], {
-        encoding: 'utf-8',
-        timeout: 5000,
-      });
-
-      const processes: Array<{
-        pid: number;
-        command: string;
-        cpuPercent: number;
-        memPercent: number;
-        runtimeSeconds: number;
-      }> = [];
-
-      for (const line of psOutput.split('\n').filter(Boolean)) {
-        // Filter for ffmpeg processes in code instead of grep
-        if (!line.toLowerCase().includes('ffmpeg')) continue;
-
-        const parts = line.trim().split(/\s+/);
-        if (parts.length >= 5) {
-          const pid = parseInt(parts[0], 10);
-          const cpuPercent = parseFloat(parts[1]) || 0;
-          const memPercent = parseFloat(parts[2]) || 0;
-          const etime = parts[3]; // Format: [[DD-]HH:]MM:SS
-          const command = parts.slice(4).join(' ');
-
-          // Parse elapsed time to seconds
-          let runtimeSeconds = 0;
-          const timeParts = etime.split(/[-:]/).reverse();
-          if (timeParts.length >= 1) runtimeSeconds += parseInt(timeParts[0], 10) || 0; // seconds
-          if (timeParts.length >= 2) runtimeSeconds += (parseInt(timeParts[1], 10) || 0) * 60; // minutes
-          if (timeParts.length >= 3) runtimeSeconds += (parseInt(timeParts[2], 10) || 0) * 3600; // hours
-          if (timeParts.length >= 4) runtimeSeconds += (parseInt(timeParts[3], 10) || 0) * 86400; // days
-
-          processes.push({
-            pid,
-            command: command.length > 200 ? `${command.substring(0, 200)}...` : command,
-            cpuPercent,
-            memPercent,
-            runtimeSeconds,
-          });
-        }
-      }
-
-      return processes;
-    } catch (error) {
-      this.logger.warn(`Failed to find system FFmpeg processes: ${error}`);
-      return [];
-    }
+    return this.processCleanup.findSystemFfmpegProcesses();
   }
 
   /**
@@ -2025,7 +1210,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       trackedJobId: string | null;
     }>
   > {
-    const systemProcesses = await this.findSystemFfmpegProcesses();
+    const systemProcesses = await this.processCleanup.findSystemFfmpegProcesses();
     const trackedPids = new Set<number>();
 
     // Build set of PIDs we're tracking
@@ -2052,60 +1237,23 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Kill a specific FFmpeg process by PID
-   *
-   * Used to clean up zombie/orphaned FFmpeg processes
+   * Kill a specific FFmpeg process by PID.
+   * Delegates to FfmpegProcessCleanupService with tracked PID safety guard.
    *
    * @param pid - Process ID to kill
    * @returns True if killed successfully, false otherwise
    */
   async killFfmpegByPid(pid: number): Promise<{ success: boolean; message: string }> {
-    const { execFileSync } = await import('node:child_process');
-
-    // SECURITY: Validate PID is a positive integer
-    if (!Number.isInteger(pid) || pid <= 0 || pid > 4194304) {
-      return { success: false, message: `Invalid PID: ${pid}` };
-    }
-
-    // Safety check: don't kill tracked processes this way
-    for (const encoding of this.activeEncodings.values()) {
-      if (encoding.process.pid === pid) {
-        return {
-          success: false,
-          message: `PID ${pid} is tracked by job ${Array.from(this.activeEncodings.entries()).find(([_, e]) => e.process.pid === pid)?.[0]}. Use cancel endpoint instead.`,
-        };
+    // Build tracked PID sets to pass as safety guards
+    const trackedPids = new Set<number>();
+    const trackedPidToJobId = new Map<number, string>();
+    for (const [jobId, encoding] of this.activeEncodings) {
+      if (encoding.process.pid) {
+        trackedPids.add(encoding.process.pid);
+        trackedPidToJobId.set(encoding.process.pid, jobId);
       }
     }
-
-    try {
-      // SECURITY: Use execFileSync with array args to prevent shell injection
-      // First try SIGTERM for graceful shutdown
-      this.logger.log(`Killing zombie FFmpeg process PID ${pid} with SIGTERM`);
-      try {
-        execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
-      } catch {
-        // Process may not exist - continue
-      }
-
-      // Wait a moment
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Check if process still exists
-      try {
-        execFileSync('kill', ['-0', pid.toString()], { timeout: 1000 });
-        // Process still alive, use SIGKILL
-        this.logger.log(`Process PID ${pid} still alive, using SIGKILL`);
-        execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
-      } catch {
-        // Process already dead (good)
-      }
-
-      return { success: true, message: `Successfully killed FFmpeg process PID ${pid}` };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to kill FFmpeg process PID ${pid}: ${errorMessage}`);
-      return { success: false, message: `Failed to kill PID ${pid}: ${errorMessage}` };
-    }
+    return this.processCleanup.killFfmpegByPid(pid, trackedPids, trackedPidToJobId);
   }
 
   /**
@@ -2159,9 +1307,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     let killed = 0;
     let failed = 0;
 
-    for (const process of allProcesses) {
-      const result = await this.killFfmpegByPid(process.pid);
-      details.push({ pid: process.pid, ...result });
+    for (const proc of allProcesses) {
+      const result = await this.killFfmpegByPid(proc.pid);
+      details.push({ pid: proc.pid, ...result });
       if (result.success) {
         killed++;
       } else {
@@ -2246,7 +1394,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.activeEncodings.delete(jobId);
       this.logger.log(`Encoding cancelled for job ${jobId}`);
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to cancel job ${jobId}: ${errorMessage}`);
       return false;
@@ -2275,7 +1423,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       activeEncoding.process.kill('SIGSTOP');
       this.logger.log(`Encoding paused for job ${jobId}`);
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to pause job ${jobId}: ${errorMessage}`);
       return false;
@@ -2304,7 +1452,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       activeEncoding.process.kill('SIGCONT');
       this.logger.log(`Encoding resumed for job ${jobId}`);
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to resume job ${jobId}: ${errorMessage}`);
       return false;
@@ -2386,7 +1534,6 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     retryCount = 0
   ): string {
     // Use new error analyzer for human-readable explanations
-
     const {
       analyzeFfmpegError,
       formatErrorForDisplay,
@@ -2557,6 +1704,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       corruptedRequeueCount: 0,
       stuckRecoveryCount: 0,
       contentFingerprint: null,
+      qualityMetrics: null,
+      qualityMetricsAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -2581,199 +1730,13 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Verify that an encoded file is valid and playable
-   *
-   * Uses ffprobe to check file integrity.
+   * Verify that an encoded file is valid and playable.
+   * Delegates to FfprobeService.
    *
    * @param filePath - Path to file to verify
    * @returns Object with isValid flag and optional error details
    */
   async verifyFile(filePath: string): Promise<{ isValid: boolean; error?: string }> {
-    return new Promise((resolve) => {
-      const ffprobe = spawn('ffprobe', [
-        '-v',
-        'error',
-        '-show_entries',
-        'format=duration',
-        '-of',
-        'default=noprint_wrappers=1:nokey=1',
-        filePath,
-      ]);
-
-      let output = '';
-      let stderrOutput = '';
-
-      ffprobe.stdout?.on('data', (data) => {
-        output += data.toString();
-      });
-
-      // Capture stderr for error details
-      ffprobe.stderr?.on('data', (data) => {
-        stderrOutput += data.toString();
-      });
-
-      // P2 FIX: Increased timeout from 30s to 60s for large NFS files
-      // NFS can be slow to seek through large files, especially with high latency
-      const VERIFY_TIMEOUT_MS = 60000;
-      const timeoutId = setTimeout(() => {
-        ffprobe.kill('SIGKILL');
-        resolve({
-          isValid: false,
-          error: `File verification timed out after ${VERIFY_TIMEOUT_MS / 1000} seconds`,
-        });
-      }, VERIFY_TIMEOUT_MS);
-
-      ffprobe.on('close', (code) => {
-        clearTimeout(timeoutId);
-        // Clean up streams to prevent memory leaks
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-
-        if (code !== 0 || !output.trim()) {
-          // Build detailed error message
-          let errorMessage = `File verification failed (exit code ${code})`;
-
-          if (stderrOutput.trim()) {
-            errorMessage += `\n\nffprobe error output:\n${stderrOutput.trim()}`;
-          } else {
-            errorMessage += '\n\nNo duration metadata found - file may be corrupted or incomplete';
-          }
-
-          resolve({ isValid: false, error: errorMessage });
-        } else {
-          // File is valid if exit code is 0 and we got a duration
-          resolve({ isValid: true });
-        }
-      });
-
-      ffprobe.on('error', (err) => {
-        clearTimeout(timeoutId);
-        // Clean up streams on error
-        ffprobe.stdout?.destroy();
-        ffprobe.stderr?.destroy();
-        resolve({
-          isValid: false,
-          error: `Failed to run ffprobe: ${err.message}`,
-        });
-      });
-    });
-  }
-
-  /**
-   * ROCK SOLID: Sleep for specified milliseconds
-   */
-  private async sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * ROCK SOLID: Wait for file to exist with retries
-   * @param filePath - Path to file
-   * @param maxRetries - Maximum number of retries (default: 10)
-   * @param delayMs - Delay between retries in milliseconds (default: 2000)
-   * @returns true if file exists, false if all retries exhausted
-   */
-  private async waitForFileExists(
-    filePath: string,
-    maxRetries = 10,
-    delayMs = 2000
-  ): Promise<boolean> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        if (existsSync(filePath)) {
-          if (attempt > 1) {
-            this.logger.log(`✓ File exists after ${attempt} attempt(s): ${filePath}`);
-          }
-          return true;
-        }
-
-        if (attempt < maxRetries) {
-          this.logger.warn(
-            `File not found (attempt ${attempt}/${maxRetries}), waiting ${delayMs}ms before retry: ${filePath}`
-          );
-          await this.sleep(delayMs);
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `Error checking file existence (attempt ${attempt}/${maxRetries}): ${errorMsg}`
-        );
-        if (attempt < maxRetries) {
-          await this.sleep(delayMs);
-        }
-      }
-    }
-
-    this.logger.error(
-      `File does not exist after ${maxRetries} attempts (${(maxRetries * delayMs) / 1000}s total): ${filePath}`
-    );
-    return false;
-  }
-
-  /**
-   * ROCK SOLID: Verify file with retries
-   * @param filePath - Path to file to verify
-   * @param maxRetries - Maximum number of retries (default: 10)
-   * @returns Verification result with attempt count
-   */
-  private async verifyFileWithRetries(
-    filePath: string,
-    maxRetries = 10
-  ): Promise<{ isValid: boolean; error?: string; attempts: number }> {
-    let lastError = '';
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // First check: Does file exist?
-        if (!existsSync(filePath)) {
-          lastError = `File does not exist`;
-          if (attempt < maxRetries) {
-            this.logger.warn(
-              `Verification attempt ${attempt}/${maxRetries}: File missing, waiting 2s before retry`
-            );
-            await this.sleep(2000);
-            continue;
-          }
-          break;
-        }
-
-        // Second check: Run ffprobe verification
-        const result = await this.verifyFile(filePath);
-
-        if (result.isValid) {
-          return {
-            isValid: true,
-            attempts: attempt,
-          };
-        }
-
-        lastError = result.error || 'Unknown verification error';
-
-        if (attempt < maxRetries) {
-          // Exponential backoff: 2s, 4s, 8s, 16s, 32s (max 32s)
-          const backoffMs = Math.min(2000 * 2 ** (attempt - 1), 32000);
-          this.logger.warn(
-            `Verification attempt ${attempt}/${maxRetries} failed: ${lastError}\n` +
-              `Waiting ${backoffMs}ms before retry...`
-          );
-          await this.sleep(backoffMs);
-        }
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : 'Exception during verification';
-        this.logger.error(
-          `Exception in verification attempt ${attempt}/${maxRetries}: ${lastError}`
-        );
-
-        if (attempt < maxRetries) {
-          await this.sleep(2000);
-        }
-      }
-    }
-
-    return {
-      isValid: false,
-      error: lastError || 'Verification failed after all retries',
-      attempts: maxRetries,
-    };
+    return this.ffprobe.verifyFile(filePath);
   }
 }

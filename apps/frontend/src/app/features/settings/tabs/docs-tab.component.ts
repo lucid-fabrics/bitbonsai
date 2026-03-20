@@ -328,7 +328,7 @@ export class DocsTabComponent implements OnInit {
           const sanitizedHtml = DOMPurify.sanitize(html as string);
           this.renderedContent.set(this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml));
           this.loading.set(false);
-        } catch (_err) {
+        } catch (_err: unknown) {
           this.error.set('Failed to render documentation');
           this.loading.set(false);
         }

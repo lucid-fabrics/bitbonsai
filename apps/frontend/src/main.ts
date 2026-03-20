@@ -35,8 +35,8 @@ import { environment } from './environments/environment';
 
 class TranslocoHttpLoader implements TranslocoLoader {
   constructor(private http: HttpClient) {}
-  getTranslation(lang: string): Observable<Record<string, any>> {
-    return this.http.get<Record<string, any>>(`/assets/i18n/${lang}.json`);
+  getTranslation(lang: string): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`/assets/i18n/${lang}.json`);
   }
 }
 

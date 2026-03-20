@@ -1,12 +1,19 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { combineLatest, map, type Observable } from 'rxjs';
-import { QueueJobBo } from '../../features/queue/bos/queue-job.bo';
 import type { JobHistoryEvent } from '../../features/queue/models/job-history-event.model';
 import type { QueueFilters } from '../../features/queue/models/queue-filters.model';
 import type { QueueJobApiModel } from '../../features/queue/models/queue-job-api.model';
-import type { QueueResponse } from '../../features/queue/models/queue-response.model';
 import type { QueueStats } from '../../features/queue/models/queue-stats.model';
+
+export interface QueueRawResponse {
+  jobs: QueueJobApiModel[];
+  stats: QueueStats;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -15,7 +22,7 @@ export class QueueClient {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/v1/queue';
 
-  getQueue(filters?: QueueFilters): Observable<QueueResponse> {
+  getQueue(filters?: QueueFilters): Observable<QueueRawResponse> {
     const params: Record<string, string> = {};
     if (filters?.status) params.stage = filters.status; // Backend expects 'stage' not 'status'
     if (filters?.nodeId) params.nodeId = filters.nodeId;
@@ -39,7 +46,7 @@ export class QueueClient {
       this.http.get<QueueStats>(`${this.apiUrl}/stats`, { params: statsParams }),
     ]).pipe(
       map(([response, stats]) => ({
-        jobs: response.jobs.map((job) => new QueueJobBo(job)),
+        jobs: response.jobs,
         stats,
         total: response.total,
         page: response.page,
@@ -143,7 +150,10 @@ export class QueueClient {
     return this.http.delete<void>(`${this.apiUrl}/${jobId}`);
   }
 
-  resolveDecision(jobId: string, actionConfig: Record<string, any>): Observable<QueueJobApiModel> {
+  resolveDecision(
+    jobId: string,
+    actionConfig: Record<string, unknown>
+  ): Observable<QueueJobApiModel> {
     return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/resolve-decision`, {
       decisionData: { actionConfig },
     });

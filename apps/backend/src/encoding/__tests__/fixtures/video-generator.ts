@@ -324,7 +324,7 @@ export function cleanupFixtures(): void {
     const filePath = path.join(fixturesDir, file);
     try {
       fs.unlinkSync(filePath);
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn(`Failed to delete ${file}: ${err}`);
     }
   }
@@ -332,7 +332,7 @@ export function cleanupFixtures(): void {
   try {
     fs.rmdirSync(fixturesDir);
     logger.log(`Cleaned up fixtures directory: ${fixturesDir}`);
-  } catch (err) {
+  } catch (err: unknown) {
     logger.warn(`Failed to remove fixtures directory: ${err}`);
   }
 }
@@ -408,7 +408,7 @@ export async function verifyVideoFile(
           resolution: `${stream.width}x${stream.height}`,
           duration: parseFloat(format.duration),
         });
-      } catch (_err) {
+      } catch (_err: unknown) {
         resolve({ isValid: false });
       }
     });

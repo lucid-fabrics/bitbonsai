@@ -234,6 +234,202 @@ describe('FileHealthService', () => {
       expect(result.status).toBe(FileHealthStatus.CORRUPTED);
     });
 
+    it('should trigger test decode for WARNING status file and return HEALTHY when decode passes', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+
+      const probeOutput = {
+        format: { duration: '3600', bit_rate: '5000000' },
+        streams: [
+          { codec_name: 'h264', codec_type: 'video' },
+          { codec_name: 'aac', codec_type: 'audio' },
+        ],
+      };
+
+      // First spawn call: ffprobe with warnings to produce WARNING status
+      // Second spawn call: ffmpeg test decode — succeeds
+      let callCount = 0;
+      (spawn as jest.Mock).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as any;
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.stdout.destroy = jest.fn();
+        proc.stderr.destroy = jest.fn();
+        proc.kill = jest.fn();
+
+        if (callCount === 1) {
+          // ffprobe: return WARNING-level output (warnings in stderr)
+          setTimeout(() => {
+            proc.stdout.emit(
+              'data',
+              Buffer.from(
+                JSON.stringify({
+                  ...probeOutput,
+                  // five warnings → -15 score → score=80 → WARNING
+                })
+              )
+            );
+            proc.stderr.emit(
+              'data',
+              Buffer.from('warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e')
+            );
+            proc.emit('close', 0);
+          }, 10);
+        } else {
+          // ffmpeg test decode: succeeds
+          setTimeout(() => {
+            proc.emit('close', 0);
+          }, 10);
+        }
+        return proc;
+      });
+
+      const result = await service.analyzeFile('/test/warning-but-ok.mkv');
+
+      // After successful decode, status should remain WARNING (not downgraded)
+      expect(result.status).toBe(FileHealthStatus.WARNING);
+      expect(result.canEncode).toBe(true);
+    });
+
+    it('should downgrade WARNING to CORRUPTED when test decode fails', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+
+      const probeOutput = {
+        format: { duration: '3600', bit_rate: '5000000' },
+        streams: [
+          { codec_name: 'h264', codec_type: 'video' },
+          { codec_name: 'aac', codec_type: 'audio' },
+        ],
+      };
+
+      let callCount = 0;
+      (spawn as jest.Mock).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as any;
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.stdout.destroy = jest.fn();
+        proc.stderr.destroy = jest.fn();
+        proc.kill = jest.fn();
+
+        if (callCount === 1) {
+          setTimeout(() => {
+            proc.stdout.emit(
+              'data',
+              Buffer.from(
+                JSON.stringify({
+                  ...probeOutput,
+                })
+              )
+            );
+            proc.stderr.emit(
+              'data',
+              Buffer.from('warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e')
+            );
+            proc.emit('close', 0);
+          }, 10);
+        } else {
+          // ffmpeg test decode: fails with invalid data
+          setTimeout(() => {
+            proc.stderr.emit('data', Buffer.from('invalid data found when processing input'));
+            proc.emit('close', 1);
+          }, 10);
+        }
+        return proc;
+      });
+
+      const result = await service.analyzeFile('/test/deep-corrupt.mkv');
+
+      expect(result.status).toBe(FileHealthStatus.CORRUPTED);
+      expect(result.canEncode).toBe(false);
+      expect(result.score).toBe(35);
+      expect(result.issues.some((i) => i.includes('Test decode failed'))).toBe(true);
+    });
+
+    it('should handle test decode spawn error gracefully', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+
+      const probeOutput = {
+        format: { duration: '3600', bit_rate: '5000000' },
+        streams: [
+          { codec_name: 'h264', codec_type: 'video' },
+          { codec_name: 'aac', codec_type: 'audio' },
+        ],
+      };
+
+      let callCount = 0;
+      (spawn as jest.Mock).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as any;
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.stdout.destroy = jest.fn();
+        proc.stderr.destroy = jest.fn();
+        proc.kill = jest.fn();
+
+        if (callCount === 1) {
+          setTimeout(() => {
+            proc.stdout.emit('data', Buffer.from(JSON.stringify(probeOutput)));
+            proc.stderr.emit(
+              'data',
+              Buffer.from('warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e')
+            );
+            proc.emit('close', 0);
+          }, 10);
+        } else {
+          // ffmpeg spawn error
+          setTimeout(() => {
+            proc.emit('error', new Error('ffmpeg not found'));
+          }, 10);
+        }
+        return proc;
+      });
+
+      const result = await service.analyzeFile('/test/decode-spawn-error.mkv');
+
+      expect(result.status).toBe(FileHealthStatus.CORRUPTED);
+      expect(result.canEncode).toBe(false);
+    });
+
+    it('should return AT_RISK for score between 40 and 69', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+
+      // exitCode=1 (-50) + no duration (-10) + no bitrate (-5) = 35 ... not quite
+      // exitCode=1 (-50) + no audio (-5) + no duration (-10) + no bitrate (-5) = 30 → still CORRUPTED
+      // Use evaluateHealth directly for deterministic AT_RISK
+      const _result = (service as any).evaluateHealth({
+        exitCode: 0,
+        stdout: '{}',
+        stderr: '',
+        duration: undefined,
+        bitrate: undefined,
+        hasVideo: true,
+        hasAudio: false,
+        videoCodec: 'h264',
+        audioCodec: undefined,
+      });
+
+      // score: 100 - 5 (no audio) - 10 (no duration) - 5 (no bitrate) = 80 → WARNING
+      // To get AT_RISK add corrupt stderr
+      const atRiskResult = (service as any).evaluateHealth({
+        exitCode: 0,
+        stdout: '{}',
+        stderr: 'invalid data found\nwarning: a\nwarning: b\nwarning: c',
+        duration: undefined,
+        bitrate: undefined,
+        hasVideo: true,
+        hasAudio: false,
+        videoCodec: 'h264',
+        audioCodec: undefined,
+      });
+
+      // 100 - 5 (no audio) - 10 (no duration) - 5 (no bitrate) - 30 (invalid) - 9 (3 warnings) = 41 → AT_RISK
+      expect(atRiskResult.status).toBe(FileHealthStatus.AT_RISK);
+      expect(atRiskResult.score).toBeGreaterThanOrEqual(40);
+      expect(atRiskResult.score).toBeLessThan(70);
+      expect(atRiskResult.canEncode).toBe(true);
+    });
+
     it('should clamp score between 0 and 100', async () => {
       (existsSync as jest.Mock).mockReturnValue(true);
 

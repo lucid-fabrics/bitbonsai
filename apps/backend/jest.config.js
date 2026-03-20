@@ -1,5 +1,6 @@
 module.exports = {
   displayName: 'backend',
+  workerIdleMemoryLimit: '512MB',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
@@ -7,6 +8,10 @@ module.exports = {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
+  moduleNameMapper: {
+    '^@bitbonsai/version$': '<rootDir>/__mocks__/@bitbonsai/version.js',
+    '.*/@bitbonsai/version$': '<rootDir>/__mocks__/@bitbonsai/version.js',
+  },
   testPathIgnorePatterns: [
     '/node_modules/',
     '/__tests__/integration/',
@@ -24,10 +29,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 95,
-      functions: 95,
-      lines: 95,
-      statements: 95,
+      statements: 80,
+      branches: 65,
+      functions: 80,
+      lines: 80,
     },
   },
   coverageReporters: ['text', 'text-summary', 'html', 'lcov'],

@@ -54,6 +54,9 @@ export class UserRepository {
       passwordHash?: string;
       role?: UserRole;
       isActive?: boolean;
+      refreshToken?: string | null;
+      refreshTokenExpiresAt?: Date | null;
+      lastLoginAt?: Date;
     }
   ): Promise<User> {
     return this.prisma.user.update({
@@ -66,8 +69,18 @@ export class UserRepository {
     return this.prisma.user.delete({ where: { id } });
   }
 
+  async findByRefreshToken(refreshToken: string): Promise<User | null> {
+    return this.prisma.user.findFirst({
+      where: { refreshToken, isActive: true },
+    });
+  }
+
   async count(): Promise<number> {
     return this.prisma.user.count();
+  }
+
+  async deleteMany(): Promise<{ count: number }> {
+    return this.prisma.user.deleteMany({});
   }
 
   async countByRole(): Promise<Record<UserRole, number>> {

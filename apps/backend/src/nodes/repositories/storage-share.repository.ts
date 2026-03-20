@@ -6,7 +6,10 @@ import {
   type StorageShareStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { type IStorageShareRepository } from './storage-share.repository.interface';
+import {
+  type IStorageShareRepository,
+  type StorageShareWithNode,
+} from './storage-share.repository.interface';
 
 /**
  * Prisma implementation of StorageShare repository
@@ -110,7 +113,7 @@ export class StorageShareRepository implements IStorageShareRepository {
 
     return this.prisma.storageShare.update({
       where: { id },
-      data: data as any,
+      data: data as Prisma.StorageShareUpdateInput,
     });
   }
 
@@ -182,5 +185,19 @@ export class StorageShareRepository implements IStorageShareRepository {
         sharePath,
       },
     });
+  }
+
+  async findMountedWithNode(): Promise<StorageShareWithNode[]> {
+    return this.prisma.storageShare.findMany({
+      where: { isMounted: true },
+      include: { node: true },
+    }) as Promise<StorageShareWithNode[]>;
+  }
+
+  async deleteAllAutoManaged(): Promise<number> {
+    const result = await this.prisma.storageShare.deleteMany({
+      where: { autoManaged: true },
+    });
+    return result.count;
   }
 }

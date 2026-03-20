@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { JobStage } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { JobRepository } from '../../common/repositories/job.repository';
 
 /**
  * JobCleanupService
@@ -22,7 +22,7 @@ export class JobCleanupService implements OnModuleInit {
   );
   private readonly TIMEOUT_HOURS = parseInt(process.env.JOB_ENCODING_TIMEOUT_HOURS || '2', 10);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly jobRepository: JobRepository) {}
 
   /**
    * Run cleanup on application startup
@@ -53,22 +53,27 @@ export class JobCleanupService implements OnModuleInit {
     thresholdDate.setMinutes(thresholdDate.getMinutes() - this.STUCK_THRESHOLD_MINUTES);
 
     try {
-      const stuckJobs = await this.prisma.job.findMany({
-        where: {
+      const stuckJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        nodeId: string;
+        updatedAt: Date;
+        progress: number;
+        retryCount: number;
+      }>(
+        {
           stage: JobStage.ENCODING,
-          updatedAt: {
-            lt: thresholdDate,
-          },
+          updatedAt: { lt: thresholdDate },
         },
-        select: {
+        {
           id: true,
           fileLabel: true,
           nodeId: true,
           updatedAt: true,
-          progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
-          retryCount: true, // AUTO-HEAL TRACKING: needed to increment retry count
-        },
-      });
+          progress: true,
+          retryCount: true,
+        }
+      );
 
       if (stuckJobs.length === 0) {
         this.logger.log('No stuck jobs found during cleanup');
@@ -83,24 +88,21 @@ export class JobCleanupService implements OnModuleInit {
         try {
           const minutesStuck = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60);
 
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.QUEUED,
-              progress: 0,
-              startedAt: null,
-              retryCount: job.retryCount + 1,
-              // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
-              autoHealedAt: new Date(),
-              autoHealedProgress: job.progress,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.QUEUED,
+            progress: 0,
+            startedAt: null,
+            retryCount: job.retryCount + 1,
+            // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
+            autoHealedAt: new Date(),
+            autoHealedProgress: job.progress,
           });
 
           resetCount++;
           this.logger.debug(
             `Reset job ${job.id} (${job.fileLabel}) - stuck for ${minutesStuck} minutes on node ${job.nodeId}, was at ${(job.progress || 0).toFixed(1)}%`
           );
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.error(`Failed to reset stuck job ${job.id} (${job.fileLabel})`, error);
         }
       }
@@ -108,7 +110,7 @@ export class JobCleanupService implements OnModuleInit {
       this.logger.log(`Successfully reset ${resetCount} stuck job(s) to QUEUED stage`);
 
       return resetCount;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to cleanup stuck jobs', error);
       throw error;
     }
@@ -133,21 +135,25 @@ export class JobCleanupService implements OnModuleInit {
     timeoutDate.setHours(timeoutDate.getHours() - this.TIMEOUT_HOURS);
 
     try {
-      const timedOutJobs = await this.prisma.job.findMany({
-        where: {
+      const timedOutJobs = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+        nodeId: string;
+        updatedAt: Date;
+        startedAt: Date | null;
+      }>(
+        {
           stage: JobStage.ENCODING,
-          updatedAt: {
-            lt: timeoutDate,
-          },
+          updatedAt: { lt: timeoutDate },
         },
-        select: {
+        {
           id: true,
           fileLabel: true,
           nodeId: true,
           updatedAt: true,
           startedAt: true,
-        },
-      });
+        }
+      );
 
       if (timedOutJobs.length === 0) {
         this.logger.debug('No timed-out jobs found');
@@ -165,13 +171,10 @@ export class JobCleanupService implements OnModuleInit {
         const hoursEncoding = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60 / 60);
 
         try {
-          await this.prisma.job.update({
-            where: { id: job.id },
-            data: {
-              stage: JobStage.FAILED,
-              completedAt: new Date(),
-              error: `Encoding timeout - exceeded maximum duration of ${this.TIMEOUT_HOURS} hours (was encoding for ${hoursEncoding} hours)`,
-            },
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.FAILED,
+            completedAt: new Date(),
+            error: `Encoding timeout - exceeded maximum duration of ${this.TIMEOUT_HOURS} hours (was encoding for ${hoursEncoding} hours)`,
           });
 
           failedCount++;
@@ -179,7 +182,7 @@ export class JobCleanupService implements OnModuleInit {
           this.logger.warn(
             `Marked job ${job.id} (${job.fileLabel}) as FAILED - encoding for ${hoursEncoding} hours on node ${job.nodeId}`
           );
-        } catch (error) {
+        } catch (error: unknown) {
           this.logger.error(`Failed to mark job ${job.id} as timed out`, error);
         }
       }
@@ -187,7 +190,7 @@ export class JobCleanupService implements OnModuleInit {
       this.logger.log(`Successfully marked ${failedCount} timed-out job(s) as FAILED`);
 
       return failedCount;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to detect timed-out jobs', error);
       throw error;
     }

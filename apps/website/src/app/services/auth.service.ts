@@ -106,7 +106,9 @@ export class AuthService {
     const token = this.getToken();
     if (token) {
       this.getMe().subscribe({
-        next: () => {},
+        next: () => {
+          /* token validated */
+        },
         error: () => {
           this.clearToken();
         },
