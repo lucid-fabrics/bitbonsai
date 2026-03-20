@@ -22,5 +22,6 @@ module.exports = {
     'subject-empty': [2, 'never'],
     'subject-full-stop': [2, 'never', '.'],
     'type-empty': [2, 'never'],
+    'body-max-line-length': [0],
   },
 };
