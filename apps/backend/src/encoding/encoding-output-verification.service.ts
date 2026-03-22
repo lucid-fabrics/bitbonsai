@@ -11,7 +11,7 @@ const FALLBACK_DURATION_SECONDS = 3600;
  */
 @Injectable()
 export class EncodingOutputVerificationService {
-  private readonly logger = new Logger(EncodingOutputVerificationService.name);
+  public readonly logger = new Logger(EncodingOutputVerificationService.name);
 
   constructor(private readonly ffmpegService: FfmpegService) {}
 

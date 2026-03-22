@@ -33,7 +33,7 @@ export interface SystemLoadInfo {
  */
 @Injectable()
 export class SystemResourceService {
-  private readonly logger = new Logger(SystemResourceService.name);
+  public readonly logger = new Logger(SystemResourceService.name);
 
   // CPU-Aware Worker Calculation Constants
   private readonly CORES_PER_HEVC_JOB = 4;

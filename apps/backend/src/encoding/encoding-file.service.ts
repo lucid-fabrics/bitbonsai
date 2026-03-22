@@ -37,7 +37,7 @@ const TEMP_FILE_MAX_RETRIES = 10;
  */
 @Injectable()
 export class EncodingFileService {
-  private readonly logger = new Logger(EncodingFileService.name);
+  public readonly logger = new Logger(EncodingFileService.name);
 
   constructor(
     private readonly jobRepository: JobRepository,
