@@ -14,7 +14,7 @@ import { FfmpegService } from './ffmpeg.service';
  */
 @Injectable()
 export class EncodingFileReplacementService {
-  private readonly logger = new Logger(EncodingFileReplacementService.name);
+  public readonly logger = new Logger(EncodingFileReplacementService.name);
 
   constructor(
     private readonly ffmpegService: FfmpegService,

@@ -24,11 +24,11 @@ import { LibraryScannerService } from './library-scanner.service';
  */
 @Injectable()
 export class LibrariesService {
-  private readonly logger = new Logger(LibrariesService.name);
+  public readonly logger = new Logger(LibrariesService.name);
 
   constructor(
     private eventEmitter: EventEmitter2,
-    private readonly libraryScanner: LibraryScannerService,
+    public readonly libraryScanner: LibraryScannerService,
     private readonly libraryRepository: LibraryRepository,
     private readonly nodeRepository: NodeRepository
   ) {}
