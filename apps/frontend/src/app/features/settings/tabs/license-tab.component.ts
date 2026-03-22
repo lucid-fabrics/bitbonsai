@@ -11,7 +11,13 @@ import {
 import { ActivatedRoute } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 import { catchError, forkJoin, of } from 'rxjs';
-import { LicenseBo } from '../bos/license.bo';
+import {
+  getTierBadgeClass,
+  getTierDisplayName,
+  getTierIcon,
+  getTierPrice,
+  isUpgrade,
+} from '../bos/license.bo';
 import type {
   ActivateLicense,
   License,
@@ -91,7 +97,7 @@ import { LicenseService } from '../services/license.service';
             <div class="tier-info">
               <i
                 [class]="
-                  LicenseBo.getTierIcon(
+                  getTierIcon(
                     capabilities()?.tier || LicenseTier.FREE
                   )
                 "
@@ -99,19 +105,19 @@ import { LicenseService } from '../services/license.service';
               <div>
                 <span
                   [class]="
-                    LicenseBo.getTierBadgeClass(
+                    getTierBadgeClass(
                       capabilities()?.tier || LicenseTier.FREE
                     )
                   "
                 >
                   {{
-                    LicenseBo.getTierDisplayName(
+                    getTierDisplayName(
                       capabilities()?.tier || LicenseTier.FREE
                     )
                   }}
                 </span>
                 <span class="price-tag">{{
-                  LicenseBo.getTierPrice(
+                  getTierPrice(
                     capabilities()?.tier || LicenseTier.FREE
                   )
                 }}</span>
@@ -367,7 +373,7 @@ import { LicenseService } from '../services/license.service';
                       [disabled]="stripeLoading()"
                     >
                       {{
-                        LicenseBo.isUpgrade(
+                        isUpgrade(
                           capabilities()?.tier || LicenseTier.FREE,
                           tier.id
                         )
@@ -1148,7 +1154,13 @@ export class LicenseTabComponent implements OnInit {
   }>;
 
   LicenseTier = LicenseTier;
-  readonly LicenseBo = LicenseBo;
+
+  // Expose functions to template
+  getTierBadgeClass = getTierBadgeClass;
+  getTierDisplayName = getTierDisplayName;
+  getTierIcon = getTierIcon;
+  getTierPrice = getTierPrice;
+  isUpgrade = isUpgrade;
 
   commercialTiers: LicenseTierInfo[] = [
     {
