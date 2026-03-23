@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check internal links
-        uses: lycheeverse/lychee-action@82202e5ea8b70cd7b8b14d2df25fef197da2a6ac  # v2.3.0
+        uses: lycheeverse/lychee-action@82202e5ea8b70cd7b8b14d2df25fef197da2a6ac # v2.3.0
         with:
           args: >
             --no-progress

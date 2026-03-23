@@ -9,13 +9,13 @@ description: Minimum and recommended specifications for running BitBonsai
   Suitable for small libraries (< 500 videos) on a single node
 </Card>
 
-| Component | Minimum Spec |
-|-----------|--------------|
-| **CPU** | 4 cores (x86_64 or ARM64) |
-| **RAM** | 4 GB |
-| **Storage** | 20 GB (system) + video library space |
-| **OS** | Linux, Windows (with WSL2), macOS |
-| **Software** | Docker 20.10+, Docker Compose 2.0+ |
+| Component    | Minimum Spec                         |
+| ------------ | ------------------------------------ |
+| **CPU**      | 4 cores (x86_64 or ARM64)            |
+| **RAM**      | 4 GB                                 |
+| **Storage**  | 20 GB (system) + video library space |
+| **OS**       | Linux, Windows (with WSL2), macOS    |
+| **Software** | Docker 20.10+, Docker Compose 2.0+   |
 
 ---
 
@@ -28,6 +28,7 @@ description: Minimum and recommended specifications for running BitBonsai
     - 8+ cores
     - 8 GB RAM
     - Hardware transcoding (optional)
+
   </Card>
 
   <Card title="Large Library" icon="database">
@@ -36,17 +37,18 @@ description: Minimum and recommended specifications for running BitBonsai
     - 16+ cores (or multi-node setup)
     - 16 GB RAM
     - NFS storage for multi-node
+
   </Card>
 </CardGroup>
 
 ### Performance Factors
 
-| Factor | Impact | Recommendation |
-|--------|--------|----------------|
-| **CPU Cores** | Encoding speed | More cores = faster encoding |
-| **RAM** | Job concurrency | 4 GB + (2 GB per concurrent job) |
-| **Storage** | Temp files during encoding | SSD recommended for temp directory |
-| **Network** | Multi-node performance | 1 Gbps+ for NFS shared storage |
+| Factor        | Impact                     | Recommendation                     |
+| ------------- | -------------------------- | ---------------------------------- |
+| **CPU Cores** | Encoding speed             | More cores = faster encoding       |
+| **RAM**       | Job concurrency            | 4 GB + (2 GB per concurrent job)   |
+| **Storage**   | Temp files during encoding | SSD recommended for temp directory |
+| **Network**   | Multi-node performance     | 1 Gbps+ for NFS shared storage     |
 
 ---
 
@@ -67,6 +69,7 @@ description: Minimum and recommended specifications for running BitBonsai
     docker --version          # Should be 20.10+
     docker compose version    # Should be 2.0+
     ```
+
   </Tab>
 
   <Tab title="Windows (WSL2)">
@@ -81,6 +84,7 @@ description: Minimum and recommended specifications for running BitBonsai
     docker --version
     docker compose version
     ```
+
   </Tab>
 
   <Tab title="macOS">
@@ -95,6 +99,7 @@ description: Minimum and recommended specifications for running BitBonsai
     docker --version
     docker compose version
     ```
+
   </Tab>
 </Tabs>
 
@@ -103,7 +108,7 @@ description: Minimum and recommended specifications for running BitBonsai
 ## Hardware Transcoding (Optional)
 
 <Note>
-Hardware encoding is **5-10x faster** than software encoding but may reduce quality slightly.
+  Hardware encoding is **5-10x faster** than software encoding but may reduce quality slightly.
 </Note>
 
 ### Supported GPUs
@@ -115,6 +120,7 @@ Hardware encoding is **5-10x faster** than software encoding but may reduce qual
     GTX 1050+ or RTX series
 
     Requires NVIDIA drivers
+
   </Card>
 
   <Card title="Intel" icon="microchip">
@@ -123,6 +129,7 @@ Hardware encoding is **5-10x faster** than software encoding but may reduce qual
     6th gen (Skylake) or newer
 
     Built into CPU
+
   </Card>
 
   <Card title="AMD" icon="a">
@@ -131,12 +138,14 @@ Hardware encoding is **5-10x faster** than software encoding but may reduce qual
     RX 400 series or newer
 
     Limited support
+
   </Card>
 </CardGroup>
 
 ### Docker GPU Passthrough
 
 **NVIDIA Setup:**
+
 ```bash
 # Install NVIDIA Container Toolkit (current method)
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
@@ -151,6 +160,7 @@ sudo systemctl restart docker
 ```
 
 Add to `docker-compose.yml`:
+
 ```yaml
 services:
   backend:
@@ -169,23 +179,25 @@ services:
 
 ### Single Node
 
-| Port | Service | Required |
-|------|---------|----------|
-| **4210** | Frontend UI | Yes |
+| Port     | Service     | Required       |
+| -------- | ----------- | -------------- |
+| **4210** | Frontend UI | Yes            |
 | **3100** | Backend API | Yes (internal) |
-| **5432** | PostgreSQL | Yes (internal) |
+| **5432** | PostgreSQL  | Yes (internal) |
 
 <Tip>
-Only port **4210** needs to be accessible from your browser for normal use. Port 3100 (backend API) is also exposed for direct API access and multi-node child node connections. Port 5432 (PostgreSQL) is internal to Docker and should not be exposed to untrusted networks.
+  Only port **4210** needs to be accessible from your browser for normal use. Port 3100 (backend
+  API) is also exposed for direct API access and multi-node child node connections. Port 5432
+  (PostgreSQL) is internal to Docker and should not be exposed to untrusted networks.
 </Tip>
 
 ### Multi-Node Setup
 
-| Port | Service | Required |
-|------|---------|----------|
+| Port     | Service       | Required              |
+| -------- | ------------- | --------------------- |
 | **3100** | Main node API | Yes (for child nodes) |
-| **2049** | NFS Server | Yes (if using NFS) |
-| **111** | NFS RPC | Yes (if using NFS) |
+| **2049** | NFS Server    | Yes (if using NFS)    |
+| **111**  | NFS RPC       | Yes (if using NFS)    |
 
 **Bandwidth recommendation:** 1 Gbps+ between nodes for NFS shared storage.
 
@@ -214,16 +226,17 @@ Only port **4210** needs to be accessible from your browser for normal use. Port
     **After encoding:**
     - New encoded file: 40 MB
     - **Savings:** 60 MB (original deleted)
+
   </Accordion>
 </AccordionGroup>
 
 ### Storage Performance
 
-| Storage Type | Use Case | Notes |
-|--------------|----------|-------|
-| **HDD** | Video library | Acceptable (sequential reads) |
-| **SSD** | Temp directory | Recommended for faster I/O |
-| **NFS** | Multi-node shared storage | 1 Gbps+ network required |
+| Storage Type | Use Case                  | Notes                         |
+| ------------ | ------------------------- | ----------------------------- |
+| **HDD**      | Video library             | Acceptable (sequential reads) |
+| **SSD**      | Temp directory            | Recommended for faster I/O    |
+| **NFS**      | Multi-node shared storage | 1 Gbps+ network required      |
 
 ---
 
@@ -241,6 +254,7 @@ Only port **4210** needs to be accessible from your browser for normal use. Port
     - Best Docker performance
     - Native hardware transcoding support
     - Lowest resource overhead
+
   </Tab>
 
   <Tab title="Windows (WSL2)">
@@ -252,6 +266,7 @@ Only port **4210** needs to be accessible from your browser for normal use. Port
     **Limitations:**
     - GPU passthrough limited (NVIDIA only)
     - Slightly higher overhead than Linux
+
   </Tab>
 
   <Tab title="macOS">
@@ -262,6 +277,7 @@ Only port **4210** needs to be accessible from your browser for normal use. Port
     **Limitations:**
     - No GPU hardware transcoding (ARM Macs)
     - Intel Macs: QSV may work with limitations
+
   </Tab>
 </Tabs>
 

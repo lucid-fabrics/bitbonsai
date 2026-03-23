@@ -6,7 +6,8 @@ description: Fix common BitBonsai issues
 BitBonsai is designed to [self-heal](/glossary#self-healing) from most issues, but occasionally you may need to intervene manually. This guide covers common problems and their solutions.
 
 <Note>
-**New to troubleshooting?** Most issues are automatically fixed by BitBonsai's auto-healing systems. See [self-healing](/glossary#self-healing) in the glossary.
+  **New to troubleshooting?** Most issues are automatically fixed by BitBonsai's auto-healing
+  systems. See [self-healing](/glossary#self-healing) in the glossary.
 </Note>
 
 ## Quick Diagnostics
@@ -28,7 +29,9 @@ df -h /path/to/temp /path/to/media
 ```
 
 <Info>
-**[Docker](/glossary#docker)** is the tool BitBonsai uses to run. **[Database](/glossary#database)** stores job information. **[Temporary files](/glossary#temporary-files)** are created during encoding.
+  **[Docker](/glossary#docker)** is the tool BitBonsai uses to run.
+  **[Database](/glossary#database)** stores job information. **[Temporary
+  files](/glossary#temporary-files)** are created during encoding.
 </Info>
 
 ## Common Issues
@@ -128,6 +131,7 @@ df -h /path/to/temp /path/to/media
     <Warning>
     BitBonsai retries temp file detection 10 times with 2-second delays. If NFS mount is slow to come up after boot, increase retry count in `encoding-processor.service.ts`.
     </Warning>
+
   </Accordion>
 
   <Accordion title="Jobs Stuck in ENCODING (Orphaned Jobs)" icon="clock">
@@ -199,6 +203,7 @@ df -h /path/to/temp /path/to/media
     <Note>
     The **Stuck Job Watchdog** (if enabled) automatically detects jobs with no progress updates for 30+ minutes and resets them.
     </Note>
+
   </Accordion>
 
   <Accordion title="Health Check Failures (CORRUPTED Jobs)" icon="exclamation-triangle">
@@ -285,6 +290,7 @@ df -h /path/to/temp /path/to/media
     <Warning>
     Do NOT blindly mark CORRUPTED jobs as COMPLETED without validation. Verify file integrity first to avoid data loss.
     </Warning>
+
   </Accordion>
 
   <Accordion title="Temp File Detection Failed (10 Retries)" icon="file-slash">
@@ -377,6 +383,7 @@ df -h /path/to/temp /path/to/media
     <Tip>
     Use local SSD/NVMe for `/tmp/bitbonsai` instead of NFS for better performance and reliability.
     </Tip>
+
   </Accordion>
 
   <Accordion title="Child Node Disconnected (Network Issues)" icon="link-slash">
@@ -473,6 +480,7 @@ df -h /path/to/temp /path/to/media
     <Warning>
     Child nodes in `OFFLINE` state won't receive job assignments. Fix connectivity issues promptly to avoid job queue buildup.
     </Warning>
+
   </Accordion>
 
   <Accordion title="Frontend Can't Connect to Backend" icon="browser">
@@ -567,6 +575,7 @@ df -h /path/to/temp /path/to/media
     <Tip>
     If accessing BitBonsai from a different machine, use `http://[server-ip]:4210` and ensure `API_URL` is set to `http://[server-ip]:3100`.
     </Tip>
+
   </Accordion>
 
   <Accordion title="Database Connection Refused" icon="database">
@@ -674,6 +683,7 @@ df -h /path/to/temp /path/to/media
         Backend will automatically apply migrations on startup.
       </Step>
     </Steps>
+
   </Accordion>
 
   <Accordion title="Out of Disk Space During Encoding" icon="hard-drive">
@@ -763,6 +773,7 @@ df -h /path/to/temp /path/to/media
 
     Example: 50GB video, 4 concurrent jobs = 400GB minimum
     </Tip>
+
   </Accordion>
 </AccordionGroup>
 
@@ -770,24 +781,20 @@ df -h /path/to/temp /path/to/media
 
 Access logs for debugging:
 
-| Component | Docker Command |
-|-----------|----------------|
-| Backend | `docker compose logs -f backend` |
-| Frontend | `docker compose logs -f frontend` |
-| PostgreSQL | `docker compose logs -f postgres` |
+| Component     | Docker Command                                                   |
+| ------------- | ---------------------------------------------------------------- |
+| Backend       | `docker compose logs -f backend`                                 |
+| Frontend      | `docker compose logs -f frontend`                                |
+| PostgreSQL    | `docker compose logs -f postgres`                                |
 | FFmpeg Output | Check job details in UI (Encoding tab → click job → expand logs) |
 
-<Tip>
-Add `-f` flag to follow logs in real-time: `docker compose logs -f backend`
-</Tip>
+<Tip>Add `-f` flag to follow logs in real-time: `docker compose logs -f backend`</Tip>
 
 ## Recovery Procedures
 
 ### Full System Reset (Nuclear Option)
 
-<Warning>
-This will delete all job history and settings. Use only as last resort.
-</Warning>
+<Warning>This will delete all job history and settings. Use only as last resort.</Warning>
 
 ```bash
 # Stop all services
@@ -809,6 +816,7 @@ docker compose logs backend | grep "Application listening"
 ### Database Backup & Restore
 
 **Backup:**
+
 ```bash
 # Create backup
 docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup-$(date +%Y%m%d).sql
@@ -818,6 +826,7 @@ ls -lh backup-*.sql
 ```
 
 **Restore:**
+
 ```bash
 # Stop backend (to prevent write conflicts)
 docker compose stop backend
@@ -854,11 +863,16 @@ SELECT status, COUNT(*) FROM "EncodingJob" GROUP BY status;
 
 If you've tried the above fixes and still experiencing issues, please report to GitHub:
 
-<Card title="Report Issue on GitHub" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues/new">
+<Card
+  title="Report Issue on GitHub"
+  icon="github"
+  href="https://github.com/bitbonsai/bitbonsai/issues/new"
+>
   Create a new issue with logs and reproduction steps
 </Card>
 
 **Include in your report:**
+
 1. BitBonsai version (`docker compose images | grep bitbonsai`)
 2. Deployment method (Docker Compose, Unraid, LXC)
 3. Node configuration (single vs. multi-node)
@@ -883,6 +897,7 @@ If you've tried the above fixes and still experiencing issues, please report to 
     ```bash
     docker compose restart backend
     ```
+
   </Tab>
 
   <Tab title="Environment File">
@@ -893,6 +908,7 @@ If you've tried the above fixes and still experiencing issues, please report to 
     ```
 
     Restart containers to apply.
+
   </Tab>
 </Tabs>
 
@@ -931,13 +947,13 @@ docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i a
     Track job health, queue status, and system metrics
   </Card>
 
-  <Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
-    Add worker nodes for distributed encoding
-  </Card>
+<Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
+  Add worker nodes for distributed encoding
+</Card>
 
-  <Card title="Codec Selection Guide" icon="film" href="/advanced/codec-selection">
-    Choose optimal encoding settings
-  </Card>
+<Card title="Codec Selection Guide" icon="film" href="/advanced/codec-selection">
+  Choose optimal encoding settings
+</Card>
 
   <Card title="FAQ" icon="question" href="/faq">
     Frequently asked questions

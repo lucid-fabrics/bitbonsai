@@ -29,24 +29,24 @@ BitBonsai automatically converts your library to modern codecs (HEVC/AV1), reduc
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| **Zero Config** | Smart defaults that work out of the box. No tuning required. |
-| **TRUE Resume** | Crashed at 80%? Resume from exactly where you left off. Never restart from 0%. |
-| **Self-Healing** | Automatic crash recovery. Jobs resurrect themselves without intervention. |
-| **Multi-Node** | Distribute encoding across multiple machines for faster processing. |
-| **Hardware Accel** | NVIDIA NVENC, Intel QuickSync, AMD AMF support. |
-| **Integrations** | Works with Plex, Jellyfin, Emby, Radarr, Sonarr. |
+| Feature            | Description                                                                    |
+| ------------------ | ------------------------------------------------------------------------------ |
+| **Zero Config**    | Smart defaults that work out of the box. No tuning required.                   |
+| **TRUE Resume**    | Crashed at 80%? Resume from exactly where you left off. Never restart from 0%. |
+| **Self-Healing**   | Automatic crash recovery. Jobs resurrect themselves without intervention.      |
+| **Multi-Node**     | Distribute encoding across multiple machines for faster processing.            |
+| **Hardware Accel** | NVIDIA NVENC, Intel QuickSync, AMD AMF support.                                |
+| **Integrations**   | Works with Plex, Jellyfin, Emby, Radarr, Sonarr.                               |
 
 ### Before & After
 
-| Library | Before | After | Savings |
-|---------|--------|-------|---------|
-| Movies (500 files) | 12.4 TB | 5.1 TB | **59%** |
-| TV Shows (2000 eps) | 8.2 TB | 3.4 TB | **58%** |
-| 4K Collection | 6.8 TB | 2.1 TB | **69%** |
+| Library             | Before  | After  | Savings |
+| ------------------- | ------- | ------ | ------- |
+| Movies (500 files)  | 12.4 TB | 5.1 TB | **59%** |
+| TV Shows (2000 eps) | 8.2 TB  | 3.4 TB | **58%** |
+| 4K Collection       | 6.8 TB  | 2.1 TB | **69%** |
 
-*Real results from beta users. Your mileage may vary based on source quality.*
+_Real results from beta users. Your mileage may vary based on source quality._
 
 ---
 
@@ -73,7 +73,7 @@ Available in Community Applications. Search for **BitBonsai**.
 ### Docker Compose
 
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
   bitbonsai:
     image: lucidfabrics/bitbonsai:latest
@@ -93,13 +93,13 @@ services:
 
 BitBonsai is **free to use** with generous limits. Support the project to unlock more.
 
-| Tier | Price | Nodes | Concurrent Jobs |
-|------|-------|-------|-----------------|
-| **Free** | $0 | 1 | 2 |
-| **Supporter** | $3/mo | 2 | 3 |
-| **Plus** | $5/mo | 3 | 5 |
-| **Pro** | $10/mo | 5 | 10 |
-| **Ultimate** | $20/mo | 10 | 20 |
+| Tier          | Price  | Nodes | Concurrent Jobs |
+| ------------- | ------ | ----- | --------------- |
+| **Free**      | $0     | 1     | 2               |
+| **Supporter** | $3/mo  | 2     | 3               |
+| **Plus**      | $5/mo  | 3     | 5               |
+| **Pro**       | $10/mo | 5     | 10              |
+| **Ultimate**  | $20/mo | 10    | 20              |
 
 <div align="center">
 
@@ -117,12 +117,15 @@ BitBonsai is **free to use** with generous limits. Support the project to unlock
 <div align="center">
 
 ### Encoding Queue
+
 ![Queue](screenshots/queue.png)
 
 ### Overview & Analytics
+
 ![Overview](screenshots/overview.png)
 
 ### Multi-Node Management
+
 ![Nodes](screenshots/nodes.png)
 
 </div>

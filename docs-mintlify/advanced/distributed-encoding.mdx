@@ -34,6 +34,7 @@ BitBonsai uses a **shared-database, direct-poll** model for distributed encoding
 ```
 
 **Key design decisions:**
+
 - No central job dispatcher — nodes self-assign via optimistic locking
 - No message queue (no Redis, no RabbitMQ) — PostgreSQL is the queue
 - Child nodes need direct database access (`DATABASE_URL`) to poll jobs
@@ -85,12 +86,12 @@ The `FOR UPDATE SKIP LOCKED` clause is the key — PostgreSQL's row-level lockin
 
 **Load balancing result:**
 
-| Scenario | Outcome |
-|----------|---------|
-| All nodes equally loaded | Jobs distributed round-robin by creation time |
-| One node faster than others | Faster node picks up more jobs (polls more aggressively) |
-| Node offline | Its QUEUED jobs are immediately visible to other nodes |
-| Node crashes mid-encode | Orphan recovery resets its ENCODING jobs to QUEUED on next startup |
+| Scenario                    | Outcome                                                            |
+| --------------------------- | ------------------------------------------------------------------ |
+| All nodes equally loaded    | Jobs distributed round-robin by creation time                      |
+| One node faster than others | Faster node picks up more jobs (polls more aggressively)           |
+| Node offline                | Its QUEUED jobs are immediately visible to other nodes             |
+| Node crashes mid-encode     | Orphan recovery resets its ENCODING jobs to QUEUED on next startup |
 
 ---
 
@@ -123,6 +124,7 @@ If paths differ between nodes, FFmpeg on a child node will get `ENOENT: no such 
 When a job enters `TRANSFERRING`, the assigned node is verifying that the source file is accessible on its local NFS mount before starting FFmpeg. This is a brief file-existence check (not a copy operation).
 
 **Flow:**
+
 ```
 Node assigned job → check /media/Movies/Film.mkv exists
   → File accessible → status: ENCODING (immediate)
@@ -130,6 +132,7 @@ Node assigned job → check /media/Movies/Film.mkv exists
 ```
 
 If you see jobs stuck in `TRANSFERRING` for more than 30 seconds, the NFS mount on that node is degraded. Check:
+
 ```bash
 # On the affected child node
 docker compose exec backend ls -la /media/Movies/
@@ -152,12 +155,12 @@ Example:
 
 **Node sizing guidelines:**
 
-| Library Size | Recommended Setup |
-|---|---|
-| < 500 GB | Single node (main only) |
-| 500 GB – 5 TB | 1 main + 1–2 child nodes |
-| 5–20 TB | 1 main + 3–5 child nodes (GPU recommended) |
-| > 20 TB | 1 main + 6+ child nodes, 10GbE NFS |
+| Library Size  | Recommended Setup                          |
+| ------------- | ------------------------------------------ |
+| < 500 GB      | Single node (main only)                    |
+| 500 GB – 5 TB | 1 main + 1–2 child nodes                   |
+| 5–20 TB       | 1 main + 3–5 child nodes (GPU recommended) |
+| > 20 TB       | 1 main + 6+ child nodes, 10GbE NFS         |
 
 ---
 

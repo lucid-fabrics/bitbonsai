@@ -7,24 +7,29 @@
 ### Issue: Large files with Accordion components fail to parse
 
 **Symptom:**
+
 - Page displays empty MDX fragment: `return _jsx(_Fragment, {});`
 - URL returns 200 but no content renders
 - Deployment succeeds but page is blank
 
 **Root Cause:**
+
 - Files >900 lines with multiple `<AccordionGroup>` components break Mintlify's MDX compiler
 - Appears to be a size/complexity limit, not syntax error
 - Smaller files with same components work fine
 
 **Affected Files:**
+
 - `advanced/multi-node.mdx` (901 lines) - FAILED
 - `advanced/multi-node-setup.mdx` (renamed) - FAILED
 - `advanced/distributed-encoding.mdx` (renamed) - FAILED
 
 **Working File:**
+
 - `advanced/multi-node.mdx` (291 lines, simplified) - SUCCESS
 
 **Solution:**
+
 1. Keep documentation pages under ~300 lines
 2. Split large guides into multiple pages
 3. Avoid excessive Accordion nesting (>10 Accordions may trigger issue)
@@ -33,17 +38,20 @@
 ### Aggressive Caching Issue
 
 **Symptom:**
+
 - File updates don't reflect on live site for 5-10 minutes
 - Renaming files doesn't bypass cache
 - Even after successful deployment, old content shows
 
 **Workaround:**
+
 - Wait 2-3 minutes after push
 - Check deployment status at Mintlify dashboard
 - If stuck, create new file with different name
 - Original URLs eventually update after 10+ minutes
 
 **Cache Bust Techniques (tested):**
+
 - ❌ Rename file (multi-node → multi-node-setup) - cache persists
 - ❌ Delete and recreate file - cache persists
 - ✅ Create entirely new filename (distributed-encoding) - works
@@ -52,11 +60,13 @@
 ### File Size Limits
 
 **Observed Limits:**
+
 - 291 lines: ✅ Works reliably
 - 901 lines: ❌ Fails to parse (with Accordions)
 - Unknown exact threshold (test range: 300-600 lines)
 
 **Recommendation:**
+
 - Keep pages under 400 lines as safety margin
 - Split comprehensive guides into:
   - Main setup page (~300 lines)
@@ -80,17 +90,20 @@ When a page won't display:
 **Issue:** Emojis in Mermaid diagrams cause syntax error
 
 **Error Message:**
+
 ```
 Unexpected character § (U+0035)
 ```
 
 **Solution:** Remove all emojis from Mermaid node labels
+
 - ❌ `Main[🖥️ Main Node]`
 - ✅ `Main[Main Node]`
 
 ### Color Configuration
 
 **Correct BitBonsai colors:**
+
 ```json
 {
   "colors": {
@@ -122,17 +135,20 @@ Unexpected character § (U+0035)
 ## Working File Archive
 
 **Simplified multi-node guide (291 lines):**
+
 - Git commit: `2edd30a`
 - File: `docs-mintlify/advanced/multi-node-setup.mdx`
 - Status: ✅ Deployed successfully
 - Contains: Complete setup guide without troubleshooting Accordions
 
 **Full multi-node guide (901 lines):**
+
 - Backup: `docs-mintlify/advanced/distributed-encoding.mdx.broken`
 - Status: ❌ Breaks Mintlify MDX parser
 - Contains: Complete guide + 20+ Accordion troubleshooting sections
 
 **To restore full version:**
+
 1. Split into 3 pages:
    - `multi-node.mdx` (setup guide ~300 lines)
    - `multi-node-troubleshooting.mdx` (debug steps ~300 lines)
