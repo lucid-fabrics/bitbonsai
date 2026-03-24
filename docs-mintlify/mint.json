@@ -46,7 +46,10 @@
         "advanced/multi-node",
         "advanced/distributed-encoding",
         "advanced/codec-selection",
-        "advanced/troubleshooting"
+        "advanced/troubleshooting/index",
+        "advanced/troubleshooting/nfs-mounts",
+        "advanced/troubleshooting/multi-node",
+        "advanced/troubleshooting/error-codes"
       ]
     },
     {

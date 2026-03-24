@@ -1,0 +1,117 @@
+---
+title: NFS Mount Issues
+description: Fix NFS mount problems on child nodes
+---
+
+<DocCard>
+  <Card title="Back to Troubleshooting" href="/advanced/troubleshooting" />
+</DocCard>
+
+## NFS Mount Not Found (Child Nodes)
+
+### Symptom
+
+[Child node](/glossary#child-node) logs show:
+
+```text
+[ERROR] Failed to detect temp file after 10 retries
+[ERROR] ENOENT: no such file or directory
+```
+
+### Cause
+
+Worker [node](/glossary#node) cannot access shared storage via [NFS](/glossary#nfs) mount. Common reasons:
+
+- [NFS](/glossary#nfs) server is down
+- Export path not configured correctly
+- Network connectivity issue
+- Mount point not created
+
+### Fix
+
+<Steps>
+  <Step title="Verify NFS Server Running">
+    On the **main node** (Unraid):
+
+    ```bash
+    # Check NFS service status
+    systemctl status nfs-server
+
+    # If stopped, start it
+    systemctl start nfs-server
+    ```
+
+  </Step>
+
+  <Step title="Check NFS Exports">
+    Verify shared directories are exported:
+
+    ```bash
+    # View active exports
+    exportfs -v
+    ```
+
+    Should show something like:
+
+    ```text
+    /mnt/user/bitbonsai  192.168.1.0/24(rw,sync,no_subtree_check)
+    ```
+
+    If missing, add to `/etc/exports`:
+
+    ```bash
+    /mnt/user/bitbonsai 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+    exportfs -ra
+    ```
+
+  </Step>
+
+  <Step title="Test Mount Manually">
+    On the **child node** (worker):
+
+    ```bash
+    # Create mount point if missing
+    mkdir -p /mnt/bitbonsai
+
+    # Test mount
+    mount -t nfs 192.168.1.100:/mnt/user/bitbonsai /mnt/bitbonsai
+
+    # Verify access
+    ls -la /mnt/bitbonsai
+    touch /mnt/bitbonsai/test.txt
+    rm /mnt/bitbonsai/test.txt
+    ```
+
+    If mount fails, check network connectivity:
+
+    ```bash
+    ping 192.168.1.100
+    showmount -e 192.168.1.100
+    ```
+
+  </Step>
+
+  <Step title="Check Firewall Rules">
+    NFS requires these ports open on the **main node**:
+    - TCP/UDP 2049 (NFS)
+    - TCP/UDP 111 (portmapper)
+
+    On Unraid, check firewall settings or disable temporarily to test.
+
+  </Step>
+
+  <Step title="Restart Worker Service">
+    After fixing mount issues, restart the backend container:
+
+    ```bash
+    docker compose restart backend
+    docker compose logs -f backend
+    ```
+
+  </Step>
+</Steps>
+
+<Warning>
+  BitBonsai retries temp file detection 10 times with 2-second delays. If NFS mount is slow to come
+  up after boot, increase retry count in `encoding-processor.service.ts`.
+</Warning>

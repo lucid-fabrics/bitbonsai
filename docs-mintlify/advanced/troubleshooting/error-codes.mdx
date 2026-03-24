@@ -1,0 +1,105 @@
+---
+title: Common Error Codes
+description: Reference for BitBonsai error codes and solutions
+---
+
+<DocCard>
+  <Card title="Back to Troubleshooting" href="/advanced/troubleshooting" />
+</DocCard>
+
+## FFmpeg Errors
+
+### ENOENT (File Not Found)
+
+**Code:** `ENOENT`
+**Meaning:** Source file doesn't exist or can't be accessed.
+
+**Solution:**
+
+- Verify file path is correct
+- Check NFS mount connectivity
+- Ensure source file hasn't been deleted
+
+### EACCES (Permission Denied)
+
+**Code:** `EACCES`
+**Meaning:** BitBonsai can't read the source or write to output location.
+
+**Solution:**
+
+- Check file permissions: `ls -la /path/to/file`
+- Verify output directory is writable
+- Ensure user has correct ACLs
+
+### ENOSPC (No Space Left)
+
+**Code:** `ENOSPC`
+**Meaning:** Disk is full.
+
+**Solution:**
+
+```bash
+df -h /path/to/output
+# Free up space or change output location
+```
+
+### ETIMEDOUT (Timeout)
+
+**Code:** `ETIMEDOUT`
+**Meaning:** FFmpeg took too long to respond.
+
+**Solution:**
+
+- Increase timeout in settings
+- Enable hardware acceleration
+- Reduce concurrent jobs
+
+## Database Errors
+
+### CONNECTION REFUSED
+
+**Code:** `CONNECTION_REFUSED`
+**Meaning:** Backend can't connect to PostgreSQL.
+
+**Solution:**
+
+```bash
+docker compose ps
+docker compose logs postgres
+# Restart postgres if needed
+```
+
+### LOCK WAIT TIMEOUT
+
+**Code:** `LOCK_WAIT_TIMEOUT`
+**Meaning:** Database locked by another process.
+
+**Solution:**
+
+- Wait for current operation to complete
+- Check for stuck transactions
+- Restart backend if persistent
+
+## Network Errors
+
+### ECONNREFUSED
+
+**Code:** `ECONNREFUSED`
+**Meaning:** Worker can't connect to main node.
+
+**Solution:**
+
+- Verify main node IP in worker config
+- Check firewall rules
+- Ensure ports 3100/4210 are open
+
+### ECONNRESET
+
+**Code:** `ECONNRESET`
+**Meaning:** Connection was reset by peer.
+
+**Solution:**
+
+- Check network stability
+- Increase timeout settings
+- Review firewall logs

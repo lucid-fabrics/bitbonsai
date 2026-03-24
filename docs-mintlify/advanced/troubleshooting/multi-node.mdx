@@ -1,0 +1,110 @@
+---
+title: Multi-Node Setup Problems
+description: Fix multi-node and distributed encoding issues
+---
+
+<DocCard>
+  <Card title="Back to Troubleshooting" href="/advanced/troubleshooting" />
+</DocCard>
+
+## Node Not Appearing in UI
+
+### Symptom
+
+New worker node doesn't show up in the Nodes dashboard.
+
+### Cause
+
+- Node not started
+- Network connectivity issue
+- Configuration mismatch
+- Port blocked by firewall
+
+### Fix
+
+<Steps>
+  <Step title="Verify Node Running">
+    On the worker machine:
+
+    ```bash
+    docker compose ps
+    docker compose logs backend
+    ```
+
+  </Step>
+
+  <Step title="Check Network Connectivity">
+    From worker to main:
+
+    ```bash
+    ping 192.168.1.100
+    curl http://192.168.1.10:3100/health
+    ```
+
+  </Step>
+
+  <Step title="Verify Configuration">
+    Check `.env` on worker matches main node's IP/hostname.
+  </Step>
+</Steps>
+
+## Jobs Not Distributing to Workers
+
+### Symptom
+
+All jobs run on main node even with workers available.
+
+### Cause
+
+- Worker nodes marked as offline
+- Concurrent job limit reached
+- Queue assignment misconfigured
+
+### Fix
+
+<Steps>
+  <Step title="Check Node Status">
+    In UI, verify worker nodes show as "Online" status.
+  </Step>
+
+  <Step title="Review Concurrent Limits">
+    Settings → Jobs → Max Concurrent Jobs (must be >1 for distribution).
+  </Step>
+
+  <Step title="Check Assignment Logic">
+    Jobs should auto-distribute based on node capacity.
+  </Step>
+</Steps>
+
+## Node Goes Offline Randomly
+
+### Symptom
+
+Worker node shows as offline intermittently.
+
+### Cause
+
+- Network instability
+- Worker container crash
+- Heartbeat timeout too short
+- Resource exhaustion
+
+### Fix
+
+<Steps>
+  <Step title="Check Worker Logs">
+
+    ```bash
+    docker compose logs backend
+    ```
+
+  </Step>
+
+<Step title="Increase Heartbeat Interval">
+  Adjust heartbeat timeout in settings if network is slow.
+</Step>
+
+  <Step title="Monitor Resources">
+    Check CPU/memory on worker: `docker stats`
+  </Step>
+</Steps>
