@@ -1,0 +1,247 @@
+---
+title: Job Status Reference
+description: Detailed explanation of each job status in BitBonsai
+---
+
+## Job Status Details
+
+### DETECTED
+
+- **What it means:** File found during library scan
+- **User action:** None (automatic)
+- **Duration:** Milliseconds
+- **Next step:** Health check runs automatically
+
+### HEALTH_CHECK
+
+- **What it means:** BitBonsai is validating file integrity with [FFmpeg](/glossary#ffmpeg)
+- **Checks performed:**
+  - File exists and is readable
+  - [Container](/glossary#container) format is valid (MP4, MKV, AVI, etc.)
+  - Video/audio streams are decodable
+  - Duration and metadata are accessible
+  - No critical corruption in file structure
+- **User action:** None (automatic)
+- **Duration:** 1-5 seconds per file
+- **Next step:**
+  - **Healthy files** → NEEDS_DECISION
+  - **Corrupted files** → CORRUPTED (hourly auto-requeue for re-validation)
+
+<Tip>
+  Health checks prevent encoding failures by detecting corrupt files before wasting CPU time. Failed
+  health checks are logged with detailed error messages.
+</Tip>
+
+### NEEDS_DECISION
+
+- **What it means:** File is healthy and ready to encode
+- **User action:** Select [codec](/glossary#codec) (HEVC/AV1) and click "Queue Selected"
+- **Where to find:** Encoding tab → filter by **NEEDS_DECISION**
+- **Filters available:**
+  - Codec (find H.264 videos to upgrade)
+  - [Resolution](/glossary#resolution) (1080p, 4K, etc.)
+  - [Bitrate](/glossary#bitrate) (target high-bitrate files)
+  - File size (prioritize large files)
+
+### QUEUED
+
+- **What it means:** Job is waiting for an available worker [node](/glossary#node)
+- **User action:** None (automatic)
+- **Duration:** Seconds to minutes (depends on [queue](/glossary#queue) depth)
+- **Priority:** First-in, first-out (FIFO)
+- **Next step:** Starts [encoding](/glossary#encoding) when worker is free
+
+<Info>
+  Queue depth is visible in the **Encoding** tab header: "3 queued, 2 encoding". Add more worker
+  nodes to process queued jobs faster.
+</Info>
+
+### TRANSFERRING
+
+- **What it means:** ([Multi-node](/glossary#multi-node) only) NFS sync is in progress before encoding begins
+- **User action:** None (automatic)
+- **Duration:** Usually seconds; longer if NFS mount is slow or recovering
+- **Why this happens:** The worker node is confirming the source file is accessible via the shared NFS mount before starting FFmpeg. This is a brief sync check, not a file copy.
+- **Next step:** Encoding starts immediately after the file is confirmed accessible
+
+<Warning>
+  If jobs stay in TRANSFERRING for more than 30 seconds, your NFS mount may be degraded. Check NFS
+  connectivity on all nodes. See [Multi-Node Setup](/advanced/multi-node) for NFS configuration
+  requirements — shared storage is mandatory for multi-node encoding.
+</Warning>
+
+### ENCODING
+
+- **What it means:** [FFmpeg](/glossary#ffmpeg) is actively encoding the video
+- **User action:** Monitor progress, or pause/cancel if needed
+- **Duration:** Minutes to hours (depends on [codec](/glossary#codec), [resolution](/glossary#resolution), and [hardware acceleration](/glossary#hardware-acceleration))
+- **What you see:**
+  - Progress percentage (0-100%)
+  - Estimated time remaining
+  - Encoding speed (FPS)
+  - Output file size estimate
+  - Current vs. target [bitrate](/glossary#bitrate)
+
+#### Progress Bar Breakdown
+
+```
+[████████████░░░░░░░░░░░░] 45% - 12:34 remaining
+ │           │             │    └─ ETA based on current speed
+ │           │             └─ Percentage complete
+ │           └─ Empty portion (not yet encoded)
+ └─ Filled portion (encoded)
+```
+
+#### Encoding Speed (FPS)
+
+| Speed     | Hardware               | Codec | Notes                      |
+| --------- | ---------------------- | ----- | -------------------------- |
+| 5-15 FPS  | CPU (Intel i5)         | HEVC  | Typical for 1080p movies   |
+| 20-40 FPS | CPU (Intel i7/i9)      | HEVC  | Fast encoding              |
+| 40-80 FPS | GPU (NVIDIA GTX 1660+) | HEVC  | Hardware acceleration      |
+| 1-5 FPS   | CPU                    | AV1   | Very slow but best quality |
+
+<Tip>
+  **Slow encoding?** Check Settings → [Hardware Acceleration](/glossary#hardware-acceleration) and
+  enable NVIDIA/Intel/AMD [GPU](/glossary#gpu) encoding if available. HEVC on GPU is 3-10x faster
+  than CPU.
+</Tip>
+
+### PAUSED
+
+- **What it means:** User manually paused encoding
+- **User action:** Click **Resume** to continue
+- **Duration:** Indefinite (until user resumes)
+- **Progress saved:** Yes, resumes from exact frame
+- **Use case:** Free up CPU/GPU for other tasks temporarily
+
+### VERIFYING
+
+- **What it means:** Encoded file is being validated for corruption
+- **Checks performed:**
+  - Output file exists and is readable
+  - [FFprobe](/glossary#ffmpeg) can parse [container](/glossary#container) and streams
+  - Duration matches original (within 2 seconds)
+  - Video/audio streams are decodable
+- **User action:** None (automatic)
+- **Duration:** 1-3 seconds
+- **Next step:**
+  - **Healthy output** → COMPLETED
+  - **Corrupted output** → CORRUPTED (hourly auto-requeue for re-validation)
+
+<Warning>
+  If verification fails repeatedly (3+ retries), the source file may be corrupted. Check the
+  original file with `ffprobe` or VLC for playback issues.
+</Warning>
+
+### COMPLETED
+
+- **What it means:** [Encoding](/glossary#encoding) succeeded and file replaced
+- **User action:** None (automatic)
+- **What happened:**
+  1. Original file backed up to `/media/.bitbonsai/originals/[library]/[file]`
+  2. Encoded file replaces original in [library](/glossary#library)
+  3. Library metadata updated (new [codec](/glossary#codec), [bitrate](/glossary#bitrate), file size)
+  4. Job marked complete and removed from active [queue](/glossary#queue)
+- **File location:** Same path as original (in-place replacement)
+- **Backup location:** `[library-path]/.bitbonsai/originals/[relative-path]`
+
+#### File Size Comparison
+
+Typical savings after encoding:
+
+| Original Codec | Target Codec | File Size Reduction |
+| -------------- | ------------ | ------------------- |
+| H.264 (1080p)  | HEVC         | 40-50% smaller      |
+| H.264 (1080p)  | AV1          | 50-60% smaller      |
+| H.264 (4K)     | HEVC         | 50-60% smaller      |
+| H.264 (4K)     | AV1          | 60-70% smaller      |
+
+<Check>
+  **Example:** A 10 GB H.264 movie encoded to [HEVC](/glossary#codec) becomes ~5 GB (50% savings).
+  No quality loss with default [CRF](/glossary#crf) settings.
+</Check>
+
+### FAILED
+
+- **What it means:** Encoding encountered an error
+- **User action:**
+  - Check error message in job details
+  - Click **Retry** to manually retry
+  - Auto-retries 3x before stopping
+- **Common causes:**
+  - Corrupted source file (skip it)
+  - Insufficient disk space (free up space)
+  - [FFmpeg](/glossary#ffmpeg) crash (bug in [codec](/glossary#codec))
+  - [Hardware encoder](/glossary#hardware-acceleration) failure (try CPU fallback)
+- **Auto-retry behavior:**
+  - 1st retry: Immediate
+  - 2nd retry: 5 minutes later
+  - 3rd retry: 15 minutes later
+  - After 3 failures: Stops, requires manual retry
+
+#### Error Categories
+
+| Error Type            | Cause                                                                   | Fix                                                                          |
+| --------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Source Corrupted**  | Original file unreadable                                                | Skip file or re-download                                                     |
+| **Disk Full**         | No space for output file                                                | Free up space, job auto-retries                                              |
+| **Codec Error**       | [FFmpeg](/glossary#ffmpeg) crash or unsupported stream                  | Try different [codec](/glossary#codec) (HEVC → AV1)                          |
+| **Hardware Failure**  | [GPU](/glossary#gpu) encoder crash                                      | Disable [hardware acceleration](/glossary#hardware-acceleration) in Settings |
+| **Permission Denied** | [Docker](/glossary#docker) [volume](/glossary#volume-mount) permissions | Fix with `chmod -R 777 /media`                                               |
+
+<Accordion title="View detailed error message">
+1. Go to **Encoding** tab
+2. Filter by **Failed** status
+3. Click job row to expand details
+4. Error message shows FFmpeg output with:
+   - Error category
+   - Root cause analysis
+   - Suggested fix
+   - Full FFmpeg stderr log
+
+**Example error:**
+
+```
+Error Category: SOURCE_CORRUPTED
+Message: Invalid data found when processing input
+Suggestion: Source file may be corrupted. Try re-downloading or skip this file.
+FFmpeg stderr: [mov,mp4,m4a,3gp,3g2,mj2 @ 0x...] moov atom not found
+```
+
+</Accordion>
+
+### CANCELLED
+
+- **What it means:** User manually cancelled encoding
+- **User action:** Job is removed from queue
+- **Progress lost:** Yes, cannot resume cancelled jobs
+- **Use case:** Queued wrong file or changed mind about codec
+
+---
+
+## Job Details Panel
+
+Click any job in the **Encoding** tab to view detailed information:
+
+| Field                | Description                             |
+| -------------------- | --------------------------------------- |
+| **Source File**      | Full file path in library               |
+| **Target Codec**     | HEVC (H.265), AV1, or VP9               |
+| **Progress**         | Percentage complete (0-100%)            |
+| **Speed**            | Encoding speed in FPS                   |
+| **Time Remaining**   | ETA based on current speed              |
+| **Original Size**    | File size before encoding               |
+| **Output Size**      | Estimated file size after encoding      |
+| **Original Codec**   | Source codec (usually H.264)            |
+| **Resolution**       | Video resolution (1080p, 4K, etc.)      |
+| **Original Bitrate** | Source video bitrate (Mbps)             |
+| **Target Bitrate**   | Output video bitrate (Mbps)             |
+| **Worker Node**      | Which node is processing this job       |
+| **Started At**       | When encoding began                     |
+| **Error Message**    | (FAILED jobs only) FFmpeg error details |
+
+<Info>
+  **Pro tip:** Sort jobs by "Time Remaining" to see which jobs finish soonest. Large 4K movies may
+  take hours, while 1080p TV episodes finish in 5-10 minutes.
+</Info>

@@ -1,0 +1,274 @@
+---
+title: Job Troubleshooting
+description: Troubleshooting guide for common job issues
+---
+
+## Troubleshooting
+
+### Job stuck in QUEUED
+
+**Symptom:** Jobs stay in QUEUED for minutes/hours
+
+**Possible causes:**
+
+- All worker nodes offline (check Nodes page)
+- All nodes at max concurrency (add more nodes)
+- Database connection lost (check backend logs)
+
+**Fix:**
+
+1. Go to **Settings → Nodes** → check node status
+2. If offline: Restart worker node containers
+3. If online but idle: Check backend logs for errors
+4. If all busy: Wait for current jobs to finish or add nodes
+
+### Job stuck in ENCODING at 0%
+
+**Symptom:** Job shows "Encoding" but progress stays at 0%
+
+**Possible causes:**
+
+- FFmpeg hasn't written first progress line yet (wait 10-20 seconds)
+- FFmpeg crashed immediately (check logs)
+- Source file extremely large (4K HDR movies take time to start)
+
+**Fix:**
+
+1. Wait 30 seconds (large files take time to initialize)
+2. Check backend logs: `docker compose logs -f backend`
+3. If FFmpeg crashed: Error shows in logs, job auto-retries
+
+### Job failed with "Disk Full"
+
+**Symptom:** Job fails with error "No space left on device"
+
+**Fix:**
+
+1. Free up disk space (delete old files, empty trash)
+2. Check available space: `df -h /media`
+3. Job auto-retries in 5 minutes (no manual action needed)
+
+<Warning>
+  BitBonsai needs temporary space for encoding. Ensure **at least 2x the largest file size** is free
+  on the volume.
+</Warning>
+
+### Job failed with "Source Corrupted"
+
+**Symptom:** Job fails immediately with "Invalid data found when processing input"
+
+**Possible causes:**
+
+- Original file is actually corrupted (download error, disk failure)
+- Unsupported codec or container format
+- Partial file (download not complete)
+
+**Fix:**
+
+1. Test file in VLC or `ffprobe`:
+
+   ```bash
+   ffprobe /path/to/file.mkv
+   ```
+
+2. If file plays in VLC but fails FFprobe: Report bug (rare)
+3. If file doesn't play: Re-download or skip this file
+
+### Completed job but file still H.264
+
+**Symptom:** Job shows COMPLETED but file codec didn't change
+
+**Possible causes:**
+
+- Original wasn't replaced (backup failed)
+- Viewing cached metadata in file explorer (refresh)
+
+**Fix:**
+
+1. Check file info: `ffprobe /path/to/file.mkv`
+2. Check backup exists: `/media/.bitbonsai/originals/[file]`
+3. If backup exists but file not replaced: Report bug
+
+---
+
+## Retry Failed Jobs
+
+### Manual Retry
+
+1. Go to **Encoding** tab
+2. Filter by **Failed** status
+3. Select jobs to retry (checkbox or **Select All**)
+4. Click **Retry Selected** button
+5. Jobs move back to QUEUED and restart
+
+### Auto-Retry Behavior
+
+BitBonsai automatically retries failed jobs **3 times** with exponential backoff:
+
+| Attempt | Wait Time   | Notes                                   |
+| ------- | ----------- | --------------------------------------- |
+| 1st     | Immediate   | Retry right away (transient errors)     |
+| 2nd     | 5 minutes   | Wait before retry (disk space, network) |
+| 3rd     | 15 minutes  | Final retry before stopping             |
+| 4th+    | Manual only | Requires user intervention              |
+
+<Warning>
+  **Permanent failures (corrupted source files)** retry 3 times and stop. Check error message to
+  determine if file should be skipped.
+</Warning>
+
+### Bulk Retry
+
+Retry all failed jobs at once:
+
+```bash
+# Select all failed jobs in UI
+1. Filter by "Failed"
+2. Click "Select All" (top left)
+3. Click "Retry Selected"
+```
+
+---
+
+## Auto-Healing Features
+
+BitBonsai includes multiple self-healing mechanisms to recover from errors automatically:
+
+### 1. Orphaned Job Recovery (On Startup)
+
+**Problem:** Container restarted mid-encoding → jobs stuck in ENCODING status
+
+**Solution:** On backend startup, BitBonsai finds all jobs with status ENCODING and resets them to QUEUED
+
+**When it runs:** Every backend container restart
+
+**User action:** None (automatic)
+
+**Logs:**
+
+```
+🔄 Orphaned job recovery: Reset 3 stuck ENCODING jobs to QUEUED
+```
+
+### 2. Temp File Detection (NFS Mount Recovery)
+
+**Problem:** NFS mount not ready → job marks file as "not found" → FAILED
+
+**Solution:** Before marking FAILED, retry 10 times with 2-second delays (20 seconds total)
+
+**When it runs:** During encoding temp file checks
+
+**User action:** None (automatic)
+
+**Logs:**
+
+```
+🔄 Temp file not found, retrying (attempt 3/10)...
+✓ Temp file detected after 6 seconds (NFS mount recovery)
+```
+
+<Info>This prevents false FAILED status during NFS mount hiccups or slow network storage.</Info>
+
+### 3. Health Check Retry (Before Marking CORRUPTED)
+
+**Problem:** Network hiccup during health check → false CORRUPTED status
+
+**Solution:** Retry health check **5 times** with 2-second delays (10 seconds total)
+
+**When it runs:** During HEALTH_CHECK and VERIFYING stages
+
+**User action:** None (automatic)
+
+**Why this matters:** Prevents wasting time re-checking healthy files
+
+### 4. CORRUPTED Auto-Re-Validation (Hourly)
+
+**Problem:** Files marked CORRUPTED during NFS hiccups are often actually healthy
+
+**Solution:** Every hour, BitBonsai finds all CORRUPTED jobs and resets them to QUEUED for re-validation
+
+**When it runs:** Hourly (cron job in backend)
+
+**User action:** None (automatic)
+
+**Logs:**
+
+```
+🔄 Auto-requeue: Found 12 CORRUPTED job(s) - resetting for re-validation
+✓ Re-validated 12 jobs: 8 HEALTHY, 4 still CORRUPTED
+```
+
+<Tip>
+  **Why hourly?** NFS mounts often fail temporarily during network issues. Hourly re-checks catch
+  files that become accessible again.
+</Tip>
+
+### 5. Stuck Job Watchdog (Detects Frozen Encodes)
+
+**Problem:** FFmpeg crashes mid-encode but process doesn't exit → job stuck at same progress for hours
+
+**Solution:** If progress hasn't changed in 15 minutes, job is marked FAILED and auto-retried
+
+**When it runs:** Background watchdog every 5 minutes
+
+**User action:** None (automatic)
+
+**Logs:**
+
+```
+⚠️ Stuck job detected: Job #123 at 45% for 20 minutes → FAILED (auto-retry)
+```
+
+---
+
+## Job History and Filtering
+
+### Filter Jobs by Status
+
+The **Encoding** tab has a status filter dropdown:
+
+| Filter        | Shows                           |
+| ------------- | ------------------------------- |
+| **ALL**       | Every job regardless of status  |
+| **QUEUED**    | Waiting to start                |
+| **ENCODING**  | Currently in progress           |
+| **COMPLETED** | Successfully finished           |
+| **FAILED**    | Errors (manual retry available) |
+| **CANCELLED** | User-cancelled jobs             |
+
+### Search Jobs
+
+Use the search bar to find jobs by filename:
+
+```
+Example: Search "Inception" finds:
+- Inception.2010.1080p.BluRay.x264.mkv
+- Inception (2010) - Director's Cut.mp4
+```
+
+### Sort Jobs
+
+Click column headers to sort:
+
+| Column             | Sort By                                |
+| ------------------ | -------------------------------------- |
+| **File Name**      | Alphabetical                           |
+| **Progress**       | Percentage (0-100%)                    |
+| **Time Remaining** | ETA (soonest first)                    |
+| **Speed**          | FPS (fastest first)                    |
+| **Status**         | Status order (QUEUED → ENCODING → ...) |
+
+<Tip>
+  **Quick wins:** Sort by "Time Remaining" (ascending) to see which jobs finish soonest. Great for
+  prioritizing short encodes.
+</Tip>
+
+### Job History Retention
+
+| Status        | Retention                          |
+| ------------- | ---------------------------------- |
+| **COMPLETED** | 30 days (configurable in Settings) |
+| **FAILED**    | 90 days (for debugging)            |
+| **CANCELLED** | 7 days                             |
+
+Completed jobs older than retention period are auto-deleted from database but files remain in library.

@@ -1,0 +1,139 @@
+---
+title: Network & Remote Access FAQ
+description: Questions about networking, NFS, and remote monitoring
+---
+
+## Network & Remote Access
+
+<Accordion title="What's the recommended NFS setup for multi-node?">
+Multi-node encoding requires shared storage. NFS setup:
+
+**Server (NAS/Unraid):**
+
+```bash
+# /etc/exports
+/mnt/media 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+# Restart NFS
+exportfs -ra
+systemctl restart nfs-server
+```
+
+**Client (Worker Nodes):**
+
+```bash
+# Mount NFS share
+mount -t nfs -o vers=4,rw 192.168.1.100:/mnt/media /media
+
+# Auto-mount on boot (fstab)
+echo "192.168.1.100:/mnt/media /media nfs vers=4,rw 0 0" >> /etc/fstab
+```
+
+**Performance Requirements:**
+
+| Library Size | Recommended Speed | Note                 |
+| ------------ | ----------------- | -------------------- |
+| < 1 TB       | 1 Gbps            | Adequate for 1080p   |
+| 1-5 TB       | 2.5 Gbps          | Better for 4K        |
+| > 5 TB       | 10 Gbps           | Ideal for multi-node |
+
+**Tuning:**
+
+```bash
+# Increase NFS read/write size (performance boost)
+mount -t nfs -o vers=4,rw,rsize=1048576,wsize=1048576 \
+  192.168.1.100:/mnt/media /media
+```
+
+**Common Issues:**
+
+| Issue             | Cause                  | Fix                |
+| ----------------- | ---------------------- | ------------------ |
+| Stale file handle | NFS share restarted    | Remount NFS        |
+| Permission denied | no_root_squash missing | Update exports     |
+| Slow encoding     | 100 Mbps network       | Upgrade to 1 Gbps+ |
+
+**SMB Alternative:**
+
+- Not recommended (slower than NFS)
+- Use if NFS unavailable (Windows hosts)
+- Enable SMB 3.0+ for performance
+
+See [Multi-Node Setup](/advanced/multi-node) for full configuration.
+
+</Accordion>
+
+<Accordion title="How do I monitor encoding progress remotely?">
+BitBonsai provides multiple monitoring options:
+
+**1. Web UI (Mobile-Friendly)**
+
+```
+Access: http://YOUR_IP:4210
+Features:
+- Real-time job progress (%)
+- Live FFmpeg output logs
+- Queue status and ETA
+- Responsive design (works on phones)
+```
+
+**2. API Endpoints**
+
+Get your JWT token from the browser developer tools (F12 → Application → Local Storage → `token`).
+
+```bash
+# Get all jobs
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://YOUR_IP:3100/jobs
+
+# Get specific job
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://YOUR_IP:3100/jobs/123
+
+# Get encoding stats
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://YOUR_IP:3100/insights/stats
+```
+
+**3. WebSocket (Real-Time Updates)**
+
+```javascript
+// Connect to WebSocket
+const ws = new WebSocket("ws://YOUR_IP:3100");
+
+ws.onmessage = (event) => {
+  const { jobId, progress, status } = JSON.parse(event.data);
+  console.log(`Job ${jobId}: ${progress}% - ${status}`);
+};
+```
+
+**4. Notifications (Planned)**
+
+- Email alerts on job completion/failure
+- Discord webhooks
+- Pushover/Telegram integration
+
+**Mobile Access:**
+
+- Enable port forwarding (3100, 4210)
+- Use VPN for secure remote access (Tailscale, WireGuard)
+- Or reverse proxy with SSL (Nginx, Caddy)
+
+**Example: Nginx Reverse Proxy**
+
+```nginx
+server {
+  listen 443 ssl;
+  server_name bitbonsai.yourdomain.com;
+
+  location / {
+    proxy_pass http://localhost:4210;
+  }
+
+  location /api {
+    proxy_pass http://localhost:3100;
+  }
+}
+```
+
+See [Monitoring Guide](/guides/monitoring) for dashboards.
+
+</Accordion>

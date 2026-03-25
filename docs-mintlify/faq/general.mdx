@@ -1,0 +1,145 @@
+---
+title: General FAQ
+description: General questions about BitBonsai
+---
+
+## General Questions
+
+<Accordion title="What video formats are supported?">
+BitBonsai supports all video formats that FFmpeg can decode, including:
+
+- **MP4** (.mp4, .m4v)
+- **Matroska** (.mkv)
+- **AVI** (.avi)
+- **QuickTime** (.mov)
+- **WebM** (.webm)
+- **MPEG** (.mpg, .mpeg)
+- **FLV** (.flv)
+- **WMV** (.wmv)
+
+The app automatically detects codec compatibility. If a file is already in HEVC or AV1, it's skipped unless you force re-encoding.
+
+See [Understanding Jobs](/guides/understanding-jobs) for more details on job statuses.
+
+</Accordion>
+
+<Accordion title="How much storage space will I save?">
+Storage savings depend on the source codec and target codec:
+
+| Source → Target | Typical Savings |
+| --------------- | --------------- |
+| H.264 → HEVC    | 40-50%          |
+| H.264 → AV1     | 50-70%          |
+| MPEG-2 → HEVC   | 60-80%          |
+
+**Example:**
+
+- 1 TB of H.264 movies → ~500 GB as HEVC
+- 1 TB of H.264 movies → ~350 GB as AV1
+
+Actual savings vary based on:
+
+- Source quality (bitrate, resolution)
+- CRF/quality setting (lower CRF = larger files)
+- Content type (animation compresses better than live action)
+
+High-quality 4K files may save less (30-40%) due to already efficient encoding.
+
+</Accordion>
+
+<Accordion title="Does BitBonsai support hardware transcoding?">
+Yes. BitBonsai supports hardware acceleration via FFmpeg:
+
+| Vendor     | Technology       | Linux | Windows |
+| ---------- | ---------------- | ----- | ------- |
+| **NVIDIA** | NVENC            | ✅    | ✅      |
+| **Intel**  | Quick Sync (QSV) | ✅    | ✅      |
+| **AMD**    | AMF/VCE          | ✅    | ✅      |
+
+**Configuration:**
+Hardware encoding is configured per-library. When creating or editing a library, select the encoder:
+
+```
+Codec: HEVC
+Encoder: NVIDIA NVENC (hevc_nvenc)
+```
+
+**Requirements:**
+
+- NVIDIA: GPU with NVENC support + drivers
+- Intel: iGPU with Quick Sync + drivers
+- AMD: GPU with VCE support + drivers
+
+**Performance:**
+
+- NVENC: 3-10x faster than CPU encoding
+- Quality: Slightly lower than CPU at same bitrate (acceptable for most users)
+
+See [Codec Selection](/advanced/codec-selection) for encoder comparisons.
+
+</Accordion>
+
+<Accordion title="Can I pause and resume encoding jobs?">
+Yes. BitBonsai has a **TRUE RESUME** feature that preserves partial encoding progress.
+
+**How It Works:**
+
+1. Click **Pause** on an encoding job
+2. Job status changes to `PAUSED`
+3. FFmpeg process is killed gracefully
+4. Temp file (`*.bbtmp`) is **kept** on disk
+5. Click **Resume** to continue from last keyframe
+
+**Benefits:**
+
+- No wasted work (unlike traditional pause which discards progress)
+- Safe to pause/resume anytime
+- Temp files cleaned up automatically on completion
+
+**Technical Details:**
+
+- Resume point determined by temp file size vs. expected output
+- If temp file is corrupted, job auto-retries from scratch
+- If temp file is missing (deleted manually), job resets to `QUEUED`
+
+**Limitations:**
+
+- Resume accuracy ~95-98% (may re-encode last 1-2 seconds)
+- Two-pass encoding does not support resume (restarts pass)
+
+</Accordion>
+
+<Accordion title="What happens if encoding fails?">
+BitBonsai has automatic retry and error recovery:
+
+**Auto-Retry Mechanism:**
+
+1. Job fails (FFmpeg error, disk full, etc.)
+2. Status → `QUEUED` with retry counter incremented
+3. System retries up to **3 times**
+4. After 3 failures → status changes to `FAILED`
+
+**Failed Job Recovery:**
+
+- Review error logs in the job details panel
+- Fix underlying issue (disk space, permissions, corrupted source)
+- Click **Retry** to manually reset the job
+
+**Common Failure Causes:**
+
+| Error               | Cause                     | Solution                            |
+| ------------------- | ------------------------- | ----------------------------------- |
+| FFmpeg error code 1 | Corrupted source file     | Re-download or remux file           |
+| Disk full           | Insufficient temp space   | Free up disk space                  |
+| Permission denied   | File/folder permissions   | Check ownership and rwx permissions |
+| Timeout             | Job exceeded max duration | Increase timeout in settings        |
+
+**Auto-Healing:**
+
+- Orphaned jobs (stuck in `ENCODING` after restart) → auto-reset to `QUEUED`
+- Corrupted temp files → auto-deleted and job re-queued
+- Health check failures → auto-retry every hour
+
+See [Troubleshooting](/advanced/troubleshooting) for detailed error diagnostics.
+
+</Accordion>
