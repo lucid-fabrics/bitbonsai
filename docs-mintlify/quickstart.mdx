@@ -62,6 +62,7 @@ Encode your first video library in 5 minutes with zero configuration.
     ```bash
     docker compose up -d
     ```
+
   </Step>
 
   <Step title="Access the UI">
@@ -72,6 +73,7 @@ Encode your first video library in 5 minutes with zero configuration.
     ```
 
     Wait 10-15 seconds for backend initialization. The UI loads automatically.
+
   </Step>
 
   <Step title="Add Video Library">
@@ -84,6 +86,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Info>
       Path must match the Docker volume mount from Step 1. BitBonsai reads/writes files in-place.
     </Info>
+
   </Step>
 
   <Step title="Scan for Videos">
@@ -96,6 +99,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Tip>
       BitBonsai automatically detects codec, resolution, bitrate, and file size. No manual tagging needed.
     </Tip>
+
   </Step>
 
   <Step title="Queue Videos for Encoding">
@@ -115,6 +119,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Warning>
       First encode may take 2-5 minutes for a typical 1080p movie. Progress shows in real-time.
     </Warning>
+
   </Step>
 
   <Step title="Monitor Progress">
@@ -136,6 +141,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Check>
       Your first encode is complete when status shows `COMPLETED` and file size decreased by 40-60%.
     </Check>
+
   </Step>
 </Steps>
 
@@ -160,11 +166,12 @@ You're encoding. Here's what to explore:
     - Corrupted source file (skip it)
     - Insufficient disk space (free up space, job auto-retries)
     - Codec not supported (change target codec)
+
   </Accordion>
 
-  <Accordion title="Can I pause encoding?">
-    Yes. Click job → **Pause** or use **Pause All** button. Resume anytime with zero progress loss.
-  </Accordion>
+<Accordion title="Can I pause encoding?">
+  Yes. Click job → **Pause** or use **Pause All** button. Resume anytime with zero progress loss.
+</Accordion>
 
   <Accordion title="How do I undo an encode?">
     Originals are backed up to:
@@ -173,12 +180,14 @@ You're encoding. Here's what to explore:
     ```
 
     Restore manually by copying back to original location.
+
   </Accordion>
 
   <Accordion title="Does BitBonsai delete originals?">
     No. Originals are moved to `.bitbonsai/originals/` and only deleted if you manually enable **Delete Originals After X Days** in Settings.
 
     Default: Keep forever.
+
   </Accordion>
 </AccordionGroup>
 

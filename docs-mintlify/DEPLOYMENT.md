@@ -4,11 +4,11 @@
 
 Created comprehensive developer documentation for Mintlify:
 
-| File | Description |
-|------|-------------|
-| `development/website.mdx` | Website (marketing site) documentation |
-| `development/license-api.mdx` | License API documentation |
-| `mint.json` | Added "Development" navigation group |
+| File                          | Description                            |
+| ----------------------------- | -------------------------------------- |
+| `development/website.mdx`     | Website (marketing site) documentation |
+| `development/license-api.mdx` | License API documentation              |
+| `mint.json`                   | Added "Development" navigation group   |
 
 ---
 
@@ -24,6 +24,7 @@ mintlify dev
 Opens at `http://localhost:3000`
 
 **Preview URLs:**
+
 - http://localhost:3000/development/website
 - http://localhost:3000/development/license-api
 
@@ -51,6 +52,7 @@ Documentation auto-deploys to **https://bitbonsai.app/docs** on push to `main`.
     Mintlify GitHub integration automatically deploys within 2-3 minutes.
 
     Monitor at: https://dashboard.mintlify.com
+
   </Step>
 
   <Step title="Verify Live Docs">
@@ -66,6 +68,7 @@ Documentation auto-deploys to **https://bitbonsai.app/docs** on push to `main`.
 ### Website (`/development/website`)
 
 **Sections:**
+
 - Overview (tech stack, ports)
 - Architecture (file structure)
 - License-API integration (pricing endpoint)
@@ -79,6 +82,7 @@ Documentation auto-deploys to **https://bitbonsai.app/docs** on push to `main`.
 - Troubleshooting
 
 **Key Features:**
+
 - Interactive cards, tabs, accordions
 - Code examples with syntax highlighting
 - Step-by-step guides
@@ -87,6 +91,7 @@ Documentation auto-deploys to **https://bitbonsai.app/docs** on push to `main`.
 ### License-API (`/development/license-api`)
 
 **Sections:**
+
 - Overview (tech stack, responsibilities)
 - Architecture (file structure)
 - API endpoints (public + admin)
@@ -98,6 +103,7 @@ Documentation auto-deploys to **https://bitbonsai.app/docs** on push to `main`.
 - Troubleshooting
 
 **Key Features:**
+
 - API endpoint documentation with cURL examples
 - Security warnings for keypair backup
 - Step-by-step setup guides
@@ -138,14 +144,15 @@ docs-mintlify/
 
 ### `/docs` (GitHub) vs `/docs-mintlify` (Website)
 
-| Location | Audience | Format | Purpose |
-|----------|----------|--------|---------|
-| `docs/` | Developers | Markdown | Project documentation, architecture |
-| `apps/website/README.md` | Developers | Markdown | Website app development guide |
-| `apps/license-api/README.md` | Developers | Markdown | License-API development guide |
-| `docs-mintlify/` | Users + Developers | MDX | Public-facing docs at bitbonsai.app/docs |
+| Location                     | Audience           | Format   | Purpose                                  |
+| ---------------------------- | ------------------ | -------- | ---------------------------------------- |
+| `docs/`                      | Developers         | Markdown | Project documentation, architecture      |
+| `apps/website/README.md`     | Developers         | Markdown | Website app development guide            |
+| `apps/license-api/README.md` | Developers         | Markdown | License-API development guide            |
+| `docs-mintlify/`             | Users + Developers | MDX      | Public-facing docs at bitbonsai.app/docs |
 
 **Key Distinction:**
+
 - GitHub docs (`/docs`, `apps/*/README.md`) = **developer reference**
 - Mintlify docs (`/docs-mintlify`) = **user-facing + developer guides**
 
@@ -194,6 +201,7 @@ mintlify dev
 ```
 
 Look for:
+
 - Unclosed tags (`<Card>` without `</Card>`)
 - Invalid frontmatter YAML
 - Broken internal links
@@ -201,6 +209,7 @@ Look for:
 ### Navigation Not Showing
 
 Verify `mint.json` navigation structure:
+
 ```json
 {
   "group": "Development",
@@ -215,11 +224,13 @@ Verify `mint.json` navigation structure:
 ## Maintenance
 
 **When to update Mintlify docs:**
+
 - API endpoint changes → Update `development/license-api.mdx`
 - Website deployment changes → Update `development/website.mdx`
 - New environment variables → Add to setup sections
 - Architecture changes → Update diagrams
 
 **Keep in sync:**
+
 - GitHub README files (`apps/*/README.md`) for developer reference
 - Mintlify MDX files for user-facing documentation

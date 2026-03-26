@@ -21,9 +21,7 @@ BitBonsai is available as a Docker container template in Unraid Community Applic
     Navigate to **Apps** tab in Unraid webUI.
   </Step>
 
-  <Step title="Search for BitBonsai">
-    Search for `bitbonsai` and select the template.
-  </Step>
+<Step title="Search for BitBonsai">Search for `bitbonsai` and select the template.</Step>
 
   <Step title="Review Configuration">
     The template includes pre-configured settings for both **backend** and **frontend** containers.
@@ -31,7 +29,7 @@ BitBonsai is available as a Docker container template in Unraid Community Applic
 </Steps>
 
 <Note>
-If BitBonsai is not yet available in Community Apps, use the manual Docker installation below.
+  If BitBonsai is not yet available in Community Apps, use the manual Docker installation below.
 </Note>
 
 ---
@@ -45,28 +43,21 @@ If BitBonsai is not yet available in Community Apps, use the manual Docker insta
     Go to **Docker** tab → **Add Container**.
   </Step>
 
-  <Step title="Configure Repository">
-    ```
-    Repository: ghcr.io/bitbonsai/backend:latest
-    ```
-  </Step>
+<Step title="Configure Repository">``` Repository: ghcr.io/bitbonsai/backend:latest ```</Step>
 
-  <Step title="Set Network Mode">
-    **Network Type:** `bridge` (recommended)
-  </Step>
+<Step title="Set Network Mode">**Network Type:** `bridge` (recommended)</Step>
 
-  <Step title="Configure Ports">
-    | Container Port | Host Port | Description |
-    |----------------|-----------|-------------|
-    | 3100 | 3100 | Backend API |
-  </Step>
+<Step title="Configure Ports">
+  | Container Port | Host Port | Description | |----------------|-----------|-------------| | 3100 |
+  3100 | Backend API |
+</Step>
 
-  <Step title="Add Path Mappings">
-    | Container Path | Host Path | Mode | Description |
-    |----------------|-----------|------|-------------|
-    | `/config` | `/mnt/user/appdata/bitbonsai` | Read/Write | App config and database |
-    | `/media` | `/mnt/user/media` | Read/Write | Media libraries (adjust to your path) |
-  </Step>
+<Step title="Add Path Mappings">
+  | Container Path | Host Path | Mode | Description |
+  |----------------|-----------|------|-------------| | `/config` | `/mnt/user/appdata/bitbonsai` |
+  Read/Write | App config and database | | `/media` | `/mnt/user/media` | Read/Write | Media
+  libraries (adjust to your path) |
+</Step>
 
   <Step title="Set Environment Variables">
     | Variable | Value | Description |
@@ -80,6 +71,7 @@ If BitBonsai is not yet available in Community Apps, use the manual Docker insta
     <Warning>
     `DATABASE_URL` is required — the backend will crash on startup without it. Replace `[POSTGRES-CONTAINER-IP]` with your Unraid IP and use the same password as `POSTGRES_PASSWORD`.
     </Warning>
+
   </Step>
 
   <Step title="Apply and Start">
@@ -94,21 +86,14 @@ If BitBonsai is not yet available in Community Apps, use the manual Docker insta
     Go to **Docker** tab → **Add Container**.
   </Step>
 
-  <Step title="Configure Repository">
-    ```
-    Repository: ghcr.io/bitbonsai/frontend:latest
-    ```
-  </Step>
+<Step title="Configure Repository">``` Repository: ghcr.io/bitbonsai/frontend:latest ```</Step>
 
-  <Step title="Set Network Mode">
-    **Network Type:** `bridge`
-  </Step>
+<Step title="Set Network Mode">**Network Type:** `bridge`</Step>
 
-  <Step title="Configure Port">
-    | Container Port | Host Port | Description |
-    |----------------|-----------|-------------|
-    | 4210 | 4210 | Web interface |
-  </Step>
+<Step title="Configure Port">
+  | Container Port | Host Port | Description | |----------------|-----------|-------------| | 4210 |
+  4210 | Web interface |
+</Step>
 
   <Step title="Set Backend URL">
     | Variable | Value | Description |
@@ -116,6 +101,7 @@ If BitBonsai is not yet available in Community Apps, use the manual Docker insta
     | `API_URL` | `http://[UNRAID-IP]:3100` | Backend API endpoint |
 
     Replace `[UNRAID-IP]` with your server's IP (e.g., `http://192.168.1.100:3100`).
+
   </Step>
 
   <Step title="Apply and Start">
@@ -131,18 +117,20 @@ Unraid uses `/mnt/user/` paths for shares. BitBonsai must access the **same phys
 
 ### Example Configurations
 
-| Scenario | Host Path | Container Path |
-|----------|-----------|----------------|
-| Single media share | `/mnt/user/media` | `/videos` |
-| Multiple shares | `/mnt/user/` | `/mnt/user/` (passthrough) |
-| Specific folders | `/mnt/user/media/movies` | `/movies` |
+| Scenario           | Host Path                | Container Path             |
+| ------------------ | ------------------------ | -------------------------- |
+| Single media share | `/mnt/user/media`        | `/videos`                  |
+| Multiple shares    | `/mnt/user/`             | `/mnt/user/` (passthrough) |
+| Specific folders   | `/mnt/user/media/movies` | `/movies`                  |
 
 <Warning>
-**Critical:** When adding libraries in BitBonsai, use the **container path** (e.g., `/videos/movies`), NOT the Unraid host path.
+  **Critical:** When adding libraries in BitBonsai, use the **container path** (e.g.,
+  `/videos/movies`), NOT the Unraid host path.
 </Warning>
 
 <Tip>
-**Best Practice:** Map `/mnt/user/` → `/mnt/user/` to avoid path translation issues. This allows BitBonsai to use identical paths to Unraid.
+  **Best Practice:** Map `/mnt/user/` → `/mnt/user/` to avoid path translation issues. This allows
+  BitBonsai to use identical paths to Unraid.
 </Tip>
 
 ### How to Verify Path Mapping
@@ -159,15 +147,13 @@ Unraid uses `/mnt/user/` paths for shares. BitBonsai must access the **same phys
 
 ## Network Mode Selection
 
-| Mode | Pros | Cons | Recommendation |
-|------|------|------|----------------|
-| **Bridge** | Isolated, port control | Manual port mapping | ✅ **Recommended** |
-| **Host** | No port mapping needed | Exposes all ports | Use only if needed |
-| **Custom** | Advanced routing | Requires network config | Advanced users only |
+| Mode       | Pros                   | Cons                    | Recommendation      |
+| ---------- | ---------------------- | ----------------------- | ------------------- |
+| **Bridge** | Isolated, port control | Manual port mapping     | ✅ **Recommended**  |
+| **Host**   | No port mapping needed | Exposes all ports       | Use only if needed  |
+| **Custom** | Advanced routing       | Requires network config | Advanced users only |
 
-<Note>
-Bridge mode is recommended for security. Frontend and backend communicate via host IP.
-</Note>
+<Note>Bridge mode is recommended for security. Frontend and backend communicate via host IP.</Note>
 
 ---
 
@@ -203,11 +189,10 @@ BitBonsai supports **NVIDIA GPU acceleration** for faster encoding.
        NVIDIA_VISIBLE_DEVICES=all
        NVIDIA_DRIVER_CAPABILITIES=all
        ```
+
   </Step>
 
-  <Step title="Restart Container">
-    Stop and start the backend container.
-  </Step>
+<Step title="Restart Container">Stop and start the backend container.</Step>
 
   <Step title="Verify GPU Access">
     Check container logs:
@@ -219,14 +204,16 @@ BitBonsai supports **NVIDIA GPU acceleration** for faster encoding.
 </Steps>
 
 <Warning>
-GPU encoding requires HEVC (h264_nvenc/hevc_nvenc) or AV1 (av1_nvenc) codec support. Check your GPU's capabilities.
+  GPU encoding requires HEVC (h264_nvenc/hevc_nvenc) or AV1 (av1_nvenc) codec support. Check your
+  GPU's capabilities.
 </Warning>
 
+{/* prettier-ignore */}
 <Tip>
-To verify FFmpeg sees the GPU:
-```bash
-docker exec bitbonsai-backend ffmpeg -encoders | grep nvenc
-```
+  To verify FFmpeg sees the GPU:
+  ```bash
+  docker exec bitbonsai-backend ffmpeg -encoders | grep nvenc
+  ```
 </Tip>
 
 ---
@@ -242,9 +229,11 @@ After configuration:
 ### Verify Installation
 
 1. **Backend health check:**
+
    ```
    curl http://[UNRAID-IP]:3100/health
    ```
+
    Should return: `{"status":"ok"}`
 
 2. **Access Web UI:**
@@ -280,6 +269,7 @@ Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100
 **Symptom:** Container immediately stops after starting.
 
 **Solutions:**
+
 1. Check Docker logs:
    ```bash
    docker logs bitbonsai-backend  # or use Unraid Docker tab → container → Logs button
@@ -297,6 +287,7 @@ Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100
 **Symptom:** Cannot read/write video files.
 
 **Solutions:**
+
 1. Verify path mapping matches your Unraid shares
 2. Check container runs as correct user (usually `nobody:users`)
 3. Set permissions on media folder:
@@ -312,6 +303,7 @@ Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100
 **Symptom:** "No videos found" after scanning.
 
 **Solutions:**
+
 1. Verify container path matches host path mapping
 2. Use **Console** button in Docker tab to access container:
    ```bash
@@ -327,17 +319,21 @@ Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100
 **Symptom:** Backend logs show PostgreSQL connection errors.
 
 **Solutions:**
+
 1. Verify PostgreSQL port 5432 is not blocked
 2. Check `POSTGRES_PASSWORD` environment variable is set
 3. Back up and recreate the DB if needed:
+
    ```bash
    # Backup first (replace CONTAINER_IP with your postgres container IP)
    docker exec -it bitbonsai-postgres pg_dump -U bitbonsai bitbonsai > backup.sql
    ```
+
    Then delete `/mnt/user/appdata/bitbonsai/postgres` and restart (will recreate DB from scratch)
 
    <Warning>
-   Deleting the postgres data directory permanently removes all job history and settings. Backup first.
+     Deleting the postgres data directory permanently removes all job history and settings. Backup
+     first.
    </Warning>
 
 ---
@@ -347,6 +343,7 @@ Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100
 **Symptom:** Encoding uses CPU instead of GPU.
 
 **Solutions:**
+
 1. Verify nvidia-driver plugin is running:
    ```bash
    nvidia-smi
@@ -365,6 +362,7 @@ Replace `[UNRAID-IP]` with your server's IP address (e.g., `http://192.168.1.100
 **Symptom:** Web UI displays connection error.
 
 **Solutions:**
+
 1. Verify backend is running (Docker tab)
 2. Check `API_URL` environment variable in frontend container
 3. Test backend directly:
