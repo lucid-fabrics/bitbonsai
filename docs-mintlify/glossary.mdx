@@ -55,6 +55,18 @@ How much data is used per second of video. Higher bitrate = better quality but l
 
 ---
 
+### GPU (Graphics Processing Unit)
+A graphics card that can be used to accelerate video encoding. Using a GPU is **5-10x faster** than CPU-only encoding.
+
+**Supported GPUs:**
+- NVIDIA (GTX 1050+ or RTX series) — NVENC encoder
+- Intel (6th gen Skylake+) — QuickSync (QSV) encoder
+- AMD (RX 400 series+) — VCE/VCN encoder
+
+**Related:** [GPU Setup Guide](/advanced/gpu-acceleration)
+
+---
+
 ### Hardware Acceleration
 Using your computer's graphics card (GPU) to encode videos **5-10x faster** than using just the CPU.
 
@@ -64,6 +76,27 @@ Using your computer's graphics card (GPU) to encode videos **5-10x faster** than
 - AMD (VCE/VCN)
 
 **Related:** [GPU Setup Guide](/advanced/gpu-acceleration)
+
+---
+
+### FFmpeg
+The open-source tool BitBonsai uses internally to encode video. You don't interact with FFmpeg directly — BitBonsai handles it automatically.
+
+**What it does:** Reads source video, applies codec conversion, writes output file.
+
+**Why it matters:** Most error messages in logs come from FFmpeg. If you see `ffmpeg` in an error, check [Troubleshooting](/advanced/troubleshooting).
+
+---
+
+### Resolution
+The dimensions of a video in pixels, expressed as width × height.
+
+**Common resolutions:**
+- **1080p** — 1920 × 1080 (Full HD, most common)
+- **4K / 2160p** — 3840 × 2160 (Ultra HD, 4× larger than 1080p)
+- **720p** — 1280 × 720 (HD)
+
+**Encoding impact:** 4K files take ~4× longer to encode than 1080p at the same codec.
 
 ---
 
@@ -89,7 +122,7 @@ A packaged application that runs in Docker. Like a self-contained app that doesn
 ### Image
 A template used to create a Docker container. Like a blueprint or recipe.
 
-**Example:** `lucidfabrics/bitbonsai:latest` is the image name.
+**Example:** `ghcr.io/bitbonsai/backend:latest` is the backend image name.
 
 ---
 
@@ -138,6 +171,15 @@ A configuration setting passed to the application.
 ---
 
 ## Multi-Node Terms
+
+### Multi-Node
+Running BitBonsai across multiple machines to encode videos in parallel. One **main node** coordinates work; additional **child nodes** (workers) share the load.
+
+**How it works:** All nodes connect to the same PostgreSQL database and share video files via NFS.
+
+**Related:** [Multi-Node Setup](/advanced/multi-node) | [Distributed Encoding Architecture](/advanced/distributed-encoding)
+
+---
 
 ### Node
 A computer running BitBonsai. You can have one node (simple) or multiple nodes (faster).
@@ -255,8 +297,7 @@ The internal communication system BitBonsai uses. You don't interact with it dir
 ### Database
 Where BitBonsai stores information about jobs, libraries, and settings.
 
-**Default:** SQLite (file-based, works for most users)
-**Advanced:** PostgreSQL (for high-performance setups)
+**Engine:** PostgreSQL 15+ (required — BitBonsai does not support SQLite)
 
 ---
 

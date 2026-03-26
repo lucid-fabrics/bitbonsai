@@ -125,8 +125,6 @@ On the main node (192.168.1.100):
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -174,8 +172,6 @@ On child node 1 (192.168.1.170):
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
-
 services:
   backend:
     image: ghcr.io/bitbonsai/backend:latest
