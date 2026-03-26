@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>BitBonsai</Name>
+  <Repository>lucidfabrics/bitbonsai:latest</Repository>
+  <Registry>https://hub.docker.com/r/lucidfabrics/bitbonsai</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/lucid-fabrics/bitbonsai/issues</Support>
+  <Project>https://github.com/lucid-fabrics/bitbonsai</Project>
+  <Overview>
+BitBonsai - Intelligent Video Encoding Platform
+
+Automatically optimize your media library with smart encoding:
+
+FEATURES:
+- Smart Codec Detection: H.264 to H.265/HEVC conversion
+- Hardware Acceleration: NVIDIA NVENC, Intel QSV, AMD AMF
+- Multi-Node Encoding: Distribute jobs across multiple machines
+- TRUE RESUME: Never lose progress after crashes
+- Auto-Heal: Self-recovers from interruptions
+- Real-Time Progress: Live FPS, ETA, and statistics
+- SSD Cache Support: 10-100x faster with cache pool
+
+STORAGE SAVINGS:
+- H.264 to H.265: 40-60% smaller files
+- Same visual quality with modern codecs
+
+PERFECT FOR:
+- Plex/Jellyfin/Emby media servers
+- Large media libraries
+- Home servers and NAS systems
+- Multi-node homelab setups
+
+BETA: Free for personal use during beta period.
+  </Overview>
+  <Category>MediaApp:Video MediaServer:Video Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8108]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/unraid-release/bitbonsai.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/assets/logo.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <!-- ============================================ -->
+  <!-- NETWORK CONFIGURATION -->
+  <!-- ============================================ -->
+
+  <Config Name="Web UI Port" Target="8108" Default="8108" Mode="tcp" Description="Web interface port - Access BitBonsai at http://[IP]:8108" Type="Port" Display="always" Required="true" Mask="false">8108</Config>
+
+  <!-- ============================================ -->
+  <!-- STORAGE PATHS -->
+  <!-- ============================================ -->
+
+  <Config Name="Media Library" Target="/media" Default="/mnt/user/media" Mode="rw" Description="Your media library (Movies, TV Shows). BitBonsai scans and encodes videos here." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media</Config>
+
+  <Config Name="Downloads Folder" Target="/downloads" Default="/mnt/user/Downloads" Mode="rw" Description="Downloads folder for *arr integration. Optional - leave empty if not using Sonarr/Radarr." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Downloads</Config>
+
+  <Config Name="App Data" Target="/data" Default="/mnt/user/appdata/bitbonsai" Mode="rw" Description="Database and configuration storage. BACKUP THIS FOLDER!" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/bitbonsai</Config>
+
+  <Config Name="Encoding Cache (SSD)" Target="/cache" Default="/mnt/cache/bitbonsai-temp" Mode="rw" Description="CRITICAL: Temp workspace for encoding. Use SSD/cache drive for 10-100x faster performance!" Type="Path" Display="always" Required="true" Mask="false">/mnt/cache/bitbonsai-temp</Config>
+
+  <!-- ============================================ -->
+  <!-- AUTHENTICATION -->
+  <!-- ============================================ -->
+
+  <Config Name="Admin Password" Target="ADMIN_PASSWORD" Default="" Mode="" Description="REQUIRED: Admin password for web UI. Use a strong password!" Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <!-- ============================================ -->
+  <!-- SYSTEM CONFIGURATION -->
+  <!-- ============================================ -->
+
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions (99 = nobody on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for file permissions (100 = users on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+
+  <Config Name="Timezone" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for logging (e.g., America/New_York, Europe/London)" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+
+  <Config Name="Log Level" Target="LOG_LEVEL" Default="info" Mode="" Description="Logging: debug, info, warn, error" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
+
+  <!-- ============================================ -->
+  <!-- ENCODING PERFORMANCE -->
+  <!-- ============================================ -->
+
+  <Config Name="Max Concurrent Jobs" Target="MAX_CONCURRENT_JOBS" Default="2" Mode="" Description="Parallel encoding jobs. CPU-only: 1-2, GPU: 2-4, High-end GPU: 4-8" Type="Variable" Display="always" Required="false" Mask="false">2</Config>
+
+  <!-- ============================================ -->
+  <!-- HARDWARE ACCELERATION -->
+  <!-- ============================================ -->
+
+  <Config Name="NVIDIA GPU (NVENC)" Target="NVIDIA_VISIBLE_DEVICES" Default="" Mode="" Description="Enable NVIDIA GPU. Set to 'all' for all GPUs. Requires --runtime=nvidia in Extra Parameters." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+
+  <Config Name="Intel QuickSync (QSV)" Target="/dev/dri" Default="" Mode="rw" Description="Enable Intel QuickSync. Set to '/dev/dri' to enable." Type="Device" Display="always" Required="false" Mask="false"></Config>
+
+  <Config Name="AMD GPU (AMF)" Target="/dev/dri/renderD128" Default="" Mode="rw" Description="Enable AMD GPU. Set to '/dev/dri/renderD128' to enable." Type="Device" Display="always" Required="false" Mask="false"></Config>
+
+  <!-- ============================================ -->
+  <!-- MULTI-NODE (OPTIONAL) -->
+  <!-- ============================================ -->
+
+  <Config Name="Node Role" Target="NODE_ROLE" Default="MAIN" Mode="" Description="MAIN = primary server with database. LINKED = worker node." Type="Variable" Display="advanced" Required="false" Mask="false">MAIN</Config>
+
+  <Config Name="Main Node URL" Target="MAIN_NODE_URL" Default="" Mode="" Description="For LINKED nodes only: URL of MAIN node (e.g., http://192.168.1.100:8108)" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <!-- ============================================ -->
+  <!-- ADVANCED -->
+  <!-- ============================================ -->
+
+  <Config Name="Extra Parameters" Target="" Default="" Mode="" Description="Additional Docker params. For NVIDIA: --runtime=nvidia --gpus all" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+</Container>

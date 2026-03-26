@@ -1,0 +1,65 @@
+{
+  "name": "BitBonsai",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#f9be03",
+    "light": "#fcd34d",
+    "dark": "#d4a003",
+    "background": {
+      "dark": "#1a1a1a"
+    }
+  },
+  "topbar": {
+    "style": "default"
+  },
+  "topbarLinks": [
+    {
+      "name": "Website",
+      "url": "https://bitbonsai.io"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://bitbonsai.app"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Installation",
+      "pages": ["installation/docker", "installation/unraid", "installation/requirements"]
+    },
+    {
+      "group": "User Guide",
+      "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
+    },
+    {
+      "group": "Advanced",
+      "pages": [
+        "advanced/gpu-acceleration",
+        "advanced/multi-node",
+        "advanced/codec-selection",
+        "advanced/troubleshooting"
+      ]
+    },
+    {
+      "group": "Support",
+      "pages": ["faq", "test-page"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/bitbonsai/bitbonsai",
+    "discord": "https://discord.gg/bitbonsai"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  }
+}
