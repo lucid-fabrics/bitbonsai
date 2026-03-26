@@ -8,7 +8,7 @@ This guide walks you through creating your first library, scanning for videos, a
 ## Prerequisites
 
 - BitBonsai backend running with access to video files
-- Docker volume mounts configured for video directories (see [Configuration](/installation/configuration))
+- Docker volume mounts configured for video directories (see [Requirements](/installation/requirements))
 - At least one worker node connected (main node or linked nodes)
 
 ## Navigate to Libraries
@@ -18,12 +18,14 @@ This guide walks you through creating your first library, scanning for videos, a
     Click **Libraries** in the left sidebar navigation.
 
     The Libraries page displays all configured libraries and their encoding statistics.
+
   </Step>
 
   <Step title="Click Add Library button">
     Click the **Add Library** button in the top-right corner of the page.
 
     A dialog will appear with library configuration fields.
+
   </Step>
 </Steps>
 
@@ -36,6 +38,7 @@ This guide walks you through creating your first library, scanning for videos, a
     ```text
     Name: Movies
     ```
+
   </Step>
 
   <Step title="Specify library path">
@@ -54,6 +57,7 @@ This guide walks you through creating your first library, scanning for videos, a
       - `/videos/movies` (mapped from `/mnt/user/media/movies`)
       - `/videos/tv` (mapped from `/mnt/user/media/tv`)
     </Note>
+
   </Step>
 
   <Step title="Select target codec">
@@ -67,12 +71,14 @@ This guide walks you through creating your first library, scanning for videos, a
     <Note>
       HEVC is recommended for most users. AV1 provides better compression but encodes slower and requires newer hardware for playback.
     </Note>
+
   </Step>
 
   <Step title="Save the library">
     Click **Save** to create the library.
 
     The library appears in the Libraries list with 0 videos scanned.
+
   </Step>
 </Steps>
 
@@ -87,6 +93,7 @@ This guide walks you through creating your first library, scanning for videos, a
     <Note>
       Scanning large libraries (1000+ files) may take 1-5 minutes. The UI updates automatically when complete.
     </Note>
+
   </Step>
 
   <Step title="Review detected videos">
@@ -105,6 +112,7 @@ This guide walks you through creating your first library, scanning for videos, a
     <Warning>
       Videos **already encoded** in the target codec are marked SKIPPED and cannot be re-encoded (to prevent quality loss from transcoding already-compressed files).
     </Warning>
+
   </Step>
 </Steps>
 
@@ -117,18 +125,21 @@ This guide walks you through creating your first library, scanning for videos, a
     <Note>
       Only videos with status `NOT_QUEUED` can be selected. Videos already in queue or encoded are disabled.
     </Note>
+
   </Step>
 
   <Step title="Queue selected videos">
     Click the **Queue Selected** button at the top of the video table.
 
     Selected videos change from `NOT_QUEUED` → `QUEUED` status.
+
   </Step>
 
   <Step title="Alternative: Queue all videos">
     To queue all eligible videos at once, click **Queue All** instead of selecting individually.
 
     This is useful for initial library setup when you want to encode everything.
+
   </Step>
 </Steps>
 
@@ -143,6 +154,7 @@ This guide walks you through creating your first library, scanning for videos, a
     ```
     QUEUED → ENCODING → COMPLETE
     ```
+
   </Step>
 
   <Step title="Track job progress">
@@ -157,6 +169,7 @@ This guide walks you through creating your first library, scanning for videos, a
     <Note>
       For detailed job monitoring and troubleshooting, see [Understanding Jobs](/guides/understanding-jobs).
     </Note>
+
   </Step>
 </Steps>
 
@@ -184,9 +197,10 @@ Once videos are queued, BitBonsai automatically:
     - Files are not recognized video formats (MP4, MKV, AVI, MOV)
 
     **Solution:**
-    - Verify path exists: `docker exec bitbonsai-backend ls /videos/movies`
+    - Verify path exists: `docker compose exec backend ls /media/movies`
     - Check docker-compose.yml volume mounts
     - Ensure files have video extensions
+
   </Accordion>
 
   <Accordion title="All videos marked SKIPPED">
@@ -195,6 +209,7 @@ Once videos are queued, BitBonsai automatically:
     **Solution:**
     - This is intentional to prevent quality loss from re-encoding
     - If you want to re-encode, delete the library and create a new one with a different codec
+
   </Accordion>
 
   <Accordion title="Queue button disabled">
@@ -206,6 +221,7 @@ Once videos are queued, BitBonsai automatically:
     **Solution:**
     - Select videos with `NOT_QUEUED` status
     - Check worker node health in Settings → Nodes
+
   </Accordion>
 
   <Accordion title="Jobs stuck in QUEUED status">
@@ -217,7 +233,8 @@ Once videos are queued, BitBonsai automatically:
     **Solution:**
     - Check worker node status: Settings → Nodes
     - Verify main/child node services running
-    - Review worker logs: `docker logs bitbonsai-backend`
+    - Review worker logs: `docker compose logs backend`
+
   </Accordion>
 </AccordionGroup>
 
@@ -226,12 +243,14 @@ Once videos are queued, BitBonsai automatically:
 <Note>
   **For libraries with 500+ videos:**
 
-  - Queue videos in **batches** (e.g., 50-100 at a time) to monitor progress
-  - Start with **smallest files** to verify settings before encoding large videos
-  - Use **multiple linked nodes** to parallelize encoding across hardware
-  - Enable **auto-replace** to automatically delete originals after successful encoding
+- Queue videos in **batches** (e.g., 50-100 at a time) to monitor progress
+- Start with **smallest files** to verify settings before encoding large videos
+- Use **multiple linked nodes** to parallelize encoding across hardware
+- Enable **auto-replace** to automatically delete originals after successful encoding
+
 </Note>
 
 <Warning>
-  **Always backup your original files** before enabling auto-replace. While BitBonsai validates encoded output, hardware failures or power loss during replacement can cause data loss.
+  **Always backup your original files** before enabling auto-replace. While BitBonsai validates
+  encoded output, hardware failures or power loss during replacement can cause data loss.
 </Warning>

@@ -7,11 +7,13 @@ icon: microchip
 Speed up [encoding](/glossary#encoding) by 5-10x using your computer's graphics card ([GPU](/glossary#gpu)) instead of just the CPU.
 
 <Note>
-**What is GPU acceleration?** Using your graphics card to encode videos much faster than CPU-only encoding. See [hardware acceleration](/glossary#hardware-acceleration) in the glossary.
+  **What is GPU acceleration?** Using your graphics card to encode videos much faster than CPU-only
+  encoding. See [hardware acceleration](/glossary#hardware-acceleration) in the glossary.
 </Note>
 
 <Info>
-**Performance boost:** A movie that takes 2 hours to encode on CPU finishes in 15-20 minutes with [GPU](/glossary#gpu) [hardware acceleration](/glossary#hardware-acceleration).
+  **Performance boost:** A movie that takes 2 hours to encode on CPU finishes in 15-20 minutes with
+  [GPU](/glossary#gpu) [hardware acceleration](/glossary#hardware-acceleration).
 </Info>
 
 ---
@@ -27,6 +29,7 @@ Speed up [encoding](/glossary#encoding) by 5-10x using your computer's graphics 
     - Requires NVIDIA drivers 450+
 
     **Performance:** 5-10x faster
+
   </Card>
 
   <Card title="Intel" icon="microchip">
@@ -37,6 +40,7 @@ Speed up [encoding](/glossary#encoding) by 5-10x using your computer's graphics 
     - Arc GPUs support AV1
 
     **Performance:** 3-8x faster
+
   </Card>
 
   <Card title="AMD" icon="a">
@@ -46,11 +50,14 @@ Speed up [encoding](/glossary#encoding) by 5-10x using your computer's graphics 
     - Limited support
 
     **Performance:** 3-6x faster
+
   </Card>
 </CardGroup>
 
 <Warning>
-**Quality trade-off:** [Hardware acceleration](/glossary#hardware-acceleration) encodes slightly faster than CPU at the cost of minor quality reduction. For most content, this is **imperceptible**. See [codec selection](/advanced/codec-selection) for quality comparisons.
+  **Quality trade-off:** [Hardware acceleration](/glossary#hardware-acceleration) encodes slightly
+  faster than CPU at the cost of minor quality reduction. For most content, this is
+  **imperceptible**. See [codec selection](/advanced/codec-selection) for quality comparisons.
 </Warning>
 
 ---
@@ -77,7 +84,8 @@ nvidia-smi
 ```
 
 <Check>
-If `nvidia-smi` shows your GPU, you're ready to enable [hardware acceleration](/glossary#hardware-acceleration).
+  If `nvidia-smi` shows your GPU, you're ready to enable [hardware
+  acceleration](/glossary#hardware-acceleration).
 </Check>
 
 ### Intel Quick Sync
@@ -95,7 +103,8 @@ ls -la /dev/dri
 ```
 
 <Info>
-**Intel iGPU:** Built into your CPU. Even if you have a dedicated [GPU](/glossary#gpu), Intel Quick Sync can still be used for [encoding](/glossary#encoding).
+  **Intel iGPU:** Built into your CPU. Even if you have a dedicated [GPU](/glossary#gpu), Intel
+  Quick Sync can still be used for [encoding](/glossary#encoding).
 </Info>
 
 ### AMD GPUs
@@ -121,13 +130,13 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 <Steps>
   <Step title="Install NVIDIA Container Toolkit">
     ```bash
-    # Detect your distribution
-    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    # Add NVIDIA Container Toolkit repository (current method)
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+      sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
-    # Add NVIDIA Docker repository
-    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-    curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
-      sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+      sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+      sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
     # Install toolkit
     sudo apt update && sudo apt install -y nvidia-container-toolkit
@@ -135,6 +144,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
     # Restart Docker
     sudo systemctl restart docker
     ```
+
   </Step>
 
   <Step title="Update docker-compose.yml">
@@ -142,7 +152,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         deploy:
           resources:
             reservations:
@@ -153,28 +163,26 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
     ```
 
     **What this does:** Gives the BitBonsai [backend](/glossary#api) access to your NVIDIA GPU for [hardware encoding](/glossary#hardware-acceleration).
+
   </Step>
 
-  <Step title="Restart BitBonsai">
-    ```bash
-    cd /path/to/bitbonsai
-    docker compose down
-    docker compose up -d
-    ```
-  </Step>
+<Step title="Restart BitBonsai">```bash docker compose down docker compose up -d ```</Step>
 
   <Step title="Verify GPU is Accessible">
     ```bash
     # Check GPU is visible inside container
-    docker exec bitbonsai-backend nvidia-smi
+    docker compose exec backend nvidia-smi
 
-    # Should show GPU info
+    # Should show GPU info, e.g.:
+    # +-----------------------------------------------------------------------------+
+    # | NVIDIA-SMI 525.89.02    Driver Version: 525.89.02    CUDA Version: 12.0    |
     ```
+
   </Step>
 </Steps>
 
 <Tip>
-**Unraid users:** GPU passthrough is automatic if you enable NVIDIA support in Unraid settings.
+  **Unraid users:** GPU passthrough is automatic if you enable NVIDIA support in Unraid settings.
 </Tip>
 
 ---
@@ -191,6 +199,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
     <Info>
     **Why?** Intel Quick Sync requires the iGPU to be enabled even if you have a dedicated [GPU](/glossary#gpu).
     </Info>
+
   </Step>
 
   <Step title="Verify /dev/dri Device">
@@ -210,6 +219,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
     # Arch Linux
     sudo pacman -S intel-media-driver
     ```
+
   </Step>
 
   <Step title="Update docker-compose.yml">
@@ -217,12 +227,13 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         devices:
           - /dev/dri:/dev/dri
     ```
 
     **What this does:** Gives BitBonsai access to Intel Quick Sync for [hardware encoding](/glossary#hardware-acceleration).
+
   </Step>
 
   <Step title="Restart BitBonsai">
@@ -234,7 +245,8 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 </Steps>
 
 <Warning>
-**Headless servers:** If you don't have a monitor connected, you may need a **dummy HDMI plug** to keep the iGPU active.
+  **Headless servers:** If you don't have a monitor connected, you may need a **dummy HDMI plug** to
+  keep the iGPU active.
 </Warning>
 
 ---
@@ -256,7 +268,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         devices:
           - /dev/dri:/dev/dri
           - /dev/kfd:/dev/kfd
@@ -264,6 +276,7 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
           - video
           - render
     ```
+
   </Step>
 
   <Step title="Restart BitBonsai">
@@ -275,7 +288,8 @@ To use [hardware acceleration](/glossary#hardware-acceleration), you need to giv
 </Steps>
 
 <Warning>
-**AMD quality:** AMD [hardware encoders](/glossary#hardware-acceleration) have noticeably lower quality than NVIDIA/Intel. Use only if NVENC/QSV unavailable.
+  **AMD quality:** AMD [hardware encoders](/glossary#hardware-acceleration) have noticeably lower
+  quality than NVIDIA/Intel. Use only if NVENC/QSV unavailable.
 </Warning>
 
 ---
@@ -289,19 +303,17 @@ After configuring [Docker](/glossary#docker) GPU passthrough:
     Navigate to **Settings → Encoding** in the web UI
   </Step>
 
-  <Step title="Enable Hardware Acceleration">
-    - Toggle **Hardware Acceleration: ON**
-    - Select your GPU type:
-      - NVIDIA → **NVENC**
-      - Intel → **QSV (Quick Sync)**
-      - AMD → **VCE/VCN**
-  </Step>
+<Step title="Enable Hardware Acceleration">
+  - Toggle **Hardware Acceleration: ON** - Select your GPU type: - NVIDIA → **NVENC** - Intel →
+  **QSV (Quick Sync)** - AMD → **VCE/VCN**
+</Step>
 
   <Step title="Select Codec">
     - **HEVC (H.265):** Supported by all GPUs
     - **AV1:** Only Intel Arc GPUs (A380/A750/A770)
 
     See [codec selection](/advanced/codec-selection) for details.
+
   </Step>
 
   <Step title="Start Encoding">
@@ -313,7 +325,8 @@ After configuring [Docker](/glossary#docker) GPU passthrough:
 </Steps>
 
 <Check>
-**Verify it's working:** Check the **Encoding** tab → active [jobs](/glossary#job) should show 40-100 FPS (vs 5-15 FPS CPU-only).
+  **Verify it's working:** Check the **Encoding** tab → active [jobs](/glossary#job) should show
+  40-100 FPS (vs 5-15 FPS CPU-only).
 </Check>
 
 ---
@@ -322,24 +335,22 @@ After configuring [Docker](/glossary#docker) GPU passthrough:
 
 ### 1080p Movie (2 hours, 10 GB H.264 → HEVC)
 
-| Hardware | Speed | Time | Quality |
-|----------|-------|------|---------|
-| **Intel i5-12400 (CPU)** | 15 FPS | 75 min | Excellent |
+| Hardware                  | Speed  | Time   | Quality        |
+| ------------------------- | ------ | ------ | -------------- |
+| **Intel i5-12400 (CPU)**  | 15 FPS | 75 min | Excellent      |
 | **NVIDIA RTX 3060 (GPU)** | 80 FPS | 15 min | Near-identical |
-| **Intel i5-12400 (QSV)** | 45 FPS | 25 min | Very good |
-| **AMD RX 6600 XT (VCE)** | 35 FPS | 35 min | Good |
+| **Intel i5-12400 (QSV)**  | 45 FPS | 25 min | Very good      |
+| **AMD RX 6600 XT (VCE)**  | 35 FPS | 35 min | Good           |
 
-<Info>
-**Best value:** NVIDIA RTX 3060 provides excellent quality at 5x CPU speed for ~$300.
-</Info>
+<Info>**Best value:** NVIDIA RTX 3060 provides excellent quality at 5x CPU speed for ~$300.</Info>
 
 ### 4K Movie (2 hours, 50 GB H.264 → HEVC)
 
-| Hardware | Speed | Time | Quality |
-|----------|-------|------|---------|
-| **Intel i9-13900K (CPU)** | 5 FPS | 5 hours | Excellent |
-| **NVIDIA RTX 4090 (GPU)** | 60 FPS | 40 min | Near-identical |
-| **Intel i9-13900K (QSV)** | 15 FPS | 2 hours | Very good |
+| Hardware                  | Speed  | Time    | Quality        |
+| ------------------------- | ------ | ------- | -------------- |
+| **Intel i9-13900K (CPU)** | 5 FPS  | 5 hours | Excellent      |
+| **NVIDIA RTX 4090 (GPU)** | 60 FPS | 40 min  | Near-identical |
+| **Intel i9-13900K (QSV)** | 15 FPS | 2 hours | Very good      |
 
 ---
 
@@ -353,8 +364,8 @@ After configuring [Docker](/glossary#docker) GPU passthrough:
 
 ```bash
 # Verify GPU is visible inside container
-docker exec bitbonsai-backend nvidia-smi  # NVIDIA
-docker exec bitbonsai-backend ls -la /dev/dri  # Intel/AMD
+docker compose exec backend nvidia-smi  # NVIDIA
+docker compose exec backend ls -la /dev/dri  # Intel/AMD
 
 # If missing, check docker-compose.yml has correct device passthrough
 ```
@@ -362,11 +373,13 @@ docker exec bitbonsai-backend ls -la /dev/dri  # Intel/AMD
 ### Encoding Still Slow After Enabling GPU
 
 **Possible causes:**
+
 - [Hardware acceleration](/glossary#hardware-acceleration) not enabled in Settings → Encoding
 - Wrong [GPU](/glossary#gpu) type selected (e.g., selected NVENC but have Intel QSV)
 - [GPU](/glossary#gpu) is being used by another process (gaming, video editing)
 
 **Fix:**
+
 1. Check Settings → Encoding → Hardware Acceleration is **ON**
 2. Verify correct GPU type is selected
 3. Close other GPU-intensive applications
@@ -376,6 +389,7 @@ docker exec bitbonsai-backend ls -la /dev/dri  # Intel/AMD
 **Symptom:** Encoded videos have visible compression artifacts
 
 **Fix:**
+
 - Lower [CRF](/glossary#crf) value (Settings → Encoding → Quality)
   - Try CRF 18-20 instead of default 23
 - Switch to slower preset (NVIDIA: use `p7` instead of `p4`)
@@ -385,6 +399,7 @@ docker exec bitbonsai-backend ls -la /dev/dri  # Intel/AMD
 
 ## Related Guides
 
+- **[System Requirements](/installation/requirements)** - Minimum GPU driver versions and OS prerequisites
 - **[Codec Selection](/advanced/codec-selection)** - HEVC vs AV1 quality comparison
 - **[Multi-Node Setup](/advanced/multi-node)** - Add more worker nodes with GPUs
 - **[Monitoring](/guides/monitoring)** - Track GPU encoding performance

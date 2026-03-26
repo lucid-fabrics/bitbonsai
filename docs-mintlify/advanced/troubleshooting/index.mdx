@@ -1,0 +1,285 @@
+---
+title: Troubleshooting
+description: Fix common BitBonsai issues
+---
+
+BitBonsai is designed to [self-heal](/glossary#self-healing) from most issues, but occasionally you may need to intervene manually. This guide covers common problems and their solutions.
+
+<Note>
+  **New to troubleshooting?** Most issues are automatically fixed by BitBonsai's auto-healing
+  systems. See [self-healing](/glossary#self-healing) in the glossary.
+</Note>
+
+## Quick Diagnostics
+
+Before diving into specific issues, run these commands to check system health:
+
+```bash
+# Check Docker container status
+docker compose ps
+
+# Check backend logs
+docker compose logs -f backend
+
+# Check database connectivity
+docker compose exec postgres pg_isready -U bitbonsai
+
+# Check disk space (see temporary files glossary entry)
+df -h /path/to/temp /path/to/media
+```
+
+<Info>
+  **[Docker](/glossary#docker)** is the tool BitBonsai uses to run.
+  **[Database](/glossary#database)** stores job information. **[Temporary
+  files](/glossary#temporary-files)** are created during encoding.
+</Info>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Jobs Stuck in ENCODING (Orphaned Jobs)" icon="clock">
+    ### Symptom
+
+    [Jobs](/glossary#job) remain in `ENCODING` status after system restart or crash. Progress bar frozen at last checkpoint.
+
+    ### Cause
+
+    Worker process terminated unexpectedly before updating [job](/glossary#job) status to `COMPLETED` or `FAILED`. Common scenarios:
+    - System reboot during [encoding](/glossary#encoding)
+    - [Docker](/glossary#docker) container killed
+    - Out-of-memory (OOM) kill
+    - Power loss
+
+    ### Fix
+
+    <Tabs>
+      <Tab title="Automatic (On Startup)">
+        BitBonsai [automatically recovers](/glossary#self-healing) orphaned jobs on backend startup:
+
+        ```text
+        [INFO] Found 3 orphaned jobs in ENCODING state
+        [INFO] Resetting to QUEUED for retry
+        ```
+
+        **No action needed.** Jobs will restart from beginning on next [queue](/glossary#queue) cycle.
+
+        Verify recovery in logs:
+
+        ```bash
+        docker compose logs backend | grep -i orphan
+        ```
+      </Tab>
+
+      <Tab title="Manual Reset (UI)">
+        If automatic recovery doesn't trigger:
+
+        1. Navigate to **Jobs** page
+        2. Filter by status: `ENCODING`
+        3. Select stuck jobs (checkbox)
+        4. Click **Actions → Reset to Queued**
+
+        Jobs will restart immediately if workers are available.
+      </Tab>
+
+      <Tab title="Database Query (Advanced)">
+        Manually reset via SQL:
+
+        ```bash
+        docker compose exec postgres psql -U bitbonsai -d bitbonsai
+        ```
+
+        ```sql
+        -- View stuck jobs
+        SELECT id, "originalPath", status, "updatedAt"
+        FROM "EncodingJob"
+        WHERE status = 'ENCODING'
+        ORDER BY "updatedAt" ASC;
+
+        -- Reset to QUEUED (only if updatedAt > 1 hour ago)
+        UPDATE "EncodingJob"
+        SET status = 'QUEUED', progress = 0, "assignedNodeId" = NULL
+        WHERE status = 'ENCODING'
+        AND "updatedAt" < NOW() - INTERVAL '1 hour';
+        ```
+      </Tab>
+    </Tabs>
+
+    <Note>
+    The **Stuck Job Watchdog** (if enabled) automatically detects jobs with no progress updates for 30+ minutes and resets them.
+    </Note>
+
+  </Accordion>
+
+  <Accordion title="Health Check Failures (CORRUPTED Jobs)" icon="exclamation-triangle">
+    ### Symptom
+
+    Jobs complete encoding but marked as `CORRUPTED` instead of `COMPLETED`. Error in logs:
+
+    ```text
+    [ERROR] Health check failed after 5 retries
+    [ERROR] FFprobe validation failed: Invalid data found when processing input
+    ```
+
+    ### Cause
+
+    Post-encoding validation detected issues:
+    - Output file corrupted during encoding
+    - File moved/deleted during health check
+    - NFS network interruption during validation
+    - FFprobe timeout or crash
+
+    ### Fix
+
+    <Steps>
+      <Step title="Verify File Integrity">
+        Check if output file actually exists and is playable:
+
+        ```bash
+        # Find the encoded file path (check job details in UI)
+        FILE="/path/to/encoded/video.mkv"
+
+        # Check file size (should be > 0)
+        ls -lh "$FILE"
+
+        # Test with FFprobe
+        ffprobe -v error "$FILE" 2>&1
+
+        # Test playback (if ffmpeg available)
+        ffmpeg -v error -i "$FILE" -f null - 2>&1
+        ```
+
+        If file is **valid**, this is a false positive health check failure.
+      </Step>
+
+      <Step title="Manual Re-validation">
+        Trigger health check retry:
+
+        1. Navigate to **Jobs** page → Filter by `CORRUPTED`
+        2. Select job(s)
+        3. Click **Actions → Re-validate Health**
+
+        Or via API:
+
+        ```bash
+        curl -X POST http://localhost:3100/jobs/YOUR_JOB_ID/revalidate
+        ```
+      </Step>
+
+      <Step title="Automatic Hourly Retry">
+        BitBonsai automatically re-checks `CORRUPTED` jobs every hour:
+
+        ```text
+        [INFO] Health Check Cron: Re-validating 12 CORRUPTED jobs
+        [INFO] Job 456: Health check now PASSED, marking COMPLETED
+        ```
+
+        Check logs to confirm auto-recovery:
+
+        ```bash
+        docker compose logs backend | grep "Health Check Cron"
+        ```
+      </Step>
+
+      <Step title="Increase Retry Threshold (If Persistent)">
+        If health checks consistently fail on slow storage:
+
+        Edit `apps/backend/src/queue/health-check.worker.ts`:
+
+        ```typescript
+        // Increase from 5 to 10 retries
+        const MAX_RETRIES = 10;
+        const RETRY_DELAY_MS = 3000; // 3 seconds
+        ```
+
+        Rebuild and redeploy backend container.
+      </Step>
+    </Steps>
+
+    <Warning>
+    Do NOT blindly mark CORRUPTED jobs as COMPLETED without validation. Verify file integrity first to avoid data loss.
+    </Warning>
+
+  </Accordion>
+
+  <Accordion title="Encoding Fails Immediately" icon="xmark">
+    ### Symptom
+
+    Job starts but fails within seconds. No progress made.
+
+    ### Cause
+
+    Usually one of:
+    - Invalid output path permissions
+    - Disk full
+    - FFmpeg not installed in container
+    - Codec not supported
+
+    ### Fix
+
+    <Steps>
+      <Step title="Check Disk Space">
+
+        ```bash
+        df -h /path/to/output
+        ```
+
+        Ensure at least 2x the source file size is available.
+      </Step>
+
+      <Step title="Verify Permissions">
+
+        ```bash
+        ls -la /path/to/output
+        # Should be readable and writable by the bitbonsai user
+        ```
+      </Step>
+
+      <Step title="Check FFmpeg">
+
+        ```bash
+        docker compose exec backend ffmpeg -version
+        ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+
+  <Accordion title="Slow Encoding Performance" icon="gauge">
+    ### Symptom
+
+    Jobs take much longer than expected. Queue backs up.
+
+    ### Cause
+
+    Several factors:
+    - No hardware acceleration enabled
+    - Too many concurrent jobs
+    - Slow disk I/O
+    - Network latency for NFS mounts
+
+    ### Fix
+
+    <Steps>
+      <Step title="Enable Hardware Acceleration">
+        See [GPU Acceleration](/advanced/gpu-acceleration) for NVIDIA, Intel QuickSync, or AMD setup.
+      </Step>
+
+      <Step title="Limit Concurrent Jobs">
+        In settings, reduce concurrent jobs to 1-2 if CPU/GPU bound.
+      </Step>
+
+      <Step title="Use Local Storage for Temp Files">
+        Set temp directory to fast local SSD instead of network mount.
+      </Step>
+    </Steps>
+
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+For more issues, see:
+
+- [NFS Mount Issues](/advanced/troubleshooting/nfs-mounts)
+- [Multi-Node Setup Problems](/advanced/troubleshooting/multi-node)
+- [Common Error Codes](/advanced/troubleshooting/error-codes)

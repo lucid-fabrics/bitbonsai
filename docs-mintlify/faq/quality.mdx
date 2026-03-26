@@ -1,0 +1,93 @@
+---
+title: Video Quality & Codecs FAQ
+description: Questions about video quality, codecs, and HDR
+---
+
+## Video Quality & Codecs
+
+<Accordion title="Can I encode 4K/HDR videos?">
+Yes. BitBonsai fully supports 4K and HDR encoding.
+
+**HDR Metadata Preservation:**
+
+- HDR10 (PQ/ST.2084) → ✅ Preserved
+- HDR10+ → ✅ Preserved (HEVC only)
+- Dolby Vision → ⚠️ Converted to HDR10 (AV1/HEVC)
+- HLG (Hybrid Log-Gamma) → ✅ Preserved
+
+**Codec Support:**
+
+| Codec | 4K  | HDR10 | HDR10+ | Dolby Vision   |
+| ----- | --- | ----- | ------ | -------------- |
+| HEVC  | ✅  | ✅    | ✅     | Profile 5 only |
+| AV1   | ✅  | ✅    | ❌     | ❌             |
+
+**Configuration:**
+When encoding HDR content, use:
+
+- **CRF 18-22** (lower = higher quality)
+- **Preset: slow** (better compression)
+- **Color space:** Auto-detected from source
+
+**Example FFmpeg Command (Auto-Generated):**
+
+```bash
+ffmpeg -i input.mkv \
+  -c:v libx265 \
+  -crf 20 -preset slow \
+  -color_primaries bt2020 \
+  -color_trc smpte2084 \
+  -colorspace bt2020nc \
+  -x265-params "hdr-opt=1:repeat-headers=1" \
+  output.mkv
+```
+
+**Playback Compatibility:**
+
+- Ensure media player supports HDR (VLC, Plex, Jellyfin)
+- HDR displays required for proper viewing
+- SDR tone-mapping handled by player
+
+See [Codec Selection](/advanced/codec-selection) for quality settings.
+
+</Accordion>
+
+<Accordion title="What's the difference between HEVC and AV1?">
+Both are modern video codecs. Key differences:
+
+| Feature              | HEVC (H.265)             | AV1                      |
+| -------------------- | ------------------------ | ------------------------ |
+| **Compression**      | 40-50% better than H.264 | 50-70% better than H.264 |
+| **Encoding Speed**   | Fast (HW accelerated)    | Slow (CPU only)          |
+| **Hardware Support** | Wide (2015+ devices)     | Limited (2020+ devices)  |
+| **Licensing**        | Paid (patent-encumbered) | Free (royalty-free)      |
+| **Quality**          | Excellent                | Slightly better          |
+
+**When to Use HEVC:**
+
+- Need fast encoding (NVENC, QSV)
+- Wide device compatibility (TVs, phones)
+- Hardware decoding available
+
+**When to Use AV1:**
+
+- Maximum compression (archival)
+- Don't care about encoding time
+- Modern playback devices only
+
+**Encoding Time Comparison (1080p movie):**
+
+- H.264 CPU: 1 hour
+- HEVC CPU: 2 hours
+- HEVC NVENC: 15 minutes
+- AV1 CPU: 6 hours
+
+**Recommendation:**
+
+- **Most users:** HEVC with hardware encoding
+- **Archival/storage priority:** AV1 (set and forget)
+- **Compatibility priority:** Stick with H.264
+
+See [Codec Selection](/advanced/codec-selection) for detailed comparison.
+
+</Accordion>

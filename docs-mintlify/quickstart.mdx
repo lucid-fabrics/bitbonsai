@@ -12,52 +12,57 @@ Encode your first video library in 5 minutes with zero configuration.
     Create `docker-compose.yml`:
 
     ```yaml docker-compose.yml
-    version: '3.8'
     services:
-      db:
+      postgres:
         image: postgres:15
         environment:
           POSTGRES_DB: bitbonsai
           POSTGRES_USER: bitbonsai
-          POSTGRES_PASSWORD: bitbonsai
+          POSTGRES_PASSWORD: changeme
         volumes:
           - bitbonsai-db:/var/lib/postgresql/data
         restart: unless-stopped
 
       backend:
-        image: bitbonsai/backend:latest
+        image: ghcr.io/bitbonsai/backend:latest
         ports:
           - "3100:3100"
         environment:
-          DATABASE_URL: postgresql://bitbonsai:bitbonsai@db:5432/bitbonsai
+          DATABASE_URL: postgresql://bitbonsai:changeme@postgres:5432/bitbonsai
           NODE_ENV: production
         volumes:
           - /path/to/your/videos:/media
         depends_on:
-          - db
+          - postgres
         restart: unless-stopped
 
       frontend:
-        image: bitbonsai/frontend:latest
+        image: ghcr.io/bitbonsai/frontend:latest
         ports:
-          - "4210:80"
+          - "4210:4210"
         environment:
-          API_URL: http://localhost:3100
+          API_URL: http://backend:3100
         depends_on:
           - backend
         restart: unless-stopped
 
     volumes:
       bitbonsai-db:
+
     ```
 
-    Replace `/path/to/your/videos` with your actual video library path.
+    Replace `/path/to/your/videos` with your actual video library path. Change `changeme` to a secure password.
+
+    <Warning>
+    Update `POSTGRES_PASSWORD` and `DATABASE_URL` to use the same secure password before running.
+    </Warning>
 
     Start the stack:
 
     ```bash
-    docker-compose up -d
+    docker compose up -d
     ```
+
   </Step>
 
   <Step title="Access the UI">
@@ -68,6 +73,7 @@ Encode your first video library in 5 minutes with zero configuration.
     ```
 
     Wait 10-15 seconds for backend initialization. The UI loads automatically.
+
   </Step>
 
   <Step title="Add Video Library">
@@ -80,6 +86,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Info>
       Path must match the Docker volume mount from Step 1. BitBonsai reads/writes files in-place.
     </Info>
+
   </Step>
 
   <Step title="Scan for Videos">
@@ -92,6 +99,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Tip>
       BitBonsai automatically detects codec, resolution, bitrate, and file size. No manual tagging needed.
     </Tip>
+
   </Step>
 
   <Step title="Queue Videos for Encoding">
@@ -111,6 +119,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Warning>
       First encode may take 2-5 minutes for a typical 1080p movie. Progress shows in real-time.
     </Warning>
+
   </Step>
 
   <Step title="Monitor Progress">
@@ -132,6 +141,7 @@ Encode your first video library in 5 minutes with zero configuration.
     <Check>
       Your first encode is complete when status shows `COMPLETED` and file size decreased by 40-60%.
     </Check>
+
   </Step>
 </Steps>
 
@@ -141,6 +151,7 @@ You're encoding. Here's what to explore:
 
 ### Advanced Features
 
+- **[Docker Installation Guide](/installation/docker)** - Full configuration: GPU, resource limits, logging
 - **[Multi-Node Setup](/advanced/multi-node)** - Add worker nodes for parallel encoding (3x-10x faster)
 - **[Codec Selection Guide](/advanced/codec-selection)** - HEVC vs AV1 vs VP9 tradeoffs
 - **[Job Monitoring](/guides/monitoring)** - Track encoding stats, failures, and health
@@ -155,11 +166,12 @@ You're encoding. Here's what to explore:
     - Corrupted source file (skip it)
     - Insufficient disk space (free up space, job auto-retries)
     - Codec not supported (change target codec)
+
   </Accordion>
 
-  <Accordion title="Can I pause encoding?">
-    Yes. Click job → **Pause** or use **Pause All** button. Resume anytime with zero progress loss.
-  </Accordion>
+<Accordion title="Can I pause encoding?">
+  Yes. Click job → **Pause** or use **Pause All** button. Resume anytime with zero progress loss.
+</Accordion>
 
   <Accordion title="How do I undo an encode?">
     Originals are backed up to:
@@ -168,17 +180,20 @@ You're encoding. Here's what to explore:
     ```
 
     Restore manually by copying back to original location.
+
   </Accordion>
 
   <Accordion title="Does BitBonsai delete originals?">
     No. Originals are moved to `.bitbonsai/originals/` and only deleted if you manually enable **Delete Originals After X Days** in Settings.
 
     Default: Keep forever.
+
   </Accordion>
 </AccordionGroup>
 
 ### Get Help
 
+- **[System Requirements](/installation/requirements)** - Hardware and software prerequisites
 - **[Troubleshooting](/advanced/troubleshooting)** - Fix common issues
 - **[FAQ](/faq)** - Frequently asked questions
 - **GitHub Issues** - Report bugs or request features

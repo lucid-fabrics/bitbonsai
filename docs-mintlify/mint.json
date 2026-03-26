@@ -19,7 +19,7 @@
   "topbarLinks": [
     {
       "name": "Website",
-      "url": "https://bitbonsai.io"
+      "url": "https://bitbonsai.app"
     }
   ],
   "topbarCtaButton": {
@@ -37,20 +37,40 @@
     },
     {
       "group": "User Guide",
-      "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
+      "pages": [
+        "guides/first-scan",
+        "guides/jobs/index",
+        "guides/jobs/status",
+        "guides/jobs/troubleshooting",
+        "guides/monitoring"
+      ]
     },
     {
       "group": "Advanced",
       "pages": [
         "advanced/gpu-acceleration",
         "advanced/multi-node",
+        "advanced/distributed-encoding",
         "advanced/codec-selection",
-        "advanced/troubleshooting"
+        "advanced/troubleshooting/index",
+        "advanced/troubleshooting/nfs-mounts",
+        "advanced/troubleshooting/multi-node",
+        "advanced/troubleshooting/error-codes"
       ]
     },
     {
       "group": "Support",
-      "pages": ["faq", "test-page"]
+      "pages": [
+        "faq/index",
+        "faq/general",
+        "faq/scaling",
+        "faq/quality",
+        "faq/backup",
+        "faq/network",
+        "faq/roadmap",
+        "glossary",
+        "support/get-help"
+      ]
     }
   ],
   "footerSocials": {
