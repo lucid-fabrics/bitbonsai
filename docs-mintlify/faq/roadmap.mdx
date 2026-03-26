@@ -1,0 +1,93 @@
+---
+title: Roadmap & Features FAQ
+description: Questions about upcoming features and pricing
+---
+
+## Roadmap & Features
+
+<Accordion title="Can I schedule encoding during off-peak hours?">
+Not yet. This is a **planned feature** for v2.0.
+
+**Requested Functionality:**
+
+- Schedule encoding windows (e.g., 2 AM - 6 AM)
+- Pause all jobs during business hours
+- Limit CPU/GPU usage by time of day
+- Priority queue for specific libraries
+
+**Workarounds:**
+
+1. **Manual Pause/Resume**
+   - Pause all jobs before peak hours
+   - Resume overnight
+
+2. **Cron Script (API-Based)**
+
+```bash
+# Pause at 8 AM
+0 8 * * * curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/queue/pause-all
+
+# Resume at 6 PM
+0 18 * * * curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/queue/resume-all
+```
+
+3. **CPU Limiting (Docker)**
+
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    cpus: "2.0" # Limit to 2 cores
+```
+
+**Vote for This Feature:**
+
+- GitHub Issue: [#45 - Scheduled Encoding](https://github.com/bitbonsai/bitbonsai/issues/45)
+- Discord: `#feature-requests` channel
+
+**ETA:** Q2 2026 (tentative)
+
+</Accordion>
+
+<Accordion title="What are the pricing tiers for licenses?">
+BitBonsai offers three tiers:
+
+| Tier          | Price                  | Max Nodes | Max Jobs  | Features                     |
+| ------------- | ---------------------- | --------- | --------- | ---------------------------- |
+| **FREE**      | $0                     | 1 node    | 1 job     | Single-node, basic features  |
+| **SUPPORTER** | $5/month or $50/year   | 3 nodes   | 5 jobs    | Multi-node, priority support |
+| **PRO**       | $15/month or $150/year | Unlimited | Unlimited | Enterprise features, SLA     |
+
+**Feature Comparison:**
+
+| Feature           | FREE      | SUPPORTER  | PRO            |
+| ----------------- | --------- | ---------- | -------------- |
+| Libraries         | Unlimited | Unlimited  | Unlimited      |
+| Storage           | Unlimited | Unlimited  | Unlimited      |
+| Hardware Encoding | ✅        | ✅         | ✅             |
+| Multi-Node        | ❌        | ✅ (3 max) | ✅ (Unlimited) |
+| Concurrent Jobs   | 1         | 5          | Unlimited      |
+| Priority Support  | ❌        | ✅         | ✅ + SLA       |
+| Discord Badge     | ❌        | ✅         | ✅             |
+| Early Access      | ❌        | ✅         | ✅             |
+| Commercial Use    | ❌        | ❌         | ✅             |
+
+**Payment Options:**
+
+- **Stripe** (credit card, monthly/yearly)
+- **Patreon** (monthly subscriptions)
+- **Crypto** (annual licenses only, contact sales)
+
+**Refund Policy:**
+
+- 14-day money-back guarantee
+- Cancel anytime (no questions asked)
+- Downgrade keeps data intact
+
+**Purchase Link:**
+[bitbonsai.app/pricing](https://bitbonsai.app/pricing)
+
+**Non-Profit/Educational Discounts:**
+Contact `hello@bitbonsai.app` with proof of status for 50% discount.
+
+</Accordion>

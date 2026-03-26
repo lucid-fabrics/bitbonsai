@@ -6,7 +6,8 @@ description: Real-time system monitoring and job tracking
 The BitBonsai dashboard provides comprehensive system monitoring, [job](/glossary#job) tracking, and performance analytics in a single unified view.
 
 <Info>
-**What is the dashboard?** The main screen showing all your [encoding](/glossary#encoding) activity, [queue](/glossary#queue) status, and system health in real-time.
+  **What is the dashboard?** The main screen showing all your [encoding](/glossary#encoding)
+  activity, [queue](/glossary#queue) status, and system health in real-time.
 </Info>
 
 ## Dashboard Overview
@@ -34,14 +35,14 @@ Shows [encoding](/glossary#encoding) tasks currently being processed across all 
 
 ### Job Information Display
 
-| Field | Description |
-|-------|-------------|
-| **File Name** | Media file being encoded (e.g., `Movie.2024.1080p.mkv`) |
-| **Progress** | Encoding completion percentage (0-100%) |
-| **Speed** | Current encoding speed (fps - frames per second) |
-| **Node** | Which [node](/glossary#node) is processing this [job](/glossary#job) (hostname or IP) |
-| **Stage** | Current job stage: `ENCODING`, `ANALYZING`, `TRANSFERRING` |
-| **ETA** | Estimated time remaining for completion |
+| Field         | Description                                                                           |
+| ------------- | ------------------------------------------------------------------------------------- |
+| **File Name** | Media file being encoded (e.g., `Movie.2024.1080p.mkv`)                               |
+| **Progress**  | Encoding completion percentage (0-100%)                                               |
+| **Speed**     | Current encoding speed (fps - frames per second)                                      |
+| **Node**      | Which [node](/glossary#node) is processing this [job](/glossary#job) (hostname or IP) |
+| **Stage**     | Current job stage: `ENCODING`, `ANALYZING`, `TRANSFERRING`                            |
+| **ETA**       | Estimated time remaining for completion                                               |
 
 ### Progress Indicators
 
@@ -52,6 +53,7 @@ Active jobs display real-time progress bars:
 - **Red bar**: Stalled job (no progress for >10 minutes)
 
 **Example display:**
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Active Jobs (3)                                              │
@@ -81,11 +83,11 @@ Each [job](/glossary#job) shows which [node](/glossary#node) is processing it. T
 
 Shows [jobs](/glossary#job) waiting to be processed:
 
-| Metric | Meaning |
-|--------|---------|
-| **QUEUED** | Jobs waiting for available [node](/glossary#node) capacity |
-| **PENDING** | Jobs discovered but not yet [queued](/glossary#queue) (awaiting [library](/glossary#library) scan) |
-| **ANALYZING** | Files being analyzed for [codec](/glossary#codec)/[bitrate](/glossary#bitrate) information |
+| Metric        | Meaning                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| **QUEUED**    | Jobs waiting for available [node](/glossary#node) capacity                                         |
+| **PENDING**   | Jobs discovered but not yet [queued](/glossary#queue) (awaiting [library](/glossary#library) scan) |
+| **ANALYZING** | Files being analyzed for [codec](/glossary#codec)/[bitrate](/glossary#bitrate) information         |
 
 ### Estimated Completion Time
 
@@ -96,11 +98,13 @@ Calculated based on:
 3. **Active workers**: Number of concurrent encoding processes
 
 **Formula:**
+
 ```
 ETA = (QUEUED jobs + ANALYZING jobs) / throughput_per_hour
 ```
 
 **Example:**
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Queue Status                                │
@@ -118,15 +122,15 @@ ETA = (QUEUED jobs + ANALYZING jobs) / throughput_per_hour
 
 - **Current Load**: 1-minute load average
 - **CPU Cores**: Total cores available for encoding
-- **Load Ratio**: Load per core (ideal: <1.5, warning: >1.5, critical: >2.0)
+- **Load Ratio**: Load per core (ideal: under 1.5, warning: over 1.5, critical: over 2.0)
 
 **Health Indicators:**
 
-| Status | Load Ratio | Color |
-|--------|-----------|-------|
-| Healthy | 0.0 - 1.5 | Green |
-| Warning | 1.5 - 2.0 | Yellow |
-| Critical | >2.0 | Red |
+| Status   | Load Ratio | Color  |
+| -------- | ---------- | ------ |
+| Healthy  | 0.0 to 1.5 | Green  |
+| Warning  | 1.5 to 2.0 | Yellow |
+| Critical | >2.0       | Red    |
 
 ### Memory Usage
 
@@ -138,14 +142,16 @@ ETA = (QUEUED jobs + ANALYZING jobs) / throughput_per_hour
 
 Shows storage statistics for all configured [library](/glossary#library) paths:
 
-| Path | Total | Used | Free | Used % |
-|------|-------|------|------|--------|
-| `/mnt/media/movies` | 4 TB | 2.8 TB | 1.2 TB | 70% |
-| `/mnt/media/tv` | 2 TB | 1.5 TB | 500 GB | 75% |
-| `/mnt/media/anime` | 1 TB | 800 GB | 200 GB | 80% |
+| Path                | Total | Used   | Free   | Used % |
+| ------------------- | ----- | ------ | ------ | ------ |
+| `/mnt/media/movies` | 4 TB  | 2.8 TB | 1.2 TB | 70%    |
+| `/mnt/media/tv`     | 2 TB  | 1.5 TB | 500 GB | 75%    |
+| `/mnt/media/anime`  | 1 TB  | 800 GB | 200 GB | 80%    |
 
 <Warning>
-**Low Disk Space**: When any path exceeds 90% usage, [encoding](/glossary#encoding) may fail if output file cannot be written. BitBonsai needs temporary space (see [temporary files](/glossary#temporary-files)).
+  **Low Disk Space**: When any path exceeds 90% usage, [encoding](/glossary#encoding) may fail if
+  output file cannot be written. BitBonsai needs temporary space (see [temporary
+  files](/glossary#temporary-files)).
 </Warning>
 
 ## Node Status
@@ -186,6 +192,7 @@ Shows how [jobs](/glossary#job) are distributed across [nodes](/glossary#node):
 - **Overloaded**: One node handling disproportionate workload (>2x average)
 
 **Ideal distribution:**
+
 ```
 Main Node:    ████████████ 45% (4 jobs)
 Child Node 1: ███████████ 35% (3 jobs)
@@ -198,22 +205,22 @@ Child Node 2: ████████ 20% (2 jobs)
 
 Shows encoding activity over the past month:
 
-| Date | Jobs Completed | Space Saved | Avg Speed |
-|------|----------------|-------------|-----------|
-| Jan 10 | 15 | 12.5 GB | 22.3 fps |
-| Jan 09 | 18 | 15.2 GB | 24.1 fps |
-| Jan 08 | 12 | 9.8 GB | 21.7 fps |
-| **Total** | **424** | **488.3 GB** | **23.2 fps** |
+| Date      | Jobs Completed | Space Saved  | Avg Speed    |
+| --------- | -------------- | ------------ | ------------ |
+| Jan 10    | 15             | 12.5 GB      | 22.3 fps     |
+| Jan 09    | 18             | 15.2 GB      | 24.1 fps     |
+| Jan 08    | 12             | 9.8 GB       | 21.7 fps     |
+| **Total** | **424**        | **488.3 GB** | **23.2 fps** |
 
 ### Failed Jobs
 
 Track [encoding](/glossary#encoding) failures to identify problematic files:
 
-| File | Reason | Node | Date |
-|------|--------|------|------|
-| `Corrupted.mkv` | File validation failed | Main | Jan 10 |
-| `LargeFile.mkv` | Insufficient disk space | Node-170 | Jan 09 |
-| `BadCodec.avi` | Unsupported [codec](/glossary#codec) | Main | Jan 08 |
+| File            | Reason                               | Node     | Date   |
+| --------------- | ------------------------------------ | -------- | ------ |
+| `Corrupted.mkv` | File validation failed               | Main     | Jan 10 |
+| `LargeFile.mkv` | Insufficient disk space              | Node-170 | Jan 09 |
+| `BadCodec.avi`  | Unsupported [codec](/glossary#codec) | Main     | Jan 08 |
 
 **Failure Categories:**
 
@@ -224,7 +231,8 @@ Track [encoding](/glossary#encoding) failures to identify problematic files:
 - **Other**: Miscellaneous errors (5%)
 
 <Info>
-**[Auto-Retry](/glossary#self-healing)**: Failed [jobs](/glossary#job) are automatically retried up to 3 times with different encoding settings before being marked as permanently failed.
+  **[Auto-Retry](/glossary#self-healing)**: Failed [jobs](/glossary#job) are automatically retried
+  up to 3 times with different encoding settings before being marked as permanently failed.
 </Info>
 
 ## Performance Metrics
@@ -233,12 +241,12 @@ Track [encoding](/glossary#encoding) failures to identify problematic files:
 
 Frames per second processed by the [encoding](/glossary#encoding) engine:
 
-| Hardware | Typical Speed | Use Case |
-|----------|---------------|----------|
-| **NVIDIA [GPU](/glossary#gpu)** | 40-80 fps | [HEVC](/glossary#codec)/AV1 encoding |
-| **Intel [QSV](/glossary#hardware-acceleration)** | 20-40 fps | HEVC encoding |
-| **AMD GPU** | 25-50 fps | HEVC encoding |
-| **CPU-only** | 3-8 fps | Fallback for unsupported hardware |
+| Hardware                                         | Typical Speed | Use Case                             |
+| ------------------------------------------------ | ------------- | ------------------------------------ |
+| **NVIDIA [GPU](/glossary#gpu)**                  | 40-80 fps     | [HEVC](/glossary#codec)/AV1 encoding |
+| **Intel [QSV](/glossary#hardware-acceleration)** | 20-40 fps     | HEVC encoding                        |
+| **AMD GPU**                                      | 25-50 fps     | HEVC encoding                        |
+| **CPU-only**                                     | 3-8 fps       | Fallback for unsupported hardware    |
 
 **Factors Affecting Speed:**
 
@@ -264,11 +272,11 @@ Total space saved by re-[encoding](/glossary#encoding) to [HEVC](/glossary#codec
 
 **Savings by [Codec](/glossary#codec) Conversion:**
 
-| From → To | Avg Savings | Quality Impact |
-|-----------|-------------|----------------|
-| H.264 → [HEVC](/glossary#codec) | 40-50% | Visually identical (same [CRF](/glossary#crf)) |
-| H.264 → AV1 | 50-60% | Slightly better |
-| HEVC → AV1 | 20-30% | Marginal improvement |
+| From → To                       | Avg Savings | Quality Impact                                 |
+| ------------------------------- | ----------- | ---------------------------------------------- |
+| H.264 → [HEVC](/glossary#codec) | 40-50%      | Visually identical (same [CRF](/glossary#crf)) |
+| H.264 → AV1                     | 50-60%      | Slightly better                                |
+| HEVC → AV1                      | 20-30%      | Marginal improvement                           |
 
 ### Total Encoding Time
 
@@ -279,6 +287,7 @@ Cumulative time spent encoding across all nodes:
 - **Efficiency**: CPU Time / Wall Time (ideal: close to node count)
 
 **Example:**
+
 ```
 Total CPU Time:   142 hours
 Wall Time:        48 hours
@@ -288,9 +297,9 @@ Efficiency:       2.96x (close to ideal 3.0x)
 
 **Efficiency Indicators:**
 
-- **>2.5x** (3 nodes): Excellent parallelization
-- **1.5-2.5x** (3 nodes): Good, some bottlenecks
-- **<1.5x** (3 nodes): Poor distribution, investigate load balancing
+- **over 2.5x** (3 nodes): Excellent parallelization
+- **1.5 to 2.5x** (3 nodes): Good, some bottlenecks
+- **under 1.5x** (3 nodes): Poor distribution, investigate load balancing
 
 ## Advanced Monitoring
 
@@ -314,11 +323,11 @@ Track space savings over time:
 
 Compare [encoding](/glossary#encoding) efficiency across [nodes](/glossary#node):
 
-| Node | Jobs | Success Rate | Saved GB | Throughput |
-|------|------|--------------|----------|------------|
-| Main (NVIDIA) | 523 | 98.7% | 250.0 | 15.3/hr |
-| Secondary ([QSV](/glossary#hardware-acceleration)) | 412 | 97.8% | 188.3 | 11.2/hr |
-| Backup (CPU) | 312 | 96.5% | 50.0 | 5.8/hr |
+| Node                                               | Jobs | Success Rate | Saved GB | Throughput |
+| -------------------------------------------------- | ---- | ------------ | -------- | ---------- |
+| Main (NVIDIA)                                      | 523  | 98.7%        | 250.0    | 15.3/hr    |
+| Secondary ([QSV](/glossary#hardware-acceleration)) | 412  | 97.8%        | 188.3    | 11.2/hr    |
+| Backup (CPU)                                       | 312  | 96.5%        | 50.0     | 5.8/hr     |
 
 **Use Cases:**
 
@@ -330,19 +339,18 @@ Compare [encoding](/glossary#encoding) efficiency across [nodes](/glossary#node)
 
 The system continuously monitors (see [health check](/glossary#health-check)):
 
-| Check | Healthy | Warning | Critical |
-|-------|---------|---------|----------|
-| **CPU Load** | <1.5x cores | 1.5-2.0x cores | >2.0x cores |
-| **Memory** | <85% | 85-95% | >95% |
-| **[Database](/glossary#database)** | Connected | - | Disconnected |
-| **[Queue](/glossary#queue)** | 0 stuck [jobs](/glossary#job) | 1-5 stuck | >5 stuck |
-| **[Nodes](/glossary#node)** | All online | 1+ offline | [Main](/glossary#main-node) offline |
+| Check                              | Healthy                       | Warning           | Critical                            |
+| ---------------------------------- | ----------------------------- | ----------------- | ----------------------------------- |
+| **CPU Load**                       | under 1.5x cores              | 1.5 to 2.0x cores | over 2.0x cores                     |
+| **Memory**                         | under 85%                     | 85-95%            | over 95%                            |
+| **[Database](/glossary#database)** | Connected                     | -                 | Disconnected                        |
+| **[Queue](/glossary#queue)**       | 0 stuck [jobs](/glossary#job) | 1-5 stuck         | over 5 stuck                        |
+| **[Nodes](/glossary#node)**        | All online                    | 1+ offline        | [Main](/glossary#main-node) offline |
 
 <Check>
-**Overall Status**: Aggregated from all [health checks](/glossary#health-check). Dashboard displays:
-- **HEALTHY** (green): All checks passing
-- **WARNING** (yellow): One or more warnings
-- **CRITICAL** (red): One or more critical failures
+  **Overall Status**: Aggregated from all [health checks](/glossary#health-check). Dashboard
+  displays: - **HEALTHY** (green): All checks passing - **WARNING** (yellow): One or more warnings -
+  **CRITICAL** (red): One or more critical failures
 </Check>
 
 ## Troubleshooting Dashboard Issues
@@ -359,10 +367,10 @@ The system continuously monitors (see [health check](/glossary#health-check)):
 
 ```bash
 # Check queue status via API
-curl http://localhost:3100/queue/stats
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/queue/stats
 
 # Verify nodes are online
-curl http://localhost:3100/nodes
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3100/insights/nodes
 ```
 
 ### Incorrect Storage Stats
@@ -401,14 +409,18 @@ df -h /mnt/media/*
 
 Access dashboard data programmatically:
 
-| Endpoint | Data |
-|----------|------|
-| `GET /system/dashboard` | Complete dashboard (all panels) |
-| `GET /system/dashboard/health` | Health checks only |
-| `GET /queue/stats` | Queue statistics |
-| `GET /insights/stats` | Aggregated encoding stats |
-| `GET /insights/savings?days=30` | 30-day savings trend |
-| `GET /insights/nodes` | Node performance comparison |
+| Endpoint                        | Data                            |
+| ------------------------------- | ------------------------------- |
+| `GET /system/dashboard`         | Complete dashboard (all panels) |
+| `GET /system/dashboard/health`  | Health checks only              |
+| `GET /queue/stats`              | Queue statistics                |
+| `GET /jobs`                     | All encoding jobs               |
+| `GET /jobs/:id`                 | Single job details              |
+| `GET /insights/stats`           | Aggregated encoding stats       |
+| `GET /insights/savings?days=30` | 30-day savings trend            |
+| `GET /insights/nodes`           | Node performance comparison     |
+
+**Get your JWT token** from the browser's developer tools (F12 → Application → Local Storage → `token`) or from the login API response.
 
 **Example: Get dashboard JSON:**
 
@@ -416,3 +428,20 @@ Access dashboard data programmatically:
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   http://localhost:3100/system/dashboard
 ```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="Understanding Jobs" icon="list-check" href="/guides/understanding-jobs">
+    Job lifecycle, statuses, and auto-healing
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Fix stuck jobs, disk space, and node issues
+  </Card>
+  <Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
+    Track distributed encoding performance
+  </Card>
+  <Card title="GPU Acceleration" icon="bolt" href="/advanced/gpu-acceleration">
+    Speed up encoding with hardware acceleration
+  </Card>
+</CardGroup>

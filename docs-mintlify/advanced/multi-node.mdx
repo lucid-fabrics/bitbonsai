@@ -11,12 +11,14 @@ Scale BitBonsai's encoding capacity by adding worker nodes across multiple machi
 Multi-node encoding distributes video transcoding jobs across multiple physical machines, dramatically reducing total encoding time.
 
 **How it works:**
+
 - **Main Node**: Owns the PostgreSQL database, distributes jobs, hosts the web UI
 - **Child Nodes**: Worker-only nodes that pull jobs from the main node's queue
 - **Shared Storage**: NFS mount ensures all nodes access the same video files
 - **Automatic Load Balancing**: Jobs are distributed based on each node's current load and capacity
 
 **Example:**
+
 ```
 Main Node (192.168.1.100):
   - PostgreSQL database
@@ -53,7 +55,8 @@ Before setting up multi-node:
 <Card title="Shared Storage Required" icon="folder">
   All nodes must access the **same video files** via NFS/SMB network mount.
 
-  Without shared storage, child nodes cannot read source videos or write encoded files.
+Without shared storage, child nodes cannot read source videos or write encoded files.
+
 </Card>
 
 <CardGroup cols={2}>
@@ -88,6 +91,16 @@ exportfs -ra
 
 ### Step 2: Mount NFS on All Nodes
 
+Install the NFS client on every node before mounting:
+
+```bash
+# Ubuntu/Debian
+sudo apt install -y nfs-common
+
+# RHEL/CentOS/Rocky
+sudo yum install -y nfs-utils
+```
+
 Mount the shared storage at the **same path** on every node:
 
 ```bash
@@ -105,6 +118,7 @@ sudo mount -t nfs 192.168.1.1:/mnt/user/videos /mnt/videos
 ```
 
 Make permanent in `/etc/fstab`:
+
 ```
 192.168.1.1:/mnt/user/videos /mnt/videos nfs defaults,_netdev 0 0
 ```
@@ -115,25 +129,25 @@ On the main node (192.168.1.100):
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
     environment:
       POSTGRES_DB: bitbonsai
       POSTGRES_USER: bitbonsai
-      POSTGRES_PASSWORD: secure_password
+      POSTGRES_PASSWORD: YOUR_SECURE_PASSWORD
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     restart: unless-stopped
 
   backend:
-    image: bitbonsai/backend:latest
+    image: ghcr.io/bitbonsai/backend:latest
     ports:
       - "3100:3100"
     environment:
-      DATABASE_URL: postgresql://bitbonsai:secure_password@postgres:5432/bitbonsai
+      DATABASE_URL: postgresql://bitbonsai:YOUR_SECURE_PASSWORD@postgres:5432/bitbonsai
       NODE_MODE: MAIN
       CONCURRENT_JOBS: 4
     volumes:
@@ -143,15 +157,16 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: bitbonsai/frontend:latest
+    image: ghcr.io/bitbonsai/frontend:latest
     ports:
-      - "4210:80"
+      - "4210:4210"
     environment:
       API_URL: http://192.168.1.100:3100
     restart: unless-stopped
 ```
 
 Start:
+
 ```bash
 docker compose up -d
 ```
@@ -162,15 +177,13 @@ On child node 1 (192.168.1.170):
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
-
 services:
   backend:
-    image: bitbonsai/backend:latest
+    image: ghcr.io/bitbonsai/backend:latest
     ports:
       - "3100:3100"
     environment:
-      DATABASE_URL: postgresql://bitbonsai:secure_password@192.168.1.100:5432/bitbonsai
+      DATABASE_URL: postgresql://bitbonsai:YOUR_SECURE_PASSWORD@192.168.1.100:5432/bitbonsai
       NODE_MODE: LINKED
       MAIN_NODE_URL: http://192.168.1.100:3100
       CONCURRENT_JOBS: 8
@@ -179,7 +192,10 @@ services:
     restart: unless-stopped
 ```
 
+Replace `YOUR_SECURE_PASSWORD` with the same password used on the main node postgres service.
+
 Start:
+
 ```bash
 docker compose up -d
 ```
@@ -211,6 +227,7 @@ BitBonsai uses smart load balancing:
 5. **Job completes** → status changes to COMPLETED
 
 **Load calculation:**
+
 ```
 Node Load = (Active Jobs / Max Concurrent Jobs) × 100
 
@@ -229,9 +246,10 @@ Example:
 **Symptom:** Child node started but not visible in Settings → Nodes
 
 **Fix:**
+
 ```bash
 # On child node, check logs
-docker logs bitbonsai-backend
+docker compose logs backend
 
 # Look for:
 # ✓ Connected to database at postgresql://192.168.1.100:5432/bitbonsai
@@ -248,14 +266,15 @@ docker logs bitbonsai-backend
 **Symptom:** Jobs remain QUEUED, no node picks them up
 
 **Fix:**
+
 1. Check all nodes are ONLINE in Settings → Nodes
 2. Verify NFS mounts are working:
    ```bash
-   docker exec bitbonsai-backend ls -la /media
+   docker compose exec backend ls -la /media
    ```
 3. Check logs for errors:
    ```bash
-   docker logs bitbonsai-backend | grep ERROR
+   docker compose logs backend | grep ERROR
    ```
 
 ### File Not Found Errors
@@ -263,29 +282,31 @@ docker logs bitbonsai-backend
 **Symptom:** Job fails with "ENOENT: no such file or directory"
 
 **Fix:**
+
 - Verify NFS mount path is **identical** on all nodes
 - Check NFS permissions (should be `rw`, not `ro`)
 - Test file access:
   ```bash
-  docker exec bitbonsai-backend cat /media/Movies/test.mp4
+  docker compose exec backend ls -la /media/
   ```
 
 ---
 
 ## Performance Tips
 
-| Tip | Why |
-|-----|-----|
-| **Use 10GbE network** | NFS throughput critical for 4K video |
-| **Enable NFS async mode** | Faster writes (use UPS for safety) |
-| **Match NFS mount paths** | Avoids path rewriting overhead |
-| **Use SSD for database** | Faster job updates and queries |
-| **Monitor node load** | Add nodes when load > 80% consistently |
+| Tip                       | Why                                    |
+| ------------------------- | -------------------------------------- |
+| **Use 10GbE network**     | NFS throughput critical for 4K video   |
+| **Enable NFS async mode** | Faster writes (use UPS for safety)     |
+| **Match NFS mount paths** | Avoids path rewriting overhead         |
+| **Use SSD for database**  | Faster job updates and queries         |
+| **Monitor node load**     | Add nodes when load > 80% consistently |
 
 ---
 
 ## Related Guides
 
 - **[GPU Acceleration](/advanced/gpu-acceleration)** - Add GPU support to nodes
+- **[Distributed Encoding Architecture](/advanced/distributed-encoding)** - How shared-database polling works across nodes
 - **[Monitoring](/guides/monitoring)** - Track multi-node performance
 - **[Troubleshooting](/advanced/troubleshooting)** - Fix common multi-node issues

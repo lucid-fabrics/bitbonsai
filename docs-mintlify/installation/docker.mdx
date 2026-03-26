@@ -9,15 +9,16 @@ Deploy BitBonsai using Docker containers for simplified installation and updates
 
 Before installing, ensure you have:
 
-| Requirement | Minimum Version | Check Command |
-|-------------|----------------|---------------|
-| Docker | 20.10+ | `docker --version` |
-| Docker Compose | 2.0+ | `docker compose version` |
-| Disk Space | 100GB+ | For temporary encoding files |
-| RAM | 8GB+ | For parallel encoding jobs |
+| Requirement    | Minimum Version         | Check Command                                           |
+| -------------- | ----------------------- | ------------------------------------------------------- |
+| Docker         | 20.10+                  | `docker --version`                                      |
+| Docker Compose | 2.0+                    | `docker compose version`                                |
+| Disk Space     | 100GB+                  | For temporary encoding files                            |
+| RAM            | 4GB+ (8GB+ recommended) | 4 GB minimum for single job; 8 GB for parallel encoding |
 
 <Note>
-BitBonsai requires access to your video library via volume mounts. Plan your directory structure before installation.
+  BitBonsai requires access to your video library via volume mounts. Plan your directory structure
+  before installation.
 </Note>
 
 ## Quick Start
@@ -34,8 +35,6 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
     Create a `docker-compose.yml` file with the following configuration:
 
     ```yaml docker-compose.yml
-    version: '3.8'
-
     services:
       postgres:
         image: postgres:15
@@ -55,7 +54,7 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
           timeout: 5s
           retries: 5
 
-      bitbonsai-backend:
+      backend:
         image: ghcr.io/bitbonsai/backend:latest
         container_name: bitbonsai-backend
         restart: unless-stopped
@@ -67,19 +66,19 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
           PORT: 3100
           NODE_ENV: production
         volumes:
-          - /path/to/your/videos:/videos
+          - /path/to/your/videos:/media
           - /path/to/temp:/tmp/bitbonsai
         ports:
           - "3100:3100"
 
-      bitbonsai-frontend:
+      frontend:
         image: ghcr.io/bitbonsai/frontend:latest
         container_name: bitbonsai-frontend
         restart: unless-stopped
         depends_on:
-          - bitbonsai-backend
+          - backend
         environment:
-          API_URL: http://bitbonsai-backend:3100
+          API_URL: http://backend:3100
         ports:
           - "4210:4210"
 
@@ -90,6 +89,7 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
     <Warning>
     Replace `/path/to/your/videos` and `/path/to/temp` with actual paths on your host system.
     </Warning>
+
   </Step>
 
   <Step title="Configure Environment">
@@ -98,6 +98,7 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
     1. **POSTGRES_PASSWORD**: Change `changeme` to a secure password
     2. **DATABASE_URL**: Update password in connection string to match
     3. **Volume paths**: Point to your actual video library and temp directory
+
   </Step>
 
   <Step title="Start Services">
@@ -110,6 +111,7 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
     - Create PostgreSQL database
     - Start backend API and frontend UI
     - Apply database migrations automatically
+
   </Step>
 
   <Step title="Verify Installation">
@@ -120,6 +122,7 @@ BitBonsai requires access to your video library via volume mounts. Plan your dir
     ```
 
     All services should show `Up (healthy)` or `Up` status.
+
   </Step>
 </Steps>
 
@@ -132,6 +135,7 @@ Open your browser to:
 </Card>
 
 Default setup includes:
+
 - **Frontend**: http://localhost:4210
 - **Backend API**: http://localhost:3100
 - **PostgreSQL**: localhost:5432
@@ -140,29 +144,33 @@ Default setup includes:
 
 ### Backend Configuration
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | - | Yes |
-| `PORT` | API server port | 3100 | No |
-| `NODE_ENV` | Environment mode | production | No |
-| `LOG_LEVEL` | Logging verbosity (error, warn, info, debug) | info | No |
+| Variable          | Description                                             | Default    | Required   |
+| ----------------- | ------------------------------------------------------- | ---------- | ---------- |
+| `DATABASE_URL`    | PostgreSQL connection string                            | -          | Yes        |
+| `PORT`            | API server port                                         | 3100       | No         |
+| `NODE_ENV`        | Environment mode                                        | production | No         |
+| `LOG_LEVEL`       | Logging verbosity (error, warn, info, debug)            | info       | No         |
+| `NODE_MODE`       | Node role: `MAIN` (default) or `LINKED` (worker)        | MAIN       | No         |
+| `MAIN_NODE_URL`   | URL of main node API (required when `NODE_MODE=LINKED`) | -          | Multi-node |
+| `CONCURRENT_JOBS` | Max simultaneous encoding jobs per node                 | 1          | No         |
 
 ### Frontend Configuration
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `API_URL` | Backend API URL (internal Docker network) | - | Yes |
+| Variable  | Description                               | Default | Required |
+| --------- | ----------------------------------------- | ------- | -------- |
+| `API_URL` | Backend API URL (internal Docker network) | -       | Yes      |
 
 ### Database Configuration
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `POSTGRES_DB` | Database name | bitbonsai | Yes |
-| `POSTGRES_USER` | Database user | bitbonsai | Yes |
-| `POSTGRES_PASSWORD` | Database password | - | Yes |
+| Variable            | Description       | Default   | Required |
+| ------------------- | ----------------- | --------- | -------- |
+| `POSTGRES_DB`       | Database name     | bitbonsai | Yes      |
+| `POSTGRES_USER`     | Database user     | bitbonsai | Yes      |
+| `POSTGRES_PASSWORD` | Database password | -         | Yes      |
 
 <Tip>
-For production deployments, use Docker secrets or environment files instead of hardcoding credentials.
+  For production deployments, use Docker secrets or environment files instead of hardcoding
+  credentials.
 </Tip>
 
 ## Volume Mounts
@@ -171,24 +179,26 @@ For production deployments, use Docker secrets or environment files instead of h
 
 ```yaml
 volumes:
-  - /path/to/your/videos:/videos
+  - /path/to/your/videos:/media # replace with your actual path
 ```
 
 **Purpose:** Provides read/write access to your video files for scanning and encoding.
 
 **Requirements:**
+
 - Must be an absolute path on the host system
 - User inside container must have read/write permissions
 - Sufficient free space for encoded outputs (typically 50-70% of original size)
 
 **Examples:**
+
 ```yaml
 # Single library
-- /mnt/media/movies:/videos
+- /mnt/media/movies:/media
 
 # Multiple libraries (mount parent directory)
-- /mnt/media:/videos
-  # BitBonsai will scan subdirectories: /videos/movies, /videos/tv, etc.
+- /mnt/media:/media
+  # BitBonsai will scan subdirectories: /media/movies, /media/tv, etc.
 ```
 
 ### Temporary Files Mount
@@ -201,12 +211,14 @@ volumes:
 **Purpose:** Stores temporary encoding files during transcoding operations.
 
 **Requirements:**
+
 - Fast storage recommended (SSD/NVMe preferred)
 - Minimum free space: 2× largest video file size
 - Cleared automatically after successful encoding
 
 <Warning>
-Do not use `/tmp` on the host if it's a tmpfs (RAM disk). Encoding generates large temporary files.
+  Do not use `/tmp` on the host if it's a tmpfs (RAM disk). Encoding generates large temporary
+  files.
 </Warning>
 
 ### PostgreSQL Data
@@ -228,14 +240,15 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-frontend:
+      frontend:
         ports:
           - "8080:4210"  # Access on host port 8080
 
-      bitbonsai-backend:
+      backend:
         ports:
           - "8081:3100"  # API on host port 8081
     ```
+
   </Tab>
 
   <Tab title="Hardware Acceleration">
@@ -243,7 +256,7 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         devices:
           - /dev/dri:/dev/dri  # Intel/AMD GPU
         # OR for NVIDIA:
@@ -255,6 +268,7 @@ volumes:
     <Note>
     Requires NVIDIA Container Toolkit for NVIDIA GPUs.
     </Note>
+
   </Tab>
 
   <Tab title="Resource Limits">
@@ -262,7 +276,7 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         deploy:
           resources:
             limits:
@@ -272,6 +286,7 @@ volumes:
               cpus: '4.0'
               memory: 8G
     ```
+
   </Tab>
 
   <Tab title="Logging">
@@ -279,13 +294,14 @@ volumes:
 
     ```yaml
     services:
-      bitbonsai-backend:
+      backend:
         logging:
           driver: "json-file"
           options:
             max-size: "10m"
             max-file: "3"
     ```
+
   </Tab>
 </Tabs>
 
@@ -298,7 +314,7 @@ After starting BitBonsai for the first time:
     Backend automatically applies database migrations on startup. Check logs:
 
     ```bash
-    docker compose logs bitbonsai-backend
+    docker compose logs backend
     ```
 
     Look for:
@@ -306,18 +322,20 @@ After starting BitBonsai for the first time:
     [Nest] INFO [Database] Migrations applied successfully
     [Nest] INFO [Bootstrap] Application listening on port 3100
     ```
+
   </Step>
 
   <Step title="Add Video Library">
     Navigate to **Settings → Libraries** in the UI and add your first library:
 
     - **Name**: Movies
-    - **Path**: `/videos/movies` (relative to container mount)
+    - **Path**: `/media/movies` (relative to container mount)
     - **Type**: Movies or TV Shows
 
     <Tip>
-    Use the `/videos` prefix since that's the container mount point, not your host path.
+    Use the `/media` prefix since that's the container mount point, not your host path.
     </Tip>
+
   </Step>
 
   <Step title="Run Initial Scan">
@@ -348,14 +366,16 @@ docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup.sql
 ### Container Won't Start
 
 Check logs for errors:
+
 ```bash
-docker compose logs bitbonsai-backend
-docker compose logs bitbonsai-frontend
+docker compose logs backend
+docker compose logs frontend
 ```
 
 ### Cannot Access UI
 
 Verify container is running and port mapping:
+
 ```bash
 docker compose ps
 curl http://localhost:4210
@@ -364,6 +384,7 @@ curl http://localhost:4210
 ### Database Connection Errors
 
 Ensure PostgreSQL is healthy:
+
 ```bash
 docker compose exec postgres pg_isready -U bitbonsai
 ```
@@ -373,9 +394,10 @@ If connection fails, check `DATABASE_URL` matches PostgreSQL credentials.
 ### Permission Errors
 
 Fix volume mount permissions:
+
 ```bash
 # Find container user ID
-docker compose exec bitbonsai-backend id
+docker compose exec backend id
 
 # Adjust host directory ownership
 sudo chown -R 1000:1000 /path/to/your/videos
@@ -384,13 +406,15 @@ sudo chown -R 1000:1000 /path/to/your/videos
 ### Out of Disk Space
 
 Check temporary directory usage:
+
 ```bash
 du -sh /path/to/temp
 ```
 
 Clear old temporary files:
+
 ```bash
-docker compose exec bitbonsai-backend rm -rf /tmp/bitbonsai/*
+docker compose exec backend rm -rf /tmp/bitbonsai/*
 ```
 
 ## Next Steps
@@ -400,15 +424,15 @@ docker compose exec bitbonsai-backend rm -rf /tmp/bitbonsai/*
     Add your video library and run your first scan
   </Card>
 
-  <Card title="Encoding Configuration" icon="gear" href="/guides/encoding-settings">
-    Configure HEVC/AV1 encoding presets
-  </Card>
+<Card title="Codec Selection" icon="gear" href="/advanced/codec-selection">
+  Configure HEVC/AV1 encoding presets
+</Card>
 
-  <Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
-    Scale encoding with worker nodes
-  </Card>
+<Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
+  Scale encoding with worker nodes
+</Card>
 
-  <Card title="Backup & Recovery" icon="database" href="/advanced/backup">
+  <Card title="Backup & Recovery" icon="database" href="/faq#how-do-i-back-up-my-database">
     Backup strategies for database and configuration
   </Card>
 </CardGroup>

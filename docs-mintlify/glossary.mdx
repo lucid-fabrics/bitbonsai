@@ -13,6 +13,7 @@ Simple explanations for technical terms used in BitBonsai documentation.
 ## Video & Encoding Terms
 
 ### Encoding
+
 Converting video files to use less storage space while maintaining quality. Like compressing a photo to make it smaller without making it look worse.
 
 **Example:** A 100 GB movie becomes 40 GB after encoding (60% smaller).
@@ -20,9 +21,11 @@ Converting video files to use less storage space while maintaining quality. Like
 ---
 
 ### Codec
+
 The format used to compress video. Think of it like different file formats (like .jpg vs .png for images).
 
 **Common codecs:**
+
 - **H.264** - Old standard, larger files
 - **HEVC (H.265)** - Modern, 40-60% smaller files
 - **AV1** - Newest, 50-70% smaller files
@@ -32,14 +35,17 @@ The format used to compress video. Think of it like different file formats (like
 ---
 
 ### Transcoding
+
 Converting a video from one codec to another. BitBonsai transcodes your H.264 videos to HEVC or AV1 to save space.
 
 ---
 
-### CRF (Constant Rate Factor)
-A quality setting for encoding. Lower numbers = better quality but larger files.
+### CRF
+
+**CRF (Constant Rate Factor)** — a quality setting for encoding. Lower numbers = better quality but larger files.
 
 **Typical values:**
+
 - CRF 18-22: Very high quality (large files)
 - CRF 23-28: Balanced quality (recommended)
 - CRF 29-35: Lower quality (small files)
@@ -49,16 +55,33 @@ A quality setting for encoding. Lower numbers = better quality but larger files.
 ---
 
 ### Bitrate
+
 How much data is used per second of video. Higher bitrate = better quality but larger files.
 
 **Example:** 5 Mbps (megabits per second) means 5 million bits of data per second.
 
 ---
 
+### GPU
+
+**GPU (Graphics Processing Unit)** — a graphics card that can be used to accelerate video encoding. Using a GPU is **5-10x faster** than CPU-only encoding.
+
+**Supported GPUs:**
+
+- NVIDIA (GTX 1050+ or RTX series) — NVENC encoder
+- Intel (6th gen Skylake+) — QuickSync (QSV) encoder
+- AMD (RX 400 series+) — VCE/VCN encoder
+
+**Related:** [GPU Setup Guide](/advanced/gpu-acceleration)
+
+---
+
 ### Hardware Acceleration
+
 Using your computer's graphics card (GPU) to encode videos **5-10x faster** than using just the CPU.
 
 **GPU types:**
+
 - NVIDIA (NVENC)
 - Intel (QuickSync/QSV)
 - AMD (VCE/VCN)
@@ -67,12 +90,38 @@ Using your computer's graphics card (GPU) to encode videos **5-10x faster** than
 
 ---
 
+### FFmpeg
+
+The open-source tool BitBonsai uses internally to encode video. You don't interact with FFmpeg directly — BitBonsai handles it automatically.
+
+**What it does:** Reads source video, applies codec conversion, writes output file.
+
+**Why it matters:** Most error messages in logs come from FFmpeg. If you see `ffmpeg` in an error, check [Troubleshooting](/advanced/troubleshooting).
+
+---
+
+### Resolution
+
+The dimensions of a video in pixels, expressed as width × height.
+
+**Common resolutions:**
+
+- **1080p** — 1920 × 1080 (Full HD, most common)
+- **4K / 2160p** — 3840 × 2160 (Ultra HD, 4× larger than 1080p)
+- **720p** — 1280 × 720 (HD)
+
+**Encoding impact:** 4K files take ~4× longer to encode than 1080p at the same codec.
+
+---
+
 ## Docker & Installation Terms
 
 ### Docker
+
 A tool that runs applications in isolated "containers." Think of it like a virtual box that contains BitBonsai and everything it needs to run.
 
 **Why use Docker?**
+
 - Easy installation (one command)
 - Works the same on all computers
 - Keeps BitBonsai separate from other apps
@@ -80,6 +129,7 @@ A tool that runs applications in isolated "containers." Think of it like a virtu
 ---
 
 ### Container
+
 A packaged application that runs in Docker. Like a self-contained app that doesn't interfere with anything else on your computer.
 
 **Example:** BitBonsai runs in a container with its own copy of all required software.
@@ -87,16 +137,19 @@ A packaged application that runs in Docker. Like a self-contained app that doesn
 ---
 
 ### Image
+
 A template used to create a Docker container. Like a blueprint or recipe.
 
-**Example:** `lucidfabrics/bitbonsai:latest` is the image name.
+**Example:** `ghcr.io/bitbonsai/backend:latest` is the backend image name.
 
 ---
 
 ### Port
+
 A "door" on your computer that allows network connections. Each app uses a different port number.
 
 **BitBonsai ports:**
+
 - **4210** - Web interface (where you access BitBonsai in your browser)
 - **3100** - API (internal communication)
 
@@ -105,9 +158,11 @@ A "door" on your computer that allows network connections. Each app uses a diffe
 ---
 
 ### Port Mapping
+
 Connecting a port on your computer to a port inside the Docker container.
 
 **Example:** `-p 4210:4210` means:
+
 - Left 4210 = Your computer's port
 - Right 4210 = Container's port
 
@@ -116,9 +171,11 @@ Connecting a port on your computer to a port inside the Docker container.
 ---
 
 ### Volume Mount
+
 Connecting a folder on your computer to a folder inside the Docker container. This lets BitBonsai access your video files.
 
 **Example:** `-v /path/to/videos:/media` means:
+
 - Left side = Folder on your computer (`/path/to/videos`)
 - Right side = Folder inside container (`/media`)
 
@@ -127,11 +184,13 @@ Connecting a folder on your computer to a folder inside the Docker container. Th
 ---
 
 ### Environment Variable
+
 A configuration setting passed to the application.
 
 **Example:** `-e TZ=America/New_York` sets the timezone.
 
 **Common variables:**
+
 - `TZ` - Timezone
 - `NODE_ENV` - Run mode (production or development)
 
@@ -139,10 +198,22 @@ A configuration setting passed to the application.
 
 ## Multi-Node Terms
 
+### Multi-Node
+
+Running BitBonsai across multiple machines to encode videos in parallel. One **main node** coordinates work; additional **child nodes** (workers) share the load.
+
+**How it works:** All nodes connect to the same PostgreSQL database and share video files via NFS.
+
+**Related:** [Multi-Node Setup](/advanced/multi-node) | [Distributed Encoding Architecture](/advanced/distributed-encoding)
+
+---
+
 ### Node
+
 A computer running BitBonsai. You can have one node (simple) or multiple nodes (faster).
 
 **Types:**
+
 - **Main node** - Has the database, assigns jobs to workers
 - **Child node** - Worker that encodes videos assigned by main node
 
@@ -151,19 +222,23 @@ A computer running BitBonsai. You can have one node (simple) or multiple nodes (
 ---
 
 ### Main Node
+
 The primary BitBonsai installation that owns the database and web interface. Coordinates all encoding work.
 
 **Responsibilities:**
+
 - Stores job database
 - Distributes jobs to workers
 - Hosts the web interface
 
 ---
 
-### Child Node (Worker)
-An additional computer that helps encode videos. Receives jobs from the main node, encodes them, and reports back.
+### Child Node
+
+An additional computer (worker) that helps encode videos. Receives jobs from the main node, encodes them, and reports back.
 
 **Benefits:**
+
 - Faster encoding (more computers = more speed)
 - Use spare computers for encoding
 - Can have 1 main + many workers
@@ -172,8 +247,9 @@ An additional computer that helps encode videos. Receives jobs from the main nod
 
 ---
 
-### NFS (Network File System)
-A way for multiple computers to access the same files over a network. Required for multi-node setups.
+### NFS
+
+**NFS (Network File System)** — a way for multiple computers to access the same files over a network. Required for multi-node setups.
 
 **Why needed?** All nodes need to read the same video files, so they share them via NFS.
 
@@ -182,6 +258,7 @@ A way for multiple computers to access the same files over a network. Required f
 ---
 
 ### Load Balancing
+
 Automatically distributing encoding jobs across multiple nodes to use all available computing power efficiently.
 
 **BitBonsai does this automatically** - you don't need to configure anything.
@@ -191,6 +268,7 @@ Automatically distributing encoding jobs across multiple nodes to use all availa
 ## Storage Terms
 
 ### Library
+
 A folder containing video files that you want BitBonsai to encode.
 
 **Example:** `/media/movies` or `/videos/tv-shows`
@@ -198,6 +276,7 @@ A folder containing video files that you want BitBonsai to encode.
 ---
 
 ### Temporary Files
+
 Files created during encoding that are deleted after the job completes. BitBonsai needs space for these.
 
 **Storage needed:** ~2-5 GB per active encoding job.
@@ -205,6 +284,7 @@ Files created during encoding that are deleted after the job completes. BitBonsa
 ---
 
 ### Atomic Replace
+
 Safely replacing the original file with the encoded version. BitBonsai uses a rename operation (not copy) to prevent corruption.
 
 **Why it matters:** If encoding fails or is interrupted, your original file is safe.
@@ -214,9 +294,11 @@ Safely replacing the original file with the encoded version. BitBonsai uses a re
 ## Job Status Terms
 
 ### Job
+
 A single video file being encoded. Each video in your library becomes one job.
 
 **Job lifecycle:**
+
 1. **QUEUED** - Waiting to start
 2. **ENCODING** - Currently being processed
 3. **COMPLETED** - Successfully encoded
@@ -226,14 +308,17 @@ A single video file being encoded. Each video in your library becomes one job.
 ---
 
 ### Queue
+
 The list of jobs waiting to be encoded. Jobs are processed in order (oldest first).
 
 ---
 
 ### Self-Healing
+
 BitBonsai's ability to automatically recover from errors without manual intervention.
 
 **Examples:**
+
 - Retries failed jobs automatically (3 times)
 - Detects corrupted output files and re-encodes
 - Recovers stuck jobs on startup
@@ -245,22 +330,24 @@ BitBonsai's ability to automatically recover from errors without manual interven
 
 ## System Terms
 
-### API (Application Programming Interface)
-The internal communication system BitBonsai uses. You don't interact with it directly - the web interface does.
+### API
+
+**API (Application Programming Interface)** — the internal communication system BitBonsai uses. You don't interact with it directly - the web interface does.
 
 **Port:** 3100 (internal only)
 
 ---
 
 ### Database
+
 Where BitBonsai stores information about jobs, libraries, and settings.
 
-**Default:** SQLite (file-based, works for most users)
-**Advanced:** PostgreSQL (for high-performance setups)
+**Engine:** PostgreSQL 15+ (required — BitBonsai does not support SQLite)
 
 ---
 
 ### Health Check
+
 BitBonsai automatically verifies encoded files can be played back correctly. If not, it marks them as CORRUPTED and retries.
 
 **Why it matters:** Ensures you don't replace good files with broken ones.
@@ -270,6 +357,7 @@ BitBonsai automatically verifies encoded files can be played back correctly. If 
 ## Unraid-Specific Terms
 
 ### Community Applications
+
 Unraid's app store where you can easily install Docker containers with a few clicks.
 
 **How to find BitBonsai:** Open Unraid web interface → Apps tab → Search "BitBonsai"
@@ -277,6 +365,7 @@ Unraid's app store where you can easily install Docker containers with a few cli
 ---
 
 ### Appdata
+
 Unraid's default location for application configuration files.
 
 **BitBonsai appdata:** `/mnt/user/appdata/bitbonsai`
@@ -284,6 +373,7 @@ Unraid's default location for application configuration files.
 ---
 
 ### Cache Pool
+
 Unraid's fast storage (usually SSD) used for temporary files. Dramatically speeds up encoding.
 
 **Recommended:** Use cache pool for BitBonsai temp directory.

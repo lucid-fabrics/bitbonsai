@@ -1,0 +1,90 @@
+---
+title: Multi-Node & Scaling FAQ
+description: Questions about multi-node setups and scaling
+---
+
+## Multi-Node & Scaling
+
+<Accordion title="How do I add more worker nodes?">
+BitBonsai supports multi-node distributed encoding. Steps:
+
+**1. Set Up Main Node (Database Owner)**
+
+```bash
+docker run -d \
+  -e NODE_MODE=MAIN \
+  -e DATABASE_URL=postgresql://user:pass@localhost:5432/bitbonsai \
+  -p 3100:3100 \
+  ghcr.io/bitbonsai/backend:latest
+```
+
+**2. Set Up Child Nodes (Workers)**
+
+```bash
+docker run -d \
+  -e NODE_MODE=LINKED \
+  -e DATABASE_URL=postgresql://user:pass@192.168.1.100:5432/bitbonsai \
+  -e MAIN_NODE_URL=http://192.168.1.100:3100 \
+  -p 3100:3100 \
+  -v /mnt/videos:/media \
+  ghcr.io/bitbonsai/backend:latest
+```
+
+**3. Configure Shared Storage (NFS)**
+
+- All nodes must access the **same media files** via NFS
+- Recommended: 1 Gbps+ network, NFS v4
+- Mount paths must be identical across nodes
+
+**4. Verify Registration**
+
+- Child nodes auto-register with main node on startup
+- Check **Settings → Nodes** to see all active workers
+
+**Architecture:**
+
+- **Main node**: Owns PostgreSQL, API, job queue
+- **Child nodes**: Workers only, proxy API calls to main
+- **Job distribution**: Automatic load balancing via queue system
+
+See [Multi-Node Setup](/advanced/multi-node) for detailed configuration.
+
+</Accordion>
+
+<Accordion title="Is there a license for multi-node setups?">
+Yes. Multi-node support requires a paid license:
+
+| Tier          | Max Nodes | Max Concurrent Jobs | Price     |
+| ------------- | --------- | ------------------- | --------- |
+| **FREE**      | 1 node    | 1 job               | Free      |
+| **SUPPORTER** | 3 nodes   | 5 jobs              | $5/month  |
+| **PRO**       | Unlimited | Unlimited           | $15/month |
+
+**Features Locked Behind License:**
+
+- Multi-node worker registration
+- Concurrent job execution (>1 job at once)
+- Priority support
+
+**How to Purchase:**
+
+1. Visit [bitbonsai.app/pricing](https://bitbonsai.app/pricing)
+2. Subscribe via Stripe or Patreon
+3. Receive license key via email
+4. Enter key in **Settings → License**
+
+**Trial Period:**
+
+- 14-day free trial for SUPPORTER/PRO tiers
+- No credit card required for FREE tier
+- Downgrade anytime (keeps data)
+
+**Why Paid?**
+
+- Server costs (license validation, updates)
+- Development funding (full-time maintainer)
+- Community support (Discord, GitHub)
+
+See [Pricing Page](https://bitbonsai.app/pricing) for current rates.
+
+</Accordion>

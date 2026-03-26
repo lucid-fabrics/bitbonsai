@@ -1,0 +1,104 @@
+---
+title: Backup & Maintenance FAQ
+description: Questions about backups, maintenance, and platform support
+---
+
+## Backup & Maintenance
+
+<Accordion title="How do I back up my database?">
+BitBonsai uses PostgreSQL. Backup methods:
+
+**1. PostgreSQL Dump (Recommended)**
+
+```bash
+# Full backup
+docker exec bitbonsai-postgres pg_dump -U bitbonsai > backup.sql
+
+# Restore
+docker exec -i bitbonsai-postgres psql -U bitbonsai < backup.sql
+```
+
+**2. Volume Backup (Docker)**
+
+```bash
+# Stop containers
+docker compose down
+
+# Backup data volume
+tar -czf bitbonsai-data.tar.gz /var/lib/docker/volumes/bitbonsai_postgres_data
+
+# Restore
+tar -xzf bitbonsai-data.tar.gz -C /
+docker compose up -d
+```
+
+**3. Automated Backups (Cron)**
+
+```bash
+# Add to crontab (daily at 2 AM)
+0 2 * * * docker exec bitbonsai-postgres pg_dump -U bitbonsai | gzip > /backups/bitbonsai-$(date +\%Y\%m\%d).sql.gz
+```
+
+**What Gets Backed Up:**
+
+- Libraries and scan history
+- Job queue and encoding history
+- Settings and node configuration
+- User preferences
+
+**What Doesn't Get Backed Up:**
+
+- Media files (backup separately via rsync/Duplicati)
+- Temp files (`*.bbtmp`) - safe to delete
+- Logs (ephemeral, rotate after 30 days)
+
+**Restore Testing:**
+Test your backups monthly to ensure they're valid.
+
+</Accordion>
+
+<Accordion title="Can I run BitBonsai on Windows?">
+Yes, but **WSL2 is required** for optimal performance.
+
+**Option 1: WSL2 + Docker (Recommended)**
+
+```bash
+# Install WSL2
+wsl --install
+
+# Install Docker Desktop (with WSL2 backend)
+# Download from: https://docker.com/desktop
+
+# Run BitBonsai
+docker compose up -d
+```
+
+**Option 2: Native Windows (Not Recommended)**
+
+- NestJS backend runs on Windows
+- FFmpeg works but slower (no native POSIX)
+- NFS shares not supported (use SMB)
+- Path handling issues (backslashes vs. forward slashes)
+
+**Why WSL2?**
+
+- Native Linux performance
+- Better FFmpeg efficiency
+- NFS support for multi-node
+- Easier troubleshooting (Docker Compose)
+
+**Configuration:**
+
+- Mount media via WSL2: `\\wsl$\Ubuntu\mnt\media`
+- Database in WSL2 volume (better I/O)
+- Frontend accessible via `localhost:4210`
+
+**Known Limitations:**
+
+- GPU passthrough (NVENC) requires WSL2 + CUDA drivers
+- Network performance slightly lower than bare metal
+- File watchers may lag on large libraries (10K+ files)
+
+See [Installation Requirements](/installation/requirements) for system specs.
+
+</Accordion>
