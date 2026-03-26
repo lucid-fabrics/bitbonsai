@@ -1,17 +1,25 @@
 ---
 title: Welcome to BitBonsai
-description: Effortless video encoding for your media library
+description: Self-hosted video transcoding for Plex, Jellyfin, and media libraries
 ---
 
 # What is BitBonsai?
 
-BitBonsai automatically converts your video library to modern codecs (HEVC/AV1) with zero configuration.
+**BitBonsai is self-hosted video transcoding software** for people who run their own media servers (Plex, Jellyfin, Emby) or maintain large video collections.
 
-## What BitBonsai Does
+Drop in a folder of movies or TV shows, and BitBonsai automatically converts them to space-saving codecs — **HEVC (H.265)** or **AV1** — using your GPU (NVIDIA, Intel, or AMD) for fast, efficient encoding. It runs on Docker, Unraid, or bare metal, distributes work across multiple machines, and keeps going when things break.
 
-BitBonsai monitors your video libraries and automatically transcodes them to modern, efficient codecs like HEVC (H.265) and AV1. Point it at your Plex, Jellyfin, or personal video collections, and it handles the rest—detecting new files, queuing them for encoding, and replacing originals with compressed versions that maintain visual quality while dramatically reducing file sizes.
+## Who It's For
 
-Unlike traditional transcoding tools that require complex configuration, BitBonsai uses smart defaults optimized for 99% of users. Add a folder, click encode, done.
+**You** if you:
+- Run Plex, Jellyfin, or Emby and want to reclaim storage space
+- Have a GPU in your server and want to use it for encoding
+- Have more than one server and want to spread encoding work across all of them
+- Don't want to write FFmpeg commands or tune bitrate settings
+
+## What It Does
+
+BitBonsai watches a folder, picks up new video files, encodes them to HEVC or AV1 using your GPU, and puts the smaller files in place of the originals — automatically, without you touching anything. It detects hardware acceleration, queues jobs, recovers from crashes, and validates that the output isn't corrupted.
 
 ## Why Use BitBonsai
 
