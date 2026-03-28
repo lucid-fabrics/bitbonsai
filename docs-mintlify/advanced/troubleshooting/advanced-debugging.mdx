@@ -1,0 +1,161 @@
+---
+title: Advanced Debugging
+description: Detailed debugging techniques for BitBonsai
+---
+
+## Enable Debug Logging
+
+<Tabs>
+  <Tab title="Docker Compose">
+    Edit `docker-compose.yml`:
+    ```yaml
+    bitbonsai-backend:
+      environment:
+        LOG_LEVEL: debug  # Change from 'info'
+    ```
+
+    Restart:
+    ```bash
+    docker compose restart bitbonsai-backend
+    ```
+  </Tab>
+  <Tab title="Environment File">
+    Create `.env` file:
+    ```bash
+    LOG_LEVEL=debug
+    DEBUG=*
+    ```
+
+    Restart containers to apply.
+  </Tab>
+</Tabs>
+
+## Monitor Resource Usage
+
+```bash
+# Real-time container stats
+docker stats bitbonsai-backend bitbonsai-frontend postgres
+
+# Check CPU/memory limits
+docker inspect bitbonsai-backend | grep -A 10 "Memory"
+
+# Monitor disk I/O
+iostat -x 1
+```
+
+## Network Debugging
+
+```bash
+# Check Docker network configuration
+docker network inspect bitbonsai_default
+
+# Test inter-container connectivity
+docker compose exec bitbonsai-frontend ping bitbonsai-backend
+docker compose exec bitbonsai-backend ping postgres
+
+# Capture network traffic (advanced)
+docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i any port 3100
+```
+
+## View Job FFmpeg Logs
+
+FFmpeg encoding logs are stored in the temp directory:
+
+```bash
+# Find encoding directories
+ls -la /tmp/bitbonsai/
+
+# View FFmpeg output
+cat /tmp/bitbonsai/encoding-*/ffmpeg.log
+
+# Follow in real-time
+tail -f /tmp/bitbonsai/encoding-*/ffmpeg.log
+```
+
+## Database Query Examples
+
+Connect to the database to debug job state:
+
+```bash
+docker compose exec postgres psql -U bitbonsai -d bitbonsai
+```
+
+```sql
+-- View all jobs with status
+SELECT id, status, progress, "originalPath" FROM "EncodingJob" ORDER BY "createdAt" DESC LIMIT 20;
+
+-- View jobs by status
+SELECT status, COUNT(*) FROM "EncodingJob" GROUP BY status;
+
+-- View node status
+SELECT * FROM "Node" ORDER BY "lastSeenAt" DESC;
+
+-- View recent errors
+SELECT * FROM "EncodingJob" WHERE status = 'FAILED' ORDER BY "updatedAt" DESC LIMIT 10;
+```
+
+## Check Worker Health
+
+```bash
+# View worker logs
+docker compose logs bitbonsai-backend | grep -i worker
+
+# Check for stuck workers
+docker compose exec bitbonsai-backend curl http://localhost:3100/api/health
+
+# View active jobs on each node
+docker compose exec postgres psql -U bitbonsai -d bitbonsai -c "SELECT \"assignedNodeId\", COUNT(*) FROM \"EncodingJob\" WHERE status = 'ENCODING' GROUP BY \"assignedNodeId\";"
+```
+
+## Performance Profiling
+
+### FFmpeg Performance
+
+```bash
+# Test FFmpeg encoding speed
+docker compose exec bitbonsai-backend ffmpeg -i /path/to/test video.mkv -f null -
+
+# Check FFmpeg version and supported codecs
+docker compose exec bitbonsai-backend ffmpeg -encoders | grep -E "hevc|av1"
+docker compose exec bitbonsai-backend ffmpeg -codecs | grep NVENC
+```
+
+### Hardware Acceleration
+
+```bash
+# Check NVIDIA GPU (if using NVENC)
+docker compose exec bitbonsai-backend nvidia-smi
+
+# Check Intel GPU (if using QSV)
+docker compose exec bitbonsai-backend vainfo
+```
+
+## Common Debug Commands
+
+```bash
+# Full system status
+docker compose ps
+
+# Restart specific service
+docker compose restart bitbonsai-backend
+
+# View recent logs
+docker compose logs --tail=100 bitbonsai-backend
+
+# Follow logs in real-time
+docker compose logs -f bitbonsai-backend
+
+# Enter container shell
+docker compose exec bitbonsai-backend sh
+```
+
+## Related Pages
+
+<CardGroup cols={2}>
+  <Card title="Common Errors" href="/advanced/troubleshooting/common-errors">
+    Fix specific error messages and issues
+  </Card>
+  <Card title="Recovery Procedures" href="/advanced/troubleshooting/recovery">
+    Reset and backup your installation
+  </Card>
+</CardGroup>

@@ -1,0 +1,113 @@
+---
+title: Recovery Procedures
+description: Reset and recover your BitBonsai installation
+---
+
+## Log Locations
+
+Access logs for debugging:
+
+| Component | Docker Command | Direct Path (if not containerized) |
+|-----------|----------------|-------------------------------------|
+| Backend | `docker compose logs -f bitbonsai-backend` | `journalctl -u bitbonsai-backend -f` |
+| Frontend | `docker compose logs -f bitbonsai-frontend` | `/var/log/bitbonsai-frontend.log` |
+| PostgreSQL | `docker compose logs -f postgres` | `/var/lib/postgresql/data/log/` |
+| FFmpeg Output | Check job details in UI | `/tmp/bitbonsai/encoding-*/ffmpeg.log` |
+
+<Tip>
+Add `-f` flag to follow logs in real-time: `docker compose logs -f bitbonsai-backend`
+</Tip>
+
+## Full System Reset (Nuclear Option)
+
+<Warning>
+This will delete all job history and settings. Use only as last resort.
+</Warning>
+
+```bash
+# Stop all services
+docker compose down
+
+# Remove all data (CAUTION: Irreversible)
+docker volume rm bitbonsai_postgres-data
+
+# Remove temp files
+rm -rf /path/to/temp/bitbonsai/*
+
+# Start fresh
+docker compose up -d
+
+# Verify clean startup
+docker compose logs bitbonsai-backend | grep "Application listening"
+```
+
+## Database Backup & Restore
+
+**Backup:**
+```bash
+# Create backup
+docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup-$(date +%Y%m%d).sql
+
+# Verify backup
+ls -lh backup-*.sql
+```
+
+**Restore:**
+```bash
+# Stop backend (to prevent write conflicts)
+docker compose stop bitbonsai-backend
+
+# Restore from backup
+docker compose exec -T postgres psql -U bitbonsai -d bitbonsai < backup-20260111.sql
+
+# Restart backend
+docker compose start bitbonsai-backend
+```
+
+## Reset Stuck Jobs (Safe)
+
+Reset all jobs to fresh state without losing configuration:
+
+```sql
+-- Connect to database
+docker compose exec postgres psql -U bitbonsai -d bitbonsai
+
+-- Reset all jobs to QUEUED
+UPDATE "EncodingJob"
+SET status = 'QUEUED',
+    progress = 0,
+    "assignedNodeId" = NULL,
+    "startedAt" = NULL,
+    "completedAt" = NULL
+WHERE status IN ('ENCODING', 'CORRUPTED', 'FAILED');
+
+-- Verify reset
+SELECT status, COUNT(*) FROM "EncodingJob" GROUP BY status;
+```
+
+## When to Report Bugs
+
+If you've tried the above fixes and still experiencing issues, please report to GitHub:
+
+<Card title="Report Issue on GitHub" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues/new">
+  Create a new issue with logs and reproduction steps
+</Card>
+
+**Include in your report:**
+1. BitBonsai version (`docker compose images | grep bitbonsai`)
+2. Deployment method (Docker Compose, Unraid, LXC)
+3. Node configuration (single vs. multi-node)
+4. Full error logs (use `docker compose logs --tail=100 bitbonsai-backend`)
+5. Steps to reproduce the issue
+6. Expected vs. actual behavior
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Advanced Debugging" href="/advanced/troubleshooting/advanced-debugging">
+    Enable debug logging, monitor resources, network debugging
+  </Card>
+  <Card title="Common Errors" href="/advanced/troubleshooting/common-errors">
+    Fix specific error messages and issues
+  </Card>
+</CardGroup>
