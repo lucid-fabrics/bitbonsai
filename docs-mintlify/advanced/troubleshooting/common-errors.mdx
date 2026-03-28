@@ -1,136 +1,9 @@
 ---
-title: Troubleshooting
-description: Fix common BitBonsai issues
+title: Common Errors
+description: Fix the most frequently encountered BitBonsai errors
 ---
 
-BitBonsai is designed to [self-heal](/glossary#self-healing) from most issues, but occasionally you may need to intervene manually. This guide covers common problems and their solutions.
-
-<Note>
-**New to troubleshooting?** Most issues are automatically fixed by BitBonsai's auto-healing systems. See [self-healing](/glossary#self-healing) in the glossary.
-</Note>
-
-## Quick Diagnostics
-
-Before diving into specific issues, run these commands to check system health:
-
-```bash
-# Check Docker container status
-docker compose ps
-
-# Check backend logs
-docker compose logs -f bitbonsai-backend
-
-# Check database connectivity
-docker compose exec postgres pg_isready -U bitbonsai
-
-# Check disk space (see temporary files glossary entry)
-df -h /path/to/temp /path/to/videos
-```
-
-<Info>
-**[Docker](/glossary#docker)** is the tool BitBonsai uses to run. **[Database](/glossary#database)** stores job information. **[Temporary files](/glossary#temporary-files)** are created during encoding.
-</Info>
-
-## Common Issues
-
 <AccordionGroup>
-  <Accordion title="NFS Mount Not Found (Child Nodes)" icon="network-wired">
-    ### Symptom
-
-    [Child node](/glossary#child-node) logs show:
-    ```
-    [ERROR] Failed to detect temp file after 10 retries
-    [ERROR] ENOENT: no such file or directory
-    ```
-
-    ### Cause
-
-    Worker [node](/glossary#node) cannot access shared storage via [NFS](/glossary#nfs) mount. Common reasons:
-    - [NFS](/glossary#nfs) server is down
-    - Export path not configured correctly
-    - Network connectivity issue
-    - Mount point not created
-
-    ### Fix
-
-    <Steps>
-      <Step title="Verify NFS Server Running">
-        On the **main node** (Unraid):
-        ```bash
-        # Check NFS service status
-        systemctl status nfs-server
-
-        # If stopped, start it
-        systemctl start nfs-server
-        ```
-      </Step>
-
-      <Step title="Check NFS Exports">
-        Verify shared directories are exported:
-        ```bash
-        # View active exports
-        exportfs -v
-
-        # Should show something like:
-        # /mnt/user/bitbonsai  192.168.1.0/24(rw,sync,no_subtree_check)
-        ```
-
-        If missing, add to `/etc/exports`:
-        ```bash
-        /mnt/user/bitbonsai 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
-        ```
-
-        Then reload:
-        ```bash
-        exportfs -ra
-        ```
-      </Step>
-
-      <Step title="Test Mount Manually">
-        On the **child node** (worker):
-        ```bash
-        # Create mount point if missing
-        mkdir -p /mnt/bitbonsai
-
-        # Test mount
-        mount -t nfs 192.168.1.100:/mnt/user/bitbonsai /mnt/bitbonsai
-
-        # Verify access
-        ls -la /mnt/bitbonsai
-        touch /mnt/bitbonsai/test.txt
-        rm /mnt/bitbonsai/test.txt
-        ```
-
-        If mount fails, check network connectivity:
-        ```bash
-        ping 192.168.1.100
-        showmount -e 192.168.1.100
-        ```
-      </Step>
-
-      <Step title="Check Firewall Rules">
-        NFS requires these ports open on the **main node**:
-        - TCP/UDP 2049 (NFS)
-        - TCP/UDP 111 (portmapper)
-
-        On Unraid, check firewall settings or disable temporarily to test.
-      </Step>
-
-      <Step title="Restart Worker Service">
-        After fixing mount issues:
-        ```bash
-        # On child node
-        systemctl restart bitbonsai-backend
-        journalctl -u bitbonsai-backend -f
-        ```
-      </Step>
-    </Steps>
-
-    <Warning>
-    BitBonsai retries temp file detection 10 times with 2-second delays. If NFS mount is slow to come up after boot, increase retry count in `encoding-processor.service.ts`.
-    </Warning>
-  </Accordion>
-
   <Accordion title="Jobs Stuck in ENCODING (Orphaned Jobs)" icon="clock">
     ### Symptom
 
@@ -162,7 +35,6 @@ df -h /path/to/temp /path/to/videos
         docker compose logs bitbonsai-backend | grep -i orphan
         ```
       </Tab>
-
       <Tab title="Manual Reset (UI)">
         If automatic recovery doesn't trigger:
 
@@ -173,7 +45,6 @@ df -h /path/to/temp /path/to/videos
 
         Jobs will restart immediately if workers are available.
       </Tab>
-
       <Tab title="Database Query (Advanced)">
         Manually reset via SQL:
 
@@ -200,6 +71,99 @@ df -h /path/to/temp /path/to/videos
     <Note>
     The **Stuck Job Watchdog** (if enabled) automatically detects jobs with no progress updates for 30+ minutes and resets them.
     </Note>
+  </Accordion>
+
+  <Accordion title="NFS Mount Not Found (Child Nodes)" icon="network-wired">
+    ### Symptom
+
+    [Child node](/glossary#child-node) logs show:
+    ```
+    [ERROR] Failed to detect temp file after 10 retries
+    [ERROR] ENOENT: no such file or directory
+    ```
+
+    ### Cause
+
+    Worker [node](/glossary#node) cannot access shared storage via [NFS](/glossary#nfs) mount. Common reasons:
+    - [NFS](/glossary#nfs) server is down
+    - Export path not configured correctly
+    - Network connectivity issue
+    - Mount point not created
+
+    ### Fix
+
+    <Steps>
+      <Step title="Verify NFS Server Running">
+        On the **main node** (Unraid):
+        ```bash
+        # Check NFS service status
+        systemctl status nfs-server
+
+        # If stopped, start it
+        systemctl start nfs-server
+        ```
+      </Step>
+      <Step title="Check NFS Exports">
+        Verify shared directories are exported:
+        ```bash
+        # View active exports
+        exportfs -v
+
+        # Should show something like:
+        # /mnt/user/bitbonsai  192.168.1.0/24(rw,sync,no_subtree_check)
+        ```
+
+        If missing, add to `/etc/exports`:
+        ```bash
+        /mnt/user/bitbonsai 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+        ```
+
+        Then reload:
+        ```bash
+        exportfs -ra
+        ```
+      </Step>
+      <Step title="Test Mount Manually">
+        On the **child node** (worker):
+        ```bash
+        # Create mount point if missing
+        mkdir -p /mnt/bitbonsai
+
+        # Test mount
+        mount -t nfs 192.168.1.100:/mnt/user/bitbonsai /mnt/bitbonsai
+
+        # Verify access
+        ls -la /mnt/bitbonsai
+        touch /mnt/bitbonsai/test.txt
+        rm /mnt/bitbonsai/test.txt
+        ```
+
+        If mount fails, check network connectivity:
+        ```bash
+        ping 192.168.1.100
+        showmount -e 192.168.1.100
+        ```
+      </Step>
+      <Step title="Check Firewall Rules">
+        NFS requires these ports open on the **main node**:
+        - TCP/UDP 2049 (NFS)
+        - TCP/UDP 111 (portmapper)
+
+        On Unraid, check firewall settings or disable temporarily to test.
+      </Step>
+      <Step title="Restart Worker Service">
+        After fixing mount issues:
+        ```bash
+        # On child node
+        systemctl restart bitbonsai-backend
+        journalctl -u bitbonsai-backend -f
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+    BitBonsai retries temp file detection 10 times with 2-second delays. If NFS mount is slow to come up after boot, increase retry count in `encoding-processor.service.ts`.
+    </Warning>
   </Accordion>
 
   <Accordion title="Health Check Failures (CORRUPTED Jobs)" icon="exclamation-triangle">
@@ -241,7 +205,6 @@ df -h /path/to/temp /path/to/videos
 
         If file is **valid**, this is a false positive health check failure.
       </Step>
-
       <Step title="Manual Re-validation">
         Trigger health check retry:
 
@@ -254,7 +217,6 @@ df -h /path/to/temp /path/to/videos
         curl -X POST http://localhost:3100/api/jobs/{jobId}/revalidate
         ```
       </Step>
-
       <Step title="Automatic Hourly Retry">
         BitBonsai automatically re-checks `CORRUPTED` jobs every hour:
 
@@ -268,7 +230,6 @@ df -h /path/to/temp /path/to/videos
         docker compose logs bitbonsai-backend | grep "Health Check Cron"
         ```
       </Step>
-
       <Step title="Increase Retry Threshold (If Persistent)">
         If health checks consistently fail on slow storage:
 
@@ -286,98 +247,6 @@ df -h /path/to/temp /path/to/videos
     <Warning>
     Do NOT blindly mark CORRUPTED jobs as COMPLETED without validation. Verify file integrity first to avoid data loss.
     </Warning>
-  </Accordion>
-
-  <Accordion title="Temp File Detection Failed (10 Retries)" icon="file-slash">
-    ### Symptom
-
-    Encoding starts but immediately fails with:
-    ```
-    [ERROR] Temp file not detected after 10 retries
-    [ERROR] Expected: /tmp/bitbonsai/encoding-123/temp.mkv
-    ```
-
-    ### Cause
-
-    FFmpeg couldn't create temporary file or BitBonsai couldn't detect it. Possible reasons:
-    - NFS mount delay (file created but not visible yet)
-    - Insufficient disk space
-    - Permission issues on temp directory
-    - Slow storage (HDD instead of SSD)
-
-    ### Fix
-
-    <Steps>
-      <Step title="Check Disk Space">
-        Verify temp directory has sufficient free space:
-
-        ```bash
-        # On worker node
-        df -h /tmp/bitbonsai
-
-        # Should have 2× largest video file size available
-        # Example: If encoding 50GB file, need 100GB+ free
-        ```
-
-        If low on space:
-        - Clear old temp files: `rm -rf /tmp/bitbonsai/*`
-        - Reduce concurrent jobs (fewer jobs = less temp space used)
-        - Move temp directory to larger partition
-      </Step>
-
-      <Step title="Verify Permissions">
-        Check temp directory is writable:
-
-        ```bash
-        # On worker node
-        ls -ld /tmp/bitbonsai
-
-        # Should be: drwxrwxrwx or owned by container user
-
-        # Test write access
-        touch /tmp/bitbonsai/test.txt
-        rm /tmp/bitbonsai/test.txt
-        ```
-
-        Fix permissions:
-        ```bash
-        chmod 777 /tmp/bitbonsai
-        # OR set ownership to container user (e.g., UID 1000)
-        chown -R 1000:1000 /tmp/bitbonsai
-        ```
-      </Step>
-
-      <Step title="Check NFS Mount Status">
-        If using NFS shared storage:
-
-        ```bash
-        # Verify mount active
-        mount | grep bitbonsai
-
-        # Test write latency
-        time dd if=/dev/zero of=/mnt/bitbonsai/test bs=1M count=100
-        rm /mnt/bitbonsai/test
-
-        # High latency (>500ms) indicates network issues
-        ```
-      </Step>
-
-      <Step title="Increase Retry Delays (Advanced)">
-        For slow NFS mounts, increase detection retries:
-
-        Edit `apps/backend/src/encoding/encoding-processor.service.ts`:
-        ```typescript
-        const MAX_RETRIES = 20; // Increase from 10
-        const RETRY_DELAY_MS = 3000; // 3 seconds instead of 2
-        ```
-
-        Rebuild backend container.
-      </Step>
-    </Steps>
-
-    <Tip>
-    Use local SSD/NVMe for `/tmp/bitbonsai` instead of NFS for better performance and reliability.
-    </Tip>
   </Accordion>
 
   <Accordion title="Child Node Disconnected (Network Issues)" icon="link-slash">
@@ -415,7 +284,6 @@ df -h /path/to/temp /path/to/videos
         # Should return: {"status":"ok"}
         ```
       </Step>
-
       <Step title="Check Firewall Rules">
         On **main node**, ensure port 3100 is open:
 
@@ -430,7 +298,6 @@ df -h /path/to/temp /path/to/videos
         ufw allow 3100/tcp
         ```
       </Step>
-
       <Step title="Verify Main Node Backend Running">
         ```bash
         # Check container status
@@ -443,7 +310,6 @@ df -h /path/to/temp /path/to/videos
         docker compose restart bitbonsai-backend
         ```
       </Step>
-
       <Step title="Validate API Key Configuration">
         Worker nodes must provide valid API key to connect:
 
@@ -512,7 +378,6 @@ df -h /path/to/temp /path/to/videos
         docker compose up -d bitbonsai-backend
         ```
       </Step>
-
       <Step title="Test Backend API Directly">
         ```bash
         # From host machine
@@ -525,7 +390,6 @@ df -h /path/to/temp /path/to/videos
         # Ports should show: 0.0.0.0:3100->3100/tcp
         ```
       </Step>
-
       <Step title="Check API_URL Configuration">
         Verify frontend knows where to find backend:
 
@@ -550,7 +414,6 @@ df -h /path/to/temp /path/to/videos
         docker compose restart bitbonsai-frontend
         ```
       </Step>
-
       <Step title="Verify Browser Network Tab">
         Open browser DevTools (F12) → Network tab:
 
@@ -609,7 +472,6 @@ df -h /path/to/temp /path/to/videos
         docker compose exec postgres pg_isready -U bitbonsai
         ```
       </Step>
-
       <Step title="Verify DATABASE_URL Correct">
         Check backend environment:
         ```bash
@@ -636,7 +498,6 @@ df -h /path/to/temp /path/to/videos
         docker compose restart bitbonsai-backend
         ```
       </Step>
-
       <Step title="Test Database Connection Manually">
         ```bash
         # Connect to database
@@ -653,7 +514,6 @@ df -h /path/to/temp /path/to/videos
         - Check credentials match `POSTGRES_USER` and `POSTGRES_PASSWORD`
         - Verify database `bitbonsai` exists: `\l` in psql
       </Step>
-
       <Step title="Recreate Database (Last Resort)">
         <Warning>
         This will delete all data. Backup first if needed.
@@ -706,7 +566,6 @@ df -h /path/to/temp /path/to/videos
         find /path/to/temp -type f -exec du -h {} + | sort -rh | head -10
         ```
       </Step>
-
       <Step title="Clear Old Temporary Files">
         ```bash
         # BitBonsai should auto-clean, but manual cleanup if needed:
@@ -720,7 +579,6 @@ df -h /path/to/temp /path/to/videos
         Only clear temp files when no jobs are actively encoding. Check Jobs page first.
         </Warning>
       </Step>
-
       <Step title="Reduce Concurrent Jobs">
         Lower parallel job limit to reduce temp space usage:
 
@@ -730,7 +588,6 @@ df -h /path/to/temp /path/to/videos
 
         This reduces temp space requirements but slows overall throughput.
       </Step>
-
       <Step title="Increase Temp Directory Size">
         Expand temp storage capacity:
 
@@ -747,7 +604,6 @@ df -h /path/to/temp /path/to/videos
         - Add physical disk and extend volume group
         - Clean up other files on same partition
       </Step>
-
       <Step title="Enable Two-Pass Encoding (Smaller Temps)">
         Two-pass encoding uses less temp space:
 
@@ -766,181 +622,93 @@ df -h /path/to/temp /path/to/videos
     Example: 50GB video, 4 concurrent jobs = 400GB minimum
     </Tip>
   </Accordion>
+
+  <Accordion title="Temp File Detection Failed (10 Retries)" icon="file-slash">
+    ### Symptom
+
+    Encoding starts but immediately fails with:
+    ```
+    [ERROR] Temp file not detected after 10 retries
+    [ERROR] Expected: /tmp/bitbonsai/encoding-123/temp.mkv
+    ```
+
+    ### Cause
+
+    FFmpeg couldn't create temporary file or BitBonsai couldn't detect it. Possible reasons:
+    - NFS mount delay (file created but not visible yet)
+    - Insufficient disk space
+    - Permission issues on temp directory
+    - Slow storage (HDD instead of SSD)
+
+    ### Fix
+
+    <Steps>
+      <Step title="Check Disk Space">
+        Verify temp directory has sufficient free space:
+
+        ```bash
+        # On worker node
+        df -h /tmp/bitbonsai
+
+        # Should have 2× largest video file size available
+        # Example: If encoding 50GB file, need 100GB+ free
+        ```
+
+        If low on space:
+        - Clear old temp files: `rm -rf /tmp/bitbonsai/*`
+        - Reduce concurrent jobs (fewer jobs = less temp space used)
+        - Move temp directory to larger partition
+      </Step>
+      <Step title="Verify Permissions">
+        Check temp directory is writable:
+
+        ```bash
+        # On worker node
+        ls -ld /tmp/bitbonsai
+
+        # Should be: drwxrwxrwx or owned by container user
+
+        # Test write access
+        touch /tmp/bitbonsai/test.txt
+        rm /tmp/bitbonsai/test.txt
+        ```
+
+        Fix permissions:
+        ```bash
+        chmod 777 /tmp/bitbonsai
+        # OR set ownership to container user (e.g., UID 1000)
+        chown -R 1000:1000 /tmp/bitbonsai
+        ```
+      </Step>
+      <Step title="Check NFS Mount Status">
+        If using NFS shared storage:
+
+        ```bash
+        # Verify mount active
+        mount | grep bitbonsai
+
+        # Test write latency
+        time dd if=/dev/zero of=/mnt/bitbonsai/test bs=1M count=100
+        rm /mnt/bitbonsai/test
+
+        # High latency (>500ms) indicates network issues
+        ```
+      </Step>
+      <Step title="Increase Retry Delays (Advanced)">
+        For slow NFS mounts, increase detection retries:
+
+        Edit `apps/backend/src/encoding/encoding-processor.service.ts`:
+        ```typescript
+        const MAX_RETRIES = 20; // Increase from 10
+        const RETRY_DELAY_MS = 3000; // 3 seconds instead of 2
+        ```
+
+        Rebuild backend container.
+      </Step>
+    </Steps>
+
+    <Tip>
+    Use local SSD/NVMe for `/tmp/bitbonsai` instead of NFS for better performance and reliability.
+    </Tip>
+  </Accordion>
 </AccordionGroup>
-
-## Log Locations
-
-Access logs for debugging:
-
-| Component | Docker Command | Direct Path (if not containerized) |
-|-----------|----------------|-------------------------------------|
-| Backend | `docker compose logs -f bitbonsai-backend` | `journalctl -u bitbonsai-backend -f` |
-| Frontend | `docker compose logs -f bitbonsai-frontend` | `/var/log/bitbonsai-frontend.log` |
-| PostgreSQL | `docker compose logs -f postgres` | `/var/lib/postgresql/data/log/` |
-| FFmpeg Output | Check job details in UI | `/tmp/bitbonsai/encoding-*/ffmpeg.log` |
-
-<Tip>
-Add `-f` flag to follow logs in real-time: `docker compose logs -f bitbonsai-backend`
-</Tip>
-
-## Recovery Procedures
-
-### Full System Reset (Nuclear Option)
-
-<Warning>
-This will delete all job history and settings. Use only as last resort.
-</Warning>
-
-```bash
-# Stop all services
-docker compose down
-
-# Remove all data (CAUTION: Irreversible)
-docker volume rm bitbonsai_postgres-data
-
-# Remove temp files
-rm -rf /path/to/temp/bitbonsai/*
-
-# Start fresh
-docker compose up -d
-
-# Verify clean startup
-docker compose logs bitbonsai-backend | grep "Application listening"
-```
-
-### Database Backup & Restore
-
-**Backup:**
-```bash
-# Create backup
-docker compose exec postgres pg_dump -U bitbonsai bitbonsai > backup-$(date +%Y%m%d).sql
-
-# Verify backup
-ls -lh backup-*.sql
-```
-
-**Restore:**
-```bash
-# Stop backend (to prevent write conflicts)
-docker compose stop bitbonsai-backend
-
-# Restore from backup
-docker compose exec -T postgres psql -U bitbonsai -d bitbonsai < backup-20260111.sql
-
-# Restart backend
-docker compose start bitbonsai-backend
-```
-
-### Reset Stuck Jobs (Safe)
-
-Reset all jobs to fresh state without losing configuration:
-
-```sql
--- Connect to database
-docker compose exec postgres psql -U bitbonsai -d bitbonsai
-
--- Reset all jobs to QUEUED
-UPDATE "EncodingJob"
-SET status = 'QUEUED',
-    progress = 0,
-    "assignedNodeId" = NULL,
-    "startedAt" = NULL,
-    "completedAt" = NULL
-WHERE status IN ('ENCODING', 'CORRUPTED', 'FAILED');
-
--- Verify reset
-SELECT status, COUNT(*) FROM "EncodingJob" GROUP BY status;
-```
-
-## When to Report Bugs
-
-If you've tried the above fixes and still experiencing issues, please report to GitHub:
-
-<Card title="Report Issue on GitHub" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues/new">
-  Create a new issue with logs and reproduction steps
-</Card>
-
-**Include in your report:**
-1. BitBonsai version (`docker compose images | grep bitbonsai`)
-2. Deployment method (Docker Compose, Unraid, LXC)
-3. Node configuration (single vs. multi-node)
-4. Full error logs (use `docker compose logs --tail=100 bitbonsai-backend`)
-5. Steps to reproduce the issue
-6. Expected vs. actual behavior
-
-## Advanced Debugging
-
-### Enable Debug Logging
-
-<Tabs>
-  <Tab title="Docker Compose">
-    Edit `docker-compose.yml`:
-    ```yaml
-    bitbonsai-backend:
-      environment:
-        LOG_LEVEL: debug  # Change from 'info'
-    ```
-
-    Restart:
-    ```bash
-    docker compose restart bitbonsai-backend
-    ```
-  </Tab>
-
-  <Tab title="Environment File">
-    Create `.env` file:
-    ```bash
-    LOG_LEVEL=debug
-    DEBUG=*
-    ```
-
-    Restart containers to apply.
-  </Tab>
-</Tabs>
-
-### Monitor Resource Usage
-
-```bash
-# Real-time container stats
-docker stats bitbonsai-backend bitbonsai-frontend postgres
-
-# Check CPU/memory limits
-docker inspect bitbonsai-backend | grep -A 10 "Memory"
-
-# Monitor disk I/O
-iostat -x 1
-```
-
-### Network Debugging
-
-```bash
-# Check Docker network configuration
-docker network inspect bitbonsai_default
-
-# Test inter-container connectivity
-docker compose exec bitbonsai-frontend ping bitbonsai-backend
-docker compose exec bitbonsai-backend ping postgres
-
-# Capture network traffic (advanced)
-docker run --rm --net=container:bitbonsai-backend nicolaka/netshoot tcpdump -i any port 3100
-```
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card title="Multi-Node Setup" icon="server" href="/advanced/multi-node">
-    Add worker nodes for distributed encoding
-  </Card>
-
-  <Card title="Codec Selection Guide" icon="film" href="/advanced/codec-selection">
-    Choose optimal encoding settings
-  </Card>
-
-  <Card title="FAQ" icon="question" href="/faq">
-    Frequently asked questions
-  </Card>
-
-  <Card title="GitHub Issues" icon="github" href="https://github.com/bitbonsai/bitbonsai/issues">
-    Report bugs and request features
-  </Card>
-</CardGroup>

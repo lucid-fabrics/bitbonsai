@@ -1,0 +1,72 @@
+---
+title: Troubleshooting
+description: Fix common BitBonsai issues
+---
+
+BitBonsai is designed to [self-heal](/glossary#self-healing) from most issues, but occasionally you may need to intervene manually.
+
+<Note>
+**New to troubleshooting?** Most issues are automatically fixed by BitBonsai's auto-healing systems. See [self-healing](/glossary#self-healing) in the glossary.
+</Note>
+
+## Quick Diagnostics
+
+Before diving into specific issues, run these commands to check system health:
+
+```bash
+# Check Docker container status
+docker compose ps
+
+# Check backend logs
+docker compose logs -f bitbonsai-backend
+
+# Check database connectivity
+docker compose exec postgres pg_isready -U bitbonsai
+
+# Check disk space (see temporary files glossary entry)
+df -h /path/to/temp /path/to/videos
+```
+
+<Info>
+**[Docker](/glossary#docker)** is the tool BitBonsai uses to run. **[Database](/glossary#database)** stores job information. **[Temporary files](/glossary#temporary-files)** are created during encoding.
+</Info>
+
+## Common Solutions
+
+<CardGroup cols={2}>
+  <Card title="Stuck Jobs" href="/advanced/troubleshooting/common-errors#jobs-stuck-in-encoding-orphaned-jobs">
+    Jobs stuck in ENCODING status after crash or restart
+  </Card>
+  <Card title="NFS Issues" href="/advanced/troubleshooting/common-errors#nfs-mount-not-found-child-nodes">
+    Child nodes can't access shared storage
+  </Card>
+  <Card title="Health Check Failures" href="/advanced/troubleshooting/common-errors#health-check-failures-corrupted-jobs">
+    Jobs marked CORRUPTED after encoding completes
+  </Card>
+  <Card title="Node Disconnected" href="/advanced/troubleshooting/common-errors#child-node-disconnected-network-issues">
+    Child node shows OFFLINE in UI
+  </Card>
+  <Card title="Frontend Errors" href="/advanced/troubleshooting/common-errors#frontend-cant-connect-to-backend">
+    Web UI shows connection errors
+  </Card>
+  <Card title="Database Issues" href="/advanced/troubleshooting/common-errors#database-connection-refused">
+    Backend can't connect to PostgreSQL
+  </Card>
+  <Card title="Disk Space" href="/advanced/troubleshooting/common-errors#out-of-disk-space-during-encoding">
+    Encoding fails with "No space left on device"
+  </Card>
+  <Card title="Temp File Errors" href="/advanced/troubleshooting/common-errors#temp-file-detection-failed-10-retries">
+    Temp file not detected after multiple retries
+  </Card>
+</CardGroup>
+
+## Recovery & Debugging
+
+<CardGroup cols={2}>
+  <Card title="Recovery Procedures" href="/advanced/troubleshooting/recovery">
+    Full system reset, database backup/restore, reset stuck jobs
+  </Card>
+  <Card title="Advanced Debugging" href="/advanced/troubleshooting/advanced-debugging">
+    Enable debug logging, monitor resources, network debugging
+  </Card>
+</CardGroup>

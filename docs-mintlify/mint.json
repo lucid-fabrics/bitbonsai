@@ -45,7 +45,10 @@
         "advanced/gpu-acceleration",
         "advanced/multi-node",
         "advanced/codec-selection",
-        "advanced/troubleshooting"
+        "advanced/troubleshooting/index",
+        "advanced/troubleshooting/common-errors",
+        "advanced/troubleshooting/recovery",
+        "advanced/troubleshooting/advanced-debugging"
       ]
     },
     {
