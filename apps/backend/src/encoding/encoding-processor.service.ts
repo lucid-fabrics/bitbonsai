@@ -400,6 +400,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         afterSizeBytes: result.afterSizeBytes.toString(),
         savedBytes: result.savedBytes.toString(),
         savedPercent: result.savedPercent,
+        ...(result.qualityMetrics && { qualityMetrics: result.qualityMetrics }),
       });
 
       // Update library statistics
@@ -617,5 +618,41 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+  }
+
+  /**
+   * Get VMAF threshold from system settings
+   *
+   * @returns VMAF threshold (default: 85)
+   * @private
+   */
+  private async getVmafThreshold(): Promise<number> {
+    try {
+      const settings = await this.prisma.settings.findFirst({
+        where: {},
+        select: { vmafThreshold: true },
+      });
+      return settings?.vmafThreshold ?? 85;
+    } catch {
+      return 85; // Default threshold
+    }
+  }
+
+  /**
+   * Check if quality metrics (VMAF) is enabled in system settings
+   *
+   * @returns Whether quality metrics are enabled (default: true)
+   * @private
+   */
+  private async isQualityMetricsEnabled(): Promise<boolean> {
+    try {
+      const settings = await this.prisma.settings.findFirst({
+        where: {},
+        select: { qualityMetricsEnabled: true },
+      });
+      return settings?.qualityMetricsEnabled ?? true;
+    } catch {
+      return true; // Default enabled
+    }
   }
 }
