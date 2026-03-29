@@ -487,7 +487,7 @@ export class TorrentIntegrationService {
         skipSeeding: true,
       };
 
-      const _torrents = await this.getActiveTorrents(config);
+      await this.getActiveTorrents(config);
 
       return {
         success: true,

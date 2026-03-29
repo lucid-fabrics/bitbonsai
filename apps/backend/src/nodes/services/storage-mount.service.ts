@@ -270,8 +270,7 @@ export class StorageMountService {
       const parts = lines[1].split(/\s+/);
       const totalBytes = BigInt(parts[1]);
       // Note: usedBytes tracked for potential future use
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      BigInt(parts[2]);
+      void parts[2]; // usedBytes - tracked for potential future use
       const availableBytes = BigInt(parts[3]);
       const usedPercent = parseFloat(parts[4].replace('%', ''));
 

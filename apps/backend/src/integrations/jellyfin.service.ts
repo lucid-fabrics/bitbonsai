@@ -202,7 +202,7 @@ export class JellyfinIntegrationService {
   /**
    * Trigger library scan for a specific path
    */
-  async refreshLibrary(filePath?: string): Promise<void> {
+  async refreshLibrary(_filePath?: string): Promise<void> {
     const config = await this.getJellyfinConfig();
     if (!config || !config.refreshOnComplete) return;
 

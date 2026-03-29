@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import { promisify } from 'node:util';
 import { Injectable, Logger } from '@nestjs/common';
 import { NodeStatus } from '@prisma/client';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- package.json version needed at runtime
 import { version } from '../../../../package.json';
 import { PrismaService } from '../prisma/prisma.service';
 import type { BasicHealthDto } from './dto/basic-health.dto';

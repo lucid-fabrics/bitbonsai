@@ -112,7 +112,6 @@ export class LicenseService {
 
     const config = tierConfig[data.tier];
 
-    const _isPatreon = data.tier.startsWith('PATREON');
     const isCommercial = data.tier.startsWith('COMMERCIAL');
     const isPatreonProOrHigher =
       data.tier === LicenseTier.PATREON_PRO || data.tier === LicenseTier.PATREON_ULTIMATE;

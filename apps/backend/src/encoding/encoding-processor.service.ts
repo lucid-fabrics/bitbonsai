@@ -40,10 +40,6 @@ interface JobResult {
   qualityMetrics?: string;
 }
 
-interface LockPromise extends Promise<void> {
-  release?: () => void;
-}
-
 // CRITICAL #3 FIX: Enhanced lock holder tracking for deadlock detection
 // CRITICAL #2 FIX: Track expected duration to prevent false positive deadlock detection
 // DEEP AUDIT P0: Added heartbeat mechanism to track actual operation activity

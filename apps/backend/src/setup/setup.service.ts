@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- package.json version needed at runtime
 import { version } from '../../../../package.json';
 import { PrismaService } from '../prisma/prisma.service';
 import { InitializeSetupDto, NodeType } from './dto/initialize-setup.dto';

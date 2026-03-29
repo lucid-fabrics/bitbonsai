@@ -42,7 +42,7 @@ export class EncodingPreviewService {
     jobId: string,
     tempFilePath: string,
     durationSeconds: number,
-    currentProgress: number
+    _currentProgress: number
   ): Promise<string[]> {
     try {
       // Create preview directory for this job

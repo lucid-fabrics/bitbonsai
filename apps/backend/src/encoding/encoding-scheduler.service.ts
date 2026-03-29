@@ -147,7 +147,7 @@ export class EncodingSchedulerService {
   private findNextWindowStart(windows: TimeWindow[]): Date {
     const now = new Date();
     const currentDay = now.getDay();
-    const _currentHour = now.getHours();
+    void now.getHours(); // current hour - tracked for future use
 
     let nearestStart: Date | null = null;
 
