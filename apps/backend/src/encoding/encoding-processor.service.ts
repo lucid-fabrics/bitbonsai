@@ -10,6 +10,7 @@ import { NodesService } from '../nodes/nodes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
+import { QualityMetricsService } from './quality-metrics.service';
 
 interface JobWithPolicy extends Job {
   policy?: Policy;
@@ -36,6 +37,7 @@ interface JobResult {
   afterSizeBytes: bigint;
   savedBytes: bigint;
   savedPercent: number;
+  qualityMetrics?: string;
 }
 
 interface LockPromise extends Promise<void> {
@@ -142,7 +144,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService,
     private readonly nodesService: NodesService,
-    private readonly fileRelocatorService: FileRelocatorService
+    private readonly fileRelocatorService: FileRelocatorService,
+    private readonly qualityMetricsService: QualityMetricsService
   ) {
     // Calculate optimal workers based on CPU capacity
     this.DEFAULT_WORKERS_PER_NODE = this.calculateOptimalWorkers();

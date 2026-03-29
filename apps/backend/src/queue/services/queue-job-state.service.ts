@@ -98,6 +98,7 @@ export class QueueJobStateService {
             completedAt: new Date(),
             priority: 0,
             prioritySetAt: null,
+            ...(completeJobDto.qualityMetrics && { qualityMetrics: completeJobDto.qualityMetrics }),
           },
           include: {
             node: {

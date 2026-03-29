@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { Logger } from '@nestjs/common';
+import { existsSync } from 'node:fs';
+import { Injectable, Logger } from '@nestjs/common';
 
 /**
  * Quality metrics interface for VMAF/PSNR/SSIM results
@@ -15,6 +16,17 @@ export interface QualityMetrics {
 }
 
 /**
+ * Quality validation result
+ */
+export interface QualityValidationResult {
+  passed: boolean;
+  vmaf?: number;
+  threshold: number;
+  qualityLabel: string;
+  reencodeTriggered: boolean;
+}
+
+/**
  * Quality Metrics Service
  *
  * Provides video quality assessment using industry-standard metrics:
@@ -24,8 +36,34 @@ export interface QualityMetrics {
  *
  * These methods can be used to validate encoding quality after transcoding.
  */
+@Injectable()
 export class QualityMetricsService {
   private readonly logger = new Logger(QualityMetricsService.name);
+
+  /**
+   * Check if quality metrics calculation is available (FFmpeg libvmaf support)
+   */
+  async isAvailable(): Promise<boolean> {
+    // Check if we can run FFmpeg with libvmaf
+    return new Promise((resolve) => {
+      const ffmpeg = spawn('ffmpeg', ['-hide_banner', '-encoders'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let output = '';
+      ffmpeg.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      ffmpeg.on('close', () => {
+        resolve(output.includes('libvmaf') || output.includes('libvmaf_vmaf'));
+      });
+
+      ffmpeg.on('error', () => {
+        resolve(false);
+      });
+    });
+  }
 
   /**
    * Calculate VMAF (Video Multimethod Assessment Fusion) score between original and encoded video
@@ -288,5 +326,81 @@ export class QualityMetricsService {
     if (score >= 60) return 'Good';
     if (score >= 40) return 'Fair';
     return 'Poor';
+  }
+
+  /**
+   * Validate quality metrics against threshold
+   *
+   * @param metrics - Quality metrics to validate
+   * @param threshold - VMAF threshold (default: 85)
+   * @returns Validation result with re-encode recommendation
+   */
+  validateQuality(metrics: QualityMetrics, threshold: number = 85): QualityValidationResult {
+    const vmaf = metrics.vmaf;
+
+    if (vmaf === undefined || vmaf === null) {
+      // Cannot validate without VMAF score - assume pass but log warning
+      this.logger.warn('Cannot validate quality: VMAF score not available');
+      return {
+        passed: true,
+        threshold,
+        qualityLabel: 'Unknown',
+        reencodeTriggered: false,
+      };
+    }
+
+    const passed = vmaf >= threshold;
+    const qualityLabel = this.qualifyVmafScore(vmaf);
+
+    this.logger.log(
+      `Quality validation: VMAF=${vmaf.toFixed(2)}, threshold=${threshold}, ` +
+        `label=${qualityLabel}, passed=${passed}`
+    );
+
+    return {
+      passed,
+      vmaf,
+      threshold,
+      qualityLabel,
+      reencodeTriggered: !passed,
+    };
+  }
+
+  /**
+   * Convert quality metrics to JSON string for database storage
+   *
+   * @param metrics - Quality metrics object
+   * @returns JSON string for storage
+   */
+  toJsonString(metrics: QualityMetrics): string {
+    return JSON.stringify({
+      vmaf: metrics.vmaf,
+      psnr: metrics.psnr,
+      ssim: metrics.ssim,
+      calculatedAt: metrics.calculatedAt.toISOString(),
+    });
+  }
+
+  /**
+   * Parse quality metrics from JSON string
+   *
+   * @param json - JSON string from database
+   * @returns QualityMetrics object or null if parsing fails
+   */
+  fromJsonString(json: string | null): QualityMetrics | null {
+    if (!json) return null;
+
+    try {
+      const parsed = JSON.parse(json);
+      return {
+        vmaf: parsed.vmaf,
+        psnr: parsed.psnr,
+        ssim: parsed.ssim,
+        calculatedAt: parsed.calculatedAt ? new Date(parsed.calculatedAt) : new Date(),
+      };
+    } catch {
+      this.logger.warn(`Failed to parse quality metrics from JSON: ${json}`);
+      return null;
+    }
   }
 }
