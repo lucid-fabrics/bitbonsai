@@ -183,6 +183,10 @@ model Settings {
   advancedModeEnabled          Boolean  @default(false) // Show advanced UI controls (default: minimal mode for simple UX)
   qualityMetricsEnabled        Boolean  @default(false) // Calculate VMAF/PSNR/SSIM after encoding (CPU-intensive, opt-in)
 
+  // ============ Quality Settings ============
+  vmafThreshold                Int      @default(85)    // Minimum VMAF score (0-100), auto-requeue if below
+  qualityMetricsEnabled        Boolean  @default(true)   // Enable VMAF/PSNR/SSIM scoring post-encode
+
   // ============ License Settings ============
   licenseKey                   String?   @map("license_key") // License key (stored in DB for seamless UX)
   licenseLastVerified          DateTime? @map("license_last_verified") // Last successful verification timestamp
@@ -693,6 +697,10 @@ model Job {
   afterSizeBytes  BigInt? // Encoded file size (null until completed)
   savedBytes      BigInt? // Bytes saved (can be negative if larger)
   savedPercent    Float? // Percentage saved
+
+  // Quality Metrics (VMAF, PSNR, SSIM scores after encoding)
+  qualityMetrics String? // JSON: { vmaf, psnr, ssim, calculatedAt }
+
   startedAt       DateTime?
   completedAt     DateTime?
   failedAt        DateTime? // When job failed (for FAILED status)

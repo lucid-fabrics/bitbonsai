@@ -19,6 +19,7 @@ import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
+import { QualityMetricsService } from './quality-metrics.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
@@ -64,7 +65,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly workerPoolService: WorkerPoolService,
     private readonly jobRetryStrategyService: JobRetryStrategyService,
     private readonly encodingStartupService: EncodingStartupService,
-    private readonly encodingWatchdogService: EncodingWatchdogService
+    private readonly encodingWatchdogService: EncodingWatchdogService,
+    private readonly qualityMetricsService: QualityMetricsService
   ) {}
 
   /**

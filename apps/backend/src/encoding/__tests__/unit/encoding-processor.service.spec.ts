@@ -23,6 +23,7 @@ import { JobRetryStrategyService } from '../../job-retry-strategy.service';
 import { PoolLockService } from '../../pool-lock.service';
 import { SystemResourceService } from '../../system-resource.service';
 import { WorkerPoolService } from '../../worker-pool.service';
+import { QualityMetricsService } from '../../quality-metrics.service';
 
 // Mock fs module
 jest.mock('node:fs');
@@ -97,6 +98,19 @@ describe('EncodingProcessorService', () => {
         mockDataAccessProvider,
         mockFileRelocatorProvider,
         mockEventEmitterProvider,
+        {
+          provide: QualityMetricsService,
+          useValue: {
+            isAvailable: jest.fn().mockResolvedValue(true),
+            calculateVmaf: jest.fn(),
+            calculatePsnr: jest.fn(),
+            calculateSsim: jest.fn(),
+            calculateAllQualityMetrics: jest.fn(),
+            validateQuality: jest.fn(),
+            toJsonString: jest.fn(),
+            fromJsonString: jest.fn(),
+          },
+        },
         {
           provide: QueueService,
           useValue: {
