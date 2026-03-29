@@ -1,0 +1,1216 @@
+{
+  "graph": {
+    "nodes": {
+      "shared-models": {
+        "name": "shared-models",
+        "type": "lib",
+        "data": {
+          "root": "libs/shared-models",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/shared-models",
+                "command": "eslint ."
+              },
+              "inputs": ["default"],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build": {
+              "executor": "@nx/js:tsc",
+              "outputs": ["{options.outputPath}"],
+              "options": {
+                "outputPath": "dist/libs/shared-models",
+                "main": "libs/shared-models/src/index.ts",
+                "tsConfig": "libs/shared-models/tsconfig.lib.json",
+                "assets": ["libs/shared-models/*.md"]
+              },
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
+            },
+            "test": {
+              "executor": "@nx/jest:jest",
+              "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+              "options": {
+                "jestConfig": "libs/shared-models/jest.config.ts",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default", "^production"]
+            }
+          },
+          "name": "shared-models",
+          "tags": ["npm:private"],
+          "metadata": {
+            "targetGroups": {},
+            "js": {
+              "packageName": "@bitbonsai/shared-models",
+              "packageVersion": "0.0.1",
+              "packageMain": "./src/index.js",
+              "isInPackageManagerWorkspaces": false
+            }
+          },
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/shared-models/src",
+          "projectType": "library",
+          "implicitDependencies": []
+        }
+      },
+      "website-e2e": {
+        "name": "website-e2e",
+        "type": "e2e",
+        "data": {
+          "root": "apps/website-e2e",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "options": {
+                "cwd": "apps/website-e2e",
+                "command": "eslint ."
+              },
+              "inputs": ["default"],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "website-e2e",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "sourceRoot": "apps/website-e2e/src",
+          "implicitDependencies": ["website"],
+          "tags": []
+        }
+      },
+      "shared-ui": {
+        "name": "shared-ui",
+        "type": "lib",
+        "data": {
+          "root": "libs/shared-ui",
+          "targets": {
+            "lint": {
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default"]
+            },
+            "test": {
+              "executor": "@nx/jest:jest",
+              "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+              "options": {
+                "jestConfig": "libs/shared-ui/jest.config.ts",
+                "tsConfig": "libs/shared-ui/tsconfig.spec.json",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default", "^production"]
+            }
+          },
+          "name": "shared-ui",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/shared-ui/src",
+          "prefix": "lib",
+          "projectType": "library",
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "frontend": {
+        "name": "frontend",
+        "type": "app",
+        "data": {
+          "root": "apps/frontend",
+          "targets": {
+            "lint": {
+              "executor": "@nx/eslint:lint",
+              "outputs": ["{options.outputFile}"],
+              "options": {
+                "lintFilePatterns": ["apps/frontend/src/**/*.ts", "apps/frontend/src/**/*.html"]
+              },
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default"]
+            },
+            "build": {
+              "executor": "@angular-devkit/build-angular:browser",
+              "outputs": ["{options.outputPath}"],
+              "defaultConfiguration": "production",
+              "options": {
+                "outputPath": "dist/apps/frontend",
+                "index": "apps/frontend/src/index.html",
+                "main": "apps/frontend/src/main.ts",
+                "polyfills": [],
+                "tsConfig": "apps/frontend/tsconfig.app.json",
+                "assets": [
+                  "apps/frontend/src/assets",
+                  {
+                    "glob": "**/*",
+                    "input": "apps/frontend/public",
+                    "output": "/"
+                  }
+                ],
+                "styles": ["apps/frontend/src/styles.scss"],
+                "scripts": []
+              },
+              "configurations": {
+                "production": {
+                  "optimization": true,
+                  "buildOptimizer": true,
+                  "sourceMap": false,
+                  "namedChunks": false,
+                  "extractLicenses": true,
+                  "vendorChunk": false,
+                  "budgets": [
+                    {
+                      "type": "initial",
+                      "maximumWarning": "500kb",
+                      "maximumError": "1mb"
+                    },
+                    {
+                      "type": "anyComponentStyle",
+                      "maximumWarning": "5kb",
+                      "maximumError": "80kb"
+                    }
+                  ],
+                  "outputHashing": "all",
+                  "fileReplacements": [
+                    {
+                      "replace": "apps/frontend/src/environments/environment.ts",
+                      "with": "apps/frontend/src/environments/environment.prod.ts"
+                    }
+                  ]
+                },
+                "development": {
+                  "buildOptimizer": false,
+                  "optimization": false,
+                  "vendorChunk": true,
+                  "extractLicenses": false,
+                  "sourceMap": true,
+                  "namedChunks": true
+                }
+              },
+              "parallelism": true,
+              "cache": true,
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
+            },
+            "serve": {
+              "executor": "@angular-devkit/build-angular:dev-server",
+              "defaultConfiguration": "development",
+              "options": {
+                "proxyConfig": "proxy.conf.json",
+                "buildTarget": "frontend:build",
+                "port": 4200,
+                "host": "0.0.0.0",
+                "liveReload": true,
+                "hmr": true
+              },
+              "configurations": {
+                "production": {
+                  "buildTarget": "frontend:build:production"
+                },
+                "development": {
+                  "buildTarget": "frontend:build:development"
+                }
+              },
+              "parallelism": true,
+              "cache": true
+            },
+            "extract-i18n": {
+              "executor": "@angular-devkit/build-angular:extract-i18n",
+              "configurations": {},
+              "options": {},
+              "parallelism": true
+            },
+            "test": {
+              "executor": "@nx/jest:jest",
+              "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+              "options": {
+                "jestConfig": "apps/frontend/jest.config.js",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default", "^production"]
+            }
+          },
+          "projectType": "application",
+          "sourceRoot": "apps/frontend/src",
+          "prefix": "app",
+          "name": "frontend",
+          "generators": {
+            "@schematics/angular:component": {
+              "style": "scss",
+              "standalone": true,
+              "changeDetection": "OnPush"
+            }
+          },
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "tags": ["type:app", "scope:frontend"],
+          "implicitDependencies": []
+        }
+      },
+      "backend": {
+        "name": "backend",
+        "type": "app",
+        "data": {
+          "root": "apps/backend",
+          "targets": {
+            "lint": {
+              "executor": "@nx/eslint:lint",
+              "outputs": ["{options.outputFile}"],
+              "options": {
+                "lintFilePatterns": ["apps/backend/**/*.ts"]
+              },
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default"]
+            },
+            "webpack:build": {
+              "options": {
+                "cwd": "apps/backend",
+                "args": ["--node-env=production"],
+                "command": "webpack-cli build"
+              },
+              "cache": true,
+              "dependsOn": ["^webpack:build"],
+              "inputs": [
+                "production",
+                "^production",
+                {
+                  "externalDependencies": ["webpack-cli"]
+                }
+              ],
+              "outputs": [],
+              "metadata": {
+                "technologies": ["webpack"],
+                "description": "Runs Webpack build",
+                "help": {
+                  "command": "npx webpack-cli build --help",
+                  "example": {
+                    "options": {
+                      "json": "stats.json"
+                    },
+                    "args": ["--profile"]
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "webpack:serve": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/backend",
+                "args": ["--node-env=development"],
+                "command": "webpack-cli serve"
+              },
+              "metadata": {
+                "technologies": ["webpack"],
+                "description": "Starts Webpack dev server",
+                "help": {
+                  "command": "npx webpack-cli serve --help",
+                  "example": {
+                    "options": {
+                      "args": ["--client-progress", "--history-api-fallback "]
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "preview": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/backend",
+                "args": ["--node-env=production"],
+                "command": "webpack-cli serve"
+              },
+              "metadata": {
+                "technologies": ["webpack"],
+                "description": "Starts Webpack dev server in production mode",
+                "help": {
+                  "command": "npx webpack-cli serve --help",
+                  "example": {
+                    "options": {
+                      "args": ["--client-progress", "--history-api-fallback "]
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "serve-static": {
+              "continuous": true,
+              "dependsOn": ["webpack:build"],
+              "executor": "@nx/web:file-server",
+              "options": {
+                "buildTarget": "webpack:build",
+                "spa": true
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-deps": {
+              "dependsOn": ["^build"],
+              "configurations": {},
+              "options": {},
+              "parallelism": true,
+              "executor": "nx:noop"
+            },
+            "watch-deps": {
+              "continuous": true,
+              "dependsOn": ["build-deps"],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npx nx watch --projects backend --includeDependentProjects -- npx nx build-deps backend"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "build": {
+              "executor": "@nx/webpack:webpack",
+              "outputs": ["{options.outputPath}"],
+              "defaultConfiguration": "production",
+              "options": {
+                "target": "node",
+                "compiler": "tsc",
+                "outputPath": "dist/apps/backend",
+                "main": "apps/backend/src/main.ts",
+                "tsConfig": "apps/backend/tsconfig.json",
+                "assets": [],
+                "isolatedConfig": true,
+                "webpackConfig": "apps/backend/webpack.config.js"
+              },
+              "configurations": {
+                "development": {},
+                "production": {}
+              },
+              "parallelism": true,
+              "cache": true,
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
+            },
+            "serve": {
+              "executor": "@nx/js:node",
+              "defaultConfiguration": "development",
+              "options": {
+                "buildTarget": "backend:build",
+                "watch": true,
+                "runBuildTargetDependencies": false
+              },
+              "configurations": {
+                "development": {
+                  "buildTarget": "backend:build:development"
+                },
+                "production": {
+                  "buildTarget": "backend:build:production"
+                }
+              },
+              "parallelism": true,
+              "cache": true
+            },
+            "test": {
+              "executor": "@nx/jest:jest",
+              "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+              "options": {
+                "jestConfig": "apps/backend/jest.config.js",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default", "^production"]
+            }
+          },
+          "projectType": "application",
+          "metadata": {},
+          "name": "backend",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "apps/backend/src",
+          "tags": ["type:app", "scope:backend"],
+          "implicitDependencies": []
+        }
+      },
+      "website": {
+        "name": "website",
+        "type": "app",
+        "data": {
+          "root": "apps/website",
+          "targets": {
+            "lint": {
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default"]
+            },
+            "build": {
+              "executor": "@angular/build:application",
+              "outputs": ["{options.outputPath}"],
+              "options": {
+                "outputPath": "dist/apps/website",
+                "browser": "apps/website/src/main.ts",
+                "polyfills": ["zone.js"],
+                "tsConfig": "apps/website/tsconfig.app.json",
+                "inlineStyleLanguage": "scss",
+                "assets": [
+                  {
+                    "glob": "**/*",
+                    "input": "apps/website/public"
+                  }
+                ],
+                "styles": ["apps/website/src/styles.scss"]
+              },
+              "configurations": {
+                "production": {
+                  "budgets": [
+                    {
+                      "type": "initial",
+                      "maximumWarning": "500kb",
+                      "maximumError": "1mb"
+                    },
+                    {
+                      "type": "anyComponentStyle",
+                      "maximumWarning": "6kb",
+                      "maximumError": "12kb"
+                    }
+                  ],
+                  "outputHashing": "all",
+                  "fileReplacements": [
+                    {
+                      "replace": "apps/website/src/environments/environment.ts",
+                      "with": "apps/website/src/environments/environment.prod.ts"
+                    }
+                  ]
+                },
+                "development": {
+                  "optimization": false,
+                  "extractLicenses": false,
+                  "sourceMap": true
+                }
+              },
+              "defaultConfiguration": "production",
+              "parallelism": true,
+              "cache": true,
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
+            },
+            "serve": {
+              "continuous": true,
+              "executor": "@angular/build:dev-server",
+              "configurations": {
+                "production": {
+                  "buildTarget": "website:build:production"
+                },
+                "development": {
+                  "buildTarget": "website:build:development"
+                }
+              },
+              "defaultConfiguration": "development",
+              "options": {},
+              "parallelism": true,
+              "cache": true
+            },
+            "extract-i18n": {
+              "executor": "@angular/build:extract-i18n",
+              "options": {
+                "buildTarget": "website:build"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "executor": "@nx/jest:jest",
+              "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+              "options": {
+                "jestConfig": "apps/website/jest.config.ts",
+                "tsConfig": "apps/website/tsconfig.spec.json",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default", "^production"]
+            },
+            "serve-static": {
+              "continuous": true,
+              "executor": "@nx/web:file-server",
+              "options": {
+                "buildTarget": "website:build",
+                "port": 4200,
+                "staticFilePath": "dist/apps/website/browser",
+                "spa": true
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "website",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "prefix": "app",
+          "sourceRoot": "apps/website/src",
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "bitbonsai": {
+        "name": "bitbonsai",
+        "type": "app",
+        "data": {
+          "root": ".",
+          "name": "bitbonsai",
+          "tags": ["npm:public"],
+          "metadata": {
+            "targetGroups": {
+              "NPM Scripts": ["prepare"]
+            },
+            "js": {
+              "packageName": "bitbonsai",
+              "packageVersion": "1.0.0",
+              "isInPackageManagerWorkspaces": false
+            }
+          },
+          "targets": {
+            "prepare": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "prepare"
+              },
+              "metadata": {
+                "scriptContent": "husky",
+                "runCommand": "npm run prepare"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "nx-release-publish": {
+              "executor": "@nx/js:release-publish",
+              "dependsOn": ["^nx-release-publish"],
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "dev": {
+              "executor": "nx:run-commands",
+              "options": {
+                "commands": ["nx serve frontend", "nx serve backend"],
+                "parallel": true
+              },
+              "description": "Start frontend and backend development servers in parallel",
+              "configurations": {},
+              "parallelism": true
+            },
+            "lint": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "biome lint ."
+              },
+              "description": "Lint code with Biome",
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "inputs": ["default"]
+            },
+            "format": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "biome format . --write"
+              },
+              "description": "Format code with Biome",
+              "configurations": {},
+              "parallelism": true
+            },
+            "check": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "biome check ."
+              },
+              "description": "Check code quality with Biome",
+              "configurations": {},
+              "parallelism": true
+            },
+            "check:fix": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "biome check . --write"
+              },
+              "description": "Check and auto-fix code quality issues",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:all": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx run-many --target=test --all --coverage"
+              },
+              "description": "Run all tests with coverage",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:coverage": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx run-many --target=test --all --coverage --coverageReporters=text-summary"
+              },
+              "description": "Run all tests with coverage summary",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:integration": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=integration --maxWorkers=2"
+              },
+              "description": "Run encoding integration tests",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:level1": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=level-1-basic --maxWorkers=1"
+              },
+              "description": "Run Level 1 encoding tests (basic)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:level2": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=level-2-codecs --maxWorkers=1"
+              },
+              "description": "Run Level 2 encoding tests (multi-codec)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:level3": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=level-3-concurrent --maxWorkers=1"
+              },
+              "description": "Run Level 3 encoding tests (concurrent)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:level4": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=level-4-edge-cases --maxWorkers=1"
+              },
+              "description": "Run Level 4 encoding tests (edge cases)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:level5": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=auto-heal --maxWorkers=1"
+              },
+              "description": "Run Level 5 encoding tests (auto-heal)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:level8": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "nx test backend --testPathPattern=level-8-quality --maxWorkers=1"
+              },
+              "description": "Run Level 8 encoding tests (quality verification)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:encoding:all": {
+              "executor": "nx:run-commands",
+              "options": {
+                "commands": [
+                  "nx test:encoding:level1",
+                  "nx test:encoding:level2",
+                  "nx test:encoding:level3",
+                  "nx test:encoding:level4",
+                  "nx test:encoding:level5",
+                  "nx test:encoding:level8"
+                ],
+                "parallel": false
+              },
+              "description": "Run all encoding test levels sequentially",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test"
+              },
+              "description": "Run E2E tests (headless)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:ui": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test --ui"
+              },
+              "description": "Run E2E tests in interactive UI mode",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:debug": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test --debug"
+              },
+              "description": "Run E2E tests in debug mode",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:headed": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test --headed"
+              },
+              "description": "Run E2E tests with visible browser",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:chromium": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test --project=chromium"
+              },
+              "description": "Run E2E tests on Chromium only",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:firefox": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test --project=firefox"
+              },
+              "description": "Run E2E tests on Firefox only",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:webkit": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright test --project=webkit"
+              },
+              "description": "Run E2E tests on WebKit only",
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:e2e:report": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "playwright show-report"
+              },
+              "description": "Show Playwright test report",
+              "configurations": {},
+              "parallelism": true
+            },
+            "prisma:generate": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "prisma generate"
+              },
+              "description": "Generate Prisma Client",
+              "configurations": {},
+              "parallelism": true
+            },
+            "prisma:migrate": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "prisma migrate dev"
+              },
+              "description": "Run Prisma migrations (development)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "prisma:migrate:deploy": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "prisma migrate deploy"
+              },
+              "description": "Run Prisma migrations (production)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "prisma:studio": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "prisma studio"
+              },
+              "description": "Open Prisma Studio database GUI",
+              "configurations": {},
+              "parallelism": true
+            },
+            "prisma:seed": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "ts-node prisma/seed.ts"
+              },
+              "description": "Seed database with test data",
+              "configurations": {},
+              "parallelism": true
+            },
+            "env:reset": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/reset-test-env.sh"
+              },
+              "description": "Reset test environment",
+              "configurations": {},
+              "parallelism": true
+            },
+            "env:reset:repopulate": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/reset-test-env.sh --repopulate-media"
+              },
+              "description": "Reset test environment and repopulate media",
+              "configurations": {},
+              "parallelism": true
+            },
+            "docker:dev": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "docker-compose -f docker-compose.dev.yml up --build"
+              },
+              "description": "Start Docker development environment",
+              "configurations": {},
+              "parallelism": true
+            },
+            "docker:dev:down": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "docker-compose -f docker-compose.dev.yml down"
+              },
+              "description": "Stop Docker development environment",
+              "configurations": {},
+              "parallelism": true
+            },
+            "docker:build": {
+              "executor": "nx:run-commands",
+              "options": {
+                "commands": [
+                  "node scripts/update-version.js",
+                  "docker build -f Dockerfile -t lucidfabrics/bitbonsai:latest -t lucidfabrics/bitbonsai:$(node -p \"require('./package.json').version\") ."
+                ],
+                "parallel": false
+              },
+              "description": "Build Docker image with version tags",
+              "configurations": {},
+              "parallelism": true
+            },
+            "docker:push": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "docker push lucidfabrics/bitbonsai:latest && docker push lucidfabrics/bitbonsai:$(node -p \"require('./package.json').version\")"
+              },
+              "description": "Push Docker images to Docker Hub",
+              "configurations": {},
+              "parallelism": true
+            },
+            "docker:build-push": {
+              "executor": "nx:run-commands",
+              "options": {
+                "commands": ["nx docker:build", "nx docker:push"],
+                "parallel": false
+              },
+              "description": "Build and push Docker images",
+              "configurations": {},
+              "parallelism": true
+            },
+            "update:version": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "node scripts/update-version.js"
+              },
+              "description": "Update version in environment files",
+              "configurations": {},
+              "parallelism": true
+            },
+            "version:patch": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npm version patch --no-git-tag-version"
+              },
+              "description": "Bump patch version (1.0.0 → 1.0.1)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "version:minor": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npm version minor --no-git-tag-version"
+              },
+              "description": "Bump minor version (1.0.0 → 1.1.0)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "version:major": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npm version major --no-git-tag-version"
+              },
+              "description": "Bump major version (1.0.0 → 2.0.0)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "version:patch:commit": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npm version patch && node scripts/update-version.js && git add apps/frontend/src/environments && git commit --amend --no-edit && git push && git push --tags"
+              },
+              "description": "Bump patch version, commit, and push with tags",
+              "configurations": {},
+              "parallelism": true
+            },
+            "version:minor:commit": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npm version minor && node scripts/update-version.js && git add apps/frontend/src/environments && git commit --amend --no-edit && git push && git push --tags"
+              },
+              "description": "Bump minor version, commit, and push with tags",
+              "configurations": {},
+              "parallelism": true
+            },
+            "version:major:commit": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npm version major && node scripts/update-version.js && git add apps/frontend/src/environments && git commit --amend --no-edit && git push && git push --tags"
+              },
+              "description": "Bump major version, commit, and push with tags",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/release/release.sh patch"
+              },
+              "description": "Unified release (patch) for both Unraid and Proxmox - RECOMMENDED",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:minor": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/release/release.sh minor"
+              },
+              "description": "Unified release (minor) for both Unraid and Proxmox",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:major": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/release/release.sh major"
+              },
+              "description": "Unified release (major) for both Unraid and Proxmox",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:dry-run": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/release/release.sh patch true"
+              },
+              "description": "Preview release without committing changes",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:reset": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/release/reset-version.sh"
+              },
+              "description": "Reset version to specific value (manual recovery)",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:rollback": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "bash scripts/release/rollback-version.sh"
+              },
+              "description": "Rollback to previous version from backup",
+              "configurations": {},
+              "parallelism": true
+            },
+            "unraid:release": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && ./generate-unraid-release.sh"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:unraid": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && exit 1"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:unraid:minor": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release:minor instead (unified Unraid + Proxmox)' && exit 1"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release:minor' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:unraid:major": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release:major instead (unified Unraid + Proxmox)' && exit 1"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release:major' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "proxmox:release": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && ./generate-proxmox-release.sh"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:proxmox": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release instead (unified Unraid + Proxmox)' && exit 1"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:proxmox:minor": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release:minor instead (unified Unraid + Proxmox)' && exit 1"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release:minor' instead",
+              "configurations": {},
+              "parallelism": true
+            },
+            "release:proxmox:major": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo '⚠️  DEPRECATED: Use npx nx release:major instead (unified Unraid + Proxmox)' && exit 1"
+              },
+              "description": "⚠️ DEPRECATED - Use 'nx release:major' instead",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "$schema": "./node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "sourceRoot": ".",
+          "implicitDependencies": []
+        }
+      }
+    },
+    "dependencies": {
+      "shared-models": [],
+      "website-e2e": [
+        {
+          "source": "website-e2e",
+          "target": "website",
+          "type": "implicit"
+        }
+      ],
+      "shared-ui": [],
+      "frontend": [
+        {
+          "source": "frontend",
+          "target": "shared-ui",
+          "type": "static"
+        }
+      ],
+      "backend": [],
+      "website": [],
+      "bitbonsai": []
+    }
+  }
+}
