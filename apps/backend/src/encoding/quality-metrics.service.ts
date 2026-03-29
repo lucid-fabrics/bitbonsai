@@ -335,7 +335,7 @@ export class QualityMetricsService {
    * @param threshold - VMAF threshold (default: 85)
    * @returns Validation result with re-encode recommendation
    */
-  validateQuality(metrics: QualityMetrics, threshold: number = 85): QualityValidationResult {
+  validateQuality(metrics: QualityMetrics, threshold = 85): QualityValidationResult {
     const vmaf = metrics.vmaf;
 
     if (vmaf === undefined || vmaf === null) {

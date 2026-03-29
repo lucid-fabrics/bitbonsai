@@ -73,7 +73,7 @@ export class StorageMountService {
       this.logger.debug(`Executing mount command: ${mountCommand}`);
 
       // Execute mount command
-      const { stdout, stderr } = await execAsync(mountCommand);
+      const { stderr } = await execAsync(mountCommand);
 
       if (stderr && !stderr.includes('warning')) {
         this.logger.warn(`Mount stderr: ${stderr}`);
@@ -141,7 +141,7 @@ export class StorageMountService {
       this.logger.debug(`Executing unmount command: ${unmountCommand}`);
 
       // Execute unmount command
-      const { stdout, stderr } = await execAsync(unmountCommand);
+      const { stderr } = await execAsync(unmountCommand);
 
       if (stderr && !stderr.includes('warning')) {
         this.logger.warn(`Unmount stderr: ${stderr}`);
@@ -269,7 +269,9 @@ export class StorageMountService {
       // Parse df output (second line contains data)
       const parts = lines[1].split(/\s+/);
       const totalBytes = BigInt(parts[1]);
-      const _usedBytes = BigInt(parts[2]);
+      // Note: usedBytes tracked for potential future use
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      BigInt(parts[2]);
       const availableBytes = BigInt(parts[3]);
       const usedPercent = parseFloat(parts[4].replace('%', ''));
 
@@ -297,7 +299,7 @@ export class StorageMountService {
       // Use grep with fixed-string mode (-F) to prevent regex injection
       const { stdout } = await execAsync(`mount | grep -F ${escapeShellArg(safeMountPoint)}`);
       return stdout.includes(safeMountPoint);
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -308,7 +310,7 @@ export class StorageMountService {
   private async ensureMountPoint(mountPoint: string): Promise<void> {
     try {
       await fs.access(mountPoint);
-    } catch (_error) {
+    } catch {
       // Directory doesn't exist, create it
       this.logger.debug(`Creating mount point directory: ${mountPoint}`);
       await fs.mkdir(mountPoint, { recursive: true, mode: 0o755 });
@@ -326,7 +328,7 @@ export class StorageMountService {
       let fstabContent = '';
       try {
         fstabContent = await fs.readFile(fstabPath, 'utf-8');
-      } catch (_error) {
+      } catch {
         // fstab doesn't exist, will create it
         this.logger.debug('/etc/fstab does not exist, will create it');
       }
