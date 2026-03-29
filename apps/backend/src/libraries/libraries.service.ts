@@ -921,6 +921,7 @@ export class LibrariesService {
       );
 
       // Collect successful job creations
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TypeScript cannot infer the result type of Promise.allSettled
       const successful = results.filter(
         (r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null
       );

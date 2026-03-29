@@ -10,6 +10,7 @@ import { NodesService } from '../nodes/nodes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { FfmpegService } from './ffmpeg.service';
+import { QualityMetricsService } from './quality-metrics.service';
 
 interface JobWithPolicy extends Job {
   policy?: Policy;
@@ -36,10 +37,7 @@ interface JobResult {
   afterSizeBytes: bigint;
   savedBytes: bigint;
   savedPercent: number;
-}
-
-interface LockPromise extends Promise<void> {
-  release?: () => void;
+  qualityMetrics?: string;
 }
 
 // CRITICAL #3 FIX: Enhanced lock holder tracking for deadlock detection
@@ -142,7 +140,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly ffmpegService: FfmpegService,
     private readonly librariesService: LibrariesService,
     private readonly nodesService: NodesService,
-    private readonly fileRelocatorService: FileRelocatorService
+    private readonly fileRelocatorService: FileRelocatorService,
+    private readonly qualityMetricsService: QualityMetricsService
   ) {
     // Calculate optimal workers based on CPU capacity
     this.DEFAULT_WORKERS_PER_NODE = this.calculateOptimalWorkers();
@@ -1688,6 +1687,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         afterSizeBytes: result.afterSizeBytes.toString(),
         savedBytes: result.savedBytes.toString(),
         savedPercent: result.savedPercent,
+        ...(result.qualityMetrics && { qualityMetrics: result.qualityMetrics }),
       });
 
       // Update library statistics
@@ -2287,6 +2287,56 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const afterSizeBytes = BigInt(fs.statSync(tmpPath).size);
       const { savedBytes, savedPercent } = this.calculateSavings(beforeSizeBytes, afterSizeBytes);
 
+      // VMAF QUALITY SCORING: Calculate quality metrics if enabled
+      let qualityMetrics: string | undefined;
+      try {
+        const vmafThreshold = await this.getVmafThreshold();
+        const metricsEnabled = await this.isQualityMetricsEnabled();
+
+        if (metricsEnabled) {
+          this.logger.log(`Calculating VMAF quality metrics for job ${job.id}...`);
+
+          const metrics = await this.qualityMetricsService.calculateAllQualityMetrics(
+            job.filePath,
+            tmpPath
+          );
+
+          const validation = this.qualityMetricsService.validateQuality(metrics, vmafThreshold);
+
+          this.logger.log(
+            `Quality check result: VMAF=${metrics.vmaf?.toFixed(2) ?? 'N/A'}, ` +
+              `threshold=${vmafThreshold}, label=${validation.qualityLabel}, ` +
+              `passed=${validation.passed}`
+          );
+
+          qualityMetrics = this.qualityMetricsService.toJsonString(metrics);
+
+          if (!validation.passed) {
+            // Re-encode triggered: quality below threshold, mark job for retry
+            this.logger.warn(
+              `⚠️  Quality below threshold (VMAF=${metrics.vmaf?.toFixed(2)} < ${vmafThreshold}), ` +
+                `flagging job ${job.id} for re-encode`
+            );
+
+            // Update job with quality failure info (re-encode happens via existing retry flow)
+            await this.queueService.updateJobRaw(job.id, {
+              error: `Quality below threshold: VMAF=${metrics.vmaf?.toFixed(2)} < ${vmafThreshold} (${validation.qualityLabel})`,
+              retryCount: (job.retryCount || 0) + 1,
+            });
+          }
+        } else {
+          this.logger.debug(
+            `Quality metrics disabled, skipping VMAF calculation for job ${job.id}`
+          );
+        }
+      } catch (metricsError) {
+        // Non-blocking: log quality calculation failure but don't fail the job
+        const errorMsg =
+          metricsError instanceof Error ? metricsError.message : String(metricsError);
+        this.logger.warn(`⚠️  Quality metrics calculation failed for job ${job.id}: ${errorMsg}`);
+        this.logger.warn(`Job ${job.id} will complete without quality score (non-blocking)`);
+      }
+
       // CRITICAL FIX: Size sanity check - encoded file shouldn't be suspiciously small
       // This catches edge cases where duration might pass but file is clearly incomplete
       this.validateOutputSize(beforeSizeBytes, afterSizeBytes, originalDuration, job.filePath);
@@ -2327,6 +2377,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         afterSizeBytes,
         savedBytes,
         savedPercent,
+        qualityMetrics,
       };
     } catch (error) {
       // TRUE RESUME: Only delete temp file on validation/corruption errors
@@ -3166,5 +3217,41 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+  }
+
+  /**
+   * Get VMAF threshold from system settings
+   *
+   * @returns VMAF threshold (default: 85)
+   * @private
+   */
+  private async getVmafThreshold(): Promise<number> {
+    try {
+      const settings = await this.prisma.settings.findFirst({
+        where: {},
+        select: { vmafThreshold: true },
+      });
+      return settings?.vmafThreshold ?? 85;
+    } catch {
+      return 85; // Default threshold
+    }
+  }
+
+  /**
+   * Check if quality metrics (VMAF) is enabled in system settings
+   *
+   * @returns Whether quality metrics are enabled (default: true)
+   * @private
+   */
+  private async isQualityMetricsEnabled(): Promise<boolean> {
+    try {
+      const settings = await this.prisma.settings.findFirst({
+        where: {},
+        select: { qualityMetricsEnabled: true },
+      });
+      return settings?.qualityMetricsEnabled ?? true;
+    } catch {
+      return true; // Default enabled
+    }
   }
 }

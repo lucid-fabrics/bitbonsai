@@ -10,6 +10,7 @@ import { Interval } from '@nestjs/schedule';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- package.json version needed at runtime
 import { version as APP_VERSION } from '../../../../package.json';
 import { DataAccessService } from '../core/services/data-access.service';
 import { PrismaService } from '../prisma/prisma.service';

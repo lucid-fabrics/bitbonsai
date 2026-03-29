@@ -98,9 +98,13 @@ export class StripeService {
 
     this.logger.log(`Created checkout session for ${params.email}`);
 
+    if (!session.url) {
+      throw new Error('Stripe checkout session URL is missing');
+    }
+
     return {
       sessionId: session.id,
-      url: session.url!,
+      url: session.url,
     };
   }
 

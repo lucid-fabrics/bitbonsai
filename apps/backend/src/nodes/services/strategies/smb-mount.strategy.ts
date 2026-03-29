@@ -56,7 +56,7 @@ export class SMBMountStrategy implements IMountStrategy {
       setTimeout(async () => {
         try {
           await fs.unlink(credsFile);
-        } catch (_error) {
+        } catch {
           this.logger.warn(`Failed to cleanup credential file ${credsFile}`);
         }
       }, 30000); // 30 seconds

@@ -267,7 +267,7 @@ describe('LicenseClientService', () => {
         })
       );
 
-      mockPrismaService.$transaction.mockImplementation(async (fn: Function) => {
+      mockPrismaService.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
         const tx = {
           license: {
             findFirst: jest.fn().mockResolvedValue(null),

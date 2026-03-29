@@ -972,7 +972,7 @@ export class NodesController {
         try {
           const url = new URL(urlToUse);
           nodeIp = url.hostname;
-        } catch (_error) {
+        } catch {
           // Silent fallback to localhost
         }
       }

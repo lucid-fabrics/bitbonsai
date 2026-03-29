@@ -211,7 +211,7 @@ describe('StorageShareService', () => {
       mockRepository.findById.mockResolvedValue(baseShare);
       mockRepository.update.mockResolvedValue({ ...baseShare, name: 'Updated' });
 
-      const _result = await service.update('share-1', {
+      await service.update('share-1', {
         name: 'Updated',
         smbPassword: 'new-pass',
       });

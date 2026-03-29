@@ -9,7 +9,7 @@ export class NodeLimitGuard implements CanActivate {
     private readonly prisma: PrismaService
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  async canActivate(_context: ExecutionContext): Promise<boolean> {
     const { maxNodes } = await this.licenseClient.getCurrentLimits();
 
     const activeNodeCount = await this.prisma.node.count({

@@ -47,7 +47,7 @@ async function bootstrap() {
         '⚠️  For production, ensure .env is properly secured and not committed to git',
         'Bootstrap'
       );
-    } catch (_error) {
+    } catch {
       Logger.error(
         'Failed to save JWT_SECRET to .env file. Set JWT_SECRET environment variable manually.',
         'Bootstrap'
