@@ -116,6 +116,7 @@ export function createMockJob(overrides: Partial<Job> = {}): Job {
     corruptedRequeueCount: 0,
     stuckRecoveryCount: 0,
     contentFingerprint: null,
+    qualityMetrics: null,
     nodeId: 'node-1',
     libraryId: 'lib-1',
     policyId: 'policy-1',
