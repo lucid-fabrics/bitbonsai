@@ -1,8 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { NodeRole } from '@prisma/client';
 import Bonjour, { Service } from 'bonjour-service';
-import { version as APP_VERSION } from '../../../../../package.json';
 import { PrismaService } from '../../prisma/prisma.service';
+
+// Version injected at build time - fallback for local dev
+const APP_VERSION = process.env.APP_VERSION || '1.0.0';
 
 export interface DiscoveredMainNode {
   nodeId: string;
