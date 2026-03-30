@@ -18,7 +18,7 @@ import {
 import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.directive';
 
 @Component({
-  selector: 'bb-home',
+  selector: 'app-home',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
@@ -92,7 +92,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 
           <div class="features__grid">
             @for (feature of keyFeatures; track feature.title; let i = $index) {
-              <div class="feature" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div class="feature" appScrollReveal [delay]="i * 100" animation="fade-in-up">
                 <fa-icon [icon]="feature.faIcon" class="feature__icon"></fa-icon>
                 <h3 class="feature__title">{{ feature.title }}</h3>
                 <p class="feature__description">{{ feature.description }}</p>
@@ -131,7 +131,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
         <div class="social-proof__container">
           <div class="social-proof__grid">
             @for (stat of socialProofStats; track stat.label; let i = $index) {
-              <div class="social-proof-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div class="social-proof-card" appScrollReveal [delay]="i * 100" animation="fade-in-up">
                 <div class="social-proof-card__value">{{ stat.value }}</div>
                 <div class="social-proof-card__label">{{ stat.label }}</div>
               </div>
@@ -152,7 +152,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 
           <div class="testimonials__grid">
             @for (testimonial of testimonials; track testimonial.name; let i = $index) {
-              <div class="testimonial-card" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
+              <div class="testimonial-card" appScrollReveal [delay]="i * 150" animation="fade-in-up">
                 <div class="testimonial-card__content">
                   <p class="testimonial-card__quote">"{{ testimonial.quote }}"</p>
                 </div>
@@ -181,7 +181,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 
           <div class="integrations__grid">
             @for (integration of integrations; track integration.name; let i = $index) {
-              <div class="integration-card" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
+              <div class="integration-card" appScrollReveal [delay]="i * 80" animation="fade-in-up">
                 <fa-icon [icon]="integration.faIcon" class="integration-card__icon"></fa-icon>
                 <div class="integration-card__name">{{ integration.name }}</div>
                 <div class="integration-card__status">{{ integration.status }}</div>
@@ -201,7 +201,7 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 
           <div class="pain-grid">
             @for (pain of painPoints; track pain.problem; let i = $index) {
-              <div class="pain-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div class="pain-card" appScrollReveal [delay]="i * 100" animation="fade-in-up">
                 <div class="pain-card__problem">
                   <div class="pain-card__icon pain-card__icon--bad">Traditional</div>
                   <div class="pain-card__text">{{ pain.problem }}</div>

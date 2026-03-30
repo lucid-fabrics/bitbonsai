@@ -18,7 +18,7 @@ interface ViewPricingTier {
 }
 
 @Component({
-  selector: 'bb-pricing',
+  selector: 'app-pricing',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
@@ -57,7 +57,7 @@ interface ViewPricingTier {
         <div class="tiers__container">
           <div class="tiers__grid">
             @for (tier of tiers; track tier.name; let i = $index) {
-              <div class="tier-card" [class.tier-card--popular]="tier.popular" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div class="tier-card" [class.tier-card--popular]="tier.popular" appScrollReveal [delay]="i * 100" animation="fade-in-up">
                 @if (tier.popular) {
                   <div class="tier-card__badge">Most Popular</div>
                 }
@@ -97,7 +97,7 @@ interface ViewPricingTier {
 
           <div class="faq__grid">
             @for (item of faqs; track item.question; let i = $index) {
-              <div class="faq-item" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
+              <div class="faq-item" appScrollReveal [delay]="i * 80" animation="fade-in-up">
                 <h3 class="faq-item__question">{{ item.question }}</h3>
                 <p class="faq-item__answer">{{ item.answer }}</p>
               </div>

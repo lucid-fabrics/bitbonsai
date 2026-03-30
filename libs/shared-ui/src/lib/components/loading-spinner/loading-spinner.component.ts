@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 
 @Component({
-  selector: 'bb-loading-spinner',
+  selector: 'lib-loading-spinner',
   standalone: true,
   imports: [],
   template: `

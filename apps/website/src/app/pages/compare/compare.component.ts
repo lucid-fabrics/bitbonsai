@@ -17,7 +17,7 @@ interface ComparisonSection {
 }
 
 @Component({
-  selector: 'bb-compare',
+  selector: 'app-compare',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
@@ -36,7 +36,7 @@ interface ComparisonSection {
       <section class="summary">
         <div class="summary__container">
           <div class="summary__grid">
-            <div class="summary-card summary-card--bitbonsai" bbScrollReveal [delay]="0" animation="slide-in-left">
+            <div class="summary-card summary-card--bitbonsai" appScrollReveal [delay]="0" animation="slide-in-left">
               <fa-icon [icon]="faSeedling" class="summary-card__logo"></fa-icon>
               <h3 class="summary-card__name">BitBonsai</h3>
               <p class="summary-card__tagline">Intelligent multi-node encoding</p>
@@ -50,7 +50,7 @@ interface ComparisonSection {
               <a routerLink="/download" class="summary-card__cta">Get Started</a>
             </div>
 
-            <div class="summary-card" bbScrollReveal [delay]="100" animation="slide-in-right">
+            <div class="summary-card" appScrollReveal [delay]="100" animation="slide-in-right">
               <fa-icon [icon]="faVideo" class="summary-card__logo"></fa-icon>
               <h3 class="summary-card__name">Tdarr</h3>
               <p class="summary-card__tagline">Plugin-based transcoding</p>
@@ -72,7 +72,7 @@ interface ComparisonSection {
           <h2 class="comparison__title">Feature Comparison</h2>
 
           @for (section of comparisonSections; track section.title; let i = $index) {
-            <div class="comparison-table" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
+            <div class="comparison-table" appScrollReveal [delay]="i * 150" animation="fade-in-up">
               <h3 class="comparison-table__section">{{ section.title }}</h3>
 
               <div class="comparison-table__header">

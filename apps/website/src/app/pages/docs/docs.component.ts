@@ -23,7 +23,7 @@ interface DocItem {
 }
 
 @Component({
-  selector: 'bb-docs',
+  selector: 'app-docs',
   standalone: true,
   imports: [FontAwesomeModule, ScrollRevealDirective],
   template: `
@@ -86,7 +86,7 @@ interface DocItem {
           <!-- Documentation Sections -->
           <div class="doc-sections">
             @for (section of docSections; track section.title; let i = $index) {
-              <div class="doc-section" bbScrollReveal [delay]="i * 120" animation="fade-in-up">
+              <div class="doc-section" appScrollReveal [delay]="i * 120" animation="fade-in-up">
                 <div class="doc-section__header">
                   <fa-icon [icon]="section.faIcon" class="doc-section__icon"></fa-icon>
                   <h2 class="doc-section__title">{{ section.title }}</h2>

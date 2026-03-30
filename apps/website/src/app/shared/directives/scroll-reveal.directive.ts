@@ -1,7 +1,7 @@
-import { Directive, ElementRef, Input, OnDestroy, OnInit } from '@angular/core';
+import { Directive, ElementRef, Input, inject, OnDestroy, OnInit } from '@angular/core';
 
 @Directive({
-  selector: '[bbScrollReveal]',
+  selector: '[appScrollReveal]',
   standalone: true,
 })
 export class ScrollRevealDirective implements OnInit, OnDestroy {
@@ -9,8 +9,7 @@ export class ScrollRevealDirective implements OnInit, OnDestroy {
   @Input() animation: 'fade-in-up' | 'fade-in' | 'slide-in-left' | 'slide-in-right' = 'fade-in-up';
 
   private observer: IntersectionObserver | null = null;
-
-  constructor(private el: ElementRef) {}
+  private el = inject(ElementRef);
 
   ngOnInit() {
     // Skip animations on mobile for performance

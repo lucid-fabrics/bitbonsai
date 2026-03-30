@@ -1,7 +1,9 @@
 <div
   class="carousel-container"
   [class.fullscreen]="fullscreen"
-  (click)="onBackdropClick($event)">
+  tabindex="0"
+  (click)="onBackdropClick($event)"
+  (keyup.enter)="onBackdropClick($event)">
   @if (fullscreen) {
     <div class="carousel-controls">
       <button class="zoom-button" (click)="zoomOut()" [disabled]="zoomLevel <= minZoom" aria-label="Zoom out">
@@ -32,7 +34,7 @@
 
     <!-- Previous image preview (fullscreen only) -->
     @if (fullscreen && images.length > 1) {
-      <div class="carousel-side-preview prev" (click)="previous()">
+      <div class="carousel-side-preview prev" tabindex="0" (click)="previous()" (keyup.enter)="previous()" (keyup.space)="previous()">
         <img
           [src]="getPreviousImage().src"
           [alt]="getPreviousImage().alt" />
@@ -43,12 +45,14 @@
       @if (images.length > 0) {
         <div class="carousel-image-wrapper">
           <img
+            tabindex="0"
             [src]="images[currentIndex].src"
             [alt]="images[currentIndex].alt"
             class="carousel-image"
             [class.image-error]="failedIndexes.has(currentIndex)"
             [style.transform]="fullscreen ? getImageTransform() : 'none'"
             (click)="onImageClick()"
+            (keyup.enter)="onImageClick()"
             (error)="onImageError(currentIndex)" />
           @if (failedIndexes.has(currentIndex)) {
             <div class="image-error-overlay">
@@ -67,7 +71,7 @@
 
     <!-- Next image preview (fullscreen only) -->
     @if (fullscreen && images.length > 1) {
-      <div class="carousel-side-preview next" (click)="next()">
+      <div class="carousel-side-preview next" tabindex="0" (click)="next()" (keyup.enter)="next()" (keyup.space)="next()">
         <img
           [src]="getNextImage().src"
           [alt]="getNextImage().alt" />

@@ -23,7 +23,7 @@ interface Platform {
 }
 
 @Component({
-  selector: 'bb-download',
+  selector: 'app-download',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `
@@ -45,7 +45,7 @@ interface Platform {
 
           <div class="platforms__grid">
             @for (platform of platforms; track platform.name; let i = $index) {
-              <div class="platform-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div class="platform-card" appScrollReveal [delay]="i * 100" animation="fade-in-up">
                 <fa-icon [icon]="platform.faIcon" class="platform-card__icon"></fa-icon>
                 <h3 class="platform-card__name">{{ platform.name }}</h3>
                 <p class="platform-card__description">{{ platform.description }}</p>

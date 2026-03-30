@@ -12,7 +12,7 @@ export default [
         'error',
         {
           type: 'attribute',
-          prefix: 'lib',
+          prefix: ['app', 'lib'],
           style: 'camelCase',
         },
       ],
@@ -20,7 +20,7 @@ export default [
         'error',
         {
           type: 'element',
-          prefix: 'lib',
+          prefix: ['app', 'lib'],
           style: 'kebab-case',
         },
       ],
@@ -28,7 +28,6 @@ export default [
   },
   {
     files: ['**/*.html'],
-    // Override or add rules here
     rules: {},
   },
 ];

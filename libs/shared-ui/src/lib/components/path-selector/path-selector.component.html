@@ -13,7 +13,7 @@
       </div>
     } @else {
       @if (parentPath()) {
-        <div class="tree-item parent" (click)="goToParent()">
+        <div class="tree-item parent" tabindex="0" (click)="goToParent()" (keyup.enter)="goToParent()" (keyup.space)="goToParent()">
           <i class="fas fa-level-up-alt"></i>
           <span class="item-name">..</span>
         </div>
@@ -22,7 +22,10 @@
         <div
           class="tree-item"
           [class.inaccessible]="!dir.isAccessible"
+          tabindex="0"
           (click)="selectDirectory(dir)"
+          (keyup.enter)="selectDirectory(dir)"
+          (keyup.space)="selectDirectory(dir)"
         >
           <i class="fas fa-folder"></i>
           <span class="item-name">{{ dir.name }}</span>
