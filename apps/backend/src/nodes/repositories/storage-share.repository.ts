@@ -108,7 +108,6 @@ export class StorageShareRepository implements IStorageShareRepository {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic update object built conditionally above
     return this.prisma.storageShare.update({
       where: { id },
       data: data as any,
