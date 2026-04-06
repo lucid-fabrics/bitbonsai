@@ -9,6 +9,7 @@ export class NodeLimitGuard implements CanActivate {
     private readonly prisma: PrismaService
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async canActivate(_context: ExecutionContext): Promise<boolean> {
     const { maxNodes } = await this.licenseClient.getCurrentLimits();
 

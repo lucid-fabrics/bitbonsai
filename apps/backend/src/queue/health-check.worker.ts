@@ -400,11 +400,14 @@ export class HealthCheckWorker implements OnModuleInit {
     // Formula: min(60, 10 + (sizeGB / 2)) minutes
     // Examples: 5GB=12.5min, 10GB=15min, 50GB=35min, 100GB=60min (capped)
     // Old: 10min for <10GB, 20min for >=10GB (too rigid)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _tenGB = BigInt(10 * 1024 * 1024 * 1024);
 
     // We'll use the old timeouts as fallback for the WHERE clause
     // Actual timeout validation happens per-job in the check loop
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
 
     // Find jobs that need health checking
@@ -864,7 +867,7 @@ Re-encoding a file to the same codec offers no benefit and may actually increase
   private calculateExpectedSavingsPercent(
     sourceCodec: string,
     targetCodec: string,
-    _beforeSizeBytes: bigint
+    _beforeSizeBytes: bigint // eslint-disable-line @typescript-eslint/no-unused-vars
   ): number {
     const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
     const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);

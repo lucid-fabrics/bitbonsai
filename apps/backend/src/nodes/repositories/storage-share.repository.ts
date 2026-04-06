@@ -110,7 +110,7 @@ export class StorageShareRepository implements IStorageShareRepository {
 
     return this.prisma.storageShare.update({
       where: { id },
-      data: data as any,
+      data: data as Prisma.StorageShareUpdateInput,
     });
   }
 

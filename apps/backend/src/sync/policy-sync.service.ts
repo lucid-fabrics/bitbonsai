@@ -57,6 +57,7 @@ export class PolicySyncService {
       // Get all data to sync
       const policies = await this.getPoliciesForSync();
       const libraries = await this.getLibrariesForSync();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const _settings = await this.getSettingsForSync();
 
       this.logger.log(

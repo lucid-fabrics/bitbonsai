@@ -343,6 +343,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.cleanup();
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return this.activeScan!; // Non-null assertion since we just assigned it
   }
 

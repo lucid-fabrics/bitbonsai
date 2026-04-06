@@ -108,6 +108,7 @@ export class ContentTuneAnalyzer {
 
       let stderr = '';
       let sceneCount = 0;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const lastPts = 0;
 
       ffmpeg.stderr?.on('data', (data) => {
@@ -190,6 +191,7 @@ export class ContentTuneAnalyzer {
         const edgeDensity = edgeMatch ? parseFloat(edgeMatch[1]) : 0;
 
         // Color complexity is harder to detect, use variance as proxy
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const colorComplexity = variance > 30 ? 'high' : 'low';
 
         resolve({ variance, edgeDensity, colorComplexity: variance });

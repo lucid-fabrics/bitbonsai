@@ -256,6 +256,7 @@ export class QueueDelegationService {
         `Job ${jobId} successfully delegated to node ${targetNodeId}${needsTransfer ? ' (file transfer initiated)' : ''}`
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return updatedJob!;
     });
   }

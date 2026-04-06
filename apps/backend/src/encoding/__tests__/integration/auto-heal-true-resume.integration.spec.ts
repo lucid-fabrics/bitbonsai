@@ -112,6 +112,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
     try {
       await fs.rm(testTempFile, { force: true });
     } catch (_error) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
       // Ignore if file doesn't exist
     }
 

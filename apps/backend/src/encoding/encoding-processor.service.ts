@@ -366,6 +366,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           }
         }
       } catch (_error) {
+        // eslint-disable-line @typescript-eslint/no-unused-vars
         // Ignore errors, will retry
       }
 
@@ -1107,6 +1108,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         try {
           await Promise.race([existingLock.promise, timeoutPromise]);
         } catch (_error) {
+          // eslint-disable-line @typescript-eslint/no-unused-vars
           attempt++;
           if (attempt >= maxRetries) {
             throw new Error(
@@ -1903,6 +1905,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       await fs.promises.access(job.filePath, fs.constants.R_OK);
       checks.push('✓ File readable');
     } catch (_error) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
       throw new Error(
         `Cannot read source file: ${job.filePath}\n\n` +
           `Possible causes:\n` +
@@ -1994,6 +1997,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     const loadAvg = os.loadavg()[0]; // 1-minute load average
     const loadThreshold = cpuCount * this.loadThresholdMultiplier;
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _totalMemory = os.totalmem();
     const freeMemory = os.freemem();
     const freeMemoryGB = freeMemory / 1024 ** 3;
@@ -2838,6 +2842,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           this.crossFsSafeRenameSync(originalBackupPath, originalPath);
           this.logger.log(`KEEP ORIGINAL: Successfully rolled back to original`);
         } catch (_rollbackError) {
+          // eslint-disable-line @typescript-eslint/no-unused-vars
           this.logger.error(`KEEP ORIGINAL: Rollback failed! Backup at: ${originalBackupPath}`);
         }
 

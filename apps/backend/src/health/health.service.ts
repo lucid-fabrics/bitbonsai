@@ -179,6 +179,7 @@ export class HealthService {
 
       const usedPercent = Number.parseFloat(parts[4]?.replace('%', '') || '0');
       const available = parts[3] || 'Unknown';
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const _used = parts[2] || 'Unknown';
 
       let status: 'ok' | 'warning' | 'critical' = 'ok';

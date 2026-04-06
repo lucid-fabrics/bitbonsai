@@ -225,7 +225,7 @@ describe('Level 3: Concurrent Encoding', () => {
       );
 
       // ASSERT: All 5 jobs completed successfully
-      completedJobs.forEach((completedJob, index) => {
+      completedJobs.forEach((completedJob, _index) => {
         expect(completedJob).toBeTruthy();
         expect(completedJob?.stage).toBe(JobStage.COMPLETED);
         expect(completedJob?.savedBytes).toBeTruthy();

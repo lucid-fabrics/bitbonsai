@@ -203,6 +203,7 @@ export class JellyfinIntegrationService {
    * Trigger library scan for a specific path
    */
   async refreshLibrary(_filePath?: string): Promise<void> {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
     const config = await this.getJellyfinConfig();
     if (!config || !config.refreshOnComplete) return;
 

@@ -42,7 +42,7 @@ export class EncodingPreviewService {
     jobId: string,
     tempFilePath: string,
     durationSeconds: number,
-    _currentProgress: number
+    _currentProgress: number // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<string[]> {
     try {
       // Create preview directory for this job

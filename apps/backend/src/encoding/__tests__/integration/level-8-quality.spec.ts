@@ -119,7 +119,7 @@ async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMet
  * Higher PSNR = better quality (>30 dB is good, >40 dB is excellent)
  */
 async function _calculatePSNR(originalPath: string, encodedPath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const ffmpeg = spawn('ffmpeg', [
       '-i',
       originalPath,

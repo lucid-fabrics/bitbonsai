@@ -30,6 +30,7 @@ export class SettingsRepository {
     return this.prisma.settings.upsert({
       where,
       update: data,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       create: data as any,
     });
   }
