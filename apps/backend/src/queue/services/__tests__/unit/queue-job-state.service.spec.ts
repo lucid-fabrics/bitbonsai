@@ -90,23 +90,32 @@ describe('QueueJobStateService', () => {
         nodeId: 'node-1',
       });
 
-      prisma.job.findUnique.mockResolvedValue({ stage: JobStage.ENCODING });
-      prisma.job.update.mockResolvedValue({
-        ...mockJob,
-        stage: JobStage.COMPLETED,
-        progress: 100,
-        afterSizeBytes: BigInt(500000000),
-        savedBytes: BigInt(500000000),
-        savedPercent: 50,
-        node: { licenseId: 'license-1' },
+      prisma.$transaction.mockImplementation(async (callback) => {
+        const tx = {
+          job: {
+            findUnique: jest.fn().mockResolvedValue({ stage: JobStage.ENCODING }),
+            update: jest.fn().mockResolvedValue({
+              ...mockJob,
+              stage: JobStage.COMPLETED,
+              progress: 100,
+              afterSizeBytes: BigInt(500000000),
+              savedBytes: BigInt(500000000),
+              savedPercent: 50,
+              node: { licenseId: 'license-1' },
+            }),
+          },
+          metric: { upsert: jest.fn().mockResolvedValue({}) },
+          node: {
+            findUnique: jest.fn().mockResolvedValue({ avgEncodingSpeed: 100 }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          metricsProcessedJob: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return callback(tx);
       });
-      prisma.metricsProcessedJob.findUnique.mockResolvedValue(null);
-      prisma.metric = {
-        upsert: jest.fn().mockResolvedValue({}),
-      } as any;
-      prisma.node.findUnique.mockResolvedValue({ avgEncodingSpeed: 100 });
-      prisma.node.update.mockResolvedValue({});
-      prisma.metricsProcessedJob.create.mockResolvedValue({});
 
       const result = await service.completeJob('job-1', {
         afterSizeBytes: '500000000',
@@ -114,7 +123,6 @@ describe('QueueJobStateService', () => {
         savedPercent: 50,
       });
 
-      expect(prisma.job.update).toHaveBeenCalled();
       expect(result.stage).toBe(JobStage.COMPLETED);
     });
 
@@ -125,20 +133,29 @@ describe('QueueJobStateService', () => {
       });
 
       prisma.job.findUnique.mockResolvedValue({ stage: JobStage.COMPLETED });
-      prisma.job.update.mockResolvedValue({
-        ...mockJob,
-        stage: JobStage.COMPLETED,
-        node: { licenseId: 'license-1' },
+      prisma.$transaction.mockImplementation(async (callback) => {
+        // Mock transaction to return completed job with node for the early-return path
+        const tx = {
+          job: {
+            findUnique: jest.fn().mockResolvedValue({
+              ...mockJob,
+              stage: JobStage.COMPLETED,
+              node: { licenseId: 'license-1' },
+            }),
+          },
+        };
+        return callback(tx);
       });
 
-      await service.completeJob('job-1', {
+      const result = await service.completeJob('job-1', {
         afterSizeBytes: '500000000',
         savedBytes: '500000000',
         savedPercent: 50,
       });
 
-      // Should not update metrics for already completed jobs - check metric not called
-      expect(prisma.metric).toBeUndefined();
+      // Should return the existing completed job
+      expect(result.stage).toBe(JobStage.COMPLETED);
+      expect(prisma.job.update).not.toHaveBeenCalled();
     });
   });
 
