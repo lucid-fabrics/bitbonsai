@@ -67,9 +67,9 @@ export class HardwareDetectionService {
 
       this.logger.log(`✅ Hardware detection complete - Acceleration: ${accelerationType}`);
       return result;
-    } catch (error) {
-      this.logger.error('Failed to detect hardware:', error);
-      throw error;
+    } catch (_error) {
+      this.logger.error('Failed to detect hardware:', _error);
+      throw _error;
     }
   }
 
@@ -116,8 +116,8 @@ export class HardwareDetectionService {
       if (gpus.length === 0) {
         this.logger.warn('No GPU acceleration detected - falling back to CPU-only');
       }
-    } catch (error) {
-      this.logger.error('Error during GPU detection:', error);
+    } catch (_error) {
+      this.logger.error('Error during GPU detection:', _error);
     }
 
     return gpus;

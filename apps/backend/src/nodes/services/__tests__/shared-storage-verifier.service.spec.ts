@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';

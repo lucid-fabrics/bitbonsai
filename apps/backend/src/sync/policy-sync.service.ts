@@ -57,7 +57,7 @@ export class PolicySyncService {
       // Get all data to sync
       const policies = await this.getPoliciesForSync();
       const libraries = await this.getLibrariesForSync();
-      const _settings = await this.getSettingsForSync();
+      await this.getSettingsForSync();
 
       this.logger.log(
         `📦 Syncing ${policies.length} policies, ${libraries.length} libraries, and settings to ${childNode.name}`

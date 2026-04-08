@@ -26,7 +26,7 @@ export interface OptimalWorkerConfig {
 export function calculateOptimalWorkers(
   cpuCores: number,
   acceleration: AccelerationType,
-  ramGb?: number
+  _ramGb?: number
 ): OptimalWorkerConfig {
   // Minimum cores required for encoding (reserve some for system)
   const MIN_CORES_FOR_SYSTEM = 2;

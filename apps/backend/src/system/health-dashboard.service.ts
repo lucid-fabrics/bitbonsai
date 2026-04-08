@@ -209,11 +209,11 @@ export class HealthDashboardService {
         status: HealthStatus.HEALTHY,
         message: 'Database connection healthy',
       });
-    } catch (error) {
+    } catch (_error) {
       checks.push({
         name: 'Database',
         status: HealthStatus.CRITICAL,
-        message: `Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `Database connection failed: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
       });
     }
 
@@ -388,8 +388,8 @@ export class HealthDashboardService {
           usedBytes,
           usedPercent: Math.round(usedPercent * 10) / 10,
         });
-      } catch (error) {
-        this.logger.warn(`Failed to get storage stats for ${mediaPath}: ${error}`);
+      } catch (_error) {
+        this.logger.warn(`Failed to get storage stats for ${mediaPath}: ${_error}`);
       }
     }
 
