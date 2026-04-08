@@ -716,7 +716,7 @@ export class QueueJobStateService {
 
     const errorLower = error.toLowerCase();
 
-    const ffmpegExitMatch = error.match(/ffmpeg.*exit code (\d+)/i);
+    const ffmpegExitMatch = error.match(/ffmpeg.*(?:exited (?:with )?code |exit code )(\d+)/i);
     if (ffmpegExitMatch) {
       const exitCode = ffmpegExitMatch[1];
       return `FFmpeg Error Code ${exitCode}`;
@@ -781,7 +781,7 @@ export class QueueJobStateService {
       return 'Memory Error';
     }
 
-    return error;
+    return 'Unknown error';
   }
 
   /**
