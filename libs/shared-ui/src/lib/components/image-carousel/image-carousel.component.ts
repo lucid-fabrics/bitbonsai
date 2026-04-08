@@ -19,7 +19,7 @@ export interface CarouselImage {
 }
 
 @Component({
-  selector: 'bb-image-carousel',
+  selector: 'lib-image-carousel',
   standalone: true,
   imports: [],
   templateUrl: './image-carousel.component.html',
@@ -32,7 +32,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
   @Input() showThumbnails = true;
   @Input() fullscreen = false;
   @Output() imageClick = new EventEmitter<number>();
-  @Output() close = new EventEmitter<void>();
+  @Output() closed = new EventEmitter<void>();
 
   @ViewChildren('thumbnail') thumbnails!: QueryList<ElementRef>;
 
@@ -139,7 +139,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
 
   protected closeCarousel(): void {
     if (this.fullscreen) {
-      this.close.emit();
+      this.closed.emit();
     }
   }
 

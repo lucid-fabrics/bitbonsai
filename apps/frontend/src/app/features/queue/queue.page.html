@@ -1055,7 +1055,7 @@
                           <div class="preview-gallery">
                             @let previewImages = parsePreviewImages(job.previewImagePaths, job.id);
                             @if (previewImages.length > 0) {
-                              <bb-image-carousel
+                              <lib-image-carousel
                                 [images]="previewImages"
                                 [showThumbnails]="true"
                                 (imageClick)="openFullscreenCarousel(job.id, job.previewImagePaths, $event)" />
@@ -2143,7 +2143,7 @@
 
 <!-- Fullscreen Carousel Modal -->
 @if (showFullscreenCarousel) {
-  <bb-image-carousel
+  <lib-image-carousel
     [images]="fullscreenCarouselImages"
     [initialIndex]="fullscreenCarouselInitialIndex"
     [showThumbnails]="true"

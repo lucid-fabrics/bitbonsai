@@ -32,7 +32,14 @@
 
     <!-- Previous image preview (fullscreen only) -->
     @if (fullscreen && images.length > 1) {
-      <div class="carousel-side-preview prev" (click)="previous()">
+      <div 
+        class="carousel-side-preview prev" 
+        (click)="previous()"
+        (keydown.enter)="previous()"
+        (keydown.space)="previous()"
+        tabindex="0"
+        role="button"
+        aria-label="Show previous image">
         <img
           [src]="getPreviousImage().src"
           [alt]="getPreviousImage().alt" />
@@ -67,7 +74,14 @@
 
     <!-- Next image preview (fullscreen only) -->
     @if (fullscreen && images.length > 1) {
-      <div class="carousel-side-preview next" (click)="next()">
+      <div 
+        class="carousel-side-preview next" 
+        (click)="next()"
+        (keydown.enter)="next()"
+        (keydown.space)="next()"
+        tabindex="0"
+        role="button"
+        aria-label="Show next image">
         <img
           [src]="getNextImage().src"
           [alt]="getNextImage().alt" />
