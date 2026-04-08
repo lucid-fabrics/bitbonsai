@@ -5,7 +5,7 @@ import { faDiscord, faGithub, faReddit, faTwitter } from '@fortawesome/free-bran
 import { faSeedling } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
-  selector: 'bb-footer',
+  selector: 'app-footer',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule],
   template: `

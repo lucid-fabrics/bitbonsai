@@ -18,7 +18,7 @@ import {
 import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.directive';
 
 @Component({
-  selector: 'bb-home',
+  selector: 'app-home',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `

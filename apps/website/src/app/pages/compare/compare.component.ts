@@ -17,7 +17,7 @@ interface ComparisonSection {
 }
 
 @Component({
-  selector: 'bb-compare',
+  selector: 'app-compare',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `

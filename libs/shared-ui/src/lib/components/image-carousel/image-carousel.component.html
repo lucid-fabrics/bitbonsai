@@ -1,7 +1,11 @@
 <div
   class="carousel-container"
   [class.fullscreen]="fullscreen"
-  (click)="onBackdropClick($event)">
+  (click)="onBackdropClick($event)"
+  (keydown.escape)="closeCarousel()"
+  tabindex="0"
+  role="dialog"
+  aria-label="Image carousel">
   @if (fullscreen) {
     <div class="carousel-controls">
       <button class="zoom-button" (click)="zoomOut()" [disabled]="zoomLevel <= minZoom" aria-label="Zoom out">
@@ -15,7 +19,7 @@
         <i class="fas fa-compress-arrows-alt"></i>
       </button>
     </div>
-    <button class="close-button" (click)="closeCarousel()" aria-label="Close">
+    <button class="close-button" (click)="closeCarousel()" (keydown.enter)="closeCarousel()" aria-label="Close">
       <i class="fas fa-times"></i>
     </button>
   }
@@ -25,6 +29,8 @@
       <button
         class="carousel-nav prev"
         (click)="previous()"
+        (keydown.enter)="previous()"
+        (keydown.space)="previous()"
         aria-label="Previous image">
         <i class="fas fa-chevron-left"></i>
       </button>
@@ -49,6 +55,7 @@
     <div class="carousel-viewport">
       @if (images.length > 0) {
         <div class="carousel-image-wrapper">
+          <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
           <img
             [src]="images[currentIndex].src"
             [alt]="images[currentIndex].alt"
@@ -89,7 +96,7 @@
     }
 
     @if (images.length > 1) {
-      <button class="carousel-nav next" (click)="next()" aria-label="Next image">
+      <button class="carousel-nav next" (click)="next()" (keydown.enter)="next()" (keydown.space)="next()" aria-label="Next image">
         <i class="fas fa-chevron-right"></i>
       </button>
     }

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PricingApiService } from '../../services/pricing-api.service';
 
 @Component({
-  selector: 'bb-checkout',
+  selector: 'app-checkout',
   standalone: true,
   imports: [FormsModule],
   template: `

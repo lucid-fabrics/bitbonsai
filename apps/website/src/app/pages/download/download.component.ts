@@ -23,7 +23,7 @@ interface Platform {
 }
 
 @Component({
-  selector: 'bb-download',
+  selector: 'app-download',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `

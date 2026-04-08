@@ -106,7 +106,10 @@ export class AuthService {
     const token = this.getToken();
     if (token) {
       this.getMe().subscribe({
-        next: () => {},
+        // Intentionally empty - just validates token existence
+        next: () => {
+          // Token is valid
+        },
         error: () => {
           this.clearToken();
         },

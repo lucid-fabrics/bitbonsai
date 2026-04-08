@@ -4,7 +4,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faSeedling } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
-  selector: 'bb-header',
+  selector: 'app-header',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule],
   template: `

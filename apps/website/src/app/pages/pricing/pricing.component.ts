@@ -18,7 +18,7 @@ interface ViewPricingTier {
 }
 
 @Component({
-  selector: 'bb-pricing',
+  selector: 'app-pricing',
   standalone: true,
   imports: [RouterModule, FontAwesomeModule, ScrollRevealDirective],
   template: `

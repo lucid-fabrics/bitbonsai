@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
 @Component({
-  selector: 'bb-terms',
+  selector: 'app-terms',
   standalone: true,
   imports: [RouterModule],
   template: `

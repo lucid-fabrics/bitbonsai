@@ -23,7 +23,7 @@ interface DocItem {
 }
 
 @Component({
-  selector: 'bb-docs',
+  selector: 'app-docs',
   standalone: true,
   imports: [FontAwesomeModule, ScrollRevealDirective],
   template: `

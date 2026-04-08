@@ -13,7 +13,14 @@
       </div>
     } @else {
       @if (parentPath()) {
-        <div class="tree-item parent" (click)="goToParent()">
+        <div 
+          class="tree-item parent" 
+          (click)="goToParent()"
+          (keydown.enter)="goToParent()"
+          (keydown.space)="goToParent()"
+          tabindex="0"
+          role="button"
+          aria-label="Go to parent directory">
           <i class="fas fa-level-up-alt"></i>
           <span class="item-name">..</span>
         </div>
@@ -23,7 +30,11 @@
           class="tree-item"
           [class.inaccessible]="!dir.isAccessible"
           (click)="selectDirectory(dir)"
-        >
+          (keydown.enter)="selectDirectory(dir)"
+          (keydown.space)="selectDirectory(dir)"
+          tabindex="0"
+          role="button"
+          [attr.aria-label]="dir.name">
           <i class="fas fa-folder"></i>
           <span class="item-name">{{ dir.name }}</span>
           @if (!dir.isAccessible) {
