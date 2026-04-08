@@ -111,7 +111,7 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
     // Clean up temp files
     try {
       await fs.rm(testTempFile, { force: true });
-    } catch (_error) {
+    } catch {
       // Ignore if file doesn't exist
     }
 

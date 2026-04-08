@@ -7,6 +7,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Node } from '@prisma/client';
 import { Public } from '../auth/guards/public.decorator';
 import { RegistrationRequestService } from '../nodes/services/registration-request.service';
 import { SystemInfoService } from '../nodes/services/system-info.service';
@@ -394,7 +395,7 @@ export class DiscoveryController {
   })
   async approveNode(@Param('nodeId') nodeId: string): Promise<ApproveNodeResponseDto> {
     // Approve the node
-    const node = await this.discoveryService.approveNode(nodeId);
+    await this.discoveryService.approveNode(nodeId);
 
     // Trigger automatic sync (runs asynchronously)
     // Don't await - let it run in background
@@ -405,7 +406,7 @@ export class DiscoveryController {
     return {
       success: true,
       message: 'Node approved successfully. Sync triggered in background.',
-      nodeId: node.id,
+      nodeId: nodeId,
     };
   }
 

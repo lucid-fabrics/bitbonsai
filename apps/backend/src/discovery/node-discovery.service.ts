@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { NodeRole } from '@prisma/client';
+import { Node, NodeRole } from '@prisma/client';
 import { Bonjour, Browser, Service } from 'bonjour-service';
 import { NodesService } from '../nodes/nodes.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -489,7 +489,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    * @param nodeId ID of the node to approve
    * @returns Approved node details
    */
-  async approveNode(nodeId: string): Promise<any> {
+  async approveNode(nodeId: string): Promise<Node> {
     // For now, just return the node from the nodes service
     // In a real implementation, this would update a DiscoveredNode status
     return this.nodesService.findOne(nodeId);
