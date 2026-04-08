@@ -409,7 +409,6 @@ export async function verifyVideoFile(
           duration: parseFloat(format.duration),
         });
       } catch (_err) {
-        // eslint-disable-line @typescript-eslint/no-unused-vars
         resolve({ isValid: false });
       }
     });

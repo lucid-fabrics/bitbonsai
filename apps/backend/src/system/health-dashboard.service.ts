@@ -500,7 +500,6 @@ export class HealthDashboardService {
         gpuModel: gpus.length > 0 ? gpus[0].model : undefined,
       };
     } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       return {
         accelerationType: 'CPU',
         cpuCores: os.cpus().length,

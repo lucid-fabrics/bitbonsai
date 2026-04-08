@@ -292,7 +292,6 @@ export class SystemInfoService {
 
       return null;
     } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       this.logger.debug('No GPU detected');
       return null;
     }

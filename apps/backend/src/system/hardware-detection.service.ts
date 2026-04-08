@@ -147,7 +147,6 @@ export class HardwareDetectionService {
         };
       }
     } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       this.logger.debug('NVIDIA GPU not detected');
     }
 
@@ -193,7 +192,6 @@ export class HardwareDetectionService {
         }
       }
     } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       this.logger.debug('Intel Quick Sync not detected');
     }
 
@@ -228,7 +226,6 @@ export class HardwareDetectionService {
         }
       }
     } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       this.logger.debug('AMD GPU not detected');
     }
 
@@ -258,7 +255,6 @@ export class HardwareDetectionService {
         }
       }
     } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       this.logger.debug('Apple Silicon not detected');
     }
 
