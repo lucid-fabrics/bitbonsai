@@ -7,7 +7,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Node } from '@prisma/client';
 import { Public } from '../auth/guards/public.decorator';
 import { RegistrationRequestService } from '../nodes/services/registration-request.service';
 import { SystemInfoService } from '../nodes/services/system-info.service';
