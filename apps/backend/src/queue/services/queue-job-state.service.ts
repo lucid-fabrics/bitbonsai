@@ -716,7 +716,7 @@ export class QueueJobStateService {
 
     const errorLower = error.toLowerCase();
 
-    const ffmpegExitMatch = error.match(/ffmpeg.*exit code (\d+)/i);
+    const ffmpegExitMatch = error.match(/ffmpeg.*(?:exit(?:ed)? code|exited with code) (\d+)/i);
     if (ffmpegExitMatch) {
       const exitCode = ffmpegExitMatch[1];
       return `FFmpeg Error Code ${exitCode}`;
