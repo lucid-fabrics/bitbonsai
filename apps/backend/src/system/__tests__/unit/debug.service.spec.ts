@@ -104,6 +104,9 @@ describe('DebugService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    // Reset mocks to return null by default to prevent test pollution
+    mockPrismaService.node.findFirst.mockResolvedValue(null);
+    mockPrismaService.node.findUnique.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [DebugService, { provide: PrismaService, useValue: mockPrismaService }],
@@ -138,13 +141,16 @@ describe('DebugService', () => {
     });
 
     it('should detect overload when load is high', async () => {
+      mockOsNetworkInterfaces({
+        eth0: [{ address: '192.168.1.100', family: 'IPv4', internal: false }],
+      });
       mockOsGetters(
         [50, 2.0, 1.8],
         new Array(4).fill({ speed: 2000 }),
         16 * 1024 * 1024 * 1024,
         8 * 1024 * 1024 * 1024
       );
-      mockPrismaService.node.findUnique.mockResolvedValue(null);
+      mockPrismaService.node.findFirst.mockResolvedValue(null);
 
       const result = await service.getSystemLoad();
 
@@ -153,13 +159,16 @@ describe('DebugService', () => {
     });
 
     it('should detect overload when memory is low', async () => {
+      mockOsNetworkInterfaces({
+        eth0: [{ address: '192.168.1.100', family: 'IPv4', internal: false }],
+      });
       mockOsGetters(
         [1.5, 2.0, 1.8],
         new Array(4).fill({ speed: 2000 }),
         16 * 1024 * 1024 * 1024,
         1024 * 1024 * 1024
       ); // 1GB
-      mockPrismaService.node.findUnique.mockResolvedValue(null);
+      mockPrismaService.node.findFirst.mockResolvedValue(null);
 
       const result = await service.getSystemLoad();
 
@@ -168,13 +177,16 @@ describe('DebugService', () => {
     });
 
     it('should use custom load threshold from node config', async () => {
+      mockOsNetworkInterfaces({
+        eth0: [{ address: '192.168.1.100', family: 'IPv4', internal: false }],
+      });
       mockOsGetters(
         [1.5, 2.0, 1.8],
         new Array(4).fill({ speed: 2000 }),
         16 * 1024 * 1024 * 1024,
         8 * 1024 * 1024 * 1024
       );
-      mockPrismaService.node.findUnique.mockResolvedValue({
+      mockPrismaService.node.findFirst.mockResolvedValue({
         id: 'node-1',
         loadThresholdMultiplier: 10.0,
       } as any);
