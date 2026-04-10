@@ -5,7 +5,8 @@ import { DatabaseInitService } from '../../database-init.service';
 
 describe('DatabaseInitService', () => {
   let service: DatabaseInitService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
 
   beforeEach(async () => {
     prisma = createMockPrismaService();

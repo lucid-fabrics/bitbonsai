@@ -38,16 +38,21 @@ import { SettingsService } from '../settings/settings.service';
 /**
  * Creates a comprehensive PrismaService mock with all models and common methods.
  */
-export function createMockPrismaService() {
-  return {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMockPrismaService(): any {
+  const mockInstance: Record<string, unknown> = {
     $queryRaw: jest.fn(),
     $executeRaw: jest.fn(),
     $executeRawUnsafe: jest.fn(),
-    $transaction: jest.fn().mockImplementation((fnOrPromises: unknown) => {
+    $transaction: jest.fn().mockImplementation(async (fnOrPromises: unknown) => {
       if (typeof fnOrPromises === 'function') {
-        return (fnOrPromises as (prisma: ReturnType<typeof createMockPrismaService>) => unknown)(
-          createMockPrismaService()
-        );
+        // Create a proxy that forwards to mockInstance but allows separate mock setups
+        const txProxy = new Proxy(mockInstance, {
+          get(target, prop) {
+            return target[prop as string];
+          },
+        });
+        return fnOrPromises(txProxy);
       }
       return Promise.all(fnOrPromises as Promise<unknown>[]);
     }),
@@ -118,6 +123,7 @@ export function createMockPrismaService() {
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       update: jest.fn(),
+      upsert: jest.fn(),
       delete: jest.fn(),
       deleteMany: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
@@ -183,6 +189,8 @@ export function createMockPrismaService() {
       update: jest.fn(),
     },
   };
+
+  return mockInstance;
 }
 
 export const mockPrismaProvider: Provider = {
