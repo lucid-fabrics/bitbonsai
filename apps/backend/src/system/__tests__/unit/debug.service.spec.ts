@@ -3,86 +3,39 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DebugService } from '../../debug.service';
 
+// Mock os module to control cpus() and memory functions
+jest.mock('node:os', () => ({
+  __esModule: true,
+  loadavg: jest.fn().mockReturnValue([1.5, 2.0, 1.8]),
+  cpus: jest.fn().mockReturnValue([]),
+  totalmem: jest.fn().mockReturnValue(0),
+  freemem: jest.fn().mockReturnValue(0),
+  networkInterfaces: jest.fn().mockReturnValue({}),
+}));
+
 // Helper to mock getter-only properties
 function mockOsNetworkInterfaces(interfaces: object): void {
-  try {
-    // Delete existing property if it exists
-    delete (os as Record<string, unknown>).networkInterfaces;
-    Object.defineProperty(os, 'networkInterfaces', {
-      get: () => interfaces,
-      configurable: true,
-    });
-  } catch {
-    // Property may not be deletable, ignore
-  }
+  (os.networkInterfaces as jest.Mock).mockReturnValue(interfaces);
 }
 
 function clearOsNetworkInterfaces(): void {
-  try {
-    delete (os as Record<string, unknown>).networkInterfaces;
-    Object.defineProperty(os, 'networkInterfaces', {
-      get: () => ({}),
-      configurable: true,
-    });
-  } catch {
-    // Ignore
-  }
+  (os.networkInterfaces as jest.Mock).mockReturnValue({});
 }
 
 // Helper to mock getter-only os functions
 function mockOsGetters(loadAvg: number[], cpus: object[], totalMem: number, freeMem: number): void {
-  // Only define if not already defined to avoid "Cannot redefine" errors across tests
-  if (!('loadavg' in os)) {
-    try {
-      Object.defineProperty(os, 'loadavg', {
-        get: () => loadAvg,
-        configurable: true,
-      });
-    } catch {
-      // Ignore
-    }
-  }
-  if (!('cpus' in os)) {
-    try {
-      Object.defineProperty(os, 'cpus', {
-        get: () => cpus,
-        configurable: true,
-      });
-    } catch {
-      // Ignore
-    }
-  }
-  if (!('totalmem' in os)) {
-    try {
-      Object.defineProperty(os, 'totalmem', {
-        get: () => totalMem,
-        configurable: true,
-      });
-    } catch {
-      // Ignore
-    }
-  }
-  if (!('freemem' in os)) {
-    try {
-      Object.defineProperty(os, 'freemem', {
-        get: () => freeMem,
-        configurable: true,
-      });
-    } catch {
-      // Ignore
-    }
-  }
+  // Use the jest mocked functions (they're already set up by jest.mock)
+  (os.loadavg as jest.Mock).mockReturnValue(loadAvg);
+  (os.cpus as jest.Mock).mockReturnValue(cpus);
+  (os.totalmem as jest.Mock).mockReturnValue(totalMem);
+  (os.freemem as jest.Mock).mockReturnValue(freeMem);
 }
 
 function clearOsGetters(): void {
-  try {
-    delete (os as Record<string, unknown>).loadavg;
-    delete (os as Record<string, unknown>).cpus;
-    delete (os as Record<string, unknown>).totalmem;
-    delete (os as Record<string, unknown>).freemem;
-  } catch {
-    // Ignore
-  }
+  (os.loadavg as jest.Mock).mockReturnValue([1.5, 2.0, 1.8]);
+  (os.cpus as jest.Mock).mockReturnValue([]);
+  (os.totalmem as jest.Mock).mockReturnValue(0);
+  (os.freemem as jest.Mock).mockReturnValue(0);
 }
 
 describe('DebugService', () => {
@@ -194,6 +147,7 @@ describe('DebugService', () => {
       const result = await service.getSystemLoad();
 
       expect(result.loadThresholdMultiplier).toBe(10.0);
+      // Machine has 14 CPUs but test mocks to 4
       expect(result.loadThreshold).toBe(40); // 4 CPUs * 10
     });
   });

@@ -203,16 +203,17 @@ describe('JobAttributionService', () => {
         const node1 = createMockNode({
           id: 'node-1',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 5, startHour: 9, endHour: 17 }] as any, // Friday only
+          scheduleWindows: [{ dayOfWeek: 3, startHour: 9, endHour: 17 }] as any, // Wednesday only
         });
         const node2 = createMockNode({
           id: 'node-2',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 6, startHour: 9, endHour: 17 }] as any, // Saturday only
+          scheduleWindows: [{ dayOfWeek: 4, startHour: 9, endHour: 17 }] as any, // Thursday only
         });
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
+        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -1219,11 +1220,12 @@ describe('JobAttributionService', () => {
       const job = createMockJob();
       const offlineNode = createMockNode({
         scheduleEnabled: true,
-        scheduleWindows: [{ dayOfWeek: 5, startHour: 9, endHour: 17 }] as any,
+        scheduleWindows: [{ dayOfWeek: 3, startHour: 9, endHour: 17 }] as any, // Wednesday only (not today)
       });
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([offlineNode]);
+      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
 
       await service.findOptimalNode('job-1');
 
