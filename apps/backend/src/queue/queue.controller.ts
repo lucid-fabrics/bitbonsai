@@ -44,6 +44,7 @@ import { CancelJobDto } from './dto/cancel-job.dto';
 import { CompleteJobDto } from './dto/complete-job.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { DelegateJobDto } from './dto/delegate-job.dto';
+import { EstimateJobDto, JobEstimateResponseDto } from './dto/estimate-job.dto';
 import { FailJobDto } from './dto/fail-job.dto';
 import { JobStatsDto } from './dto/job-stats.dto';
 import { ResolveDecisionDto } from './dto/resolve-decision.dto';
@@ -243,6 +244,102 @@ export class QueueController {
   })
   async getStats(@Query('nodeId') nodeId?: string): Promise<JobStatsDto> {
     return this.queueService.getJobStats(nodeId);
+  }
+
+  /**
+   * Estimate job output size and savings
+   */
+  @Post('estimate')
+  @ApiOperation({
+    summary: 'Estimate job output size and savings',
+    description:
+      'Calculates estimated output file size and savings before encoding.\n\n' +
+      '**Use Cases**:\n' +
+      '- Help users decide if encoding is worth it\n' +
+      '- Show expected space savings in job preview\n' +
+      '- Enable informed quality/size tradeoffs\n\n' +
+      '**Calculation Based On**:\n' +
+      '- Source file size and codec\n' +
+      '- Target codec (HEVC/AV1 typically 40-60% smaller)\n' +
+      '- CRF value (higher = more compression, lower quality)\n' +
+      '- Video duration for encoding time estimate',
+  })
+  @ApiCreatedResponse({
+    description: 'Job estimation calculated successfully',
+    type: JobEstimateResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input parameters',
+  })
+  async estimateJob(@Body() estimateDto: EstimateJobDto): Promise<JobEstimateResponseDto> {
+    // Get job details if jobId provided
+    let sourceSizeBytes: bigint;
+    let sourceCodec: string | undefined;
+    let targetCodec: string;
+    let targetCrf: string | undefined;
+    let durationSeconds: number | undefined;
+
+    if (estimateDto.jobId) {
+      const job = await this.queueService.findOne(estimateDto.jobId);
+      if (!job) {
+        throw new NotFoundException(`Job ${estimateDto.jobId} not found`);
+      }
+      // Cast to access extended fields not in base Job type
+      const jobExtended = job as unknown as {
+        originalSizeBytes: bigint;
+        originalCodec?: string | null;
+        targetCodec: string;
+        targetCrf?: string | null;
+        durationSeconds?: number | null;
+      };
+      sourceSizeBytes = jobExtended.originalSizeBytes;
+      sourceCodec = jobExtended.originalCodec ?? undefined;
+      targetCodec = jobExtended.targetCodec;
+      targetCrf = jobExtended.targetCrf ?? undefined;
+      durationSeconds = jobExtended.durationSeconds ?? undefined;
+    } else {
+      // Use provided values
+      sourceSizeBytes = BigInt(estimateDto.sourceSizeBytes);
+      targetCodec = estimateDto.targetCodec;
+      targetCrf = estimateDto.targetCrf;
+      durationSeconds = estimateDto.durationSeconds;
+    }
+
+    // Import utility functions
+    const { estimateOutputSize, estimateSavingsPercent, estimateEncodingTime, formatSize } =
+      await import('./utils/encoding-estimation.util');
+
+    // Calculate estimates
+    const estimatedSizeBytes = estimateOutputSize(
+      sourceSizeBytes,
+      sourceCodec ?? 'h264',
+      targetCodec,
+      targetCrf
+    );
+
+    const estimatedSavingsBytes = sourceSizeBytes - estimatedSizeBytes;
+    const estimatedSavingsPercentCalc = estimateSavingsPercent(sourceSizeBytes, estimatedSizeBytes);
+
+    // Estimate encoding time if duration provided
+    let estimatedEncodingMinutes: number | undefined;
+    if (durationSeconds && durationSeconds > 0) {
+      estimatedEncodingMinutes = estimateEncodingTime(
+        durationSeconds,
+        '1920x1080', // Default to 1080p, could be enhanced
+        targetCodec
+      );
+    }
+
+    return {
+      estimatedSizeBytes: estimatedSizeBytes.toString(),
+      estimatedSavingsBytes: estimatedSavingsBytes.toString(),
+      estimatedSavingsPercent: estimatedSavingsPercentCalc,
+      estimatedSizeFormatted: formatSize(estimatedSizeBytes),
+      estimatedSavingsFormatted: formatSize(estimatedSavingsBytes),
+      estimatedEncodingMinutes,
+      targetCodec,
+      targetCrf,
+    };
   }
 
   /**
