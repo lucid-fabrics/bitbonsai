@@ -12,6 +12,7 @@ import { EncodingProcessorService } from './encoding-processor.service';
 import { EncodingSchedulerService } from './encoding-scheduler.service';
 import { FfmpegService } from './ffmpeg.service';
 import { FileHealthService } from './file-health.service';
+import { FileSizeEstimationService } from './file-size-estimation.service';
 
 /**
  * EncodingModule
@@ -40,6 +41,7 @@ import { FileHealthService } from './file-health.service';
     EncodingPreviewService,
     EncodingHistoryService,
     EncodingSchedulerService,
+    FileSizeEstimationService,
     PrismaService,
   ],
   exports: [
@@ -50,6 +52,7 @@ import { FileHealthService } from './file-health.service';
     EncodingPreviewService,
     EncodingHistoryService,
     EncodingSchedulerService,
+    FileSizeEstimationService,
   ],
 })
 export class EncodingModule {}
