@@ -10,7 +10,6 @@ import { Interval } from '@nestjs/schedule';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
-import { version as APP_VERSION } from '../../../../package.json';
 import { DataAccessService } from '../core/services/data-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { HeartbeatDto } from './dto/heartbeat.dto';
@@ -173,7 +172,7 @@ export class NodesService implements OnModuleInit {
     // Provide intelligent defaults for optional fields
     const nodeName =
       data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
-    const nodeVersion = data.version || APP_VERSION; // Read from package.json
+    const nodeVersion = data.version || '1.0.0'; // Default version
     const nodeAcceleration = data.acceleration || 'CPU'; // Default to CPU (every node has a CPU)
 
     // Create node

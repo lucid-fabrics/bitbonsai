@@ -1,9 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  QualityMetrics,
-  QualityMetricsService,
-  QualityValidationResult,
-} from '../../quality-metrics.service';
+import { QualityMetrics, QualityMetricsService } from '../../quality-metrics.service';
 
 describe('QualityMetricsService', () => {
   let service: QualityMetricsService;

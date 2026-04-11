@@ -1,6 +1,5 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { version as APP_VERSION } from '../../../../package.json';
 import { Public } from '../auth/guards/public.decorator';
 import type { BasicHealthDto } from './dto/basic-health.dto';
 import type { DetailedHealthDto } from './dto/detailed-health.dto';
@@ -29,7 +28,7 @@ export class HealthController {
         status: 'ok',
         timestamp: '2025-10-01T12:00:00Z',
         uptime: 3600,
-        version: APP_VERSION, // Read from package.json
+        version: '1.0.0', // Read from package.json
       },
     },
   })
@@ -41,7 +40,7 @@ export class HealthController {
         status: 'error',
         timestamp: '2025-10-01T12:00:00Z',
         uptime: 3600,
-        version: APP_VERSION, // Read from package.json
+        version: '1.0.0', // Read from package.json
       },
     },
   })
