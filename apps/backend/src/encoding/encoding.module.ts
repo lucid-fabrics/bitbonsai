@@ -26,6 +26,7 @@ import { FfmpegProcessCleanupService } from './ffmpeg-process-cleanup.service';
 import { FfmpegProgressParserService } from './ffmpeg-progress-parser.service';
 import { FfprobeService } from './ffprobe.service';
 import { FileHealthService } from './file-health.service';
+import { FileSizeEstimationService } from './file-size-estimation.service';
 import { HardwareAccelerationService } from './hardware-acceleration.service';
 import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
@@ -81,6 +82,7 @@ import { WorkerPoolService } from './worker-pool.service';
     SystemResourceService,
     WorkerPoolService,
     JobRetryStrategyService,
+    FileSizeEstimationService,
     JobRepository,
     LibraryRepository,
     NodeRepository,
@@ -96,6 +98,7 @@ import { WorkerPoolService } from './worker-pool.service';
     EncodingHistoryService,
     EncodingSchedulerService,
     QualityMetricsService,
+    FileSizeEstimationService,
   ],
 })
 export class EncodingModule {}
