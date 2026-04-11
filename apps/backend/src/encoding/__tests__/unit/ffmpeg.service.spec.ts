@@ -515,4 +515,113 @@ describe('FfmpegService', () => {
       await encodePromise.catch(() => undefined);
     });
   });
+
+  describe('selectCodecForPolicy', () => {
+    it('should return av1_nvenc for AV1 on NVIDIA', () => {
+      const codec = (service as any).selectCodecForPolicy('AV1', 'NVIDIA');
+      expect(codec).toBe('av1_nvenc');
+    });
+
+    it('should return av1_qsv for AV1 on Intel QSV', () => {
+      const codec = (service as any).selectCodecForPolicy('AV1', 'INTEL_QSV');
+      expect(codec).toBe('av1_qsv');
+    });
+
+    it('should return av1_vaapi for AV1 on AMD', () => {
+      const codec = (service as any).selectCodecForPolicy('AV1', 'AMD');
+      expect(codec).toBe('av1_vaapi');
+    });
+
+    it('should return libaom-av1 for AV1 on Apple M (no native HW encoder)', () => {
+      const codec = (service as any).selectCodecForPolicy('AV1', 'APPLE_M');
+      expect(codec).toBe('libaom-av1');
+    });
+
+    it('should return libaom-av1 for AV1 on CPU fallback', () => {
+      const codec = (service as any).selectCodecForPolicy('AV1', 'CPU');
+      expect(codec).toBe('libaom-av1');
+    });
+
+    it('should return hevc_nvenc for HEVC on NVIDIA', () => {
+      const codec = (service as any).selectCodecForPolicy('HEVC', 'NVIDIA');
+      expect(codec).toBe('hevc_nvenc');
+    });
+
+    it('should return libx265 for HEVC on CPU', () => {
+      const codec = (service as any).selectCodecForPolicy('HEVC', 'CPU');
+      expect(codec).toBe('libx265');
+    });
+
+    it('should return h264_nvenc for H264 on NVIDIA', () => {
+      const codec = (service as any).selectCodecForPolicy('H264', 'NVIDIA');
+      expect(codec).toBe('h264_nvenc');
+    });
+
+    it('should return libvpx-vp9 for VP9 on AMD', () => {
+      const codec = (service as any).selectCodecForPolicy('VP9', 'AMD');
+      expect(codec).toBe('libvpx-vp9');
+    });
+  });
+
+  describe('pauseEncoding', () => {
+    it('should pause active encoding job', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+      jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
+
+      const ffmpegProc = createMockChildProcess();
+      mockSpawn.mockReturnValue(ffmpegProc);
+
+      const encodePromise = service.encodeFile(mockJob, mockPolicy);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const pauseResult = await service.pauseEncoding(mockJob.id);
+      expect(pauseResult).toBe(true);
+
+      // Clean up
+      setTimeout(() => ffmpegProc.emit('close', 1), 10);
+      await encodePromise.catch(() => undefined);
+    });
+
+    it('should return false for non-existent job', async () => {
+      const result = await service.pauseEncoding('non-existent-job');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('resumeEncoding', () => {
+    it('should resume paused encoding job', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+      jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
+
+      const ffmpegProc = createMockChildProcess();
+      mockSpawn.mockReturnValue(ffmpegProc);
+
+      const encodePromise = service.encodeFile(mockJob, mockPolicy);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Pause first
+      await service.pauseEncoding(mockJob.id);
+
+      // Then resume
+      const resumeResult = await service.resumeEncoding(mockJob.id);
+      expect(resumeResult).toBe(true);
+
+      // Clean up
+      setTimeout(() => ffmpegProc.emit('close', 1), 10);
+      await encodePromise.catch(() => undefined);
+    });
+
+    it('should return false for non-existent job', async () => {
+      const result = await service.resumeEncoding('non-existent-job');
+      expect(result).toBe(false);
+    });
+  });
 });
