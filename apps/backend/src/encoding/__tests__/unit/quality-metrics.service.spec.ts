@@ -305,4 +305,35 @@ describe('QualityMetricsService (unit)', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('qualifyVmafScore', () => {
+    it('should return "Excellent" for score >= 80', () => {
+      // Access via validateQuality which calls qualifyVmafScore internally
+      const result = service.validateQuality({ vmaf: 95, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Excellent');
+    });
+
+    it('should return "Good" for score 60-79', () => {
+      const result = service.validateQuality({ vmaf: 70, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Good');
+    });
+
+    it('should return "Fair" for score 40-59', () => {
+      const result = service.validateQuality({ vmaf: 50, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Fair');
+    });
+
+    it('should return "Poor" for score < 40', () => {
+      const result = service.validateQuality({ vmaf: 30, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Poor');
+    });
+  });
+
+  describe('isAvailable', () => {
+    it('should check for VMAF support in FFmpeg', async () => {
+      const available = await service.isAvailable();
+      // Returns boolean - either true or false depending on FFmpeg build
+      expect(typeof available).toBe('boolean');
+    });
+  });
 });
