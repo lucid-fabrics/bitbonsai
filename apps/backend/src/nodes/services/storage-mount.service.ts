@@ -269,7 +269,7 @@ export class StorageMountService {
       // Parse df output (second line contains data)
       const parts = lines[1].split(/\s+/);
       const totalBytes = BigInt(parts[1]);
-      const _usedBytes = BigInt(parts[2]);
+      // const usedBytes = BigInt(parts[2]); // Reserved for future use
       const availableBytes = BigInt(parts[3]);
       const usedPercent = parseFloat(parts[4].replace('%', ''));
 
