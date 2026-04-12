@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 /**
  * Compression ratios for different codecs vs H.264
@@ -71,8 +71,6 @@ export interface EstimatedSize {
  */
 @Injectable()
 export class FileSizeEstimationService {
-  private readonly logger = new Logger(FileSizeEstimationService.name);
-
   /**
    * Estimate output file size for an encoding job
    *
