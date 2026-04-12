@@ -105,14 +105,18 @@ describe('NodeDiscoveryService', () => {
     });
 
     it('should use default port 3000 if PORT env is not set', async () => {
+      // Store and delete PORT (not set to undefined which becomes string "undefined")
       const originalPort = process.env.PORT;
-      process.env.PORT = undefined;
+      delete process.env.PORT;
 
       await service.startBroadcasting('node-1', 'TestNode');
 
       expect(mockPublish).toHaveBeenCalledWith(expect.objectContaining({ port: 3000 }));
 
-      process.env.PORT = originalPort;
+      // Restore original value
+      if (originalPort !== undefined) {
+        process.env.PORT = originalPort;
+      }
     });
 
     it('should handle broadcasting errors gracefully', async () => {

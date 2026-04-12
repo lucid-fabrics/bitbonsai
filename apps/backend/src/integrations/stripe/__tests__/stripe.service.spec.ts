@@ -7,7 +7,7 @@ describe('StripeService', () => {
   let prismaMock: any;
 
   beforeEach(async () => {
-    process.env.STRIPE_SECRET_KEY = undefined;
+    delete process.env.STRIPE_SECRET_KEY;
 
     prismaMock = {
       license: {
