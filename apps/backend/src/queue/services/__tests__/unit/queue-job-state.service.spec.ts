@@ -15,7 +15,7 @@ describe('QueueJobStateService', () => {
   let service: QueueJobStateService;
   let prisma: ReturnType<typeof createMockPrismaService>;
   let ffmpegService: jest.Mocked<FfmpegService>;
-  let jobHistoryService: jest.Mocked<JobHistoryService>;
+  let _jobHistoryService: jest.Mocked<JobHistoryService>;
 
   const mockJob: Job & { node: { licenseId: string } } = {
     id: 'job-123',
@@ -126,7 +126,7 @@ describe('QueueJobStateService', () => {
 
     service = module.get<QueueJobStateService>(QueueJobStateService);
     ffmpegService = module.get(FfmpegService);
-    jobHistoryService = module.get(JobHistoryService);
+    _jobHistoryService = module.get(JobHistoryService);
 
     jest.spyOn((service as any).logger, 'log').mockImplementation(() => {});
     jest.spyOn((service as any).logger, 'warn').mockImplementation(() => {});

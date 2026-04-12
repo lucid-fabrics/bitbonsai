@@ -77,7 +77,7 @@ export class FileFailureTrackingService {
     libraryId: string,
     contentFingerprint?: string
   ): Promise<boolean> {
-    const orConditions: Array<Record<string, unknown>> = [{ filePath, libraryId }];
+    const orConditions: Record<string, unknown>[] = [{ filePath, libraryId }];
 
     if (contentFingerprint) {
       orConditions.push({ contentFingerprint });

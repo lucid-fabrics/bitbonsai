@@ -106,7 +106,7 @@ describe('NodeDiscoveryService', () => {
 
     it('should use default port 3000 if PORT env is not set', async () => {
       const originalPort = process.env.PORT;
-      delete process.env.PORT;
+      process.env.PORT = undefined;
 
       await service.startBroadcasting('node-1', 'TestNode');
 
