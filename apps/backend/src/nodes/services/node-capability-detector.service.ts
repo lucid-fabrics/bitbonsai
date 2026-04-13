@@ -77,8 +77,11 @@ export class NodeCapabilityDetectorService {
         ? await this.testSharedStorageAccess(nodeId, nodeIp)
         : { hasSharedStorage: false, storageBasePath: null };
 
-    // Measure bandwidth (only if useful)
-    const bandwidthMbps = null; // TODO: Implement bandwidth test
+    // Measure bandwidth (only for local nodes where it's useful)
+    const bandwidthMbps =
+      networkLocation === NetworkLocation.LOCAL && nodeIp
+        ? await this.testBandwidth(nodeId, `http://${nodeIp}:3100`)
+        : null;
 
     // Generate reasoning
     const reasoning = this.generateReasoning({

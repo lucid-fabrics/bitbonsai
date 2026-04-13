@@ -169,8 +169,6 @@ export class StorageShareService {
   async update(id: string, data: UpdateStorageShareDto): Promise<StorageShare> {
     this.logger.log(`Updating storage share ${id}`);
 
-    const _share = await this.findOne(id);
-
     return this.repository.update(id, {
       name: data.name,
       mountOptions: data.mountOptions,
