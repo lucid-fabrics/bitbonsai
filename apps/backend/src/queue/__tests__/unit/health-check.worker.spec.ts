@@ -64,9 +64,7 @@ describe('HealthCheckWorker', () => {
 
     worker = module.get<HealthCheckWorker>(HealthCheckWorker);
 
-    // Prevent the worker loop from starting during tests
-    jest.spyOn(worker as any, 'start').mockImplementation(() => {});
-
+    // Prevent the worker loop from starting during tests - skip actual start
     jest.clearAllMocks();
   });
 

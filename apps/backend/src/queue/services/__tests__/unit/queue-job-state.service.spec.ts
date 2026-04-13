@@ -128,9 +128,27 @@ describe('QueueJobStateService', () => {
     ffmpegService = module.get(FfmpegService);
     _jobHistoryService = module.get(JobHistoryService);
 
-    jest.spyOn((service as any).logger, 'log').mockImplementation(() => {});
-    jest.spyOn((service as any).logger, 'warn').mockImplementation(() => {});
-    jest.spyOn((service as any).logger, 'error').mockImplementation(() => {});
+    jest
+      .spyOn(
+        (service as unknown as { logger: { log: jest.Mock; warn: jest.Mock; error: jest.Mock } })
+          .logger,
+        'log'
+      )
+      .mockImplementation(() => void 0);
+    jest
+      .spyOn(
+        (service as unknown as { logger: { log: jest.Mock; warn: jest.Mock; error: jest.Mock } })
+          .logger,
+        'warn'
+      )
+      .mockImplementation(() => void 0);
+    jest
+      .spyOn(
+        (service as unknown as { logger: { log: jest.Mock; warn: jest.Mock; error: jest.Mock } })
+          .logger,
+        'error'
+      )
+      .mockImplementation(() => void 0);
   });
 
   it('should be defined', () => {

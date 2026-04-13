@@ -143,7 +143,10 @@ export class QueueClient {
     return this.http.delete<void>(`${this.apiUrl}/${jobId}`);
   }
 
-  resolveDecision(jobId: string, actionConfig: Record<string, any>): Observable<QueueJobApiModel> {
+  resolveDecision(
+    jobId: string,
+    actionConfig: Record<string, unknown>
+  ): Observable<QueueJobApiModel> {
     return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/resolve-decision`, {
       decisionData: { actionConfig },
     });

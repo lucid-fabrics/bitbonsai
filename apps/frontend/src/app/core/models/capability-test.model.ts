@@ -18,7 +18,7 @@ export type TestStatus = 'pending' | 'running' | 'success' | 'warning' | 'error'
 export interface TestResult {
   status: TestStatus;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   durationMs?: number;
 }
 
