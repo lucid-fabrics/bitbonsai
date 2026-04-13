@@ -152,8 +152,8 @@ describe('NodeCapabilityDetectorService', () => {
     it('should return estimated bandwidth when endpoint unreachable', async () => {
       const result = await service.testBandwidth('node-1', 'http://node:3000');
 
-      // Should return estimate (10000) when fetch fails (connection refused)
-      expect(result).toBe(10000);
+      // Should return estimate (100) for remote nodes when fetch fails (connection refused)
+      expect(result).toBe(100);
     });
 
     it('should return realistic bandwidth when endpoint reachable', async () => {
