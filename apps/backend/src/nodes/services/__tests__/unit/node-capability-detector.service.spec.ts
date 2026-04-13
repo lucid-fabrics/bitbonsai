@@ -127,12 +127,13 @@ describe('NodeCapabilityDetectorService', () => {
       expect(result.storageBasePath).toBeNull();
     });
 
-    it('should set bandwidthMbps to null (TODO)', async () => {
+    it('should estimate bandwidth when testSharedStorageAccess returns empty', async () => {
       mockLibrariesService.getAllLibraryPaths.mockResolvedValue([]);
 
       const result = await service.detectCapabilities('node-1', '192.168.1.170');
 
-      expect(result.bandwidthMbps).toBeNull();
+      // Bandwidth uses estimate when shared storage test returns empty
+      expect(result.bandwidthMbps).toBeGreaterThan(0);
     });
 
     it('should include shared storage reasoning when detected', async () => {
