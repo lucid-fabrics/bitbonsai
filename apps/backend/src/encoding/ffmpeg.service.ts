@@ -54,6 +54,14 @@ type JobWithThreadsFields = Job & {
 };
 
 /**
+ * Extended Job type with two-pass encoding fields
+ */
+type JobWithTwoPass = Job & {
+  twoPassEnabled?: boolean;
+  pass1OutputPath?: string;
+};
+
+/**
  * Extended Job type with library relation
  */
 type JobWithLibrary = Job & {
@@ -619,7 +627,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     policy: Policy,
     hwaccel: HardwareAccelConfig,
     outputPath: string,
-    resumeFromTimestamp?: string
+    resumeFromTimestamp?: string,
+    passNumber?: 1 | 2
   ): string[] {
     const args: string[] = [];
 
@@ -663,7 +672,27 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // Select codec based on policy target and available hardware acceleration
       const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
       args.push('-c:v', selectedCodec);
-      args.push('-crf', policy.targetQuality.toString());
+
+      // TWO-PASS ENCODING: Add pass flags if two-pass mode is enabled
+      const jobWithTwoPass = job as JobWithTwoPass;
+      const isTwoPass = jobWithTwoPass.twoPassEnabled && passNumber;
+      if (isTwoPass) {
+        args.push('-pass', passNumber.toString());
+        this.logger.log(`TWO-PASS: Running pass ${passNumber} of 2`);
+        // Pass 1 output goes to /dev/null (we only need the stats)
+        if (passNumber === 1) {
+          args.push('-f', 'null');
+        }
+      }
+
+      // CRF for single-pass or pass 2 of two-pass
+      // Pass 1 uses bitrate-based encoding for the stats file
+      if (!isTwoPass || passNumber === 2) {
+        args.push('-crf', policy.targetQuality.toString());
+      } else if (passNumber === 1) {
+        // Pass 1 uses CRF 0 for accurate stats (will be ignored in pass 2)
+        args.push('-crf', '0');
+      }
 
       // Audio codec (from decision config or policy advanced settings)
       // DECISION FIX: Check if decisionData has audio config overrides
