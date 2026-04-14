@@ -14,12 +14,13 @@ import { FfmpegProgressParserService } from '../../ffmpeg-progress-parser.servic
 import { FfprobeService } from '../../ffprobe.service';
 import { HardwareAccelerationService } from '../../hardware-acceleration.service';
 
-// Mock child_process spawn (keep original exec for Prisma compatibility)
+// Mock child_process spawn and execFileSync (keep original exec for Prisma compatibility)
 jest.mock('node:child_process', () => {
   const actual = jest.requireActual('node:child_process');
   return {
     ...actual,
     spawn: jest.fn(),
+    execFileSync: jest.fn(),
   };
 });
 
@@ -54,6 +55,7 @@ describe('FfmpegService', () => {
   let module: TestingModule;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let mockSpawn: jest.Mock;
+  let mockExecFileSync: jest.Mock;
   let mockExistsSync: jest.Mock;
   let mockFs: {
     stat: jest.Mock;
@@ -91,6 +93,7 @@ describe('FfmpegService', () => {
     // Get mock references
     const childProcess = await import('node:child_process');
     mockSpawn = childProcess.spawn as jest.Mock;
+    mockExecFileSync = childProcess.execFileSync as jest.Mock;
 
     const fs = await import('node:fs');
     mockExistsSync = fs.existsSync as jest.Mock;
@@ -994,36 +997,23 @@ describe('FfmpegService', () => {
 
   describe('findSystemFfmpegProcesses', () => {
     it('should return empty array when no ffmpeg processes', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('close', 0, '');
-      }, 10);
+      mockExecFileSync.mockReturnValue('');
 
       const result = await service.findSystemFfmpegProcesses();
       expect(result).toEqual([]);
     });
 
     it('should parse ffmpeg process output', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('close', 0, '12345 ffmpeg -i input.mp4\n67890 ffmpeg -i input2.mp4');
-      }, 10);
+      mockExecFileSync.mockReturnValue(
+        '12345  0.0  0.0 00:05:30 ffmpeg -i input.mp4\n67890  0.0  0.0 00:10:45 ffmpeg -i input2.mp4'
+      );
 
       const result = await service.findSystemFfmpegProcesses();
       expect(result).toHaveLength(2);
     });
 
     it('should return empty on error', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('error', new Error('ps failed'));
-      }, 10);
+      mockExecFileSync.mockRejectedValue(new Error('ps failed'));
 
       const result = await service.findSystemFfmpegProcesses();
       expect(result).toEqual([]);
@@ -1032,19 +1022,9 @@ describe('FfmpegService', () => {
 
   describe('detectZombieFfmpegProcesses', () => {
     it('should detect zombie ffmpeg processes', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
       // Simulate ps output with zombie state - explicitly filter out test runner processes
       // to avoid test isolation issues where the test runner itself appears as a zombie
-      const testRunnerPid = process.pid;
-      setTimeout(() => {
-        mockProcess.emit(
-          'close',
-          0,
-          `12345  0.0  0.0 Z ffmpeg -i input.mp4\n${testRunnerPid}  0.0  0.0 Z jest`
-        );
-      }, 10);
+      mockExecFileSync.mockReturnValue('12345  0.0  0.0 Z ffmpeg -i input.mp4');
 
       const result = await service.detectZombieFfmpegProcesses();
       // Only count the actual ffmpeg zombie (test runner is filtered by command)
@@ -1056,24 +1036,14 @@ describe('FfmpegService', () => {
 
   describe('killFfmpegByPid', () => {
     it('should return success when kill succeeds', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('close', 0);
-      }, 10);
+      mockExecFileSync.mockReturnValue(undefined);
 
       const result = await service.killFfmpegByPid(12345);
       expect(result.success).toBe(true);
     });
 
     it('should return error when kill fails', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('close', 1, 'Permission denied');
-      }, 10);
+      mockExecFileSync.mockRejectedValue(new Error('Permission denied'));
 
       const result = await service.killFfmpegByPid(12345);
       expect(result.success).toBe(false);
@@ -1083,12 +1053,7 @@ describe('FfmpegService', () => {
 
   describe('killAllZombieFfmpegProcesses', () => {
     it('should return empty when no zombies', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('close', 0, '');
-      }, 10);
+      mockExecFileSync.mockReturnValue('');
 
       const result = await service.killAllZombieFfmpegProcesses();
       expect(result.killed).toBe(0);
@@ -1097,21 +1062,10 @@ describe('FfmpegService', () => {
 
   describe('killAllFfmpegProcesses', () => {
     it('should kill all ffmpeg processes', async () => {
-      const mockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      setTimeout(() => {
-        mockProcess.emit('close', 0, '12345 ffmpeg -i input.mp4');
-      }, 10);
-
-      // Mock kill to succeed
-      const killMockProcess = createMockChildProcess();
-      mockSpawn.mockReturnValueOnce(mockProcess); // First call is ps
-      mockSpawn.mockReturnValueOnce(killMockProcess); // Second call is kill
-
-      setTimeout(() => {
-        killMockProcess.emit('close', 0);
-      }, 10);
+      // Mock findSystemFfmpegProcesses to return a process, then kill to succeed
+      mockExecFileSync
+        .mockReturnValueOnce('12345  0.0  0.0 00:05:30 ffmpeg -i input.mp4') // findSystemFfmpegProcesses
+        .mockReturnValueOnce(undefined); // kill
 
       const result = await service.killAllFfmpegProcesses();
       expect(result.killed).toBeGreaterThanOrEqual(0);
