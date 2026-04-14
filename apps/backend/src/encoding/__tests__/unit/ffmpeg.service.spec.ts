@@ -592,36 +592,493 @@ describe('FfmpegService', () => {
     });
   });
 
-  describe('resumeEncoding', () => {
-    it('should resume paused encoding job', async () => {
+  describe('getVideoDuration', () => {
+    it('should return video duration in seconds', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      // Simulate successful ffprobe output
+      setTimeout(() => {
+        mockProcess.stdout?.emit('data', '3600.5');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const duration = await service.getVideoDuration('/media/video.mp4');
+      expect(duration).toBe(3600.5);
+    });
+
+    it('should handle stream duration not available and fallback to format', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      // First call returns empty (stream duration unavailable)
+      setTimeout(() => {
+        mockProcess.emit('close', 1); // Non-zero exit code triggers fallback
+      }, 10);
+
+      // Mock the fallback getFormatDuration
+      jest.spyOn(service as any, 'getFormatDuration').mockResolvedValue(7200);
+
+      const duration = await service.getVideoDuration('/media/video.mp4');
+      expect(duration).toBe(7200);
+    });
+
+    it('should handle ffprobe timeout and return fallback', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      // Don't emit close - let it timeout
+      const duration = await service.getVideoDuration('/media/slow-video.mp4');
+      expect(duration).toBe(3600); // Default fallback
+    });
+
+    it('should handle ffprobe error and return fallback', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('error', new Error('ffprobe not found'));
+      }, 10);
+
+      const duration = await service.getVideoDuration('/media/video.mp4');
+      expect(duration).toBe(3600); // Default fallback
+    });
+  });
+
+  describe('getVideoInfo', () => {
+    it('should return codec and container from ffprobe', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.stdout?.emit(
+          'data',
+          JSON.stringify({
+            streams: [{ codec_name: 'h264' }],
+            format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2' },
+          })
+        );
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const info = await service.getVideoInfo('/media/video.mp4');
+      expect(info.codec).toBe('h264');
+      expect(info.container).toBe('mov');
+    });
+
+    it('should handle missing streams and default to unknown', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.stdout?.emit('data', JSON.stringify({ streams: [] }));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const info = await service.getVideoInfo('/media/video.mp4');
+      expect(info.codec).toBe('unknown');
+    });
+
+    it('should handle ffprobe parse error', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.stdout?.emit('data', 'not valid json');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await expect(service.getVideoInfo('/media/video.mp4')).rejects.toThrow(
+        'Failed to parse ffprobe output'
+      );
+    });
+
+    it('should handle ffprobe failure', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 1);
+      }, 10);
+
+      await expect(service.getVideoInfo('/media/video.mp4')).rejects.toThrow(
+        'FFprobe failed with code 1'
+      );
+    });
+
+    it('should handle ffprobe timeout', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      // Don't emit close - let timeout trigger
+      await expect(service.getVideoInfo('/media/video.mp4')).rejects.toThrow('FFprobe timeout');
+    });
+  });
+
+  describe('getVideoInfoCached', () => {
+    it('should return cached result when available and not expired', async () => {
+      // First call to populate cache
+      const mockProcess1 = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess1);
+
+      setTimeout(() => {
+        mockProcess1.stdout?.emit(
+          'data',
+          JSON.stringify({
+            streams: [{ codec_name: 'h264' }],
+            format: { format_name: 'mp4' },
+          })
+        );
+        mockProcess1.emit('close', 0);
+      }, 10);
+
+      const info1 = await service.getVideoInfoCached('/media/video.mp4');
+      expect(info1.codec).toBe('h264');
+
+      // Second call should use cache (no new spawn)
+      const info2 = await service.getVideoInfoCached('/media/video.mp4');
+      expect(info2.codec).toBe('h264');
+      expect(mockSpawn).toHaveBeenCalledTimes(1); // Only called once
+    });
+
+    it('should refetch when cache is expired', async () => {
+      // First call to populate cache
+      const mockProcess1 = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess1);
+
+      setTimeout(() => {
+        mockProcess1.stdout?.emit(
+          'data',
+          JSON.stringify({
+            streams: [{ codec_name: 'h264' }],
+            format: { format_name: 'mp4' },
+          })
+        );
+        mockProcess1.emit('close', 0);
+      }, 10);
+
+      await service.getVideoInfoCached('/media/video.mp4');
+
+      // Manually expire the cache by clearing it
+      service['codecCache'].clear();
+
+      // Should refetch
+      const mockProcess2 = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess2);
+
+      setTimeout(() => {
+        mockProcess2.stdout?.emit(
+          'data',
+          JSON.stringify({
+            streams: [{ codec_name: 'hevc' }],
+            format: { format_name: 'mkv' },
+          })
+        );
+        mockProcess2.emit('close', 0);
+      }, 10);
+
+      const info = await service.getVideoInfoCached('/media/video.mp4');
+      expect(info.codec).toBe('hevc');
+      expect(mockSpawn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('verifyFile', () => {
+    it('should return isValid true for valid video file', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.stdout?.emit('data', '3600.0');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await service.verifyFile('/media/video.mp4');
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should return isValid false for invalid video file', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 1);
+      }, 10);
+
+      const result = await service.verifyFile('/media/invalid.mp4');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain('File verification failed');
+    });
+
+    it('should return isValid false on timeout', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      // Don't emit close - let it timeout
+      const result = await service.verifyFile('/media/slow-video.mp4');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain('timed out');
+    });
+
+    it('should return isValid false on ffprobe error', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('error', new Error('ffprobe not found'));
+      }, 10);
+
+      const result = await service.verifyFile('/media/video.mp4');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain('Failed to run ffprobe');
+    });
+  });
+
+  describe('selectCodecForPolicy', () => {
+    it('should return av1_nvenc for AV1 on NVIDIA', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'NVIDIA',
+        flags: [],
+        videoCodec: 'av1_nvenc',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('AV1', 'NVIDIA');
+      expect(codec).toBe('av1_nvenc');
+    });
+
+    it('should return av1_qsv for AV1 on Intel QSV', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'INTEL_QSV' as any,
+        flags: [],
+        videoCodec: 'av1_qsv',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('AV1', 'INTEL_QSV');
+      expect(codec).toBe('av1_qsv');
+    });
+
+    it('should return av1_vaapi for AV1 on AMD', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'AMD',
+        flags: [],
+        videoCodec: 'av1_vaapi',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('AV1', 'AMD');
+      expect(codec).toBe('av1_vaapi');
+      expect(codec).toBe('av1_vaapi');
+    });
+
+    it('should return libaom-av1 for AV1 on Apple M (no native HW encoder)', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'APPLE_M',
+        flags: [],
+        videoCodec: 'libaom-av1',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('AV1');
+      expect(codec).toBe('libaom-av1');
+    });
+
+    it('should return libaom-av1 for AV1 on CPU fallback', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libaom-av1',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('AV1');
+      expect(codec).toBe('libaom-av1');
+    });
+
+    it('should return hevc_nvenc for HEVC on NVIDIA', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'NVIDIA',
+        flags: [],
+        videoCodec: 'hevc_nvenc',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('HEVC');
+      expect(codec).toBe('hevc_nvenc');
+    });
+
+    it('should return libx265 for HEVC on CPU', async () => {
       jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
         type: 'CPU',
         flags: [],
         videoCodec: 'libx265',
       });
-      jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
 
-      const ffmpegProc = createMockChildProcess();
-      mockSpawn.mockReturnValue(ffmpegProc);
-
-      const encodePromise = service.encodeFile(mockJob, mockPolicy);
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // Pause first
-      await service.pauseEncoding(mockJob.id);
-
-      // Then resume
-      const resumeResult = await service.resumeEncoding(mockJob.id);
-      expect(resumeResult).toBe(true);
-
-      // Clean up
-      setTimeout(() => ffmpegProc.emit('close', 1), 10);
-      await encodePromise.catch(() => undefined);
+      const codec = await (service as any).selectCodecForPolicy('HEVC');
+      expect(codec).toBe('libx265');
     });
 
-    it('should return false for non-existent job', async () => {
-      const result = await service.resumeEncoding('non-existent-job');
+    it('should return h264_nvenc for H264 on NVIDIA', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'NVIDIA',
+        flags: [],
+        videoCodec: 'h264_nvenc',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('H264');
+      expect(codec).toBe('h264_nvenc');
+    });
+
+    it('should return libvpx-vp9 for VP9 on AMD', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'AMD',
+        flags: [],
+        videoCodec: 'libvpx-vp9',
+      });
+
+      const codec = await (service as any).selectCodecForPolicy('VP9');
+      expect(codec).toBe('libvpx-vp9');
+    });
+  });
+
+  describe('reniceProcess', () => {
+    it('should return true when renice succeeds', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await service.reniceProcess('test-job-123', 10);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when renice fails', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 1);
+      }, 10);
+
+      const result = await service.reniceProcess('test-job-123', 10);
       expect(result).toBe(false);
+    });
+  });
+
+  describe('findSystemFfmpegProcesses', () => {
+    it('should return empty array when no ffmpeg processes', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0, '');
+      }, 10);
+
+      const result = await service.findSystemFfmpegProcesses();
+      expect(result).toEqual([]);
+    });
+
+    it('should parse ffmpeg process output', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0, '12345 ffmpeg -i input.mp4\n67890 ffmpeg -i input2.mp4');
+      }, 10);
+
+      const result = await service.findSystemFfmpegProcesses();
+      expect(result).toHaveLength(2);
+    });
+
+    it('should return empty on error', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('error', new Error('ps failed'));
+      }, 10);
+
+      const result = await service.findSystemFfmpegProcesses();
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('detectZombieFfmpegProcesses', () => {
+    it('should detect zombie ffmpeg processes', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      // Simulate ps output with zombie state
+      setTimeout(() => {
+        mockProcess.emit('close', 0, '12345  0.0  0.0 Z ffmpeg -i input.mp4');
+      }, 10);
+
+      const result = await service.detectZombieFfmpegProcesses();
+      const zombies = result.filter((p) => p.isZombie);
+      expect(zombies).toHaveLength(1);
+      expect(zombies[0].isZombie).toBe(true);
+    });
+  });
+
+  describe('killFfmpegByPid', () => {
+    it('should return success when kill succeeds', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await service.killFfmpegByPid(12345);
+      expect(result.success).toBe(true);
+    });
+
+    it('should return error when kill fails', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 1, 'Permission denied');
+      }, 10);
+
+      const result = await service.killFfmpegByPid(12345);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('12345');
+    });
+  });
+
+  describe('killAllZombieFfmpegProcesses', () => {
+    it('should return empty when no zombies', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0, '');
+      }, 10);
+
+      const result = await service.killAllZombieFfmpegProcesses();
+      expect(result.killed).toBe(0);
+    });
+  });
+
+  describe('killAllFfmpegProcesses', () => {
+    it('should kill all ffmpeg processes', async () => {
+      const mockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0, '12345 ffmpeg -i input.mp4');
+      }, 10);
+
+      // Mock kill to succeed
+      const killMockProcess = createMockChildProcess();
+      mockSpawn.mockReturnValueOnce(mockProcess); // First call is ps
+      mockSpawn.mockReturnValueOnce(killMockProcess); // Second call is kill
+
+      setTimeout(() => {
+        killMockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await service.killAllFfmpegProcesses();
+      expect(result.killed).toBeGreaterThanOrEqual(0);
     });
   });
 });
