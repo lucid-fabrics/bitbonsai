@@ -305,7 +305,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     policy: Policy,
     hwaccel: HardwareAccelConfig,
     outputPath: string,
-    resumeFromTimestamp?: string
+    resumeFromTimestamp?: string,
+    passNumber?: 1 | 2
   ): string[] {
     return this.flagBuilder.buildFfmpegCommand(
       job,

@@ -84,6 +84,8 @@ describe('NodeCapabilityDetectorService', () => {
     beforeEach(() => {
       // Mock measureLatency to avoid actual ping calls
       jest.spyOn(service, 'measureLatency').mockResolvedValue(5);
+      // Mock testBandwidth to avoid actual HTTP requests
+      jest.spyOn(service, 'testBandwidth').mockResolvedValue(100);
     });
 
     it('should detect LOCAL network for private IP', async () => {
