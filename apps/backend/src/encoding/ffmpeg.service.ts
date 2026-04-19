@@ -571,7 +571,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Intel QSV detected - using Quick Sync Video acceleration');
       return {
         type: 'INTEL_QSV',
-        flags: ['-hwaccel', 'qsv', '-c:v', 'h264_qsv'],
+        flags: ['-hwaccel', 'qsv', '-c:v', 'hevc_qsv'],
         videoCodec: 'hevc_qsv',
       };
     }
