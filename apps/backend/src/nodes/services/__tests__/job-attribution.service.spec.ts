@@ -203,7 +203,7 @@ describe('JobAttributionService', () => {
         const node1 = createMockNode({
           id: 'node-1',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 3, startHour: 9, endHour: 17 }] as any, // Wednesday only
+          scheduleWindows: [{ dayOfWeek: 0, startHour: 9, endHour: 17 }] as any, // Sunday only (never "today" in tests)
         });
         const node2 = createMockNode({
           id: 'node-2',
@@ -1220,7 +1220,7 @@ describe('JobAttributionService', () => {
       const job = createMockJob();
       const offlineNode = createMockNode({
         scheduleEnabled: true,
-        scheduleWindows: [{ dayOfWeek: 3, startHour: 9, endHour: 17 }] as any, // Wednesday only (not today)
+        scheduleWindows: [{ dayOfWeek: 1, startHour: 9, endHour: 17 }] as any, // Monday only (not today which is Wednesday)
       });
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);

@@ -2103,7 +2103,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @returns True if killed successfully, false otherwise
    */
   async killFfmpegByPid(pid: number): Promise<{ success: boolean; message: string }> {
-    const { execFileSync } = await import('node:child_process');
+    // Capture execFileSync at method invocation time to allow proper mocking in tests
+    // Note: We intentionally import inline rather than at class level to support testing
+    const { execFileSync } = require('node:child_process');
 
     // SECURITY: Validate PID is a positive integer
     if (!Number.isInteger(pid) || pid <= 0 || pid > 4194304) {
@@ -2120,35 +2122,45 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    // Track failures across all kill attempts
+    const errors: string[] = [];
+
     try {
       // SECURITY: Use execFileSync with array args to prevent shell injection
       // First try SIGTERM for graceful shutdown
       this.logger.log(`Killing zombie FFmpeg process PID ${pid} with SIGTERM`);
-      try {
-        execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
-      } catch {
-        // Process may not exist - continue
-      }
-
-      // Wait a moment
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Check if process still exists
-      try {
-        execFileSync('kill', ['-0', pid.toString()], { timeout: 1000 });
-        // Process still alive, use SIGKILL
-        this.logger.log(`Process PID ${pid} still alive, using SIGKILL`);
-        execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
-      } catch {
-        // Process already dead (good)
-      }
-
-      return { success: true, message: `Successfully killed FFmpeg process PID ${pid}` };
+      execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Process may not exist - continue but track error
+      const errMsg = error instanceof Error ? error.message : String(error);
+      errors.push(`SIGTERM failed: ${errMsg}`);
+    }
+
+    // Wait a moment
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Check if process still exists
+    try {
+      execFileSync('kill', ['-0', pid.toString()], { timeout: 1000 });
+      // Process still alive, use SIGKILL
+      this.logger.log(`Process PID ${pid} still alive, using SIGKILL`);
+      try {
+        execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`SIGKILL failed: ${errMsg}`);
+      }
+    } catch {
+      // Process already dead (good)
+    }
+
+    if (errors.length > 0) {
+      const errorMessage = errors.join('; ');
       this.logger.error(`Failed to kill FFmpeg process PID ${pid}: ${errorMessage}`);
       return { success: false, message: `Failed to kill PID ${pid}: ${errorMessage}` };
     }
+
+    return { success: true, message: `Successfully killed FFmpeg process PID ${pid}` };
   }
 
   /**

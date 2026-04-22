@@ -1,7 +1,11 @@
 <div
   class="carousel-container"
   [class.fullscreen]="fullscreen"
-  (click)="onBackdropClick($event)">
+  (click)="onBackdropClick($event)"
+  tabindex="0"
+  role="dialog"
+  [attr.aria-label]="fullscreen ? 'Image carousel viewer' : null"
+  (keydown)="onContainerKeydown($event)">
   @if (fullscreen) {
     <div class="carousel-controls">
       <button class="zoom-button" (click)="zoomOut()" [disabled]="zoomLevel <= minZoom" aria-label="Zoom out">
@@ -32,7 +36,7 @@
 
     <!-- Previous image preview (fullscreen only) -->
     @if (fullscreen && images.length > 1) {
-      <div class="carousel-side-preview prev" (click)="previous()">
+      <div class="carousel-side-preview prev" (click)="previous()" (keydown.enter)="previous()" tabindex="0" role="button" [attr.aria-label]="'Previous image'">
         <img
           [src]="getPreviousImage().src"
           [alt]="getPreviousImage().alt" />
@@ -41,14 +45,13 @@
 
     <div class="carousel-viewport">
       @if (images.length > 0) {
-        <div class="carousel-image-wrapper">
+        <div class="carousel-image-wrapper" tabindex="0" (click)="onImageClick()" (keydown)="onImageKeydown($event)" role="img" [attr.aria-label]="images[currentIndex].alt">
           <img
             [src]="images[currentIndex].src"
             [alt]="images[currentIndex].alt"
             class="carousel-image"
             [class.image-error]="failedIndexes.has(currentIndex)"
             [style.transform]="fullscreen ? getImageTransform() : 'none'"
-            (click)="onImageClick()"
             (error)="onImageError(currentIndex)" />
           @if (failedIndexes.has(currentIndex)) {
             <div class="image-error-overlay">
@@ -67,7 +70,7 @@
 
     <!-- Next image preview (fullscreen only) -->
     @if (fullscreen && images.length > 1) {
-      <div class="carousel-side-preview next" (click)="next()">
+      <div class="carousel-side-preview next" (click)="next()" (keydown.enter)="next()" tabindex="0" role="button" [attr.aria-label]="'Next image'">
         <img
           [src]="getNextImage().src"
           [alt]="getNextImage().alt" />

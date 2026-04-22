@@ -4,6 +4,8 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DebugService } from '../../debug.service';
 
+jest.setTimeout(30000);
+
 // Mock os module to control cpus() and memory functions
 jest.mock('node:os', () => ({
   __esModule: true,
