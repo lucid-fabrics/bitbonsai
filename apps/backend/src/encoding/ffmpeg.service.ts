@@ -673,6 +673,20 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
       args.push('-c:v', selectedCodec);
 
+      // ENHANCEMENT: Add preset and tune for CPU/software encoders
+      // Hardware encoders (NVENC, QSV, VAAPI, VideoToolbox) have built-in encoding quality presets
+      // CPU encoders (libx265, libaom-av1, libvpx-vp9, libx264) require explicit preset/tune
+      if (
+        selectedCodec.startsWith('libx') ||
+        selectedCodec.startsWith('libvpx') ||
+        selectedCodec === 'libaom-av1'
+      ) {
+        // CPU encoding: use 'medium' preset for balanced speed/quality
+        // Use 'film' tune for live-action content (most videos)
+        args.push('-preset', 'medium');
+        args.push('-tune', 'film');
+      }
+
       // TWO-PASS ENCODING: Add pass flags if two-pass mode is enabled
       const jobWithTwoPass = job as JobWithTwoPass;
       const isTwoPass = jobWithTwoPass.twoPassEnabled && passNumber;
