@@ -97,7 +97,7 @@
                     (focus)="onPathFocus()"
                   />
                   @if (showFolderBrowser()) {
-                    <app-path-selector
+                    <lib-path-selector
                       [apiUrl]="apiUrl"
                       (pathSelected)="onFolderSelected($event)"
                       (closed)="closeFolderBrowser()"

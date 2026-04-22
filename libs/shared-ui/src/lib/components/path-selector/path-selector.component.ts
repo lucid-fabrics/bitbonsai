@@ -2,7 +2,7 @@ import { Component, inject, input, OnInit, output, signal } from '@angular/core'
 import { DirectoryInfo, FileBrowserService } from '../../services/file-browser.service';
 
 @Component({
-  selector: 'app-path-selector',
+  selector: 'lib-path-selector',
   standalone: true,
   imports: [],
   templateUrl: './path-selector.component.html',

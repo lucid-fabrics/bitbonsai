@@ -3,7 +3,7 @@ import { Component, Input } from '@angular/core';
 export type ButtonVariant = 'primary' | 'outline' | 'danger';
 
 @Component({
-  selector: 'bb-button',
+  selector: 'lib-button',
   standalone: true,
   imports: [],
   template: `

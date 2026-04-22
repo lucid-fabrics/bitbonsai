@@ -19,7 +19,7 @@ export interface CarouselImage {
 }
 
 @Component({
-  selector: 'bb-image-carousel',
+  selector: 'lib-image-carousel',
   standalone: true,
   imports: [],
   templateUrl: './image-carousel.component.html',
@@ -31,8 +31,8 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
   @Input() initialIndex = 0;
   @Input() showThumbnails = true;
   @Input() fullscreen = false;
-  @Output() imageClick = new EventEmitter<number>();
-  @Output() close = new EventEmitter<void>();
+  @Output() imageChosen = new EventEmitter<number>();
+  @Output() closed = new EventEmitter<void>();
 
   @ViewChildren('thumbnail') thumbnails!: QueryList<ElementRef>;
 
@@ -133,19 +133,41 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
 
   protected onImageClick(): void {
     if (!this.fullscreen) {
-      this.imageClick.emit(this.currentIndex);
+      this.imageChosen.emit(this.currentIndex);
     }
+  }
+
+  protected onImageKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.onImageClick();
+    }
+  }
+
+  protected handleContainerKeydown(): void {
+    // Keyboard events are handled by HostListener on document
   }
 
   protected closeCarousel(): void {
     if (this.fullscreen) {
-      this.close.emit();
+      this.closed.emit();
     }
   }
 
   protected onBackdropClick(event: MouseEvent): void {
     if (this.fullscreen && event.target === event.currentTarget) {
       this.closeCarousel();
+    }
+  }
+
+  protected onContainerKeydown(event: KeyboardEvent): void {
+    if (!this.fullscreen) return;
+
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        this.closeCarousel();
+        break;
     }
   }
 
