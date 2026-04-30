@@ -199,11 +199,14 @@ describe('JobAttributionService', () => {
       });
 
       it('should return null if all nodes are outside schedule window', async () => {
+        // Fix time to Wednesday 10:00 so neither Sunday (0) nor Thursday (4) window matches
+        jest.useFakeTimers().setSystemTime(new Date('2024-01-03T10:00:00')); // Wednesday
+
         const job = createMockJob();
         const node1 = createMockNode({
           id: 'node-1',
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 0, startHour: 9, endHour: 17 }] as any, // Sunday only (never "today" in tests)
+          scheduleWindows: [{ dayOfWeek: 0, startHour: 9, endHour: 17 }] as any, // Sunday only
         });
         const node2 = createMockNode({
           id: 'node-2',
@@ -217,6 +220,7 @@ describe('JobAttributionService', () => {
 
         const result = await service.findOptimalNode('job-1');
 
+        jest.useRealTimers();
         expect(result).toBeNull();
       });
 

@@ -48,6 +48,7 @@ function clearOsGetters(): void {
 
 describe('DebugService', () => {
   let service: DebugService;
+  let module: TestingModule;
 
   const mockPrismaService = {
     node: {
@@ -70,14 +71,15 @@ describe('DebugService', () => {
     mockPrismaService.node.update.mockResolvedValue({});
     mockPrismaService.job.findMany.mockResolvedValue([]);
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [DebugService, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     service = module.get<DebugService>(DebugService);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await module.close();
     jest.restoreAllMocks();
     clearOsNetworkInterfaces();
     clearOsGetters();
@@ -332,9 +334,13 @@ describe('DebugService', () => {
       const mockExec = execFileSync as jest.Mock;
       mockExec.mockReturnValueOnce('12345  5.0  2.0 00:10 ffmpeg -i input.mp4');
       // kill -TERM throws error (silently caught - process may not exist)
-      mockExec.mockRejectedValueOnce(new Error('Permission denied'));
+      mockExec.mockImplementationOnce(() => {
+        throw new Error('Permission denied');
+      });
       // kill -0 throws error (process doesn't exist after SIGTERM)
-      mockExec.mockRejectedValueOnce(new Error('No such process'));
+      mockExec.mockImplementationOnce(() => {
+        throw new Error('No such process');
+      });
 
       const result = await service.killAllZombies();
 
