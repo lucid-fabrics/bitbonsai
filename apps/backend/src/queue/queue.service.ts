@@ -100,12 +100,16 @@ export class QueueService {
 
   // ─── State Transitions (QueueJobStateService) ─────────────────────
 
-  async completeJob(id: string, completeJobDto: CompleteJobDto): Promise<Job> {
-    return this.jobStateService.completeJob(id, completeJobDto);
+  async completeJob(
+    id: string,
+    completeJobDto: CompleteJobDto,
+    callerNodeId?: string
+  ): Promise<Job> {
+    return this.jobStateService.completeJob(id, completeJobDto, callerNodeId);
   }
 
-  async failJob(id: string, error: string): Promise<Job> {
-    return this.jobStateService.failJob(id, error);
+  async failJob(id: string, error: string, callerNodeId?: string): Promise<Job> {
+    return this.jobStateService.failJob(id, error, callerNodeId);
   }
 
   async cancelJob(id: string, blacklist = false): Promise<Job> {

@@ -6,25 +6,34 @@ import { BehaviorSubject } from 'rxjs';
 })
 export class ApiErrorService {
   private readonly showConnectionErrorSubject = new BehaviorSubject<boolean>(false);
-  private errorCount = 0;
-  private readonly ERROR_THRESHOLD = 2; // Show modal after 2 consecutive errors
+
+  // Consecutive failures required (resets on any success) before showing the connection modal.
+  // Lifetime cumulative count caused false positives after just 2 unrelated transient failures.
+  private consecutiveErrors = 0;
+  private readonly ERROR_THRESHOLD = 3;
 
   showConnectionError$ = this.showConnectionErrorSubject.asObservable();
 
   reportConnectionError(): void {
-    this.errorCount++;
-
-    if (this.errorCount >= this.ERROR_THRESHOLD) {
+    this.consecutiveErrors++;
+    if (this.consecutiveErrors >= this.ERROR_THRESHOLD) {
       this.showConnectionErrorSubject.next(true);
+    }
+  }
+
+  reportSuccess(): void {
+    this.consecutiveErrors = 0;
+    if (this.showConnectionErrorSubject.value) {
+      this.showConnectionErrorSubject.next(false);
     }
   }
 
   dismissError(): void {
     this.showConnectionErrorSubject.next(false);
-    this.errorCount = 0;
+    this.consecutiveErrors = 0;
   }
 
   resetErrorCount(): void {
-    this.errorCount = 0;
+    this.consecutiveErrors = 0;
   }
 }

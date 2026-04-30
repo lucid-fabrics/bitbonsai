@@ -34,6 +34,8 @@ interface ActiveEncoding {
   lastProgress: number;
   lastStderr: string; // Last 2000 chars of stderr for error reporting
   lastOutputTime: Date; // Last time FFmpeg produced ANY output (for stuck detection)
+  isPauseOrCancelRequested: boolean; // Set before killing to prevent false FAILED state
+  completionHandled: boolean; // Guards against double close+error event firing
 }
 
 /**
@@ -372,11 +374,13 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const jobStatus = await this.jobRepository.findStatusFields(job.id);
     if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
       this.logger.warn(`[${job.id}] Pause requested, killing FFmpeg gracefully...`);
+      activeEncoding.isPauseOrCancelRequested = true;
       await this.killProcess(job.id);
       return;
     }
     if (jobStatus?.cancelRequestedAt && !jobStatus.cancelProcessedAt) {
       this.logger.warn(`[${job.id}] Cancel requested, killing FFmpeg gracefully...`);
+      activeEncoding.isPauseOrCancelRequested = true;
       await this.killProcess(job.id);
       return;
     }
@@ -927,84 +931,93 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       lastProgress: 0,
       lastStderr: '',
       lastOutputTime: new Date(), // Initialize to now
+      isPauseOrCancelRequested: false,
+      completionHandled: false,
     };
     this.activeEncodings.set(job.id, activeEncoding);
 
     return new Promise((resolve, reject) => {
-      let stderrBuffer = '';
       let fullStderr = '';
 
-      // Parse FFmpeg -progress pipe:2 output from stderr
-      // Accumulate progress data from key=value pairs
+      // stderr: log lines only (no progress noise on this stream)
+      ffmpegProcess.stderr?.on('data', (data: Buffer) => {
+        const chunk = data.toString();
+        fullStderr += chunk;
+        // Keep last 2000 chars; filter out progress key=value lines so real error context survives
+        const filtered = fullStderr
+          .split('\n')
+          .filter(
+            (l) =>
+              !/^(frame|fps|out_time|out_time_ms|out_time_us|dup_frames|drop_frames|speed|bitrate|total_size|progress)=/.test(
+                l.trim()
+              )
+          )
+          .join('\n');
+        if (filtered.length > 2000) {
+          fullStderr = filtered.slice(-2000);
+        } else {
+          fullStderr = filtered;
+        }
+        activeEncoding.lastStderr = fullStderr;
+        activeEncoding.lastOutputTime = new Date();
+      });
+
+      // stdout: -progress pipe:1 key=value pairs — kept separate from stderr so log lines don't corrupt progress parsing
+      let stdoutBuffer = '';
       let currentFrame = 0;
       let currentFps = 0;
       let currentTime = '00:00:00.00';
 
-      ffmpegProcess.stderr?.on('data', (data: Buffer) => {
-        const chunk = data.toString();
-        stderrBuffer += chunk;
-        fullStderr += chunk;
-
-        // Keep last 2000 chars of stderr for error reporting
-        if (fullStderr.length > 2000) {
-          fullStderr = fullStderr.slice(-2000);
-        }
-        activeEncoding.lastStderr = fullStderr;
-
-        // Split on newlines to process each line
-        const lines = stderrBuffer.split('\n');
-        // Keep the last incomplete line in the buffer
-        stderrBuffer = lines.pop() || '';
+      ffmpegProcess.stdout?.on('data', (data: Buffer) => {
+        stdoutBuffer += data.toString();
+        const lines = stdoutBuffer.split('\n');
+        stdoutBuffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed) continue;
+          if (!trimmed || !trimmed.includes('=')) continue;
 
-          // Parse -progress pipe:2 format (key=value)
-          if (trimmed.includes('=')) {
-            const [key, value] = trimmed.split('=');
-            switch (key) {
-              case 'frame':
-                currentFrame = Number.parseInt(value, 10) || 0;
-                break;
-              case 'fps':
-                currentFps = Number.parseFloat(value) || 0;
-                break;
-              case 'out_time':
-                currentTime = value;
-                break;
-              case 'out_time_us':
-                // Fallback: use microseconds if out_time is N/A
-                if (!currentTime || currentTime === 'N/A') {
-                  const us = Number.parseInt(value, 10);
-                  if (!Number.isNaN(us) && us > 0) {
-                    // Convert to HH:MM:SS.ms format for consistency
-                    const totalSeconds = us / 1_000_000;
-                    const hours = Math.floor(totalSeconds / 3600);
-                    const minutes = Math.floor((totalSeconds % 3600) / 60);
-                    const seconds = totalSeconds % 60;
-                    currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(6).padStart(9, '0')}`;
-                  }
-                }
-                break;
-              case 'progress':
-                // When we see 'progress=continue' or 'progress=end', we have a complete update
-                if (currentFrame > 0 && currentFps >= 0) {
-                  activeEncoding.lastOutputTime = new Date();
+          const eqIdx = trimmed.indexOf('=');
+          const key = trimmed.slice(0, eqIdx);
+          const value = trimmed.slice(eqIdx + 1);
 
-                  this.handleProgressUpdate(
-                    { frame: currentFrame, fps: currentFps, currentTime },
-                    job,
-                    activeEncoding,
-                    estimatedDurationSeconds,
-                    tempOutput,
-                    resumeFromPercent
-                  ).catch((error) => {
-                    this.logger.error(`[${job.id}] Progress update error: ${error.message}`);
-                  });
+          switch (key) {
+            case 'frame':
+              currentFrame = Number.parseInt(value, 10) || 0;
+              break;
+            case 'fps':
+              currentFps = Number.parseFloat(value) || 0;
+              break;
+            case 'out_time':
+              currentTime = value;
+              break;
+            case 'out_time_us':
+              if (!currentTime || currentTime === 'N/A') {
+                const us = Number.parseInt(value, 10);
+                if (!Number.isNaN(us) && us > 0) {
+                  const totalSeconds = us / 1_000_000;
+                  const hours = Math.floor(totalSeconds / 3600);
+                  const minutes = Math.floor((totalSeconds % 3600) / 60);
+                  const seconds = totalSeconds % 60;
+                  currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(6).padStart(9, '0')}`;
                 }
-                break;
-            }
+              }
+              break;
+            case 'progress':
+              if ((currentFrame > 0 || currentTime !== '00:00:00.00') && currentFps >= 0) {
+                activeEncoding.lastOutputTime = new Date();
+                this.handleProgressUpdate(
+                  { frame: currentFrame, fps: currentFps, currentTime },
+                  job,
+                  activeEncoding,
+                  estimatedDurationSeconds,
+                  tempOutput,
+                  resumeFromPercent
+                ).catch((error) => {
+                  this.logger.error(`[${job.id}] Progress update error: ${error.message}`);
+                });
+              }
+              break;
           }
         }
       });
@@ -1012,6 +1025,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // Handle process completion
       ffmpegProcess.on('close', async (code) => {
         const encoding = this.activeEncodings.get(job.id);
+        if (encoding?.completionHandled) return;
+        if (encoding) encoding.completionHandled = true;
+        if (encoding?.isPauseOrCancelRequested) {
+          this.activeEncodings.delete(job.id);
+          this.lastPreviewGeneration.delete(job.id);
+          resolve();
+          return;
+        }
 
         // Cache stderr before removing from active encodings
         if (encoding?.lastStderr) {
@@ -1037,7 +1058,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           const progress = job.progress || 0;
           const retryCount = job.retryCount || 0;
           const errorMessage = this.interpretFfmpegExitCode(
-            code as number,
+            code ?? -1,
             stderr,
             progress,
             retryCount
@@ -1050,6 +1071,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // Handle process errors
       ffmpegProcess.on('error', async (error) => {
         const encoding = this.activeEncodings.get(job.id);
+        if (encoding?.completionHandled) return;
+        if (encoding) encoding.completionHandled = true;
+        if (encoding?.isPauseOrCancelRequested) {
+          this.activeEncodings.delete(job.id);
+          this.lastPreviewGeneration.delete(job.id);
+          resolve();
+          return;
+        }
 
         // Cache stderr before removing from active encodings
         if (encoding?.lastStderr) {
@@ -1110,15 +1139,33 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // Kill ffmpeg process
-      activeEncoding.process.kill('SIGTERM');
+      // Kill entire process group (handles nice wrappers where FFmpeg is a child)
+      try {
+        if (activeEncoding.process.pid) {
+          process.kill(-activeEncoding.process.pid, 'SIGTERM');
+        } else {
+          this.logger.warn(`killProcess: no PID for job ${jobId}, process may already be dead`);
+        }
+      } catch (killError) {
+        const err = killError as NodeJS.ErrnoException;
+        if (err.code !== 'ESRCH') throw killError;
+      }
 
-      // Wait for graceful shutdown (2 seconds)
+      // Wait for graceful shutdown
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Force kill if still running
       if (!activeEncoding.process.killed) {
-        activeEncoding.process.kill('SIGKILL');
+        try {
+          if (activeEncoding.process.pid) {
+            process.kill(-activeEncoding.process.pid, 'SIGKILL');
+          } else {
+            this.logger.warn(`killProcess: no PID for force-kill of job ${jobId}`);
+          }
+        } catch (killError) {
+          const err = killError as NodeJS.ErrnoException;
+          if (err.code !== 'ESRCH') throw killError;
+        }
       }
 
       return true;
@@ -1373,15 +1420,33 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Cancelling encoding for job ${jobId}`);
 
     try {
-      // Kill ffmpeg process
-      activeEncoding.process.kill('SIGTERM');
+      // Kill entire process group (handles nice wrappers where FFmpeg is a child)
+      try {
+        if (activeEncoding.process.pid) {
+          process.kill(-activeEncoding.process.pid, 'SIGTERM');
+        } else {
+          this.logger.warn(`killProcess: no PID for job ${jobId}, process may already be dead`);
+        }
+      } catch (killError) {
+        const err = killError as NodeJS.ErrnoException;
+        if (err.code !== 'ESRCH') throw killError;
+      }
 
-      // Wait for graceful shutdown (2 seconds)
+      // Wait for graceful shutdown
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Force kill if still running
       if (!activeEncoding.process.killed) {
-        activeEncoding.process.kill('SIGKILL');
+        try {
+          if (activeEncoding.process.pid) {
+            process.kill(-activeEncoding.process.pid, 'SIGKILL');
+          } else {
+            this.logger.warn(`killProcess: no PID for force-kill of job ${jobId}`);
+          }
+        } catch (killError) {
+          const err = killError as NodeJS.ErrnoException;
+          if (err.code !== 'ESRCH') throw killError;
+        }
       }
 
       // Mark job as cancelled via event

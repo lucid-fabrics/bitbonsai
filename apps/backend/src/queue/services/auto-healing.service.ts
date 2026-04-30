@@ -34,6 +34,13 @@ export class AutoHealingService implements OnModuleInit {
    * Runs automatically when the module initializes (container startup)
    */
   async onModuleInit(): Promise<void> {
+    // Only MAIN node owns the DB and should heal jobs cluster-wide.
+    // LINKED nodes running this would re-queue all FAILED jobs on every restart,
+    // burning through maxAutoHealRetries for every job they don't own.
+    if (!this.nodeConfig.isMainNode()) {
+      this.logger.log('Skipping auto-healing on LINKED node (MAIN node responsibility)');
+      return;
+    }
     this.logger.log('Auto-healing service initializing...');
     await this.healFailedJobs();
   }
