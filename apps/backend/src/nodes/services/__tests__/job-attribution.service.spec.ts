@@ -217,6 +217,9 @@ describe('JobAttributionService', () => {
       });
 
       it('should return null if all nodes are outside schedule window', async () => {
+        // Fix time to Wednesday 10:00 so neither Sunday (0) nor Thursday (4) window matches
+        jest.useFakeTimers().setSystemTime(new Date('2024-01-03T10:00:00')); // Wednesday
+
         const job = createMockJob();
         // Use a fixed past time (Tuesday Jan 1 2019 12:00) to make day-of-week deterministic
         jest.useFakeTimers();

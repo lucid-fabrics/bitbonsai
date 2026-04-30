@@ -446,9 +446,13 @@ describe('DebugService (__tests__/unit)', () => {
       const mockExec = execFileSync as jest.Mock;
       mockExec.mockReturnValueOnce('12345  5.0  2.0 00:10 ffmpeg -i input.mp4');
       // kill -TERM throws error (silently caught - process may not exist)
-      mockExec.mockRejectedValueOnce(new Error('Permission denied'));
+      mockExec.mockImplementationOnce(() => {
+        throw new Error('Permission denied');
+      });
       // kill -0 throws error (process doesn't exist after SIGTERM)
-      mockExec.mockRejectedValueOnce(new Error('No such process'));
+      mockExec.mockImplementationOnce(() => {
+        throw new Error('No such process');
+      });
 
       const result = await service.killAllZombies();
 
