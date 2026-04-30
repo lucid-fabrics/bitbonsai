@@ -47,6 +47,11 @@ export class QueueProcessingService implements OnModuleInit {
    * SELF-HEALING: Scan and heal orphaned jobs on startup
    */
   async onModuleInit(): Promise<void> {
+    // Reset ENCODING/VERIFYING jobs owned by this node back to QUEUED.
+    // On startup there are no live FFmpeg processes, so any in-flight job is orphaned.
+    // This runs on ALL nodes so each node cleans up its own mess immediately (no 10-min watchdog wait).
+    await this.resetOrphanedEncodingJobs();
+
     if (this.nodeConfig.getMainApiUrl()) {
       this.logger.debug('POLICY HEAL: Skipping startup scan (LINKED node)');
       return;
@@ -58,6 +63,38 @@ export class QueueProcessingService implements OnModuleInit {
       await this.healOrphanedJobs();
     } catch (error) {
       this.logger.error('POLICY HEAL: Failed to complete startup scan', error);
+    }
+  }
+
+  /**
+   * On startup, reset any ENCODING/VERIFYING jobs owned by this node to QUEUED.
+   * Since the process just started, no FFmpeg is running — these jobs are definitively orphaned.
+   */
+  private async resetOrphanedEncodingJobs(): Promise<void> {
+    const nodeId = this.nodeConfig.getNodeId();
+    if (!nodeId) return;
+
+    try {
+      const result = await this.prisma.job.updateMany({
+        where: {
+          nodeId,
+          stage: { in: [JobStage.ENCODING, JobStage.VERIFYING] },
+        },
+        data: {
+          stage: JobStage.QUEUED,
+          progress: 0,
+          startedAt: null,
+          lastProgressUpdate: null,
+        },
+      });
+
+      if (result.count > 0) {
+        this.logger.warn(
+          `Startup: reset ${result.count} orphaned ENCODING/VERIFYING job(s) on node ${nodeId} → QUEUED`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Startup orphan reset failed', error);
     }
   }
 
@@ -304,11 +341,19 @@ export class QueueProcessingService implements OnModuleInit {
             return { claimFailed: true, pauseRequested: true };
           }
 
+          if (job.cancelRequestedAt) {
+            this.logger.debug(
+              `Job ${job.id} has cancel request (${job.cancelRequestedAt.toISOString()}), skipping`
+            );
+            return { claimFailed: true, cancelRequested: true };
+          }
+
           const updateResult = await tx.job.updateMany({
             where: {
               id: job.id,
               stage: JobStage.QUEUED,
               pauseRequestedAt: null,
+              cancelRequestedAt: null,
             },
             data: {
               stage: JobStage.ENCODING,

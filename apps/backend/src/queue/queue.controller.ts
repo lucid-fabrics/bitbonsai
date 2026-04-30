@@ -7,6 +7,7 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Logger,
@@ -942,8 +943,12 @@ export class QueueController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while completing job',
   })
-  async complete(@Param('id') id: string, @Body() completeJobDto: CompleteJobDto): Promise<Job> {
-    return this.queueService.completeJob(id, completeJobDto);
+  async complete(
+    @Param('id') id: string,
+    @Body() completeJobDto: CompleteJobDto,
+    @Headers('x-node-id') callerNodeId?: string
+  ): Promise<Job> {
+    return this.queueService.completeJob(id, completeJobDto, callerNodeId);
   }
 
   /**
@@ -984,8 +989,12 @@ export class QueueController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while failing job',
   })
-  async fail(@Param('id') id: string, @Body() failJobDto: FailJobDto): Promise<Job> {
-    return this.queueService.failJob(id, failJobDto.error);
+  async fail(
+    @Param('id') id: string,
+    @Body() failJobDto: FailJobDto,
+    @Headers('x-node-id') callerNodeId?: string
+  ): Promise<Job> {
+    return this.queueService.failJob(id, failJobDto.error, callerNodeId);
   }
 
   /**

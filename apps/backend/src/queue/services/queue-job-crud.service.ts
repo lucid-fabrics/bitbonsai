@@ -40,7 +40,8 @@ export class QueueJobCrudService {
    */
   async validateJobOwnership(
     jobId: string,
-    operation: string
+    operation: string,
+    callerNodeId?: string
   ): Promise<{ nodeId: string | null; updatedAt: Date }> {
     const currentNodeId = this.nodeConfig.getNodeId();
     const isMainNode = this.nodeConfig.isMainNode();
@@ -63,13 +64,27 @@ export class QueueJobCrudService {
       throw new NotFoundException(`Job ${jobId} not found`);
     }
 
+    // LINKED node: check caller matches job owner
     if (!isMainNode && job.nodeId && job.nodeId !== currentNodeId) {
       this.logger.error(
-        `⚠️ HIGH #4: Cross-node ${operation} rejected: ` +
+        `Cross-node ${operation} rejected: ` +
           `Node ${currentNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
       );
       throw new ForbiddenException(
         `Node ${currentNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
+      );
+    }
+
+    // MAIN node receiving proxied call: validate the caller node owns this job.
+    // callerNodeId comes from the x-node-id header set by LINKED proxy calls.
+    // User-initiated actions won't include this header (callerNodeId undefined) and are always allowed.
+    if (isMainNode && callerNodeId && job.nodeId && job.nodeId !== callerNodeId) {
+      this.logger.error(
+        `Cross-node ${operation} rejected on MAIN: ` +
+          `LINKED node ${callerNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
+      );
+      throw new ForbiddenException(
+        `Node ${callerNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
       );
     }
 

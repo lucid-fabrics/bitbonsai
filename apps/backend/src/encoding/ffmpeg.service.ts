@@ -34,6 +34,8 @@ interface ActiveEncoding {
   lastProgress: number;
   lastStderr: string; // Last 2000 chars of stderr for error reporting
   lastOutputTime: Date; // Last time FFmpeg produced ANY output (for stuck detection)
+  isPauseOrCancelRequested: boolean; // Set before killing to prevent false FAILED state
+  completionHandled: boolean; // Guards against double close+error event firing
 }
 
 /**
@@ -571,7 +573,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Intel QSV detected - using Quick Sync Video acceleration');
       return {
         type: 'INTEL_QSV',
-        flags: ['-hwaccel', 'qsv', '-c:v', 'hevc_qsv'],
+        flags: ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'],
         videoCodec: 'hevc_qsv',
       };
     }
@@ -581,7 +583,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('AMD GPU detected - using VAAPI acceleration');
       return {
         type: 'AMD',
-        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD128'],
+        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD129'],
         videoCodec: 'hevc_vaapi',
       };
     }
@@ -635,6 +637,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // Check if this is a REMUX job (container change only, no re-encoding)
     const jobWithType = job as JobWithRemuxFields;
     const isRemux = jobWithType.type === 'REMUX';
+    let selectedCodec = '';
 
     if (isRemux) {
       // REMUX MODE: Fast stream copy (no re-encoding)
@@ -642,15 +645,31 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         `REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`
       );
 
+      // Stability flags: fix edit-list timestamps and VFR packets
+      args.push('-fflags', '+genpts');
+      args.push('-avoid_negative_ts', 'make_zero');
+
       // Input file
       args.push('-i', job.filePath);
 
-      // Stream copy for video and audio (no re-encoding)
-      args.push('-c:v', 'copy');
-      args.push('-c:a', 'copy');
+      const isTargetMp4 = jobWithType.targetContainer === 'mp4';
 
-      // Copy all streams (subtitles, metadata, etc.)
+      // Stream copy for video (always safe to copy)
+      args.push('-c:v', 'copy');
+
+      // Map all streams, then strip MP4-incompatible ones
       args.push('-map', '0');
+      if (isTargetMp4) {
+        // Drop image-based subtitles (PGS/DVDSUB) — not supported in MP4 muxer
+        args.push('-map', '-0:s');
+        // Drop attached_pic streams (MJPEG cover art) — causes "more than one video stream" error
+        args.push('-map', '-0:v:m:disposition:attached_pic');
+        // Transcode all audio to AAC for guaranteed MP4 compatibility
+        // Avoids DTS/TrueHD/FLAC/PCM muxer rejections; acceptable for a container-change operation
+        args.push('-c:a', 'aac', '-b:a', '192k');
+      } else {
+        args.push('-c:a', 'copy');
+      }
     } else {
       // ENCODE MODE: Full transcode with quality settings
       this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
@@ -670,21 +689,20 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
       // Video codec and quality
       // Select codec based on policy target and available hardware acceleration
-      const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
+      selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
       args.push('-c:v', selectedCodec);
 
       // ENHANCEMENT: Add preset and tune for CPU/software encoders
       // Hardware encoders (NVENC, QSV, VAAPI, VideoToolbox) have built-in encoding quality presets
       // CPU encoders (libx265, libaom-av1, libvpx-vp9, libx264) require explicit preset/tune
-      if (
-        selectedCodec.startsWith('libx') ||
-        selectedCodec.startsWith('libvpx') ||
-        selectedCodec === 'libaom-av1'
-      ) {
-        // CPU encoding: use 'medium' preset for balanced speed/quality
-        // Use 'film' tune for live-action content (most videos)
+      if (selectedCodec.startsWith('libx264') || selectedCodec.startsWith('libx265')) {
         args.push('-preset', 'medium');
         args.push('-tune', 'film');
+      } else if (selectedCodec === 'libaom-av1') {
+        args.push('-cpu-used', '4'); // 0=slowest/best quality, 8=fastest
+      } else if (selectedCodec.startsWith('libvpx')) {
+        args.push('-deadline', 'good');
+        args.push('-cpu-used', '2');
       }
 
       // TWO-PASS ENCODING: Add pass flags if two-pass mode is enabled
@@ -699,13 +717,22 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // CRF for single-pass or pass 2 of two-pass
-      // Pass 1 uses bitrate-based encoding for the stats file
-      if (!isTwoPass || passNumber === 2) {
+      // Quality mode: CRF for single-pass; bitrate for two-pass
+      // CRF and two-pass are mutually exclusive in libx264/libx265 — two-pass requires -b:v
+      if (!isTwoPass) {
         args.push('-crf', policy.targetQuality.toString());
-      } else if (passNumber === 1) {
-        // Pass 1 uses CRF 0 for accurate stats (will be ignored in pass 2)
-        args.push('-crf', '0');
+      } else {
+        // Two-pass requires a target bitrate so pass-1 stats are meaningful
+        const advancedSettingsForBitrate = policy.advancedSettings as Record<string, unknown>;
+        const targetBitrate = (advancedSettingsForBitrate?.targetBitrate as string) || '4000k';
+        args.push('-b:v', targetBitrate);
+        if (advancedSettingsForBitrate?.maxBitrate) {
+          args.push('-maxrate', advancedSettingsForBitrate.maxBitrate as string);
+          args.push('-bufsize', (advancedSettingsForBitrate.bufsize as string) || '8000k');
+        }
+        // Pass 1 uses a logfile isolated per job to prevent concurrent-job stat collision
+        const passlogPath = require('path').join(require('os').tmpdir(), `bb_2pass_${job.id}`);
+        args.push('-passlogfile', passlogPath);
       }
 
       // Audio codec (from decision config or policy advanced settings)
@@ -781,26 +808,37 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // Progress reporting - FFmpeg progress format to stderr
-    // Uses -progress pipe:2 to write structured progress data (frame=X, fps=Y, out_time=HH:MM:SS)
-    // This format is much easier to parse than -stats and works in all environments (including LXC)
-    args.push('-progress', 'pipe:2'); // Structured progress output to stderr
-    args.push('-nostdin'); // Disable interactive input
+    // Stability flags that improve reliability across all sources
+    // -max_muxing_queue_size: prevents VFR/HDR sources from failing with "Too many packets buffered"
+    // -fflags +genpts: regenerates PTS for sources with bad timestamps (edit-list MP4, HLS rips)
+    // -avoid_negative_ts: fixes audio/video sync on sources with negative timestamps
+    if (!isRemux) {
+      args.push('-max_muxing_queue_size', '9999');
+      args.push('-fflags', '+genpts');
+      args.push('-avoid_negative_ts', 'make_zero');
+    }
 
-    // Output to specified path (temp file that will be renamed atomically)
-    // Determine output format based on job type and target container
+    // Progress reporting — write structured progress key=value pairs to stdout (pipe:1)
+    // Keeping stderr clean for log lines so error context is not evicted by progress spam
+    args.push('-progress', 'pipe:1');
+    args.push('-nostdin');
+
+    // Output format based on target container
     const targetContainer = jobWithType.targetContainer || 'mkv';
 
     if (targetContainer === 'mp4' || targetContainer.includes('mp4')) {
-      // MP4 format with fragmentation for streaming compatibility
-      // Use fragmented MP4 for instant readability (moov atom at start)
-      // This allows preview captures to work at any encoding progress
-      args.push('-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4');
+      // Standard MP4 with fast-start (moov atom at front) for direct-play compatibility
+      // fMP4 (+frag_keyframe+empty_moov) is rejected by many TVs, Plex direct-play, and older devices
+      args.push('-movflags', '+faststart', '-f', 'mp4');
+      // Codec-specific container tags required for device playback
+      if (selectedCodec.includes('hevc') || selectedCodec.includes('265')) {
+        args.push('-tag:v', 'hvc1'); // Apple/Plex HEVC in MP4 compatibility
+      } else if (selectedCodec.includes('av1') || selectedCodec.includes('aom')) {
+        args.push('-tag:v', 'av01'); // AV1-in-MP4 tag
+      }
     } else if (targetContainer === 'mkv' || targetContainer.includes('matroska')) {
-      // MKV format (no special flags needed)
       args.push('-f', 'matroska');
     } else {
-      // Default to MKV for unknown containers
       this.logger.warn(`Unknown target container '${targetContainer}', defaulting to MKV`);
       args.push('-f', 'matroska');
     }
@@ -909,11 +947,13 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     });
     if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
       this.logger.warn(`[${job.id}] Pause requested, killing FFmpeg gracefully...`);
+      activeEncoding.isPauseOrCancelRequested = true;
       await this.killProcess(job.id);
       return;
     }
     if (jobStatus?.cancelRequestedAt && !jobStatus.cancelProcessedAt) {
       this.logger.warn(`[${job.id}] Cancel requested, killing FFmpeg gracefully...`);
+      activeEncoding.isPauseOrCancelRequested = true;
       await this.killProcess(job.id);
       return;
     }
@@ -1724,84 +1764,93 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       lastProgress: 0,
       lastStderr: '',
       lastOutputTime: new Date(), // Initialize to now
+      isPauseOrCancelRequested: false,
+      completionHandled: false,
     };
     this.activeEncodings.set(job.id, activeEncoding);
 
     return new Promise((resolve, reject) => {
-      let stderrBuffer = '';
       let fullStderr = '';
 
-      // Parse FFmpeg -progress pipe:2 output from stderr
-      // Accumulate progress data from key=value pairs
+      // stderr: log lines only (no progress noise on this stream)
+      ffmpegProcess.stderr?.on('data', (data: Buffer) => {
+        const chunk = data.toString();
+        fullStderr += chunk;
+        // Keep last 2000 chars; filter out progress key=value lines so real error context survives
+        const filtered = fullStderr
+          .split('\n')
+          .filter(
+            (l) =>
+              !/^(frame|fps|out_time|out_time_ms|out_time_us|dup_frames|drop_frames|speed|bitrate|total_size|progress)=/.test(
+                l.trim()
+              )
+          )
+          .join('\n');
+        if (filtered.length > 2000) {
+          fullStderr = filtered.slice(-2000);
+        } else {
+          fullStderr = filtered;
+        }
+        activeEncoding.lastStderr = fullStderr;
+        activeEncoding.lastOutputTime = new Date();
+      });
+
+      // stdout: -progress pipe:1 key=value pairs — kept separate from stderr so log lines don't corrupt progress parsing
+      let stdoutBuffer = '';
       let currentFrame = 0;
       let currentFps = 0;
       let currentTime = '00:00:00.00';
 
-      ffmpegProcess.stderr?.on('data', (data: Buffer) => {
-        const chunk = data.toString();
-        stderrBuffer += chunk;
-        fullStderr += chunk;
-
-        // Keep last 2000 chars of stderr for error reporting
-        if (fullStderr.length > 2000) {
-          fullStderr = fullStderr.slice(-2000);
-        }
-        activeEncoding.lastStderr = fullStderr;
-
-        // Split on newlines to process each line
-        const lines = stderrBuffer.split('\n');
-        // Keep the last incomplete line in the buffer
-        stderrBuffer = lines.pop() || '';
+      ffmpegProcess.stdout?.on('data', (data: Buffer) => {
+        stdoutBuffer += data.toString();
+        const lines = stdoutBuffer.split('\n');
+        stdoutBuffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed) continue;
+          if (!trimmed || !trimmed.includes('=')) continue;
 
-          // Parse -progress pipe:2 format (key=value)
-          if (trimmed.includes('=')) {
-            const [key, value] = trimmed.split('=');
-            switch (key) {
-              case 'frame':
-                currentFrame = Number.parseInt(value, 10) || 0;
-                break;
-              case 'fps':
-                currentFps = Number.parseFloat(value) || 0;
-                break;
-              case 'out_time':
-                currentTime = value;
-                break;
-              case 'out_time_us':
-                // Fallback: use microseconds if out_time is N/A
-                if (!currentTime || currentTime === 'N/A') {
-                  const us = Number.parseInt(value, 10);
-                  if (!Number.isNaN(us) && us > 0) {
-                    // Convert to HH:MM:SS.ms format for consistency
-                    const totalSeconds = us / 1_000_000;
-                    const hours = Math.floor(totalSeconds / 3600);
-                    const minutes = Math.floor((totalSeconds % 3600) / 60);
-                    const seconds = totalSeconds % 60;
-                    currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(6).padStart(9, '0')}`;
-                  }
-                }
-                break;
-              case 'progress':
-                // When we see 'progress=continue' or 'progress=end', we have a complete update
-                if (currentFrame > 0 && currentFps >= 0) {
-                  activeEncoding.lastOutputTime = new Date();
+          const eqIdx = trimmed.indexOf('=');
+          const key = trimmed.slice(0, eqIdx);
+          const value = trimmed.slice(eqIdx + 1);
 
-                  this.handleProgressUpdate(
-                    { frame: currentFrame, fps: currentFps, currentTime },
-                    job,
-                    activeEncoding,
-                    estimatedDurationSeconds,
-                    tempOutput,
-                    resumeFromPercent
-                  ).catch((error) => {
-                    this.logger.error(`[${job.id}] Progress update error: ${error.message}`);
-                  });
+          switch (key) {
+            case 'frame':
+              currentFrame = Number.parseInt(value, 10) || 0;
+              break;
+            case 'fps':
+              currentFps = Number.parseFloat(value) || 0;
+              break;
+            case 'out_time':
+              currentTime = value;
+              break;
+            case 'out_time_us':
+              if (!currentTime || currentTime === 'N/A') {
+                const us = Number.parseInt(value, 10);
+                if (!Number.isNaN(us) && us > 0) {
+                  const totalSeconds = us / 1_000_000;
+                  const hours = Math.floor(totalSeconds / 3600);
+                  const minutes = Math.floor((totalSeconds % 3600) / 60);
+                  const seconds = totalSeconds % 60;
+                  currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(6).padStart(9, '0')}`;
                 }
-                break;
-            }
+              }
+              break;
+            case 'progress':
+              if ((currentFrame > 0 || currentTime !== '00:00:00.00') && currentFps >= 0) {
+                activeEncoding.lastOutputTime = new Date();
+                this.handleProgressUpdate(
+                  { frame: currentFrame, fps: currentFps, currentTime },
+                  job,
+                  activeEncoding,
+                  estimatedDurationSeconds,
+                  tempOutput,
+                  resumeFromPercent
+                ).catch((error) => {
+                  this.logger.error(`[${job.id}] Progress update error: ${error.message}`);
+                });
+              }
+              break;
           }
         }
       });
@@ -1809,6 +1858,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // Handle process completion
       ffmpegProcess.on('close', async (code) => {
         const encoding = this.activeEncodings.get(job.id);
+        if (encoding?.completionHandled) return;
+        if (encoding) encoding.completionHandled = true;
+        if (encoding?.isPauseOrCancelRequested) {
+          this.activeEncodings.delete(job.id);
+          this.lastPreviewGeneration.delete(job.id);
+          resolve();
+          return;
+        }
 
         // Cache stderr before removing from active encodings
         if (encoding?.lastStderr) {
@@ -1834,7 +1891,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           const progress = job.progress || 0;
           const retryCount = job.retryCount || 0;
           const errorMessage = this.interpretFfmpegExitCode(
-            code as number,
+            code ?? -1,
             stderr,
             progress,
             retryCount
@@ -1847,6 +1904,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // Handle process errors
       ffmpegProcess.on('error', async (error) => {
         const encoding = this.activeEncodings.get(job.id);
+        if (encoding?.completionHandled) return;
+        if (encoding) encoding.completionHandled = true;
+        if (encoding?.isPauseOrCancelRequested) {
+          this.activeEncodings.delete(job.id);
+          this.lastPreviewGeneration.delete(job.id);
+          resolve();
+          return;
+        }
 
         // Cache stderr before removing from active encodings
         if (encoding?.lastStderr) {
@@ -1915,15 +1980,33 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // Kill ffmpeg process
-      activeEncoding.process.kill('SIGTERM');
+      // Kill entire process group (handles nice wrappers where FFmpeg is a child)
+      try {
+        if (activeEncoding.process.pid) {
+          process.kill(-activeEncoding.process.pid, 'SIGTERM');
+        } else {
+          this.logger.warn(`killProcess: no PID for job ${jobId}, process may already be dead`);
+        }
+      } catch (killError) {
+        const err = killError as NodeJS.ErrnoException;
+        if (err.code !== 'ESRCH') throw killError;
+      }
 
-      // Wait for graceful shutdown (2 seconds)
+      // Wait for graceful shutdown
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Force kill if still running
       if (!activeEncoding.process.killed) {
-        activeEncoding.process.kill('SIGKILL');
+        try {
+          if (activeEncoding.process.pid) {
+            process.kill(-activeEncoding.process.pid, 'SIGKILL');
+          } else {
+            this.logger.warn(`killProcess: no PID for force-kill of job ${jobId}`);
+          }
+        } catch (killError) {
+          const err = killError as NodeJS.ErrnoException;
+          if (err.code !== 'ESRCH') throw killError;
+        }
       }
 
       return true;
@@ -2279,15 +2362,33 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Cancelling encoding for job ${jobId}`);
 
     try {
-      // Kill ffmpeg process
-      activeEncoding.process.kill('SIGTERM');
+      // Kill entire process group (handles nice wrappers where FFmpeg is a child)
+      try {
+        if (activeEncoding.process.pid) {
+          process.kill(-activeEncoding.process.pid, 'SIGTERM');
+        } else {
+          this.logger.warn(`killProcess: no PID for job ${jobId}, process may already be dead`);
+        }
+      } catch (killError) {
+        const err = killError as NodeJS.ErrnoException;
+        if (err.code !== 'ESRCH') throw killError;
+      }
 
-      // Wait for graceful shutdown (2 seconds)
+      // Wait for graceful shutdown
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Force kill if still running
       if (!activeEncoding.process.killed) {
-        activeEncoding.process.kill('SIGKILL');
+        try {
+          if (activeEncoding.process.pid) {
+            process.kill(-activeEncoding.process.pid, 'SIGKILL');
+          } else {
+            this.logger.warn(`killProcess: no PID for force-kill of job ${jobId}`);
+          }
+        } catch (killError) {
+          const err = killError as NodeJS.ErrnoException;
+          if (err.code !== 'ESRCH') throw killError;
+        }
       }
 
       // Mark job as cancelled via event

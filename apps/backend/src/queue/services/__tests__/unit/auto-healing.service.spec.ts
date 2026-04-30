@@ -1,6 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobEventType, JobStage } from '@prisma/client';
 import * as fs from 'fs';
+import { NodeConfigService } from '../../../../core/services/node-config.service';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { createMockPrismaService } from '../../../../testing/mock-providers';
 import { AutoHealingService } from '../../auto-healing.service';
@@ -18,7 +19,11 @@ describe('AutoHealingService', () => {
     prisma = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AutoHealingService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        AutoHealingService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NodeConfigService, useValue: { isMainNode: () => true } },
+      ],
     }).compile();
 
     // Get service WITHOUT calling onModuleInit

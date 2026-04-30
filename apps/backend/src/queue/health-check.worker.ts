@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { FileHealthStatus, JobStage } from '@prisma/client';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
@@ -37,7 +37,7 @@ import { FileFailureTrackingService } from './services/file-failure-tracking.ser
  * - MAX_RETRY_ATTEMPTS: Max retry attempts (default: 3)
  */
 @Injectable()
-export class HealthCheckWorker implements OnModuleInit {
+export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(HealthCheckWorker.name);
   private isRunning = false;
   private currentlyChecking = new Set<string>(); // Track in-progress checks
@@ -590,10 +590,7 @@ export class HealthCheckWorker implements OnModuleInit {
             "healthCheckStartedAt" = NOW()
         WHERE id = ${jobId}
           AND stage IN ('DETECTED', 'HEALTH_CHECK')
-          AND (
-            "healthCheckStartedAt" IS NULL
-            OR "healthCheckStartedAt" < NOW() - INTERVAL '10 minutes'
-          )
+          AND "healthCheckStartedAt" IS NULL
       `;
 
       // Check if we successfully claimed the job (returns affected row count)
@@ -1034,5 +1031,9 @@ This typically means the encoding would take significant time with minimal space
       await this.loopPromise;
       this.logger.log('HealthCheckWorker loop exited gracefully');
     }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.stop();
   }
 }

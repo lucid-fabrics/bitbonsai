@@ -245,7 +245,7 @@ describe('FfmpegService', () => {
       expect(args).toContain('-preset');
       expect(args).toContain('medium');
       expect(args).toContain('-progress');
-      expect(args).toContain('pipe:2');
+      expect(args).toContain('pipe:1');
       expect(args).toContain('-y');
       expect(args).toContain('/media/video.mp4.tmp');
     });
@@ -425,7 +425,11 @@ describe('FfmpegService', () => {
       jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
 
       const ffmpegProc = createMockChildProcess();
+      (ffmpegProc as any).pid = 99999;
       mockSpawn.mockReturnValue(ffmpegProc);
+
+      // cancelEncoding uses process.kill(-pid, signal) for process-group kill
+      const processKillSpy = jest.spyOn(process, 'kill').mockImplementation(() => true);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
@@ -440,11 +444,13 @@ describe('FfmpegService', () => {
       const result = await cancelPromise;
 
       expect(result).toBe(true);
-      expect((ffmpegProc as any).kill).toHaveBeenCalledWith('SIGTERM');
+      expect(processKillSpy).toHaveBeenCalledWith(-99999, 'SIGTERM');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         EncodingCancelledEvent.event,
         expect.any(EncodingCancelledEvent)
       );
+
+      processKillSpy.mockRestore();
 
       // Clean up the encoding promise
       setTimeout(() => ffmpegProc.emit('close', 1), 10);
@@ -1014,7 +1020,9 @@ describe('FfmpegService', () => {
     });
 
     it('should return empty on error', async () => {
-      mockExecFileSync.mockRejectedValue(new Error('ps failed'));
+      mockExecFileSync.mockImplementation(() => {
+        throw new Error('ps failed');
+      });
 
       const result = await service.findSystemFfmpegProcesses();
       expect(result).toEqual([]);
