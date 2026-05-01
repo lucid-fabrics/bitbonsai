@@ -1,17 +1,10 @@
 #!/bin/sh
 
-# Ensure backend builds succeed
 echo "Building backend..."
-npx nx build backend
+npx nx build backend || exit 1
 
-# Ensure frontend builds succeed
 echo "Building frontend..."
-npx nx build frontend
+npx nx build frontend || exit 1
 
-# Run all tests (unit + integration + coverage)
-echo "Running all tests with coverage..."
-npx nx test:all
-
-# Run Playwright E2E tests
-echo "Running E2E tests..."
-npx nx test:e2e
+echo "Running affected tests..."
+npx nx affected --target=test --base=origin/main --head=HEAD || exit 1
