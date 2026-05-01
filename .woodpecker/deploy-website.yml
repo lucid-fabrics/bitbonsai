@@ -1,0 +1,80 @@
+when:
+  - event: push
+    branch: main
+  - event: manual
+
+labels:
+  platform: linux
+
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      lfs: false
+
+steps:
+  - name: deploy
+    image: node:22
+    when:
+      - event: push
+    environment:
+      CLOUDFLARE_API_TOKEN:
+        from_secret: CLOUDFLARE_API_TOKEN
+      CLOUDFLARE_ACCOUNT_ID:
+        from_secret: CLOUDFLARE_ACCOUNT_ID
+    commands:
+      - |
+        CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA:-HEAD~1} ${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
+        echo "$CHANGED" | grep -qE "^apps/website/|^libs/" || { echo "website not affected, skipping"; exit 0; }
+
+        npm ci --legacy-peer-deps
+        npx nx build website --configuration=production
+        npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
+        touch "$CI_WORKSPACE/.deployed"
+
+  - name: deploy-manual
+    image: node:22
+    when:
+      - event: manual
+    environment:
+      CLOUDFLARE_API_TOKEN:
+        from_secret: CLOUDFLARE_API_TOKEN
+      CLOUDFLARE_ACCOUNT_ID:
+        from_secret: CLOUDFLARE_ACCOUNT_ID
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx nx build website --configuration=production
+      - npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
+
+  - name: notify_result
+    image: bash
+    when:
+      - status: [success, failure]
+    environment:
+      TELEGRAM_BOT_TOKEN:
+        from_secret: TELEGRAM_BOT_TOKEN
+      TELEGRAM_CHAT_ID:
+        from_secret: TELEGRAM_CHAT_ID
+    commands:
+      - apk add --no-cache curl
+      - |
+        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ "$CI_PIPELINE_EVENT" = "push" ] && [ ! -f "$CI_WORKSPACE/.deployed" ]; then
+          echo "Skipping notification: website not affected"
+          exit 0
+        fi
+        if [ "$CI_PIPELINE_STATUS" = "success" ]; then
+          TG_EMOJI="✅"
+          if [ "$CI_PIPELINE_EVENT" = "manual" ]; then ENV_LABEL="Manual deploy 🚀"; else ENV_LABEL="Auto deploy 🔧"; fi
+        else
+          TG_EMOJI="❌"
+          ENV_LABEL="Deploy failed"
+        fi
+        COMMIT_SHORT="${CI_COMMIT_SHA:0:7}"
+        COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_AUTHOR=$(echo "$CI_COMMIT_AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_MSG=$(echo "$CI_COMMIT_MESSAGE" | head -1 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        MSG=$(printf '🌐 <b>BitBonsai Website</b> — %s %s\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
+          "$TG_EMOJI" "$ENV_LABEL" "$COMMIT_BRANCH" "$COMMIT_SHORT" "$COMMIT_AUTHOR" "$COMMIT_MSG" "$CI_PIPELINE_URL")
+        curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d "chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&disable_web_page_preview=true" \
+          --data-urlencode "text=$MSG" || true
