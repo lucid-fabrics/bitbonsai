@@ -15,8 +15,6 @@ clone:
 steps:
   - name: deploy
     image: node:22
-    when:
-      - event: push
     environment:
       CLOUDFLARE_API_TOKEN:
         from_secret: CLOUDFLARE_API_TOKEN
@@ -24,30 +22,20 @@ steps:
         from_secret: CLOUDFLARE_ACCOUNT_ID
     commands:
       - |
-        CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA:-HEAD~1} ${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
-        echo "$CHANGED" | grep -qE "^apps/website/|^libs/" || { echo "website not affected, skipping"; exit 0; }
+        # On push: skip if website files unchanged
+        if [ "$CI_PIPELINE_EVENT" = "push" ]; then
+          CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA:-HEAD~1} ${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
+          echo "$CHANGED" | grep -qE "^apps/website/|^libs/" || { echo "website not affected, skipping"; exit 0; }
+        fi
 
         npm ci --legacy-peer-deps
         npx nx build website --configuration=production
         npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
         touch "$CI_WORKSPACE/.deployed"
 
-  - name: deploy-manual
-    image: node:22
-    when:
-      - event: manual
-    environment:
-      CLOUDFLARE_API_TOKEN:
-        from_secret: CLOUDFLARE_API_TOKEN
-      CLOUDFLARE_ACCOUNT_ID:
-        from_secret: CLOUDFLARE_ACCOUNT_ID
-    commands:
-      - npm ci --legacy-peer-deps
-      - npx nx build website --configuration=production
-      - npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
-
   - name: notify_result
     image: bash
+    depends_on: [deploy]
     when:
       - status: [success, failure]
     environment:
@@ -58,7 +46,7 @@ steps:
     commands:
       - apk add --no-cache curl
       - |
-        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ "$CI_PIPELINE_EVENT" = "push" ] && [ ! -f "$CI_WORKSPACE/.deployed" ]; then
+        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f "$CI_WORKSPACE/.deployed" ]; then
           echo "Skipping notification: website not affected"
           exit 0
         fi

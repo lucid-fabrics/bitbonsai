@@ -33,7 +33,6 @@ steps:
     depends_on: [lint]
     commands:
       - npm ci --legacy-peer-deps
-      - npx prisma generate
       - npx nx test frontend --passWithNoTests
 
   - name: build-backend
@@ -49,7 +48,6 @@ steps:
     depends_on: [test-frontend]
     commands:
       - npm ci --legacy-peer-deps
-      - npx prisma generate
       - npx nx build frontend --configuration=production
 
   - name: build-website
