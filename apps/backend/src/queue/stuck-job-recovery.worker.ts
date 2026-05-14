@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JobStage, Prisma } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { FfmpegService } from '../encoding/ffmpeg.service';
+import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 
 /**
@@ -54,7 +55,8 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly ffmpegService: FfmpegService,
-    private readonly fileFailureTracking: FileFailureTrackingService
+    private readonly fileFailureTracking: FileFailureTrackingService,
+    private readonly circuitBreaker: CircuitBreakerService
   ) {}
 
   /**
@@ -245,6 +247,18 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
             );
             continue; // Skip this job if we couldn't kill the process
           }
+        }
+
+        // Circuit breaker: break permanently if this job has accumulated too many total attempts
+        const broken = await this.circuitBreaker.checkAndBreak(
+          job.id,
+          `stuck ENCODING recovery attempt ${job.stuckRecoveryCount + 1}`
+        );
+        if (broken) {
+          this.logger.warn(
+            `✗ Circuit broken during stuck-encoding recovery: ${job.fileLabel} → FAILED permanently`
+          );
+          continue;
         }
 
         // CAPA CRITICAL FIX: Preserve temp file and resume state when recovering frozen jobs

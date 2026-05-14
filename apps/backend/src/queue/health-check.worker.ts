@@ -8,7 +8,13 @@ import { ContainerCompatibilityService } from '../encoding/container-compatibili
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
+import {
+  HealthCheckIssue,
+  HealthCheckIssueCategory,
+  HealthCheckIssueSeverity,
+  HealthCheckSuggestedAction,
+} from './models/health-check-issue.model';
+import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 
@@ -59,7 +65,8 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
     readonly _ffmpegService: FfmpegService,
     private readonly fileRelocatorService: FileRelocatorService,
     private readonly fileFailureTracking: FileFailureTrackingService,
-    private readonly codecAnalyzer: HealthCheckCodecAnalyzerService
+    private readonly codecAnalyzer: HealthCheckCodecAnalyzerService,
+    private readonly circuitBreaker: CircuitBreakerService
   ) {}
 
   /**
@@ -218,6 +225,18 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
       // Increment corruptedRequeueCount for each job individually
       let resetCount = 0;
       for (const job of corruptedJobs) {
+        // Circuit breaker: skip permanently broken jobs
+        const broken = await this.circuitBreaker.checkAndBreak(
+          job.id,
+          `CORRUPTED requeue attempt ${job.corruptedRequeueCount + 1}`
+        );
+        if (broken) {
+          this.logger.warn(
+            `✗ Circuit broken during CORRUPTED requeue: ${job.fileLabel} → FAILED permanently`
+          );
+          continue;
+        }
+
         await this.jobRepository.updateById(job.id, {
           stage: JobStage.DETECTED,
           healthStatus: FileHealthStatus.UNKNOWN,

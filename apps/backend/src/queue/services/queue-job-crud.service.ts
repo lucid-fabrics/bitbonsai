@@ -13,6 +13,7 @@ import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
+import { PreflightService } from '../../encoding/services/preflight.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateJobDto } from '../dto/create-job.dto';
 import type { JobStatsDto } from '../dto/job-stats.dto';
@@ -37,7 +38,8 @@ export class QueueJobCrudService {
     private httpService: HttpService,
     private contentFingerprint: ContentFingerprintService,
     private fileFailureTracking: FileFailureTrackingService,
-    private jobStats: QueueJobStatsService
+    private jobStats: QueueJobStatsService,
+    private preflight: PreflightService
   ) {}
 
   /**
@@ -249,6 +251,18 @@ export class QueueJobCrudService {
     }
 
     this.validateFilePath(createJobDto.filePath, library.path);
+
+    // Pre-flight: validate file integrity before queuing
+    const preflightResult = await this.preflight.runPreflight(createJobDto.filePath);
+    if (!preflightResult.ok) {
+      this.logger.warn(`Pre-flight failed for ${createJobDto.filePath}: ${preflightResult.reason}`);
+      await this.fileFailureTracking.recordFailure(
+        createJobDto.filePath,
+        createJobDto.libraryId,
+        preflightResult.reason
+      );
+      throw new BadRequestException(`File failed pre-flight validation: ${preflightResult.reason}`);
+    }
 
     const existingActiveJob = await this.jobRepository.findFirstWhere({
       filePath: createJobDto.filePath,

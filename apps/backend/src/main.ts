@@ -278,6 +278,13 @@ async function bootstrap() {
   logger.log(`🚀 BitBonsai API running on: http://0.0.0.0:${port}/api/v1`);
   logger.log(`📚 Swagger API Docs available at: http://0.0.0.0:${port}/api/docs`);
   logger.log(`🌐 Frontend available at: http://0.0.0.0:${port}/`);
+
+  // Graceful shutdown is handled by NestJS via enableShutdownHooks() above.
+  // NestJS listens for SIGTERM and SIGINT, then calls all onModuleDestroy() hooks
+  // before exiting. Adding manual process.on('SIGTERM') / process.on('SIGINT')
+  // handlers here would race with NestJS's internal app.close() and could cause
+  // double-close or premature process.exit(0) before cleanup finishes.
+  // The 120 s drain timeout is controlled by docker stop --time on the host side.
 }
 
 const logger = new Logger('Bootstrap');

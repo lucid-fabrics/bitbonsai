@@ -217,6 +217,53 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
         </div>
       </section>
 
+      <!-- Reliability Comparison Section -->
+      <section class="reliability" aria-label="Reliability comparison">
+        <div class="reliability__container">
+          <div class="section-header">
+            <h2 class="section-header__title">The Only Transcoder That Finishes</h2>
+            <p class="section-header__subtitle">
+              Every competitor abandons failed jobs. BitBonsai auto-recovers.
+            </p>
+          </div>
+
+          <p class="reliability__lead">
+            Every time Unmanic or Tdarr silently abandons a failed job, you lose encode time and disk space to leftover temp files.
+            Stop losing your encode jobs to crashes.
+          </p>
+
+          <div class="reliability__table-wrapper">
+            <table class="reliability-table">
+              <caption class="reliability-table__caption">Feature comparison: BitBonsai vs. popular transcoders</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Feature</th>
+                  <th scope="col">Unmanic</th>
+                  <th scope="col">Tdarr</th>
+                  <th scope="col">FileFlows</th>
+                  <th scope="col" class="reliability-table__highlight-col">BitBonsai</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of reliabilityRows; track row.feature) {
+                  <tr>
+                    <td class="reliability-table__feature">{{ row.feature }}</td>
+                    <td class="reliability-table__cell" [class.reliability-table__cell--no]="!row.unmanic" [class.reliability-table__cell--partial]="row.unmanicPartial">{{ row.unmanic }}</td>
+                    <td class="reliability-table__cell" [class.reliability-table__cell--no]="!row.tdarr" [class.reliability-table__cell--partial]="row.tdarrPartial">{{ row.tdarr }}</td>
+                    <td class="reliability-table__cell" [class.reliability-table__cell--no]="!row.fileflows" [class.reliability-table__cell--partial]="row.fileflowsPartial">{{ row.fileflows }}</td>
+                    <td class="reliability-table__cell reliability-table__cell--yes reliability-table__highlight-col">{{ row.bitbonsai }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="reliability__cta">
+            <a routerLink="/download" class="btn btn--primary btn--large">Start for Free — No Credit Card Required</a>
+          </div>
+        </div>
+      </section>
+
       <!-- CTA Section -->
       <section class="cta">
         <div class="cta__container">
@@ -334,6 +381,79 @@ export class HomeComponent {
       name: 'Mike Thompson',
       title: 'r/homelab Moderator',
       avatar: 'MT',
+    },
+  ];
+
+  reliabilityRows = [
+    {
+      feature: 'Auto-retry on encode failure',
+      unmanic: '✗',
+      tdarr: '✗',
+      fileflows: 'Manual',
+      fileflowsPartial: true,
+      bitbonsai: '✓',
+      unmanicPartial: false,
+      tdarrPartial: false,
+    },
+    {
+      feature: 'GPU → CPU fallback',
+      unmanic: '✗',
+      tdarr: '✗',
+      fileflows: '✗',
+      bitbonsai: '✓',
+      unmanicPartial: false,
+      tdarrPartial: false,
+      fileflowsPartial: false,
+    },
+    {
+      feature: 'Guaranteed temp file cleanup',
+      unmanic: '✗ (5yr open bug)',
+      tdarr: 'Manual',
+      fileflows: 'Manual',
+      bitbonsai: '✓',
+      unmanicPartial: false,
+      tdarrPartial: true,
+      fileflowsPartial: true,
+    },
+    {
+      feature: 'Pre-flight corrupt file detection',
+      unmanic: '✗',
+      tdarr: 'Post-only',
+      fileflows: 'Optional',
+      bitbonsai: '✓',
+      unmanicPartial: false,
+      tdarrPartial: true,
+      fileflowsPartial: true,
+    },
+    {
+      feature: 'Multi-node failover',
+      unmanic: '✗',
+      tdarr: '✗',
+      fileflows: '✗',
+      bitbonsai: '✓',
+      unmanicPartial: false,
+      tdarrPartial: false,
+      fileflowsPartial: false,
+    },
+    {
+      feature: 'Self-healing on crash',
+      unmanic: 'Partial',
+      tdarr: 'Unreliable',
+      fileflows: '✗',
+      bitbonsai: '✓',
+      unmanicPartial: true,
+      tdarrPartial: true,
+      fileflowsPartial: false,
+    },
+    {
+      feature: 'Global retry circuit breaker',
+      unmanic: '✗',
+      tdarr: '✗',
+      fileflows: '✗',
+      bitbonsai: '✓',
+      unmanicPartial: false,
+      tdarrPartial: false,
+      fileflowsPartial: false,
     },
   ];
 

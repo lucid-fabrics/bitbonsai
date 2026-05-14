@@ -22,6 +22,8 @@ import { HealthCheckWorker } from './health-check.worker';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
 import { BatchOperationsService } from './services/batch-operations.service';
+import { CircuitBreakerService } from './services/circuit-breaker.service';
+import { CompletionOutboxService } from './services/completion-outbox.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { FileTransferService } from './services/file-transfer.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
@@ -31,6 +33,7 @@ import { JobFileOperationsService } from './services/job-file-operations.service
 import { JobHistoryService } from './services/job-history.service';
 import { JobMetricsService } from './services/job-metrics.service';
 import { JobRouterService } from './services/job-router.service';
+import { OwnershipLeaseService } from './services/ownership-lease.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
 import { QueueJobCrudService } from './services/queue-job-crud.service';
 import { QueueJobStateService } from './services/queue-job-state.service';
@@ -84,11 +87,14 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     HealthCheckWorker,
     HealthCheckCodecAnalyzerService,
     AutoHealingService,
+    CompletionOutboxService,
+    CircuitBreakerService,
     RetrySchedulerService,
     StuckJobRecoveryWorker,
     BackupCleanupWorker,
     BatchOperationsService,
     WebhookNotificationService,
+    OwnershipLeaseService,
     PrismaService,
     FileFailureRecordRepository,
     JobHistoryRepository,
@@ -109,6 +115,9 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     FileTransferService,
     BatchOperationsService,
     WebhookNotificationService,
+    CompletionOutboxService,
+    CircuitBreakerService,
+    OwnershipLeaseService,
   ],
 })
 export class QueueModule {}

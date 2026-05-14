@@ -64,6 +64,9 @@ export class JobCleanupService implements OnModuleInit {
         {
           stage: JobStage.ENCODING,
           updatedAt: { lt: thresholdDate },
+          // Skip jobs already claimed by QueueProcessingService's fencing token.
+          // A non-null token means the other service is mid-reset — don't touch them.
+          fencingToken: null,
         },
         {
           id: true,
@@ -93,6 +96,7 @@ export class JobCleanupService implements OnModuleInit {
             progress: 0,
             startedAt: null,
             retryCount: job.retryCount + 1,
+            totalAttempts: { increment: 1 },
             // AUTO-HEAL TRACKING: Record when job was auto-healed and its progress at healing point
             autoHealedAt: new Date(),
             autoHealedProgress: job.progress,

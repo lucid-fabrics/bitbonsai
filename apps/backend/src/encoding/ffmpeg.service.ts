@@ -23,6 +23,8 @@ import {
   type HardwareAccelConfig,
   HardwareAccelerationService,
 } from './hardware-acceleration.service';
+import { NfsHealthService } from './services/nfs-health.service';
+import { TempFileGuardService } from './services/temp-file-guard.service';
 
 /**
  * Active encoding process tracking
@@ -136,14 +138,18 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     private readonly progressParser: FfmpegProgressParserService,
     private readonly ffprobe: FfprobeService,
     private readonly processCleanup: FfmpegProcessCleanupService,
-    private readonly fileVerification: FfmpegFileVerificationService
+    private readonly fileVerification: FfmpegFileVerificationService,
+    private readonly nfsHealth: NfsHealthService,
+    private readonly tempFileGuard: TempFileGuardService
   ) {}
 
   /**
    * CRITICAL #2 & #9 FIX: Start cache cleanup intervals
    */
   async onModuleInit() {
-    // MEDIUM #13 FIX: Clean up orphaned temp files on startup
+    // Temp file cleanup on startup is handled by TempFileGuardService.onModuleInit()
+    // which uses DB-tracked paths instead of a /tmp glob (covers non-default locations).
+    // MEDIUM #13 FIX: Also clean up orphaned temp files via process cleanup for legacy paths
     await this.processCleanup.cleanupOrphanedTempFiles();
 
     // Start stderr cache cleanup every 15 minutes
@@ -886,6 +892,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const tempOutput = customOutputPath || jobWithResume.tempFilePath || `${job.filePath}.tmp.mp4`;
     this.logger.debug(`[${job.id}] Output path: ${tempOutput}`);
 
+    // Register temp file in DB for crash-safe cleanup on next startup
+    await this.tempFileGuard.registerTempFile(job.id, tempOutput, job.nodeId);
+
     // Build ffmpeg command (with resume timestamp if resuming)
     const resumeTimestampValue = jobWithResume.resumeTimestamp ?? undefined;
     const args = this.buildFfmpegCommand(
@@ -935,6 +944,11 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       completionHandled: false,
     };
     this.activeEncodings.set(job.id, activeEncoding);
+
+    // Start NFS health monitoring: SIGSTOP/SIGCONT on mount outage
+    if (ffmpegProcess.pid) {
+      this.nfsHealth.startMonitoring(job.id, job.filePath, ffmpegProcess.pid);
+    }
 
     return new Promise((resolve, reject) => {
       let fullStderr = '';
@@ -1023,7 +1037,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Handle process completion
-      ffmpegProcess.on('close', async (code) => {
+      ffmpegProcess.on('close', async (code, signal) => {
         const encoding = this.activeEncodings.get(job.id);
         if (encoding?.completionHandled) return;
         if (encoding) encoding.completionHandled = true;
@@ -1042,14 +1056,30 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         // CRITICAL #10 & #11 FIX: Cleanup all job-related maps on completion
         this.activeEncodings.delete(job.id);
         this.lastPreviewGeneration.delete(job.id);
+        this.nfsHealth.stopMonitoring(job.id);
+
+        // Immediate signal-kill detection: OS signals (SIGSEGV, SIGBUS, SIGKILL, etc.)
+        // result in code=null with a non-null signal. Fail fast instead of waiting for
+        // the stuck-job watchdog (up to 10 minutes).
+        if (signal !== null && code === null) {
+          const errorMessage = `FFmpeg killed by signal: ${signal}`;
+          this.logger.error(`[${job.id}] ${errorMessage}`);
+          await this.handleEncodingFailure(job, tempOutput, errorMessage);
+          await this.tempFileGuard.cleanupJobTempFiles(job.id);
+          reject(new Error(errorMessage));
+          return;
+        }
 
         if (code === 0) {
           try {
             await this.handleEncodingSuccess(job, policy, tempOutput);
+            // Temp file was renamed to final output — mark it cleaned so guard won't try to delete it
+            await this.tempFileGuard.markCleaned(tempOutput);
             resolve();
           } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             await this.handleEncodingFailure(job, tempOutput, errorMessage);
+            await this.tempFileGuard.cleanupJobTempFiles(job.id);
             reject(error);
           }
         } else {
@@ -1063,6 +1093,27 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
             progress,
             retryCount
           );
+          // ENOSPC: disk-full leaves a partial .tmp file that will cause next retry to fail preflight.
+          // Delete it now so the retry starts clean.
+          const isDiskFull =
+            stderr.includes('No space left on device') || stderr.includes('ENOSPC');
+          if (isDiskFull && tempOutput) {
+            this.logger.warn(
+              `[${job.id}] Disk-full detected — cleaning up partial temp file: ${tempOutput}`
+            );
+            try {
+              await fs.unlink(tempOutput);
+              this.logger.warn(`[${job.id}] Partial temp file removed after disk-full`);
+            } catch (unlinkErr) {
+              const unlinkCode = (unlinkErr as NodeJS.ErrnoException).code;
+              if (unlinkCode !== 'ENOENT') {
+                this.logger.error(
+                  `[${job.id}] Failed to remove partial temp file after disk-full: ${unlinkErr}`
+                );
+              }
+            }
+            await this.tempFileGuard.markCleaned(tempOutput);
+          }
           await this.handleEncodingFailure(job, tempOutput, errorMessage);
           reject(new Error(errorMessage));
         }
@@ -1088,6 +1139,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         // CRITICAL #10 & #11 FIX: Cleanup all job-related maps on error
         this.activeEncodings.delete(job.id);
         this.lastPreviewGeneration.delete(job.id);
+        this.nfsHealth.stopMonitoring(job.id);
 
         let errorMessage = `FFmpeg Process Error: ${error.message}`;
 
@@ -1099,6 +1151,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         }
 
         await this.handleEncodingFailure(job, tempOutput, errorMessage);
+        await this.tempFileGuard.cleanupJobTempFiles(job.id);
         reject(error);
       });
     });
@@ -1772,6 +1825,17 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       contentFingerprint: null,
       qualityMetrics: null,
       qualityMetricsAt: null,
+      fencingToken: null,
+      gpuAttempts: 0,
+      codecOverride: null,
+      ownershipLeaseExpiry: null,
+      ownershipEpoch: 0,
+      pendingCompletionData: null,
+      pendingCompletionAt: null,
+      totalAttempts: 0,
+      circuitBroken: false,
+      circuitBrokenAt: null,
+      circuitBrokenReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

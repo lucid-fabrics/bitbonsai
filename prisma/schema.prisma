@@ -807,6 +807,27 @@ model Job {
   lastScoreBreakdown  Json?    // Last scoring breakdown when assigned: {load: 24, hw: 25, ...}
   assignmentReason    String?  // Why job was assigned to this node (human-readable)
 
+  // Auto-Recovery Hardening: Fencing token (prevents dual-reset race)
+  fencingToken      String?   // "pid:bootEpoch" written when node claims job
+
+  // Auto-Recovery Hardening: GPU→CPU fallback
+  gpuAttempts       Int       @default(0) // Times GPU encoding was attempted (cap 1 → force CPU)
+  codecOverride     String?   // Forced codec override for next retry (e.g., "libx265" after GPU fail)
+
+  // Auto-Recovery Hardening: Ownership lease (MAIN↔LINKED split-brain prevention)
+  ownershipLeaseExpiry  DateTime? // When current node's lease expires; MAIN reclaims if past
+  ownershipEpoch        Int       @default(0) // Incremented on each ownership transfer
+
+  // Auto-Recovery Hardening: Completion outbox (survive DB write failure after successful encode)
+  pendingCompletionData String?   // JSON: output path, size, codec, duration — written before final DB update
+  pendingCompletionAt   DateTime? // When outbox entry was written
+
+  // Auto-Recovery Hardening: Circuit breaker (global cap across all retry systems)
+  totalAttempts     Int       @default(0) // Across all retry systems combined (circuit breaks at 10)
+  circuitBroken     Boolean   @default(false) // True = permanently excluded from all retry systems
+  circuitBrokenAt   DateTime? // When circuit breaker tripped
+  circuitBrokenReason String? // Human-readable reason shown to user
+
   // Relations
   nodeId String
   node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
@@ -819,7 +840,8 @@ model Job {
   policy   Policy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
 
   // Relations
-  history JobHistory[]
+  history   JobHistory[]
+  tempFiles JobTempFile[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -863,6 +885,10 @@ model Job {
   @@index([autoHealClaimedAt, autoHealClaimedBy]) // DEEP AUDIT P2: For auto-heal claim queries
   @@index([stage, transferLastProgressAt]) // DEEP AUDIT P0: Composite for TRANSFERRING stall detection
   @@index([contentFingerprint])
+  @@index([fencingToken]) // Fencing token lookup
+  @@index([ownershipLeaseExpiry]) // Lease expiry scan
+  @@index([circuitBroken]) // Circuit breaker queries
+  @@index([totalAttempts]) // Circuit breaker threshold queries
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
@@ -892,6 +918,24 @@ model FileFailureRecord {
   @@index([libraryId, autoBlacklisted])
   @@index([contentFingerprint])
   @@map("file_failure_records")
+}
+
+// ============================================================================
+// JOB TEMP FILE REGISTRY (Runtime temp file tracking — survives force-kill)
+// ============================================================================
+model JobTempFile {
+  id         String   @id @default(cuid())
+  jobId      String
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tempPath   String   // Absolute path of the .tmp.* file
+  nodeId     String   // Which node wrote this temp file
+  createdAt  DateTime @default(now())
+  cleanedAt  DateTime? // When it was successfully deleted (soft-delete for audit)
+
+  @@index([jobId])
+  @@index([nodeId])
+  @@index([cleanedAt]) // For finding uncleaned files
+  @@map("job_temp_files")
 }
 
 // ============================================================================

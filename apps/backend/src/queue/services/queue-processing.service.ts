@@ -69,30 +69,83 @@ export class QueueProcessingService implements OnModuleInit {
   /**
    * On startup, reset any ENCODING/VERIFYING jobs owned by this node to QUEUED.
    * Since the process just started, no FFmpeg is running — these jobs are definitively orphaned.
+   *
+   * Uses a fencing token to prevent a race with JobCleanupService, which also resets
+   * stuck jobs on startup. The token is written first so JobCleanupService skips jobs
+   * we already own, then cleared after the reset is complete.
    */
   private async resetOrphanedEncodingJobs(): Promise<void> {
     const nodeId = this.nodeConfig.getNodeId();
     if (!nodeId) return;
 
+    const bootToken = `${process.pid}:${Date.now()}`;
+
     try {
-      const result = await this.prisma.job.updateMany({
+      // Clear stale fencing tokens from prior crashes of this node.
+      // PIDs can be reused across boots, so we match by nodeId rather than token value.
+      // This must run before we stamp the new bootToken so those jobs become eligible again.
+      await this.prisma.job.updateMany({
+        where: {
+          nodeId,
+          fencingToken: { not: null },
+          stage: { in: [JobStage.ENCODING, JobStage.VERIFYING] },
+        },
+        data: { fencingToken: null },
+      });
+
+      // Claim orphaned jobs for this node by stamping a fencing token.
+      // Only jobs with no existing token are eligible — this prevents double-reset
+      // with JobCleanupService which guards on fencingToken: null.
+      await this.prisma.job.updateMany({
         where: {
           nodeId,
           stage: { in: [JobStage.ENCODING, JobStage.VERIFYING] },
+          fencingToken: null,
         },
-        data: {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          startedAt: null,
-          lastProgressUpdate: null,
-        },
+        data: { fencingToken: bootToken },
       });
 
-      if (result.count > 0) {
-        this.logger.warn(
-          `Startup: reset ${result.count} orphaned ENCODING/VERIFYING job(s) on node ${nodeId} → QUEUED`
-        );
+      // Fetch only the jobs we successfully claimed.
+      const claimedJobs = await this.prisma.job.findMany({
+        where: { fencingToken: bootToken },
+        select: { id: true },
+      });
+
+      if (claimedJobs.length === 0) {
+        return;
       }
+
+      // Reset each claimed job and clear the fencing token atomically.
+      let resetCount = 0;
+      for (const job of claimedJobs) {
+        try {
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.QUEUED,
+              progress: 0,
+              startedAt: null,
+              lastProgressUpdate: null,
+              fencingToken: null,
+              totalAttempts: { increment: 1 },
+            },
+          });
+          resetCount++;
+        } catch (updateError) {
+          this.logger.error(`Startup orphan reset failed for job ${job.id}`, updateError);
+          // Best-effort: clear the token so cleanup services can pick it up later.
+          await this.prisma.job
+            .update({
+              where: { id: job.id },
+              data: { fencingToken: null },
+            })
+            .catch(() => undefined);
+        }
+      }
+
+      this.logger.warn(
+        `Startup: reset ${resetCount} orphaned ENCODING/VERIFYING job(s) on node ${nodeId} → QUEUED`
+      );
     } catch (error) {
       this.logger.error('Startup orphan reset failed', error);
     }

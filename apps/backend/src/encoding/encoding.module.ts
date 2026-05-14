@@ -8,6 +8,7 @@ import { CoreModule } from '../core/core.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { NodesModule } from '../nodes/nodes.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { QueueModule } from '../queue/queue.module';
 import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
 import { EncodingFileService } from './encoding-file.service';
@@ -33,6 +34,10 @@ import { PoolLockService } from './pool-lock.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
+import { CodecFallbackService } from './services/codec-fallback.service';
+import { NfsHealthService } from './services/nfs-health.service';
+import { PreflightService } from './services/preflight.service';
+import { TempFileGuardService } from './services/temp-file-guard.service';
 
 /**
  * EncodingModule
@@ -49,6 +54,7 @@ import { WorkerPoolService } from './worker-pool.service';
   imports: [
     CoreModule,
     PrismaModule,
+    forwardRef(() => QueueModule),
     // forwardRef required: EncodingModule ↔ LibrariesModule circular dependency
     // EncodingFileService injects LibrariesService.findOne() + update()
     // LibrariesModule imports QueueModule which imports EncodingModule
@@ -88,6 +94,10 @@ import { WorkerPoolService } from './worker-pool.service';
     NodeRepository,
     PolicyRepository,
     SettingsRepository,
+    CodecFallbackService,
+    NfsHealthService,
+    PreflightService,
+    TempFileGuardService,
   ],
   exports: [
     EncodingProcessorService,
@@ -99,6 +109,10 @@ import { WorkerPoolService } from './worker-pool.service';
     EncodingSchedulerService,
     QualityMetricsService,
     FileSizeEstimationService,
+    CodecFallbackService,
+    NfsHealthService,
+    PreflightService,
+    TempFileGuardService,
   ],
 })
 export class EncodingModule {}

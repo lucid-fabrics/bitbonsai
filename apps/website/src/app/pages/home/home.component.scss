@@ -675,6 +675,138 @@
   }
 }
 
+// Reliability Comparison Section
+.reliability {
+  padding: 100px 0;
+  background: variables.$bg-primary;
+
+  &__container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  &__lead {
+    max-width: 780px;
+    margin: 24px auto 48px;
+    font-size: 18px;
+    line-height: 1.7;
+    color: variables.$text-secondary;
+    text-align: center;
+  }
+
+  &__table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid variables.$border-primary;
+  }
+
+  &__cta {
+    margin-top: 48px;
+    text-align: center;
+  }
+}
+
+.reliability-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+
+  &__caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  thead {
+    background: variables.$bg-secondary;
+  }
+
+  th {
+    padding: 16px 20px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: variables.$text-secondary;
+    border-bottom: 1px solid variables.$border-primary;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid variables.$border-primary;
+    background: variables.$bg-primary;
+    transition: background 0.15s ease;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: variables.$bg-secondary;
+    }
+  }
+
+  td {
+    padding: 14px 20px;
+    vertical-align: middle;
+  }
+
+  &__feature {
+    font-weight: 600;
+    color: variables.$text-primary;
+  }
+
+  &__cell {
+    color: variables.$text-secondary;
+    font-size: 14px;
+
+    &--yes {
+      color: #22c55e;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    &--no {
+      color: #ef4444;
+      font-size: 16px;
+    }
+
+    &--partial {
+      color: #f59e0b;
+    }
+  }
+
+  &__highlight-col {
+    background: rgba(249, 190, 3, 0.06);
+    border-left: 2px solid variables.$accent-primary;
+  }
+
+  thead &__highlight-col {
+    color: variables.$accent-primary;
+  }
+}
+
+// Responsive: reliability table
+@media (max-width: 768px) {
+  .reliability {
+    &__lead {
+      font-size: 16px;
+    }
+  }
+
+  .reliability-table {
+    font-size: 13px;
+
+    th,
+    td {
+      padding: 12px 14px;
+    }
+  }
+}
+
 // CTA Section
 .cta {
   padding: 120px 0;

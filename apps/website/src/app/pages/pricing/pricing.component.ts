@@ -194,6 +194,7 @@ export class PricingComponent implements OnInit {
       `${tier.maxConcurrentJobs} concurrent ${tier.maxConcurrentJobs === 1 ? 'job' : 'jobs'}`,
       'HEVC & AV1 encoding',
       'Hardware acceleration',
+      'Self-healing auto-recovery',
     ];
 
     // Add tier-specific features based on tier name
@@ -243,6 +244,7 @@ export class PricingComponent implements OnInit {
           '2 concurrent jobs',
           'HEVC & AV1 encoding',
           'Hardware acceleration',
+          'Self-healing auto-recovery',
           'Basic support',
           'Community Discord',
         ],
@@ -258,7 +260,9 @@ export class PricingComponent implements OnInit {
         features: [
           '2 processing nodes',
           '3 concurrent jobs',
-          'All Free features',
+          'HEVC & AV1 encoding',
+          'Hardware acceleration',
+          'Self-healing auto-recovery',
           'Priority bug fixes',
           'Early access to features',
           'Support development',
@@ -276,7 +280,9 @@ export class PricingComponent implements OnInit {
         features: [
           '3 processing nodes',
           '5 concurrent jobs',
-          'All Supporter features',
+          'HEVC & AV1 encoding',
+          'Hardware acceleration',
+          'Self-healing auto-recovery',
           'Advanced analytics',
           'Custom encoding policies',
           'Email support',
@@ -293,7 +299,9 @@ export class PricingComponent implements OnInit {
         features: [
           '5 processing nodes',
           '10 concurrent jobs',
-          'All Plus features',
+          'HEVC & AV1 encoding',
+          'Hardware acceleration',
+          'Self-healing auto-recovery',
           'Advanced job routing',
           'Webhook integrations',
           'Priority email support',
@@ -310,7 +318,9 @@ export class PricingComponent implements OnInit {
         features: [
           '10 processing nodes',
           '20 concurrent jobs',
-          'All Pro features',
+          'HEVC & AV1 encoding',
+          'Hardware acceleration',
+          'Self-healing auto-recovery',
           'Unlimited libraries',
           'Custom integrations',
           '1-on-1 support',

@@ -11,6 +11,8 @@ import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { NodesService } from '../nodes/nodes.service';
 import { QueueService } from '../queue/queue.service';
+import { CompletionOutboxService } from '../queue/services/completion-outbox.service';
+import { OwnershipLeaseService } from '../queue/services/ownership-lease.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
 import { EncodingStartupService } from './encoding-startup.service';
 import { EncodingWatchdogService } from './encoding-watchdog.service';
@@ -20,6 +22,7 @@ import { PoolLockService } from './pool-lock.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
 import { QualityMetricsService } from './quality-metrics.service';
+import { CodecFallbackService } from './services/codec-fallback.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
@@ -66,7 +69,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly jobRetryStrategyService: JobRetryStrategyService,
     private readonly encodingStartupService: EncodingStartupService,
     private readonly encodingWatchdogService: EncodingWatchdogService,
-    private readonly qualityMetricsService: QualityMetricsService
+    private readonly qualityMetricsService: QualityMetricsService,
+    private readonly codecFallbackService: CodecFallbackService,
+    private readonly completionOutbox: CompletionOutboxService,
+    private readonly ownershipLease: OwnershipLeaseService
   ) {}
 
   /**
@@ -278,6 +284,14 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Update worker state
       this.workerPoolService.setWorkerJob(workerId, job.id);
 
+      // LEASE: Stamp initial lease expiry and begin renewal loop so MAIN can detect
+      // network-partitioned workers. Lease is set atomically here; renewal runs every 30s.
+      await this.prisma.job.update({
+        where: { id: job.id },
+        data: { ownershipLeaseExpiry: new Date(Date.now() + 60_000) },
+      });
+      this.ownershipLease.startRenewing(job.id, nodeId);
+
       try {
         // DEEP AUDIT P2: Fresh check for pauseRequestedAt before starting encoding
         // This closes the window between getNextJob and actual encoding start
@@ -361,6 +375,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         await this.handleJobFailure(job, error);
         return null;
       } finally {
+        // LEASE: Stop renewal and clear lease — job is done (success, failure, or pause).
+        this.ownershipLease.stopRenewing(job.id);
         // Clear current job
         this.workerPoolService.setWorkerJob(workerId, null);
       }
@@ -395,6 +411,21 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Job ${job.id} completed successfully`);
 
     try {
+      // GPU→CPU FALLBACK: clear any codec override now that encoding succeeded
+      if (job.codecOverride) {
+        await this.codecFallbackService.clearFallback(job.id);
+      }
+
+      // OUTBOX: Persist completion data before the final DB update so a crash
+      // between ffmpeg success and job.update(COMPLETED) can be replayed on restart.
+      await this.completionOutbox.writeOutbox(job.id, {
+        outputPath: job.filePath,
+        outputSizeBytes: Number(result.afterSizeBytes),
+        savedBytes: Number(result.savedBytes),
+        savedPercent: result.savedPercent,
+        codec: job.codecOverride ?? job.targetCodec,
+      });
+
       // Update job to completed status
       await this.queueService.completeJob(job.id, {
         afterSizeBytes: result.afterSizeBytes.toString(),
@@ -402,6 +433,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         savedPercent: result.savedPercent,
         ...(result.qualityMetrics && { qualityMetrics: result.qualityMetrics }),
       });
+
+      // OUTBOX: Clear the entry now that the DB update succeeded.
+      await this.completionOutbox.clearOutbox(job.id);
 
       // Update library statistics
       await this.encodingFileService.updateLibraryStats(job.libraryId, result.savedBytes);

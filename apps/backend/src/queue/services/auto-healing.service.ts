@@ -4,6 +4,8 @@ import { existsSync } from 'fs';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { JobHistoryRepository } from '../../common/repositories/job-history.repository';
 import { SettingsRepository } from '../../common/repositories/settings.repository';
+import { NodeConfigService } from '../../core/services/node-config.service';
+import { CircuitBreakerService } from './circuit-breaker.service';
 
 /**
  * AutoHealingService
@@ -27,7 +29,9 @@ export class AutoHealingService implements OnModuleInit {
   constructor(
     private readonly jobHistoryRepository: JobHistoryRepository,
     private readonly jobRepository: JobRepository,
-    private readonly settingsRepository: SettingsRepository
+    private readonly settingsRepository: SettingsRepository,
+    private readonly nodeConfig: NodeConfigService,
+    private readonly circuitBreaker: CircuitBreakerService
   ) {}
 
   /**
@@ -87,7 +91,7 @@ export class AutoHealingService implements OnModuleInit {
       this.logger.log(`Auto-heal max retry limit: ${maxRetries}`);
 
       // PERF: Optimized query uses composite index (stage, retryCount, nextRetryAt)
-      // Find eligible failed jobs
+      // Find eligible failed jobs — permanently broken jobs (circuitBroken) are excluded
       const eligibleJobs = await this.jobRepository.findManySelect<{
         id: string;
         fileLabel: string;
@@ -99,6 +103,7 @@ export class AutoHealingService implements OnModuleInit {
       }>(
         {
           stage: JobStage.FAILED,
+          circuitBroken: false,
           retryCount: { lt: maxRetries },
           OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
         },
@@ -107,9 +112,9 @@ export class AutoHealingService implements OnModuleInit {
           fileLabel: true,
           retryCount: true,
           nextRetryAt: true,
-          progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
-          tempFilePath: true, // HEAL UX: needed to check if temp file exists
-          resumeTimestamp: true, // HEAL UX: needed to preserve resume state if temp file exists
+          progress: true,
+          tempFilePath: true,
+          resumeTimestamp: true,
         }
       );
 
@@ -147,6 +152,16 @@ export class AutoHealingService implements OnModuleInit {
             this.logger.log(
               `⚠️  Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`
             );
+          }
+
+          // Circuit breaker: increment totalAttempts and permanently fail if threshold reached.
+          // This ensures repeated auto-heal cycles don't loop forever on a persistently broken job.
+          const broke = await this.circuitBreaker.checkAndBreak(job.id, 'auto-heal-retry');
+          if (broke) {
+            this.logger.warn(
+              `Circuit breaker tripped for ${job.fileLabel} — permanently excluded after ${job.retryCount} auto-heal attempts`
+            );
+            continue;
           }
 
           // Update job with appropriate resume state
