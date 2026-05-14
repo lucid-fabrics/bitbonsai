@@ -23,6 +23,7 @@ import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
+import { GpuHealthService } from './services/gpu-health.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality

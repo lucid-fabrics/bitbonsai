@@ -827,6 +827,10 @@ model Job {
   circuitBroken     Boolean   @default(false) // True = permanently excluded from all retry systems
   circuitBrokenAt   DateTime? // When circuit breaker tripped
   circuitBrokenReason String? // Human-readable reason shown to user
+  dlqEnteredAt      DateTime? // When job entered the Dead Letter Queue (circuitBroken=true)
+
+  // Idempotent Job Deduplication
+  jobFingerprint    String?   // SHA-256 hash of filePath+targetCodec+targetQuality+targetContainer (16-char prefix)
 
   // Relations
   nodeId String
@@ -889,6 +893,8 @@ model Job {
   @@index([ownershipLeaseExpiry]) // Lease expiry scan
   @@index([circuitBroken]) // Circuit breaker queries
   @@index([totalAttempts]) // Circuit breaker threshold queries
+  @@index([dlqEnteredAt]) // DLQ queries
+  @@index([jobFingerprint]) // Job deduplication fingerprint
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs

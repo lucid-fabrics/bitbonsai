@@ -1659,7 +1659,16 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     } = require('./utils/ffmpeg-error-analyzer.util');
 
     const analysis = analyzeFfmpegError(code, stderr, progress, retryCount);
-    return formatErrorForDisplay(analysis);
+    const formatted = formatErrorForDisplay(analysis);
+
+    // Prefix with error class so encoding-processor can route without re-parsing
+    if (analysis.errorClass === 'FATAL') {
+      return `[FATAL] ${formatted}`;
+    }
+    if (analysis.errorClass === 'RETRIABLE') {
+      return `[RETRIABLE] ${formatted}`;
+    }
+    return formatted;
   }
 
   /**
@@ -1836,6 +1845,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       circuitBroken: false,
       circuitBrokenAt: null,
       circuitBrokenReason: null,
+      dlqEnteredAt: null,
+      jobFingerprint: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

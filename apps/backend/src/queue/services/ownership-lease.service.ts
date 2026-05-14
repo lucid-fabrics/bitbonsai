@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { JobStage } from '@prisma/client';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -137,6 +138,16 @@ export class OwnershipLeaseService implements OnModuleInit {
       this.renewalMap.delete(jobId);
       this.logger.debug(`Stopped lease renewal for job ${jobId}`);
     }
+  }
+
+  /**
+   * Periodically reclaim expired leases every 2 minutes on MAIN node.
+   * Catches orphaned jobs when the backend is NOT restarted after a worker dies.
+   */
+  @Cron('*/2 * * * *')
+  async periodicLeaseReclaim(): Promise<void> {
+    if (!this.nodeConfig.isMainNode()) return;
+    await this.reclaimExpiredLeases();
   }
 
   /**

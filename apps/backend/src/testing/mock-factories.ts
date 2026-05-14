@@ -129,6 +129,8 @@ export function createMockJob(overrides: Partial<Job> = {}): Job {
     circuitBroken: false,
     circuitBrokenAt: null,
     circuitBrokenReason: null,
+    dlqEnteredAt: null,
+    jobFingerprint: null,
     nodeId: 'node-1',
     libraryId: 'lib-1',
     policyId: 'policy-1',

@@ -98,6 +98,26 @@ export class QueueService {
     return this.jobCrudService.getJobStats(nodeId);
   }
 
+  async getDlqJobs(
+    skip = 0,
+    take = 50
+  ): Promise<{
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      filePath: string;
+      dlqEnteredAt: Date | null;
+      circuitBrokenReason: string | null;
+      totalAttempts: number;
+      error: string | null;
+    }>;
+    total: number;
+    skip: number;
+    take: number;
+  }> {
+    return this.jobCrudService.getDlqJobs(skip, take);
+  }
+
   // ─── State Transitions (QueueJobStateService) ─────────────────────
 
   async completeJob(

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
@@ -251,6 +252,30 @@ export class QueueJobCrudService {
     }
 
     this.validateFilePath(createJobDto.filePath, library.path);
+
+    // Idempotent deduplication: reject if an active job with identical settings already exists
+    const jobFingerprint = createHash('sha256')
+      .update(
+        `${createJobDto.filePath}:${createJobDto.targetCodec}:${policy.targetQuality}:${createJobDto.targetContainer ?? ''}`
+      )
+      .digest('hex')
+      .slice(0, 16);
+
+    const duplicateJob = await this.prisma.job.findFirst({
+      where: {
+        jobFingerprint,
+        stage: { notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED] },
+      },
+    });
+
+    if (duplicateJob) {
+      this.logger.log(
+        `Duplicate job fingerprint detected for: ${createJobDto.filePath} (existing job: ${duplicateJob.id})`
+      );
+      throw new ConflictException(
+        `Job already active for this file+settings (id: ${duplicateJob.id})`
+      );
+    }
 
     // Pre-flight: validate file integrity before queuing
     const preflightResult = await this.preflight.runPreflight(createJobDto.filePath);
@@ -762,6 +787,52 @@ export class QueueJobCrudService {
       this.logger.error('Failed to clear jobs', error);
       throw error;
     }
+  }
+
+  /**
+   * Get Dead Letter Queue jobs (circuit-broken, permanently failed)
+   */
+  async getDlqJobs(
+    skip = 0,
+    take = 50
+  ): Promise<{
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      filePath: string;
+      dlqEnteredAt: Date | null;
+      circuitBrokenReason: string | null;
+      totalAttempts: number;
+      error: string | null;
+    }>;
+    total: number;
+    skip: number;
+    take: number;
+  }> {
+    this.logger.log(`Fetching DLQ jobs (skip: ${skip}, take: ${take})`);
+
+    const where = { dlqEnteredAt: { not: null } };
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.job.findMany({
+        where,
+        select: {
+          id: true,
+          fileLabel: true,
+          filePath: true,
+          dlqEnteredAt: true,
+          circuitBrokenReason: true,
+          totalAttempts: true,
+          error: true,
+        },
+        orderBy: { dlqEnteredAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+
+    return { jobs, total, skip, take };
   }
 
   /**

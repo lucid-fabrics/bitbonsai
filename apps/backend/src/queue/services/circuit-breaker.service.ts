@@ -53,14 +53,16 @@ export class CircuitBreakerService {
     const newTotal = updated.totalAttempts;
 
     if (newTotal >= this.CIRCUIT_BREAK_THRESHOLD) {
+      const now = new Date();
       await this.prisma.job.update({
         where: { id: jobId },
         data: {
           circuitBroken: true,
-          circuitBrokenAt: new Date(),
+          circuitBrokenAt: now,
           circuitBrokenReason: reason,
+          dlqEnteredAt: now,
           stage: JobStage.FAILED,
-          failedAt: new Date(),
+          failedAt: now,
           error: `Circuit broken after ${newTotal} total attempts: ${reason}`,
         },
       });
