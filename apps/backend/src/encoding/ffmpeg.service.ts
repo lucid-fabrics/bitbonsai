@@ -23,8 +23,17 @@ import {
   type HardwareAccelConfig,
   HardwareAccelerationService,
 } from './hardware-acceleration.service';
+import { DiskSpaceGuardService } from './services/disk-space-guard.service';
 import { NfsHealthService } from './services/nfs-health.service';
 import { TempFileGuardService } from './services/temp-file-guard.service';
+
+/**
+ * Per-job FPS speed anomaly tracking
+ */
+interface SpeedTracker {
+  samples: number[]; // rolling FPS samples (last 12 = ~60s at 5s intervals)
+  anomalyStart: number | null; // timestamp (ms) when anomaly began
+}
 
 /**
  * Active encoding process tracking
@@ -108,6 +117,7 @@ export interface FfmpegProgress {
 export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FfmpegService.name);
   private readonly activeEncodings = new Map<string, ActiveEncoding>();
+  private readonly speedTrackers = new Map<string, SpeedTracker>();
 
   // Cache stderr output for recently completed/failed jobs
   // This persists even after the job is removed from activeEncodings
@@ -140,7 +150,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     private readonly processCleanup: FfmpegProcessCleanupService,
     private readonly fileVerification: FfmpegFileVerificationService,
     private readonly nfsHealth: NfsHealthService,
-    private readonly tempFileGuard: TempFileGuardService
+    private readonly tempFileGuard: TempFileGuardService,
+    private readonly diskSpaceGuard: DiskSpaceGuardService
   ) {}
 
   /**
@@ -257,6 +268,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     this.stderrCache.clear();
     this.ffprobe.clearCache();
     this.lastPreviewGeneration.clear();
+    this.speedTrackers.clear();
     this.logger.log('✅ All caches cleared');
   }
 
@@ -352,6 +364,51 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    */
   private calculateProgressPercentage(currentTime: string, totalDurationSeconds: number): number {
     return this.progressParser.calculateProgressPercentage(currentTime, totalDurationSeconds);
+  }
+
+  /**
+   * Track FPS samples per job and warn when speed drops anomalously low.
+   * Uses a rolling window of 12 samples (~60s). Anomaly fires if fps < 15% of rolling
+   * average for more than 30 consecutive seconds (6+ samples in a row).
+   */
+  private trackSpeedAnomaly(jobId: string, currentFps: number): void {
+    const MAX_SAMPLES = 12;
+    const MIN_SAMPLES_FOR_BASELINE = 6;
+    const ANOMALY_THRESHOLD_RATIO = 0.15;
+    const ANOMALY_DURATION_MS = 30_000;
+
+    if (!this.speedTrackers.has(jobId)) {
+      this.speedTrackers.set(jobId, { samples: [], anomalyStart: null });
+    }
+
+    const tracker = this.speedTrackers.get(jobId)!;
+
+    // Only push meaningful fps values (skip 0 during initial buffering)
+    if (currentFps > 0) {
+      tracker.samples.push(currentFps);
+      if (tracker.samples.length > MAX_SAMPLES) {
+        tracker.samples.shift();
+      }
+    }
+
+    if (tracker.samples.length < MIN_SAMPLES_FOR_BASELINE) return;
+
+    const rollingAvg = tracker.samples.reduce((a, b) => a + b, 0) / tracker.samples.length;
+    const isAnomaly = currentFps > 0 && currentFps < rollingAvg * ANOMALY_THRESHOLD_RATIO;
+
+    if (isAnomaly) {
+      if (tracker.anomalyStart === null) {
+        tracker.anomalyStart = Date.now();
+      } else if (Date.now() - tracker.anomalyStart >= ANOMALY_DURATION_MS) {
+        this.logger.warn(
+          `Encode speed anomaly: job ${jobId} fps dropped from ${rollingAvg.toFixed(1)} to ${currentFps.toFixed(1)} — possible disk stall or NFS hang`
+        );
+        // Reset so we don't spam the log every 5 seconds
+        tracker.anomalyStart = Date.now();
+      }
+    } else {
+      tracker.anomalyStart = null;
+    }
   }
 
   /**
@@ -948,6 +1005,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // Start NFS health monitoring: SIGSTOP/SIGCONT on mount outage
     if (ffmpegProcess.pid) {
       this.nfsHealth.startMonitoring(job.id, job.filePath, ffmpegProcess.pid);
+      this.diskSpaceGuard.startMonitoring(job.id, tempOutput, ffmpegProcess.pid);
     }
 
     return new Promise((resolve, reject) => {
@@ -1020,6 +1078,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
             case 'progress':
               if ((currentFrame > 0 || currentTime !== '00:00:00.00') && currentFps >= 0) {
                 activeEncoding.lastOutputTime = new Date();
+                this.trackSpeedAnomaly(job.id, currentFps);
                 this.handleProgressUpdate(
                   { frame: currentFrame, fps: currentFps, currentTime },
                   job,
@@ -1056,7 +1115,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         // CRITICAL #10 & #11 FIX: Cleanup all job-related maps on completion
         this.activeEncodings.delete(job.id);
         this.lastPreviewGeneration.delete(job.id);
+        this.speedTrackers.delete(job.id);
         this.nfsHealth.stopMonitoring(job.id);
+        this.diskSpaceGuard.stopMonitoring(job.id);
 
         // Immediate signal-kill detection: OS signals (SIGSEGV, SIGBUS, SIGKILL, etc.)
         // result in code=null with a non-null signal. Fail fast instead of waiting for
@@ -1139,7 +1200,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         // CRITICAL #10 & #11 FIX: Cleanup all job-related maps on error
         this.activeEncodings.delete(job.id);
         this.lastPreviewGeneration.delete(job.id);
+        this.speedTrackers.delete(job.id);
         this.nfsHealth.stopMonitoring(job.id);
+        this.diskSpaceGuard.stopMonitoring(job.id);
 
         let errorMessage = `FFmpeg Process Error: ${error.message}`;
 

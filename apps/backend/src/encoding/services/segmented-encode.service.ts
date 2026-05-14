@@ -159,10 +159,13 @@ export class SegmentedEncodeService {
         if (isNaN(actual))
           return reject(new Error(`ffprobe returned non-numeric duration for ${segmentPath}`));
         const diff = Math.abs(actual - expectedDuration);
-        if (diff > 2)
+        // Use a proportional tolerance (10% of segment, min 0.5s, max 2s) so that short
+        // last-segments (< 4s) are not incorrectly rejected by the hard 2s threshold.
+        const tolerance = Math.max(0.5, Math.min(2, expectedDuration * 0.1));
+        if (diff > tolerance)
           return reject(
             new Error(
-              `Segment duration mismatch: expected ${expectedDuration.toFixed(1)}s, got ${actual.toFixed(1)}s (diff ${diff.toFixed(1)}s)`
+              `Segment duration mismatch: expected ${expectedDuration.toFixed(1)}s, got ${actual.toFixed(1)}s (diff ${diff.toFixed(1)}s, tolerance ${tolerance.toFixed(1)}s)`
             )
           );
         resolve(actual);
@@ -196,8 +199,14 @@ export class SegmentedEncodeService {
     outputPath: string,
     sourceFilePath: string
   ): Promise<void> {
-    // Write concat list
-    const listContent = segmentPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n');
+    // Write concat list — FFmpeg concat demuxer parses the file directly (not via shell),
+    // so use backslash-escaping rather than shell-style quoting.
+    const listContent = segmentPaths
+      .map((p) => {
+        const escaped = p.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return `file '${escaped}'`;
+      })
+      .join('\n');
     await fs.writeFile(concatListPath, listContent, 'utf8');
 
     return new Promise((resolve, reject) => {
@@ -243,13 +252,12 @@ export class SegmentedEncodeService {
   }
 
   // Remove all segment files and directory
-  async cleanupSegments(jobId: string): Promise<void> {
+  async cleanupSegments(jobId: string, segmentsDir: string): Promise<void> {
     const segments = await this.prisma.jobSegment.findMany({
       where: { jobId },
       select: { tempPath: true },
     });
     if (segments.length === 0) return;
-    const segmentsDir = path.dirname(segments[0].tempPath);
     for (const seg of segments) {
       await fs.unlink(seg.tempPath).catch(() => {});
     }

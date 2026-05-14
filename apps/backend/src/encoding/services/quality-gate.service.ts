@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { Injectable, Logger } from '@nestjs/common';
 import { type Job } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -68,6 +69,15 @@ export class QualityGateService {
       return { passed: true, score: null, threshold, forcedPass: true };
     }
 
+    // PSNR pre-gate: 10-20x faster than VMAF, catches catastrophically bad encodes early
+    const psnrResult = await this.runPsnrPreGate(outputPath, job.filePath);
+    if (!psnrResult.passed) {
+      this.logger.warn(
+        `Quality gate: PSNR pre-gate failed for job ${job.id} — PSNR=${psnrResult.psnr?.toFixed(2) ?? 'N/A'} < 28.0 (skipping VMAF)`
+      );
+      return { passed: false, score: psnrResult.psnr, threshold: 28, forcedPass: false };
+    }
+
     // Resolve the VMAF score: prefer already-computed stored value to avoid running ffmpeg twice
     let score: number | null = storedMetrics?.vmaf ?? null;
 
@@ -122,6 +132,80 @@ export class QualityGateService {
     // Each quality-gate retry appends one warning line with the prefix
     const lines = job.warning.split('\n');
     return lines.filter((l) => l.startsWith(QUALITY_GATE_WARNING_PREFIX)).length;
+  }
+
+  /**
+   * PSNR fast pre-gate — runs before full VMAF to catch catastrophically bad encodes.
+   * PSNR is 10-20x faster than VMAF. Threshold is deliberately liberal (28 dB) to only
+   * block truly broken encodes while passing everything else through to VMAF.
+   *
+   * Samples every 10th frame to keep runtime short (~5-10s typical).
+   * Returns { passed: true, psnr: null } on any ffmpeg error or timeout (fail-open).
+   */
+  private runPsnrPreGate(
+    outputPath: string,
+    sourcePath: string
+  ): Promise<{ passed: boolean; psnr: number | null }> {
+    const PSNR_FAIL_THRESHOLD = 28.0;
+    const TIMEOUT_MS = 30_000;
+
+    return new Promise((resolve) => {
+      const args = [
+        '-i',
+        sourcePath,
+        '-i',
+        outputPath,
+        '-lavfi',
+        "[0:v]select='not(mod(n,10))'[ref];[1:v]select='not(mod(n,10))'[dist];[ref][dist]psnr",
+        '-f',
+        'null',
+        '-',
+      ];
+
+      let stderr = '';
+      const ffmpeg = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
+
+      const timeoutId = setTimeout(() => {
+        ffmpeg.kill('SIGKILL');
+        this.logger.debug('PSNR pre-gate timed out — failing open');
+        resolve({ passed: true, psnr: null });
+      }, TIMEOUT_MS);
+
+      ffmpeg.stderr?.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      ffmpeg.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stderr?.destroy();
+
+        if (code !== 0) {
+          // ffmpeg error (unsupported filter, missing stream, etc.) — fail open
+          resolve({ passed: true, psnr: null });
+          return;
+        }
+
+        // Parse "PSNR y:XX.XX " from stderr output
+        const match = /PSNR\s+y:([\d.]+)/.exec(stderr);
+        if (!match) {
+          resolve({ passed: true, psnr: null });
+          return;
+        }
+
+        const psnr = Number.parseFloat(match[1]);
+        if (Number.isNaN(psnr)) {
+          resolve({ passed: true, psnr: null });
+          return;
+        }
+
+        resolve({ passed: psnr >= PSNR_FAIL_THRESHOLD, psnr });
+      });
+
+      ffmpeg.on('error', () => {
+        clearTimeout(timeoutId);
+        resolve({ passed: true, psnr: null });
+      });
+    });
   }
 
   /**

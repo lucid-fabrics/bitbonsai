@@ -95,7 +95,7 @@ export class RetrySchedulerService {
       for (const job of eligibleJobs) {
         try {
           const nextAttempt = job.retryCount + 1;
-          const delayMs = this.computeNextRetryDelay(nextAttempt + 1); // +1 = the attempt after this one
+          const delayMs = this.computeNextRetryDelay(nextAttempt); // nextAttempt is 1-based upcoming attempt
           const nextRetryAt = new Date(Date.now() + delayMs);
 
           await this.jobRepository.updateById(job.id, {
@@ -110,7 +110,7 @@ export class RetrySchedulerService {
 
           retriedCount++;
           this.logger.log(
-            `Retrying job: ${job.fileLabel} (attempt ${nextAttempt + 1}/4, next retry window in ${Math.round(delayMs / 1000)}s)`
+            `Retrying job: ${job.fileLabel} (attempt ${nextAttempt}/4, next retry window in ${Math.round(delayMs / 1000)}s)`
           );
         } catch (jobError) {
           this.logger.error(`Failed to re-queue job ${job.id} (${job.fileLabel})`, jobError);

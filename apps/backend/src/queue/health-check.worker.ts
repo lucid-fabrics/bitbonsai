@@ -610,6 +610,27 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
       const quickResult = await this.fileHealthService.quickHealthCheck(job.filePath);
 
       if (!quickResult.passed) {
+        // If durationSecs is undefined the file is completely unreadable (bad header / zero-byte).
+        // Running thoroughHealthCheck with a 60s fallback would waste 90s on a file that cannot
+        // be decoded at all — skip straight to CORRUPTED.
+        if (!quickResult.durationSecs) {
+          this.logger.warn(
+            `Quick check failed for ${job.fileLabel} (${quickResult.reason}) and file is unreadable — skipping thorough check, marking CORRUPTED`
+          );
+          await this.prisma.job.update({
+            where: { id: jobId },
+            data: {
+              stage: JobStage.FAILED,
+              healthStatus: 'CORRUPTED' as const,
+              healthScore: 0,
+              healthMessage: `❌ Score: 0/100 | Issues: Quick check failed (unreadable): ${quickResult.reason}`,
+              healthCheckedAt: new Date(),
+              error: `Health check failed (unreadable): ${quickResult.reason}`,
+            },
+          });
+          return;
+        }
+
         this.logger.log(
           `Quick check failed for ${job.fileLabel} (${quickResult.reason}), running thorough check...`
         );
@@ -617,7 +638,7 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
         // Step 2: Thorough check — ffmpeg decode of first 60s (90s timeout)
         const thoroughResult = await this.fileHealthService.thoroughHealthCheck(
           job.filePath,
-          quickResult.durationSecs ?? 60
+          quickResult.durationSecs
         );
 
         if (thoroughResult.passed) {

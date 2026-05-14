@@ -35,6 +35,7 @@ import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
+import { DiskSpaceGuardService } from './services/disk-space-guard.service';
 import { GpuHealthService } from './services/gpu-health.service';
 import { NfsHealthService } from './services/nfs-health.service';
 import { PreflightService } from './services/preflight.service';
@@ -81,6 +82,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     FfmpegFileVerificationService,
     FfmpegService,
     HardwareAccelerationService,
+    DiskSpaceGuardService,
     FileHealthService,
     ContainerCompatibilityService,
     EncodingPreviewService,
@@ -108,6 +110,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
   exports: [
     EncodingProcessorService,
     FfmpegService,
+    DiskSpaceGuardService,
     FileHealthService,
     ContainerCompatibilityService,
     EncodingPreviewService,
