@@ -27,8 +27,10 @@ import { SystemResourceService } from '../../system-resource.service';
 import { WorkerPoolService } from '../../worker-pool.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
 import { CodecFallbackService } from '../../services/codec-fallback.service';
+import { ContainerValidationService } from '../../services/container-validation.service';
 import { GpuHealthService } from '../../services/gpu-health.service';
 import { QualityGateService } from '../../services/quality-gate.service';
+import { SegmentedEncodeService } from '../../services/segmented-encode.service';
 
 // Mock fs module
 jest.mock('node:fs');
@@ -243,6 +245,29 @@ describe('EncodingProcessorService', () => {
             startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
             manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
             getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+          },
+        },
+        {
+          provide: SegmentedEncodeService,
+          useValue: {
+            shouldUseSegmentedEncode: jest.fn().mockReturnValue(false),
+            planSegments: jest.fn(),
+            persistSegmentPlan: jest.fn(),
+            findResumePoint: jest.fn(),
+            resetPartialSegment: jest.fn(),
+            markSegmentCompleted: jest.fn(),
+            verifySegment: jest.fn(),
+            markSegmentVerified: jest.fn(),
+            concatSegments: jest.fn(),
+            cleanupSegments: jest.fn(),
+            getSegments: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: ContainerValidationService,
+          useValue: {
+            validateContainer: jest.fn().mockResolvedValue({ valid: true }),
+            decodeWalk: jest.fn().mockResolvedValue({ valid: true }),
           },
         },
       ],

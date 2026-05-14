@@ -103,6 +103,7 @@ describe('JobCleanupService', () => {
       expect(result).toBe(2);
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         {
+          fencingToken: null,
           stage: JobStage.ENCODING,
           updatedAt: expect.objectContaining({ lt: expect.any(Date) }),
         },

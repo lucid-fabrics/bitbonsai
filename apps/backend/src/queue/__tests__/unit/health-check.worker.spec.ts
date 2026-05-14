@@ -7,6 +7,7 @@ import { FfmpegService } from '../../../encoding/ffmpeg.service';
 import { FileHealthService } from '../../../encoding/file-health.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthCheckWorker } from '../../health-check.worker';
+import { CircuitBreakerService } from '../../services/circuit-breaker.service';
 import { FileFailureTrackingService } from '../../services/file-failure-tracking.service';
 import { HealthCheckCodecAnalyzerService } from '../../services/health-check-codec-analyzer.service';
 
@@ -74,6 +75,13 @@ describe('HealthCheckWorker', () => {
         { provide: FileRelocatorService, useValue: fileRelocatorService },
         { provide: FileFailureTrackingService, useValue: fileFailureTrackingService },
         HealthCheckCodecAnalyzerService,
+        {
+          provide: CircuitBreakerService,
+          useValue: {
+            checkAndBreak: jest.fn().mockResolvedValue(false),
+            isCircuitBroken: jest.fn().mockResolvedValue(false),
+          },
+        },
       ],
     }).compile();
 

@@ -16,6 +16,9 @@ import { FfmpegProcessCleanupService } from '../../ffmpeg-process-cleanup.servic
 import { FfmpegProgressParserService } from '../../ffmpeg-progress-parser.service';
 import { FfprobeService } from '../../ffprobe.service';
 import { HardwareAccelerationService } from '../../hardware-acceleration.service';
+import { DiskSpaceGuardService } from '../../services/disk-space-guard.service';
+import { NfsHealthService } from '../../services/nfs-health.service';
+import { TempFileGuardService } from '../../services/temp-file-guard.service';
 
 // Mock child_process spawn and execFileSync (keep original exec for Prisma compatibility)
 jest.mock('node:child_process', () => {
@@ -185,6 +188,22 @@ describe('FfmpegService', () => {
             cleanupCodecCache: jest.fn(),
             clearCache: jest.fn(),
           },
+        },
+        {
+          provide: NfsHealthService,
+          useValue: { startMonitoring: jest.fn(), stopMonitoring: jest.fn() },
+        },
+        {
+          provide: TempFileGuardService,
+          useValue: {
+            registerTempFile: jest.fn(),
+            markCleaned: jest.fn(),
+            cleanupJobTempFiles: jest.fn(),
+          },
+        },
+        {
+          provide: DiskSpaceGuardService,
+          useValue: { startMonitoring: jest.fn(), stopMonitoring: jest.fn() },
         },
       ],
     }).compile();
