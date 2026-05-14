@@ -6,6 +6,7 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { LibraryRepository } from '../common/repositories/library.repository';
 import { PolicyRepository } from '../common/repositories/policy.repository';
+import { SettingsRepository } from '../common/repositories/settings.repository';
 import { DataAccessService } from '../core/services/data-access.service';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
@@ -19,14 +20,14 @@ import { EncodingWatchdogService } from './encoding-watchdog.service';
 import { FfmpegService } from './ffmpeg.service';
 import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
-import { SystemResourceService } from './system-resource.service';
-import { WorkerPoolService } from './worker-pool.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
 import { ContainerValidationService } from './services/container-validation.service';
 import { GpuHealthService } from './services/gpu-health.service';
 import { QualityGateService } from './services/quality-gate.service';
 import { SegmentedEncodeService } from './services/segmented-encode.service';
+import { SystemResourceService } from './system-resource.service';
+import { WorkerPoolService } from './worker-pool.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
@@ -77,7 +78,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly qualityGateService: QualityGateService,
     private readonly codecFallbackService: CodecFallbackService,
     private readonly completionOutbox: CompletionOutboxService,
-    private readonly ownershipLease: OwnershipLeaseService
+    private readonly ownershipLease: OwnershipLeaseService,
+    private readonly settingsRepository: SettingsRepository
   ) {}
 
   /**
@@ -291,9 +293,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // LEASE: Stamp initial lease expiry and begin renewal loop so MAIN can detect
       // network-partitioned workers. Lease is set atomically here; renewal runs every 30s.
-      await this.prisma.job.update({
-        where: { id: job.id },
-        data: { ownershipLeaseExpiry: new Date(Date.now() + 60_000) },
+      await this.jobRepository.updateById(job.id, {
+        ownershipLeaseExpiry: new Date(Date.now() + 60_000),
       });
       this.ownershipLease.startRenewing(job.id, nodeId);
 
@@ -436,7 +437,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         afterSizeBytes: result.afterSizeBytes.toString(),
         savedBytes: result.savedBytes.toString(),
         savedPercent: result.savedPercent,
-        ...(result.qualityMetrics && { qualityMetrics: result.qualityMetrics }),
       });
 
       // OUTBOX: Clear the entry now that the DB update succeeded.
@@ -667,10 +667,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private async getVmafThreshold(): Promise<number> {
     try {
-      const settings = await this.prisma.settings.findFirst({
-        where: {},
-        select: { vmafThreshold: true },
-      });
+      const settings = await this.settingsRepository.findFirst();
       return settings?.vmafThreshold ?? 85;
     } catch {
       return 85; // Default threshold
@@ -685,10 +682,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private async isQualityMetricsEnabled(): Promise<boolean> {
     try {
-      const settings = await this.prisma.settings.findFirst({
-        where: {},
-        select: { qualityMetricsEnabled: true },
-      });
+      const settings = await this.settingsRepository.findFirst();
       return settings?.qualityMetricsEnabled ?? true;
     } catch {
       return true; // Default enabled

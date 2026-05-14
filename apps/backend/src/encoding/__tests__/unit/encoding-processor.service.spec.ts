@@ -23,14 +23,14 @@ import { EncodingWatchdogService } from '../../encoding-watchdog.service';
 import { FfmpegService } from '../../ffmpeg.service';
 import { JobRetryStrategyService } from '../../job-retry-strategy.service';
 import { PoolLockService } from '../../pool-lock.service';
-import { SystemResourceService } from '../../system-resource.service';
-import { WorkerPoolService } from '../../worker-pool.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
 import { CodecFallbackService } from '../../services/codec-fallback.service';
 import { ContainerValidationService } from '../../services/container-validation.service';
 import { GpuHealthService } from '../../services/gpu-health.service';
 import { QualityGateService } from '../../services/quality-gate.service';
 import { SegmentedEncodeService } from '../../services/segmented-encode.service';
+import { SystemResourceService } from '../../system-resource.service';
+import { WorkerPoolService } from '../../worker-pool.service';
 
 // Mock fs module
 jest.mock('node:fs');

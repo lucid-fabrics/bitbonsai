@@ -181,7 +181,6 @@ model Settings {
   readyFilesCacheTtlMinutes    Int      @default(5) // Cache TTL for /api/v1/libraries/ready endpoint (min: 5 minutes)
   maxAutoHealRetries           Int      @default(15) // Maximum retry count for auto-heal to resurrect failed jobs (default: 15)
   advancedModeEnabled          Boolean  @default(false) // Show advanced UI controls (default: minimal mode for simple UX)
-  qualityMetricsEnabled        Boolean  @default(false) // Calculate VMAF/PSNR/SSIM after encoding (CPU-intensive, opt-in)
 
   // ============ Quality Settings ============
   vmafThreshold                Int      @default(85)    // Minimum VMAF score (0-100), auto-requeue if below
@@ -702,9 +701,6 @@ model Job {
   afterSizeBytes  BigInt? // Encoded file size (null until completed)
   savedBytes      BigInt? // Bytes saved (can be negative if larger)
   savedPercent    Float? // Percentage saved
-
-  // Quality Metrics (VMAF, PSNR, SSIM scores after encoding)
-  qualityMetrics String? // JSON: { vmaf, psnr, ssim, calculatedAt }
 
   startedAt       DateTime?
   completedAt     DateTime?

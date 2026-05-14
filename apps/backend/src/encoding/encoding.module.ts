@@ -32,8 +32,6 @@ import { HardwareAccelerationService } from './hardware-acceleration.service';
 import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
 import { QualityMetricsService } from './quality-metrics.service';
-import { SystemResourceService } from './system-resource.service';
-import { WorkerPoolService } from './worker-pool.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
 import { ContainerValidationService } from './services/container-validation.service';
 import { DiskSpaceGuardService } from './services/disk-space-guard.service';
@@ -43,6 +41,8 @@ import { PreflightService } from './services/preflight.service';
 import { QualityGateService } from './services/quality-gate.service';
 import { SegmentedEncodeService } from './services/segmented-encode.service';
 import { TempFileGuardService } from './services/temp-file-guard.service';
+import { SystemResourceService } from './system-resource.service';
+import { WorkerPoolService } from './worker-pool.service';
 
 /**
  * EncodingModule
