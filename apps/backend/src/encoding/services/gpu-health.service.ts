@@ -44,16 +44,21 @@ export class GpuHealthService {
     if (nvidiaResult === 'healthy') return true;
     if (nvidiaResult === 'unhealthy') return false;
 
-    // 2. Try VAAPI device (nvidiaResult === 'not_found' — fall through)
+    // 2. Try vainfo (Intel QSV / AMD VAAPI) with encode capability check
+    const vainfoResult = await this.probeVainfo();
+    if (vainfoResult === 'healthy') return true;
+    if (vainfoResult === 'unhealthy') return false;
+
+    // 3. vainfo not installed — fall back to device node existence (nvidiaResult === 'not_found')
     try {
       await access(VAAPI_DEVICE);
-      this.logger.debug('VAAPI device accessible — GPU assumed healthy');
+      this.logger.debug('VAAPI device accessible (vainfo not installed) — GPU assumed healthy');
       return true;
     } catch {
       // Not accessible or not present — no GPU
     }
 
-    // 3. CPU-only node — always healthy
+    // 4. CPU-only node — always healthy
     return true;
   }
 
@@ -66,6 +71,69 @@ export class GpuHealthService {
     this.logger.warn(
       `GPU failure recorded: ${reason}. Cooldown active for ${GPU_COOLDOWN_MS / 1000}s`
     );
+  }
+
+  /**
+   * Probe vainfo for Intel QSV / AMD VAAPI encode capability.
+   * Checks for VAEntrypointEncSlice in output — confirms encode (not just decode) works.
+   * Fails open (not_found) when vainfo is absent so CPU-only nodes are unaffected.
+   */
+  private probeVainfo(): Promise<'healthy' | 'unhealthy' | 'not_found'> {
+    return new Promise((resolve) => {
+      let proc: ReturnType<typeof spawn>;
+
+      try {
+        proc = spawn('vainfo', ['--display', 'drm', '--device', VAAPI_DEVICE]);
+      } catch {
+        resolve('not_found');
+        return;
+      }
+
+      let stdout = '';
+      let stderr = '';
+
+      const timer = setTimeout(() => {
+        proc.kill();
+        this.logger.warn('vainfo probe timed out');
+        resolve('unhealthy');
+      }, 5_000);
+
+      proc.stdout?.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString();
+      });
+      proc.stderr?.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+
+      proc.on('error', (err: NodeJS.ErrnoException) => {
+        clearTimeout(timer);
+        if (err.code === 'ENOENT') {
+          resolve('not_found');
+        } else {
+          this.logger.warn(`vainfo probe error: ${err.message}`);
+          resolve('unhealthy');
+        }
+      });
+
+      proc.on('close', (code: number | null) => {
+        clearTimeout(timer);
+        if (code !== 0) {
+          // Non-zero can mean driver missing or device not found — fail unhealthy
+          // only if device node actually exists (otherwise it's a CPU-only node)
+          this.logger.debug(`vainfo exited ${code}: ${stderr.trim().slice(0, 120)}`);
+          resolve('unhealthy');
+          return;
+        }
+        // Verify encode entrypoint exists (not just decode)
+        if (stdout.includes('VAEntrypointEncSlice') || stdout.includes('VAEntrypointEncSliceLP')) {
+          this.logger.debug('vainfo probe OK — encode entrypoint confirmed');
+          resolve('healthy');
+        } else {
+          this.logger.warn('vainfo: GPU present but no encode entrypoint found');
+          resolve('unhealthy');
+        }
+      });
+    });
   }
 
   /**

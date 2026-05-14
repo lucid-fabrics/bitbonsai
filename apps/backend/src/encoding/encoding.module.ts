@@ -35,6 +35,7 @@ import { QualityMetricsService } from './quality-metrics.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
+import { ContainerValidationService } from './services/container-validation.service';
 import { DiskSpaceGuardService } from './services/disk-space-guard.service';
 import { GpuHealthService } from './services/gpu-health.service';
 import { NfsHealthService } from './services/nfs-health.service';
@@ -106,6 +107,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     PreflightService,
     SegmentedEncodeService,
     TempFileGuardService,
+    ContainerValidationService,
   ],
   exports: [
     EncodingProcessorService,
@@ -125,6 +127,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     PreflightService,
     SegmentedEncodeService,
     TempFileGuardService,
+    ContainerValidationService,
   ],
 })
 export class EncodingModule {}
