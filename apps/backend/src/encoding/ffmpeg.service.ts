@@ -1320,6 +1320,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
     if (ffmpegProcess.pid) {
       this.nfsHealth.startMonitoring(job.id, job.filePath, ffmpegProcess.pid);
+      this.diskSpaceGuard.startMonitoring(job.id, outputPath, ffmpegProcess.pid);
     }
 
     return new Promise((resolve, reject) => {
@@ -1384,8 +1385,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
               break;
           }
         }
-        // Suppress TS unused-var warning on currentFps (it's kept for parity with encodeFile)
-        void currentFps;
+        if (currentFps > 0) this.trackSpeedAnomaly(job.id, currentFps);
       });
 
       ffmpegProcess.on('close', async (code, signal) => {

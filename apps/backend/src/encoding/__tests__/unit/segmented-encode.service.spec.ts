@@ -7,7 +7,7 @@ jest.mock('fs', () => ({
     unlink: jest.fn(),
     writeFile: jest.fn(),
     stat: jest.fn(),
-    rmdir: jest.fn(),
+    rm: jest.fn(),
   },
 }));
 
@@ -186,7 +186,8 @@ describe('SegmentedEncodeService', () => {
           '-of',
           'csv=p=0',
           segmentPath,
-        ])
+        ]),
+        expect.objectContaining({ stdio: ['ignore', 'pipe', 'ignore'] })
       );
     });
 
@@ -455,7 +456,8 @@ describe('SegmentedEncodeService', () => {
           '-movflags',
           '+faststart',
           outputPath,
-        ])
+        ]),
+        expect.objectContaining({ stdio: ['ignore', 'ignore', 'pipe'] })
       );
     });
 
@@ -505,13 +507,13 @@ describe('SegmentedEncodeService', () => {
 
       mockPrisma.jobSegment.findMany.mockResolvedValue(segments as any);
       (fs.unlink as jest.Mock).mockResolvedValue(undefined);
-      (fs.rmdir as jest.Mock).mockResolvedValue(undefined);
+      (fs.rm as jest.Mock).mockResolvedValue(undefined);
 
       await service.cleanupSegments(jobId, segmentsDir);
 
       expect(fs.unlink).toHaveBeenCalledWith('/tmp/seg_0000.mkv');
       expect(fs.unlink).toHaveBeenCalledWith('/tmp/seg_0001.mkv');
-      expect(fs.rmdir).toHaveBeenCalledWith(segmentsDir);
+      expect(fs.rm).toHaveBeenCalledWith(segmentsDir, { recursive: true, force: true });
     });
 
     it('should handle missing segments gracefully', async () => {
@@ -523,7 +525,7 @@ describe('SegmentedEncodeService', () => {
       await service.cleanupSegments(jobId, segmentsDir);
 
       expect(fs.unlink).not.toHaveBeenCalled();
-      expect(fs.rmdir).not.toHaveBeenCalled();
+      expect(fs.rm).not.toHaveBeenCalled();
     });
   });
 

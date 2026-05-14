@@ -123,10 +123,9 @@ export class NfsHealthService {
         );
         this.sendSignal(current.pid, 'SIGCONT', jobId, '5-min timeout');
 
-        // Restart the regular health poll so monitoring continues
-        current.interval = setInterval(() => {
-          void this.checkHealth(jobId);
-        }, POLL_INTERVAL_MS);
+        // Stop monitoring entirely — ffmpeg will encounter ENOENT/EIO/ESTALE and fail cleanly.
+        // Restarting the poll here would trigger another SIGSTOP cycle immediately.
+        this.stopMonitoring(jobId);
       }
     }, RECOVERY_POLL_MS);
 

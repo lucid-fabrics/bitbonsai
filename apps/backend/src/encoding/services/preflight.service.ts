@@ -103,7 +103,9 @@ export class PreflightService {
     }
 
     if (timedOut) {
-      return { ok: false, reason: 'ffprobe timed out (file may be unreadable)' };
+      // Timeout is transient (NFS stall, slow media) — fail open rather than permanently rejecting
+      this.logger.warn(`Preflight timed out for ${filePath} — passing to avoid false rejection`);
+      return { ok: true };
     }
 
     // Check stderr for well-known corruption signatures (before exit-code check

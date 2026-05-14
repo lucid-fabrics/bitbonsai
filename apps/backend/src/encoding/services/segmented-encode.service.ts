@@ -143,9 +143,9 @@ export class SegmentedEncodeService {
         'csv=p=0',
         segmentPath,
       ];
-      const proc = spawn('ffprobe', args);
+      const proc = spawn('ffprobe', args, { stdio: ['ignore', 'pipe', 'ignore'] });
       let stdout = '';
-      proc.stdout.on('data', (d: Buffer) => {
+      proc.stdout?.on('data', (d: Buffer) => {
         stdout += d.toString();
       });
       const timeout = setTimeout(() => {
@@ -232,9 +232,9 @@ export class SegmentedEncodeService {
         outputPath,
       ];
       this.logger.log(`Concatenating ${segmentPaths.length} segments → ${outputPath}`);
-      const proc = spawn('ffmpeg', args);
+      const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
       let stderr = '';
-      proc.stderr.on('data', (d: Buffer) => {
+      proc.stderr?.on('data', (d: Buffer) => {
         stderr += d.toString();
       });
       const timeout = setTimeout(() => {
@@ -261,7 +261,7 @@ export class SegmentedEncodeService {
     for (const seg of segments) {
       await fs.unlink(seg.tempPath).catch(() => {});
     }
-    await fs.rmdir(segmentsDir).catch(() => {});
+    await fs.rm(segmentsDir, { recursive: true, force: true }).catch(() => {});
     this.logger.log(`Cleaned up segments for job ${jobId}`);
   }
 

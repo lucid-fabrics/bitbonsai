@@ -188,18 +188,17 @@ describe('ContainerValidationService', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('should return valid: true when duration is below 50% but not a mismatch (e.g. partial file)', async () => {
+    it('should return valid: true when duration is within tolerance of expected', async () => {
       const probeOutput = {
-        format: { duration: '60.0', nb_streams: 2 },
+        format: { duration: '119.0', nb_streams: 2 },
       };
 
       createMockProcess(0, JSON.stringify(probeOutput));
 
       const result = await service.validateContainer('/test/file.mkv', 120);
 
-      // 60 is below 50% of 120, but duration diff is within 10% of expected (120)
-      // The condition is: diff > tolerance AND duration < expected * 0.5
-      // 60 is not < 120 * 0.5 = 60, so it should pass
+      // diff=1, tolerance=Math.max(0.5, Math.min(2, 120*0.1))=2 → passes (1 < 2)
+      // 119 > 120*0.5=60 so 50% check passes too
       expect(result.valid).toBe(true);
     });
 

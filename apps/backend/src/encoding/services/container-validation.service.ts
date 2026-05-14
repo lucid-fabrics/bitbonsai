@@ -36,9 +36,9 @@ export class ContainerValidationService {
 
     if (expectedMinDurationSecs !== undefined && probeResult.duration !== undefined) {
       const durationDiff = Math.abs(probeResult.duration - expectedMinDurationSecs);
-      // Reject if reported duration differs by more than 10% from expected
+      // Reject if duration differs by more than 10% OR if file is under 50% of expected length
       const tolerance = expectedMinDurationSecs * 0.1;
-      if (durationDiff > tolerance && probeResult.duration < expectedMinDurationSecs * 0.5) {
+      if (durationDiff > tolerance || probeResult.duration < expectedMinDurationSecs * 0.5) {
         return {
           valid: false,
           reason: `Duration mismatch: expected ~${expectedMinDurationSecs.toFixed(1)}s, got ${probeResult.duration.toFixed(1)}s`,

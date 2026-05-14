@@ -130,10 +130,9 @@ export class DiskSpaceGuardService {
         );
         this.sendSignal(current.pid, 'SIGCONT', jobId, '10-min timeout');
 
-        // Restart regular poll
-        current.interval = setInterval(() => {
-          void this.checkDiskSpace(jobId);
-        }, POLL_INTERVAL_MS);
+        // Stop monitoring entirely — restarting the poll would immediately detect disk pressure
+        // again and cause another SIGSTOP/SIGCONT loop. Let ffmpeg hit ENOSPC and fail cleanly.
+        this.stopMonitoring(jobId);
       }
     }, RECOVERY_POLL_MS);
 

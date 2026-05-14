@@ -213,14 +213,14 @@ export class QualityGateService {
    * Returns null if libvmaf is not available or if the probe times out/fails.
    */
   private probeVmaf(inputPath: string, outputPath: string): Promise<number | null> {
-    return Promise.race([
-      this.qualityMetricsService.calculateVmaf(inputPath, outputPath),
-      this.timeoutNull(120_000),
-    ]);
-  }
-
-  private timeoutNull(ms: number): Promise<null> {
-    return new Promise((resolve) => setTimeout(() => resolve(null), ms));
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), 120_000);
+    });
+    const vmaf = this.qualityMetricsService
+      .calculateVmaf(inputPath, outputPath)
+      .finally(() => clearTimeout(timer));
+    return Promise.race([vmaf, timeout]);
   }
 }
 
