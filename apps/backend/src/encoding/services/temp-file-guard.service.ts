@@ -41,7 +41,9 @@ export class TempFileGuardService implements OnModuleInit {
         });
       }
     } catch (error) {
-      this.logger.warn(`[${jobId}] Failed to register temp file (${tempPath}): ${error}`);
+      this.logger.warn(
+        `[${jobId}] Failed to register temp file (${tempPath}): ${(error as Error).message ?? error}`
+      );
     }
   }
 
@@ -56,7 +58,9 @@ export class TempFileGuardService implements OnModuleInit {
         data: { cleanedAt: new Date() },
       });
     } catch (error) {
-      this.logger.warn(`Failed to mark temp file as cleaned (${tempPath}): ${error}`);
+      this.logger.warn(
+        `Failed to mark temp file as cleaned (${tempPath}): ${(error as Error).message ?? error}`
+      );
     }
   }
 
@@ -72,7 +76,9 @@ export class TempFileGuardService implements OnModuleInit {
         select: { id: true, tempPath: true },
       });
     } catch (error) {
-      this.logger.warn(`[${jobId}] Failed to query temp files for cleanup: ${error}`);
+      this.logger.warn(
+        `[${jobId}] Failed to query temp files for cleanup: ${(error as Error).message ?? error}`
+      );
       return;
     }
 
@@ -104,7 +110,9 @@ export class TempFileGuardService implements OnModuleInit {
         select: { id: true, tempPath: true, jobId: true },
       });
     } catch (error) {
-      this.logger.warn(`Failed to query stale temp files on startup: ${error}`);
+      this.logger.warn(
+        `Failed to query stale temp files on startup: ${(error as Error).message ?? error}`
+      );
       return;
     }
 
@@ -129,13 +137,24 @@ export class TempFileGuardService implements OnModuleInit {
   // ---------------------------------------------------------------------------
 
   private async unlinkAndMark(id: string, tempPath: string, jobId: string): Promise<boolean> {
+    // Validate path to prevent arbitrary file deletion if DB row is tampered with
+    const ALLOWED_PREFIXES = ['/tmp/', '/var/tmp/', '/mnt/', '/media/', '/nfs/', '/data/'];
+    if (!ALLOWED_PREFIXES.some((p) => tempPath.startsWith(p))) {
+      this.logger.error(
+        `[${jobId}] Rejecting suspicious temp path (not in allowed dirs): ${tempPath}`
+      );
+      return false;
+    }
+
     try {
       await fs.unlink(tempPath);
       this.logger.debug(`[${jobId}] Deleted temp file: ${tempPath}`);
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') {
-        this.logger.warn(`[${jobId}] Failed to delete temp file ${tempPath}: ${error}`);
+        this.logger.warn(
+          `[${jobId}] Failed to delete temp file ${tempPath}: ${(error as NodeJS.ErrnoException).message ?? error}`
+        );
       }
       // File already gone — still mark cleaned so we don't retry
     }
@@ -147,7 +166,9 @@ export class TempFileGuardService implements OnModuleInit {
       });
       return true;
     } catch (error) {
-      this.logger.warn(`[${jobId}] Failed to mark temp file cleaned (id=${id}): ${error}`);
+      this.logger.warn(
+        `[${jobId}] Failed to mark temp file cleaned (id=${id}): ${(error as Error).message ?? error}`
+      );
       return false;
     }
   }

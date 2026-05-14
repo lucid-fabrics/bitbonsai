@@ -43,6 +43,11 @@ export class PreflightService {
       return { ok: true };
     }
 
+    // Guard: a path starting with '-' would be interpreted as an ffprobe flag
+    if (filePath.startsWith('-')) {
+      return { ok: false, reason: 'Invalid file path (starts with hyphen)' };
+    }
+
     this.logger.debug(`Running pre-flight ffprobe: ${filePath}`);
 
     let stdout = '';

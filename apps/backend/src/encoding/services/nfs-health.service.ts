@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 
 interface MonitorEntry {
-  interval: ReturnType<typeof setInterval>;
+  interval: ReturnType<typeof setInterval> | null;
   pid: number;
   mountPath: string;
   isStopped: boolean;
@@ -45,7 +45,7 @@ export class NfsHealthService {
     const entry = this.monitors.get(jobId);
     if (!entry) return;
 
-    clearInterval(entry.interval);
+    if (entry.interval) clearInterval(entry.interval);
     if (entry.recoveryInterval) {
       clearInterval(entry.recoveryInterval);
     }
@@ -83,8 +83,8 @@ export class NfsHealthService {
     this.sendSignal(entry.pid, 'SIGSTOP', jobId, 'NFS outage');
 
     // Stop the regular health poll while in recovery
-    clearInterval(entry.interval);
-    entry.interval = null as unknown as ReturnType<typeof setInterval>;
+    if (entry.interval) clearInterval(entry.interval);
+    entry.interval = null;
 
     let attempts = 0;
     const recoveryInterval = setInterval(async () => {

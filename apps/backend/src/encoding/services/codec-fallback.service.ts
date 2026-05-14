@@ -67,8 +67,9 @@ export class CodecFallbackService {
   async applyFallback(jobId: string, targetCodec: string): Promise<void> {
     const cpuCodec = CPU_FALLBACK_MAP[targetCodec];
     if (!cpuCodec) {
-      this.logger.warn(`No CPU fallback mapping for codec "${targetCodec}" — skipping fallback`);
-      return;
+      // Throw so callers know the fallback was not applied and can avoid queuing a job
+      // that would fail immediately on the same GPU codec again.
+      throw new Error(`No CPU fallback mapping for codec "${targetCodec}"`);
     }
 
     const updated = await this.prisma.job.update({

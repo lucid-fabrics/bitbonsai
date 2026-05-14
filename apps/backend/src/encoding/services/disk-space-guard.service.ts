@@ -1,9 +1,10 @@
+import * as nodeFs from 'node:fs';
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 
 interface MonitorEntry {
-  interval: ReturnType<typeof setInterval>;
+  interval: ReturnType<typeof setInterval> | null;
   pid: number;
   outputDir: string;
   isPaused: boolean;
@@ -57,7 +58,7 @@ export class DiskSpaceGuardService {
     const entry = this.monitors.get(jobId);
     if (!entry) return;
 
-    clearInterval(entry.interval);
+    if (entry.interval) clearInterval(entry.interval);
     if (entry.recoveryInterval) {
       clearInterval(entry.recoveryInterval);
     }
@@ -70,6 +71,7 @@ export class DiskSpaceGuardService {
     this.logger.debug(`[${jobId}] Disk space guard stopped`);
   }
 
+  // checkDiskSpace is also called as an async callback from setInterval
   private async checkDiskSpace(jobId: string): Promise<void> {
     const entry = this.monitors.get(jobId);
     if (!entry || entry.isPaused) return;
@@ -83,12 +85,22 @@ export class DiskSpaceGuardService {
       `Disk pressure on ${entry.outputDir}: ${freeMB}MB remaining — pausing ffmpeg pid ${entry.pid}`
     );
 
+    // Guard against sending SIGSTOP to a recycled PID (same pattern as NfsHealthService)
+    const stillFfmpeg = await this.isPidStillFfmpeg(entry.pid);
+    if (!stillFfmpeg) {
+      this.logger.warn(
+        `[${jobId}] PID ${entry.pid} is no longer an ffmpeg process — skipping SIGSTOP`
+      );
+      this.stopMonitoring(jobId);
+      return;
+    }
+
     entry.isPaused = true;
     this.sendSignal(entry.pid, 'SIGSTOP', jobId, 'disk pressure');
 
     // Stop the regular poll while in recovery
-    clearInterval(entry.interval);
-    entry.interval = null as unknown as ReturnType<typeof setInterval>;
+    if (entry.interval) clearInterval(entry.interval);
+    entry.interval = null;
 
     const recoveryStart = Date.now();
 
@@ -151,6 +163,20 @@ export class DiskSpaceGuardService {
     } catch (err) {
       this.logger.debug(`Failed to statfs ${dir}: ${err}`);
       return BigInt(0);
+    }
+  }
+
+  private async isPidStillFfmpeg(pid: number): Promise<boolean> {
+    try {
+      const comm = await nodeFs.promises.readFile(`/proc/${pid}/comm`, 'utf8');
+      return comm.trim() === 'ffmpeg';
+    } catch {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
 
