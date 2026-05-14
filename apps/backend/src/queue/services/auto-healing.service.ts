@@ -6,6 +6,7 @@ import { JobHistoryRepository } from '../../common/repositories/job-history.repo
 import { SettingsRepository } from '../../common/repositories/settings.repository';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
+import { RetrySchedulerService } from './retry-scheduler.service';
 
 /**
  * AutoHealingService
@@ -31,7 +32,8 @@ export class AutoHealingService implements OnModuleInit {
     private readonly jobRepository: JobRepository,
     private readonly settingsRepository: SettingsRepository,
     private readonly nodeConfig: NodeConfigService,
-    private readonly circuitBreaker: CircuitBreakerService
+    private readonly circuitBreaker: CircuitBreakerService,
+    private readonly retryScheduler: RetrySchedulerService
   ) {}
 
   /**
@@ -164,6 +166,12 @@ export class AutoHealingService implements OnModuleInit {
             continue;
           }
 
+          // Compute exponential backoff window for the attempt after this one,
+          // so the job won't be immediately re-healed on the next restart cycle.
+          const nextAttempt = job.retryCount + 1;
+          const delayMs = this.retryScheduler.computeNextRetryDelay(nextAttempt + 1);
+          const nextRetryAt = new Date(Date.now() + delayMs);
+
           // Update job with appropriate resume state
           await this.jobRepository.updateById(job.id, {
             stage: JobStage.QUEUED,
@@ -171,7 +179,8 @@ export class AutoHealingService implements OnModuleInit {
             error: null,
             completedAt: null,
             startedAt: null,
-            retryCount: job.retryCount + 1,
+            retryCount: nextAttempt,
+            nextRetryAt,
             // AUTO-HEAL TRACKING: Record when job was auto-healed and where it resumed from
             autoHealedAt: new Date(),
             autoHealedProgress: job.progress || 0, // Always record original progress for history

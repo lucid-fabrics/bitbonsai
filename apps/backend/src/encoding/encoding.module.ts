@@ -38,6 +38,7 @@ import { CodecFallbackService } from './services/codec-fallback.service';
 import { GpuHealthService } from './services/gpu-health.service';
 import { NfsHealthService } from './services/nfs-health.service';
 import { PreflightService } from './services/preflight.service';
+import { QualityGateService } from './services/quality-gate.service';
 import { TempFileGuardService } from './services/temp-file-guard.service';
 
 /**
@@ -95,6 +96,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     NodeRepository,
     PolicyRepository,
     SettingsRepository,
+    QualityGateService,
     CodecFallbackService,
     GpuHealthService,
     NfsHealthService,
@@ -111,6 +113,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     EncodingSchedulerService,
     QualityMetricsService,
     FileSizeEstimationService,
+    QualityGateService,
     CodecFallbackService,
     GpuHealthService,
     NfsHealthService,

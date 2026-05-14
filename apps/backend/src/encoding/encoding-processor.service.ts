@@ -24,6 +24,7 @@ import { WorkerPoolService } from './worker-pool.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
 import { GpuHealthService } from './services/gpu-health.service';
+import { QualityGateService } from './services/quality-gate.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
@@ -71,6 +72,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly encodingStartupService: EncodingStartupService,
     private readonly encodingWatchdogService: EncodingWatchdogService,
     private readonly qualityMetricsService: QualityMetricsService,
+    private readonly qualityGateService: QualityGateService,
     private readonly codecFallbackService: CodecFallbackService,
     private readonly completionOutbox: CompletionOutboxService,
     private readonly ownershipLease: OwnershipLeaseService

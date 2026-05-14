@@ -28,6 +28,34 @@ export class RetrySchedulerService {
   constructor(private readonly jobRepository: JobRepository) {}
 
   /**
+   * Compute exponential backoff delay with jitter (BullMQ/Sidekiq style).
+   *
+   * delay = min(base * 2^(attempt-1), maxDelay) + rand(0, jitter)
+   *
+   * Example delays (without jitter):
+   *   attempt 1 →  30s
+   *   attempt 2 →   1m
+   *   attempt 3 →   2m
+   *   attempt 4 →   4m
+   *   attempt 5 →   8m
+   *   attempt 6 →  16m
+   *   attempt 7 →  32m
+   *   attempt 8+ →  60m (capped)
+   *
+   * @param attempt - 1-based attempt number (use job.retryCount + 1 for the upcoming attempt)
+   * @returns delay in milliseconds
+   */
+  public computeNextRetryDelay(attempt: number): number {
+    const BASE_MS = 30_000;
+    const MAX_MS = 3_600_000;
+    const JITTER_MS = 10_000;
+    const exponential = BASE_MS * 2 ** Math.max(0, attempt - 1);
+    const capped = Math.min(exponential, MAX_MS);
+    const jitter = Math.floor(Math.random() * JITTER_MS);
+    return capped + jitter;
+  }
+
+  /**
    * Background job that runs every 5 minutes
    * Automatically retries eligible failed jobs
    * PERF: Uses composite index (stage, retryCount, nextRetryAt) for optimal query performance
@@ -61,25 +89,35 @@ export class RetrySchedulerService {
 
       this.logger.log(`Found ${eligibleJobs.length} failed job(s) ready for retry`);
 
-      // Reset jobs back to QUEUED
-      const result = await this.jobRepository.updateManyByIds(
-        eligibleJobs.map((j) => j.id),
-        {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          error: null,
-          completedAt: null,
-          startedAt: null,
-          retryCount: { increment: 1 },
-        }
-      );
-
-      this.logger.log(`Background retry scheduler: ${result.count} job(s) re-queued`);
-
-      // Log each retried job
+      // Reset jobs back to QUEUED individually so each gets its own nextRetryAt computed
+      // from the exponential backoff formula (updateMany cannot write per-row values).
+      let retriedCount = 0;
       for (const job of eligibleJobs) {
-        this.logger.log(`Retrying job: ${job.fileLabel} (attempt ${job.retryCount + 2}/4)`);
+        try {
+          const nextAttempt = job.retryCount + 1;
+          const delayMs = this.computeNextRetryDelay(nextAttempt + 1); // +1 = the attempt after this one
+          const nextRetryAt = new Date(Date.now() + delayMs);
+
+          await this.jobRepository.updateById(job.id, {
+            stage: JobStage.QUEUED,
+            progress: 0,
+            error: null,
+            completedAt: null,
+            startedAt: null,
+            retryCount: nextAttempt,
+            nextRetryAt,
+          });
+
+          retriedCount++;
+          this.logger.log(
+            `Retrying job: ${job.fileLabel} (attempt ${nextAttempt + 1}/4, next retry window in ${Math.round(delayMs / 1000)}s)`
+          );
+        } catch (jobError) {
+          this.logger.error(`Failed to re-queue job ${job.id} (${job.fileLabel})`, jobError);
+        }
       }
+
+      this.logger.log(`Background retry scheduler: ${retriedCount} job(s) re-queued`);
     } catch (error: unknown) {
       this.logger.error('Failed to retry jobs in background scheduler', error);
     }

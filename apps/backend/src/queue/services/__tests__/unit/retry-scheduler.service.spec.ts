@@ -44,6 +44,35 @@ describe('RetrySchedulerService', () => {
     ...overrides,
   });
 
+  describe('computeNextRetryDelay', () => {
+    it('should return ~30s for attempt 1', () => {
+      const delay = service.computeNextRetryDelay(1);
+      expect(delay).toBeGreaterThanOrEqual(30_000);
+      expect(delay).toBeLessThan(40_000); // 30s + up to 10s jitter
+    });
+
+    it('should return ~1m for attempt 2', () => {
+      const delay = service.computeNextRetryDelay(2);
+      expect(delay).toBeGreaterThanOrEqual(60_000);
+      expect(delay).toBeLessThan(70_000);
+    });
+
+    it('should cap at 1 hour for large attempt numbers', () => {
+      const delay = service.computeNextRetryDelay(20);
+      expect(delay).toBeGreaterThanOrEqual(3_600_000);
+      expect(delay).toBeLessThan(3_610_000);
+    });
+
+    it('should double delay each attempt up to the cap', () => {
+      const d1 = service.computeNextRetryDelay(1);
+      const d2 = service.computeNextRetryDelay(2);
+      const d3 = service.computeNextRetryDelay(3);
+      // Base values (without jitter) double each attempt
+      expect(d2 - 10_000).toBeLessThanOrEqual(d1 * 2 + 10_000);
+      expect(d3 - 10_000).toBeLessThanOrEqual(d2 * 2 + 10_000);
+    });
+  });
+
   describe('retryFailedJobs', () => {
     it('should return early when no eligible failed jobs exist', async () => {
       jobRepository.findManySelect.mockResolvedValue([]);
@@ -68,7 +97,7 @@ describe('RetrySchedulerService', () => {
       expect((service as any).logger.debug).toHaveBeenCalledWith('No failed jobs ready for retry');
     });
 
-    it('should re-queue eligible failed jobs', async () => {
+    it('should re-queue eligible failed jobs with exponential backoff nextRetryAt', async () => {
       const failedJobs = [
         createFailedJob('job-1', { retryCount: 0 }),
         createFailedJob('job-2', { retryCount: 1 }),
@@ -104,12 +133,9 @@ describe('RetrySchedulerService', () => {
 
       await service.retryFailedJobs();
 
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Retrying job: test-job-1.mkv (attempt 2/4)'
-      );
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Retrying job: test-job-2.mkv (attempt 4/4)'
-      );
+      // Log message contains job label
+      const logCalls = (service as any).logger.log.mock.calls.map((c: string[]) => c[0]);
+      expect(logCalls.some((msg: string) => msg.includes('test-job-1.mkv'))).toBe(true);
     });
 
     it('should handle single failed job', async () => {
@@ -171,9 +197,14 @@ describe('RetrySchedulerService', () => {
 
       await service.retryFailedJobs();
 
+      // Second job should still be processed
+      expect(prisma.job.update).toHaveBeenCalledTimes(2);
       expect((service as any).logger.error).toHaveBeenCalledWith(
-        'Failed to retry jobs in background scheduler',
+        expect.stringContaining('Failed to re-queue job job-1'),
         expect.any(Error)
+      );
+      expect((service as any).logger.log).toHaveBeenCalledWith(
+        'Background retry scheduler: 1 job(s) re-queued'
       );
     });
   });

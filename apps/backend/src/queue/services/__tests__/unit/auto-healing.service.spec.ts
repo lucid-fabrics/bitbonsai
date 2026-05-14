@@ -5,6 +5,8 @@ import { JobRepository } from '../../../../common/repositories/job.repository';
 import { JobHistoryRepository } from '../../../../common/repositories/job-history.repository';
 import { SettingsRepository } from '../../../../common/repositories/settings.repository';
 import { AutoHealingService } from '../../auto-healing.service';
+import { CircuitBreakerService } from '../../circuit-breaker.service';
+import { RetrySchedulerService } from '../../retry-scheduler.service';
 
 jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
@@ -101,6 +103,7 @@ describe('AutoHealingService', () => {
           completedAt: null,
           startedAt: null,
           retryCount: 3, // Incremented from 2
+          nextRetryAt: expect.any(Date),
           autoHealedAt: expect.any(Date),
           autoHealedProgress: 30,
           resumeTimestamp: null,
@@ -131,6 +134,7 @@ describe('AutoHealingService', () => {
         expect.objectContaining({
           stage: JobStage.QUEUED,
           progress: 65, // Preserved for resume
+          nextRetryAt: expect.any(Date),
           resumeTimestamp: '00:45:30',
           tempFilePath: '/tmp/encode-job-1.mkv',
           autoHealedProgress: 65,
@@ -159,6 +163,7 @@ describe('AutoHealingService', () => {
         'job-1',
         expect.objectContaining({
           progress: 0, // Reset since temp file gone
+          nextRetryAt: expect.any(Date),
           resumeTimestamp: null,
           tempFilePath: null,
         })

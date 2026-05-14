@@ -8,6 +8,8 @@ import { FileRelocatorService } from '../../../core/services/file-relocator.serv
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { QueueService } from '../../../queue/queue.service';
+import { CompletionOutboxService } from '../../../queue/services/completion-outbox.service';
+import { OwnershipLeaseService } from '../../../queue/services/ownership-lease.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import {
   mockDataAccessProvider,
@@ -24,6 +26,9 @@ import { PoolLockService } from '../../pool-lock.service';
 import { SystemResourceService } from '../../system-resource.service';
 import { WorkerPoolService } from '../../worker-pool.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
+import { CodecFallbackService } from '../../services/codec-fallback.service';
+import { GpuHealthService } from '../../services/gpu-health.service';
+import { QualityGateService } from '../../services/quality-gate.service';
 
 // Mock fs module
 jest.mock('node:fs');
@@ -109,6 +114,15 @@ describe('EncodingProcessorService', () => {
             validateQuality: jest.fn(),
             toJsonString: jest.fn(),
             fromJsonString: jest.fn(),
+          },
+        },
+        {
+          provide: QualityGateService,
+          useValue: {
+            checkQuality: jest
+              .fn()
+              .mockResolvedValue({ passed: true, score: null, threshold: 85, forcedPass: true }),
+            getThreshold: jest.fn().mockResolvedValue(85),
           },
         },
         {

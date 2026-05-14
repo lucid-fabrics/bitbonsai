@@ -605,7 +605,60 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
 
       this.logger.debug(`Health checking: ${job.fileLabel}`);
 
-      // Perform health analysis
+      // Tiered health check: quick header scan → thorough frame decode on failure
+      // Step 1: Quick check — fast ffprobe header scan (5s timeout)
+      const quickResult = await this.fileHealthService.quickHealthCheck(job.filePath);
+
+      if (!quickResult.passed) {
+        this.logger.log(
+          `Quick check failed for ${job.fileLabel} (${quickResult.reason}), running thorough check...`
+        );
+
+        // Step 2: Thorough check — ffmpeg decode of first 60s (90s timeout)
+        const thoroughResult = await this.fileHealthService.thoroughHealthCheck(
+          job.filePath,
+          quickResult.durationSecs ?? 60
+        );
+
+        if (thoroughResult.passed) {
+          // Quick failed but thorough passed → transient read issue, treat as healthy
+          this.logger.log(
+            `Thorough check passed — transient issue for ${job.fileLabel}, marking HEALTHY`
+          );
+          await this.prisma.job.update({
+            where: { id: jobId },
+            data: {
+              stage: JobStage.QUEUED,
+              healthStatus: 'HEALTHY' as const,
+              healthScore: 80,
+              healthMessage: `✅ Score: 80/100 | Quick check had transient issue (${quickResult.reason}), thorough decode passed`,
+              healthCheckedAt: new Date(),
+              error: null,
+            },
+          });
+          return;
+        }
+
+        // Both checks failed → mark CORRUPTED
+        const errorSummary = thoroughResult.errors.join('; ');
+        this.logger.warn(
+          `✗ ${job.fileLabel} - CORRUPTED (quick + thorough failed): ${errorSummary} → FAILED`
+        );
+        await this.prisma.job.update({
+          where: { id: jobId },
+          data: {
+            stage: JobStage.FAILED,
+            healthStatus: 'CORRUPTED' as const,
+            healthScore: 0,
+            healthMessage: `❌ Score: 0/100 | Issues: Quick+Thorough: ${errorSummary}`,
+            healthCheckedAt: new Date(),
+            error: `Health check failed (quick + thorough): ${errorSummary}`,
+          },
+        });
+        return;
+      }
+
+      // Quick check passed — run full analysis for codec/stream metadata and compatibility
       const healthResult = await this.fileHealthService.analyzeFile(job.filePath);
 
       // Check for container compatibility issues (AC3/DTS with MP4, etc.)
