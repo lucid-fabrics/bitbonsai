@@ -39,6 +39,7 @@ import { GpuHealthService } from './services/gpu-health.service';
 import { NfsHealthService } from './services/nfs-health.service';
 import { PreflightService } from './services/preflight.service';
 import { QualityGateService } from './services/quality-gate.service';
+import { SegmentedEncodeService } from './services/segmented-encode.service';
 import { TempFileGuardService } from './services/temp-file-guard.service';
 
 /**
@@ -101,6 +102,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     GpuHealthService,
     NfsHealthService,
     PreflightService,
+    SegmentedEncodeService,
     TempFileGuardService,
   ],
   exports: [
@@ -118,6 +120,7 @@ import { TempFileGuardService } from './services/temp-file-guard.service';
     GpuHealthService,
     NfsHealthService,
     PreflightService,
+    SegmentedEncodeService,
     TempFileGuardService,
   ],
 })

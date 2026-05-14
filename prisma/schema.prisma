@@ -276,6 +276,11 @@ model Settings {
   backupCleanupIntervalMs      Int      @default(3600000) // Backup cleanup interval (1 hour)
   backupRetentionHours         Int      @default(24)      // Hours to retain backup files
 
+  // ============ Segmented Encode Settings ============
+  segmentedEncodeEnabled            Boolean @default(false) // Enable segmented encode for files > threshold
+  segmentedEncodeThresholdMinutes   Int     @default(30)    // Minimum source duration to use segmented encode
+  segmentDurationSeconds            Int     @default(300)   // Segment duration in seconds
+
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 
@@ -807,6 +812,14 @@ model Job {
   lastScoreBreakdown  Json?    // Last scoring breakdown when assigned: {load: 24, hw: 25, ...}
   assignmentReason    String?  // Why job was assigned to this node (human-readable)
 
+  // Segmented encoding fields (true crash resume for long files)
+  segmentedEncode       Boolean  @default(false) // Is this job using segmented encode?
+  segmentCount          Int?     // Total number of segments planned
+  currentSegmentIndex   Int?     // Which segment is actively encoding (0-based)
+  segmentDurationSecs   Int      @default(300)   // Segment size in seconds
+  segmentsDir           String?  // Directory where segment files live
+  concatListPath        String?  // Path to ffmpeg concat list file
+
   // Auto-Recovery Hardening: Fencing token (prevents dual-reset race)
   fencingToken      String?   // "pid:bootEpoch" written when node claims job
 
@@ -846,6 +859,7 @@ model Job {
   // Relations
   history   JobHistory[]
   tempFiles JobTempFile[]
+  segments  JobSegment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -895,6 +909,7 @@ model Job {
   @@index([totalAttempts]) // Circuit breaker threshold queries
   @@index([dlqEnteredAt]) // DLQ queries
   @@index([jobFingerprint]) // Job deduplication fingerprint
+  @@index([segmentedEncode]) // For finding segmented jobs
   // ISSUE #9 FIX: Unique index to prevent duplicate jobs for same file
   // Only enforces uniqueness for active jobs (not COMPLETED, FAILED, CANCELLED)
   // This prevents race conditions where multiple requests create duplicate jobs
@@ -942,6 +957,36 @@ model JobTempFile {
   @@index([nodeId])
   @@index([cleanedAt]) // For finding uncleaned files
   @@map("job_temp_files")
+}
+
+// ============================================================================
+// JOB SEGMENT (Segmented encode — true crash resume for long files)
+// ============================================================================
+model JobSegment {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  segmentIndex    Int      // 0-based segment number
+  startSeconds    Float    // Input start time in seconds
+  endSeconds      Float    // Input end time in seconds
+  durationSeconds Float    // Expected duration (endSeconds - startSeconds)
+  tempPath        String   // Absolute path to encoded segment file
+  nodeId          String   // Which node encoded this segment
+
+  completedAt     DateTime? // Null = not yet encoded or in progress
+  verifiedAt      DateTime? // Null = not yet duration-verified
+  durationVerified Float?   // Actual encoded duration from ffprobe
+  sizeBytes       BigInt?   // File size after encoding
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobId, segmentIndex])
+  @@index([jobId])
+  @@index([jobId, completedAt])
+  @@index([nodeId])
+  @@map("job_segments")
 }
 
 // ============================================================================

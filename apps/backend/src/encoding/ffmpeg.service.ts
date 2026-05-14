@@ -1158,6 +1158,222 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Encode a single segment of a source file for segmented encoding.
+   *
+   * Uses the same codec/quality/audio/hwaccel args as encodeFile(), but:
+   * - `-ss <startSeconds>` is placed BEFORE `-i` for fast input seek
+   * - `-t <durationSeconds>` is placed after codec args to limit output duration
+   * - `-force_key_frames "expr:gte(t,0)"` ensures an IDR frame at segment start
+   *
+   * Progress is reported relative to the segment duration (not the full file).
+   *
+   * No DB calls are made here; all state management is handled by the caller
+   * (encodeFileSegmented in EncodingProcessorService).
+   *
+   * @param job - Job entity (used for codec selection, audio config, priority)
+   * @param policy - Policy entity with encoding settings
+   * @param outputPath - Temp path for this segment's output file
+   * @param startSeconds - Start offset in the source file (seconds)
+   * @param durationSeconds - Duration of this segment (seconds)
+   * @param onProgress - Optional callback invoked with 0-100 progress for this segment
+   */
+  async encodeSegment(
+    job: Job,
+    policy: Policy,
+    outputPath: string,
+    startSeconds: number,
+    durationSeconds: number,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    this.logger.log(
+      `[${job.id}] encodeSegment() start=${startSeconds}s duration=${durationSeconds}s → ${outputPath}`
+    );
+
+    const hwaccel = await this.detectHardwareAcceleration();
+
+    // Build args like buildFfmpegCommand but with segment-specific modifications.
+    // We re-use the same codec/audio/quality/flag logic by calling buildFfmpegCommand
+    // with a sentinel resumeFromTimestamp, then splice in -ss and -t at the right spots.
+    // Strategy: build normally (no resume timestamp), then patch the arg array:
+    //   1. Insert [-ss, startSeconds] at index 0 (before hwaccel flags and -i)
+    //   2. Insert [-t, durationSeconds] just before the output path (-y <outputPath>)
+    //   3. Insert -force_key_frames after -c:v <codec>
+
+    const args = this.buildFfmpegCommand(
+      job,
+      policy,
+      hwaccel,
+      outputPath,
+      undefined // no resume timestamp — we handle seeking via explicit -ss below
+    );
+
+    // Patch step 1: insert fast input seek BEFORE everything (index 0)
+    args.unshift('-ss', startSeconds.toString());
+
+    // Patch step 2: locate the output path (args ends with `-y <outputPath>`)
+    // and insert -t <durationSeconds> before -y
+    const yIndex = args.lastIndexOf('-y');
+    if (yIndex !== -1) {
+      args.splice(yIndex, 0, '-t', durationSeconds.toString());
+    }
+
+    // Patch step 3: insert -force_key_frames after -c:v <codec> to guarantee IDR at t=0
+    const cvIndex = args.indexOf('-c:v');
+    if (cvIndex !== -1 && cvIndex + 1 < args.length) {
+      // Insert after -c:v <codec-value>
+      args.splice(cvIndex + 2, 0, '-force_key_frames', 'expr:gte(t,0)');
+    }
+
+    const niceValue = this.getNiceValue(job.priority);
+    let ffmpegProcess: ChildProcess;
+
+    if (niceValue !== 0) {
+      ffmpegProcess = spawn('nice', ['-n', niceValue.toString(), 'ffmpeg', ...args], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+    } else {
+      ffmpegProcess = spawn('ffmpeg', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+    }
+
+    this.logger.debug(
+      `[${job.id}] Segment FFmpeg PID=${ffmpegProcess.pid} args: ffmpeg ${args.join(' ')}`
+    );
+
+    const activeEncoding: ActiveEncoding = {
+      jobId: job.id,
+      process: ffmpegProcess,
+      startTime: new Date(),
+      lastProgress: 0,
+      lastStderr: '',
+      lastOutputTime: new Date(),
+      isPauseOrCancelRequested: false,
+      completionHandled: false,
+    };
+    this.activeEncodings.set(job.id, activeEncoding);
+
+    if (ffmpegProcess.pid) {
+      this.nfsHealth.startMonitoring(job.id, job.filePath, ffmpegProcess.pid);
+    }
+
+    return new Promise((resolve, reject) => {
+      let fullStderr = '';
+
+      ffmpegProcess.stderr?.on('data', (data: Buffer) => {
+        const chunk = data.toString();
+        fullStderr += chunk;
+        const filtered = fullStderr
+          .split('\n')
+          .filter(
+            (l) =>
+              !/^(frame|fps|out_time|out_time_ms|out_time_us|dup_frames|drop_frames|speed|bitrate|total_size|progress)=/.test(
+                l.trim()
+              )
+          )
+          .join('\n');
+        fullStderr = filtered.length > 2000 ? filtered.slice(-2000) : filtered;
+        activeEncoding.lastStderr = fullStderr;
+        activeEncoding.lastOutputTime = new Date();
+      });
+
+      let stdoutBuffer = '';
+      let currentTime = '00:00:00.00';
+      let currentFps = 0;
+      let currentFrame = 0;
+
+      ffmpegProcess.stdout?.on('data', (data: Buffer) => {
+        stdoutBuffer += data.toString();
+        const lines = stdoutBuffer.split('\n');
+        stdoutBuffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.includes('=')) continue;
+
+          const eqIdx = trimmed.indexOf('=');
+          const key = trimmed.slice(0, eqIdx);
+          const value = trimmed.slice(eqIdx + 1);
+
+          switch (key) {
+            case 'frame':
+              currentFrame = Number.parseInt(value, 10) || 0;
+              break;
+            case 'fps':
+              currentFps = Number.parseFloat(value) || 0;
+              break;
+            case 'out_time':
+              currentTime = value;
+              break;
+            case 'progress':
+              if (currentFrame > 0 || currentTime !== '00:00:00.00') {
+                activeEncoding.lastOutputTime = new Date();
+                if (onProgress) {
+                  const pct = Math.min(
+                    100,
+                    this.calculateProgressPercentage(currentTime, durationSeconds) || 0
+                  );
+                  onProgress(pct);
+                }
+              }
+              break;
+          }
+        }
+        // Suppress TS unused-var warning on currentFps (it's kept for parity with encodeFile)
+        void currentFps;
+      });
+
+      ffmpegProcess.on('close', async (code, signal) => {
+        const encoding = this.activeEncodings.get(job.id);
+        if (encoding?.completionHandled) return;
+        if (encoding) encoding.completionHandled = true;
+
+        if (encoding?.lastStderr) {
+          this.cacheStderr(job.id, encoding.lastStderr);
+        }
+
+        this.activeEncodings.delete(job.id);
+        this.lastPreviewGeneration.delete(job.id);
+        this.nfsHealth.stopMonitoring(job.id);
+
+        if (signal !== null && code === null) {
+          reject(new Error(`Segment FFmpeg killed by signal: ${signal}`));
+          return;
+        }
+
+        if (code === 0) {
+          resolve();
+        } else {
+          const stderr = encoding?.lastStderr || '';
+          reject(
+            new Error(
+              `Segment FFmpeg exited with code ${code ?? -1}. stderr: ${stderr.slice(-500)}`
+            )
+          );
+        }
+      });
+
+      ffmpegProcess.on('error', async (error) => {
+        const encoding = this.activeEncodings.get(job.id);
+        if (encoding?.completionHandled) return;
+        if (encoding) encoding.completionHandled = true;
+
+        if (encoding?.lastStderr) {
+          this.cacheStderr(job.id, encoding.lastStderr);
+        }
+
+        this.activeEncodings.delete(job.id);
+        this.lastPreviewGeneration.delete(job.id);
+        this.nfsHealth.stopMonitoring(job.id);
+
+        reject(new Error(`Segment FFmpeg process error: ${error.message}`));
+      });
+    });
+  }
+
+  /**
    * Kill FFmpeg process for a job without marking it as cancelled
    *
    * Used by watchdog to terminate stuck processes before failing the job.
@@ -1847,6 +2063,12 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       circuitBrokenReason: null,
       dlqEnteredAt: null,
       jobFingerprint: null,
+      segmentedEncode: false,
+      segmentCount: null,
+      currentSegmentIndex: null,
+      segmentDurationSecs: 300,
+      segmentsDir: null,
+      concatListPath: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

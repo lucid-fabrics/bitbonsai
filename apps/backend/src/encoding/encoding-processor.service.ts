@@ -25,6 +25,7 @@ import { QualityMetricsService } from './quality-metrics.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
 import { GpuHealthService } from './services/gpu-health.service';
 import { QualityGateService } from './services/quality-gate.service';
+import { SegmentedEncodeService } from './services/segmented-encode.service';
 
 // Note: resumeTimestamp and keepOriginalRequested exist as temporary properties
 // on Job instances for encoding resume functionality
