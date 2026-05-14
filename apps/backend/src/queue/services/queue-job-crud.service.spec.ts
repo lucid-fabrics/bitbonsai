@@ -11,6 +11,7 @@ import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
+import { PreflightService } from '../../encoding/services/preflight.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileFailureTrackingService } from './file-failure-tracking.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
@@ -59,6 +60,7 @@ describe('QueueJobCrudService', () => {
       library: { findUnique: jest.fn() },
       policy: { findUnique: jest.fn() },
       processedFileRecord: { findUnique: jest.fn() },
+      job: { findFirst: jest.fn().mockResolvedValue(null) },
     } as any;
 
     mockContentFingerprint = {
@@ -86,6 +88,13 @@ describe('QueueJobCrudService', () => {
         { provide: ContentFingerprintService, useValue: mockContentFingerprint },
         { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
         { provide: HttpService, useValue: mockHttpService },
+        {
+          provide: PreflightService,
+          useValue: {
+            runPreflight: jest.fn().mockResolvedValue({ ok: true }),
+            checkDiskSpace: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 

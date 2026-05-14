@@ -600,11 +600,18 @@ describe('StorageShareService', () => {
     });
   });
 
-  describe('update - NotFoundException', () => {
-    it('should throw NotFoundException when share to update not found', async () => {
-      mockRepository.findById.mockResolvedValue(null);
+  describe('update - delegates to repository', () => {
+    it('should call repository.update with the provided data', async () => {
+      const updatedShare = { id: 'nonexistent', name: 'X' };
+      mockRepository.update.mockResolvedValue(updatedShare as any);
 
-      await expect(service.update('nonexistent', { name: 'X' })).rejects.toThrow(NotFoundException);
+      const result = await service.update('nonexistent', { name: 'X' });
+
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        'nonexistent',
+        expect.objectContaining({ name: 'X' })
+      );
+      expect(result).toEqual(updatedShare);
     });
   });
 

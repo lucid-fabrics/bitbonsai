@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { JobRepository } from '../../../../common/repositories/job.repository';
 import { JobHistoryRepository } from '../../../../common/repositories/job-history.repository';
 import { SettingsRepository } from '../../../../common/repositories/settings.repository';
+import { NodeConfigService } from '../../../../core/services/node-config.service';
 import { AutoHealingService } from '../../auto-healing.service';
 import { CircuitBreakerService } from '../../circuit-breaker.service';
 import { RetrySchedulerService } from '../../retry-scheduler.service';
@@ -37,6 +38,29 @@ describe('AutoHealingService', () => {
         { provide: JobHistoryRepository, useValue: jobHistoryRepository },
         { provide: JobRepository, useValue: jobRepository },
         { provide: SettingsRepository, useValue: settingsRepository },
+        {
+          provide: NodeConfigService,
+          useValue: {
+            getNodeId: jest.fn().mockReturnValue(null),
+            isMainNode: jest.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: CircuitBreakerService,
+          useValue: {
+            checkAndBreak: jest.fn().mockResolvedValue(false),
+            isCircuitBroken: jest.fn().mockResolvedValue(false),
+            recordSuccess: jest.fn(),
+            recordFailure: jest.fn(),
+          },
+        },
+        {
+          provide: RetrySchedulerService,
+          useValue: {
+            scheduleRetry: jest.fn().mockResolvedValue(undefined),
+            computeNextRetryDelay: jest.fn().mockReturnValue(30000),
+          },
+        },
       ],
     }).compile();
 

@@ -286,6 +286,7 @@ describe('formatErrorForDisplay', () => {
   it('includes title and description', () => {
     const analysis: FFmpegErrorAnalysis = {
       category: ErrorCategory.UNKNOWN,
+      errorClass: 'UNKNOWN' as const,
       title: 'Test Title',
       description: 'Test description',
       recommendations: ['Do this', 'Do that'],
@@ -300,6 +301,7 @@ describe('formatErrorForDisplay', () => {
   it('includes technicalDetails when present', () => {
     const analysis: FFmpegErrorAnalysis = {
       category: ErrorCategory.UNKNOWN,
+      errorClass: 'UNKNOWN' as const,
       title: 'Title',
       description: 'Desc',
       technicalDetails: 'Some technical info',
@@ -315,6 +317,7 @@ describe('formatErrorForDisplay', () => {
   it('omits Technical Details section when technicalDetails is absent', () => {
     const analysis: FFmpegErrorAnalysis = {
       category: ErrorCategory.UNKNOWN,
+      errorClass: 'UNKNOWN' as const,
       title: 'Title',
       description: 'Desc',
       recommendations: ['Rec1'],
@@ -328,6 +331,7 @@ describe('formatErrorForDisplay', () => {
   it('includes all recommendations', () => {
     const analysis: FFmpegErrorAnalysis = {
       category: ErrorCategory.UNKNOWN,
+      errorClass: 'UNKNOWN' as const,
       title: 'Title',
       description: 'Desc',
       recommendations: ['Step A', 'Step B', 'Step C'],

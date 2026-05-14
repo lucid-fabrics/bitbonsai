@@ -301,7 +301,7 @@ describe('EncodingFileService', () => {
     });
 
     it('logs a warning but does not throw when original duration is exactly 3600', async () => {
-      const logWarnSpy = jest.spyOn(service.outputVerification.logger, 'warn');
+      const logWarnSpy = jest.spyOn((service.outputVerification as any).logger, 'warn');
       ffmpegService.getVideoDuration.mockResolvedValue(3600.2);
       await expect(
         service.validateOutputDuration('/tmp/out.mkv', 3600, '/media/orig.mkv')
@@ -347,7 +347,7 @@ describe('EncodingFileService', () => {
     });
 
     it('warns but does not throw for high compression on smaller originals', () => {
-      const logWarnSpy = jest.spyOn(service.logger, 'warn');
+      const logWarnSpy = jest.spyOn((service as any).logger, 'warn');
       // 91% reduction, original under 1 GB — warning only (not blocked)
       // afterSize must be above bitrate floor: 200kbps * 3600s / 8 = 90_000_000 bytes
       const originalSize = BigInt(1024 * 1024 * 1024); // exactly 1 GB (not > 1 GB)
@@ -395,7 +395,7 @@ describe('EncodingFileService', () => {
     });
 
     it('logs warning and resolves when statfs fails with non-disk error', async () => {
-      const logWarnSpy = jest.spyOn(service.fileReplacement.logger, 'warn');
+      const logWarnSpy = jest.spyOn((service.fileReplacement as any).logger, 'warn');
       (fs.promises.statfs as jest.Mock).mockRejectedValue(new Error('ENOSYS'));
 
       await expect(

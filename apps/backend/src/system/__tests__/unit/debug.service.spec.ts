@@ -43,7 +43,7 @@ describe('DebugService (__tests__/unit)', () => {
   let mockNodeRepository: { findFirstByIpAddresses: jest.Mock; updateById: jest.Mock };
 
   beforeEach(async () => {
-    mockJobRepository = { findManySelect: jest.fn() };
+    mockJobRepository = { findManySelect: jest.fn().mockResolvedValue([]) };
     mockNodeRepository = { findFirstByIpAddresses: jest.fn(), updateById: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -101,7 +101,7 @@ describe('DebugService (__tests__/unit)', () => {
 
       const result = await service.getSystemLoad();
       expect(result.loadThresholdMultiplier).toBe(4.0);
-      process.env.LOAD_THRESHOLD_MULTIPLIER = undefined;
+      delete process.env.LOAD_THRESHOLD_MULTIPLIER;
     });
 
     it('handles node fetch error gracefully', async () => {
@@ -175,16 +175,29 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('should use environment variable when node lookup fails', async () => {
-      mockOsNetworkInterfaces({
-        eth0: [{ address: '192.168.1.100', family: 'IPv4', internal: false }],
-      });
-      mockOsGetters(
-        [1.5, 2.0, 1.8],
-        new Array(4).fill({ speed: 2000 }),
-        16 * 1024 * 1024 * 1024,
-        8 * 1024 * 1024 * 1024
+      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
+        eth0: [
+          {
+            address: '192.168.1.100',
+            family: 'IPv4',
+            internal: false,
+            mac: '',
+            cidr: null,
+            netmask: '',
+          },
+        ],
+      } as any);
+      jest.spyOn(os, 'loadavg').mockReturnValue([1.5, 2.0, 1.8]);
+      jest.spyOn(os, 'cpus').mockReturnValue(
+        new Array(4).fill({
+          model: 'x',
+          speed: 2000,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        })
       );
-      mockPrismaService.node.findFirst.mockRejectedValue(new Error('DB error'));
+      jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 * 1024 * 1024);
+      jest.spyOn(os, 'freemem').mockReturnValue(8 * 1024 * 1024 * 1024);
+      mockNodeRepository.findFirstByIpAddresses.mockRejectedValue(new Error('DB error'));
 
       const result = await service.getSystemLoad();
 
@@ -537,14 +550,23 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockOsNetworkInterfaces({
-        eth0: [{ address: '192.168.1.100', family: 'IPv4', internal: false }],
-      });
-      mockPrismaService.node.findFirst.mockResolvedValue({
+      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
+        eth0: [
+          {
+            address: '192.168.1.100',
+            family: 'IPv4',
+            internal: false,
+            mac: '',
+            cidr: null,
+            netmask: '',
+          },
+        ],
+      } as any);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
         id: 'node-1',
         loadThresholdMultiplier: 5.0,
       } as any);
-      mockPrismaService.node.update.mockRejectedValue(new Error('DB error'));
+      mockNodeRepository.updateById.mockRejectedValue(new Error('DB error'));
 
       const result = await service.updateLoadThreshold(8.0);
 
@@ -555,10 +577,29 @@ describe('DebugService (__tests__/unit)', () => {
 
   describe('getLocalIpAddresses', () => {
     it('should return IPv4 addresses from network interfaces', async () => {
-      mockOsNetworkInterfaces({
-        eth0: [{ address: '192.168.1.100', family: 'IPv4', internal: false }],
-        lo: [{ address: '127.0.0.1', family: 'IPv4', internal: true }],
-      });
+      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
+        eth0: [
+          {
+            address: '192.168.1.100',
+            family: 'IPv4',
+            internal: false,
+            mac: '',
+            cidr: null,
+            netmask: '',
+          },
+        ],
+        lo: [
+          {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            internal: true,
+            mac: '',
+            cidr: null,
+            netmask: '',
+          },
+        ],
+      } as any);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue(null);
 
       const result = await service.getSystemLoad();
 
@@ -567,9 +608,19 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('should skip internal interfaces', async () => {
-      mockOsNetworkInterfaces({
-        lo: [{ address: '127.0.0.1', family: 'IPv4', internal: true }],
-      });
+      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
+        lo: [
+          {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            internal: true,
+            mac: '',
+            cidr: null,
+            netmask: '',
+          },
+        ],
+      } as any);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue(null);
 
       const result = await service.getSystemLoad();
 
@@ -578,12 +629,20 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('should skip IPv6 addresses', async () => {
-      mockOsNetworkInterfaces({
+      jest.spyOn(os, 'networkInterfaces').mockReturnValue({
         eth0: [
-          { address: '192.168.1.100', family: 'IPv4', internal: false },
-          { address: '::1', family: 'IPv6', internal: false },
+          {
+            address: '192.168.1.100',
+            family: 'IPv4',
+            internal: false,
+            mac: '',
+            cidr: null,
+            netmask: '',
+          },
+          { address: '::1', family: 'IPv6', internal: false, mac: '', cidr: null, netmask: '' },
         ],
-      });
+      } as any);
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue(null);
 
       const result = await service.getSystemLoad();
 

@@ -2245,7 +2245,7 @@ describe('LibrariesService', () => {
       mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
 
       // createJobsFromScan delegates to libraryScanner — stub the scanner mock's return value
-      (service.libraryScanner as unknown as { createJobsFromScan: jest.Mock }).createJobsFromScan =
+      ((service as any).libraryScanner as { createJobsFromScan: jest.Mock }).createJobsFromScan =
         jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] });
 
       const result = await service.createJobsFromScan('lib-1', 'policy-1', [

@@ -1008,7 +1008,11 @@ describe('QueueService', () => {
 
       await service.handleEncodingFailed(event);
 
-      expect(jobStateService.failJob).toHaveBeenCalledWith('job-1', 'FFmpeg: codec not supported');
+      expect(jobStateService.failJob).toHaveBeenCalledWith(
+        'job-1',
+        'FFmpeg: codec not supported',
+        undefined
+      );
     });
 
     it('should silently swallow errors from failJob', async () => {

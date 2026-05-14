@@ -8,6 +8,7 @@ describe('RetrySchedulerService', () => {
   let jobRepository: {
     findManySelect: jest.Mock;
     updateManyByIds: jest.Mock;
+    updateById: jest.Mock;
     countWhere: jest.Mock;
   };
 
@@ -15,6 +16,7 @@ describe('RetrySchedulerService', () => {
     jobRepository = {
       findManySelect: jest.fn(),
       updateManyByIds: jest.fn(),
+      updateById: jest.fn(),
       countWhere: jest.fn(),
     };
 
@@ -103,18 +105,18 @@ describe('RetrySchedulerService', () => {
         createFailedJob('job-2', { retryCount: 1 }),
       ];
       jobRepository.findManySelect.mockResolvedValue(failedJobs);
-      jobRepository.updateManyByIds.mockResolvedValue({ count: 2 });
+      jobRepository.updateById.mockResolvedValue({});
 
       await service.retryFailedJobs();
 
-      expect(jobRepository.updateManyByIds).toHaveBeenCalledWith(['job-1', 'job-2'], {
-        stage: JobStage.QUEUED,
-        progress: 0,
-        error: null,
-        completedAt: null,
-        startedAt: null,
-        retryCount: { increment: 1 },
-      });
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0, error: null, retryCount: 1 })
+      );
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-2',
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0, error: null, retryCount: 2 })
+      );
       expect((service as any).logger.log).toHaveBeenCalledWith(
         'Found 2 failed job(s) ready for retry'
       );
@@ -141,15 +143,15 @@ describe('RetrySchedulerService', () => {
     it('should handle single failed job', async () => {
       const failedJobs = [createFailedJob('job-1', { retryCount: 1 })];
       jobRepository.findManySelect.mockResolvedValue(failedJobs);
-      jobRepository.updateManyByIds.mockResolvedValue({ count: 1 });
+      jobRepository.updateById.mockResolvedValue({});
 
       await service.retryFailedJobs();
 
-      expect(jobRepository.updateManyByIds).toHaveBeenCalledWith(
-        ['job-1'],
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
         expect.objectContaining({
           stage: JobStage.QUEUED,
-          retryCount: { increment: 1 },
+          retryCount: 2,
         })
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
@@ -191,20 +193,18 @@ describe('RetrySchedulerService', () => {
       expect(jobRepository.updateManyByIds).not.toHaveBeenCalled();
     });
 
-    it('should handle updateMany failure gracefully', async () => {
+    it('should handle updateById failure gracefully and log error', async () => {
       jobRepository.findManySelect.mockResolvedValue([createFailedJob('job-1')]);
-      jobRepository.updateManyByIds.mockRejectedValue(new Error('Update failed'));
+      jobRepository.updateById.mockRejectedValue(new Error('Update failed'));
 
       await service.retryFailedJobs();
 
-      // Second job should still be processed
-      expect(prisma.job.update).toHaveBeenCalledTimes(2);
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to re-queue job job-1'),
         expect.any(Error)
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Background retry scheduler: 1 job(s) re-queued'
+        'Background retry scheduler: 0 job(s) re-queued'
       );
     });
   });

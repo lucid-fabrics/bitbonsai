@@ -222,7 +222,7 @@ describe('SystemResourceService', () => {
     });
 
     it('logs low memory warning when free memory percent is below 10%', async () => {
-      const logWarnSpy = jest.spyOn(service.logger, 'warn');
+      const logWarnSpy = jest.spyOn((service as any).logger, 'warn');
 
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 ** 3);
       (os.freemem as jest.Mock).mockReturnValue(2 * 1024 ** 3); // ~6% — below 10%

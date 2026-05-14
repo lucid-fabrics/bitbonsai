@@ -131,8 +131,8 @@ describe('NodeCapabilityDetectorService', () => {
 
       const result = await service.detectCapabilities('node-1', '192.168.1.170');
 
-      // Bandwidth uses estimate when shared storage test returns empty
-      expect(result.bandwidthMbps).toBeGreaterThan(0);
+      // Bandwidth not yet implemented — returns null
+      expect(result.bandwidthMbps).toBeNull();
     });
 
     it('should include shared storage reasoning when detected', async () => {

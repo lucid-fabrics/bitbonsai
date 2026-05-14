@@ -2,6 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { FfmpegService } from '../../../encoding/ffmpeg.service';
+import { CircuitBreakerService } from '../../services/circuit-breaker.service';
 import { FileFailureTrackingService } from '../../services/file-failure-tracking.service';
 import { StuckJobRecoveryWorker } from '../../stuck-job-recovery.worker';
 
@@ -33,6 +34,15 @@ describe('StuckJobRecoveryWorker', () => {
         { provide: JobRepository, useValue: mockJobRepository },
         { provide: FfmpegService, useValue: mockFfmpegService },
         { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: CircuitBreakerService,
+          useValue: {
+            checkAndBreak: jest.fn().mockResolvedValue(false),
+            isCircuitBroken: jest.fn().mockResolvedValue(false),
+            recordSuccess: jest.fn(),
+            recordFailure: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

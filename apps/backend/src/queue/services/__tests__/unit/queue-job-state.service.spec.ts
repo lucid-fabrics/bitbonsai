@@ -99,7 +99,11 @@ describe('QueueJobStateService', () => {
         },
         {
           provide: NodeConfigService,
-          useValue: { getMainApiUrl: jest.fn().mockReturnValue(null) },
+          useValue: {
+            getMainApiUrl: jest.fn().mockReturnValue(null),
+            getNodeId: jest.fn().mockReturnValue(null),
+            isMainNode: jest.fn().mockReturnValue(true),
+          },
         },
         {
           provide: HttpService,
@@ -187,7 +191,7 @@ describe('QueueJobStateService', () => {
       expect(httpService.post).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/job-1/complete',
         dto,
-        { timeout: 30000 }
+        { headers: {}, timeout: 30000 }
       );
       expect(result).toMatchObject({ id: 'job-1' });
     });
@@ -268,7 +272,7 @@ describe('QueueJobStateService', () => {
       expect(httpService.post).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/job-1/fail',
         { error: 'FFmpeg crashed' },
-        { timeout: 30000 }
+        { headers: {}, timeout: 30000 }
       );
     });
 
@@ -341,7 +345,7 @@ describe('QueueJobStateService', () => {
       expect(httpService.post).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/job-1/cancel',
         { blacklist: true },
-        { timeout: 30000 }
+        { headers: {}, timeout: 30000 }
       );
     });
 

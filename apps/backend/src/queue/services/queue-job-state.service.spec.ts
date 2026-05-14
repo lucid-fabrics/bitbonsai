@@ -70,6 +70,8 @@ describe('QueueJobStateService', () => {
 
     mockNodeConfig = {
       getMainApiUrl: jest.fn().mockReturnValue(null),
+      getNodeId: jest.fn().mockReturnValue(null),
+      isMainNode: jest.fn().mockReturnValue(true),
     } as any;
 
     mockJobCrudService = {

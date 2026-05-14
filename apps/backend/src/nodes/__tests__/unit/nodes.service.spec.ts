@@ -1457,7 +1457,7 @@ describe('NodesService', () => {
 
   describe('findByApiKey', () => {
     it('should return node when API key exists', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      mockNodeRepo.findByApiKey.mockResolvedValue(mockNode as any);
 
       const result = await service.findByApiKey(
         'bb_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2'
@@ -1465,13 +1465,13 @@ describe('NodesService', () => {
 
       expect(result).toBeDefined();
       expect(result?.id).toBe('node-1');
-      expect(prisma.node.findUnique).toHaveBeenCalledWith({
-        where: { apiKey: 'bb_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2' },
-      });
+      expect(mockNodeRepo.findByApiKey).toHaveBeenCalledWith(
+        'bb_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2'
+      );
     });
 
     it('should return null when API key does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findByApiKey.mockResolvedValue(null);
 
       const result = await service.findByApiKey('invalid-key');
 
@@ -1487,7 +1487,7 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(nodeWithConfig as never);
+      mockNodeRepo.findWithSelect.mockResolvedValue(nodeWithConfig as any);
 
       const result = await service.getRecommendedConfig('node-1');
 
@@ -1499,7 +1499,7 @@ describe('NodesService', () => {
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findWithSelect.mockResolvedValue(null);
 
       await expect(service.getRecommendedConfig('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.getRecommendedConfig('non-existent')).rejects.toThrow(
@@ -1512,20 +1512,20 @@ describe('NodesService', () => {
     it('should update node name', async () => {
       const updatedNode = { ...mockNode, name: 'Updated Node Name' };
 
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
-      jest.spyOn(prisma.node, 'update').mockResolvedValue(updatedNode as never);
+      mockNodeRepo.findById.mockResolvedValue(mockNode as any);
+      mockNodeRepo.updateData.mockResolvedValue(updatedNode as any);
 
       const result = await service.update('node-1', { name: 'Updated Node Name' });
 
       expect(result.name).toBe('Updated Node Name');
-      expect(prisma.node.update).toHaveBeenCalledWith({
-        where: { id: 'node-1' },
-        data: { name: 'Updated Node Name' },
-      });
+      expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ name: 'Updated Node Name' })
+      );
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
+      mockNodeRepo.findById.mockResolvedValue(null);
 
       await expect(service.update('non-existent', { name: 'New Name' })).rejects.toThrow(
         NotFoundException

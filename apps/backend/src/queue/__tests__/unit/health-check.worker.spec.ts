@@ -1,5 +1,11 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { FileHealthStatus, JobStage } from '@prisma/client';
+import * as fspromises from 'fs/promises';
+
+jest.mock('fs/promises', () => ({
+  access: jest.fn(),
+}));
+
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { ContainerCompatibilityService } from '../../../encoding/container-compatibility.service';
@@ -35,6 +41,8 @@ describe('HealthCheckWorker', () => {
 
     fileHealthService = {
       analyzeFile: jest.fn(),
+      quickHealthCheck: jest.fn().mockResolvedValue({ passed: true }),
+      thoroughHealthCheck: jest.fn().mockResolvedValue({ passed: true, errors: [] }),
     };
 
     containerCompatibilityService = {
@@ -46,7 +54,7 @@ describe('HealthCheckWorker', () => {
     };
 
     fileRelocatorService = {
-      relocateFile: jest.fn(),
+      relocateFile: jest.fn().mockResolvedValue({ found: false, searchedPaths: 0 }),
     };
 
     fileFailureTrackingService = {
@@ -95,6 +103,15 @@ describe('HealthCheckWorker', () => {
     });
 
     jest.clearAllMocks();
+    // Restore fs/promises.access to succeed by default after clearAllMocks
+    (fspromises.access as jest.Mock).mockResolvedValue(undefined);
+    // Restore fileRelocatorService default after clearAllMocks
+    fileRelocatorService.relocateFile.mockResolvedValue({ found: false, searchedPaths: 0 });
+    // Restore jobRepository.updateById default after clearAllMocks
+    jobRepository.updateById.mockResolvedValue({});
+    // Restore fileHealthService defaults after clearAllMocks
+    fileHealthService.quickHealthCheck.mockResolvedValue({ passed: true });
+    fileHealthService.thoroughHealthCheck.mockResolvedValue({ passed: true, errors: [] });
   });
 
   afterEach(async () => {

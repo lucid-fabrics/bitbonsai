@@ -4,6 +4,7 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { LibraryRepository } from '../../../common/repositories/library.repository';
 import { PolicyRepository } from '../../../common/repositories/policy.repository';
+import { SettingsRepository } from '../../../common/repositories/settings.repository';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
@@ -268,6 +269,38 @@ describe('EncodingProcessorService', () => {
           useValue: {
             validateContainer: jest.fn().mockResolvedValue({ valid: true }),
             decodeWalk: jest.fn().mockResolvedValue({ valid: true }),
+          },
+        },
+        {
+          provide: CodecFallbackService,
+          useValue: {
+            shouldFallback: jest.fn().mockResolvedValue(false),
+            getFallbackCodec: jest.fn().mockReturnValue(null),
+            recordFailure: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CompletionOutboxService,
+          useValue: {
+            writeOutbox: jest.fn().mockResolvedValue(undefined),
+            clearOutbox: jest.fn().mockResolvedValue(undefined),
+            replayPendingCompletions: jest.fn().mockResolvedValue(0),
+          },
+        },
+        {
+          provide: OwnershipLeaseService,
+          useValue: {
+            renewLease: jest.fn().mockResolvedValue(true),
+            startRenewing: jest.fn(),
+            stopRenewing: jest.fn(),
+          },
+        },
+        {
+          provide: SettingsRepository,
+          useValue: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ vmafThreshold: 85, qualityMetricsEnabled: true }),
           },
         },
       ],
