@@ -2,6 +2,9 @@ import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
+
+jest.setTimeout(15000);
+
 import { EncodingCancelledEvent, EncodingFailedEvent } from '../../../common/events';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -242,7 +245,7 @@ describe('FfmpegService', () => {
       expect(args).toContain('-preset');
       expect(args).toContain('medium');
       expect(args).toContain('-progress');
-      expect(args).toContain('pipe:2');
+      expect(args).toContain('pipe:1');
       expect(args).toContain('-y');
       expect(args).toContain('/media/video.mp4.tmp');
     });
@@ -422,7 +425,11 @@ describe('FfmpegService', () => {
       jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
 
       const ffmpegProc = createMockChildProcess();
+      (ffmpegProc as any).pid = 99999;
       mockSpawn.mockReturnValue(ffmpegProc);
+
+      // cancelEncoding uses process.kill(-pid, signal) for process-group kill
+      const processKillSpy = jest.spyOn(process, 'kill').mockImplementation(() => true);
 
       const encodePromise = service.encodeFile(mockJob, mockPolicy);
 
@@ -437,11 +444,13 @@ describe('FfmpegService', () => {
       const result = await cancelPromise;
 
       expect(result).toBe(true);
-      expect((ffmpegProc as any).kill).toHaveBeenCalledWith('SIGTERM');
+      expect(processKillSpy).toHaveBeenCalledWith(-99999, 'SIGTERM');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         EncodingCancelledEvent.event,
         expect.any(EncodingCancelledEvent)
       );
+
+      processKillSpy.mockRestore();
 
       // Clean up the encoding promise
       setTimeout(() => ffmpegProc.emit('close', 1), 10);
@@ -815,14 +824,15 @@ describe('FfmpegService', () => {
     });
 
     it('should return isValid false on timeout', async () => {
+      // This test needs longer timeout since implementation waits 60s
       const mockProcess = createMockChildProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
-      // Don't emit close - let it timeout
+      // Don't emit close - let it timeout (implementation has 60s timeout)
       const result = await service.verifyFile('/media/slow-video.mp4');
       expect(result.isValid).toBe(false);
       expect(result.error).toContain('timed out');
-    });
+    }, 90000);
 
     it('should return isValid false on ffprobe error', async () => {
       const mockProcess = createMockChildProcess();
@@ -902,7 +912,7 @@ describe('FfmpegService', () => {
         videoCodec: 'hevc_nvenc',
       });
 
-      const codec = await (service as any).selectCodecForPolicy('HEVC');
+      const codec = await (service as any).selectCodecForPolicy('HEVC', 'NVIDIA');
       expect(codec).toBe('hevc_nvenc');
     });
 
@@ -913,7 +923,7 @@ describe('FfmpegService', () => {
         videoCodec: 'libx265',
       });
 
-      const codec = await (service as any).selectCodecForPolicy('HEVC');
+      const codec = await (service as any).selectCodecForPolicy('HEVC', 'CPU');
       expect(codec).toBe('libx265');
     });
 
@@ -924,7 +934,7 @@ describe('FfmpegService', () => {
         videoCodec: 'h264_nvenc',
       });
 
-      const codec = await (service as any).selectCodecForPolicy('H264');
+      const codec = await (service as any).selectCodecForPolicy('H264', 'NVIDIA');
       expect(codec).toBe('h264_nvenc');
     });
 
@@ -942,7 +952,17 @@ describe('FfmpegService', () => {
 
   describe('reniceProcess', () => {
     it('should return true when renice succeeds', async () => {
+      // Set up active encoding with a real-looking process that has a pid
       const mockProcess = createMockChildProcess();
+      Object.defineProperty(mockProcess, 'pid', {
+        value: 12345,
+        writable: true,
+        configurable: true,
+      });
+      (service as any).activeEncodings.set('test-job-123', {
+        process: mockProcess,
+        jobId: 'test-job-123',
+      });
       mockSpawn.mockReturnValue(mockProcess);
 
       setTimeout(() => {
@@ -951,18 +971,34 @@ describe('FfmpegService', () => {
 
       const result = await service.reniceProcess('test-job-123', 10);
       expect(result).toBe(true);
+
+      // Clean up
+      (service as any).activeEncodings.delete('test-job-123');
     });
 
     it('should return false when renice fails', async () => {
       const mockProcess = createMockChildProcess();
+      Object.defineProperty(mockProcess, 'pid', {
+        value: 12345,
+        writable: true,
+        configurable: true,
+      });
+      (service as any).activeEncodings.set('test-job-123', {
+        process: mockProcess,
+        jobId: 'test-job-123',
+      });
       mockSpawn.mockReturnValue(mockProcess);
 
       setTimeout(() => {
         mockProcess.emit('close', 1);
       }, 10);
 
-      const result = await service.reniceProcess('test-job-123', 10);
-      expect(result).toBe(false);
+      await expect(service.reniceProcess('test-job-123', 10)).rejects.toThrow(
+        'renice command failed with exit code 1'
+      );
+
+      // Clean up
+      (service as any).activeEncodings.delete('test-job-123');
     });
   });
 
@@ -984,7 +1020,9 @@ describe('FfmpegService', () => {
     });
 
     it('should return empty on error', async () => {
-      mockExecFileSync.mockRejectedValue(new Error('ps failed'));
+      mockExecFileSync.mockImplementation(() => {
+        throw new Error('ps failed');
+      });
 
       const result = await service.findSystemFfmpegProcesses();
       expect(result).toEqual([]);
@@ -1006,6 +1044,11 @@ describe('FfmpegService', () => {
   });
 
   describe('killFfmpegByPid', () => {
+    beforeEach(() => {
+      mockExecFileSync.mockReset();
+      mockExecFileSync.mockResolvedValue(undefined);
+    });
+
     it('should return success when kill succeeds', async () => {
       mockExecFileSync.mockReturnValue(undefined);
 
@@ -1014,11 +1057,22 @@ describe('FfmpegService', () => {
     });
 
     it('should return error when kill fails', async () => {
-      mockExecFileSync.mockRejectedValue(new Error('Permission denied'));
+      // First call (SIGTERM) throws unhandled - this propagates to outer catch
+      // Subsequent calls succeed so inner catches don't suppress the error
+      mockExecFileSync
+        .mockImplementationOnce(() => {
+          throw new Error('Permission denied');
+        })
+        .mockResolvedValue(undefined)
+        .mockResolvedValue(undefined);
 
       const result = await service.killFfmpegByPid(12345);
       expect(result.success).toBe(false);
       expect(result.message).toContain('12345');
+
+      // Reset mock to prevent bleed-through to subsequent tests
+      mockExecFileSync.mockReset();
+      mockExecFileSync.mockResolvedValue(undefined);
     });
   });
 

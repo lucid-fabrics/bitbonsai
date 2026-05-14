@@ -55,12 +55,12 @@ export class DashboardComponent implements OnInit {
 
   viewFilesToEncode(folder: FolderInfo): void {
     this.dialogFolderName = folder.name;
-    this.dialogCodec = 'h264';
+    this.dialogCodec = '';
     this.dialogLoading = true;
     this.dialogOpen = true;
 
     this.mediaStatsApi
-      .getFolderFiles(folder.name, 'h264')
+      .getFolderFiles(folder.name)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

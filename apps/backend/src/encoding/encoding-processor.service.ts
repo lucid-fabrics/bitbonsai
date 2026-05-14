@@ -643,7 +643,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
                   autoHealedProgress: job.progress,
                 }
               : {}),
-            retryCount: job.retryCount + 1,
+            retryCount: tempFileExists ? job.retryCount : job.retryCount + 1,
             // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
             ...(tempFileExists
               ? { resumeTimestamp: recalculatedResumeTimestamp }
@@ -934,7 +934,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // Calculate jobs to pause/resume
     const jobsToPause = encodingJobs - targetWorkers;
     const pausedJobs = await this.prisma.job.count({
-      where: { stage: 'PAUSED_LOAD' },
+      where: { stage: 'PAUSED_LOAD', nodeId: currentNode.id },
     });
 
     // SCENARIO 1: Load is high, need to pause jobs
@@ -948,7 +948,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // Get lowest priority QUEUED jobs to pause (don't interrupt encoding jobs)
       const jobsToAutoPause = await this.prisma.job.findMany({
-        where: { stage: 'QUEUED' },
+        where: { stage: 'QUEUED', nodeId: currentNode.id },
         orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }], // Lowest priority, newest first
         take: jobsToPause,
         select: { id: true, fileLabel: true, priority: true },
@@ -981,7 +981,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
       // Get highest priority paused jobs to resume
       const jobsToAutoResume = await this.prisma.job.findMany({
-        where: { stage: 'PAUSED_LOAD' },
+        where: { stage: 'PAUSED_LOAD', nodeId: currentNode.id },
         orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }], // Highest priority, oldest first
         take: jobsToResume,
         select: { id: true, fileLabel: true, priority: true },
@@ -2388,7 +2388,8 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         errorMessage.includes('verification failed') ||
         errorMessage.includes('corrupted') ||
         errorMessage.includes('not playable') ||
-        errorMessage.includes('invalid') ||
+        errorMessage.includes('invalid data found') ||
+        errorMessage.includes('Invalid data found when processing input') ||
         errorMessage.includes('duration mismatch') ||
         errorMessage.includes('appears truncated') ||
         errorMessage.includes('suspiciously small') ||

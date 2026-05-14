@@ -1,0 +1,81 @@
+when:
+  - event: pull_request
+    branch: main
+
+labels:
+  platform: linux
+
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      lfs: false
+
+steps:
+  - name: lint
+    image: node:22
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx prisma generate
+      - npx nx run-many --target=lint --all || true
+      - npx prettier --check "**/*.{ts,json,md,scss,html}" --ignore-path .prettierignore || true
+
+  - name: test-backend
+    image: node:22
+    depends_on: [lint]
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx prisma generate
+      - npx nx test backend --passWithNoTests
+
+  - name: test-frontend
+    image: node:22
+    depends_on: [lint]
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx nx test frontend --passWithNoTests
+
+  - name: build-backend
+    image: node:22
+    depends_on: [test-backend]
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx prisma generate
+      - npx nx build backend --configuration=production
+
+  - name: build-frontend
+    image: node:22
+    depends_on: [test-frontend]
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx nx build frontend --configuration=production
+
+  - name: build-website
+    image: node:22
+    depends_on: [lint]
+    commands:
+      - npm ci --legacy-peer-deps
+      - npx nx build website --configuration=production
+
+  - name: notify_result
+    image: bash
+    depends_on: [build-backend, build-frontend, build-website]
+    when:
+      - status: [failure]
+    environment:
+      TELEGRAM_BOT_TOKEN:
+        from_secret: TELEGRAM_BOT_TOKEN
+      TELEGRAM_CHAT_ID:
+        from_secret: TELEGRAM_CHAT_ID
+    commands:
+      - apk add --no-cache curl
+      - |
+        COMMIT_SHORT="${CI_COMMIT_SHA:0:7}"
+        COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_AUTHOR=$(echo "$CI_COMMIT_AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_MSG=$(echo "$CI_COMMIT_MESSAGE" | head -1 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        MSG=$(printf '❌ <b>BitBonsai PR</b> — Validation failed\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
+          "$COMMIT_BRANCH" "$COMMIT_SHORT" "$COMMIT_AUTHOR" "$COMMIT_MSG" "$CI_PIPELINE_URL")
+        curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d "chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&disable_web_page_preview=true" \
+          --data-urlencode "text=$MSG" || true

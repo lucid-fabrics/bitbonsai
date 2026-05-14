@@ -17,6 +17,7 @@ import {
   catchError,
   interval,
   map,
+  merge,
   Observable,
   of,
   Subject,
@@ -49,6 +50,7 @@ export class AddFilesModalComponent implements OnDestroy {
   private readonly librariesApi = inject(LibrariesClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly destroy$ = new Subject<void>();
+  private readonly refreshLibraries$ = new Subject<void>();
 
   @Input() isOpen = false;
   @Output() close = new EventEmitter<void>();
@@ -82,19 +84,27 @@ export class AddFilesModalComponent implements OnDestroy {
   protected creationError$ = new BehaviorSubject<string | null>(null);
 
   constructor() {
-    // Fetch all ready-to-queue files across all libraries
-    this.libraryPreviews$ = this.librariesApi.getAllReadyFiles().pipe(
-      map((previews) => {
-        this.isLoadingLibraries$.next(false);
-        // Filter to only libraries with files that need encoding
-        return previews.filter((preview) => preview.needsEncodingCount > 0);
+    // Fetch all ready-to-queue files across all libraries.
+    // refreshLibraries$ acts as a re-trigger — emitting causes a fresh API call without page reload.
+    this.libraryPreviews$ = merge(of(null), this.refreshLibraries$).pipe(
+      switchMap(() => {
+        this.isLoadingLibraries$.next(true);
+        this.librariesError$.next(null);
+        return this.librariesApi.getAllReadyFiles().pipe(
+          map((previews) => {
+            this.isLoadingLibraries$.next(false);
+            return previews.filter((preview) => preview.needsEncodingCount > 0);
+          }),
+          catchError((error) => {
+            this.isLoadingLibraries$.next(false);
+            this.librariesError$.next(
+              error?.message || 'Failed to load libraries. Please try again.'
+            );
+            return of([]);
+          })
+        );
       }),
-      catchError((error) => {
-        this.isLoadingLibraries$.next(false);
-        this.librariesError$.next(error?.message || 'Failed to load libraries. Please try again.');
-        return of([]);
-      }),
-      shareReplay(1) // Cache the result and share among all subscribers
+      shareReplay(1)
     );
 
     // Load cache metadata on init
@@ -168,12 +178,9 @@ export class AddFilesModalComponent implements OnDestroy {
       .subscribe({
         next: (_previews) => {
           this.isRefreshing$.next(false);
-          // Update library previews by re-emitting the stream
-          this.isLoadingLibraries$.next(false);
-          // Reload cache metadata
           this.loadCacheMetadata();
-          // Force reload of library previews
-          window.location.reload();
+          // Trigger a fresh library fetch without reloading the page
+          this.refreshLibraries$.next();
         },
         error: (error) => {
           this.isRefreshing$.next(false);

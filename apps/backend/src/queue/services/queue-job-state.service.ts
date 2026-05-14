@@ -29,6 +29,15 @@ import { QueueJobCrudService } from './queue-job-crud.service';
 export class QueueJobStateService {
   private readonly logger = new Logger(QueueJobStateService.name);
 
+  /** Build HTTP options including caller node identity so MAIN can validate ownership. */
+  private proxyOptions(): { timeout: number; headers: Record<string, string> } {
+    const nodeId = this.nodeConfig.getNodeId();
+    return {
+      timeout: 30000,
+      headers: nodeId ? { 'x-node-id': nodeId } : {},
+    };
+  }
+
   constructor(
     private prisma: PrismaService,
     @Inject(forwardRef(() => FfmpegService))
@@ -44,10 +53,14 @@ export class QueueJobStateService {
   /**
    * Complete a job successfully
    */
-  async completeJob(id: string, completeJobDto: CompleteJobDto): Promise<Job> {
+  async completeJob(
+    id: string,
+    completeJobDto: CompleteJobDto,
+    callerNodeId?: string
+  ): Promise<Job> {
     this.logger.log(`Completing job: ${id}`);
 
-    await this.jobCrudService.validateJobOwnership(id, 'complete');
+    await this.jobCrudService.validateJobOwnership(id, 'complete', callerNodeId);
 
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
@@ -56,7 +69,7 @@ export class QueueJobStateService {
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, completeJobDto, { timeout: 30000 })
+          this.httpService.post(url, completeJobDto, this.proxyOptions())
         );
         this.logger.debug(`✅ MULTI-NODE: Job completion successful for ${id}`);
         return response.data;
@@ -147,10 +160,10 @@ export class QueueJobStateService {
   /**
    * Mark a job as failed
    */
-  async failJob(id: string, error: string): Promise<Job> {
+  async failJob(id: string, error: string, callerNodeId?: string): Promise<Job> {
     this.logger.log(`Failing job: ${id}`);
 
-    await this.jobCrudService.validateJobOwnership(id, 'fail');
+    await this.jobCrudService.validateJobOwnership(id, 'fail', callerNodeId);
 
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
@@ -159,7 +172,7 @@ export class QueueJobStateService {
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, { error }, { timeout: 30000 })
+          this.httpService.post(url, { error }, this.proxyOptions())
         );
         this.logger.debug(`✅ MULTI-NODE: Job failure recorded for ${id}`);
         return response.data;
@@ -241,7 +254,7 @@ export class QueueJobStateService {
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, { blacklist }, { timeout: 30000 })
+          this.httpService.post(url, { blacklist }, this.proxyOptions())
         );
         this.logger.debug(`✅ MULTI-NODE: Job cancellation successful for ${id}`);
         return response.data;

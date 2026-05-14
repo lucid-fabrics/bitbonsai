@@ -128,6 +128,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
           data: {
             stage: JobStage.DETECTED,
             healthCheckRetries: { increment: 1 },
+            healthCheckStartedAt: null,
           },
         });
 

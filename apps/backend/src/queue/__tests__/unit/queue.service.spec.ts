@@ -392,7 +392,7 @@ describe('QueueService', () => {
 
       expect(result.stage).toBe(JobStage.COMPLETED);
       expect(result.progress).toBe(100);
-      expect(jobStateService.completeJob).toHaveBeenCalledWith('job-1', completeDto);
+      expect(jobStateService.completeJob).toHaveBeenCalledWith('job-1', completeDto, undefined);
     });
   });
 
@@ -414,7 +414,7 @@ describe('QueueService', () => {
 
       expect(result.stage).toBe(JobStage.FAILED);
       expect(result.error).toBe(errorMessage);
-      expect(jobStateService.failJob).toHaveBeenCalledWith('job-1', errorMessage);
+      expect(jobStateService.failJob).toHaveBeenCalledWith('job-1', errorMessage, undefined);
     });
   });
 

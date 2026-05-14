@@ -114,8 +114,8 @@ describe('DashboardComponent', () => {
 
       expect(component.dialogOpen).toBe(true);
       expect(component.dialogFolderName).toBe('Movies');
-      expect(component.dialogCodec).toBe('h264');
-      expect(mediaStatsClient.getFolderFiles).toHaveBeenCalledWith('Movies', 'h264');
+      expect(component.dialogCodec).toBe('');
+      expect(mediaStatsClient.getFolderFiles).toHaveBeenCalledWith('Movies');
     });
 
     it('should close dialog when closeDialog is called', () => {

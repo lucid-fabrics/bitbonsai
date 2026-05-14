@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JobEventType, JobStage } from '@prisma/client';
 import { existsSync } from 'fs';
+import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -22,12 +23,22 @@ export class AutoHealingService implements OnModuleInit {
   private settingsCache: { maxRetries: number; cachedAt: number } | null = null;
   private readonly SETTINGS_CACHE_TTL_MS = 60000; // 1 minute cache
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly nodeConfig: NodeConfigService
+  ) {}
 
   /**
    * Runs automatically when the module initializes (container startup)
    */
   async onModuleInit(): Promise<void> {
+    // Only MAIN node owns the DB and should heal jobs cluster-wide.
+    // LINKED nodes running this would re-queue all FAILED jobs on every restart,
+    // burning through maxAutoHealRetries for every job they don't own.
+    if (!this.nodeConfig.isMainNode()) {
+      this.logger.log('Skipping auto-healing on LINKED node (MAIN node responsibility)');
+      return;
+    }
     this.logger.log('Auto-healing service initializing...');
     await this.healFailedJobs();
   }
