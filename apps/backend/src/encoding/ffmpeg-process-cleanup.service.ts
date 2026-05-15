@@ -138,11 +138,17 @@ export class FfmpegProcessCleanupService {
         // Process already dead (good)
       }
 
-      return { success: true, message: `Successfully killed FFmpeg process PID ${pid}` };
+      return {
+        success: true,
+        message: `Successfully killed FFmpeg process PID ${pid}`,
+      };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to kill FFmpeg process PID ${pid}: ${errorMessage}`);
-      return { success: false, message: `Failed to kill PID ${pid}: ${errorMessage}` };
+      return {
+        success: false,
+        message: `Failed to kill PID ${pid}: ${errorMessage}`,
+      };
     }
   }
 

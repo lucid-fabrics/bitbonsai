@@ -7,6 +7,7 @@ Full-featured admin authentication system for BitBonsai website with user manage
 ### Database Schema
 
 **AdminUser Model** (`apps/license-api/prisma/schema.prisma`):
+
 ```prisma
 enum AdminRole {
   SUPER_ADMIN
@@ -29,27 +30,30 @@ model AdminUser {
 
 ### API Endpoints
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/auth/login` | Public | Admin login (email/password) |
-| POST | `/auth/admin` | JWT | Create new admin user |
-| GET | `/auth/me` | JWT | Get current user info |
-| GET | `/auth/admins` | JWT | List all admin users |
-| PATCH | `/auth/admins/:id/toggle` | JWT | Toggle admin active status |
+| Method | Endpoint                  | Auth   | Description                  |
+| ------ | ------------------------- | ------ | ---------------------------- |
+| POST   | `/auth/login`             | Public | Admin login (email/password) |
+| POST   | `/auth/admin`             | JWT    | Create new admin user        |
+| GET    | `/auth/me`                | JWT    | Get current user info        |
+| GET    | `/auth/admins`            | JWT    | List all admin users         |
+| PATCH  | `/auth/admins/:id/toggle` | JWT    | Toggle admin active status   |
 
 ### Security Features
 
 **JWT Authentication:**
+
 - Token-based auth with configurable expiration (default: 7 days)
 - `@Public()` decorator for public endpoints
 - Global JWT guard protecting all endpoints by default
 - Bcrypt password hashing (10 rounds)
 
 **Rate Limiting:**
+
 - Login: 5 requests/60s per IP
 - Standard endpoints: 100 requests/60s
 
 **Environment Variables:**
+
 ```bash
 JWT_SECRET=your-secret-key-here
 JWT_EXPIRES_IN=7d
@@ -62,12 +66,14 @@ JWT_EXPIRES_IN=7d
 **Location:** `apps/website/src/app/services/auth.service.ts`
 
 **Features:**
+
 - Signal-based reactive state management
 - Token persistence in localStorage
 - Auto-load user on app start
 - HTTP interceptor for Authorization header
 
 **Key Methods:**
+
 ```typescript
 login(dto: LoginDto): Observable<LoginResponse>
 logout(): void
@@ -79,20 +85,22 @@ toggleAdminStatus(id: string): Observable<AdminUser>
 
 ### Routes
 
-| Path | Component | Guard | Description |
-|------|-----------|-------|-------------|
-| `/admin/login` | LoginComponent | None | Admin login page |
+| Path               | Component          | Guard     | Description               |
+| ------------------ | ------------------ | --------- | ------------------------- |
+| `/admin/login`     | LoginComponent     | None      | Admin login page          |
 | `/admin/dashboard` | DashboardComponent | authGuard | User management dashboard |
 
 ### Components
 
 **LoginComponent** (`apps/website/src/app/pages/admin/login/`):
+
 - Email/password form
 - Error handling with user-friendly messages
 - Loading states
 - Gradient background design
 
 **DashboardComponent** (`apps/website/src/app/pages/admin/dashboard/`):
+
 - List all admin users
 - Create new admin users
 - Toggle admin active/inactive status
@@ -113,6 +121,7 @@ npx prisma generate
 ## Creating First Admin
 
 **Option 1: API (requires database access):**
+
 ```bash
 # Use psql or database client to insert first user
 # Password: 'YourSecurePassword123'
@@ -131,6 +140,7 @@ VALUES (
 
 **Option 2: Script (recommended):**
 Create `apps/license-api/scripts/create-first-admin.ts`:
+
 ```typescript
 import { PrismaClient } from '@prisma/license-client';
 import * as bcrypt from 'bcrypt';
@@ -177,6 +187,7 @@ main();
 8. Logout and verify redirect to login
 
 **API Test (curl):**
+
 ```bash
 # Login
 curl -X POST http://localhost:3200/auth/login \
@@ -232,6 +243,7 @@ apps/website/src/app/
 ## Deployment Notes
 
 **Environment Variables (Production):**
+
 ```bash
 # license-api
 JWT_SECRET=random-256-bit-string
@@ -244,6 +256,7 @@ LICENSE_DATABASE_URL=postgresql://...
 ```
 
 **Database Migration (Unraid):**
+
 ```bash
 # SSH to Unraid
 ssh root@192.168.1.100

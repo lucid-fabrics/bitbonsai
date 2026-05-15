@@ -356,7 +356,13 @@ export class LibraryScannerService {
       isBlacklisted: boolean;
     }>(
       { libraryId: library.id },
-      { id: true, filePath: true, stage: true, progress: true, isBlacklisted: true }
+      {
+        id: true,
+        filePath: true,
+        stage: true,
+        progress: true,
+        isBlacklisted: true,
+      }
     );
 
     // Create a map of filePath -> job info

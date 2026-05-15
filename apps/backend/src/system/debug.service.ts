@@ -43,7 +43,9 @@ export class DebugService {
     // Get load threshold from current node or use default
     let loadThresholdMultiplier = parseFloat(process.env.LOAD_THRESHOLD_MULTIPLIER || '5.0');
     try {
-      const node = (await this.getCurrentNode()) as { loadThresholdMultiplier?: number } | null;
+      const node = (await this.getCurrentNode()) as {
+        loadThresholdMultiplier?: number;
+      } | null;
       if (node?.loadThresholdMultiplier) {
         loadThresholdMultiplier = node.loadThresholdMultiplier;
       }
@@ -217,7 +219,9 @@ export class DebugService {
         return { success: false, message: 'Current node not found' };
       }
 
-      await this.nodeRepository.updateById(node.id, { loadThresholdMultiplier });
+      await this.nodeRepository.updateById(node.id, {
+        loadThresholdMultiplier,
+      });
 
       const cpuCount = os.cpus().length;
       return {

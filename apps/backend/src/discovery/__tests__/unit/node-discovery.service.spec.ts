@@ -29,7 +29,6 @@ jest.mock('bonjour-service', () => {
   };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const bonjourMock = require('bonjour-service');
 
 describe('NodeDiscoveryService (discovery module)', () => {
@@ -86,7 +85,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
         NodeDiscoveryService,
         { provide: NodesService, useValue: mockNodesService },
         { provide: EventEmitter2, useValue: mockEventEmitter },
-        { provide: HardwareDetectionService, useValue: mockHardwareDetectionService },
+        {
+          provide: HardwareDetectionService,
+          useValue: mockHardwareDetectionService,
+        },
         { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
@@ -196,7 +198,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
       const result = service.getDiscoveredNodes();
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ nodeId: 'node-abc', name: 'Discovered Node' });
+      expect(result[0]).toMatchObject({
+        nodeId: 'node-abc',
+        name: 'Discovered Node',
+      });
     });
   });
 
@@ -271,7 +276,12 @@ describe('NodeDiscoveryService (discovery module)', () => {
       // Simulate a service being discovered
       if (upHandler) {
         await upHandler({
-          txt: { nodeId: 'found-node', name: 'Found Node', version: '2.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'found-node',
+            name: 'Found Node',
+            version: '2.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.77'],
           host: 'found-host',
           port: 3100,
@@ -285,7 +295,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
       const result = await scanPromise;
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ nodeId: 'found-node', name: 'Found Node' });
+      expect(result[0]).toMatchObject({
+        nodeId: 'found-node',
+        name: 'Found Node',
+      });
 
       jest.useRealTimers();
       jest.restoreAllMocks();
@@ -306,13 +319,20 @@ describe('NodeDiscoveryService (discovery module)', () => {
         }
       );
 
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-1' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-1',
+      });
 
       const scanPromise = service.scanForMainNodes();
 
       if (upHandler) {
         await upHandler({
-          txt: { nodeId: 'emit-node', name: 'Emit Node', version: '1.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'emit-node',
+            name: 'Emit Node',
+            version: '1.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.88'],
           host: 'emit-host',
           port: 3100,
@@ -539,7 +559,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
       mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
 
       // Return a service without a stop method
-      bonjourMock.__mockBonjour.publish.mockReturnValueOnce({ name: 'no-stop' });
+      bonjourMock.__mockBonjour.publish.mockReturnValueOnce({
+        name: 'no-stop',
+      });
 
       await service.onModuleInit();
       await expect(service.onModuleDestroy()).resolves.not.toThrow();
@@ -609,7 +631,12 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
       if (upHandler) {
         await upHandler({
-          txt: { nodeId: 'hw-node', name: 'HW Node', version: '1.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'hw-node',
+            name: 'HW Node',
+            version: '1.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.10'],
           host: 'hw-host',
           port: 3100,
@@ -641,14 +668,21 @@ describe('NodeDiscoveryService (discovery module)', () => {
         }
       );
 
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-2' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-2',
+      });
 
       const scanPromise = service.scanForMainNodes();
 
       // First add a node via 'up'
       if (handlers.up) {
         await (handlers.up as (svc: unknown) => Promise<void>)({
-          txt: { nodeId: 'down-node', name: 'Down Node', version: '1.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'down-node',
+            name: 'Down Node',
+            version: '1.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.20'],
           host: 'down-host',
           port: 3100,
@@ -863,14 +897,18 @@ describe('NodeDiscoveryService (discovery module)', () => {
     });
 
     it('should return willRestart=true and schedule process.exit on successful pairing', async () => {
-      const mockData = { nodeId: 'node-99', apiKey: 'abc123key456', name: 'Paired Node' };
+      const mockData = {
+        nodeId: 'node-99',
+        apiKey: 'abc123key456',
+        name: 'Paired Node',
+      };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(mockData),
       }) as unknown as typeof fetch;
 
       // Spy on fs via jest require mock at the module level
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+
       const fs = require('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {
@@ -884,7 +922,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
       const result = await service.completePairing('http://192.168.1.100:3100', '123456');
 
-      expect(result).toMatchObject({ nodeId: 'node-99', apiKey: 'abc123key456' });
+      expect(result).toMatchObject({
+        nodeId: 'node-99',
+        apiKey: 'abc123key456',
+      });
       expect((result as Record<string, unknown>).willRestart).toBe(true);
 
       jest.advanceTimersByTime(2100);
@@ -896,13 +937,16 @@ describe('NodeDiscoveryService (discovery module)', () => {
     });
 
     it('should throw when .env write fails during completePairing', async () => {
-      const mockData = { nodeId: 'node-88', apiKey: 'key888', name: 'Write Fail Node' };
+      const mockData = {
+        nodeId: 'node-88',
+        apiKey: 'key888',
+        name: 'Write Fail Node',
+      };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(mockData),
       }) as unknown as typeof fetch;
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const fs = require('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {

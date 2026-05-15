@@ -121,6 +121,9 @@ describe('RetrySchedulerService', () => {
         'Found 2 failed job(s) ready for retry'
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
+        'Found 2 failed job(s) ready for retry'
+      );
+      expect((service as any).logger.log).toHaveBeenCalledWith(
         'Background retry scheduler: 2 job(s) re-queued'
       );
     });

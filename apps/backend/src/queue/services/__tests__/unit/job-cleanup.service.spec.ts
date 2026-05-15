@@ -208,9 +208,15 @@ describe('JobCleanupService', () => {
 
     it('should handle multiple timed-out jobs', async () => {
       const timedOutJobs = [
-        createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
-        createMockJob('job-2', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
-        createMockJob('job-3', JobStage.ENCODING, twoHoursAgo, { startedAt: twoHoursAgo }),
+        createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, {
+          startedAt: threeHoursAgo,
+        }),
+        createMockJob('job-2', JobStage.ENCODING, threeHoursAgo, {
+          startedAt: threeHoursAgo,
+        }),
+        createMockJob('job-3', JobStage.ENCODING, twoHoursAgo, {
+          startedAt: twoHoursAgo,
+        }),
       ];
 
       jobRepository.findManySelect.mockResolvedValue(timedOutJobs);
@@ -224,8 +230,12 @@ describe('JobCleanupService', () => {
 
     it('should continue processing if one job update fails', async () => {
       const timedOutJobs = [
-        createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
-        createMockJob('job-2', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
+        createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, {
+          startedAt: threeHoursAgo,
+        }),
+        createMockJob('job-2', JobStage.ENCODING, threeHoursAgo, {
+          startedAt: threeHoursAgo,
+        }),
       ];
 
       jobRepository.findManySelect.mockResolvedValue(timedOutJobs);

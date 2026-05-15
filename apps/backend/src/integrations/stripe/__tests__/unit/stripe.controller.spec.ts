@@ -55,7 +55,10 @@ describe('StripeController', () => {
 
     it('should use provided returnUrl to build successUrl and cancelUrl', async () => {
       mockStripeService.isConfigured.mockReturnValue(true);
-      mockStripeService.createCheckoutSession.mockResolvedValue({ sessionId: 's', url: 'u' });
+      mockStripeService.createCheckoutSession.mockResolvedValue({
+        sessionId: 's',
+        url: 'u',
+      });
 
       const body = {
         email: 'user@example.com',
@@ -76,7 +79,10 @@ describe('StripeController', () => {
       mockStripeService.isConfigured.mockReturnValue(false);
 
       await expect(
-        controller.createCheckout({ email: 'user@example.com', priceId: 'price_123' })
+        controller.createCheckout({
+          email: 'user@example.com',
+          priceId: 'price_123',
+        })
       ).rejects.toThrow(BadRequestException);
 
       expect(mockStripeService.createCheckoutSession).not.toHaveBeenCalled();
@@ -185,7 +191,10 @@ describe('StripeController', () => {
         'https://billing.stripe.com/session/123'
       );
 
-      const body = { customerId: 'cus_abc123', returnUrl: 'https://myapp.com/settings' };
+      const body = {
+        customerId: 'cus_abc123',
+        returnUrl: 'https://myapp.com/settings',
+      };
       const result = await controller.getPortalUrl(body);
 
       expect(mockStripeService.getCustomerPortalUrl).toHaveBeenCalledWith(
@@ -224,7 +233,10 @@ describe('StripeController', () => {
       mockStripeService.getCustomerPortalUrl.mockRejectedValue(new Error('portal error'));
 
       await expect(
-        controller.getPortalUrl({ customerId: 'cus_abc', returnUrl: 'https://app.com' })
+        controller.getPortalUrl({
+          customerId: 'cus_abc',
+          returnUrl: 'https://app.com',
+        })
       ).rejects.toThrow('portal error');
     });
   });

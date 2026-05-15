@@ -68,46 +68,46 @@ BitBonsai is a **distributed media automation platform** built on a modern full-
 
 ### Frontend
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Angular** | 20.x | Modern web framework with standalone components |
-| **NgRx** | 20.x | Reactive state management (Redux pattern) |
-| **RxJS** | 7.8.x | Reactive programming, observables, streams |
-| **Socket.IO Client** | 4.8.x | Real-time WebSocket communication |
-| **Chart.js** | 4.5.x | Analytics visualizations |
-| **Tailwind CSS** | 3.4.x | Utility-first CSS framework |
-| **FontAwesome Pro** | 7.1.x | Icon library |
+| Technology           | Version | Purpose                                         |
+| -------------------- | ------- | ----------------------------------------------- |
+| **Angular**          | 20.x    | Modern web framework with standalone components |
+| **NgRx**             | 20.x    | Reactive state management (Redux pattern)       |
+| **RxJS**             | 7.8.x   | Reactive programming, observables, streams      |
+| **Socket.IO Client** | 4.8.x   | Real-time WebSocket communication               |
+| **Chart.js**         | 4.5.x   | Analytics visualizations                        |
+| **Tailwind CSS**     | 3.4.x   | Utility-first CSS framework                     |
+| **FontAwesome Pro**  | 7.1.x   | Icon library                                    |
 
 ### Backend
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **NestJS** | 11.x | Progressive Node.js framework (TypeScript) |
-| **Prisma** | 6.16.x | Next-generation ORM with type safety |
-| **Socket.IO** | 4.8.x | Real-time WebSocket server |
-| **BullMQ** | 5.x | Distributed job queue (Redis-backed) |
-| **Winston** | 3.18.x | Structured logging |
-| **FFmpeg** | 7.1+ | Media encoding engine |
-| **Passport JWT** | 4.0.x | Authentication strategy |
-| **Bonjour Service** | 1.3.x | mDNS service discovery |
+| Technology          | Version | Purpose                                    |
+| ------------------- | ------- | ------------------------------------------ |
+| **NestJS**          | 11.x    | Progressive Node.js framework (TypeScript) |
+| **Prisma**          | 6.16.x  | Next-generation ORM with type safety       |
+| **Socket.IO**       | 4.8.x   | Real-time WebSocket server                 |
+| **BullMQ**          | 5.x     | Distributed job queue (Redis-backed)       |
+| **Winston**         | 3.18.x  | Structured logging                         |
+| **FFmpeg**          | 7.1+    | Media encoding engine                      |
+| **Passport JWT**    | 4.0.x   | Authentication strategy                    |
+| **Bonjour Service** | 1.3.x   | mDNS service discovery                     |
 
 ### Database
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **PostgreSQL** | 16.x | Primary database (commercial tier) |
-| **SQLite** | 3.x | Embedded database (free tier) |
-| **Redis** | 7.x | Job queue and caching (commercial tier) |
+| Technology     | Version | Purpose                                 |
+| -------------- | ------- | --------------------------------------- |
+| **PostgreSQL** | 16.x    | Primary database (commercial tier)      |
+| **SQLite**     | 3.x     | Embedded database (free tier)           |
+| **Redis**      | 7.x     | Job queue and caching (commercial tier) |
 
 ### Build & Tooling
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Nx** | 22.x | Monorepo build system |
-| **Biome** | 2.2.x | Fast linter & formatter |
-| **Husky** | 9.x | Git hooks for quality gates |
-| **Playwright** | 1.56.x | E2E testing framework |
-| **Jest** | 30.x | Unit & integration testing |
+| Technology     | Version | Purpose                     |
+| -------------- | ------- | --------------------------- |
+| **Nx**         | 22.x    | Monorepo build system       |
+| **Biome**      | 2.2.x   | Fast linter & formatter     |
+| **Husky**      | 9.x     | Git hooks for quality gates |
+| **Playwright** | 1.56.x  | E2E testing framework       |
+| **Jest**       | 30.x    | Unit & integration testing  |
 
 ---
 
@@ -213,6 +213,7 @@ Service Layer (JobService)
 **Location:** `apps/backend/src/encoding/encoding-processor.service.ts`
 
 **Responsibilities:**
+
 - Executes FFmpeg encoding jobs
 - Manages temp file I/O (SSD cache pool support)
 - Implements TRUE RESUME (resume from timestamp)
@@ -220,6 +221,7 @@ Service Layer (JobService)
 - File verification after encoding
 
 **Key Methods:**
+
 - `processJob(job: EncodingJob)` - Main encoding orchestrator
 - `buildFFmpegCommand(job, outputPath)` - Construct FFmpeg args
 - `parseProgress(line: string)` - Extract FPS, % complete, ETA
@@ -227,6 +229,7 @@ Service Layer (JobService)
 - `replaceOriginalFile(job, outputPath)` - Atomic file replacement
 
 **FFmpeg Integration:**
+
 ```typescript
 // apps/backend/src/encoding/encoding-processor.service.ts:1200-1250
 
@@ -275,6 +278,7 @@ private buildFFmpegCommand(job: EncodingJob, outputPath: string): string[] {
 **Location:** `apps/backend/src/queue/services/auto-heal.service.ts`
 
 **Responsibilities:**
+
 - Scan for orphaned jobs on startup (ENCODING, HEALTH_CHECK, VERIFYING states)
 - 4-layer defense against Docker volume mount race conditions
 - Validate temp files for TRUE RESUME capability
@@ -361,6 +365,7 @@ async healOrphanedJobs(): Promise<void> {
 **Location:** `apps/backend/src/discovery/discovery.controller.ts`
 
 **Responsibilities:**
+
 - Broadcast mDNS service (`_bitbonsai._tcp.local`) for auto-discovery
 - Handle pairing requests from child nodes
 - Generate 6-digit pairing codes
@@ -368,6 +373,7 @@ async healOrphanedJobs(): Promise<void> {
 - Establish WebSocket connection for job distribution
 
 **mDNS Broadcast:**
+
 ```typescript
 // apps/backend/src/discovery/discovery.service.ts:30-50
 
@@ -392,6 +398,7 @@ private startMDNSBroadcast() {
 ```
 
 **Pairing Flow:**
+
 ```
 Child Node                         Main Node
      │                                  │
@@ -430,6 +437,7 @@ Child Node                         Main Node
 **Location:** `apps/backend/src/queue/queue.service.ts`
 
 **Responsibilities:**
+
 - Job queue management (FIFO with priority)
 - Distributed job processing across nodes
 - Concurrent job limits per node
@@ -437,6 +445,7 @@ Child Node                         Main Node
 - Job state persistence
 
 **Priority Queue:**
+
 ```typescript
 // apps/backend/src/queue/queue.service.ts:100-150
 
@@ -617,6 +626,7 @@ async selectBestNode(job: EncodingJob): Promise<Node> {
 ```
 
 **Capabilities Considered:**
+
 - **GPU Type**: NVENC, QSV, AMF, Apple Silicon
 - **Active Jobs**: Current load
 - **CPU Cores**: Parallel processing capacity
@@ -633,7 +643,7 @@ const targetNode = await this.selectBestNode(job);
 // Update node active jobs counter
 await this.prisma.node.update({
   where: { id: targetNode.id },
-  data: { activeJobs: { increment: 1 } }
+  data: { activeJobs: { increment: 1 } },
 });
 
 // Emit job via WebSocket
@@ -751,11 +761,13 @@ model RegistrationRequest {
 **Location:** `prisma/migrations/`
 
 **Recent Migrations:**
+
 - `20251106201008_add_node_registration_requests` - Node pairing system
 - `20251110150024_add_max_auto_heal_retries` - Auto-heal retry limits
 - `20251112183045_add_resume_position` - TRUE RESUME support
 
 **Running Migrations:**
+
 ```bash
 # Generate Prisma Client
 npx prisma generate
@@ -858,7 +870,7 @@ class WebSocketService {
   connect(): void {
     this.socket = io(environment.apiUrl, {
       transports: ['websocket'],
-      autoConnect: true
+      autoConnect: true,
     });
 
     // Job progress updates
@@ -896,7 +908,7 @@ export class WebSocketGateway {
       jobId: job.id,
       progress,
       fps: job.fps,
-      eta: job.eta
+      eta: job.eta,
     });
   }
 
@@ -953,6 +965,7 @@ All subsequent requests include:
 ### Guards & Middleware
 
 **Auth Guard:**
+
 ```typescript
 // apps/frontend/src/app/core/guards/auth.guard.ts
 
@@ -969,6 +982,7 @@ canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot) {
 ```
 
 **JWT Strategy:**
+
 ```typescript
 // apps/backend/src/auth/jwt.strategy.ts
 
@@ -1093,19 +1107,24 @@ model EncodingJob {
 ```typescript
 // apps/backend/src/queue/queue.service.ts
 
-const maxConcurrentJobs = this.configService.get<number>('MAX_CONCURRENT_JOBS', 2);
+const maxConcurrentJobs = this.configService.get<number>(
+  'MAX_CONCURRENT_JOBS',
+  2,
+);
 
 // Limit active jobs per node
 const activeJobs = await this.prisma.encodingJob.count({
   where: {
     nodeId: node.id,
-    stage: 'ENCODING'
-  }
+    stage: 'ENCODING',
+  },
 });
 
 if (activeJobs >= maxConcurrentJobs) {
-  this.logger.warn(`Node ${node.name} at max capacity (${activeJobs}/${maxConcurrentJobs})`);
-  return;  // Don't assign more jobs
+  this.logger.warn(
+    `Node ${node.name} at max capacity (${activeJobs}/${maxConcurrentJobs})`,
+  );
+  return; // Don't assign more jobs
 }
 ```
 

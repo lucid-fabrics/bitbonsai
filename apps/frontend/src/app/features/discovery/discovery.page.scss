@@ -173,7 +173,11 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: 10%) 100%);
+    background: linear-gradient(
+      135deg,
+      $accent-primary 0%,
+      color.adjust($accent-primary, $lightness: 10%) 100%
+    );
     color: $text-dark;
     padding: 4px 12px;
     border-radius: 12px;
@@ -707,7 +711,8 @@
 // ============================================
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -716,7 +721,8 @@
 }
 
 @keyframes pulse-border {
-  0%, 100% {
+  0%,
+  100% {
     border-color: $border-secondary;
   }
   50% {
@@ -1024,7 +1030,11 @@
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: 10%) 100%);
+    background: linear-gradient(
+      135deg,
+      $accent-primary 0%,
+      color.adjust($accent-primary, $lightness: 10%) 100%
+    );
     color: $text-dark;
     border-radius: 6px;
     font-size: 11px;

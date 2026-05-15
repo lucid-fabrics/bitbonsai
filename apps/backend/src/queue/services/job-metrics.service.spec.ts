@@ -4,7 +4,7 @@ import { JobMetricsService } from './job-metrics.service';
 
 describe('JobMetricsService', () => {
   let service: JobMetricsService;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let prisma: any;
 
   const baseJob = {
@@ -47,7 +47,9 @@ describe('JobMetricsService', () => {
     it('should upsert metric and create processed-job record on success', async () => {
       prisma.metricsProcessedJob.findUnique.mockResolvedValue(null);
       prisma.metric.upsert.mockResolvedValue({} as never);
-      prisma.node.findUnique.mockResolvedValue({ avgEncodingSpeed: 20.0 } as never);
+      prisma.node.findUnique.mockResolvedValue({
+        avgEncodingSpeed: 20.0,
+      } as never);
       prisma.node.update.mockResolvedValue({} as never);
       prisma.metricsProcessedJob.create.mockResolvedValue({} as never);
 
@@ -92,7 +94,9 @@ describe('JobMetricsService', () => {
     it('should update node avgEncodingSpeed when job has fps', async () => {
       prisma.metricsProcessedJob.findUnique.mockResolvedValue(null);
       prisma.metric.upsert.mockResolvedValue({} as never);
-      prisma.node.findUnique.mockResolvedValue({ avgEncodingSpeed: 20.0 } as never);
+      prisma.node.findUnique.mockResolvedValue({
+        avgEncodingSpeed: 20.0,
+      } as never);
       prisma.node.update.mockResolvedValue({} as never);
       prisma.metricsProcessedJob.create.mockResolvedValue({} as never);
 
@@ -101,7 +105,9 @@ describe('JobMetricsService', () => {
       expect(prisma.node.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'node-1' },
-          data: expect.objectContaining({ avgEncodingSpeed: expect.any(Number) }),
+          data: expect.objectContaining({
+            avgEncodingSpeed: expect.any(Number),
+          }),
         })
       );
       // Exponential moving average: 20 * 0.7 + 30 * 0.3 = 23
@@ -114,7 +120,9 @@ describe('JobMetricsService', () => {
     it('should use fps as initial avgEncodingSpeed when node has no previous value', async () => {
       prisma.metricsProcessedJob.findUnique.mockResolvedValue(null);
       prisma.metric.upsert.mockResolvedValue({} as never);
-      prisma.node.findUnique.mockResolvedValue({ avgEncodingSpeed: null } as never);
+      prisma.node.findUnique.mockResolvedValue({
+        avgEncodingSpeed: null,
+      } as never);
       prisma.node.update.mockResolvedValue({} as never);
       prisma.metricsProcessedJob.create.mockResolvedValue({} as never);
 
@@ -143,7 +151,9 @@ describe('JobMetricsService', () => {
 
       const txMock = {
         metricsProcessedJob: { findUnique: jest.fn().mockResolvedValue(null) },
-        metric: { upsert: jest.fn().mockRejectedValue(new Error('DB constraint violation')) },
+        metric: {
+          upsert: jest.fn().mockRejectedValue(new Error('DB constraint violation')),
+        },
         node: { findUnique: jest.fn(), update: jest.fn() },
       } as unknown as Parameters<typeof service.updateMetrics>[1];
 

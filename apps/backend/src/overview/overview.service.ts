@@ -22,7 +22,11 @@ import type {
 @Injectable()
 export class OverviewService {
   private readonly logger = new Logger(OverviewService.name);
-  private lastCpuMeasure: { idle: number; total: number; timestamp: number } | null = null;
+  private lastCpuMeasure: {
+    idle: number;
+    total: number;
+    timestamp: number;
+  } | null = null;
 
   constructor(
     private readonly jobRepository: JobRepository,
@@ -52,7 +56,11 @@ export class OverviewService {
 
     // If we don't have a previous measure, store current and return 0
     if (!this.lastCpuMeasure) {
-      this.lastCpuMeasure = { idle: totalIdle, total: totalTick, timestamp: now };
+      this.lastCpuMeasure = {
+        idle: totalIdle,
+        total: totalTick,
+        timestamp: now,
+      };
       return 0;
     }
 
@@ -361,7 +369,9 @@ export class OverviewService {
     );
 
     // Get failed job counts per node
-    const failedCounts = await this.jobRepository.groupByNodeIdCount({ stage: JobStage.FAILED });
+    const failedCounts = await this.jobRepository.groupByNodeIdCount({
+      stage: JobStage.FAILED,
+    });
 
     // Get queued jobs per node (for time estimation)
     const queuedJobsByNode = await this.jobRepository.groupByNodeIdCount({
@@ -373,7 +383,11 @@ export class OverviewService {
       startedAt: Date | null;
       completedAt: Date | null;
     }>(
-      { stage: JobStage.COMPLETED, startedAt: { not: null }, completedAt: { not: null } },
+      {
+        stage: JobStage.COMPLETED,
+        startedAt: { not: null },
+        completedAt: { not: null },
+      },
       { startedAt: true, completedAt: true }
     );
 

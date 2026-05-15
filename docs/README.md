@@ -9,6 +9,7 @@ Welcome to the BitBonsai documentation! This guide will help you install, config
 ## Quick Navigation
 
 ### Getting Started
+
 Start here if you're new to BitBonsai:
 
 - **[Getting Started Guide](./user/getting-started.md)** - Quick start for new users
@@ -17,6 +18,7 @@ Start here if you're new to BitBonsai:
 - **[Encoding Policies](./user/encoding-policies.md)** - Policy system explained
 
 ### Development
+
 For developers contributing to BitBonsai:
 
 - **[Architecture Overview](./development/architecture.md)** - System design and architecture
@@ -24,6 +26,7 @@ For developers contributing to BitBonsai:
 - **[Features](./development/features/)** - Feature implementation documentation
 
 ### Releases
+
 Platform-specific release documentation:
 
 - **[Unraid Release Guide](./releases/unraid.md)** - Unraid Community Apps release process
@@ -83,6 +86,7 @@ docs/
 ## Key Features
 
 ### TRUE RESUME & Auto-Heal
+
 Never lose encoding progress again. BitBonsai's revolutionary crash recovery:
 
 - **TRUE RESUME** - Resume from exact timestamp after crashes
@@ -92,6 +96,7 @@ Never lose encoding progress again. BitBonsai's revolutionary crash recovery:
 Learn more: [Architecture - Auto-Heal System](./development/architecture.md#auto-heal-system)
 
 ### Priority Queue
+
 Dynamic job prioritization with visual indicators:
 
 - Pin urgent jobs to the top
@@ -101,6 +106,7 @@ Dynamic job prioritization with visual indicators:
 Learn more: [Getting Started - Queue Management](./user/getting-started.md#queue-management)
 
 ### Multi-Node Architecture
+
 Scale from single node to 100+ encoding nodes:
 
 - **Auto-discovery** via mDNS/Bonjour
@@ -114,11 +120,13 @@ Learn more: [Architecture - Distributed Encoding](./development/architecture.md#
 ## Support
 
 ### Community Support (Free Tier)
+
 - [GitHub Discussions](https://github.com/lucidfabrics/bitbonsai/discussions)
 - [GitHub Issues](https://github.com/lucidfabrics/bitbonsai/issues)
 - [Discord Community](https://discord.gg/lucidfabrics)
 
 ### Commercial Support
+
 - **Starter**: Email (48h response)
 - **Professional**: Email (24h response)
 - **Enterprise**: Slack/Phone (4h response) + SLA

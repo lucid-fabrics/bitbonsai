@@ -76,7 +76,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should find file by exact size match via filesystem', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => {
         // Only original dir exists
         return p === '/media/movies';
@@ -84,7 +86,13 @@ describe('FileRelocatorService', () => {
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
         if (dir === '/media/movies' && opts?.withFileTypes) {
-          return [{ name: 'renamed.mkv', isFile: () => true, isDirectory: () => false }];
+          return [
+            {
+              name: 'renamed.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
         }
         if (opts?.withFileTypes) {
           return []; // No sibling dirs
@@ -103,7 +111,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should return not found when no candidates match', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.relocateFile('/media/movies/gone.mkv', 1024);
@@ -115,12 +125,20 @@ describe('FileRelocatorService', () => {
     });
 
     it('should skip original path in candidates', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
         if (dir === '/media/movies' && opts?.withFileTypes) {
-          return [{ name: 'original.mkv', isFile: () => true, isDirectory: () => false }];
+          return [
+            {
+              name: 'original.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
         }
         return [];
       });
@@ -133,14 +151,24 @@ describe('FileRelocatorService', () => {
     });
 
     it('should skip non-video files', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
         if (dir === '/media/movies' && opts?.withFileTypes) {
           return [
-            { name: 'metadata.nfo', isFile: () => true, isDirectory: () => false },
-            { name: 'poster.jpg', isFile: () => true, isDirectory: () => false },
+            {
+              name: 'metadata.nfo',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'poster.jpg',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
           ];
         }
         return [];
@@ -153,7 +181,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should handle bigint expectedSizeBytes', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.relocateFile('/media/movies/test.mkv', BigInt(1073741824));
@@ -162,7 +192,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should find file by fuzzy name match when size does not match', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
@@ -190,7 +222,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should assign matchType "both" when size and name both match', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
@@ -216,7 +250,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should assign confidence 85 for size match with low name similarity', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
@@ -242,12 +278,20 @@ describe('FileRelocatorService', () => {
     });
 
     it('should skip files where statSync throws', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
         if (dir === '/media/movies' && opts?.withFileTypes) {
-          return [{ name: 'locked.mkv', isFile: () => true, isDirectory: () => false }];
+          return [
+            {
+              name: 'locked.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
         }
         return [];
       });
@@ -263,7 +307,9 @@ describe('FileRelocatorService', () => {
     });
 
     it('should skip directories where readdirSync throws', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation(() => {
@@ -276,16 +322,34 @@ describe('FileRelocatorService', () => {
     });
 
     it('should count searchedPaths correctly across multiple video files', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({ found: false });
+      mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
+        found: false,
+      });
       (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
         if (dir === '/media/movies' && opts?.withFileTypes) {
           return [
-            { name: 'movie-a.mkv', isFile: () => true, isDirectory: () => false },
-            { name: 'movie-b.mp4', isFile: () => true, isDirectory: () => false },
-            { name: 'movie-c.avi', isFile: () => true, isDirectory: () => false },
-            { name: 'subtitle.srt', isFile: () => true, isDirectory: () => false }, // non-video
+            {
+              name: 'movie-a.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'movie-b.mp4',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'movie-c.avi',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'subtitle.srt',
+              isFile: () => true,
+              isDirectory: () => false,
+            }, // non-video
           ];
         }
         return [];

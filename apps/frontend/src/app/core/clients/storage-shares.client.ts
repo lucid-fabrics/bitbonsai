@@ -195,7 +195,9 @@ export class StorageSharesClient {
    * Unmount a storage share
    */
   unmountShare(id: string, force = false): Observable<MountResult> {
-    return this.http.post<MountResult>(`${this.apiUrl}/${id}/unmount`, { force });
+    return this.http.post<MountResult>(`${this.apiUrl}/${id}/unmount`, {
+      force,
+    });
   }
 
   /**
@@ -235,13 +237,18 @@ export class StorageSharesClient {
   /**
    * Auto-detect and auto-mount storage shares
    */
-  autoDetectAndMount(
-    nodeId: string
-  ): Observable<{ detected: number; created: number; mounted: number; errors: string[] }> {
-    return this.http.post<{ detected: number; created: number; mounted: number; errors: string[] }>(
-      `${this.apiUrl}/node/${nodeId}/auto-detect-and-mount`,
-      {}
-    );
+  autoDetectAndMount(nodeId: string): Observable<{
+    detected: number;
+    created: number;
+    mounted: number;
+    errors: string[];
+  }> {
+    return this.http.post<{
+      detected: number;
+      created: number;
+      mounted: number;
+      errors: string[];
+    }>(`${this.apiUrl}/node/${nodeId}/auto-detect-and-mount`, {});
   }
 
   /**

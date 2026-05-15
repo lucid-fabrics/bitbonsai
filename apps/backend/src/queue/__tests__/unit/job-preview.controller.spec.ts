@@ -88,7 +88,11 @@ describe('JobPreviewController', () => {
     it('proxies request to MAIN node and forwards image', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
       mockHttpService.get.mockReturnValue(
-        of({ status: 200, headers: { 'content-type': 'image/jpeg' }, data: Buffer.from('img') })
+        of({
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+          data: Buffer.from('img'),
+        })
       );
 
       const res = makeRes();
@@ -162,7 +166,9 @@ describe('JobPreviewController', () => {
 
     it('returns 204 when requested preview index does not exist', async () => {
       mockQueueService.findOne.mockResolvedValue(
-        makeJob({ previewImagePaths: JSON.stringify(['/previews/job-1/preview_1.jpg']) })
+        makeJob({
+          previewImagePaths: JSON.stringify(['/previews/job-1/preview_1.jpg']),
+        })
       );
       const res = makeRes();
       await controller.getPreviewImage('job-1', '5', res);
@@ -225,7 +231,10 @@ describe('JobPreviewController', () => {
 
     it('throws BadRequestException when progress is null', async () => {
       mockQueueService.findOne.mockResolvedValue(
-        makeJob({ stage: JobStage.ENCODING, progress: null as unknown as number })
+        makeJob({
+          stage: JobStage.ENCODING,
+          progress: null as unknown as number,
+        })
       );
       existsSyncMock.mockReturnValue(true);
       await expect(controller.capturePreview('job-1')).rejects.toThrow(BadRequestException);

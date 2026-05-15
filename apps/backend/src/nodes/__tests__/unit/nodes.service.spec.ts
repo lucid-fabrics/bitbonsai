@@ -156,7 +156,9 @@ describe('NodesService', () => {
     };
 
     it('should register a new node as MAIN role when no nodes exist', async () => {
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+      });
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null); // no duplicate MAIN
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
@@ -457,7 +459,9 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+      });
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
@@ -476,7 +480,9 @@ describe('NodesService', () => {
         acceleration: AccelerationType.NVIDIA,
       };
 
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+      });
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
@@ -495,7 +501,9 @@ describe('NodesService', () => {
 
       const now = Date.now();
       const futureExpiration = new Date(now + 10 * 60 * 1000);
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({ ...mockLicense });
+      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
+        ...mockLicense,
+      });
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue({
         ...mockNode,
@@ -618,7 +626,10 @@ describe('NodesService', () => {
       mockNodeRepo.findManyByIp.mockResolvedValue([]);
       const mainNodeNoIp = { ...mockNode, ipAddress: null };
       mockNodeRepo.findManyByRole.mockResolvedValue([mainNodeNoIp]);
-      mockNodeRepo.updateData.mockResolvedValue({ ...mainNodeNoIp, ipAddress: '192.168.1.100' });
+      mockNodeRepo.updateData.mockResolvedValue({
+        ...mainNodeNoIp,
+        ipAddress: '192.168.1.100',
+      });
 
       const result = await service.getCurrentNode();
 
@@ -641,7 +652,10 @@ describe('NodesService', () => {
         ipAddress: null,
       };
       mockNodeRepo.findManyByRole.mockResolvedValue([mainNode1, mainNode2]);
-      mockNodeRepo.updateData.mockResolvedValue({ ...mainNode2, ipAddress: '192.168.1.100' });
+      mockNodeRepo.updateData.mockResolvedValue({
+        ...mainNode2,
+        ipAddress: '192.168.1.100',
+      });
 
       const result = await service.getCurrentNode();
 
@@ -653,7 +667,10 @@ describe('NodesService', () => {
       mockNodeRepo.findManyByRole.mockResolvedValue([]);
       const lNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: null };
       mockNodeRepo.findFirstByRole.mockResolvedValue(lNode);
-      mockNodeRepo.updateData.mockResolvedValue({ ...lNode, ipAddress: '192.168.1.100' });
+      mockNodeRepo.updateData.mockResolvedValue({
+        ...lNode,
+        ipAddress: '192.168.1.100',
+      });
 
       const result = await service.getCurrentNode();
 
@@ -685,7 +702,10 @@ describe('NodesService', () => {
     });
 
     it('should throw BadRequestException when maxWorkers is critically too high', async () => {
-      mockNodeRepo.findById.mockResolvedValue({ ...mockNode, acceleration: AccelerationType.CPU });
+      mockNodeRepo.findById.mockResolvedValue({
+        ...mockNode,
+        acceleration: AccelerationType.CPU,
+      });
 
       // Set absurdly high workers (>2x recommended for any CPU count)
       await expect(service.update('node-1', { maxWorkers: 9999 })).rejects.toThrow(
@@ -695,7 +715,10 @@ describe('NodesService', () => {
 
     it('should allow updating maxWorkers at or below 2x recommended', async () => {
       const updatedNode = { ...mockNode, maxWorkers: 2 };
-      mockNodeRepo.findById.mockResolvedValue({ ...mockNode, acceleration: AccelerationType.CPU });
+      mockNodeRepo.findById.mockResolvedValue({
+        ...mockNode,
+        acceleration: AccelerationType.CPU,
+      });
       mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
       // 2 workers should be safe for any CPU count
@@ -705,7 +728,11 @@ describe('NodesService', () => {
     });
 
     it('should update optional fields when provided', async () => {
-      const updatedNode = { ...mockNode, publicUrl: 'https://node.example.com', cpuLimit: 80 };
+      const updatedNode = {
+        ...mockNode,
+        publicUrl: 'https://node.example.com',
+        cpuLimit: 80,
+      };
       mockNodeRepo.findById.mockResolvedValue(mockNode);
       mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
@@ -776,7 +803,11 @@ describe('NodesService', () => {
 
   describe('heartbeat', () => {
     it('should use IP from heartbeat payload for LINKED nodes', async () => {
-      const linkedNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: '10.0.0.2' };
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        ipAddress: '10.0.0.2',
+      };
       const updatedNode = { ...linkedNode, ipAddress: '192.168.2.50' };
       mockNodeRepo.findById.mockResolvedValue(linkedNode);
       mockNodeRepo.updateData.mockResolvedValue(updatedNode);
@@ -790,7 +821,11 @@ describe('NodesService', () => {
     });
 
     it('should auto-detect IP for MAIN node heartbeat when no IP in payload', async () => {
-      const mainNode = { ...mockNode, role: NodeRole.MAIN, ipAddress: '10.0.0.1' };
+      const mainNode = {
+        ...mockNode,
+        role: NodeRole.MAIN,
+        ipAddress: '10.0.0.1',
+      };
       const updatedNode = { ...mainNode, ipAddress: '192.168.1.100' };
       mockNodeRepo.findById.mockResolvedValue(mainNode);
       mockNodeRepo.updateData.mockResolvedValue(updatedNode);
@@ -804,7 +839,11 @@ describe('NodesService', () => {
     });
 
     it('should include ipAddress in update for MAIN node auto-detect even when unchanged', async () => {
-      const mainNode = { ...mockNode, role: NodeRole.MAIN, ipAddress: '192.168.1.100' };
+      const mainNode = {
+        ...mockNode,
+        role: NodeRole.MAIN,
+        ipAddress: '192.168.1.100',
+      };
       mockNodeRepo.findById.mockResolvedValue(mainNode);
       mockNodeRepo.updateData.mockResolvedValue(mainNode);
 
@@ -826,12 +865,17 @@ describe('NodesService', () => {
         pairingToken: null,
         pairingExpiresAt: null,
       };
-      mockNodeRepo.findFirst.mockResolvedValue({ ...mockNode, pairingToken: '123456' });
+      mockNodeRepo.findFirst.mockResolvedValue({
+        ...mockNode,
+        pairingToken: '123456',
+      });
       mockNodeRepo.updateData.mockResolvedValue(linkedNode);
 
       const nodeRegistration = (
         service as unknown as {
-          nodeRegistration: { storageShareService: { autoDetectAndMount: jest.Mock } };
+          nodeRegistration: {
+            storageShareService: { autoDetectAndMount: jest.Mock };
+          };
         }
       ).nodeRegistration;
       nodeRegistration.storageShareService.autoDetectAndMount = jest.fn().mockResolvedValue({
@@ -858,12 +902,17 @@ describe('NodesService', () => {
         pairingToken: null,
         pairingExpiresAt: null,
       };
-      mockNodeRepo.findFirst.mockResolvedValue({ ...mockNode, pairingToken: '123456' });
+      mockNodeRepo.findFirst.mockResolvedValue({
+        ...mockNode,
+        pairingToken: '123456',
+      });
       mockNodeRepo.updateData.mockResolvedValue(mainNode);
 
       const nodeRegistration = (
         service as unknown as {
-          nodeRegistration: { storageShareService: { autoDetectAndMount: jest.Mock } };
+          nodeRegistration: {
+            storageShareService: { autoDetectAndMount: jest.Mock };
+          };
         }
       ).nodeRegistration;
       nodeRegistration.storageShareService.autoDetectAndMount = jest.fn();
@@ -888,7 +937,10 @@ describe('NodesService', () => {
         ...mockLicense,
         _count: { nodes: 1 },
       });
-      mockNodeRepo.createNode.mockResolvedValue({ ...mockNode, role: NodeRole.LINKED });
+      mockNodeRepo.createNode.mockResolvedValue({
+        ...mockNode,
+        role: NodeRole.LINKED,
+      });
 
       const result = await service.registerNode({ name: 'Child Node' } as any);
 
@@ -916,7 +968,10 @@ describe('NodesService', () => {
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(mockNode); // existing MAIN found
 
       await expect(
-        service.registerNode({ name: 'Duplicate', licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX' } as any)
+        service.registerNode({
+          name: 'Duplicate',
+          licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
+        } as any)
       ).rejects.toThrow(ConflictException);
     });
 
@@ -928,7 +983,9 @@ describe('NodesService', () => {
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
-      await service.registerNode({ licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX' } as any);
+      await service.registerNode({
+        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
+      } as any);
 
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Main Node 1' })
@@ -943,7 +1000,10 @@ describe('NodesService', () => {
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
-      await service.registerNode({ licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX', name: 'Test' } as any);
+      await service.registerNode({
+        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
+        name: 'Test',
+      } as any);
 
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
         expect.objectContaining({ acceleration: 'CPU' })
@@ -989,7 +1049,11 @@ describe('NodesService', () => {
   describe('unregisterSelf', () => {
     it('should throw BadRequestException when called on MAIN node', async () => {
       // getCurrentNode falls back to role-based: finds MAIN node
-      const mainNode = { ...mockNode, role: NodeRole.MAIN, ipAddress: '192.168.1.100' };
+      const mainNode = {
+        ...mockNode,
+        role: NodeRole.MAIN,
+        ipAddress: '192.168.1.100',
+      };
       mockNodeRepo.findManyByIp.mockResolvedValue([mainNode]);
 
       await expect(service.unregisterSelf()).rejects.toThrow(BadRequestException);
@@ -1046,7 +1110,11 @@ describe('NodesService', () => {
 
   describe('heartbeat (IP logic edge cases)', () => {
     it('should not include ipAddress in update for LINKED node with no IP in payload', async () => {
-      const linkedNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: '10.0.0.5' };
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        ipAddress: '10.0.0.5',
+      };
       mockNodeRepo.findById.mockResolvedValue(linkedNode);
       mockNodeRepo.updateData.mockResolvedValue(linkedNode);
 
@@ -1058,7 +1126,11 @@ describe('NodesService', () => {
     });
 
     it('should not call updateData with ipAddress when LINKED node IP payload matches stored IP', async () => {
-      const linkedNode = { ...mockNode, role: NodeRole.LINKED, ipAddress: '192.168.2.50' };
+      const linkedNode = {
+        ...mockNode,
+        role: NodeRole.LINKED,
+        ipAddress: '192.168.2.50',
+      };
       mockNodeRepo.findById.mockResolvedValue(linkedNode);
       mockNodeRepo.updateData.mockResolvedValue(linkedNode);
 
@@ -1076,7 +1148,10 @@ describe('NodesService', () => {
   describe('getNodeStats (additional)', () => {
     it('should compute uptimeSeconds from createdAt timestamp', async () => {
       const twoMinutesAgo = new Date(Date.now() - 120 * 1000);
-      const nodeWithOldDate = { ...mockNodeWithStats, createdAt: twoMinutesAgo };
+      const nodeWithOldDate = {
+        ...mockNodeWithStats,
+        createdAt: twoMinutesAgo,
+      };
       mockNodeRepo.findWithStats.mockResolvedValue(nodeWithOldDate);
 
       const result = await service.getNodeStats('node-1');
@@ -1165,7 +1240,10 @@ describe('NodesService', () => {
   describe('update (maxWorkers boundary)', () => {
     it('should not throw when maxWorkers is exactly 2x recommended', async () => {
       // Get the actual recommended value first by calling with a low count
-      mockNodeRepo.findById.mockResolvedValue({ ...mockNode, acceleration: AccelerationType.CPU });
+      mockNodeRepo.findById.mockResolvedValue({
+        ...mockNode,
+        acceleration: AccelerationType.CPU,
+      });
       const updatedNode = { ...mockNode, maxWorkers: 4 };
       mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
@@ -1317,7 +1395,9 @@ describe('NodesService', () => {
     it('should skip IP match when systemInfo returns no IP address', async () => {
       // Override systemInfoService to return no IP
       const systemInfoService = (
-        service as unknown as { systemInfoService: { collectSystemInfo: jest.Mock } }
+        service as unknown as {
+          systemInfoService: { collectSystemInfo: jest.Mock };
+        }
       ).systemInfoService;
       systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: null });
 
@@ -1335,7 +1415,9 @@ describe('NodesService', () => {
     it('should skip IP update in autoUpdateIpIfNeeded when currentIpAddress is 127.0.0.1', async () => {
       process.env.NODE_ID = 'node-1';
       const systemInfoService = (
-        service as unknown as { systemInfoService: { collectSystemInfo: jest.Mock } }
+        service as unknown as {
+          systemInfoService: { collectSystemInfo: jest.Mock };
+        }
       ).systemInfoService;
       systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' });
 
@@ -1351,11 +1433,18 @@ describe('NodesService', () => {
 
   describe('testNodeCapabilities', () => {
     it('should return capability results with test phases', async () => {
-      const nodeWithIp = { ...mockNode, ipAddress: '192.168.1.50', cpuCores: 4, ramGB: 16 };
+      const nodeWithIp = {
+        ...mockNode,
+        ipAddress: '192.168.1.50',
+        cpuCores: 4,
+        ramGB: 16,
+      };
       mockNodeRepo.findById.mockResolvedValue(nodeWithIp);
 
       const capabilityDetector = (
-        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+        service as unknown as {
+          capabilityDetector: { detectCapabilities: jest.Mock };
+        }
       ).capabilityDetector;
       capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
         latencyMs: 5,
@@ -1388,7 +1477,9 @@ describe('NodesService', () => {
       mockNodeRepo.findById.mockResolvedValue(nodeNoIp);
 
       const capabilityDetector = (
-        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+        service as unknown as {
+          capabilityDetector: { detectCapabilities: jest.Mock };
+        }
       ).capabilityDetector;
       capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
         latencyMs: 10,
@@ -1418,7 +1509,9 @@ describe('NodesService', () => {
       mockNodeRepo.findById.mockResolvedValue(nodeNoIp);
 
       const capabilityDetector = (
-        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+        service as unknown as {
+          capabilityDetector: { detectCapabilities: jest.Mock };
+        }
       ).capabilityDetector;
       capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
         latencyMs: 1,
@@ -1434,11 +1527,18 @@ describe('NodesService', () => {
     });
 
     it('should report sharedStorage status as warning when hasSharedStorage is false', async () => {
-      const nodeWithIp = { ...mockNode, ipAddress: '192.168.1.50', cpuCores: 4, ramGB: 16 };
+      const nodeWithIp = {
+        ...mockNode,
+        ipAddress: '192.168.1.50',
+        cpuCores: 4,
+        ramGB: 16,
+      };
       mockNodeRepo.findById.mockResolvedValue(nodeWithIp);
 
       const capabilityDetector = (
-        service as unknown as { capabilityDetector: { detectCapabilities: jest.Mock } }
+        service as unknown as {
+          capabilityDetector: { detectCapabilities: jest.Mock };
+        }
       ).capabilityDetector;
       capabilityDetector.detectCapabilities = jest.fn().mockResolvedValue({
         latencyMs: 5,

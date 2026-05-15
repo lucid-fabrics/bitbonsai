@@ -28,7 +28,11 @@ describe('QueueProcessingService', () => {
   beforeEach(async () => {
     mockPrisma = {
       policy: { findMany: jest.fn().mockResolvedValue([]) },
-      job: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn(), update: jest.fn() },
+      job: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
       node: { findUnique: jest.fn() },
       library: { findUnique: jest.fn() },
       $transaction: jest.fn(),
@@ -191,7 +195,10 @@ describe('QueueProcessingService', () => {
         codec: 'h264',
         container: 'mkv',
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: false,
+      });
       mockJobCrudService.create.mockResolvedValue({ id: 'job-1' } as any);
 
       await service.handleFileDetected({
@@ -282,7 +289,10 @@ describe('QueueProcessingService', () => {
         codec: 'hevc',
         container: 'mp4', // different container
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: false,
+      });
       mockJobCrudService.create.mockResolvedValue({ id: 'job-remux' } as any);
 
       await service.handleFileDetected({
@@ -318,8 +328,13 @@ describe('QueueProcessingService', () => {
         codec: 'hevc',
         container: 'mkv',
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
-      mockJobCrudService.create.mockResolvedValue({ id: 'job-reencode' } as any);
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: false,
+      });
+      mockJobCrudService.create.mockResolvedValue({
+        id: 'job-reencode',
+      } as any);
 
       await service.handleFileDetected({
         libraryId: 'lib-1',
@@ -354,7 +369,10 @@ describe('QueueProcessingService', () => {
         codec: 'av1',
         container: 'mkv',
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: false,
+      });
       mockJobCrudService.create.mockResolvedValue({ id: 'job-av1' } as any);
 
       await service.handleFileDetected({
@@ -391,7 +409,10 @@ describe('QueueProcessingService', () => {
         codec: 'h264',
         container: 'mkv',
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: false });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: false,
+      });
       mockJobCrudService.create.mockRejectedValue(
         new BadRequestException('Job already exists for this file')
       );
@@ -449,7 +470,9 @@ describe('QueueProcessingService', () => {
         .mockResolvedValueOnce({ id: 'node-child', hasSharedStorage: false }) // targetNode
         .mockResolvedValueOnce({ id: 'node-main', hasSharedStorage: true }); // sourceNode
 
-      mockJobCrudService.create.mockResolvedValue({ id: 'job-transfer' } as any);
+      mockJobCrudService.create.mockResolvedValue({
+        id: 'job-transfer',
+      } as any);
       mockFileTransferService.transferFile.mockResolvedValue(undefined);
 
       await service.handleFileDetected({
@@ -487,7 +510,10 @@ describe('QueueProcessingService', () => {
       });
 
       // Always return claimFailed
-      mockPrisma.$transaction.mockResolvedValue({ claimFailed: true, attemptedJobId: 'job-x' });
+      mockPrisma.$transaction.mockResolvedValue({
+        claimFailed: true,
+        attemptedJobId: 'job-x',
+      });
 
       const result = await service.getNextJob('node-1');
       expect(result).toBeNull();
@@ -554,7 +580,10 @@ describe('QueueProcessingService', () => {
         .Test.createTestingModule({
           providers: [
             (await import('./queue-processing.service')).QueueProcessingService,
-            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../prisma/prisma.service').PrismaService,
+              useValue: mockPrisma,
+            },
             {
               provide: require('../../common/repositories/job.repository').JobRepository,
               useValue: mockJobRepoFull,
@@ -583,7 +612,10 @@ describe('QueueProcessingService', () => {
               provide: require('../../core/services/node-config.service').NodeConfigService,
               useValue: mockNodeConfig,
             },
-            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('@nestjs/axios').HttpService,
+              useValue: mockHttpService,
+            },
             {
               provide: require('./queue-job-crud.service').QueueJobCrudService,
               useValue: mockJobCrudService,
@@ -632,7 +664,10 @@ describe('QueueProcessingService', () => {
         .Test.createTestingModule({
           providers: [
             (await import('./queue-processing.service')).QueueProcessingService,
-            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../prisma/prisma.service').PrismaService,
+              useValue: mockPrisma,
+            },
             {
               provide: require('../../common/repositories/job.repository').JobRepository,
               useValue: mockJobRepoOrphan,
@@ -661,7 +696,10 @@ describe('QueueProcessingService', () => {
               provide: require('../../core/services/node-config.service').NodeConfigService,
               useValue: mockNodeConfig,
             },
-            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('@nestjs/axios').HttpService,
+              useValue: mockHttpService,
+            },
             {
               provide: require('./queue-job-crud.service').QueueJobCrudService,
               useValue: mockJobCrudService,
@@ -695,7 +733,10 @@ describe('QueueProcessingService', () => {
         .Test.createTestingModule({
           providers: [
             (await import('./queue-processing.service')).QueueProcessingService,
-            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../prisma/prisma.service').PrismaService,
+              useValue: mockPrisma,
+            },
             {
               provide: require('../../common/repositories/job.repository').JobRepository,
               useValue: mockJobRepoEmpty,
@@ -724,7 +765,10 @@ describe('QueueProcessingService', () => {
               provide: require('../../core/services/node-config.service').NodeConfigService,
               useValue: mockNodeConfig,
             },
-            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('@nestjs/axios').HttpService,
+              useValue: mockHttpService,
+            },
             {
               provide: require('./queue-job-crud.service').QueueJobCrudService,
               useValue: mockJobCrudService,
@@ -768,7 +812,10 @@ describe('QueueProcessingService', () => {
         .Test.createTestingModule({
           providers: [
             (await import('./queue-processing.service')).QueueProcessingService,
-            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../prisma/prisma.service').PrismaService,
+              useValue: mockPrisma,
+            },
             {
               provide: require('../../common/repositories/job.repository').JobRepository,
               useValue: mockJobRepoFallback,
@@ -797,7 +844,10 @@ describe('QueueProcessingService', () => {
               provide: require('../../core/services/node-config.service').NodeConfigService,
               useValue: mockNodeConfig,
             },
-            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('@nestjs/axios').HttpService,
+              useValue: mockHttpService,
+            },
             {
               provide: require('./queue-job-crud.service').QueueJobCrudService,
               useValue: mockJobCrudService,
@@ -851,7 +901,10 @@ describe('QueueProcessingService', () => {
         .Test.createTestingModule({
           providers: [
             (await import('./queue-processing.service')).QueueProcessingService,
-            { provide: require('../../prisma/prisma.service').PrismaService, useValue: mockPrisma },
+            {
+              provide: require('../../prisma/prisma.service').PrismaService,
+              useValue: mockPrisma,
+            },
             {
               provide: require('../../common/repositories/job.repository').JobRepository,
               useValue: mockJobRepoErrors,
@@ -880,7 +933,10 @@ describe('QueueProcessingService', () => {
               provide: require('../../core/services/node-config.service').NodeConfigService,
               useValue: mockNodeConfig,
             },
-            { provide: require('@nestjs/axios').HttpService, useValue: mockHttpService },
+            {
+              provide: require('@nestjs/axios').HttpService,
+              useValue: mockHttpService,
+            },
             {
               provide: require('./queue-job-crud.service').QueueJobCrudService,
               useValue: mockJobCrudService,
@@ -916,7 +972,10 @@ describe('QueueProcessingService', () => {
         _count: { jobs: 1 },
       });
 
-      mockPrisma.$transaction.mockResolvedValue({ claimFailed: true, pauseRequested: true });
+      mockPrisma.$transaction.mockResolvedValue({
+        claimFailed: true,
+        pauseRequested: true,
+      });
 
       const result = await service.getNextJob('node-1');
       expect(result).toBeNull();
@@ -932,7 +991,10 @@ describe('QueueProcessingService', () => {
         _count: { jobs: 1 },
       });
 
-      mockPrisma.$transaction.mockResolvedValue({ claimFailed: true, needsTransfer: true });
+      mockPrisma.$transaction.mockResolvedValue({
+        claimFailed: true,
+        needsTransfer: true,
+      });
 
       const result = await service.getNextJob('node-1');
       expect(result).toBeNull();
@@ -962,7 +1024,10 @@ describe('QueueProcessingService', () => {
         codec: 'h264',
         container: 'mkv',
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: true });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: true,
+      });
       mockJobCrudService.create.mockResolvedValue({ id: 'job-encode' } as any);
 
       await service.handleFileDetected({
@@ -1042,7 +1107,9 @@ describe('QueueProcessingService', () => {
         .mockResolvedValueOnce({ id: 'node-1', hasSharedStorage: false })
         .mockResolvedValueOnce({ id: 'node-1', hasSharedStorage: false });
 
-      mockJobCrudService.create.mockResolvedValue({ id: 'job-same-node' } as any);
+      mockJobCrudService.create.mockResolvedValue({
+        id: 'job-same-node',
+      } as any);
 
       await service.handleFileDetected({
         libraryId: 'lib-1',
@@ -1080,7 +1147,9 @@ describe('QueueProcessingService', () => {
         .mockResolvedValueOnce({ id: 'node-child', hasSharedStorage: false })
         .mockResolvedValueOnce({ id: 'node-main', hasSharedStorage: true });
 
-      mockJobCrudService.create.mockResolvedValue({ id: 'job-transfer-fail' } as any);
+      mockJobCrudService.create.mockResolvedValue({
+        id: 'job-transfer-fail',
+      } as any);
       mockFileTransferService.transferFile.mockRejectedValue(new Error('transfer failed'));
 
       await expect(
@@ -1119,7 +1188,9 @@ describe('QueueProcessingService', () => {
         id: 'node-fallback',
         hasSharedStorage: true,
       });
-      mockJobCrudService.create.mockResolvedValue({ id: 'job-fallback' } as any);
+      mockJobCrudService.create.mockResolvedValue({
+        id: 'job-fallback',
+      } as any);
 
       await service.handleFileDetected({
         libraryId: 'lib-1',
@@ -1154,8 +1225,13 @@ describe('QueueProcessingService', () => {
         codec: 'h264',
         container: 'mkv',
       } as any);
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', hasSharedStorage: true });
-      mockJobCrudService.create.mockResolvedValue({ id: 'job-default-container' } as any);
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: true,
+      });
+      mockJobCrudService.create.mockResolvedValue({
+        id: 'job-default-container',
+      } as any);
 
       await service.handleFileDetected({
         libraryId: 'lib-1',

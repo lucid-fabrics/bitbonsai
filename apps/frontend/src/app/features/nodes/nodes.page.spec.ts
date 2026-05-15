@@ -63,7 +63,10 @@ describe('NodesComponent', () => {
         { provide: NodesClient, useValue: nodesClientMock },
         { provide: ChangeDetectorRef, useValue: cdrMock },
         { provide: Dialog, useValue: dialogMock },
-        { provide: EnvironmentDetectionService, useValue: environmentServiceMock },
+        {
+          provide: EnvironmentDetectionService,
+          useValue: environmentServiceMock,
+        },
       ],
     }).compileComponents();
 

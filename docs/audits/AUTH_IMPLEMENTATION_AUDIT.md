@@ -20,6 +20,7 @@ Comprehensive audit of newly implemented admin authentication system for the Bit
 ## Audit Scope
 
 ### Backend (license-api)
+
 - Authentication module implementation
 - JWT strategy and guards
 - Password hashing and validation
@@ -28,6 +29,7 @@ Comprehensive audit of newly implemented admin authentication system for the Bit
 - Public vs protected endpoint classification
 
 ### Frontend (website)
+
 - Auth service implementation
 - Token storage and management
 - HTTP interceptor configuration
@@ -40,23 +42,26 @@ Comprehensive audit of newly implemented admin authentication system for the Bit
 ## 🔴 CRITICAL: Missing @Public() Decorators
 
 ### Finding
+
 Public endpoints would be blocked by global JWT guard, breaking user-facing features.
 
 ### Impact
+
 - **Severity:** Critical
 - **Risk:** High - breaks checkout flow and promo code validation
 - **User Impact:** Website visitors unable to make purchases
 
 ### Affected Endpoints
 
-| Endpoint | Method | Purpose | Status |
-|----------|--------|---------|--------|
-| `/stripe/checkout` | POST | Create Stripe checkout session | ✅ Fixed |
-| `/promo-codes/validate` | POST | Validate promo code | ✅ Fixed |
+| Endpoint                | Method | Purpose                        | Status   |
+| ----------------------- | ------ | ------------------------------ | -------- |
+| `/stripe/checkout`      | POST   | Create Stripe checkout session | ✅ Fixed |
+| `/promo-codes/validate` | POST   | Validate promo code            | ✅ Fixed |
 
 ### Fix Applied
 
 **File:** `apps/license-api/src/stripe/stripe.controller.ts`
+
 ```typescript
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -68,6 +73,7 @@ async createCheckoutSession(@Body() dto: CreateCheckoutDto) {
 ```
 
 **File:** `apps/license-api/src/promo/promo.controller.ts`
+
 ```typescript
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -84,29 +90,31 @@ async validatePromoCode(@Body() body: { code: string }) {
 
 ### Public Endpoints (Correct Implementation)
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/auth/login` | POST | Admin login |
-| `/health` | GET | Health check |
-| `/pricing` | GET | List pricing tiers |
-| `/pricing/:id` | GET | Get single tier |
-| `/licenses/verify` | POST | Verify license key |
-| `/licenses/public-key` | GET | Get public key |
-| `/webhooks/stripe` | POST | Stripe webhook |
-| `/webhooks/patreon` | POST | Patreon webhook |
-| `/webhooks/kofi` | POST | Ko-fi webhook |
-| `/stripe/checkout` | POST | Checkout session (✅ fixed) |
-| `/promo-codes/validate` | POST | Promo validation (✅ fixed) |
+| Endpoint                | Method | Purpose                     |
+| ----------------------- | ------ | --------------------------- |
+| `/auth/login`           | POST   | Admin login                 |
+| `/health`               | GET    | Health check                |
+| `/pricing`              | GET    | List pricing tiers          |
+| `/pricing/:id`          | GET    | Get single tier             |
+| `/licenses/verify`      | POST   | Verify license key          |
+| `/licenses/public-key`  | GET    | Get public key              |
+| `/webhooks/stripe`      | POST   | Stripe webhook              |
+| `/webhooks/patreon`     | POST   | Patreon webhook             |
+| `/webhooks/kofi`        | POST   | Ko-fi webhook               |
+| `/stripe/checkout`      | POST   | Checkout session (✅ fixed) |
+| `/promo-codes/validate` | POST   | Promo validation (✅ fixed) |
 
 ### Protected Endpoints (Correct Implementation)
 
 **JWT Protected:**
+
 - `/auth/admin` (POST) - Create admin user
 - `/auth/me` (GET) - Current user info
 - `/auth/admins` (GET) - List admin users
 - `/auth/admins/:id/toggle` (PATCH) - Toggle admin status
 
 **API Key Protected:**
+
 - All `/admin/*` routes (legacy system)
 - Analytics endpoints
 - Audit log endpoints
@@ -116,17 +124,21 @@ async validatePromoCode(@Body() body: { code: string }) {
 ## 🟡 MEDIUM: Dual Authentication Systems
 
 ### Finding
+
 Two authentication systems coexist: JWT (new) and API Key (legacy).
 
 ### Analysis
+
 **Status:** By design, not a security flaw
 
 **Reasoning:**
+
 - **JWT Auth:** Web UI admin access (new system)
 - **API Key Auth:** Programmatic/script access (legacy system)
 - **Separation of concerns:** Different use cases, different auth methods
 
 ### Recommendation
+
 Document this architectural decision clearly for future maintainers.
 
 **Documentation location:** `docs/ADMIN_AUTH_SETUP.md` (already includes this)
@@ -137,15 +149,16 @@ Document this architectural decision clearly for future maintainers.
 
 ### Verified Secure Implementation
 
-| Security Measure | Status | Implementation |
-|------------------|--------|----------------|
-| Bcrypt hashing | ✅ Pass | 10 salt rounds |
-| Password never returned | ✅ Pass | Excluded from API responses |
-| Minimum length enforced | ✅ Pass | 8 characters (frontend + backend) |
-| No password in logs | ✅ Pass | Generic error messages |
-| Timing attack protection | ✅ Pass | Bcrypt constant-time comparison |
+| Security Measure         | Status  | Implementation                    |
+| ------------------------ | ------- | --------------------------------- |
+| Bcrypt hashing           | ✅ Pass | 10 salt rounds                    |
+| Password never returned  | ✅ Pass | Excluded from API responses       |
+| Minimum length enforced  | ✅ Pass | 8 characters (frontend + backend) |
+| No password in logs      | ✅ Pass | Generic error messages            |
+| Timing attack protection | ✅ Pass | Bcrypt constant-time comparison   |
 
 **Code Verification:**
+
 ```typescript
 // apps/license-api/src/auth/auth.service.ts:74
 const saltRounds = 10;
@@ -162,15 +175,16 @@ return userWithoutPassword;
 
 ### Verified Secure Implementation
 
-| Configuration | Status | Value |
-|---------------|--------|-------|
-| Secret from env | ✅ Pass | `JWT_SECRET` environment variable |
-| Default fallback | ⚠️ Warning | 'default-secret-change-in-production' (clearly labeled) |
-| Token expiration | ✅ Pass | 7 days (configurable via `JWT_EXPIRES_IN`) |
-| Validation on request | ✅ Pass | Every protected endpoint |
-| User active check | ✅ Pass | Checked in JWT strategy |
+| Configuration         | Status     | Value                                                   |
+| --------------------- | ---------- | ------------------------------------------------------- |
+| Secret from env       | ✅ Pass    | `JWT_SECRET` environment variable                       |
+| Default fallback      | ⚠️ Warning | 'default-secret-change-in-production' (clearly labeled) |
+| Token expiration      | ✅ Pass    | 7 days (configurable via `JWT_EXPIRES_IN`)              |
+| Validation on request | ✅ Pass    | Every protected endpoint                                |
+| User active check     | ✅ Pass    | Checked in JWT strategy                                 |
 
 **Code Verification:**
+
 ```typescript
 // apps/license-api/src/auth/auth.module.ts:19
 secret: configService.get<string>('JWT_SECRET', 'default-secret-change-in-production'),
@@ -184,6 +198,7 @@ signOptions: {
 ## 🟡 MEDIUM: Token Storage (Frontend)
 
 ### Finding
+
 JWT stored in browser localStorage.
 
 ### Security Analysis
@@ -191,10 +206,12 @@ JWT stored in browser localStorage.
 **Vulnerability:** XSS attacks can steal tokens from localStorage
 
 **Mitigation in place:**
+
 - Angular's built-in XSS protection (sanitization)
 - Content Security Policy (if configured at nginx level)
 
 **Risk Assessment:**
+
 - **Current Risk:** Medium-Low
 - **Acceptable for:** MVP, internal admin tool
 - **Not acceptable for:** High-security financial/healthcare apps
@@ -202,13 +219,14 @@ JWT stored in browser localStorage.
 ### Recommended Enhancement (Future)
 
 **Option 1: httpOnly Cookies (Recommended)**
+
 ```typescript
 // Backend: Set-Cookie header
 response.cookie('auth_token', token, {
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 });
 
 // Frontend: No manual token handling needed
@@ -216,6 +234,7 @@ response.cookie('auth_token', token, {
 ```
 
 **Option 2: Session Storage**
+
 ```typescript
 // Slightly more secure than localStorage (cleared on tab close)
 sessionStorage.setItem('auth_token', token);
@@ -227,14 +246,15 @@ sessionStorage.setItem('auth_token', token);
 
 ### Verified Configuration
 
-| Endpoint Type | Limit | Window | Purpose |
-|---------------|-------|--------|---------|
-| Login | 5 req | 60s | Prevent brute force |
-| Checkout | 10 req | 60s | Prevent abuse |
-| Promo validation | 20 req | 60s | Normal usage |
-| Standard endpoints | 100 req | 60s | General protection |
+| Endpoint Type      | Limit   | Window | Purpose             |
+| ------------------ | ------- | ------ | ------------------- |
+| Login              | 5 req   | 60s    | Prevent brute force |
+| Checkout           | 10 req  | 60s    | Prevent abuse       |
+| Promo validation   | 20 req  | 60s    | Normal usage        |
+| Standard endpoints | 100 req | 60s    | General protection  |
 
 **Code Verification:**
+
 ```typescript
 // apps/license-api/src/auth/auth.controller.ts:23
 @Throttle({ short: { limit: 5, ttl: 60000 } })
@@ -249,6 +269,7 @@ sessionStorage.setItem('auth_token', token);
 ### Verified Secure Implementation
 
 **Global Guard Pattern:**
+
 ```typescript
 // apps/license-api/src/auth/auth.module.ts:31
 {
@@ -258,6 +279,7 @@ sessionStorage.setItem('auth_token', token);
 ```
 
 **Public Decorator Pattern:**
+
 ```typescript
 // apps/license-api/src/auth/jwt-auth.guard.ts:15
 const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -277,9 +299,11 @@ if (isPublic) {
 ## 🟡 LOW: Self-Deactivation Prevention
 
 ### Finding
+
 Frontend prevents self-deactivation, but backend doesn't enforce it.
 
 **Frontend Implementation:**
+
 ```typescript
 // dashboard.component.html:102
 <button [disabled]="admin.id === currentUser?.id">
@@ -288,6 +312,7 @@ Frontend prevents self-deactivation, but backend doesn't enforce it.
 ```
 
 **Missing Backend Validation:**
+
 ```typescript
 // apps/license-api/src/auth/auth.service.ts:125
 async toggleAdminStatus(userId: string): Promise<AdminUserEntity> {
@@ -298,6 +323,7 @@ async toggleAdminStatus(userId: string): Promise<AdminUserEntity> {
 ```
 
 ### Risk Assessment
+
 - **Severity:** Low
 - **Exploitability:** Requires API knowledge
 - **Impact:** Admin can lock themselves out
@@ -305,6 +331,7 @@ async toggleAdminStatus(userId: string): Promise<AdminUserEntity> {
 ### Recommended Fix
 
 **Add to AuthController:**
+
 ```typescript
 @Patch('admins/:id/toggle')
 async toggleAdminStatus(
@@ -325,29 +352,33 @@ async toggleAdminStatus(
 ### Frontend Implementation
 
 **Verified Secure:**
+
 - ✅ User-friendly error messages
 - ✅ Loading states during API calls
 - ✅ No sensitive data exposed in errors
 - ✅ Proper cleanup on logout
 
 **Code Example:**
+
 ```typescript
 // login.component.ts:33
 error: (err) => {
   this.loading.set(false);
   this.error.set(err.error?.message || 'Login failed. Please try again.');
-}
+};
 ```
 
 ### Backend Implementation
 
 **Verified Secure:**
+
 - ✅ Generic "Invalid credentials" message (no user enumeration)
 - ✅ Proper HTTP status codes (401, 403, 400)
 - ✅ No stack traces in production
 - ✅ No password in logs or error responses
 
 **Code Example:**
+
 ```typescript
 // auth.service.ts:37
 if (!user || !user.isActive) {
@@ -363,12 +394,13 @@ if (!user || !user.isActive) {
 
 ### Environment URLs
 
-| Environment | API URL |
-|-------------|---------|
-| Development | `http://localhost:3200/api` |
-| Production | `https://api.bitbonsai.app/api` |
+| Environment | API URL                         |
+| ----------- | ------------------------------- |
+| Development | `http://localhost:3200/api`     |
+| Production  | `https://api.bitbonsai.app/api` |
 
 ### Required CORS Origins
+
 - `https://bitbonsai.app` (website)
 - `https://app.bitbonsai.app` (main app)
 - `http://localhost:4201` (local dev)
@@ -383,20 +415,20 @@ if (!user || !user.isActive) {
 
 ### Build Status
 
-| Component | Status | Issues |
-|-----------|--------|--------|
-| Backend | ✅ Pass | None |
-| Frontend | ✅ Pass | SASS deprecation warnings (unrelated) |
-| Website | ✅ Pass | Build successful with auth features |
+| Component | Status  | Issues                                |
+| --------- | ------- | ------------------------------------- |
+| Backend   | ✅ Pass | None                                  |
+| Frontend  | ✅ Pass | SASS deprecation warnings (unrelated) |
+| Website   | ✅ Pass | Build successful with auth features   |
 
 ### Code Quality
 
-| Metric | Status |
-|--------|--------|
+| Metric                 | Status  |
+| ---------------------- | ------- |
 | TypeScript strict mode | ✅ Pass |
-| No unused imports | ✅ Pass |
-| Consistent naming | ✅ Pass |
-| Proper DI | ✅ Pass |
+| No unused imports      | ✅ Pass |
+| Consistent naming      | ✅ Pass |
+| Proper DI              | ✅ Pass |
 
 ---
 
@@ -409,6 +441,7 @@ if (!user || !user.isActive) {
    - Fixed: `/promo-codes/validate`
 
 2. **Create First Admin User**
+
    ```bash
    # Use script from docs/ADMIN_AUTH_SETUP.md
    cd apps/license-api
@@ -416,6 +449,7 @@ if (!user || !user.isActive) {
    ```
 
 3. **Set Strong JWT_SECRET**
+
    ```bash
    # Generate 256-bit random string
    openssl rand -hex 32
@@ -496,15 +530,15 @@ apps/license-api/src/
 
 ### Security Score Breakdown
 
-| Category | Score | Rationale |
-|----------|-------|-----------|
-| **Authentication** | 5/5 | JWT + bcrypt best practices |
-| **Authorization** | 4/5 | Global guard + @Public() pattern |
-| **Input Validation** | 5/5 | class-validator DTOs throughout |
-| **Error Handling** | 5/5 | Secure, generic messages |
-| **Rate Limiting** | 5/5 | Appropriate limits configured |
-| **Token Security** | 3/5 | localStorage (medium risk) |
-| **Audit Trail** | 3/5 | Basic logging, needs enhancement |
+| Category             | Score | Rationale                        |
+| -------------------- | ----- | -------------------------------- |
+| **Authentication**   | 5/5   | JWT + bcrypt best practices      |
+| **Authorization**    | 4/5   | Global guard + @Public() pattern |
+| **Input Validation** | 5/5   | class-validator DTOs throughout  |
+| **Error Handling**   | 5/5   | Secure, generic messages         |
+| **Rate Limiting**    | 5/5   | Appropriate limits configured    |
+| **Token Security**   | 3/5   | localStorage (medium risk)       |
+| **Audit Trail**      | 3/5   | Basic logging, needs enhancement |
 
 **Overall:** 4.3/5 (Rounded to 4.5/5 for production readiness)
 
@@ -519,9 +553,11 @@ apps/license-api/src/
 The admin authentication system is well-architected and follows industry best practices. The implementation is secure, maintainable, and ready for production use.
 
 **Critical fixes applied:**
+
 - ✅ Added 2 missing `@Public()` decorators
 
 **Remaining tasks before deployment:**
+
 1. Create first admin user (5 minutes)
 2. Set strong JWT_SECRET (2 minutes)
 3. Run database migration (3 minutes)
@@ -530,13 +566,13 @@ The admin authentication system is well-architected and follows industry best pr
 
 ### Quality Ratings
 
-| Dimension | Rating | Comment |
-|-----------|--------|---------|
-| **Security** | ⭐⭐⭐⭐ (4/5) | Excellent, minor enhancements recommended |
-| **Code Quality** | ⭐⭐⭐⭐⭐ (5/5) | Clean, well-structured, maintainable |
-| **Completeness** | ⭐⭐⭐⭐½ (4.5/5) | Core features complete, nice-to-haves identified |
-| **Documentation** | ⭐⭐⭐⭐⭐ (5/5) | Comprehensive setup guide provided |
-| **Testability** | ⭐⭐⭐⭐ (4/5) | Good, could add E2E auth tests |
+| Dimension         | Rating            | Comment                                          |
+| ----------------- | ----------------- | ------------------------------------------------ |
+| **Security**      | ⭐⭐⭐⭐ (4/5)    | Excellent, minor enhancements recommended        |
+| **Code Quality**  | ⭐⭐⭐⭐⭐ (5/5)  | Clean, well-structured, maintainable             |
+| **Completeness**  | ⭐⭐⭐⭐½ (4.5/5) | Core features complete, nice-to-haves identified |
+| **Documentation** | ⭐⭐⭐⭐⭐ (5/5)  | Comprehensive setup guide provided               |
+| **Testability**   | ⭐⭐⭐⭐ (4/5)    | Good, could add E2E auth tests                   |
 
 **Overall Implementation Quality:** ⭐⭐⭐⭐½ (4.5/5)
 
@@ -560,17 +596,19 @@ The admin authentication system is well-architected and follows industry best pr
 ## Appendix: Audit Methodology
 
 ### Tools Used
+
 - Manual code review (TypeScript/Angular)
 - Static analysis (grep, pattern matching)
 - Build verification (nx build)
 - Endpoint classification (grep @Public, @UseGuards)
 
 ### Audit Duration
+
 - Backend audit: 30 minutes
 - Frontend audit: 20 minutes
 - Documentation: 25 minutes
 - Fixes applied: 10 minutes
-**Total:** 85 minutes
+  **Total:** 85 minutes
 
 ### Audit Checklist
 

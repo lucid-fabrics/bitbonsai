@@ -115,7 +115,9 @@ describe('EncodingStartupService', () => {
         .mockResolvedValueOnce([]); // manually paused
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       encodingFileService.checkTempFileWithRetry.mockResolvedValue(true);
-      jobRepository.findUniqueSelect.mockResolvedValue({ filePath: '/media/movie.mkv' });
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        filePath: '/media/movie.mkv',
+      });
       ffmpegService.getVideoDuration.mockResolvedValue(3600);
       ffmpegService.formatSecondsToTimestamp.mockReturnValue('00:30:00.000');
       queueService.update.mockResolvedValue(undefined as never);

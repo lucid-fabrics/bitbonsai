@@ -23,7 +23,9 @@ describe('StorageInitService', () => {
 
   beforeEach(async () => {
     nodeRepository = { findFirstNode: jest.fn(), updateData: jest.fn() };
-    nfsAutoExport = { autoExportDockerVolumes: jest.fn().mockResolvedValue(undefined) };
+    nfsAutoExport = {
+      autoExportDockerVolumes: jest.fn().mockResolvedValue(undefined),
+    };
     eventEmitter = { emit: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -85,7 +87,10 @@ describe('StorageInitService', () => {
     });
 
     it('should auto-export volumes for MAIN node', async () => {
-      nodeRepository.findFirstNode.mockResolvedValue({ id: 'node-1', role: 'MAIN' });
+      nodeRepository.findFirstNode.mockResolvedValue({
+        id: 'node-1',
+        role: 'MAIN',
+      });
 
       await callInit(service);
 

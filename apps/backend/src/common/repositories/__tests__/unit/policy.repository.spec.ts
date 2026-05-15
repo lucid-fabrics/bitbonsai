@@ -230,7 +230,9 @@ describe('PolicyRepository', () => {
       const updated = { ...mockPolicy, name: 'Renamed Policy' };
       mockPrismaService.policy.update.mockResolvedValue(updated);
 
-      const result = await repository.update('policy-1', { name: 'Renamed Policy' });
+      const result = await repository.update('policy-1', {
+        name: 'Renamed Policy',
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaService.policy.update).toHaveBeenCalledWith({

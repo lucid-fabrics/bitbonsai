@@ -56,7 +56,11 @@ export class OverviewEffects {
         this.overviewService.getEnvironmentInfo().pipe(
           map((environmentInfo) => OverviewActions.loadEnvironmentInfoSuccess({ environmentInfo })),
           catchError((error) =>
-            of(OverviewActions.loadEnvironmentInfoFailure({ error: error.message }))
+            of(
+              OverviewActions.loadEnvironmentInfoFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )

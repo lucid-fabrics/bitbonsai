@@ -49,7 +49,10 @@ export function getFixturesDir(): string {
 /**
  * Get resolution dimensions
  */
-function getResolutionDimensions(resolution: string): { width: number; height: number } {
+function getResolutionDimensions(resolution: string): {
+  width: number;
+  height: number;
+} {
   switch (resolution) {
     case '480p':
       return { width: 854, height: 480 };
@@ -362,9 +365,12 @@ export const REALISTIC_FILENAMES = {
 /**
  * Verify video file with FFprobe
  */
-export async function verifyVideoFile(
-  filePath: string
-): Promise<{ isValid: boolean; codec?: string; resolution?: string; duration?: number }> {
+export async function verifyVideoFile(filePath: string): Promise<{
+  isValid: boolean;
+  codec?: string;
+  resolution?: string;
+  duration?: number;
+}> {
   return new Promise((resolve) => {
     const ffprobe = spawn('ffprobe', [
       '-v',

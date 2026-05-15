@@ -25,7 +25,10 @@ class BatchRetryDto {
   @IsString()
   nodeId?: string;
 
-  @ApiPropertyOptional({ description: 'Maximum retry count threshold', default: 3 })
+  @ApiPropertyOptional({
+    description: 'Maximum retry count threshold',
+    default: 3,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -36,7 +39,10 @@ class BatchRetryDto {
  * DTO for batch delete operation
  */
 class BatchDeleteDto {
-  @ApiPropertyOptional({ description: 'Delete jobs older than this many days', default: 30 })
+  @ApiPropertyOptional({
+    description: 'Delete jobs older than this many days',
+    default: 30,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)

@@ -239,7 +239,11 @@ export class EncodingPreviewService {
       );
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const execError = error as { stderr?: string; stdout?: string; code?: number };
+      const execError = error as {
+        stderr?: string;
+        stdout?: string;
+        code?: number;
+      };
       this.logger.error('Failed to capture preview frame', {
         jobId,
         sourceFilePath: filePath,

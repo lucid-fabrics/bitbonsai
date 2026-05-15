@@ -161,7 +161,9 @@ describe('JobController', () => {
       mockQueueService.findOne.mockResolvedValue(job);
       mockQueueService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('job-1', { progress: 50 } as UpdateJobDto);
+      const result = await controller.update('job-1', {
+        progress: 50,
+      } as UpdateJobDto);
 
       expect(result).toEqual(updated);
     });
@@ -174,7 +176,9 @@ describe('JobController', () => {
       mockQueueService.findOne.mockResolvedValue(job);
       mockQueueService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('job-1', { progress: 30 } as UpdateJobDto);
+      const result = await controller.update('job-1', {
+        progress: 30,
+      } as UpdateJobDto);
 
       expect(result).toEqual(updated);
     });
@@ -250,7 +254,9 @@ describe('JobController', () => {
       const updated = makeJob();
       mockQueueService.updateJobPriority.mockResolvedValue(updated);
 
-      const result = await controller.updatePriority('job-1', { priority: 2 } as UpdatePriorityDto);
+      const result = await controller.updatePriority('job-1', {
+        priority: 2,
+      } as UpdatePriorityDto);
 
       expect(mockQueueService.updateJobPriority).toHaveBeenCalledWith('job-1', 2);
       expect(result).toEqual(updated);
@@ -259,7 +265,9 @@ describe('JobController', () => {
     it('should propagate errors (e.g. max top priority exceeded)', async () => {
       mockQueueService.updateJobPriority.mockRejectedValue(new Error('max 3 top priority jobs'));
       await expect(
-        controller.updatePriority('job-1', { priority: 2 } as UpdatePriorityDto)
+        controller.updatePriority('job-1', {
+          priority: 2,
+        } as UpdatePriorityDto)
       ).rejects.toThrow('max 3 top priority jobs');
     });
   });
@@ -510,7 +518,9 @@ describe('JobController', () => {
     it('should propagate NotFoundException when target node not found', async () => {
       mockQueueService.delegateJob.mockRejectedValue(new NotFoundException('Node not found'));
       await expect(
-        controller.delegateJob('job-1', { targetNodeId: 'bad-node' } as DelegateJobDto)
+        controller.delegateJob('job-1', {
+          targetNodeId: 'bad-node',
+        } as DelegateJobDto)
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -535,7 +545,9 @@ describe('JobController', () => {
   // ---------------------------------------------------------------------------
   describe('deleteOriginal', () => {
     it('should delete original backup and return freed space as string', async () => {
-      mockQueueService.deleteOriginalBackup.mockResolvedValue({ freedSpace: BigInt(524288000) });
+      mockQueueService.deleteOriginalBackup.mockResolvedValue({
+        freedSpace: BigInt(524288000),
+      });
 
       const result = await controller.deleteOriginal('job-1');
 

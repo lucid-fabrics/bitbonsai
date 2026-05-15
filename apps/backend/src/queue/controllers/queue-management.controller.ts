@@ -197,7 +197,12 @@ export class QueueManagementController {
   })
   async skipAllCodecMatch(): Promise<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.queueService.skipAllCodecMatch();
   }
@@ -249,7 +254,12 @@ export class QueueManagementController {
   })
   async forceEncodeAllCodecMatch(): Promise<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.queueService.forceEncodeAllCodecMatch();
   }

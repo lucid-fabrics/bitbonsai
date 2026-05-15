@@ -76,7 +76,11 @@ export class ContainerCompatibilityService {
     }
 
     // Check each audio stream for incompatible codecs
-    const incompatibleStreams: Array<{ index: number; codec: string; title?: string }> = [];
+    const incompatibleStreams: Array<{
+      index: number;
+      codec: string;
+      title?: string;
+    }> = [];
 
     for (const stream of audioStreams) {
       const codec = stream.codec_name?.toLowerCase() || '';

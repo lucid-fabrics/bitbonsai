@@ -38,7 +38,9 @@ export class UpdateStorageShareDto {
   @IsOptional()
   smbUsername?: string;
 
-  @ApiPropertyOptional({ description: 'Updated SMB password (will be encrypted)' })
+  @ApiPropertyOptional({
+    description: 'Updated SMB password (will be encrypted)',
+  })
   @IsString()
   @IsOptional()
   smbPassword?: string;

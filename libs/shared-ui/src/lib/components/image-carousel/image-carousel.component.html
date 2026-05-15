@@ -8,14 +8,29 @@
   (keydown)="onContainerKeydown($event)">
   @if (fullscreen) {
     <div class="carousel-controls">
-      <button class="zoom-button" (click)="zoomOut()" [disabled]="zoomLevel <= minZoom" aria-label="Zoom out">
+      <button
+        class="zoom-button"
+        (click)="zoomOut()"
+        [disabled]="zoomLevel <= minZoom"
+        aria-label="Zoom out"
+      >
         <i class="fas fa-search-minus"></i>
       </button>
       <span class="zoom-level">{{ (zoomLevel * 100).toFixed(0) }}%</span>
-      <button class="zoom-button" (click)="zoomIn()" [disabled]="zoomLevel >= maxZoom" aria-label="Zoom in">
+      <button
+        class="zoom-button"
+        (click)="zoomIn()"
+        [disabled]="zoomLevel >= maxZoom"
+        aria-label="Zoom in"
+      >
         <i class="fas fa-search-plus"></i>
       </button>
-      <button class="zoom-button reset-zoom" (click)="resetZoom()" [disabled]="zoomLevel === 1" aria-label="Reset zoom">
+      <button
+        class="zoom-button reset-zoom"
+        (click)="resetZoom()"
+        [disabled]="zoomLevel === 1"
+        aria-label="Reset zoom"
+      >
         <i class="fas fa-compress-arrows-alt"></i>
       </button>
     </div>
@@ -29,7 +44,8 @@
       <button
         class="carousel-nav prev"
         (click)="previous()"
-        aria-label="Previous image">
+        aria-label="Previous image"
+      >
         <i class="fas fa-chevron-left"></i>
       </button>
     }
@@ -78,7 +94,11 @@
     }
 
     @if (images.length > 1) {
-      <button class="carousel-nav next" (click)="next()" aria-label="Next image">
+      <button
+        class="carousel-nav next"
+        (click)="next()"
+        aria-label="Next image"
+      >
         <i class="fas fa-chevron-right"></i>
       </button>
     }
@@ -93,14 +113,21 @@
           [class.active]="currentIndex === $index"
           [class.image-error]="failedIndexes.has($index)"
           (click)="goToIndex($index)"
-          [attr.aria-label]="'Go to image ' + ($index + 1)">
-          <img [src]="image.src" [alt]="image.alt" (error)="onImageError($index)" />
+          [attr.aria-label]="'Go to image ' + ($index + 1)"
+        >
+          <img
+            [src]="image.src"
+            [alt]="image.alt"
+            (error)="onImageError($index)"
+          />
         </button>
       }
     </div>
   }
 
   @if (images.length > 1) {
-    <div class="carousel-counter">{{ currentIndex + 1 }} / {{ images.length }}</div>
+    <div class="carousel-counter">
+      {{ currentIndex + 1 }} / {{ images.length }}
+    </div>
   }
 </div>

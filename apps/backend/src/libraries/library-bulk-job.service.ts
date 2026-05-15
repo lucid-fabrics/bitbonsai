@@ -196,10 +196,9 @@ export class LibraryBulkJobService {
     }
 
     // Get blacklisted file paths for this library to skip them
-    const blacklistedJobs = await this.jobRepository.findManySelect<{ filePath: string }>(
-      { libraryId: library.id, isBlacklisted: true },
-      { filePath: true }
-    );
+    const blacklistedJobs = await this.jobRepository.findManySelect<{
+      filePath: string;
+    }>({ libraryId: library.id, isBlacklisted: true }, { filePath: true });
 
     const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
 
@@ -394,7 +393,10 @@ export class LibraryBulkJobService {
 
         if (!videoInfo) {
           result.filesSkipped++;
-          result.skippedFiles.push({ path: filePath, reason: 'Failed to probe file' });
+          result.skippedFiles.push({
+            path: filePath,
+            reason: 'Failed to probe file',
+          });
           continue;
         }
 

@@ -30,7 +30,11 @@ describe('SystemResourceService', () => {
   describe('calculateOptimalWorkers', () => {
     it('should clamp workers to min 2', () => {
       (os.cpus as jest.Mock).mockReturnValue([
-        { model: 'x', speed: 1000, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'x',
+          speed: 1000,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
 
       const workers = service.calculateOptimalWorkers();

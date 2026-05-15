@@ -329,7 +329,10 @@ export class StorageShareService {
         const mainNodesResponse = await firstValueFrom(
           this.httpService.get(`${currentNode.mainNodeUrl}/api/v1/nodes`)
         );
-        const mainNodes = mainNodesResponse.data as Array<{ id: string; role: string }>;
+        const mainNodes = mainNodesResponse.data as Array<{
+          id: string;
+          role: string;
+        }>;
         const mainNode = mainNodes.find((n) => n.role === 'MAIN');
 
         if (!mainNode) {
@@ -446,7 +449,10 @@ export class StorageShareService {
         return result;
       }
 
-      const mainNodes = (await mainNodesResponse.json()) as Array<{ id: string; role: string }>;
+      const mainNodes = (await mainNodesResponse.json()) as Array<{
+        id: string;
+        role: string;
+      }>;
       const mainNode = mainNodes.find((n) => n.role === 'MAIN');
 
       if (!mainNode) {

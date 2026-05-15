@@ -64,7 +64,13 @@ export class LicenseGuardService {
       maxConcurrentJobs: number;
       features: unknown;
       validUntil: Date | null;
-    }>({ tier: true, maxNodes: true, maxConcurrentJobs: true, features: true, validUntil: true });
+    }>({
+      tier: true,
+      maxNodes: true,
+      maxConcurrentJobs: true,
+      features: true,
+      validUntil: true,
+    });
 
     // Check expiration
     if (license?.validUntil && license.validUntil < new Date()) {

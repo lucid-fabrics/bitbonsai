@@ -63,7 +63,7 @@ export class FileTransferService implements OnModuleInit {
   private validateRsyncPath(path: string): void {
     // CRITICAL #4 FIX: Reject ALL control chars including newlines (\n, \r)
     // Newlines allow injecting arbitrary rsync arguments
-    // eslint-disable-next-line no-control-regex
+
     if (/[\x00-\x1f\x7f]/.test(path)) {
       throw new Error('Path contains control characters or newlines');
     }
@@ -177,10 +177,9 @@ export class FileTransferService implements OnModuleInit {
       this.logger.error(`File transfer failed for job ${jobId}:`, error);
 
       // Increment retry count
-      const job = await this.jobRepository.findUniqueSelect<{ transferRetryCount: number }>(
-        { id: jobId },
-        { transferRetryCount: true }
-      );
+      const job = await this.jobRepository.findUniqueSelect<{
+        transferRetryCount: number;
+      }>({ id: jobId }, { transferRetryCount: true });
 
       const retryCount = (job?.transferRetryCount || 0) + 1;
       const maxRetries = 3;

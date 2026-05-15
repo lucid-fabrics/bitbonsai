@@ -354,7 +354,10 @@ describe('HealthService', () => {
       // Mock promisified exec for disk and ffmpeg checks
       mockExecAsync.mockImplementation((cmd: string) => {
         if (cmd.includes('df')) {
-          return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
+          return Promise.resolve({
+            stdout: '/dev/sda1      1T    500G   500G  50% /',
+            stderr: '',
+          });
         }
         if (cmd.includes('ffmpeg')) {
           return Promise.resolve({
@@ -636,10 +639,16 @@ describe('HealthService', () => {
 
       mockExecAsync.mockImplementation((cmd: string) => {
         if (cmd.includes('df')) {
-          return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
+          return Promise.resolve({
+            stdout: '/dev/sda1      1T    500G   500G  50% /',
+            stderr: '',
+          });
         }
         if (cmd.includes('ffmpeg')) {
-          return Promise.resolve({ stdout: 'ffmpeg version 5.1.2', stderr: '' });
+          return Promise.resolve({
+            stdout: 'ffmpeg version 5.1.2',
+            stderr: '',
+          });
         }
         return Promise.resolve({ stdout: '', stderr: '' });
       });
@@ -653,10 +662,16 @@ describe('HealthService', () => {
     it('should include timestamp in detailed health response', async () => {
       mockExecAsync.mockImplementation((cmd: string) => {
         if (cmd.includes('df')) {
-          return Promise.resolve({ stdout: '/dev/sda1      1T    500G   500G  50% /', stderr: '' });
+          return Promise.resolve({
+            stdout: '/dev/sda1      1T    500G   500G  50% /',
+            stderr: '',
+          });
         }
         if (cmd.includes('ffmpeg')) {
-          return Promise.resolve({ stdout: 'ffmpeg version 5.1.2', stderr: '' });
+          return Promise.resolve({
+            stdout: 'ffmpeg version 5.1.2',
+            stderr: '',
+          });
         }
         return Promise.resolve({ stdout: '', stderr: '' });
       });
@@ -672,9 +687,11 @@ describe('HealthService', () => {
   describe('monitorLibraryDiskSpace - with libraries', () => {
     it('returns ok when library has plenty of disk space', async () => {
       const fs = await import('node:fs');
-      jest
-        .spyOn(fs.promises, 'statfs')
-        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+      jest.spyOn(fs.promises, 'statfs').mockResolvedValue({
+        blocks: 1000000n,
+        bsize: 4096,
+        bavail: 800000n,
+      } as any);
 
       mockLibraryRepository.findAllLibraries.mockResolvedValue([
         { id: 'lib-1', name: 'Movies', path: '/media/movies', jobs: [] },
@@ -688,9 +705,11 @@ describe('HealthService', () => {
 
     it('returns queued job count for library with pending jobs', async () => {
       const fs = await import('node:fs');
-      jest
-        .spyOn(fs.promises, 'statfs')
-        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+      jest.spyOn(fs.promises, 'statfs').mockResolvedValue({
+        blocks: 1000000n,
+        bsize: 4096,
+        bavail: 800000n,
+      } as any);
 
       mockLibraryRepository.findAllLibraries.mockResolvedValue([
         {
@@ -698,7 +717,11 @@ describe('HealthService', () => {
           name: 'TV Shows',
           path: '/media/tv',
           jobs: [
-            { id: 'job-1', filePath: '/media/tv/show.mkv', beforeSizeBytes: BigInt(5_000_000_000) },
+            {
+              id: 'job-1',
+              filePath: '/media/tv/show.mkv',
+              beforeSizeBytes: BigInt(5_000_000_000),
+            },
             {
               id: 'job-2',
               filePath: '/media/tv/show2.mkv',
@@ -715,16 +738,24 @@ describe('HealthService', () => {
 
     it('handles library with null beforeSizeBytes gracefully', async () => {
       const fs = await import('node:fs');
-      jest
-        .spyOn(fs.promises, 'statfs')
-        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+      jest.spyOn(fs.promises, 'statfs').mockResolvedValue({
+        blocks: 1000000n,
+        bsize: 4096,
+        bavail: 800000n,
+      } as any);
 
       mockLibraryRepository.findAllLibraries.mockResolvedValue([
         {
           id: 'lib-3',
           name: 'Downloads',
           path: '/downloads',
-          jobs: [{ id: 'job-1', filePath: '/downloads/file.mkv', beforeSizeBytes: null }],
+          jobs: [
+            {
+              id: 'job-1',
+              filePath: '/downloads/file.mkv',
+              beforeSizeBytes: null,
+            },
+          ],
         },
       ]);
 
@@ -735,9 +766,11 @@ describe('HealthService', () => {
 
     it('handles multiple libraries with mixed job states', async () => {
       const fs = await import('node:fs');
-      jest
-        .spyOn(fs.promises, 'statfs')
-        .mockResolvedValue({ blocks: 1000000n, bsize: 4096, bavail: 800000n } as any);
+      jest.spyOn(fs.promises, 'statfs').mockResolvedValue({
+        blocks: 1000000n,
+        bsize: 4096,
+        bavail: 800000n,
+      } as any);
 
       mockLibraryRepository.findAllLibraries.mockResolvedValue([
         {
@@ -745,7 +778,11 @@ describe('HealthService', () => {
           name: 'Lib A',
           path: '/media/a',
           jobs: [
-            { id: 'job-1', filePath: '/media/a/file.mkv', beforeSizeBytes: BigInt(1_000_000_000) },
+            {
+              id: 'job-1',
+              filePath: '/media/a/file.mkv',
+              beforeSizeBytes: BigInt(1_000_000_000),
+            },
           ],
         },
         { id: 'lib-5', name: 'Lib B', path: '/media/b', jobs: [] },
@@ -880,7 +917,13 @@ describe('HealthService', () => {
           id: 'lib-warn',
           name: 'WarnLib',
           path: '/media/warn',
-          jobs: [{ id: 'job-1', filePath: '/media/warn/tiny.mkv', beforeSizeBytes: BigInt(1_000) }],
+          jobs: [
+            {
+              id: 'job-1',
+              filePath: '/media/warn/tiny.mkv',
+              beforeSizeBytes: BigInt(1_000),
+            },
+          ],
         },
       ]);
 
@@ -903,7 +946,12 @@ describe('HealthService', () => {
       } as any);
 
       mockLibraryRepository.findAllLibraries.mockResolvedValue([
-        { id: 'lib-nojobs', name: 'EmptyWarnLib', path: '/media/empty', jobs: [] },
+        {
+          id: 'lib-nojobs',
+          name: 'EmptyWarnLib',
+          path: '/media/empty',
+          jobs: [],
+        },
       ]);
 
       const result = await service.monitorLibraryDiskSpace();

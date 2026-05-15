@@ -18,16 +18,32 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
           </div>
           <p class="footer__tagline">Intelligent multi-node video encoding</p>
           <div class="footer__social">
-            <a href="https://github.com/bitbonsai/bitbonsai" target="_blank" aria-label="GitHub">
+            <a
+              href="https://github.com/bitbonsai/bitbonsai"
+              target="_blank"
+              aria-label="GitHub"
+            >
               <fa-icon [icon]="faGithub"></fa-icon>
             </a>
-            <a href="https://discord.gg/bitbonsai" target="_blank" aria-label="Discord">
+            <a
+              href="https://discord.gg/bitbonsai"
+              target="_blank"
+              aria-label="Discord"
+            >
               <fa-icon [icon]="faDiscord"></fa-icon>
             </a>
-            <a href="https://twitter.com/bitbonsai" target="_blank" aria-label="Twitter">
+            <a
+              href="https://twitter.com/bitbonsai"
+              target="_blank"
+              aria-label="Twitter"
+            >
               <fa-icon [icon]="faTwitter"></fa-icon>
             </a>
-            <a href="https://reddit.com/r/bitbonsai" target="_blank" aria-label="Reddit">
+            <a
+              href="https://reddit.com/r/bitbonsai"
+              target="_blank"
+              aria-label="Reddit"
+            >
               <fa-icon [icon]="faReddit"></fa-icon>
             </a>
           </div>
@@ -45,22 +61,62 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
           <div class="footer__section">
             <h4 class="footer__heading">Resources</h4>
             <a routerLink="/docs" class="footer__link">Docs</a>
-            <a href="https://github.com/bitbonsai/bitbonsai/blob/main/CHANGELOG.md" target="_blank" class="footer__link">Changelog</a>
-            <a href="https://github.com/bitbonsai/bitbonsai/wiki" target="_blank" class="footer__link">Wiki</a>
-            <a href="https://github.com/bitbonsai/bitbonsai/discussions" target="_blank" class="footer__link">FAQ</a>
+            <a
+              href="https://github.com/bitbonsai/bitbonsai/blob/main/CHANGELOG.md"
+              target="_blank"
+              class="footer__link"
+              >Changelog</a
+            >
+            <a
+              href="https://github.com/bitbonsai/bitbonsai/wiki"
+              target="_blank"
+              class="footer__link"
+              >Wiki</a
+            >
+            <a
+              href="https://github.com/bitbonsai/bitbonsai/discussions"
+              target="_blank"
+              class="footer__link"
+              >FAQ</a
+            >
           </div>
 
           <div class="footer__section">
             <h4 class="footer__heading">Community</h4>
-            <a href="https://github.com/bitbonsai/bitbonsai" target="_blank" class="footer__link">GitHub</a>
-            <a href="https://discord.gg/bitbonsai" target="_blank" class="footer__link">Discord</a>
-            <a href="https://twitter.com/bitbonsai" target="_blank" class="footer__link">Twitter</a>
-            <a href="https://reddit.com/r/bitbonsai" target="_blank" class="footer__link">Reddit</a>
+            <a
+              href="https://github.com/bitbonsai/bitbonsai"
+              target="_blank"
+              class="footer__link"
+              >GitHub</a
+            >
+            <a
+              href="https://discord.gg/bitbonsai"
+              target="_blank"
+              class="footer__link"
+              >Discord</a
+            >
+            <a
+              href="https://twitter.com/bitbonsai"
+              target="_blank"
+              class="footer__link"
+              >Twitter</a
+            >
+            <a
+              href="https://reddit.com/r/bitbonsai"
+              target="_blank"
+              class="footer__link"
+              >Reddit</a
+            >
           </div>
 
           <div class="footer__section">
             <h4 class="footer__heading">Legal</h4>
-            <a href="https://github.com/bitbonsai/bitbonsai/blob/main/LICENSE" target="_blank" class="footer__link">License (MIT)</a>
+            <a
+              href="https://github.com/bitbonsai/bitbonsai/blob/main/LICENSE"
+              target="_blank"
+              class="footer__link"
+              >License (MIT)</a
+            >
             <a routerLink="/privacy" class="footer__link">Privacy</a>
             <a routerLink="/terms" class="footer__link">Terms</a>
           </div>

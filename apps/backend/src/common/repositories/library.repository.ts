@@ -54,8 +54,12 @@ export class LibraryRepository extends BaseRepository {
     return result._sum.sizeBytes ?? BigInt(0);
   }
 
-  async aggregateTotalSizeBytes(): Promise<{ _sum: { totalSizeBytes: bigint | null } }> {
-    return this.prisma.library.aggregate({ _sum: { totalSizeBytes: true } }) as Promise<{
+  async aggregateTotalSizeBytes(): Promise<{
+    _sum: { totalSizeBytes: bigint | null };
+  }> {
+    return this.prisma.library.aggregate({
+      _sum: { totalSizeBytes: true },
+    }) as Promise<{
       _sum: { totalSizeBytes: bigint | null };
     }>;
   }
@@ -91,7 +95,10 @@ export class LibraryRepository extends BaseRepository {
     where?: Prisma.LibraryWhereInput,
     include?: Prisma.LibraryInclude
   ): Promise<Library[]> {
-    return this.prisma.library.findMany({ ...(where && { where }), ...(include && { include }) });
+    return this.prisma.library.findMany({
+      ...(where && { where }),
+      ...(include && { include }),
+    });
   }
 
   async createLibrary(data: Prisma.LibraryUncheckedCreateInput): Promise<Library> {

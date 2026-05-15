@@ -69,7 +69,11 @@ describe('EncodingProcessorService Integration Tests', () => {
         },
         {
           provide: MediaAnalysisService,
-          useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+          useValue: {
+            analyze: jest.fn(),
+            getMediaInfo: jest.fn(),
+            getVideoCodecInfo: jest.fn(),
+          },
         },
         {
           provide: JobHistoryService,
@@ -91,7 +95,10 @@ describe('EncodingProcessorService Integration Tests', () => {
             getMainApiUrl: jest.fn().mockReturnValue(null),
           },
         },
-        { provide: HttpService, useValue: { get: jest.fn(), post: jest.fn(), axiosRef: {} } },
+        {
+          provide: HttpService,
+          useValue: { get: jest.fn(), post: jest.fn(), axiosRef: {} },
+        },
         {
           provide: SharedStorageVerifierService,
           useValue: { verify: jest.fn(), isSharedStorage: jest.fn() },

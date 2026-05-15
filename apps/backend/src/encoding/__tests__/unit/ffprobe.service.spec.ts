@@ -150,7 +150,11 @@ describe('FfprobeService', () => {
     it('should return 3600 on timeout', async () => {
       jest.useFakeTimers();
 
-      const proc = makeFakeProc({ stdoutData: '120\n', closeCode: 0, delay: 99999 });
+      const proc = makeFakeProc({
+        stdoutData: '120\n',
+        closeCode: 0,
+        delay: 99999,
+      });
       spawnMock.mockReturnValue(proc);
 
       const promise = service.getVideoDuration('/video.mkv');
@@ -234,7 +238,11 @@ describe('FfprobeService', () => {
     it('should reject on timeout', async () => {
       jest.useFakeTimers();
 
-      const proc = makeFakeProc({ stdoutData: '{}', closeCode: 0, delay: 99999 });
+      const proc = makeFakeProc({
+        stdoutData: '{}',
+        closeCode: 0,
+        delay: 99999,
+      });
       spawnMock.mockReturnValue(proc);
 
       const promise = service.getVideoInfo('/video.mkv');
@@ -367,7 +375,11 @@ describe('FfprobeService', () => {
 
     it('should include ffprobe stderr in error message when non-zero exit + stderr', async () => {
       spawnMock.mockReturnValue(
-        makeFakeProc({ stdoutData: '', stderrData: 'moov atom not found', closeCode: 1 })
+        makeFakeProc({
+          stdoutData: '',
+          stderrData: 'moov atom not found',
+          closeCode: 1,
+        })
       );
 
       const result = await service.verifyFile('/video.mkv');
@@ -397,7 +409,11 @@ describe('FfprobeService', () => {
     it('should return isValid=false on timeout (SIGKILL)', async () => {
       jest.useFakeTimers();
 
-      const proc = makeFakeProc({ stdoutData: '120\n', closeCode: 0, delay: 999999 });
+      const proc = makeFakeProc({
+        stdoutData: '120\n',
+        closeCode: 0,
+        delay: 999999,
+      });
       spawnMock.mockReturnValue(proc);
 
       const promise = service.verifyFile('/video.mkv');

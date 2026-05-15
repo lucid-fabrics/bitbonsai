@@ -73,7 +73,9 @@ describe('EncodingPreviewService', () => {
 
       await service.generatePreviews('job-1', '/tmp/encoded.mkv', 3600, 50);
 
-      expect(fsp.mkdir).toHaveBeenCalledWith(expect.stringContaining('job-1'), { recursive: true });
+      expect(fsp.mkdir).toHaveBeenCalledWith(expect.stringContaining('job-1'), {
+        recursive: true,
+      });
     });
 
     it('should generate 9 preview screenshots', async () => {

@@ -35,7 +35,10 @@ export class RegistrationRequestRepository extends BaseRepository {
     pairingToken: string,
     data: Record<string, unknown>
   ): Promise<NodeRegistrationRequest> {
-    return this.update<NodeRegistrationRequest>({ where: { pairingToken }, data });
+    return this.update<NodeRegistrationRequest>({
+      where: { pairingToken },
+      data,
+    });
   }
 
   async findManyPending(mainNodeId: string): Promise<NodeRegistrationRequest[]> {

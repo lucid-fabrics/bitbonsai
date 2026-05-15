@@ -119,7 +119,10 @@ describe('StorageShareService', () => {
 
     it('should create SMB share with correct export path', async () => {
       mockRepository.findByMountPoint.mockResolvedValue(null);
-      mockRepository.create.mockResolvedValue({ ...baseShare, protocol: StorageProtocol.SMB });
+      mockRepository.create.mockResolvedValue({
+        ...baseShare,
+        protocol: StorageProtocol.SMB,
+      });
 
       await service.create({
         nodeId: 'node-1',
@@ -211,7 +214,10 @@ describe('StorageShareService', () => {
   describe('update', () => {
     it('should update share with encrypted password', async () => {
       mockRepository.findById.mockResolvedValue(baseShare);
-      mockRepository.update.mockResolvedValue({ ...baseShare, name: 'Updated' });
+      mockRepository.update.mockResolvedValue({
+        ...baseShare,
+        name: 'Updated',
+      });
 
       const _result = await service.update('share-1', {
         name: 'Updated',
@@ -229,7 +235,10 @@ describe('StorageShareService', () => {
 
     it('should not encrypt password when not provided', async () => {
       mockRepository.findById.mockResolvedValue(baseShare);
-      mockRepository.update.mockResolvedValue({ ...baseShare, name: 'Updated' });
+      mockRepository.update.mockResolvedValue({
+        ...baseShare,
+        name: 'Updated',
+      });
 
       await service.update('share-1', { name: 'Updated' });
 
@@ -317,7 +326,10 @@ describe('StorageShareService', () => {
 
   describe('delete', () => {
     it('should delete unmounted share', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: false });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: false,
+      });
       mockRepository.delete.mockResolvedValue({});
 
       await service.delete('share-1');
@@ -326,7 +338,10 @@ describe('StorageShareService', () => {
     });
 
     it('should throw BadRequestException for mounted share', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
 
       await expect(service.delete('share-1')).rejects.toThrow(BadRequestException);
     });
@@ -527,7 +542,11 @@ describe('StorageShareService', () => {
 
   describe('updateUsageStats', () => {
     it('should update usage stats', async () => {
-      const updated = { ...baseShare, totalSizeBytes: 5000000n, availableSizeBytes: 2000000n };
+      const updated = {
+        ...baseShare,
+        totalSizeBytes: 5000000n,
+        availableSizeBytes: 2000000n,
+      };
       mockRepository.update.mockResolvedValue(updated);
 
       const result = await service.updateUsageStats('share-1', {
@@ -563,7 +582,10 @@ describe('StorageShareService', () => {
   describe('updateStatus - edge cases', () => {
     it('should not update node when share not found during MOUNTED status', async () => {
       mockRepository.findById.mockResolvedValue(null);
-      mockRepository.update.mockResolvedValue({ ...baseShare, status: StorageShareStatus.MOUNTED });
+      mockRepository.update.mockResolvedValue({
+        ...baseShare,
+        status: StorageShareStatus.MOUNTED,
+      });
 
       // Should not call nodeRepository.updateData since share is null
       await service.updateStatus('share-1', StorageShareStatus.MOUNTED);
@@ -617,7 +639,10 @@ describe('StorageShareService', () => {
 
   describe('autoCreateSharesForLibraries', () => {
     it('should return existing auto-managed shares when they exist', async () => {
-      mockNodeRepository.findById.mockResolvedValue({ id: 'main-1', role: 'MAIN' });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'main-1',
+        role: 'MAIN',
+      });
       mockRepository.findAutoManagedByNodeId.mockResolvedValue([baseShare]);
 
       const result = await service.autoCreateSharesForLibraries('main-1');
@@ -625,7 +650,10 @@ describe('StorageShareService', () => {
     });
 
     it('should return empty array when no auto-managed shares found', async () => {
-      mockNodeRepository.findById.mockResolvedValue({ id: 'main-1', role: 'MAIN' });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'main-1',
+        role: 'MAIN',
+      });
       mockRepository.findAutoManagedByNodeId.mockResolvedValue([]);
 
       const result = await service.autoCreateSharesForLibraries('main-1');
@@ -640,7 +668,10 @@ describe('StorageShareService', () => {
     });
 
     it('should return empty array on repository error', async () => {
-      mockNodeRepository.findById.mockResolvedValue({ id: 'main-1', role: 'MAIN' });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'main-1',
+        role: 'MAIN',
+      });
       mockRepository.findAutoManagedByNodeId.mockRejectedValue(new Error('DB error'));
 
       const result = await service.autoCreateSharesForLibraries('main-1');
@@ -650,7 +681,10 @@ describe('StorageShareService', () => {
 
   describe('autoDetectAndMount', () => {
     it('should return empty result for non-LINKED node', async () => {
-      mockNodeRepository.findById.mockResolvedValue({ id: 'main-1', role: 'MAIN' });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'main-1',
+        role: 'MAIN',
+      });
 
       const result = await service.autoDetectAndMount('main-1');
       expect(result.detected).toBe(0);
@@ -723,7 +757,10 @@ describe('StorageShareService', () => {
           json: async () => [alreadyMounted],
         }) as unknown as typeof fetch;
 
-      mockRepository.findByMountPoint.mockResolvedValue({ ...alreadyMounted, id: 'local-share' });
+      mockRepository.findByMountPoint.mockResolvedValue({
+        ...alreadyMounted,
+        id: 'local-share',
+      });
 
       const result = await service.autoDetectAndMount('node-2');
       expect(result.detected).toBe(1);
@@ -759,7 +796,10 @@ describe('StorageShareService', () => {
         }) as unknown as typeof fetch;
 
       mockRepository.findByMountPoint.mockResolvedValue(null);
-      mockRepository.create.mockResolvedValue({ ...autoShare, id: 'new-share' });
+      mockRepository.create.mockResolvedValue({
+        ...autoShare,
+        id: 'new-share',
+      });
       mockMountService.mount.mockResolvedValue({ success: true });
 
       const result = await service.autoDetectAndMount('node-2');
@@ -797,8 +837,14 @@ describe('StorageShareService', () => {
         }) as unknown as typeof fetch;
 
       mockRepository.findByMountPoint.mockResolvedValue(null);
-      mockRepository.create.mockResolvedValue({ ...autoShare, id: 'new-share' });
-      mockMountService.mount.mockResolvedValue({ success: false, error: 'Permission denied' });
+      mockRepository.create.mockResolvedValue({
+        ...autoShare,
+        id: 'new-share',
+      });
+      mockMountService.mount.mockResolvedValue({
+        success: false,
+        error: 'Permission denied',
+      });
 
       const result = await service.autoDetectAndMount('node-2');
       expect(result.errors).toHaveLength(1);
@@ -837,9 +883,24 @@ describe('StorageShareService', () => {
 
     it('should count shares correctly across all statuses', async () => {
       mockRepository.findByNodeId.mockResolvedValue([
-        { ...baseShare, id: 's1', isMounted: true, status: StorageShareStatus.MOUNTED },
-        { ...baseShare, id: 's2', isMounted: true, status: StorageShareStatus.MOUNTED },
-        { ...baseShare, id: 's3', isMounted: false, status: StorageShareStatus.ERROR },
+        {
+          ...baseShare,
+          id: 's1',
+          isMounted: true,
+          status: StorageShareStatus.MOUNTED,
+        },
+        {
+          ...baseShare,
+          id: 's2',
+          isMounted: true,
+          status: StorageShareStatus.MOUNTED,
+        },
+        {
+          ...baseShare,
+          id: 's3',
+          isMounted: false,
+          status: StorageShareStatus.ERROR,
+        },
         {
           ...baseShare,
           id: 's4',
@@ -860,7 +921,10 @@ describe('StorageShareService', () => {
 
   describe('handleAutoDetectMount', () => {
     it('should call autoDetectAndMount and log result', async () => {
-      mockNodeRepository.findById.mockResolvedValue({ id: 'node-1', role: 'MAIN' });
+      mockNodeRepository.findById.mockResolvedValue({
+        id: 'node-1',
+        role: 'MAIN',
+      });
 
       const event = new StorageAutoDetectMountEvent('node-1');
 

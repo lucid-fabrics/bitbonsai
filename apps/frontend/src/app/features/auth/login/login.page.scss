@@ -6,7 +6,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, $bg-primary 0%, color.adjust($bg-primary, $lightness: -3%) 100%);
+  background: linear-gradient(
+    135deg,
+    $bg-primary 0%,
+    color.adjust($bg-primary, $lightness: -3%) 100%
+  );
   padding: 2rem;
   position: relative;
   overflow: hidden;
@@ -19,7 +23,11 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle at center, rgba($accent-primary, 0.03) 0%, transparent 50%);
+    background: radial-gradient(
+      circle at center,
+      rgba($accent-primary, 0.03) 0%,
+      transparent 50%
+    );
     animation: rotate 60s linear infinite;
   }
 
@@ -69,7 +77,8 @@
   }
 
   @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
       transform: scale(1);
     }
     50% {
@@ -294,13 +303,21 @@
   }
 
   @keyframes shake {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateX(0);
     }
-    10%, 30%, 50%, 70%, 90% {
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
       transform: translateX(-5px);
     }
-    20%, 40%, 60%, 80% {
+    20%,
+    40%,
+    60%,
+    80% {
       transform: translateX(5px);
     }
   }
@@ -385,7 +402,9 @@
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.3);
     transform: translate(-50%, -50%);
-    transition: width 0.5s, height 0.5s;
+    transition:
+      width 0.5s,
+      height 0.5s;
   }
 
   &:active:not(:disabled)::after {

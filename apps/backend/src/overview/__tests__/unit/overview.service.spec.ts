@@ -302,15 +302,24 @@ describe('OverviewService', () => {
       mockJobRepository.groupByLibraryIdSum.mockResolvedValue([
         {
           libraryId: 'lib-1',
-          _sum: { savedBytes: BigInt('10000000000'), beforeSizeBytes: BigInt('20000000000') },
+          _sum: {
+            savedBytes: BigInt('10000000000'),
+            beforeSizeBytes: BigInt('20000000000'),
+          },
         },
         {
           libraryId: 'lib-2',
-          _sum: { savedBytes: BigInt('5000000000'), beforeSizeBytes: BigInt('10000000000') },
+          _sum: {
+            savedBytes: BigInt('5000000000'),
+            beforeSizeBytes: BigInt('10000000000'),
+          },
         },
         {
           libraryId: 'lib-3',
-          _sum: { savedBytes: BigInt('2500000000'), beforeSizeBytes: BigInt('5000000000') },
+          _sum: {
+            savedBytes: BigInt('2500000000'),
+            beforeSizeBytes: BigInt('5000000000'),
+          },
         },
       ]);
 
@@ -368,7 +377,10 @@ describe('OverviewService', () => {
         { stage: JobStage.COMPLETED, _count: 100 },
       ]);
       mockJobRepository.aggregateSumWhere.mockResolvedValue({
-        _sum: { savedBytes: BigInt('10000000000'), beforeSizeBytes: BigInt('50000000000') },
+        _sum: {
+          savedBytes: BigInt('10000000000'),
+          beforeSizeBytes: BigInt('50000000000'),
+        },
       });
       mockJobRepository.findManyWithInclude.mockResolvedValue([
         {
@@ -440,7 +452,10 @@ describe('OverviewService', () => {
         { stage: JobStage.FAILED, _count: 5 },
       ]);
       mockJobRepository.aggregateSumWhere.mockResolvedValue({
-        _sum: { savedBytes: BigInt('2748779069440'), beforeSizeBytes: BigInt('100000000000') },
+        _sum: {
+          savedBytes: BigInt('2748779069440'),
+          beforeSizeBytes: BigInt('100000000000'),
+        },
       });
 
       // getNodeStatus
@@ -500,7 +515,10 @@ describe('OverviewService', () => {
       mockJobRepository.groupByLibraryIdSum.mockResolvedValue([
         {
           libraryId: 'lib-1',
-          _sum: { savedBytes: BigInt('16106127360'), beforeSizeBytes: BigInt('32000000000') },
+          _sum: {
+            savedBytes: BigInt('16106127360'),
+            beforeSizeBytes: BigInt('32000000000'),
+          },
         },
       ]);
 

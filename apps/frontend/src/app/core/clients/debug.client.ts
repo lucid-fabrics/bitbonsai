@@ -69,11 +69,14 @@ export class DebugClient {
     return this.http.get<SystemLoadInfo>(`${this.baseUrl}/system-load`);
   }
 
-  reloadLoadThreshold(): Observable<{ success: boolean; loadThresholdMultiplier: number }> {
-    return this.http.post<{ success: boolean; loadThresholdMultiplier: number }>(
-      `${this.baseUrl}/reload-load-threshold`,
-      {}
-    );
+  reloadLoadThreshold(): Observable<{
+    success: boolean;
+    loadThresholdMultiplier: number;
+  }> {
+    return this.http.post<{
+      success: boolean;
+      loadThresholdMultiplier: number;
+    }>(`${this.baseUrl}/reload-load-threshold`, {});
   }
 
   getFfmpegProcesses(): Observable<FfmpegProcessesResponse> {

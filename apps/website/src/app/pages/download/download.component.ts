@@ -33,7 +33,8 @@ interface Platform {
         <div class="download-header__container">
           <h1 class="download-header__title">Download BitBonsai</h1>
           <p class="download-header__subtitle">
-            Get started with intelligent multi-node video encoding in under 5 minutes
+            Get started with intelligent multi-node video encoding in under 5
+            minutes
           </p>
         </div>
       </section>
@@ -45,19 +46,36 @@ interface Platform {
 
           <div class="platforms__grid">
             @for (platform of platforms; track platform.name; let i = $index) {
-              <div class="platform-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-                <fa-icon [icon]="platform.faIcon" class="platform-card__icon"></fa-icon>
+              <div
+                class="platform-card"
+                bbScrollReveal
+                [delay]="i * 100"
+                animation="fade-in-up"
+              >
+                <fa-icon
+                  [icon]="platform.faIcon"
+                  class="platform-card__icon"
+                ></fa-icon>
                 <h3 class="platform-card__name">{{ platform.name }}</h3>
-                <p class="platform-card__description">{{ platform.description }}</p>
+                <p class="platform-card__description">
+                  {{ platform.description }}
+                </p>
 
                 <div class="code-block">
                   <div class="code-block__header">
                     <span class="code-block__label">Installation</span>
-                    <button class="code-block__copy" (click)="copyCommand(platform.command)">
-                      {{ copiedCommand === platform.command ? 'Copied!' : 'Copy' }}
+                    <button
+                      class="code-block__copy"
+                      (click)="copyCommand(platform.command)"
+                    >
+                      {{
+                        copiedCommand === platform.command ? 'Copied!' : 'Copy'
+                      }}
                     </button>
                   </div>
-                  <pre class="code-block__content"><code>{{ platform.command }}</code></pre>
+                  <pre
+                    class="code-block__content"
+                  ><code>{{ platform.command }}</code></pre>
                 </div>
 
                 @if (platform.notes) {
@@ -95,7 +113,8 @@ interface Platform {
               <div class="step__content">
                 <h3 class="step__title">Add Your Library</h3>
                 <p class="step__description">
-                  Point BitBonsai at your media folder and create an encoding policy
+                  Point BitBonsai at your media folder and create an encoding
+                  policy
                 </p>
               </div>
             </div>
@@ -105,14 +124,17 @@ interface Platform {
               <div class="step__content">
                 <h3 class="step__title">Start Encoding</h3>
                 <p class="step__description">
-                  Queue jobs and watch BitBonsai automatically reduce your storage by 40-60%
+                  Queue jobs and watch BitBonsai automatically reduce your
+                  storage by 40-60%
                 </p>
               </div>
             </div>
           </div>
 
           <div class="quick-start__cta">
-            <a routerLink="/docs" class="quick-start__button">View Full Documentation</a>
+            <a routerLink="/docs" class="quick-start__button"
+              >View Full Documentation</a
+            >
           </div>
         </div>
       </section>
@@ -124,18 +146,26 @@ interface Platform {
 
           <div class="requirements__grid">
             <div class="requirement-card">
-              <fa-icon [icon]="faLaptop" class="requirement-card__icon"></fa-icon>
+              <fa-icon
+                [icon]="faLaptop"
+                class="requirement-card__icon"
+              ></fa-icon>
               <h3 class="requirement-card__title">Hardware</h3>
               <ul class="requirement-card__list">
                 <li>CPU: 4+ cores recommended</li>
                 <li>RAM: 4GB minimum, 8GB+ recommended</li>
                 <li>Storage: 10GB for application + temp space</li>
-                <li>GPU: Optional (NVIDIA/Intel/AMD for hardware acceleration)</li>
+                <li>
+                  GPU: Optional (NVIDIA/Intel/AMD for hardware acceleration)
+                </li>
               </ul>
             </div>
 
             <div class="requirement-card">
-              <fa-icon [icon]="faTools" class="requirement-card__icon"></fa-icon>
+              <fa-icon
+                [icon]="faTools"
+                class="requirement-card__icon"
+              ></fa-icon>
               <h3 class="requirement-card__title">Software</h3>
               <ul class="requirement-card__list">
                 <li>Docker 20.10+ (recommended)</li>
@@ -146,7 +176,10 @@ interface Platform {
             </div>
 
             <div class="requirement-card">
-              <fa-icon [icon]="faGlobe" class="requirement-card__icon"></fa-icon>
+              <fa-icon
+                [icon]="faGlobe"
+                class="requirement-card__icon"
+              ></fa-icon>
               <h3 class="requirement-card__title">Network</h3>
               <ul class="requirement-card__list">
                 <li>Port 4210: Frontend UI</li>
@@ -168,11 +201,19 @@ interface Platform {
           </p>
 
           <div class="support__links">
-            <a href="https://github.com/bitbonsai/bitbonsai" target="_blank" class="support__link">
+            <a
+              href="https://github.com/bitbonsai/bitbonsai"
+              target="_blank"
+              class="support__link"
+            >
               <fa-icon [icon]="faGithub" class="support__link-icon"></fa-icon>
               <span class="support__link-text">GitHub</span>
             </a>
-            <a href="https://discord.gg/bitbonsai" target="_blank" class="support__link">
+            <a
+              href="https://discord.gg/bitbonsai"
+              target="_blank"
+              class="support__link"
+            >
               <fa-icon [icon]="faDiscord" class="support__link-icon"></fa-icon>
               <span class="support__link-text">Discord</span>
             </a>

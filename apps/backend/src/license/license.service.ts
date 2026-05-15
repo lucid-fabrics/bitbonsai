@@ -134,7 +134,10 @@ export class LicenseService {
       // Commercial tiers - businesses
       [LicenseTier.COMMERCIAL_STARTER]: { maxNodes: 15, maxConcurrentJobs: 30 },
       [LicenseTier.COMMERCIAL_PRO]: { maxNodes: 50, maxConcurrentJobs: 100 },
-      [LicenseTier.COMMERCIAL_ENTERPRISE]: { maxNodes: 999, maxConcurrentJobs: 999 },
+      [LicenseTier.COMMERCIAL_ENTERPRISE]: {
+        maxNodes: 999,
+        maxConcurrentJobs: 999,
+      },
     };
 
     const config = tierConfig[data.tier];

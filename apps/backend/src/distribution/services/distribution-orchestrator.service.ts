@@ -512,7 +512,12 @@ export class DistributionOrchestratorService {
     totalNodes: number;
     onlineNodes: number;
     totalQueuedJobs: number;
-    jobsPerNode: { nodeId: string; nodeName: string; queued: number; encoding: number }[];
+    jobsPerNode: {
+      nodeId: string;
+      nodeName: string;
+      queued: number;
+      encoding: number;
+    }[];
   }> {
     const nodes = await this.nodeRepository.findAllSummary();
 

@@ -61,7 +61,12 @@ describe('NodesController', () => {
 
   describe('getCurrentNode', () => {
     it('should return current node info', async () => {
-      const node = { id: 'node1', role: 'MAIN', version: '1.0.0', status: 'ONLINE' };
+      const node = {
+        id: 'node1',
+        role: 'MAIN',
+        version: '1.0.0',
+        status: 'ONLINE',
+      };
       mockNodesService.getCurrentNode.mockResolvedValue(node);
 
       const result = await controller.getCurrentNode();
@@ -115,7 +120,12 @@ describe('NodesController', () => {
 
   describe('findOne', () => {
     it('should return a single node as response dto', async () => {
-      const node = { id: 'node1', name: 'Main', role: 'MAIN', status: 'ONLINE' };
+      const node = {
+        id: 'node1',
+        name: 'Main',
+        role: 'MAIN',
+        status: 'ONLINE',
+      };
       mockNodesService.findOne.mockResolvedValue(node);
 
       const result = await controller.findOne('node1');

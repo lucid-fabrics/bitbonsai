@@ -191,7 +191,9 @@ describe('LibraryRepository', () => {
     });
 
     it('should return BigInt(0) when aggregate sum is null', async () => {
-      mockPrismaLibrary.aggregate.mockResolvedValue({ _sum: { sizeBytes: null } });
+      mockPrismaLibrary.aggregate.mockResolvedValue({
+        _sum: { sizeBytes: null },
+      });
 
       const result = await repository.getTotalSize();
 
@@ -213,7 +215,9 @@ describe('LibraryRepository', () => {
     });
 
     it('should return null sum when no data', async () => {
-      mockPrismaLibrary.aggregate.mockResolvedValue({ _sum: { totalSizeBytes: null } });
+      mockPrismaLibrary.aggregate.mockResolvedValue({
+        _sum: { totalSizeBytes: null },
+      });
 
       const result = await repository.aggregateTotalSizeBytes();
 
@@ -252,7 +256,9 @@ describe('LibraryRepository', () => {
       const result = await repository.findByWhere({ id: 'lib-1' });
 
       expect(result).toEqual(mockLibrary);
-      expect(mockPrismaLibrary.findUnique).toHaveBeenCalledWith({ where: { id: 'lib-1' } });
+      expect(mockPrismaLibrary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'lib-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -294,7 +300,9 @@ describe('LibraryRepository', () => {
       const result = await repository.findFirstWhere({ id: 'lib-1' });
 
       expect(result).toEqual(mockLibrary);
-      expect(mockPrismaLibrary.findFirst).toHaveBeenCalledWith({ where: { id: 'lib-1' } });
+      expect(mockPrismaLibrary.findFirst).toHaveBeenCalledWith({
+        where: { id: 'lib-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -321,7 +329,9 @@ describe('LibraryRepository', () => {
 
       await repository.findAllLibraries({ nodeId: 'node-1' });
 
-      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({ where: { nodeId: 'node-1' } });
+      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({
+        where: { nodeId: 'node-1' },
+      });
     });
 
     it('should call findMany with include when provided', async () => {
@@ -329,7 +339,9 @@ describe('LibraryRepository', () => {
 
       await repository.findAllLibraries(undefined, { jobs: true });
 
-      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({ include: { jobs: true } });
+      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({
+        include: { jobs: true },
+      });
     });
 
     it('should call findMany with both where and include', async () => {
@@ -348,9 +360,11 @@ describe('LibraryRepository', () => {
     it('should create a library with provided data', async () => {
       mockPrismaLibrary.create.mockResolvedValue(mockLibrary);
 
-      const createData = { name: 'Movies', path: '/mnt/movies', nodeId: 'node-1' } as Parameters<
-        typeof repository.createLibrary
-      >[0];
+      const createData = {
+        name: 'Movies',
+        path: '/mnt/movies',
+        nodeId: 'node-1',
+      } as Parameters<typeof repository.createLibrary>[0];
       const result = await repository.createLibrary(createData);
 
       expect(result).toEqual(mockLibrary);
@@ -362,9 +376,11 @@ describe('LibraryRepository', () => {
     it('should propagate errors', async () => {
       mockPrismaLibrary.create.mockRejectedValue(new Error('Unique constraint failed'));
 
-      const createData = { name: 'Dup', path: '/mnt/movies', nodeId: 'node-1' } as Parameters<
-        typeof repository.createLibrary
-      >[0];
+      const createData = {
+        name: 'Dup',
+        path: '/mnt/movies',
+        nodeId: 'node-1',
+      } as Parameters<typeof repository.createLibrary>[0];
       await expect(repository.createLibrary(createData)).rejects.toThrow(
         'Unique constraint failed'
       );
@@ -413,7 +429,9 @@ describe('LibraryRepository', () => {
       const result = await repository.deleteLibrary({ id: 'lib-1' });
 
       expect(result).toEqual(mockLibrary);
-      expect(mockPrismaLibrary.delete).toHaveBeenCalledWith({ where: { id: 'lib-1' } });
+      expect(mockPrismaLibrary.delete).toHaveBeenCalledWith({
+        where: { id: 'lib-1' },
+      });
     });
 
     it('should propagate errors when not found', async () => {
@@ -427,9 +445,11 @@ describe('LibraryRepository', () => {
     it('should call prisma upsert with where, create, and update', async () => {
       mockPrismaLibrary.upsert.mockResolvedValue(mockLibrary);
 
-      const createData = { name: 'Movies', path: '/mnt/movies', nodeId: 'node-1' } as Parameters<
-        typeof repository.upsertLibrary
-      >[1];
+      const createData = {
+        name: 'Movies',
+        path: '/mnt/movies',
+        nodeId: 'node-1',
+      } as Parameters<typeof repository.upsertLibrary>[1];
       const result = await repository.upsertLibrary({ id: 'lib-1' }, createData, {
         name: 'Movies Updated',
       });

@@ -282,7 +282,9 @@ export class TorrentIntegrationService {
       );
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { headers?: Record<string, string> } };
+        const axiosError = error as {
+          response?: { headers?: Record<string, string> };
+        };
         sessionId = axiosError.response?.headers?.['x-transmission-session-id'] || '';
       }
     }
@@ -339,7 +341,9 @@ export class TorrentIntegrationService {
       );
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { headers?: Record<string, string> } };
+        const axiosError = error as {
+          response?: { headers?: Record<string, string> };
+        };
         sessionId = axiosError.response?.headers?.['x-transmission-session-id'] || '';
       }
     }

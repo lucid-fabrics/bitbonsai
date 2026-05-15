@@ -26,7 +26,8 @@ export class ScheduleEnforcementService {
     private readonly jobRepository: JobRepository,
     private readonly nodeRepository: NodeRepository,
     private readonly jobAttribution: JobAttributionService,
-    @Optional() private readonly distributionOrchestrator?: DistributionOrchestratorService
+    @Optional()
+    private readonly distributionOrchestrator?: DistributionOrchestratorService
   ) {
     // Enable Distribution v2 if the service is available
     this.useDistributionV2 = !!this.distributionOrchestrator;
@@ -146,7 +147,11 @@ export class ScheduleEnforcementService {
     const nodeScoreMap = new Map(nodeScores.map((score) => [score.nodeId, score]));
 
     // Find optimal node for each job based on pre-calculated scores
-    const jobUpdates: Array<{ id: string; nodeId: string; originalNodeId: string | null }> = [];
+    const jobUpdates: Array<{
+      id: string;
+      nodeId: string;
+      originalNodeId: string | null;
+    }> = [];
 
     for (const job of queuedJobs) {
       // Find highest scoring node

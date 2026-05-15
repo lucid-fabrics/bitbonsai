@@ -233,7 +233,12 @@ export class JellyfinIntegrationService {
   async testConnection(
     url: string,
     apiKey: string
-  ): Promise<{ success: boolean; serverName?: string; version?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    serverName?: string;
+    version?: string;
+    error?: string;
+  }> {
     const result = await testIntegrationConnection(this.httpService, {
       url,
       path: '/System/Info',

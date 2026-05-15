@@ -91,7 +91,9 @@ export class LibrariesService {
 
   async validateInput(data: unknown): Promise<void> {
     if (!data || typeof data !== 'object') {
-      throw new ValidationError('Invalid input data', { received: typeof data });
+      throw new ValidationError('Invalid input data', {
+        received: typeof data,
+      });
     }
 
     if (!('name' in data)) {
@@ -167,36 +169,37 @@ In development mode, a `stack` property is also included.
 ## Error Codes
 
 Error codes are constants that clients can use for:
+
 - Conditional UI behavior
 - i18n/localization
 - Analytics and monitoring
 
 ### Common Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `VALIDATION_ERROR` | 400 | General validation failure |
-| `MISSING_FIELD` | 400 | Required field not provided |
-| `INVALID_FIELD` | 400 | Field value doesn't meet requirements |
-| `UNAUTHORIZED` | 401 | Authentication required |
-| `INVALID_LICENSE` | 403 | License validation failed |
-| `FEATURE_NOT_LICENSED` | 403 | Feature not available in license tier |
-| `NOT_FOUND` | 404 | Generic resource not found |
-| `LIBRARY_NOT_FOUND` | 404 | Specific library not found |
-| `NODE_NOT_FOUND` | 404 | Specific node not found |
-| `POLICY_NOT_FOUND` | 404 | Specific policy not found |
-| `CONFLICT` | 409 | Generic resource conflict |
-| `DUPLICATE_RESOURCE` | 409 | Resource already exists |
-| `LIBRARY_PATH_CONFLICT` | 409 | Library path already registered |
-| `BUSINESS_RULE_VIOLATION` | 422 | Generic business rule error |
-| `NODE_OFFLINE` | 422 | Node is not available |
-| `INSUFFICIENT_CAPACITY` | 422 | No nodes available with capacity |
-| `ENCODING_FAILED` | 422 | FFmpeg encoding failed |
-| `FILE_ACCESS_ERROR` | 422 | Cannot access file on filesystem |
-| `DATABASE_ERROR` | 500 | Database operation failed |
-| `EXTERNAL_SERVICE_ERROR` | 503 | External service unavailable |
-| `FFMPEG_ERROR` | 503 | FFmpeg service failed |
-| `NETWORK_ERROR` | 503 | Network request failed |
+| Code                      | HTTP Status | Description                           |
+| ------------------------- | ----------- | ------------------------------------- |
+| `VALIDATION_ERROR`        | 400         | General validation failure            |
+| `MISSING_FIELD`           | 400         | Required field not provided           |
+| `INVALID_FIELD`           | 400         | Field value doesn't meet requirements |
+| `UNAUTHORIZED`            | 401         | Authentication required               |
+| `INVALID_LICENSE`         | 403         | License validation failed             |
+| `FEATURE_NOT_LICENSED`    | 403         | Feature not available in license tier |
+| `NOT_FOUND`               | 404         | Generic resource not found            |
+| `LIBRARY_NOT_FOUND`       | 404         | Specific library not found            |
+| `NODE_NOT_FOUND`          | 404         | Specific node not found               |
+| `POLICY_NOT_FOUND`        | 404         | Specific policy not found             |
+| `CONFLICT`                | 409         | Generic resource conflict             |
+| `DUPLICATE_RESOURCE`      | 409         | Resource already exists               |
+| `LIBRARY_PATH_CONFLICT`   | 409         | Library path already registered       |
+| `BUSINESS_RULE_VIOLATION` | 422         | Generic business rule error           |
+| `NODE_OFFLINE`            | 422         | Node is not available                 |
+| `INSUFFICIENT_CAPACITY`   | 422         | No nodes available with capacity      |
+| `ENCODING_FAILED`         | 422         | FFmpeg encoding failed                |
+| `FILE_ACCESS_ERROR`       | 422         | Cannot access file on filesystem      |
+| `DATABASE_ERROR`          | 500         | Database operation failed             |
+| `EXTERNAL_SERVICE_ERROR`  | 503         | External service unavailable          |
+| `FFMPEG_ERROR`            | 503         | FFmpeg service failed                 |
+| `NETWORK_ERROR`           | 503         | Network request failed                |
 
 ## Creating New Error Classes
 
@@ -208,10 +211,7 @@ Error codes are constants that clients can use for:
 // In the appropriate errors file
 export class MyCustomError extends BusinessRuleError {
   constructor(customParam: string, context?: Record<string, unknown>) {
-    super(
-      `Custom error message: ${customParam}`,
-      { customParam, ...context }
-    );
+    super(`Custom error message: ${customParam}`, { customParam, ...context });
     this.errorCode = 'MY_CUSTOM_ERROR';
   }
 }
@@ -228,6 +228,7 @@ The GlobalExceptionFilter automatically logs errors with structured context:
 - **Error level**: Unexpected errors (bugs, external failures)
 
 Log format includes:
+
 - Error message and code
 - HTTP method, URL, IP
 - User agent
@@ -290,7 +291,10 @@ if (existingPath) {
 ### New Code (using custom errors)
 
 ```typescript
-import { LibraryNotFoundError, LibraryPathConflictError } from '../common/errors';
+import {
+  LibraryNotFoundError,
+  LibraryPathConflictError,
+} from '../common/errors';
 
 if (!library) {
   throw new LibraryNotFoundError(id);

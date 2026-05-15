@@ -352,7 +352,11 @@ export class HealthService {
           },
         },
       })) as (import('@prisma/client').Library & {
-        jobs: { id: string; filePath: string; beforeSizeBytes: bigint | null }[];
+        jobs: {
+          id: string;
+          filePath: string;
+          beforeSizeBytes: bigint | null;
+        }[];
       })[];
 
       const librarySpaceData: LibraryDiskSpaceDto[] = [];

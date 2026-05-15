@@ -79,10 +79,16 @@ describe('RegistrationRequestService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RegistrationRequestService,
-        { provide: RegistrationRequestRepository, useValue: mockRegistrationRequestRepository },
+        {
+          provide: RegistrationRequestRepository,
+          useValue: mockRegistrationRequestRepository,
+        },
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: SystemInfoService, useValue: mockSystemInfoService },
-        { provide: NodeCapabilityDetectorService, useValue: mockCapabilityDetector },
+        {
+          provide: NodeCapabilityDetectorService,
+          useValue: mockCapabilityDetector,
+        },
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: NotificationsGateway, useValue: mockNotificationsGateway },
         { provide: SshKeyService, useValue: mockSshKeyService },
@@ -103,7 +109,9 @@ describe('RegistrationRequestService', () => {
         pairingToken: '123456',
       };
       mockRegistrationRequestRepository.createRequest.mockResolvedValue(createdRequest);
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-1' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-1',
+      });
 
       const result = await service.createRegistrationRequest(createDto);
 
@@ -146,8 +154,12 @@ describe('RegistrationRequestService', () => {
 
     it('should skip duplicate check when macAddress is null', async () => {
       const dtoNoMac = { ...createDto, macAddress: null };
-      mockRegistrationRequestRepository.createRequest.mockResolvedValue({ id: 'req-1' });
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'n' });
+      mockRegistrationRequestRepository.createRequest.mockResolvedValue({
+        id: 'req-1',
+      });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'n',
+      });
 
       await service.createRegistrationRequest(dtoNoMac);
 
@@ -194,7 +206,9 @@ describe('RegistrationRequestService', () => {
         childNodeId: 'child-1',
       };
       mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
-      mockNodeRepository.findUnique.mockResolvedValue({ apiKey: 'bb_secret_key' });
+      mockNodeRepository.findUnique.mockResolvedValue({
+        apiKey: 'bb_secret_key',
+      });
 
       const result = await service.getRequest('req-1');
       expect((result as any).apiKey).toBe('bb_secret_key');
@@ -245,7 +259,9 @@ describe('RegistrationRequestService', () => {
         rejectionReason: 'Not authorized',
       });
 
-      const result = await service.rejectRequest('req-1', { reason: 'Not authorized' });
+      const result = await service.rejectRequest('req-1', {
+        reason: 'Not authorized',
+      });
 
       expect(result.status).toBe(RegistrationRequestStatus.REJECTED);
       expect(mockRegistrationRequestRepository.updateById).toHaveBeenCalledWith(
@@ -298,7 +314,9 @@ describe('RegistrationRequestService', () => {
 
   describe('cleanupExpiredRequests', () => {
     it('should mark expired PENDING requests as EXPIRED', async () => {
-      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({ count: 3 });
+      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({
+        count: 3,
+      });
 
       await service.cleanupExpiredRequests();
 
@@ -316,7 +334,9 @@ describe('RegistrationRequestService', () => {
 
   describe('deleteOldRequests', () => {
     it('should delete requests older than 30 days', async () => {
-      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({ count: 5 });
+      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({
+        count: 5,
+      });
 
       await service.deleteOldRequests();
 
@@ -409,7 +429,9 @@ describe('RegistrationRequestService', () => {
 
   describe('cleanupExpiredRequests - no expired', () => {
     it('should not log when no requests expired', async () => {
-      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({ count: 0 });
+      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({
+        count: 0,
+      });
 
       await service.cleanupExpiredRequests();
 
@@ -419,7 +441,9 @@ describe('RegistrationRequestService', () => {
 
   describe('deleteOldRequests - no deletions', () => {
     it('should not log when count is 0', async () => {
-      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({ count: 0 });
+      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({
+        count: 0,
+      });
 
       await service.deleteOldRequests();
 
@@ -601,7 +625,9 @@ describe('RegistrationRequestService', () => {
       );
 
       await expect(service.approveRequest('req-1')).rejects.toThrow(
-        expect.objectContaining({ message: expect.stringContaining('Maximum nodes') })
+        expect.objectContaining({
+          message: expect.stringContaining('Maximum nodes'),
+        })
       );
     });
 
@@ -614,13 +640,18 @@ describe('RegistrationRequestService', () => {
         storageBasePath: null,
         latencyMs: 5,
       });
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-2' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-2',
+      });
       mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
       mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([]);
 
       const result = await service.approveRequest('req-1');
 
-      expect(result).toMatchObject({ id: 'req-1', status: RegistrationRequestStatus.APPROVED });
+      expect(result).toMatchObject({
+        id: 'req-1',
+        status: RegistrationRequestStatus.APPROVED,
+      });
       expect(mockNotificationsGateway.sendToAll).toHaveBeenCalled();
     });
 
@@ -676,7 +707,9 @@ describe('RegistrationRequestService', () => {
         latencyMs: 5,
       });
       mockSshKeyService.getPublicKey.mockReturnValue('ssh-rsa MAIN_PUBLIC_KEY');
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'n-ssh' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'n-ssh',
+      });
       mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
       mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([]);
 
@@ -700,13 +733,18 @@ describe('RegistrationRequestService', () => {
         storageBasePath: null,
         latencyMs: 5,
       });
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-3' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-3',
+      });
       mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
       mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([
         { id: 'share-1' },
         { id: 'share-2' },
       ]);
-      mockNodeRepository.updateData.mockResolvedValue({ id: 'new-node-1', hasSharedStorage: true });
+      mockNodeRepository.updateData.mockResolvedValue({
+        id: 'new-node-1',
+        hasSharedStorage: true,
+      });
 
       await service.approveRequest('req-1');
 

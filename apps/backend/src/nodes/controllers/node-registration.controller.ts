@@ -182,7 +182,10 @@ export class NodeRegistrationController {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Successfully unregistered from main node' },
+        message: {
+          type: 'string',
+          example: 'Successfully unregistered from main node',
+        },
       },
     },
   })
@@ -535,7 +538,10 @@ export class NodeRegistrationController {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'SSH key added to authorized_keys' },
+        message: {
+          type: 'string',
+          example: 'SSH key added to authorized_keys',
+        },
       },
     },
   })

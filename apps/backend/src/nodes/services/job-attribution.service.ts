@@ -59,7 +59,9 @@ export class JobAttributionService {
   async findOptimalNode(jobId: string): Promise<Node | null> {
     const job = await this.jobRepository
       .findManyWithInclude<
-        import('@prisma/client').Job & { library: import('@prisma/client').Library }
+        import('@prisma/client').Job & {
+          library: import('@prisma/client').Library;
+        }
       >({
         where: { id: jobId },
         include: { library: true },

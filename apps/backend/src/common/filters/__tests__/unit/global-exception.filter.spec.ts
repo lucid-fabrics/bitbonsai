@@ -18,7 +18,12 @@ class TestNonOperationalError extends BaseError {
 describe('GlobalExceptionFilter', () => {
   let filter: GlobalExceptionFilter;
   let mockResponse: { status: jest.Mock; json: jest.Mock };
-  let mockRequest: { url: string; method: string; ip: string; headers: Record<string, string> };
+  let mockRequest: {
+    url: string;
+    method: string;
+    ip: string;
+    headers: Record<string, string>;
+  };
   let mockHost: ArgumentsHost;
 
   beforeEach(() => {
@@ -57,7 +62,9 @@ describe('GlobalExceptionFilter', () => {
 
   describe('BaseError handling', () => {
     it('should format BaseError correctly', () => {
-      const error = new TestOperationalError('Something went wrong', { key: 'value' });
+      const error = new TestOperationalError('Something went wrong', {
+        key: 'value',
+      });
 
       filter.catch(error, mockHost);
 

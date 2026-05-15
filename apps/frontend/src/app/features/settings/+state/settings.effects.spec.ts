@@ -50,7 +50,11 @@ describe('SettingsEffects', () => {
 
   describe('load license effect', () => {
     it('should return loadLicenseSuccess action on success', (done) => {
-      const mockData = { key: 'test-key', status: 'active', expiresAt: '2025-12-31' } as never;
+      const mockData = {
+        key: 'test-key',
+        status: 'active',
+        expiresAt: '2025-12-31',
+      } as never;
       licenseService.getCurrentLicense.mockReturnValue(of(mockData));
 
       actions$ = of(SettingsActions.loadLicense());

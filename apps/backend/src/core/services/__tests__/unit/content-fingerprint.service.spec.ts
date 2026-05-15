@@ -25,9 +25,10 @@ const LARGE_FILE_SIZE = 200 * 1024; // 200KB - above 100KB threshold
 function makeMockFileHandle(readImpl?: jest.Mock): ReturnType<typeof open> {
   const mockRead = readImpl ?? jest.fn().mockResolvedValue({ bytesRead: 4096 });
   const mockClose = jest.fn().mockResolvedValue(undefined);
-  return Promise.resolve({ read: mockRead, close: mockClose } as unknown as Awaited<
-    ReturnType<typeof open>
-  >);
+  return Promise.resolve({
+    read: mockRead,
+    close: mockClose,
+  } as unknown as Awaited<ReturnType<typeof open>>);
 }
 
 function makeHasher(hashValue = BigInt('0xdeadbeefcafebabe')) {
@@ -85,9 +86,10 @@ describe('ContentFingerprintService', () => {
       mockStat.mockResolvedValue({ size: SMALL_FILE_SIZE } as Awaited<ReturnType<typeof stat>>);
       const fhClose = jest.fn().mockResolvedValue(undefined);
       const fhRead = jest.fn().mockResolvedValue({ bytesRead: SMALL_FILE_SIZE });
-      mockOpen.mockResolvedValue({ read: fhRead, close: fhClose } as unknown as Awaited<
-        ReturnType<typeof open>
-      >);
+      mockOpen.mockResolvedValue({
+        read: fhRead,
+        close: fhClose,
+      } as unknown as Awaited<ReturnType<typeof open>>);
 
       const result = await service.computeFingerprint('/path/to/small.mkv');
 
@@ -103,9 +105,10 @@ describe('ContentFingerprintService', () => {
       mockStat.mockResolvedValue({ size: LARGE_FILE_SIZE } as Awaited<ReturnType<typeof stat>>);
       const fhClose = jest.fn().mockResolvedValue(undefined);
       const fhRead = jest.fn().mockResolvedValue({ bytesRead: 4096 });
-      mockOpen.mockResolvedValue({ read: fhRead, close: fhClose } as unknown as Awaited<
-        ReturnType<typeof open>
-      >);
+      mockOpen.mockResolvedValue({
+        read: fhRead,
+        close: fhClose,
+      } as unknown as Awaited<ReturnType<typeof open>>);
 
       const result = await service.computeFingerprint('/path/to/large.mkv');
 
@@ -118,9 +121,10 @@ describe('ContentFingerprintService', () => {
       mockStat.mockResolvedValue({ size: SMALL_FILE_SIZE } as Awaited<ReturnType<typeof stat>>);
       const fhClose = jest.fn().mockResolvedValue(undefined);
       const fhRead = jest.fn().mockRejectedValue(new Error('read error'));
-      mockOpen.mockResolvedValue({ read: fhRead, close: fhClose } as unknown as Awaited<
-        ReturnType<typeof open>
-      >);
+      mockOpen.mockResolvedValue({
+        read: fhRead,
+        close: fhClose,
+      } as unknown as Awaited<ReturnType<typeof open>>);
 
       const result = await service.computeFingerprint('/path/to/bad.mkv');
 
@@ -132,9 +136,10 @@ describe('ContentFingerprintService', () => {
       mockStat.mockResolvedValue({ size: LARGE_FILE_SIZE } as Awaited<ReturnType<typeof stat>>);
       const fhClose = jest.fn().mockResolvedValue(undefined);
       const fhRead = jest.fn().mockRejectedValue(new Error('read error'));
-      mockOpen.mockResolvedValue({ read: fhRead, close: fhClose } as unknown as Awaited<
-        ReturnType<typeof open>
-      >);
+      mockOpen.mockResolvedValue({
+        read: fhRead,
+        close: fhClose,
+      } as unknown as Awaited<ReturnType<typeof open>>);
 
       const result = await service.computeFingerprint('/path/to/bad-large.mkv');
 
@@ -185,9 +190,10 @@ describe('ContentFingerprintService', () => {
       mockStat.mockResolvedValue({ size: BOUNDARY_SIZE } as Awaited<ReturnType<typeof stat>>);
       const fhClose = jest.fn().mockResolvedValue(undefined);
       const fhRead = jest.fn().mockResolvedValue({ bytesRead: 4096 });
-      mockOpen.mockResolvedValue({ read: fhRead, close: fhClose } as unknown as Awaited<
-        ReturnType<typeof open>
-      >);
+      mockOpen.mockResolvedValue({
+        read: fhRead,
+        close: fhClose,
+      } as unknown as Awaited<ReturnType<typeof open>>);
 
       await service.computeFingerprint('/path/to/boundary.mkv');
 
@@ -199,9 +205,10 @@ describe('ContentFingerprintService', () => {
       mockStat.mockResolvedValue({ size: LARGE_FILE_SIZE } as Awaited<ReturnType<typeof stat>>);
       const fhClose = jest.fn().mockResolvedValue(undefined);
       const fhRead = jest.fn().mockResolvedValue({ bytesRead: 4096 });
-      mockOpen.mockResolvedValue({ read: fhRead, close: fhClose } as unknown as Awaited<
-        ReturnType<typeof open>
-      >);
+      mockOpen.mockResolvedValue({
+        read: fhRead,
+        close: fhClose,
+      } as unknown as Awaited<ReturnType<typeof open>>);
 
       await service.computeFingerprint('/path/to/large.mkv');
 

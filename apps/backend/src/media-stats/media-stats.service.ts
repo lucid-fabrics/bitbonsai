@@ -204,7 +204,14 @@ export class MediaStatsService {
     const avgBitrate =
       scanResults.bitrateCount > 0 ? scanResults.totalBitrate / scanResults.bitrateCount : 0;
 
-    return { hevcTotal, h264Total, av1Total, otherTotal, totalSizeGb, avgBitrate };
+    return {
+      hevcTotal,
+      h264Total,
+      av1Total,
+      otherTotal,
+      totalSizeGb,
+      avgBitrate,
+    };
   }
 
   private calculateSpaceSavings(

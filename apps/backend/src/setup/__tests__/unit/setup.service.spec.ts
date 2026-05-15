@@ -23,14 +23,21 @@ jest.mock('crypto', () => ({
 describe('SetupService', () => {
   let service: SetupService;
   let prisma: Record<string, Record<string, jest.Mock>>;
-  let mockLicenseRepository: { findFirstWhere: jest.Mock; createLicense: jest.Mock };
+  let mockLicenseRepository: {
+    findFirstWhere: jest.Mock;
+    createLicense: jest.Mock;
+  };
   let mockNodeRepository: { findFirstByRole: jest.Mock; createNode: jest.Mock };
   let mockSettingsRepository: {
     findFirst: jest.Mock;
     upsertSettings: jest.Mock;
     update: jest.Mock;
   };
-  let mockUserRepository: { count: jest.Mock; create: jest.Mock; deleteMany: jest.Mock };
+  let mockUserRepository: {
+    count: jest.Mock;
+    create: jest.Mock;
+    deleteMany: jest.Mock;
+  };
 
   function createMockPrisma() {
     return {
@@ -464,7 +471,10 @@ describe('SetupService', () => {
       prisma.settings.findFirst.mockResolvedValue(null);
       prisma.settings.create.mockResolvedValue({});
       prisma.license.findFirst.mockResolvedValue(null);
-      prisma.license.create.mockResolvedValue({ ...baseLicense, id: 'license-child' });
+      prisma.license.create.mockResolvedValue({
+        ...baseLicense,
+        id: 'license-child',
+      });
       prisma.node.create.mockResolvedValue({});
 
       await service.initializeSetup({
@@ -475,7 +485,9 @@ describe('SetupService', () => {
 
       expect(prisma.license.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ email: 'child-node@bitbonsai.local' }),
+          data: expect.objectContaining({
+            email: 'child-node@bitbonsai.local',
+          }),
         })
       );
     });
@@ -546,7 +558,10 @@ describe('SetupService', () => {
       });
 
       expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ isSetupComplete: true, allowLocalNetworkWithoutAuth: true })
+        expect.objectContaining({
+          isSetupComplete: true,
+          allowLocalNetworkWithoutAuth: true,
+        })
       );
     });
   });

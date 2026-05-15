@@ -27,7 +27,11 @@ export class CurrentNodeEffects {
           }),
           map((node) => CurrentNodeActions.loadCurrentNodeSuccess({ node })),
           catchError((error) =>
-            of(CurrentNodeActions.loadCurrentNodeFailure({ error: error.message }))
+            of(
+              CurrentNodeActions.loadCurrentNodeFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )

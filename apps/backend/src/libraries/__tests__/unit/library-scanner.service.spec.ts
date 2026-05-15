@@ -104,7 +104,9 @@ describe('LibraryScannerService', () => {
     // Defaults
     mockDistributionOrchestrator.findBestNodeForNewJob.mockResolvedValue('node-1');
     mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(new Set());
-    mockSettingsService.getReadyFilesCacheTtl.mockResolvedValue({ readyFilesCacheTtlMinutes: 5 });
+    mockSettingsService.getReadyFilesCacheTtl.mockResolvedValue({
+      readyFilesCacheTtlMinutes: 5,
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -112,8 +114,14 @@ describe('LibraryScannerService', () => {
         { provide: MediaAnalysisService, useValue: mockMediaAnalysis },
         { provide: QueueService, useValue: mockQueueService },
         { provide: SettingsService, useValue: mockSettingsService },
-        { provide: DistributionOrchestratorService, useValue: mockDistributionOrchestrator },
-        { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: DistributionOrchestratorService,
+          useValue: mockDistributionOrchestrator,
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: mockFileFailureTracking,
+        },
         { provide: LibraryRepository, useValue: mockLibraryRepo },
         { provide: JobRepository, useValue: mockJobRepo },
         { provide: PolicyRepository, useValue: mockPolicyRepo },
@@ -195,7 +203,10 @@ describe('LibraryScannerService', () => {
     });
 
     it('returns cacheValid=true when cache is fresh', async () => {
-      (service as any).readyFilesCache = { data: [], timestamp: Date.now() - 1000 };
+      (service as any).readyFilesCache = {
+        data: [],
+        timestamp: Date.now() - 1000,
+      };
       const result = await service.getCacheMetadata();
       expect(result.cacheValid).toBe(true);
       expect(result.cacheAgeSeconds).toBeGreaterThanOrEqual(1);
@@ -231,7 +242,10 @@ describe('LibraryScannerService', () => {
     it('scans directory and updates library with file count and size', async () => {
       const library = makeLibrary();
       mockLibraryRepo.findByWhere.mockResolvedValue(library);
-      mockLibraryRepo.updateWithInclude.mockResolvedValue({ ...library, totalFiles: 2 });
+      mockLibraryRepo.updateWithInclude.mockResolvedValue({
+        ...library,
+        totalFiles: 2,
+      });
 
       // Stub scanDirectoryStream to yield two files
       jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
@@ -248,7 +262,10 @@ describe('LibraryScannerService', () => {
 
       expect(mockLibraryRepo.updateWithInclude).toHaveBeenCalledWith(
         { id: 'lib-1' },
-        expect.objectContaining({ totalFiles: expect.any(Number), lastScanAt: expect.any(Date) }),
+        expect.objectContaining({
+          totalFiles: expect.any(Number),
+          lastScanAt: expect.any(Date),
+        }),
         expect.any(Object)
       );
       expect(result).not.toBeNull();
@@ -324,7 +341,13 @@ describe('LibraryScannerService', () => {
       });
 
       mockJobRepo.findManySelect.mockResolvedValue([
-        { id: 'job-1', filePath, stage: 'QUEUED', progress: 50, isBlacklisted: false },
+        {
+          id: 'job-1',
+          filePath,
+          stage: 'QUEUED',
+          progress: 50,
+          isBlacklisted: false,
+        },
       ]);
 
       const result = await service.scanPreview('lib-1');
@@ -352,7 +375,13 @@ describe('LibraryScannerService', () => {
       });
 
       mockJobRepo.findManySelect.mockResolvedValue([
-        { id: 'job-1', filePath, stage: 'FAILED', progress: null, isBlacklisted: false },
+        {
+          id: 'job-1',
+          filePath,
+          stage: 'FAILED',
+          progress: null,
+          isBlacklisted: false,
+        },
       ]);
 
       const result = await service.scanPreview('lib-1');
@@ -380,7 +409,13 @@ describe('LibraryScannerService', () => {
 
       // File is blacklisted
       mockJobRepo.findManySelect.mockResolvedValue([
-        { id: 'job-1', filePath, stage: 'FAILED', progress: null, isBlacklisted: true },
+        {
+          id: 'job-1',
+          filePath,
+          stage: 'FAILED',
+          progress: null,
+          isBlacklisted: true,
+        },
       ]);
 
       const result = await service.scanPreview('lib-1');

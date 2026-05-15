@@ -162,7 +162,10 @@ describe('LoggerService', () => {
   describe('logWithData', () => {
     it('should call winston log with level and data', () => {
       service.setContext('MyService');
-      service.logWithData('info', 'structured log', { key: 'value', count: 42 });
+      service.logWithData('info', 'structured log', {
+        key: 'value',
+        count: 42,
+      });
 
       expect(mockWinstonLogger.log).toHaveBeenCalledWith('info', 'structured log', {
         context: 'MyService',

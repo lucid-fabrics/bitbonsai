@@ -84,9 +84,14 @@ describe('StripeService', () => {
     });
 
     it('should create a checkout session and return sessionId + url', async () => {
-      const mockSession = { id: 'sess_123', url: 'https://checkout.stripe.com/sess_123' };
+      const mockSession = {
+        id: 'sess_123',
+        url: 'https://checkout.stripe.com/sess_123',
+      };
       const stripeMock = {
-        checkout: { sessions: { create: jest.fn().mockResolvedValue(mockSession) } },
+        checkout: {
+          sessions: { create: jest.fn().mockResolvedValue(mockSession) },
+        },
       };
       const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
 
@@ -184,7 +189,11 @@ describe('StripeService', () => {
       process.env.STRIPE_PRICE_ENTERPRISE = 'price_free3';
 
       const mockProduct: Partial<Stripe.Product> = { name: 'Free Plan' };
-      const mockPrice = { unit_amount: null, recurring: null, product: mockProduct };
+      const mockPrice = {
+        unit_amount: null,
+        recurring: null,
+        product: mockProduct,
+      };
       const pricesRetrieve = jest.fn().mockResolvedValue(mockPrice);
       const stripeMock = { prices: { retrieve: pricesRetrieve } };
       const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
@@ -232,7 +241,11 @@ describe('StripeService', () => {
       const mockSubscription: Partial<Stripe.Subscription> = {
         id: 'sub_1',
         items: {
-          data: [{ price: { id: 'price_starter_mapped' } } as Stripe.SubscriptionItem],
+          data: [
+            {
+              price: { id: 'price_starter_mapped' },
+            } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -483,7 +496,9 @@ describe('StripeService', () => {
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
       const stripeMock = { webhooks: { constructEvent } };
 
-      licenseRepositoryMock.findFirstWhere.mockResolvedValue({ id: 'lic_to_downgrade' });
+      licenseRepositoryMock.findFirstWhere.mockResolvedValue({
+        id: 'lic_to_downgrade',
+      });
       licenseRepositoryMock.updateById.mockResolvedValue({});
 
       const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
@@ -527,7 +542,9 @@ describe('StripeService', () => {
 
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
       const stripeMock = { webhooks: { constructEvent } };
-      licenseRepositoryMock.findFirstWhere.mockResolvedValue({ id: 'lic_fail' });
+      licenseRepositoryMock.findFirstWhere.mockResolvedValue({
+        id: 'lic_fail',
+      });
 
       const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
       await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();

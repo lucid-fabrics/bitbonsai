@@ -76,14 +76,24 @@ export class DiscordNotificationService {
       title: '✅ Encoding Complete',
       description: `**${job.fileLabel}**`,
       color: DISCORD_COLORS.SUCCESS,
-      fields: [{ name: 'Space Saved', value: `${savedPercent}% (${savedGB} GB)`, inline: true }],
+      fields: [
+        {
+          name: 'Space Saved',
+          value: `${savedPercent}% (${savedGB} GB)`,
+          inline: true,
+        },
+      ],
       timestamp: new Date().toISOString(),
     };
 
     if (job.duration) {
       const mins = Math.floor(job.duration / 60);
       const secs = job.duration % 60;
-      embed.fields?.push({ name: 'Duration', value: `${mins}m ${secs}s`, inline: true });
+      embed.fields?.push({
+        name: 'Duration',
+        value: `${mins}m ${secs}s`,
+        inline: true,
+      });
     }
 
     await this.sendWebhook(webhookUrl, { embeds: [embed] });
@@ -105,13 +115,21 @@ export class DiscordNotificationService {
       description: `**${job.fileLabel}**`,
       color: DISCORD_COLORS.ERROR,
       fields: [
-        { name: 'Error', value: job.error?.substring(0, 200) || 'Unknown error', inline: false },
+        {
+          name: 'Error',
+          value: job.error?.substring(0, 200) || 'Unknown error',
+          inline: false,
+        },
       ],
       timestamp: new Date().toISOString(),
     };
 
     if (job.retryCount !== undefined) {
-      embed.fields?.push({ name: 'Retry Count', value: `${job.retryCount}`, inline: true });
+      embed.fields?.push({
+        name: 'Retry Count',
+        value: `${job.retryCount}`,
+        inline: true,
+      });
     }
 
     await this.sendWebhook(webhookUrl, { embeds: [embed] });
@@ -141,7 +159,11 @@ export class DiscordNotificationService {
         { name: 'Completed', value: `${stats.completed}`, inline: true },
         { name: 'Failed', value: `${stats.failed}`, inline: true },
         { name: 'Success Rate', value: `${successRate}%`, inline: true },
-        { name: 'Space Saved', value: `${stats.totalSavedGB.toFixed(2)} GB`, inline: true },
+        {
+          name: 'Space Saved',
+          value: `${stats.totalSavedGB.toFixed(2)} GB`,
+          inline: true,
+        },
         { name: 'Duration', value: stats.duration, inline: true },
       ],
       timestamp: new Date().toISOString(),
@@ -189,7 +211,11 @@ export class DiscordNotificationService {
       color: status.nodesOffline > 0 ? DISCORD_COLORS.WARNING : DISCORD_COLORS.INFO,
       fields: [
         { name: 'Nodes Online', value: `${status.nodesOnline}`, inline: true },
-        { name: 'Nodes Offline', value: `${status.nodesOffline}`, inline: true },
+        {
+          name: 'Nodes Offline',
+          value: `${status.nodesOffline}`,
+          inline: true,
+        },
         { name: 'Active Jobs', value: `${status.activeJobs}`, inline: true },
         { name: 'Queued Jobs', value: `${status.queuedJobs}`, inline: true },
       ],

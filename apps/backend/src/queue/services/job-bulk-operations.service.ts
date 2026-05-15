@@ -255,7 +255,12 @@ export class JobBulkOperationsService {
    */
   async skipAllCodecMatch(): Promise<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     this.logger.log('Skipping all jobs where codec already matches target');
 
@@ -313,7 +318,9 @@ export class JobBulkOperationsService {
 
       await Promise.all(
         jobsToSkip.map((job) =>
-          this.jobRepository.updateById(job.id, { afterSizeBytes: job.beforeSizeBytes })
+          this.jobRepository.updateById(job.id, {
+            afterSizeBytes: job.beforeSizeBytes,
+          })
         )
       );
 
@@ -339,7 +346,12 @@ export class JobBulkOperationsService {
    */
   async forceEncodeAllCodecMatch(): Promise<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     this.logger.log('Force encoding all jobs where codec already matches target');
 
@@ -352,7 +364,13 @@ export class JobBulkOperationsService {
         decisionIssues: string | null;
       }>(
         { stage: JobStage.NEEDS_DECISION },
-        { id: true, fileLabel: true, sourceCodec: true, targetCodec: true, decisionIssues: true }
+        {
+          id: true,
+          fileLabel: true,
+          sourceCodec: true,
+          targetCodec: true,
+          decisionIssues: true,
+        }
       );
 
       const jobsToEncode = allNeedsDecisionJobs.filter((job) => {

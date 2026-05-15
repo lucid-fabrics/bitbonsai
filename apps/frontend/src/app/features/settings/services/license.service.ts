@@ -39,7 +39,9 @@ export class LicenseService {
   }
 
   lookupLicense(email: string): Observable<LookupLicenseResponse> {
-    return this.http.post<LookupLicenseResponse>(`${this.apiUrl}/lookup`, { email });
+    return this.http.post<LookupLicenseResponse>(`${this.apiUrl}/lookup`, {
+      email,
+    });
   }
 
   // Stripe endpoints
@@ -61,6 +63,8 @@ export class LicenseService {
   }
 
   getStripePortalUrl(customerId: string): Observable<{ url: string }> {
-    return this.http.post<{ url: string }>(`${this.stripeUrl}/portal`, { customerId });
+    return this.http.post<{ url: string }>(`${this.stripeUrl}/portal`, {
+      customerId,
+    });
   }
 }

@@ -202,7 +202,9 @@ export class QueueProcessingService implements OnModuleInit {
         }
 
         if (currentPolicy && job.targetCodec !== currentPolicy.targetCodec) {
-          await this.jobRepository.updateById(job.id, { targetCodec: currentPolicy.targetCodec });
+          await this.jobRepository.updateById(job.id, {
+            targetCodec: currentPolicy.targetCodec,
+          });
           this.logger.log(
             `POLICY HEAL: Fixed codec mismatch for job ${job.id} (${job.targetCodec} → ${currentPolicy.targetCodec})`
           );

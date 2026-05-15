@@ -71,7 +71,12 @@ describe('MediaStatsController', () => {
       const result = {
         folderName: 'Movies',
         files: [
-          { name: 'movie.mkv', path: '/media/Movies/movie.mkv', codec: 'h264', size: 4000000 },
+          {
+            name: 'movie.mkv',
+            path: '/media/Movies/movie.mkv',
+            codec: 'h264',
+            size: 4000000,
+          },
         ],
         totalCount: 1,
       };

@@ -314,7 +314,9 @@ describe('JobRouterService', () => {
 
       expect(result).toBe(3);
       expect(jobRepository.updateById).toHaveBeenCalledTimes(3);
-      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', { nodeId: 'idle' });
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', {
+        nodeId: 'idle',
+      });
     });
 
     it('should limit batch size to 5 jobs per overloaded node', async () => {

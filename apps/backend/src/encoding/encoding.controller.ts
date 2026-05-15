@@ -91,7 +91,10 @@ export class EncodingController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Worker stopped for node clq8x9z8x0000qh8x9z8x0000' },
+        message: {
+          type: 'string',
+          example: 'Worker stopped for node clq8x9z8x0000qh8x9z8x0000',
+        },
       },
     },
   })

@@ -43,7 +43,9 @@ export class RegisterNodeDto {
   })
   @IsOptional()
   @IsString({ message: 'Version must be a string' })
-  @Matches(/^\d+\.\d+\.\d+$/, { message: 'Version must be in semver format (e.g., 1.0.0)' })
+  @Matches(/^\d+\.\d+\.\d+$/, {
+    message: 'Version must be in semver format (e.g., 1.0.0)',
+  })
   version?: string;
 
   @ApiProperty({

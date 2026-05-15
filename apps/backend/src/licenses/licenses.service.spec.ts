@@ -38,7 +38,10 @@ describe('LicensesService', () => {
   });
 
   describe('activateLicense', () => {
-    const validDto = { email: 'user@example.com', licenseKey: 'VALID-KEY-1234' };
+    const validDto = {
+      email: 'user@example.com',
+      licenseKey: 'VALID-KEY-1234',
+    };
 
     it('should activate license when verification succeeds', async () => {
       const verifyResponse = {

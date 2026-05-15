@@ -72,7 +72,9 @@ export class StorageInitService implements OnModuleInit {
           this.logger.warn('⚠️  No NFS mounts detected - will use file transfer mode');
 
           // Ensure hasSharedStorage is false
-          await this.nodeRepository.updateData(currentNode.id, { hasSharedStorage: false });
+          await this.nodeRepository.updateData(currentNode.id, {
+            hasSharedStorage: false,
+          });
 
           // Try to auto-detect and mount shares from main node (via event)
           if (currentNode.mainNodeUrl) {

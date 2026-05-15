@@ -36,7 +36,9 @@ export class NodeRegistrationService {
   async registerNode(data: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
     let licenseKey = data.licenseKey;
     if (!licenseKey) {
-      const mainNode = await this.nodeRepository.findFirstWithLicense({ role: NodeRole.MAIN });
+      const mainNode = await this.nodeRepository.findFirstWithLicense({
+        role: NodeRole.MAIN,
+      });
 
       if (!mainNode) {
         throw new BadRequestException(

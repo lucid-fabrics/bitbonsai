@@ -162,7 +162,10 @@ export class JobController {
           },
           stage: { type: 'string', example: 'ENCODING' },
           progress: { type: 'number', example: 45.3 },
-          systemMessage: { type: 'string', example: 'Attempt #2 failed at 45.3%' },
+          systemMessage: {
+            type: 'string',
+            example: 'Attempt #2 failed at 45.3%',
+          },
           errorMessage: { type: 'string', nullable: true },
           errorDetails: { type: 'string', nullable: true },
           wasAutoHealed: { type: 'boolean', example: false },

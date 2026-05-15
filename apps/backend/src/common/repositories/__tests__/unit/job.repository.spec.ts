@@ -75,7 +75,9 @@ describe('JobRepository', () => {
       const result = await repository.findById('job-1');
 
       expect(result).toEqual(mockJob);
-      expect(mockPrismaJob.findUnique).toHaveBeenCalledWith({ where: { id: 'job-1' } });
+      expect(mockPrismaJob.findUnique).toHaveBeenCalledWith({
+        where: { id: 'job-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -117,7 +119,9 @@ describe('JobRepository', () => {
       const result = await repository.findByStage('QUEUED');
 
       expect(result).toEqual([mockJob]);
-      expect(mockPrismaJob.findMany).toHaveBeenCalledWith({ where: { stage: 'QUEUED' } });
+      expect(mockPrismaJob.findMany).toHaveBeenCalledWith({
+        where: { stage: 'QUEUED' },
+      });
     });
 
     it('should return empty array when no jobs in stage', async () => {
@@ -160,7 +164,10 @@ describe('JobRepository', () => {
 
       expect(result).toEqual([mockJob]);
       expect(mockPrismaJob.findMany).toHaveBeenCalledWith({
-        where: { nodeId: 'node-1', stage: { in: ['ENCODING', 'QUEUED', 'VERIFYING'] } },
+        where: {
+          nodeId: 'node-1',
+          stage: { in: ['ENCODING', 'QUEUED', 'VERIFYING'] },
+        },
         orderBy: { priority: 'desc' },
       });
     });
@@ -300,7 +307,11 @@ describe('JobRepository', () => {
 
   describe('markCompleted', () => {
     it('should mark job as completed with afterSizeBytes', async () => {
-      const completed = { ...mockJob, stage: 'COMPLETED' as JobStage, progress: 100 };
+      const completed = {
+        ...mockJob,
+        stage: 'COMPLETED' as JobStage,
+        progress: 100,
+      };
       mockPrismaJob.update.mockResolvedValue(completed);
 
       const result = await repository.markCompleted('job-1', BigInt(800000));
@@ -342,7 +353,9 @@ describe('JobRepository', () => {
       const result = await repository.deleteById('job-1');
 
       expect(result).toEqual(mockJob);
-      expect(mockPrismaJob.delete).toHaveBeenCalledWith({ where: { id: 'job-1' } });
+      expect(mockPrismaJob.delete).toHaveBeenCalledWith({
+        where: { id: 'job-1' },
+      });
     });
 
     it('should propagate errors when not found', async () => {
@@ -359,7 +372,9 @@ describe('JobRepository', () => {
       const result = await repository.deleteManyWhere({ libraryId: 'lib-1' });
 
       expect(result).toEqual({ count: 5 });
-      expect(mockPrismaJob.deleteMany).toHaveBeenCalledWith({ where: { libraryId: 'lib-1' } });
+      expect(mockPrismaJob.deleteMany).toHaveBeenCalledWith({
+        where: { libraryId: 'lib-1' },
+      });
     });
   });
 
@@ -401,12 +416,16 @@ describe('JobRepository', () => {
       mockPrismaJob.findMany.mockResolvedValue([mockJob]);
       mockPrismaJob.count.mockResolvedValue(1);
 
-      const [jobs, count] = await repository.findManyCount({ where: { nodeId: 'node-1' } });
+      const [jobs, count] = await repository.findManyCount({
+        where: { nodeId: 'node-1' },
+      });
 
       expect(jobs).toEqual([mockJob]);
       expect(count).toBe(1);
       expect(mockPrismaJob.findMany).toHaveBeenCalled();
-      expect(mockPrismaJob.count).toHaveBeenCalledWith({ where: { nodeId: 'node-1' } });
+      expect(mockPrismaJob.count).toHaveBeenCalledWith({
+        where: { nodeId: 'node-1' },
+      });
     });
   });
 
@@ -442,7 +461,9 @@ describe('JobRepository', () => {
       };
       mockPrismaJob.aggregate.mockResolvedValue(aggResult);
 
-      const result = await repository.aggregateWithAvgCount({ nodeId: 'node-1' });
+      const result = await repository.aggregateWithAvgCount({
+        nodeId: 'node-1',
+      });
 
       expect(result).toEqual(aggResult);
       expect(mockPrismaJob.aggregate).toHaveBeenCalledWith({
@@ -457,7 +478,9 @@ describe('JobRepository', () => {
     it('should update many jobs by ids', async () => {
       mockPrismaJob.updateMany.mockResolvedValue({ count: 2 });
 
-      const result = await repository.updateManyByIds(['job-1', 'job-2'], { stage: 'QUEUED' });
+      const result = await repository.updateManyByIds(['job-1', 'job-2'], {
+        stage: 'QUEUED',
+      });
 
       expect(result).toEqual({ count: 2 });
       expect(mockPrismaJob.updateMany).toHaveBeenCalledWith({
@@ -491,7 +514,9 @@ describe('JobRepository', () => {
       mockPrismaJob.findMany.mockResolvedValue([mockJob]);
       const result = await repository.findByLibraryId('lib-1');
       expect(result).toEqual([mockJob]);
-      expect(mockPrismaJob.findMany).toHaveBeenCalledWith({ where: { libraryId: 'lib-1' } });
+      expect(mockPrismaJob.findMany).toHaveBeenCalledWith({
+        where: { libraryId: 'lib-1' },
+      });
     });
   });
 
@@ -537,7 +562,11 @@ describe('JobRepository', () => {
       const result = await repository.countCompletedForNodeSince('node-1', since);
       expect(result).toBe(10);
       expect(mockPrismaJob.count).toHaveBeenCalledWith({
-        where: { nodeId: 'node-1', stage: 'COMPLETED', completedAt: { gte: since } },
+        where: {
+          nodeId: 'node-1',
+          stage: 'COMPLETED',
+          completedAt: { gte: since },
+        },
       });
     });
   });
@@ -577,7 +606,9 @@ describe('JobRepository', () => {
       mockPrismaJob.findFirst.mockResolvedValue(mockJob);
       const result = await repository.findFirstWhere({ stage: 'QUEUED' });
       expect(result).toEqual(mockJob);
-      expect(mockPrismaJob.findFirst).toHaveBeenCalledWith({ where: { stage: 'QUEUED' } });
+      expect(mockPrismaJob.findFirst).toHaveBeenCalledWith({
+        where: { stage: 'QUEUED' },
+      });
     });
 
     it('should return null when no match', async () => {
@@ -625,7 +656,9 @@ describe('JobRepository', () => {
     it('should return job with include', async () => {
       const jobWithLib = { ...mockJob, library: { nodeId: 'node-1' } };
       mockPrismaJob.findUnique.mockResolvedValue(jobWithLib);
-      const result = await repository.findUniqueWithInclude('job-1', { library: true });
+      const result = await repository.findUniqueWithInclude('job-1', {
+        library: true,
+      });
       expect(result).toEqual(jobWithLib);
       expect(mockPrismaJob.findUnique).toHaveBeenCalledWith({
         where: { id: 'job-1' },
@@ -637,9 +670,13 @@ describe('JobRepository', () => {
   describe('findManyWithInclude', () => {
     it('should return jobs with provided args', async () => {
       mockPrismaJob.findMany.mockResolvedValue([mockJob]);
-      const result = await repository.findManyWithInclude({ where: { nodeId: 'node-1' } });
+      const result = await repository.findManyWithInclude({
+        where: { nodeId: 'node-1' },
+      });
       expect(result).toEqual([mockJob]);
-      expect(mockPrismaJob.findMany).toHaveBeenCalledWith({ where: { nodeId: 'node-1' } });
+      expect(mockPrismaJob.findMany).toHaveBeenCalledWith({
+        where: { nodeId: 'node-1' },
+      });
     });
   });
 
@@ -648,7 +685,9 @@ describe('JobRepository', () => {
       mockPrismaJob.count.mockResolvedValue(42);
       const result = await repository.countWhere({ stage: 'COMPLETED' });
       expect(result).toBe(42);
-      expect(mockPrismaJob.count).toHaveBeenCalledWith({ where: { stage: 'COMPLETED' } });
+      expect(mockPrismaJob.count).toHaveBeenCalledWith({
+        where: { stage: 'COMPLETED' },
+      });
     });
   });
 
@@ -696,7 +735,11 @@ describe('JobRepository', () => {
 
   describe('updateByIdWithInclude', () => {
     it('should update job and return with include', async () => {
-      const updatedWithLib = { ...mockJob, stage: 'COMPLETED', library: { nodeId: 'node-1' } };
+      const updatedWithLib = {
+        ...mockJob,
+        stage: 'COMPLETED',
+        library: { nodeId: 'node-1' },
+      };
       mockPrismaJob.update.mockResolvedValue(updatedWithLib);
       const result = await repository.updateByIdWithInclude(
         'job-1',
@@ -741,7 +784,11 @@ describe('JobRepository', () => {
   describe('groupByNodeIdSum', () => {
     it('should return sum grouped by nodeId', async () => {
       mockPrismaJob.groupBy.mockResolvedValue([
-        { nodeId: 'node-1', _count: { id: 3 }, _sum: { savedBytes: BigInt(1000) } },
+        {
+          nodeId: 'node-1',
+          _count: { id: 3 },
+          _sum: { savedBytes: BigInt(1000) },
+        },
       ]);
       const result = await repository.groupByNodeIdSum(
         { stage: 'COMPLETED' },
@@ -755,7 +802,9 @@ describe('JobRepository', () => {
   describe('groupByLibraryIdCount', () => {
     it('should return job counts grouped by libraryId', async () => {
       mockPrismaJob.groupBy.mockResolvedValue([{ libraryId: 'lib-1', _count: { id: 8 } }]);
-      const result = await repository.groupByLibraryIdCount({ nodeId: 'node-1' });
+      const result = await repository.groupByLibraryIdCount({
+        nodeId: 'node-1',
+      });
       expect(result).toEqual([{ libraryId: 'lib-1', _count: { id: 8 } }]);
     });
   });
@@ -779,7 +828,9 @@ describe('JobRepository', () => {
       mockPrismaJob.groupBy.mockResolvedValue([
         { targetCodec: 'hevc', _avg: { savedPercent: 35.5 }, _count: 10 },
       ]);
-      const result = await repository.groupByTargetCodecAvg({ stage: 'COMPLETED' });
+      const result = await repository.groupByTargetCodecAvg({
+        stage: 'COMPLETED',
+      });
       expect(result[0].targetCodec).toBe('hevc');
       expect(result[0]._avg.savedPercent).toBe(35.5);
       expect(result[0]._count).toBe(10);

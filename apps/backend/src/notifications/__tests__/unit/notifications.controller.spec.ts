@@ -122,7 +122,11 @@ describe('NotificationsController', () => {
   describe('createNotification', () => {
     it('should create notification, emit event, and return it', async () => {
       const dto = { message: 'New notification', type: 'INFO' } as never;
-      const notification = { id: 'n1', message: 'New notification', type: 'INFO' };
+      const notification = {
+        id: 'n1',
+        message: 'New notification',
+        type: 'INFO',
+      };
       mockNotificationsService.createNotification.mockResolvedValue(notification);
 
       const result = await controller.createNotification(dto);

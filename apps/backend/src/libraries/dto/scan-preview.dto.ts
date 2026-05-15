@@ -97,10 +97,16 @@ export class ScanPreviewDto {
   @ApiProperty({ description: 'Library name' })
   libraryName = '';
 
-  @ApiProperty({ description: 'Applied policy ID (default or first)', nullable: true })
+  @ApiProperty({
+    description: 'Applied policy ID (default or first)',
+    nullable: true,
+  })
   policyId: string | null = null;
 
-  @ApiProperty({ description: 'Applied policy name (default or first)', nullable: true })
+  @ApiProperty({
+    description: 'Applied policy name (default or first)',
+    nullable: true,
+  })
   policyName: string | null = null;
 
   @ApiProperty({ description: 'Target codec from policy', nullable: true })

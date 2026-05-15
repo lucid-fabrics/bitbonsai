@@ -78,7 +78,13 @@ export class NodeConfigService implements OnModuleInit {
         mainNodeUrl: string | null;
         apiKey: string | null;
         name: string;
-      }>(nodeId, { id: true, role: true, mainNodeUrl: true, apiKey: true, name: true });
+      }>(nodeId, {
+        id: true,
+        role: true,
+        mainNodeUrl: true,
+        apiKey: true,
+        name: true,
+      });
 
       if (!node) {
         this.logger.error(`Node with ID ${nodeId} not found in database - ID may be stale`);

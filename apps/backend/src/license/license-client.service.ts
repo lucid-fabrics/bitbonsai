@@ -79,7 +79,9 @@ export class LicenseClientService {
   }
 
   async getLicenseKey(): Promise<string | null> {
-    const license = await this.licenseRepository.findFirst<{ key: string } | null>({});
+    const license = await this.licenseRepository.findFirst<{
+      key: string;
+    } | null>({});
     return license?.key || null;
   }
 
@@ -207,7 +209,10 @@ export class LicenseClientService {
     }
   }
 
-  async getCurrentLimits(): Promise<{ maxNodes: number; maxConcurrentJobs: number }> {
+  async getCurrentLimits(): Promise<{
+    maxNodes: number;
+    maxConcurrentJobs: number;
+  }> {
     const license = await this.verifyLicense();
     return {
       maxNodes: license.maxNodes,

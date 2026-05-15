@@ -266,7 +266,11 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
   /**
    * Get all active watchers
    */
-  getAllWatcherStatuses(): Array<{ libraryId: string; path: string; active: boolean }> {
+  getAllWatcherStatuses(): Array<{
+    libraryId: string;
+    path: string;
+    active: boolean;
+  }> {
     return Array.from(this.watchers.values()).map((instance) => ({
       libraryId: instance.libraryId,
       path: instance.path,

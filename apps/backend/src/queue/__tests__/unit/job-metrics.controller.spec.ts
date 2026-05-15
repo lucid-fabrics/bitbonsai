@@ -135,7 +135,9 @@ describe('JobMetricsController', () => {
       expect(mockQueueService.findAll).not.toHaveBeenCalled();
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://main:3100/api/v1/queue',
-        expect.objectContaining({ params: expect.objectContaining({ stage: JobStage.QUEUED }) })
+        expect.objectContaining({
+          params: expect.objectContaining({ stage: JobStage.QUEUED }),
+        })
       );
       expect(result).toEqual(proxyData);
     });

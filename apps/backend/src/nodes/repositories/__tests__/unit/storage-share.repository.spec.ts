@@ -61,7 +61,10 @@ describe('StorageShareRepository', () => {
     it('should create a storage share', async () => {
       mockPrismaStorageShare.create.mockResolvedValue(mockShare);
 
-      const result = await repository.create({ nodeId: 'node-1', mountPoint: '/mnt/nfs' });
+      const result = await repository.create({
+        nodeId: 'node-1',
+        mountPoint: '/mnt/nfs',
+      });
 
       expect(result).toEqual(mockShare);
       expect(mockPrismaStorageShare.create).toHaveBeenCalledWith({
@@ -77,7 +80,9 @@ describe('StorageShareRepository', () => {
       const result = await repository.findById('share-1');
 
       expect(result).toEqual(mockShare);
-      expect(mockPrismaStorageShare.findUnique).toHaveBeenCalledWith({ where: { id: 'share-1' } });
+      expect(mockPrismaStorageShare.findUnique).toHaveBeenCalledWith({
+        where: { id: 'share-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -169,7 +174,9 @@ describe('StorageShareRepository', () => {
       const updated = { ...mockShare, mountPoint: '/mnt/updated' };
       mockPrismaStorageShare.update.mockResolvedValue(updated);
 
-      const result = await repository.update('share-1', { mountPoint: '/mnt/updated' });
+      const result = await repository.update('share-1', {
+        mountPoint: '/mnt/updated',
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaStorageShare.update).toHaveBeenCalledWith({
@@ -198,7 +205,10 @@ describe('StorageShareRepository', () => {
       expect(mockPrismaStorageShare.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'share-1' },
-          data: expect.objectContaining({ isMounted: true, status: StorageShareStatus.MOUNTED }),
+          data: expect.objectContaining({
+            isMounted: true,
+            status: StorageShareStatus.MOUNTED,
+          }),
         })
       );
     });
@@ -216,7 +226,10 @@ describe('StorageShareRepository', () => {
       expect(mockPrismaStorageShare.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'share-1' },
-          data: expect.objectContaining({ isMounted: false, status: StorageShareStatus.UNMOUNTED }),
+          data: expect.objectContaining({
+            isMounted: false,
+            status: StorageShareStatus.UNMOUNTED,
+          }),
         })
       );
     });
@@ -250,7 +263,9 @@ describe('StorageShareRepository', () => {
       const result = await repository.delete('share-1');
 
       expect(result).toEqual(mockShare);
-      expect(mockPrismaStorageShare.delete).toHaveBeenCalledWith({ where: { id: 'share-1' } });
+      expect(mockPrismaStorageShare.delete).toHaveBeenCalledWith({
+        where: { id: 'share-1' },
+      });
     });
   });
 

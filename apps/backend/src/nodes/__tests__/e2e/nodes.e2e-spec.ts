@@ -251,7 +251,12 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
   describe('GET /nodes/scores', () => {
     it('returns 200 with node scores array', async () => {
       const scores = [
-        { nodeId: 'node-1', nodeName: 'Main Node', totalScore: 85, breakdown: { loadScore: 40 } },
+        {
+          nodeId: 'node-1',
+          nodeName: 'Main Node',
+          totalScore: 85,
+          breakdown: { loadScore: 40 },
+        },
       ];
       mockJobAttribution.getAllNodeScores.mockResolvedValue(scores);
 

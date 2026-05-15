@@ -368,7 +368,9 @@ describe('FileTransferService', () => {
 
       await service.cleanupRemoteTempFile('job-1');
 
-      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', { remoteTempPath: null });
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', {
+        remoteTempPath: null,
+      });
     });
 
     it('should handle remote command failure gracefully', async () => {
@@ -439,7 +441,9 @@ describe('FileTransferService', () => {
       // Should be removed from map
       expect(
         (
-          service as unknown as { activeTransfers: Map<string, AbortController> }
+          service as unknown as {
+            activeTransfers: Map<string, AbortController>;
+          }
         ).activeTransfers.has('job-cancel')
       ).toBe(false);
     });
@@ -514,7 +518,9 @@ describe('FileTransferService', () => {
 
       // All updateById calls succeed; findUniqueSelect returns retryCount = 2 (3rd attempt = max)
       jobRepository.updateById.mockResolvedValue({});
-      jobRepository.findUniqueSelect.mockResolvedValue({ transferRetryCount: 2 });
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        transferRetryCount: 2,
+      });
 
       // Simulate SSH for mkdir command then rsync error
       let spawnCallCount = 0;
@@ -563,7 +569,9 @@ describe('FileTransferService', () => {
       const { spawn } = require('node:child_process');
 
       jobRepository.updateById.mockResolvedValue({});
-      jobRepository.findUniqueSelect.mockResolvedValue({ transferRetryCount: 0 });
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        transferRetryCount: 0,
+      });
 
       let spawnCallCount = 0;
       spawn.mockImplementation(() => {
@@ -744,7 +752,9 @@ describe('FileTransferService', () => {
 
       jobRepository.updateById.mockResolvedValue({});
       // null transferRetryCount simulates a job that has never failed before
-      jobRepository.findUniqueSelect.mockResolvedValue({ transferRetryCount: null });
+      jobRepository.findUniqueSelect.mockResolvedValue({
+        transferRetryCount: null,
+      });
 
       let spawnCallCount = 0;
       spawn.mockImplementation(() => {

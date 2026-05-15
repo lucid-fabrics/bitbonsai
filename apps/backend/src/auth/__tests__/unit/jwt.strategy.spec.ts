@@ -67,7 +67,10 @@ describe('JwtStrategy', () => {
     });
 
     it('should throw UnauthorizedException for null username', async () => {
-      const payload = { sub: 'user-123', username: null } as unknown as JwtPayload;
+      const payload = {
+        sub: 'user-123',
+        username: null,
+      } as unknown as JwtPayload;
 
       await expect(strategy.validate(payload)).rejects.toThrow(UnauthorizedException);
     });

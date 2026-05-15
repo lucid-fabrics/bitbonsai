@@ -89,7 +89,10 @@ describe('NodeRegistrationController', () => {
       providers: [
         { provide: NodesService, useValue: mockNodesService },
         { provide: NodeDiscoveryService, useValue: mockNodeDiscoveryService },
-        { provide: RegistrationRequestService, useValue: mockRegistrationRequestService },
+        {
+          provide: RegistrationRequestService,
+          useValue: mockRegistrationRequestService,
+        },
         { provide: SshKeyService, useValue: mockSshKeyService },
       ],
     }).compile();
@@ -108,7 +111,11 @@ describe('NodeRegistrationController', () => {
   describe('register', () => {
     it('should delegate to nodesService.registerNode and return result', async () => {
       const dto = { licenseKey: 'lic-123', name: 'New Node' };
-      const response = { apiKey: 'api-key', pairingToken: '654321', pairingExpiresAt: new Date() };
+      const response = {
+        apiKey: 'api-key',
+        pairingToken: '654321',
+        pairingExpiresAt: new Date(),
+      };
       mockNodesService.registerNode.mockResolvedValue(response);
 
       const result = await controller.register(dto as any);
@@ -175,7 +182,11 @@ describe('NodeRegistrationController', () => {
 
   describe('generatePairingToken', () => {
     it('should generate a new pairing token for a node', async () => {
-      const response = { apiKey: 'api-key', pairingToken: '999999', pairingExpiresAt: new Date() };
+      const response = {
+        apiKey: 'api-key',
+        pairingToken: '999999',
+        pairingExpiresAt: new Date(),
+      };
       mockNodesService.generatePairingTokenForNode.mockResolvedValue(response);
 
       const result = await controller.generatePairingToken('node-1');
@@ -229,7 +240,12 @@ describe('NodeRegistrationController', () => {
   describe('discoverMainNodes', () => {
     it('should return list of discovered MAIN nodes', async () => {
       const nodes = [
-        { nodeId: 'node-1', nodeName: 'Main', ipAddress: '192.168.1.100', port: 3100 },
+        {
+          nodeId: 'node-1',
+          nodeName: 'Main',
+          ipAddress: '192.168.1.100',
+          port: 3100,
+        },
       ];
       mockNodeDiscoveryService.discoverMainNodes.mockResolvedValue(nodes);
 
@@ -257,7 +273,10 @@ describe('NodeRegistrationController', () => {
       mockRegistrationRequestService.createRegistrationRequest.mockResolvedValue(
         mockRegistrationRequest
       );
-      const createDto = { childNodeName: 'Child Node', ipAddress: '192.168.1.200' };
+      const createDto = {
+        childNodeName: 'Child Node',
+        ipAddress: '192.168.1.200',
+      };
 
       const result = await controller.createRegistrationRequest(createDto as any);
 
@@ -350,7 +369,10 @@ describe('NodeRegistrationController', () => {
     });
 
     it('should approve without optional approveDto', async () => {
-      const approved = { ...mockRegistrationRequest, status: 'APPROVED' as const };
+      const approved = {
+        ...mockRegistrationRequest,
+        status: 'APPROVED' as const,
+      };
       mockRegistrationRequestService.approveRequest.mockResolvedValue(approved);
 
       const result = await controller.approveRegistrationRequest('req-1');
@@ -420,7 +442,10 @@ describe('NodeRegistrationController', () => {
 
   describe('cancelRegistrationRequest', () => {
     it('should cancel a request by ID', async () => {
-      const cancelled = { ...mockRegistrationRequest, status: 'CANCELLED' as const };
+      const cancelled = {
+        ...mockRegistrationRequest,
+        status: 'CANCELLED' as const,
+      };
       mockRegistrationRequestService.cancelRequest.mockResolvedValue(cancelled);
 
       const result = await controller.cancelRegistrationRequest('req-1');
@@ -446,7 +471,10 @@ describe('NodeRegistrationController', () => {
 
   describe('cancelRegistrationRequestByToken', () => {
     it('should cancel a request by pairing token', async () => {
-      const cancelled = { ...mockRegistrationRequest, status: 'CANCELLED' as const };
+      const cancelled = {
+        ...mockRegistrationRequest,
+        status: 'CANCELLED' as const,
+      };
       mockRegistrationRequestService.cancelRequestByToken.mockResolvedValue(cancelled);
 
       const result = await controller.cancelRegistrationRequestByToken('123456');
@@ -502,7 +530,10 @@ describe('NodeRegistrationController', () => {
       const result = await controller.addAuthorizedKey(body);
 
       expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(body.publicKey, body.comment);
-      expect(result).toEqual({ success: true, message: 'SSH key added to authorized_keys' });
+      expect(result).toEqual({
+        success: true,
+        message: 'SSH key added to authorized_keys',
+      });
     });
 
     it('should add an authorized key without comment', async () => {

@@ -354,7 +354,9 @@ export class NodesService implements OnModuleInit {
         this.logger.warn(
           `🔄 AUTO-IP-UPDATE: Node "${node.name}" IP changed from ${node.ipAddress} to ${currentIpAddress}`
         );
-        return this.nodeRepository.updateData(node.id, { ipAddress: currentIpAddress });
+        return this.nodeRepository.updateData(node.id, {
+          ipAddress: currentIpAddress,
+        });
       }
       return node;
     };
@@ -492,8 +494,12 @@ export class NodesService implements OnModuleInit {
       ...(data.cpuLimit !== undefined && { cpuLimit: data.cpuLimit }),
       ...(data.publicUrl !== undefined && { publicUrl: data.publicUrl }),
       ...(data.mainNodeUrl !== undefined && { mainNodeUrl: data.mainNodeUrl }),
-      ...(data.hasSharedStorage !== undefined && { hasSharedStorage: data.hasSharedStorage }),
-      ...(data.networkLocation !== undefined && { networkLocation: data.networkLocation }),
+      ...(data.hasSharedStorage !== undefined && {
+        hasSharedStorage: data.hasSharedStorage,
+      }),
+      ...(data.networkLocation !== undefined && {
+        networkLocation: data.networkLocation,
+      }),
       ...(data.loadThresholdMultiplier !== undefined && {
         loadThresholdMultiplier: data.loadThresholdMultiplier,
       }),
@@ -525,7 +531,14 @@ export class NodesService implements OnModuleInit {
       publicUrl: string | null;
       mainNodeUrl: string | null;
       apiKey: string;
-    }>(id, { id: true, name: true, role: true, publicUrl: true, mainNodeUrl: true, apiKey: true });
+    }>(id, {
+      id: true,
+      name: true,
+      role: true,
+      publicUrl: true,
+      mainNodeUrl: true,
+      apiKey: true,
+    });
 
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
@@ -745,7 +758,10 @@ export class NodesService implements OnModuleInit {
       networkConnection: {
         status: 'success' as const,
         message: `Latency: ${result.latencyMs}ms`,
-        details: { latencyMs: result.latencyMs, isPrivateIP: result.isPrivateIP },
+        details: {
+          latencyMs: result.latencyMs,
+          isPrivateIP: result.isPrivateIP,
+        },
       },
       sharedStorage: {
         status: result.hasSharedStorage ? ('success' as const) : ('warning' as const),

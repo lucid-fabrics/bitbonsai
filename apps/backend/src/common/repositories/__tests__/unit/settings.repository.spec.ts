@@ -100,7 +100,11 @@ describe('SettingsRepository', () => {
 
       expect(result).toEqual(mockSettings);
       expect(mockPrisma.settings.create).toHaveBeenCalledWith({
-        data: { isSetupComplete: true, advancedModeEnabled: false, licenseKey: 'key-123' },
+        data: {
+          isSetupComplete: true,
+          advancedModeEnabled: false,
+          licenseKey: 'key-123',
+        },
       });
     });
 
@@ -241,7 +245,9 @@ describe('SettingsRepository', () => {
         cb(mockTx)
       );
 
-      const result = await repository.findOrCreateWithDefaults({ isSetupComplete: false });
+      const result = await repository.findOrCreateWithDefaults({
+        isSetupComplete: false,
+      });
 
       expect(result).toEqual(mockSettings);
       expect(mockTx.settings.create).not.toHaveBeenCalled();
@@ -254,7 +260,9 @@ describe('SettingsRepository', () => {
         cb(mockTx)
       );
 
-      const result = await repository.findOrCreateWithDefaults({ isSetupComplete: true });
+      const result = await repository.findOrCreateWithDefaults({
+        isSetupComplete: true,
+      });
 
       expect(result).toEqual(mockSettings);
       expect(mockTx.settings.create).toHaveBeenCalledWith({

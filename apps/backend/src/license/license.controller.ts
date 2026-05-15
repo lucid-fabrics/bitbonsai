@@ -130,7 +130,10 @@ export class LicenseController {
   })
   @ApiOkResponse({ description: 'Current license limits' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async getCurrentLimits(): Promise<{ maxNodes: number; maxConcurrentJobs: number }> {
+  async getCurrentLimits(): Promise<{
+    maxNodes: number;
+    maxConcurrentJobs: number;
+  }> {
     return this.licenseClient.getCurrentLimits();
   }
 

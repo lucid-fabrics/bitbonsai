@@ -144,7 +144,10 @@ describe('LicenseController', () => {
       const result = await controller.setLicenseKey(dto);
 
       expect(mockLicenseClientService.setLicenseKey).toHaveBeenCalledWith('BITBONSAI-PRO-XYZ789');
-      expect(result).toEqual({ success: true, message: 'License key updated and verified' });
+      expect(result).toEqual({
+        success: true,
+        message: 'License key updated and verified',
+      });
     });
 
     it('should propagate service errors', async () => {
@@ -157,7 +160,10 @@ describe('LicenseController', () => {
 
   describe('activateLicense', () => {
     it('should call licenseClient.activateLicense with key and email from dto', async () => {
-      const dto = { key: 'BITBONSAI-PRO-XYZ789', email: 'user@example.com' } as never;
+      const dto = {
+        key: 'BITBONSAI-PRO-XYZ789',
+        email: 'user@example.com',
+      } as never;
       const activation = { success: true, tier: 'PATREON_PRO' };
       mockLicenseClientService.activateLicense.mockResolvedValue(activation);
 

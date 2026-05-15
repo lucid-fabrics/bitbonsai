@@ -203,7 +203,9 @@ describe('Level 1: Basic Single Job Flow', () => {
 
       // Poll job status every second for progress updates
       const pollInterval = setInterval(async () => {
-        const currentJob = await prisma.job.findUnique({ where: { id: job.id } });
+        const currentJob = await prisma.job.findUnique({
+          where: { id: job.id },
+        });
         if (currentJob && currentJob.progress > 0) {
           progressUpdates.push(currentJob.progress);
         }
@@ -213,7 +215,9 @@ describe('Level 1: Basic Single Job Flow', () => {
       await processPromise;
       clearInterval(pollInterval);
 
-      const completedJob = await prisma.job.findUnique({ where: { id: job.id } });
+      const completedJob = await prisma.job.findUnique({
+        where: { id: job.id },
+      });
 
       // ASSERT: Progress was tracked
       expect(progressUpdates.length).toBeGreaterThan(0);

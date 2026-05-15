@@ -79,7 +79,13 @@ export class RetrySchedulerService {
           retryCount: { lt: 3 },
           nextRetryAt: { lte: now },
         },
-        { id: true, fileLabel: true, retryCount: true, nextRetryAt: true, error: true }
+        {
+          id: true,
+          fileLabel: true,
+          retryCount: true,
+          nextRetryAt: true,
+          error: true,
+        }
       );
 
       if (eligibleJobs.length === 0) {

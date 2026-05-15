@@ -52,7 +52,10 @@ export class JobScorerService {
   private scoreCache = new Map<string, { score: NodeScore; expiresAt: number }>();
 
   // Config cache
-  private configCache: { config: DistributionConfigData; expiresAt: number } | null = null;
+  private configCache: {
+    config: DistributionConfigData;
+    expiresAt: number;
+  } | null = null;
 
   // Max encoding speed cache
   private maxSpeedCache: { value: number; expiresAt: number } | null = null;

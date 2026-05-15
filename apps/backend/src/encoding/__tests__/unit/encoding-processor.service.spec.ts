@@ -173,9 +173,11 @@ describe('EncodingProcessorService', () => {
             defaultWorkersPerNode: 4,
             maxWorkersPerNode: 12,
             calculateOptimalWorkers: jest.fn().mockReturnValue(4),
-            checkSystemLoad: jest
-              .fn()
-              .mockReturnValue({ isOverloaded: false, reason: '', details: '' }),
+            checkSystemLoad: jest.fn().mockReturnValue({
+              isOverloaded: false,
+              reason: '',
+              details: '',
+            }),
             waitForSystemLoad: jest.fn().mockResolvedValue(undefined),
             performResourcePreflightChecks: jest.fn().mockResolvedValue(undefined),
             reloadLoadThreshold: jest.fn().mockResolvedValue(undefined),
@@ -782,7 +784,10 @@ describe('EncodingProcessorService', () => {
       const fileRelocatorService = module.get<{ relocateFile: jest.Mock }>(
         FileRelocatorService as unknown as Parameters<typeof module.get>[0]
       );
-      fileRelocatorService.relocateFile.mockResolvedValue({ found: false, searchedPaths: 0 });
+      fileRelocatorService.relocateFile.mockResolvedValue({
+        found: false,
+        searchedPaths: 0,
+      });
 
       queueService.getNextJob.mockResolvedValue(mockJob as any);
       queueService.failJob.mockResolvedValue(mockJob as any);
@@ -1084,7 +1089,11 @@ describe('EncodingProcessorService', () => {
     it('uses library default policy when job policy is missing', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
-      const defaultPolicy = { ...mockPolicy, id: 'default-policy', name: 'Default' };
+      const defaultPolicy = {
+        ...mockPolicy,
+        id: 'default-policy',
+        name: 'Default',
+      };
 
       const policyRepository = module.get(PolicyRepository);
       (policyRepository.findById as jest.Mock).mockResolvedValue(null);
@@ -1178,7 +1187,11 @@ describe('EncodingProcessorService', () => {
     it('uses system fallback policy when library has no policies', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
-      const systemPolicy = { ...mockPolicy, id: 'system-policy', name: 'System' };
+      const systemPolicy = {
+        ...mockPolicy,
+        id: 'system-policy',
+        name: 'System',
+      };
 
       const policyRepository = module.get(PolicyRepository);
       (policyRepository.findById as jest.Mock).mockResolvedValue(null);

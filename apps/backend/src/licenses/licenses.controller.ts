@@ -53,9 +53,15 @@ export class LicensesController {
       features: [
         { name: 'Single Node', enabled: true },
         { name: 'Multi-Node', enabled: capabilities.features.multiNode },
-        { name: 'Advanced Presets', enabled: capabilities.features.advancedPresets },
+        {
+          name: 'Advanced Presets',
+          enabled: capabilities.features.advancedPresets,
+        },
         { name: 'API Access', enabled: capabilities.features.api },
-        { name: 'Priority Queue', enabled: capabilities.features.priorityQueue },
+        {
+          name: 'Priority Queue',
+          enabled: capabilities.features.priorityQueue,
+        },
         { name: 'Webhooks', enabled: capabilities.features.webhooks },
         { name: 'Cloud Storage', enabled: capabilities.features.cloudStorage },
       ],
@@ -201,7 +207,10 @@ export class LicensesController {
         { name: 'Multi-Node', enabled: result.tier !== LicenseTier.FREE },
         { name: 'Advanced Presets', enabled: result.tier !== LicenseTier.FREE },
         { name: 'API Access', enabled: isPatreonProOrHigher || isCommercial },
-        { name: 'Priority Queue', enabled: isPatreonProOrHigher || isCommercial },
+        {
+          name: 'Priority Queue',
+          enabled: isPatreonProOrHigher || isCommercial,
+        },
         { name: 'Webhooks', enabled: isPatreonProOrHigher || isCommercial },
         { name: 'Cloud Storage', enabled: isCommercial },
       ],

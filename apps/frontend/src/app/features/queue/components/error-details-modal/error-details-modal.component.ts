@@ -93,22 +93,34 @@ export class ErrorDetailsModalComponent {
     const steps: { icon: string; text: string }[] = [];
 
     if (errorLower.includes('not found') || errorLower.includes('enoent')) {
-      steps.push({ icon: 'fa-search', text: 'Re-scan the library to detect file changes' });
+      steps.push({
+        icon: 'fa-search',
+        text: 'Re-scan the library to detect file changes',
+      });
     } else if (
       errorLower.includes('segmentation fault') ||
       errorLower.includes('exit code 13') ||
       errorLower.includes('exit code 139')
     ) {
-      steps.push({ icon: 'fa-share', text: 'Try retrying on a different node' });
+      steps.push({
+        icon: 'fa-share',
+        text: 'Try retrying on a different node',
+      });
     } else if (errorLower.includes('stuck') || errorLower.includes('no progress')) {
       steps.push({
         icon: 'fa-cog',
         text: 'File may be problematic — try a different encoding policy',
       });
     } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
-      steps.push({ icon: 'fa-sliders-h', text: 'Try with different quality settings' });
+      steps.push({
+        icon: 'fa-sliders-h',
+        text: 'Try with different quality settings',
+      });
     } else if (errorLower.includes('permission') || errorLower.includes('eacces')) {
-      steps.push({ icon: 'fa-lock', text: 'Check file permissions on the storage volume' });
+      steps.push({
+        icon: 'fa-lock',
+        text: 'Check file permissions on the storage volume',
+      });
     } else if (errorLower.includes('corrupt')) {
       steps.push({
         icon: 'fa-play-circle',

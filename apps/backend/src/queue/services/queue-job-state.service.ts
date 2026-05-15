@@ -254,7 +254,6 @@ export class QueueJobStateService {
         const response = await firstValueFrom(
           this.httpService.post(url, { blacklist }, this.proxyOptions())
         );
-        this.logger.debug(`✅ MULTI-NODE: Job cancellation successful for ${id}`);
         return response.data;
       } catch (error: unknown) {
         this.logger.error(`❌ MULTI-NODE: Failed to proxy job cancellation to MAIN:`, error);
@@ -745,14 +744,24 @@ export class QueueJobStateService {
 
   skipAllCodecMatch(): Promise<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.jobBulkOperationsService.skipAllCodecMatch();
   }
 
   forceEncodeAllCodecMatch(): Promise<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.jobBulkOperationsService.forceEncodeAllCodecMatch();
   }

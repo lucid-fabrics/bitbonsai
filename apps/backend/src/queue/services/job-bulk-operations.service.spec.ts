@@ -6,7 +6,7 @@ import { JobBulkOperationsService } from './job-bulk-operations.service';
 
 describe('JobBulkOperationsService', () => {
   let service: JobBulkOperationsService;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let jobRepository: any;
   let ffmpegService: jest.Mocked<FfmpegService>;
 
@@ -55,7 +55,9 @@ describe('JobBulkOperationsService', () => {
       expect(ffmpegService.killProcess).toHaveBeenCalledWith('job-2');
       expect(jobRepository.updateManyWhere).toHaveBeenCalledWith(
         expect.objectContaining({
-          stage: expect.objectContaining({ in: expect.arrayContaining([JobStage.ENCODING]) }),
+          stage: expect.objectContaining({
+            in: expect.arrayContaining([JobStage.ENCODING]),
+          }),
         }),
         expect.objectContaining({ stage: JobStage.CANCELLED })
       );
@@ -128,7 +130,11 @@ describe('JobBulkOperationsService', () => {
     it('should filter by error category when errorFilter is provided', async () => {
       const failedJobs = [
         { id: 'job-1', fileLabel: 'a.mkv', error: 'FFmpeg exit code 1' },
-        { id: 'job-2', fileLabel: 'b.mkv', error: 'No such file or directory (ENOENT)' },
+        {
+          id: 'job-2',
+          fileLabel: 'b.mkv',
+          error: 'No such file or directory (ENOENT)',
+        },
       ];
       jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
       jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
@@ -248,7 +254,9 @@ describe('JobBulkOperationsService', () => {
 
       await service.skipAllCodecMatch();
 
-      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as { stage: string };
+      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as {
+        stage: string;
+      };
       expect(updateData.stage).toBe(JobStage.COMPLETED);
     });
   });
@@ -269,7 +277,9 @@ describe('JobBulkOperationsService', () => {
 
       const result = await service.forceEncodeAllCodecMatch();
 
-      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as { stage: string };
+      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as {
+        stage: string;
+      };
       expect(updateData.stage).toBe(JobStage.QUEUED);
       expect(result.queuedCount).toBe(1);
     });

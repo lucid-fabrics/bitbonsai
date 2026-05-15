@@ -94,7 +94,10 @@ describe('SMBMountStrategy', () => {
     });
 
     it('should include credentials file when username and password provided', async () => {
-      const share = makeShare({ smbUsername: 'user', smbPassword: 'plain-pass' });
+      const share = makeShare({
+        smbUsername: 'user',
+        smbPassword: 'plain-pass',
+      });
 
       const cmd = await strategy.buildMountCommand(share);
 
@@ -110,7 +113,10 @@ describe('SMBMountStrategy', () => {
       mockEncryptionService.isEncrypted.mockReturnValue(true);
       mockEncryptionService.decrypt.mockReturnValue('decrypted-pass');
 
-      const share = makeShare({ smbUsername: 'user', smbPassword: 'encrypted:xyz' });
+      const share = makeShare({
+        smbUsername: 'user',
+        smbPassword: 'encrypted:xyz',
+      });
 
       const cmd = await strategy.buildMountCommand(share);
 
@@ -314,7 +320,10 @@ describe('SMBMountStrategy', () => {
     it('should return true when smbclient succeeds without connection errors', async () => {
       mockedExec.mockImplementation(
         (_cmd: string, cb: (err: null, result: { stdout: string; stderr: string }) => void) => {
-          cb(null, { stdout: 'Sharename   Type   Comment\n-------\nmedia   Disk\n', stderr: '' });
+          cb(null, {
+            stdout: 'Sharename   Type   Comment\n-------\nmedia   Disk\n',
+            stderr: '',
+          });
         }
       );
 

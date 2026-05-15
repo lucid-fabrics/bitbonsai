@@ -12,11 +12,11 @@
 
 These configs are **NOT currently used** but preserved for reference:
 
-| File | Target | Timeout | Purpose |
-|------|--------|---------|---------|
-| `proxy.local.conf.json` | localhost:3000 | None | Local development (no timeout) |
-| `proxy.docker.conf.json` | 192.168.1.100:3100 | 600s | Docker environment |
-| `proxy.unraid.conf.json` | 192.168.1.100:3100 | 30s | Unraid production |
+| File                     | Target             | Timeout | Purpose                        |
+| ------------------------ | ------------------ | ------- | ------------------------------ |
+| `proxy.local.conf.json`  | localhost:3000     | None    | Local development (no timeout) |
+| `proxy.docker.conf.json` | 192.168.1.100:3100 | 600s    | Docker environment             |
+| `proxy.unraid.conf.json` | 192.168.1.100:3100 | 30s     | Unraid production              |
 
 ## Switching Proxy Configs
 
@@ -40,6 +40,7 @@ nx serve frontend --proxy-config=docs/architecture/proxy-configs/proxy.docker.co
 ## Creating New Configs
 
 Copy `proxy.conf.json` and adjust:
+
 - `target`: Backend URL
 - `timeout`: Request timeout (ms)
 - `secure`: true for HTTPS

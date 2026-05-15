@@ -63,7 +63,10 @@ describe('DataAccessService', () => {
       expect(result).toEqual(mockJob);
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/next-job',
-        expect.objectContaining({ params: { nodeId: 'node-1' }, timeout: 10000 })
+        expect.objectContaining({
+          params: { nodeId: 'node-1' },
+          timeout: 10000,
+        })
       );
     });
 
@@ -132,7 +135,9 @@ describe('DataAccessService', () => {
       mockNodeConfigService.getMainApiUrl.mockReturnValue('http://main:3000');
       mockHttpService.patch.mockReturnValue(of({ data: {} }));
 
-      await service.updateJobStage('job-1', 'COMPLETED' as any, { outputSize: 1024 });
+      await service.updateJobStage('job-1', 'COMPLETED' as any, {
+        outputSize: 1024,
+      });
 
       expect(mockHttpService.patch).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/job-1/stage',

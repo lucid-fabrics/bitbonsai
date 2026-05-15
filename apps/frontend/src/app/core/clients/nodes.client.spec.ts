@@ -290,7 +290,10 @@ describe('NodesClient', () => {
       });
 
       const req = httpMock.expectOne('/api/v1/nodes/node-1');
-      req.flush('Node has active jobs', { status: 409, statusText: 'Conflict' });
+      req.flush('Node has active jobs', {
+        status: 409,
+        statusText: 'Conflict',
+      });
     });
   });
 });

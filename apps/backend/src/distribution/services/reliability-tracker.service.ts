@@ -120,10 +120,9 @@ export class ReliabilityTrackerService {
       .slice(0, 5);
 
     // Get node stats
-    const node = await this.nodeRepository.findWithSelect<{ failureRate24h: number | null }>(
-      nodeId,
-      { failureRate24h: true }
-    );
+    const node = await this.nodeRepository.findWithSelect<{
+      failureRate24h: number | null;
+    }>(nodeId, { failureRate24h: true });
 
     return {
       count24h: failures.length,

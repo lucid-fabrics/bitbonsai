@@ -54,7 +54,9 @@ describe('WebhookNotificationService', () => {
       // webhookEnabled is hardcoded to false in getWebhookSettings
       mockWebhookSettings(false);
 
-      await service.sendJobNotification(WebhookEventType.JOB_COMPLETED, { id: 'job-1' });
+      await service.sendJobNotification(WebhookEventType.JOB_COMPLETED, {
+        id: 'job-1',
+      });
 
       expect(httpService.post).not.toHaveBeenCalled();
     });
@@ -62,7 +64,9 @@ describe('WebhookNotificationService', () => {
     it('should skip when no webhook URL configured', async () => {
       mockWebhookSettings(true, null);
 
-      await service.sendJobNotification(WebhookEventType.JOB_COMPLETED, { id: 'job-1' });
+      await service.sendJobNotification(WebhookEventType.JOB_COMPLETED, {
+        id: 'job-1',
+      });
 
       expect(httpService.post).not.toHaveBeenCalled();
     });
@@ -71,7 +75,9 @@ describe('WebhookNotificationService', () => {
       settingsRepository.findFirst.mockRejectedValue(new Error('DB error'));
 
       await expect(
-        service.sendJobNotification(WebhookEventType.JOB_COMPLETED, { id: 'job-1' })
+        service.sendJobNotification(WebhookEventType.JOB_COMPLETED, {
+          id: 'job-1',
+        })
       ).resolves.not.toThrow();
     });
   });
@@ -238,7 +244,11 @@ describe('WebhookNotificationService', () => {
     it('should log warning if DLQ has items', () => {
       (service as any).deadLetterQueue = [
         {
-          payload: { event: WebhookEventType.JOB_COMPLETED, timestamp: '', data: {} },
+          payload: {
+            event: WebhookEventType.JOB_COMPLETED,
+            timestamp: '',
+            data: {},
+          },
           url: 'https://example.com',
           secret: null,
           attempts: 1,
@@ -283,7 +293,9 @@ describe('WebhookNotificationService', () => {
 
       // Since sendJobNotification exits because webhookEnabled=false (hardcoded),
       // verify the rate-limit check doesn't cause errors
-      await service.sendJobNotification(WebhookEventType.JOB_STARTED, { id: 'job-1' });
+      await service.sendJobNotification(WebhookEventType.JOB_STARTED, {
+        id: 'job-1',
+      });
       expect(sendWebhookSpy).not.toHaveBeenCalled();
     });
 
@@ -297,7 +309,9 @@ describe('WebhookNotificationService', () => {
         webhookEvents: [WebhookEventType.JOB_FAILED],
       });
 
-      await service.sendJobNotification(WebhookEventType.JOB_COMPLETED, { id: 'job-1' });
+      await service.sendJobNotification(WebhookEventType.JOB_COMPLETED, {
+        id: 'job-1',
+      });
 
       expect(httpService.post).not.toHaveBeenCalled();
     });
@@ -488,7 +502,11 @@ describe('WebhookNotificationService', () => {
       const oldDate = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
       (service as any).deadLetterQueue = [
         {
-          payload: { event: WebhookEventType.JOB_COMPLETED, timestamp: '', data: {} },
+          payload: {
+            event: WebhookEventType.JOB_COMPLETED,
+            timestamp: '',
+            data: {},
+          },
           url: 'https://example.com',
           secret: null,
           attempts: 3,
@@ -510,7 +528,11 @@ describe('WebhookNotificationService', () => {
 
       (service as any).deadLetterQueue = [
         {
-          payload: { event: WebhookEventType.JOB_COMPLETED, timestamp: '', data: {} },
+          payload: {
+            event: WebhookEventType.JOB_COMPLETED,
+            timestamp: '',
+            data: {},
+          },
           url: 'https://example.com',
           secret: null,
           attempts: 3,
@@ -519,7 +541,11 @@ describe('WebhookNotificationService', () => {
           lastError: 'Error',
         },
         {
-          payload: { event: WebhookEventType.JOB_FAILED, timestamp: '', data: {} },
+          payload: {
+            event: WebhookEventType.JOB_FAILED,
+            timestamp: '',
+            data: {},
+          },
           url: 'https://example.com',
           secret: null,
           attempts: 5,
@@ -542,7 +568,13 @@ describe('WebhookNotificationService', () => {
     it('calls httpService.post with correct headers', async () => {
       const { of: rxOf } = require('rxjs');
       httpService.post.mockReturnValue(
-        rxOf({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: {} as any })
+        rxOf({
+          data: 'ok',
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        })
       );
 
       const payload = {
@@ -557,7 +589,9 @@ describe('WebhookNotificationService', () => {
         'https://hooks.example.com/test',
         payload,
         expect.objectContaining({
-          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
         })
       );
     });
@@ -565,7 +599,13 @@ describe('WebhookNotificationService', () => {
     it('adds X-BitBonsai-Signature header when secret is provided', async () => {
       const { of: rxOf } = require('rxjs');
       httpService.post.mockReturnValue(
-        rxOf({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: {} as any })
+        rxOf({
+          data: 'ok',
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        })
       );
 
       const payload = {
@@ -580,7 +620,9 @@ describe('WebhookNotificationService', () => {
         'https://hooks.example.com/test',
         payload,
         expect.objectContaining({
-          headers: expect.objectContaining({ 'X-BitBonsai-Signature': expect.any(String) }),
+          headers: expect.objectContaining({
+            'X-BitBonsai-Signature': expect.any(String),
+          }),
         })
       );
     });
@@ -624,7 +666,13 @@ describe('WebhookNotificationService', () => {
       httpService.post
         .mockReturnValueOnce(throwError(() => new Error('Timeout')))
         .mockReturnValueOnce(
-          rxOf({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: {} as any })
+          rxOf({
+            data: 'ok',
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config: {} as any,
+          })
         );
 
       const payload = {
@@ -654,7 +702,10 @@ describe('WebhookNotificationService', () => {
       });
 
       await expect(
-        service.sendHealthAlert('DISK_FULL', 'Disk is full', { usedPercent: 98, path: '/media' })
+        service.sendHealthAlert('DISK_FULL', 'Disk is full', {
+          usedPercent: 98,
+          path: '/media',
+        })
       ).resolves.not.toThrow();
 
       expect(httpService.post).not.toHaveBeenCalled();
@@ -675,7 +726,13 @@ describe('WebhookNotificationService', () => {
       const oldAttempt = new Date(Date.now() - 10 * 60 * 1000);
       const { of: rxOf } = require('rxjs');
       httpService.post.mockReturnValue(
-        rxOf({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: {} as any })
+        rxOf({
+          data: 'ok',
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        })
       );
 
       (service as any).deadLetterQueue = [

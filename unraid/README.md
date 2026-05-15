@@ -3,6 +3,7 @@
 ## Installation on Unraid
 
 ### Method 1: Community Applications (Recommended - Coming Soon)
+
 1. Open Unraid WebUI
 2. Navigate to **Apps** tab
 3. Search for **"BitBonsai"**
@@ -11,6 +12,7 @@
 6. Click **Apply**
 
 ### Method 2: Manual Template Installation
+
 1. Navigate to **Docker** tab in Unraid
 2. Click **Add Container** at the bottom
 3. Click **Template repositories**
@@ -19,6 +21,7 @@
 6. Configure and apply
 
 ### Method 3: Direct Docker Command
+
 ```bash
 docker run -d \
   --name=bitbonsai \
@@ -36,10 +39,12 @@ docker run -d \
 ## Configuration
 
 ### Required Settings
+
 - **API Port**: `3000` - Port for Web UI and API access
 - **Media Path**: `/mnt/user/media` - Your media library location (read-only recommended)
 
 ### Optional Settings
+
 - **Downloads Path**: `/mnt/user/Downloads` - Your downloads folder (read-only)
 - **App Data**: `/mnt/user/appdata/bitbonsai` - Scan results and config storage
 - **Timezone**: `America/New_York` - Your timezone for scheduled scans
@@ -49,6 +54,7 @@ docker run -d \
 ## Accessing BitBonsai
 
 After installation, access the web interface at:
+
 ```
 http://[UNRAID-IP]:3000
 ```
@@ -58,6 +64,7 @@ Example: `http://192.168.1.100:3000`
 ## Recommended Unraid Setup
 
 ### Folder Structure
+
 ```
 /mnt/user/
 ├── media/              # Your media library (mounted read-only)
@@ -71,13 +78,16 @@ Example: `http://192.168.1.100:3000`
 ```
 
 ### Integration with Media Servers
+
 BitBonsai works great alongside:
+
 - **Plex** - Analyze your Plex library structure
 - **Jellyfin** - Understand codec distribution
 - **Emby** - Track storage usage
 - **Sonarr/Radarr** - Verify media organization
 
 ### Performance Tips
+
 1. **Read-Only Mounts**: Mount media folders as read-only (`:ro`) for safety
 2. **Initial Scan**: First scan may take time depending on library size
 3. **Scheduled Scans**: Configure auto-refresh interval in settings
@@ -86,12 +96,14 @@ BitBonsai works great alongside:
 ## Updating BitBonsai
 
 ### Via Unraid Docker Manager
+
 1. Navigate to **Docker** tab
 2. Click **Check for Updates**
 3. If update available, click **Update**
 4. Container will restart automatically
 
 ### Via Docker Command
+
 ```bash
 docker pull lucidfabrics/bitbonsai:latest
 docker stop bitbonsai
@@ -102,16 +114,19 @@ docker rm bitbonsai
 ## Troubleshooting
 
 ### Cannot Access Web UI
+
 - Verify port 3000 is not in use: `netstat -tuln | grep 3000`
 - Check container logs: `docker logs bitbonsai`
 - Ensure firewall allows port 3000
 
 ### Scan Not Working
+
 - Verify media path is mounted correctly: `docker exec bitbonsai ls /media`
 - Check folder permissions (container runs as user 99:100 by default)
 - Review logs for errors: `docker logs bitbonsai`
 
 ### Empty Statistics
+
 - Ensure media folders contain video files (.mp4, .mkv, .avi)
 - Trigger manual scan via Web UI
 - Check that ffprobe can access files
@@ -164,22 +179,26 @@ BitBonsai supports **two storage sharing methods**. The system will automaticall
 **Best for**: Same network, bare metal, or privileged containers
 
 **How it works:**
+
 - Main node exports media via NFS
 - Child nodes mount NFS shares
 - Direct file access (no transfer needed)
 - **Instant job start**
 
 **Requirements:**
+
 - ✅ Nodes on same network
 - ✅ Child node can mount NFS (privileged mode for LXC/Docker)
 - ✅ NFS server enabled on main node
 
 **Pros:**
+
 - Zero file transfer overhead
 - Instant encoding start
 - Best for large files (50GB+ movies)
 
 **Cons:**
+
 - Requires NFS setup
 - LXC containers need privileged mode
 - Network I/O during encoding
@@ -189,33 +208,37 @@ BitBonsai supports **two storage sharing methods**. The system will automaticall
 **Best for**: Non-privileged containers, different networks, or when NFS isn't available
 
 **How it works:**
+
 - Files transferred to child node via rsync
 - Encoding happens on local disk
 - Results transferred back to main node
 - **Automatic, no configuration needed**
 
 **Requirements:**
+
 - ✅ SSH access between nodes
 - ✅ Temp storage space on child node
 
 **Pros:**
+
 - Works in any container (LXC, Docker, etc.)
 - No special privileges needed
 - Resumable transfers (can recover from failures)
 - Local I/O during encoding (faster FFmpeg)
 
 **Cons:**
+
 - ~1-2 minute transfer time for 10GB file
 - Requires temp storage space
 - 3-5% overhead on total job time
 
 **Performance Comparison:**
 
-| File Size | NFS Mount Time | rsync Transfer (Gigabit) | Overhead |
-|-----------|---------------|-------------------------|----------|
-| 5 GB | Instant | ~45 seconds | 3% of 20-min encode |
-| 10 GB | Instant | ~90 seconds | 4% of 30-min encode |
-| 50 GB | Instant | ~7 minutes | 10% of 60-min encode |
+| File Size | NFS Mount Time | rsync Transfer (Gigabit) | Overhead             |
+| --------- | -------------- | ------------------------ | -------------------- |
+| 5 GB      | Instant        | ~45 seconds              | 3% of 20-min encode  |
+| 10 GB     | Instant        | ~90 seconds              | 4% of 30-min encode  |
+| 50 GB     | Instant        | ~7 minutes               | 10% of 60-min encode |
 
 ### Auto-Detection & Recommendations
 
@@ -227,6 +250,7 @@ BitBonsai **automatically detects** your environment and recommends the best sto
 4. **Recommends method**: NFS or rsync based on above
 
 **Example Recommendations:**
+
 - ✅ "Use NFS - nodes on same network, both can mount"
 - ⚠️ "Use rsync - LXC container without privileges detected"
 - ⚠️ "Enable LXC privileged mode for NFS support (see below)"
@@ -234,6 +258,7 @@ BitBonsai **automatically detects** your environment and recommends the best sto
 ### Why Unraid's Native NFS?
 
 **BitBonsai does NOT run its own NFS server inside the container** because:
+
 - ❌ Unraid's NFS server already uses ports 111, 2049, etc.
 - ❌ Running NFS inside a container conflicts with the host's NFS
 - ✅ Unraid's native NFS is already configured and working
@@ -285,6 +310,7 @@ On each child node:
 5. Click **Mount** to mount each share
 
 **Important**: The mount points should match between MAIN and LINKED nodes:
+
 - MAIN: `/unraid-media` → LINKED: `/unraid-media`
 - MAIN: `/media` → LINKED: `/media`
 
@@ -317,6 +343,7 @@ ls /media
 **Cause**: Child node cannot access source files because shared storage is not mounted
 
 **Fix**:
+
 1. Check child node storage: **Nodes** → **Storage** (child node)
 2. Verify mounts are active (green checkmark)
 3. If no shares exist, click **Auto-Detect Shares**
@@ -328,6 +355,7 @@ ls /media
 **Cause**: Unraid's NFS server is not running or not exporting the right paths
 
 **Fix**:
+
 1. Check Unraid NFS status: **Settings** → **NFS**
 2. Verify NFS Server is **Enabled**
 3. Check exports: `showmount -e YOUR_UNRAID_IP`
@@ -338,6 +366,7 @@ ls /media
 **Cause**: NFS export permissions don't allow the container user (uid 99, gid 100)
 
 **Fix**:
+
 1. Update NFS exports to include `anonuid=99,anongid=100,all_squash`
 2. Or use `no_root_squash` for testing (less secure)
 3. Restart NFS server after changes
@@ -345,12 +374,14 @@ ls /media
 ### Performance Considerations
 
 **With Shared Storage (NFS)**:
+
 - ✅ **No file transfers** - instant job start
 - ✅ **Direct access** - child node reads from Unraid
 - ✅ **Faster overall** - network I/O during encoding only
 - ⚠️ Network bandwidth required during encoding
 
 **Without Shared Storage**:
+
 - ❌ **File transfer required** - copy entire file first
 - ❌ **Slower start** - wait for transfer to complete
 - ❌ **2x network traffic** - transfer + return result
@@ -365,6 +396,7 @@ If your child node is running in an LXC container (Proxmox), you need to enable 
 ### Method 1: Enable Privileged Mode (Recommended for dedicated encoding nodes)
 
 **Via Proxmox Web UI:**
+
 1. Stop the LXC container
 2. Go to **Datacenter** → **Your Node** → **Container ID**
 3. Click **Options** tab
@@ -373,6 +405,7 @@ If your child node is running in an LXC container (Proxmox), you need to enable 
 6. Start the container
 
 **Via Command Line (Proxmox host):**
+
 ```bash
 # Stop container
 pct stop <container-id>
@@ -394,6 +427,7 @@ pct start <container-id>
 Instead of privileged mode, mount NFS on the Proxmox host and bind-mount into the container:
 
 **Step 1: Mount NFS on Proxmox Host**
+
 ```bash
 # SSH to Proxmox host
 ssh root@pve-host
@@ -415,6 +449,7 @@ echo "192.168.1.100:/mnt/user/media /mnt/unraid-media nfs defaults 0 0" >> /etc/
 ```
 
 **Step 2: Bind-Mount into LXC Container**
+
 ```bash
 # Stop container
 pct stop <container-id>
@@ -430,6 +465,7 @@ pct start <container-id>
 ```
 
 **Step 3: Verify in Container**
+
 ```bash
 # Enter container
 pct enter <container-id>
@@ -455,11 +491,13 @@ If you don't want to configure NFS or privileged mode:
 After setup, verify your configuration:
 
 1. **Check environment detection:**
+
    ```bash
    curl http://child-node-ip:3100/api/v1/nodes/environment
    ```
 
 2. **Check storage recommendation:**
+
    ```bash
    curl -X POST http://main-node:3100/api/v1/nodes/storage-recommendation \
      -H 'Content-Type: application/json' \

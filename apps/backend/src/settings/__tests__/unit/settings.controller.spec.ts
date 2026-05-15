@@ -516,7 +516,9 @@ describe('SettingsController', () => {
       settingsService.updateSecuritySettings.mockRejectedValue(new Error('Validation failed'));
 
       await expect(
-        controller.updateSecuritySettings({ allowLocalNetworkWithoutAuth: true })
+        controller.updateSecuritySettings({
+          allowLocalNetworkWithoutAuth: true,
+        })
       ).rejects.toThrow('Validation failed');
     });
 

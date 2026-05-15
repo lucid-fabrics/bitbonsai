@@ -57,7 +57,10 @@ describe('QueueDelegationService', () => {
         { provide: JobRepository, useValue: mockJobRepository },
         { provide: JobRouterService, useValue: mockJobRouterService },
         { provide: FileTransferService, useValue: mockFileTransferService },
-        { provide: SharedStorageVerifierService, useValue: mockSharedStorageVerifier },
+        {
+          provide: SharedStorageVerifierService,
+          useValue: mockSharedStorageVerifier,
+        },
         { provide: QueueJobCrudService, useValue: mockJobCrudService },
         { provide: QueueJobStateService, useValue: mockJobStateService },
       ],
@@ -82,7 +85,10 @@ describe('QueueDelegationService', () => {
         node: { name: 'Node 1', hasSharedStorage: true },
       };
       mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
-      mockJobRepository.updateById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
 
       const count = await service.fixStuckTransfers();
 
@@ -165,7 +171,10 @@ describe('QueueDelegationService', () => {
         transferStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       };
       mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
-      mockJobStateService.failJob.mockResolvedValue({ id: 'job-1', stage: JobStage.FAILED } as any);
+      mockJobStateService.failJob.mockResolvedValue({
+        id: 'job-1',
+        stage: JobStage.FAILED,
+      } as any);
 
       await service.cleanupStuckTransfers();
 
@@ -184,7 +193,10 @@ describe('QueueDelegationService', () => {
         transferStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       };
       mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
-      mockJobCrudService.update.mockResolvedValue({ id: 'job-1', stage: JobStage.DETECTED } as any);
+      mockJobCrudService.update.mockResolvedValue({
+        id: 'job-1',
+        stage: JobStage.DETECTED,
+      } as any);
 
       await service.cleanupStuckTransfers();
 
@@ -523,7 +535,9 @@ describe('QueueDelegationService', () => {
         node: { name: 'Node 1', hasSharedStorage: true },
       };
       mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
-      mockJobRepository.updateById.mockResolvedValue({ id: 'job-shared' } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        id: 'job-shared',
+      } as any);
 
       await service.fixStuckTransfers();
 
@@ -541,7 +555,9 @@ describe('QueueDelegationService', () => {
         node: { name: 'Node 1', hasSharedStorage: false },
       };
       mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
-      mockJobRepository.updateById.mockResolvedValue({ id: 'job-notshared' } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        id: 'job-notshared',
+      } as any);
 
       await service.fixStuckTransfers();
 
@@ -559,7 +575,9 @@ describe('QueueDelegationService', () => {
         node: null,
       };
       mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
-      mockJobRepository.updateById.mockResolvedValue({ id: 'job-nonode' } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        id: 'job-nonode',
+      } as any);
 
       await service.fixStuckTransfers();
 

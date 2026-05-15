@@ -323,7 +323,9 @@ describe('FileWatcherService', () => {
 
       // Invoke the private handleFileAdded via the watcher "add" callback
       const handleFileAdded = (
-        service as unknown as { handleFileAdded: (libraryId: string, filePath: string) => void }
+        service as unknown as {
+          handleFileAdded: (libraryId: string, filePath: string) => void;
+        }
       ).handleFileAdded.bind(service);
 
       // Use fake timers to fire debounce immediately
@@ -344,7 +346,9 @@ describe('FileWatcherService', () => {
 
     it('should not emit file.detected for non-video files', () => {
       const handleFileAdded = (
-        service as unknown as { handleFileAdded: (libraryId: string, filePath: string) => void }
+        service as unknown as {
+          handleFileAdded: (libraryId: string, filePath: string) => void;
+        }
       ).handleFileAdded.bind(service);
 
       handleFileAdded(mockLibrary.id, '/media/test/document.pdf');
@@ -356,7 +360,9 @@ describe('FileWatcherService', () => {
       jest.useFakeTimers();
 
       const handleFileAdded = (
-        service as unknown as { handleFileAdded: (libraryId: string, filePath: string) => void }
+        service as unknown as {
+          handleFileAdded: (libraryId: string, filePath: string) => void;
+        }
       ).handleFileAdded.bind(service);
       const debounceTimers = (service as unknown as { debounceTimers: Map<string, NodeJS.Timeout> })
         .debounceTimers;

@@ -5,7 +5,11 @@ import { Component, Input } from '@angular/core';
   standalone: true,
   imports: [],
   template: `
-    <div class="spinner-container" [style.width.px]="size" [style.height.px]="size">
+    <div
+      class="spinner-container"
+      [style.width.px]="size"
+      [style.height.px]="size"
+    >
       <div class="spinner"></div>
     </div>
   `,

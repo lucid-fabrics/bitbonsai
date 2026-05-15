@@ -25,7 +25,11 @@ describe('JwtAuthGuard', () => {
       getArgs: () => [],
       getArgByIndex: () => null,
       switchToRpc: () => ({ getContext: jest.fn(), getData: jest.fn() }),
-      switchToWs: () => ({ getClient: jest.fn(), getData: jest.fn(), getPattern: jest.fn() }),
+      switchToWs: () => ({
+        getClient: jest.fn(),
+        getData: jest.fn(),
+        getPattern: jest.fn(),
+      }),
       getType: () => 'http',
     } as unknown as ExecutionContext;
   };
@@ -71,7 +75,9 @@ describe('JwtAuthGuard', () => {
 
   it('should allow local network IPs when local bypass is enabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
+    settingsRepository.findFirst.mockResolvedValue({
+      allowLocalNetworkWithoutAuth: true,
+    });
     const context = mockExecutionContext('192.168.1.100');
 
     const result = await guard.canActivate(context);
@@ -81,7 +87,9 @@ describe('JwtAuthGuard', () => {
 
   it('should allow local network IPs for 10.x.x.x when bypass is enabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
+    settingsRepository.findFirst.mockResolvedValue({
+      allowLocalNetworkWithoutAuth: true,
+    });
     const context = mockExecutionContext('10.0.0.5');
 
     const result = await guard.canActivate(context);
@@ -91,7 +99,9 @@ describe('JwtAuthGuard', () => {
 
   it('should not bypass for public IPs even when local bypass is enabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: true });
+    settingsRepository.findFirst.mockResolvedValue({
+      allowLocalNetworkWithoutAuth: true,
+    });
     const context = mockExecutionContext('8.8.8.8');
 
     // Override super.canActivate to avoid passport errors in tests
@@ -107,7 +117,9 @@ describe('JwtAuthGuard', () => {
 
   it('should require JWT when local bypass is disabled', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-    settingsRepository.findFirst.mockResolvedValue({ allowLocalNetworkWithoutAuth: false });
+    settingsRepository.findFirst.mockResolvedValue({
+      allowLocalNetworkWithoutAuth: false,
+    });
     const context = mockExecutionContext('192.168.1.100');
 
     // Override super.canActivate

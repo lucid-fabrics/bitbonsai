@@ -245,7 +245,9 @@ export class HealthDashboardService {
     });
 
     // Node Status Check
-    const offlineNodes = await this.nodeRepository.count({ where: { status: 'OFFLINE' } });
+    const offlineNodes = await this.nodeRepository.count({
+      where: { status: 'OFFLINE' },
+    });
 
     checks.push({
       name: 'Node Status',
@@ -396,7 +398,10 @@ export class HealthDashboardService {
     offline: number;
     byRole: Record<string, number>;
   }> {
-    const nodes = await this.nodeRepository.findMany<{ status: string; role: string }>({
+    const nodes = await this.nodeRepository.findMany<{
+      status: string;
+      role: string;
+    }>({
       select: { status: true, role: true },
     });
 
@@ -435,10 +440,14 @@ export class HealthDashboardService {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Total processed
-    const totalProcessed = await this.jobRepository.countWhere({ stage: JobStage.COMPLETED });
+    const totalProcessed = await this.jobRepository.countWhere({
+      stage: JobStage.COMPLETED,
+    });
 
     // Total saved bytes and avg saved percent
-    const savedAgg = await this.jobRepository.aggregateWithAvgCount({ stage: JobStage.COMPLETED });
+    const savedAgg = await this.jobRepository.aggregateWithAvgCount({
+      stage: JobStage.COMPLETED,
+    });
 
     // Last 24h stats
     const last24hCompleted = await this.jobRepository.countWhere({

@@ -90,7 +90,9 @@ export class SharedStorageVerifierService {
           availableCount++;
 
           // Update health check timestamp
-          await this.storageShareRepository.update(share.id, { lastHealthCheckAt: new Date() });
+          await this.storageShareRepository.update(share.id, {
+            lastHealthCheckAt: new Date(),
+          });
         } else {
           unavailableCount++;
           this.logger.warn(

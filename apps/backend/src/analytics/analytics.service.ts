@@ -232,7 +232,12 @@ export class AnalyticsService {
         startedAt: { not: null },
         beforeSizeBytes: { gt: 0 },
       },
-      { completedAt: true, startedAt: true, beforeSizeBytes: true, targetCodec: true }
+      {
+        completedAt: true,
+        startedAt: true,
+        beforeSizeBytes: true,
+        targetCodec: true,
+      }
     );
 
     // Group by date and codec
@@ -486,10 +491,9 @@ export class AnalyticsService {
   private async getPeakEncodingHour(period: TimePeriod): Promise<number> {
     const dateFilter = this.getDateFilter(period);
 
-    const jobs = await this.jobRepository.findManySelect<{ startedAt: Date | null }>(
-      { stage: JobStage.COMPLETED, completedAt: dateFilter },
-      { startedAt: true }
-    );
+    const jobs = await this.jobRepository.findManySelect<{
+      startedAt: Date | null;
+    }>({ stage: JobStage.COMPLETED, completedAt: dateFilter }, { startedAt: true });
 
     const hourCounts = new Array(24).fill(0);
 

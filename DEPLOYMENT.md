@@ -18,20 +18,20 @@
 
 ## Prerequisites
 
-| Component | Minimum Version | Recommended |
-|-----------|----------------|-------------|
-| **Docker** | 24+ | 27+ |
-| **PostgreSQL** | 14+ | 16+ |
-| **Node.js** | 20+ | 22+ LTS |
-| **FFmpeg** | 5.0+ | 7+ |
-| **OS** | Ubuntu 22.04, Debian 12 | Ubuntu 24.04 LTS |
+| Component      | Minimum Version         | Recommended      |
+| -------------- | ----------------------- | ---------------- |
+| **Docker**     | 24+                     | 27+              |
+| **PostgreSQL** | 14+                     | 16+              |
+| **Node.js**    | 20+                     | 22+ LTS          |
+| **FFmpeg**     | 5.0+                    | 7+               |
+| **OS**         | Ubuntu 22.04, Debian 12 | Ubuntu 24.04 LTS |
 
 **Hardware Requirements:**
 
-| Node Type | CPU | RAM | Storage |
-|-----------|-----|-----|---------|
-| **Main Node** | 4 cores | 8GB | 100GB+ SSD |
-| **Worker Node** | 8+ cores | 16GB+ | NFS mount |
+| Node Type       | CPU      | RAM   | Storage    |
+| --------------- | -------- | ----- | ---------- |
+| **Main Node**   | 4 cores  | 8GB   | 100GB+ SSD |
+| **Worker Node** | 8+ cores | 16GB+ | NFS mount  |
 
 ---
 
@@ -106,24 +106,24 @@ npx http-server dist/apps/frontend -p 4210
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `JWT_SECRET` | Secret for JWT tokens (**REQUIRED**) | `openssl rand -base64 32` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
+| Variable          | Description                            | Example                                           |
+| ----------------- | -------------------------------------- | ------------------------------------------------- |
+| `JWT_SECRET`      | Secret for JWT tokens (**REQUIRED**)   | `openssl rand -base64 32`                         |
+| `DATABASE_URL`    | PostgreSQL connection string           | `postgresql://user:pass@host:5432/db`             |
 | `ALLOWED_ORIGINS` | CORS allowed origins (comma-separated) | `http://localhost:4200,http://192.168.1.100:4210` |
-| `NODE_TYPE` | Node role: `MAIN` or `LINKED` | `MAIN` |
-| `NODE_NAME` | Unique identifier for this node | `main-node` |
+| `NODE_TYPE`       | Node role: `MAIN` or `LINKED`          | `MAIN`                                            |
+| `NODE_NAME`       | Unique identifier for this node        | `main-node`                                       |
 
 ### Optional Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Backend API port |
-| `NODE_ENV` | `development` | Environment: `development` \| `production` |
-| `JWT_EXPIRATION` | `7d` | Token validity period |
-| `RATE_LIMIT_TTL` | `60000` | Rate limit window (ms) |
-| `RATE_LIMIT_LIMIT` | `1000` | Max requests per window |
-| `LOG_LEVEL` | `info` | Log level: `error` \| `warn` \| `info` \| `debug` |
+| Variable           | Default       | Description                                       |
+| ------------------ | ------------- | ------------------------------------------------- |
+| `PORT`             | `3000`        | Backend API port                                  |
+| `NODE_ENV`         | `development` | Environment: `development` \| `production`        |
+| `JWT_EXPIRATION`   | `7d`          | Token validity period                             |
+| `RATE_LIMIT_TTL`   | `60000`       | Rate limit window (ms)                            |
+| `RATE_LIMIT_LIMIT` | `1000`        | Max requests per window                           |
+| `LOG_LEVEL`        | `info`        | Log level: `error` \| `warn` \| `info` \| `debug` |
 
 **Full reference:** See [.env.example](./.env.example)
 
@@ -301,10 +301,12 @@ curl http://192.168.1.100:3100/api/v1/nodes
 ### Secret Management
 
 **Development:**
+
 - Generate unique values using `openssl rand -base64 32`
 - Never use production secrets in development
 
 **Production:**
+
 - Use secret management service (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)
 - Enable secret rotation (JWT: 90 days, DB: 90 days)
 - Enable audit logging for secret access
@@ -318,6 +320,7 @@ curl http://192.168.1.100:3100/api/v1/nodes
 **Error:** `JWT_SECRET is required in production mode`
 
 **Fix:**
+
 ```bash
 # Generate and set JWT_SECRET
 echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
@@ -328,6 +331,7 @@ echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
 **Error:** `Connection refused to PostgreSQL`
 
 **Fix:**
+
 ```bash
 # Check PostgreSQL is running
 sudo systemctl status postgresql
@@ -341,6 +345,7 @@ sudo systemctl status postgresql
 **Error:** `CORS policy: No 'Access-Control-Allow-Origin' header`
 
 **Fix:**
+
 ```bash
 # Add frontend URL to ALLOWED_ORIGINS in .env
 ALLOWED_ORIGINS=http://your-frontend-url:4210
@@ -353,6 +358,7 @@ ALLOWED_ORIGINS=http://your-frontend-url:4210
 **Issue:** Jobs stuck in QUEUED state on LINKED node
 
 **Diagnosis:**
+
 ```bash
 # Check NFS mount
 df -h | grep /mnt/media
@@ -366,6 +372,7 @@ curl http://main-node-ip:3100/api/v1/nodes
 ```
 
 **Fix:**
+
 ```bash
 # Remount NFS if stale
 sudo umount -f /mnt/media
@@ -382,6 +389,7 @@ sudo mount 192.168.1.100:/mnt/media /mnt/media
 **Issue:** Backend consuming excessive RAM
 
 **Diagnosis:**
+
 ```bash
 # Check encoding jobs
 curl http://localhost:3100/api/v1/queue/stats
@@ -391,6 +399,7 @@ ps aux | grep ffmpeg
 ```
 
 **Fix:**
+
 ```bash
 # Limit concurrent jobs per node
 # Add to .env:
@@ -407,6 +416,7 @@ docker-compose restart backend
 **Error:** Blank page or "Cannot GET /api/v1/..."
 
 **Fix:**
+
 ```bash
 # Check backend is running
 curl http://localhost:3100/api/v1/health
@@ -515,7 +525,7 @@ services:
     volumes:
       - ./dist/apps/frontend:/usr/share/nginx/html:ro
     ports:
-      - "4210:80"
+      - '4210:80'
     restart: unless-stopped
     networks:
       - bitbonsai

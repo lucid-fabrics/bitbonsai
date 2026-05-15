@@ -236,7 +236,9 @@ export class NodeRepository extends BaseRepository {
       where: { status: 'ONLINE' as NodeStatus },
       include: {
         _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
+          select: {
+            jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } },
+          },
         },
       },
     });
@@ -248,7 +250,9 @@ export class NodeRepository extends BaseRepository {
       include: {
         _count: {
           select: {
-            jobs: { where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } } },
+            jobs: {
+              where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } },
+            },
           },
         },
       },
@@ -260,7 +264,9 @@ export class NodeRepository extends BaseRepository {
       where: { id },
       include: {
         _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
+          select: {
+            jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } },
+          },
         },
       },
     });
@@ -362,7 +368,9 @@ export class NodeRepository extends BaseRepository {
         currentSystemLoad: true,
         currentMemoryFreeGB: true,
         _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
+          select: {
+            jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } },
+          },
         },
       },
     }) as Promise<
@@ -420,6 +428,8 @@ export class NodeRepository extends BaseRepository {
   }
 
   async findFirstByIpAddresses(ipAddresses: string[]): Promise<Node | null> {
-    return this.prisma.node.findFirst({ where: { ipAddress: { in: ipAddresses } } });
+    return this.prisma.node.findFirst({
+      where: { ipAddress: { in: ipAddresses } },
+    });
   }
 }

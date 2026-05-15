@@ -429,22 +429,30 @@
   // Compact stage color variants
   &.detected {
     border-color: rgba(59, 130, 246, 0.3);
-    i:first-child { color: #3b82f6; }
+    i:first-child {
+      color: #3b82f6;
+    }
   }
 
   &.health-check {
     border-color: rgba(139, 92, 246, 0.3);
-    i:first-child { color: #8b5cf6; }
+    i:first-child {
+      color: #8b5cf6;
+    }
   }
 
   &.queued {
     border-color: rgba(136, 136, 136, 0.3);
-    i:first-child { color: $text-secondary; }
+    i:first-child {
+      color: $text-secondary;
+    }
   }
 
   &.encoding {
     border-color: rgba(249, 190, 3, 0.3);
-    i:first-child { color: $accent-primary; }
+    i:first-child {
+      color: $accent-primary;
+    }
 
     &.active {
       border-color: rgba(249, 190, 3, 0.5);
@@ -454,7 +462,9 @@
 
   &.completed {
     border-color: rgba(74, 222, 128, 0.3);
-    i:first-child { color: $success; }
+    i:first-child {
+      color: $success;
+    }
   }
 
   &.clickable {
@@ -675,7 +685,8 @@
 }
 
 @keyframes pulseProgress {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scaleX(1);
   }
@@ -686,7 +697,8 @@
 }
 
 @keyframes healthPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -710,7 +722,8 @@
 }
 
 @keyframes arrowPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
     opacity: 0.4;
   }
@@ -724,7 +737,11 @@
   flex: 0 0 auto;
   min-width: 200px;
   max-width: 240px;
-  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(238, 90, 111, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 107, 0.15),
+    rgba(238, 90, 111, 0.1)
+  );
   border: 2px solid rgba(255, 107, 107, 0.4);
   border-radius: 12px;
   padding: 16px;
@@ -795,7 +812,11 @@
 
   // Needs Decision variant (amber/orange theme)
   &.needs-decision {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(245, 158, 11, 0.15),
+      rgba(217, 119, 6, 0.1)
+    );
     border-color: rgba(245, 158, 11, 0.4);
 
     &::before {
@@ -822,7 +843,8 @@
 }
 
 @keyframes alertBounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -986,19 +1008,50 @@
       border-bottom: 1px solid $border-secondary;
       white-space: nowrap;
 
-      &.col-status { width: 130px; }
-      &.col-filename { min-width: 250px; }
-      &.col-library { width: 120px; }
-      &.col-codec { width: 160px; }
-      &.col-policy { width: 120px; }
-      &.col-progress { width: 150px; }
-      &.col-expected-savings { width: 140px; }
-      &.col-size { width: 200px; }
-      &.col-node { width: 100px; }
-      &.col-failed-at { width: 130px; font-size: 11px; }
-      &.col-failure-progress { width: 100px; text-align: center; }
-      &.col-why { width: 180px; color: rgba(255, 87, 87, 0.9); font-size: 12px; }
-      &.col-actions { width: 120px; text-align: center; }
+      &.col-status {
+        width: 130px;
+      }
+      &.col-filename {
+        min-width: 250px;
+      }
+      &.col-library {
+        width: 120px;
+      }
+      &.col-codec {
+        width: 160px;
+      }
+      &.col-policy {
+        width: 120px;
+      }
+      &.col-progress {
+        width: 150px;
+      }
+      &.col-expected-savings {
+        width: 140px;
+      }
+      &.col-size {
+        width: 200px;
+      }
+      &.col-node {
+        width: 100px;
+      }
+      &.col-failed-at {
+        width: 130px;
+        font-size: 11px;
+      }
+      &.col-failure-progress {
+        width: 100px;
+        text-align: center;
+      }
+      &.col-why {
+        width: 180px;
+        color: rgba(255, 87, 87, 0.9);
+        font-size: 12px;
+      }
+      &.col-actions {
+        width: 120px;
+        text-align: center;
+      }
     }
   }
 
@@ -1243,7 +1296,11 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, $accent-primary 0%, $accent-primary-hover 100%);
+  background: linear-gradient(
+    90deg,
+    $accent-primary 0%,
+    $accent-primary-hover 100%
+  );
   transition: width 0.3s ease;
 }
 
@@ -1712,7 +1769,11 @@
   }
 
   &.highlight {
-    background: linear-gradient(135deg, rgba(249, 190, 3, 0.1) 0%, rgba(249, 190, 3, 0.05) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(249, 190, 3, 0.1) 0%,
+      rgba(249, 190, 3, 0.05) 100%
+    );
     border-color: rgba(249, 190, 3, 0.3);
   }
 
@@ -2129,7 +2190,11 @@
       }
 
       &.btn-cancel-retry {
-        background: linear-gradient(135deg, rgba($warning, 0.15), rgba($warning, 0.05));
+        background: linear-gradient(
+          135deg,
+          rgba($warning, 0.15),
+          rgba($warning, 0.05)
+        );
         color: $text-white;
         border-color: rgba($warning, 0.3);
 
@@ -2138,7 +2203,11 @@
         }
 
         &:not(:disabled):hover {
-          background: linear-gradient(135deg, rgba($warning, 0.25), rgba($warning, 0.15));
+          background: linear-gradient(
+            135deg,
+            rgba($warning, 0.25),
+            rgba($warning, 0.15)
+          );
           border-color: rgba($warning, 0.5);
           transform: translateY(-2px);
           box-shadow: 0 6px 16px rgba($warning, 0.25);
@@ -2150,7 +2219,11 @@
       }
 
       &.btn-cancel-blacklist {
-        background: linear-gradient(135deg, rgba($danger, 0.15), rgba($danger, 0.05));
+        background: linear-gradient(
+          135deg,
+          rgba($danger, 0.15),
+          rgba($danger, 0.05)
+        );
         color: $text-white;
         border-color: rgba($danger, 0.3);
 
@@ -2159,7 +2232,11 @@
         }
 
         &:not(:disabled):hover {
-          background: linear-gradient(135deg, rgba($danger, 0.25), rgba($danger, 0.15));
+          background: linear-gradient(
+            135deg,
+            rgba($danger, 0.25),
+            rgba($danger, 0.15)
+          );
           border-color: rgba($danger, 0.5);
           transform: translateY(-2px);
           box-shadow: 0 6px 16px rgba($danger, 0.25);
@@ -2537,7 +2614,8 @@
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg,
+      background: linear-gradient(
+        90deg,
         transparent,
         rgba(255, 255, 255, 0.15),
         transparent
@@ -2700,7 +2778,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -2715,7 +2794,11 @@
 // Compact Job Details (New Design)
 .job-details-expanded {
   padding: 24px;
-  background: linear-gradient(135deg, rgba($bg-secondary, 0.3) 0%, rgba($bg-secondary, 0.5) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba($bg-secondary, 0.3) 0%,
+    rgba($bg-secondary, 0.5) 100%
+  );
   border-top: 2px solid rgba($accent-primary, 0.2);
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2855,11 +2938,19 @@
         }
 
         &.active {
-          background: linear-gradient(90deg, $accent-primary 0%, $accent-primary 100%);
+          background: linear-gradient(
+            90deg,
+            $accent-primary 0%,
+            $accent-primary 100%
+          );
         }
 
         &.pending {
-          background: linear-gradient(90deg, rgba($text-secondary, 0.3) 0%, rgba($text-secondary, 0.3) 100%);
+          background: linear-gradient(
+            90deg,
+            rgba($text-secondary, 0.3) 0%,
+            rgba($text-secondary, 0.3) 100%
+          );
         }
 
         &.auto-heal {
@@ -3346,7 +3437,8 @@
 }
 
 @keyframes slideRight {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
     opacity: 1;
   }
@@ -3493,7 +3585,11 @@
 // Enhanced Error Section
 .error-section-enhanced {
   .error-message-enhanced {
-    background: linear-gradient(135deg, rgba(#ff6b6b, 0.15), rgba(#ee5a6f, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(#ff6b6b, 0.15),
+      rgba(#ee5a6f, 0.1)
+    );
     border: 1px solid rgba(#ff6b6b, 0.3);
     border-radius: 12px;
     padding: 20px;
@@ -4320,7 +4416,11 @@
       top: 0;
       left: 0;
       height: 100%;
-      background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
+      background: linear-gradient(
+        90deg,
+        $accent-primary,
+        color.adjust($accent-primary, $lightness: 10%)
+      );
       transition: width 0.3s ease;
 
       // Shimmer animation
@@ -4331,7 +4431,8 @@
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg,
+        background: linear-gradient(
+          90deg,
           transparent,
           rgba(255, 255, 255, 0.2),
           transparent

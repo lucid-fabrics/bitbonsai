@@ -271,7 +271,9 @@ export class FileRelocatorService {
         const grandparentDir = path.dirname(parentDir);
         if (grandparentDir !== parentDir) {
           try {
-            const uncles = fs.readdirSync(grandparentDir, { withFileTypes: true });
+            const uncles = fs.readdirSync(grandparentDir, {
+              withFileTypes: true,
+            });
             for (const uncle of uncles) {
               if (uncle.isDirectory()) {
                 const unclePath = path.join(grandparentDir, uncle.name);
@@ -279,7 +281,9 @@ export class FileRelocatorService {
                   dirs.push(unclePath);
                   // Also add subdirectories of uncle
                   try {
-                    const cousins = fs.readdirSync(unclePath, { withFileTypes: true });
+                    const cousins = fs.readdirSync(unclePath, {
+                      withFileTypes: true,
+                    });
                     for (const cousin of cousins) {
                       if (cousin.isDirectory()) {
                         const cousinPath = path.join(unclePath, cousin.name);

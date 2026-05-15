@@ -378,7 +378,11 @@ describe('EncodingSchedulerService', () => {
       const presets = service.getPresetSchedules();
 
       expect(presets.nights).toHaveLength(7);
-      expect(presets.nights[0]).toEqual({ dayOfWeek: 0, startHour: 22, endHour: 6 });
+      expect(presets.nights[0]).toEqual({
+        dayOfWeek: 0,
+        startHour: 22,
+        endHour: 6,
+      });
     });
 
     it('should have weekend windows for weekends preset', () => {

@@ -11,7 +11,10 @@ import { QueueJobCrudService } from './queue-job-crud.service';
 describe('JobFileOperationsService', () => {
   let service: JobFileOperationsService;
   let mockPrisma: { job: { update: jest.Mock }; $transaction: jest.Mock };
-  let mockJobRepository: { updateById: jest.Mock; updateByIdWithInclude: jest.Mock };
+  let mockJobRepository: {
+    updateById: jest.Mock;
+    updateByIdWithInclude: jest.Mock;
+  };
   let mockJobCrudService: jest.Mocked<QueueJobCrudService>;
   let mockFfmpegService: jest.Mocked<FfmpegService>;
   let mockJobMetricsService: jest.Mocked<JobMetricsService>;
@@ -131,7 +134,9 @@ describe('JobFileOperationsService', () => {
       const _result = await service.recheckFailedJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ error: expect.stringContaining('RECHECK FAILED') })
+        expect.objectContaining({
+          error: expect.stringContaining('RECHECK FAILED'),
+        })
       );
     });
   });
@@ -146,7 +151,10 @@ describe('JobFileOperationsService', () => {
     });
 
     it('should throw BadRequestException when file was compressed', async () => {
-      const job = makeJob({ stage: JobStage.COMPLETED, savedBytes: BigInt(100_000) });
+      const job = makeJob({
+        stage: JobStage.COMPLETED,
+        savedBytes: BigInt(100_000),
+      });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
 
       await expect(service.detectAndRequeueIfUncompressed('job-1')).rejects.toThrow(
@@ -157,7 +165,10 @@ describe('JobFileOperationsService', () => {
     it('should requeue job when no compression detected', async () => {
       const job = makeJob({ stage: JobStage.COMPLETED, savedBytes: BigInt(0) });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
-      mockJobRepository.updateByIdWithInclude.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
+      mockJobRepository.updateByIdWithInclude.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      });
 
       const _result = await service.detectAndRequeueIfUncompressed('job-1');
 
@@ -176,7 +187,10 @@ describe('JobFileOperationsService', () => {
         originalSizeBytes: BigInt(1_000_000),
       });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, originalBackupPath: null });
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        originalBackupPath: null,
+      });
 
       jest.spyOn(require('fs/promises'), 'unlink').mockResolvedValue(undefined);
 
@@ -185,7 +199,10 @@ describe('JobFileOperationsService', () => {
       expect(result.freedSpace).toBe(BigInt(1_000_000));
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ originalBackupPath: null, originalSizeBytes: null })
+        expect.objectContaining({
+          originalBackupPath: null,
+          originalSizeBytes: null,
+        })
       );
     });
 
@@ -195,7 +212,10 @@ describe('JobFileOperationsService', () => {
         originalSizeBytes: null,
       });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, originalBackupPath: null });
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        originalBackupPath: null,
+      });
       jest.spyOn(require('fs/promises'), 'unlink').mockResolvedValue(undefined);
 
       const result = await service.deleteOriginalBackup('job-1');
@@ -263,7 +283,11 @@ describe('JobFileOperationsService', () => {
         size: 700_000_000,
       } as any);
 
-      const completedJob = { ...job, stage: JobStage.COMPLETED, savedPercent: 30 };
+      const completedJob = {
+        ...job,
+        stage: JobStage.COMPLETED,
+        savedPercent: 30,
+      };
       mockPrisma.$transaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
         return cb({
           job: {
@@ -299,7 +323,9 @@ describe('JobFileOperationsService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ error: expect.stringContaining('failed health check') })
+        expect.objectContaining({
+          error: expect.stringContaining('failed health check'),
+        })
       );
     });
 
@@ -335,7 +361,10 @@ describe('JobFileOperationsService', () => {
 
   describe('requestKeepOriginal - originalSizeBytes', () => {
     it('should set originalSizeBytes from job.beforeSizeBytes', async () => {
-      const job = makeJob({ stage: JobStage.ENCODING, beforeSizeBytes: BigInt(2_000_000_000) });
+      const job = makeJob({
+        stage: JobStage.ENCODING,
+        beforeSizeBytes: BigInt(2_000_000_000),
+      });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
       mockJobRepository.updateById.mockResolvedValue({
         ...job,

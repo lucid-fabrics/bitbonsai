@@ -120,7 +120,9 @@ export class CreateJobDto {
     enum: ['ENCODE', 'REMUX'],
   })
   @IsOptional()
-  @IsEnum(['ENCODE', 'REMUX'], { message: 'Job type must be either ENCODE or REMUX' })
+  @IsEnum(['ENCODE', 'REMUX'], {
+    message: 'Job type must be either ENCODE or REMUX',
+  })
   type?: 'ENCODE' | 'REMUX';
 
   @ApiPropertyOptional({

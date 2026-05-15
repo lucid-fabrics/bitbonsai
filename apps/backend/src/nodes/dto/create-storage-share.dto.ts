@@ -13,7 +13,10 @@ export class CreateStorageShareDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiProperty({ enum: StorageProtocol, description: 'Storage protocol (NFS or SMB)' })
+  @ApiProperty({
+    enum: StorageProtocol,
+    description: 'Storage protocol (NFS or SMB)',
+  })
   @IsEnum(StorageProtocol)
   protocol!: StorageProtocol;
 

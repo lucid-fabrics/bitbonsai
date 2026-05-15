@@ -30,50 +30,50 @@ import { PricingApiService } from '../../services/pricing-api.service';
         <!-- Form -->
         @if (!loading && !error) {
           <div class="checkout__content">
-          <h1 class="checkout__title">Complete Your Purchase</h1>
-          <p class="checkout__subtitle">
-            {{ tierName }} - \${{ price }}/{{ period }}
-          </p>
-
-          <form (ngSubmit)="onSubmit()" class="checkout__form">
-            <div class="checkout__field">
-              <label for="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                [(ngModel)]="email"
-                placeholder="your@email.com"
-                required
-                [disabled]="submitting"
-              />
-              <small>Your license key will be sent to this email</small>
-            </div>
-
-            <button
-              type="submit"
-              class="checkout__button checkout__button--primary"
-              [disabled]="submitting || !email"
-            >
-              {{ submitting ? 'Processing...' : 'Continue to Payment' }}
-            </button>
-
-            <button
-              type="button"
-              (click)="goBack()"
-              class="checkout__button checkout__button--secondary"
-              [disabled]="submitting"
-            >
-              Cancel
-            </button>
-          </form>
-
-          <div class="checkout__security">
-            <p>🔒 Secure payment powered by Stripe</p>
-            <p class="checkout__note">
-              You'll be redirected to Stripe's secure checkout page
+            <h1 class="checkout__title">Complete Your Purchase</h1>
+            <p class="checkout__subtitle">
+              {{ tierName }} - \${{ price }}/{{ period }}
             </p>
-          </div>
+
+            <form (ngSubmit)="onSubmit()" class="checkout__form">
+              <div class="checkout__field">
+                <label for="email">Email Address</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  [(ngModel)]="email"
+                  placeholder="your@email.com"
+                  required
+                  [disabled]="submitting"
+                />
+                <small>Your license key will be sent to this email</small>
+              </div>
+
+              <button
+                type="submit"
+                class="checkout__button checkout__button--primary"
+                [disabled]="submitting || !email"
+              >
+                {{ submitting ? 'Processing...' : 'Continue to Payment' }}
+              </button>
+
+              <button
+                type="button"
+                (click)="goBack()"
+                class="checkout__button checkout__button--secondary"
+                [disabled]="submitting"
+              >
+                Cancel
+              </button>
+            </form>
+
+            <div class="checkout__security">
+              <p>🔒 Secure payment powered by Stripe</p>
+              <p class="checkout__note">
+                You'll be redirected to Stripe's secure checkout page
+              </p>
+            </div>
           </div>
         }
       </div>

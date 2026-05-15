@@ -42,7 +42,9 @@ export class SettingsController {
     description: 'Environment info retrieved',
     type: EnvironmentInfoDto,
   })
-  @ApiInternalServerErrorResponse({ description: 'Failed to detect environment' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to detect environment',
+  })
   async getEnvironmentInfo(): Promise<EnvironmentInfoDto> {
     return this.environmentService.getEnvironmentInfo();
   }
@@ -57,7 +59,9 @@ export class SettingsController {
     description: 'System settings retrieved',
     type: SystemSettingsDto,
   })
-  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve settings' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retrieve settings',
+  })
   async getSystemSettings(): Promise<SystemSettingsDto> {
     return {
       version: APP_VERSION, // Read from package.json
@@ -118,7 +122,10 @@ export class SettingsController {
     schema: {
       type: 'object',
       properties: {
-        backupPath: { type: 'string', example: '/config/backups/bitbonsai-2025-10-01.db' },
+        backupPath: {
+          type: 'string',
+          example: '/config/backups/bitbonsai-2025-10-01.db',
+        },
         timestamp: { type: 'string', example: '2025-10-01T12:00:00Z' },
       },
     },
@@ -184,7 +191,9 @@ export class SettingsController {
     description: 'Security settings retrieved',
     type: SecuritySettingsDto,
   })
-  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve security settings' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retrieve security settings',
+  })
   async getSecuritySettings(): Promise<SecuritySettingsDto> {
     return this.settingsService.getSecuritySettings();
   }
@@ -351,7 +360,10 @@ export class SettingsController {
     description:
       'Retrieve whether quality metrics (VMAF/PSNR/SSIM) are calculated after encoding. Default is false (disabled) as this is CPU-intensive.',
   })
-  @ApiOkResponse({ description: 'Quality metrics setting retrieved', type: QualityMetricsDto })
+  @ApiOkResponse({
+    description: 'Quality metrics setting retrieved',
+    type: QualityMetricsDto,
+  })
   async getQualityMetrics(): Promise<QualityMetricsDto> {
     return this.settingsService.getQualityMetrics();
   }
@@ -362,7 +374,10 @@ export class SettingsController {
     description:
       'Toggle calculation of VMAF/PSNR/SSIM quality metrics after encoding. This adds significant CPU overhead to each job.',
   })
-  @ApiOkResponse({ description: 'Quality metrics setting updated', type: QualityMetricsDto })
+  @ApiOkResponse({
+    description: 'Quality metrics setting updated',
+    type: QualityMetricsDto,
+  })
   async updateQualityMetrics(@Body() updateDto: QualityMetricsDto): Promise<QualityMetricsDto> {
     return this.settingsService.updateQualityMetrics(updateDto.qualityMetricsEnabled);
   }

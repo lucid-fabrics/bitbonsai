@@ -32,10 +32,10 @@
           tooltipPlacement="bottom"
         >
           @if (isLoading$ | async) {
-            <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> {{ 'dashboard.scanning' | transloco }}
-          } @else {
-            <fa-icon [icon]="['fas', 'sync']"></fa-icon> {{ 'dashboard.refresh' | transloco }}
-          }
+          <fa-icon [icon]="['fas', 'sync']" [animation]="'spin'"></fa-icon> {{
+          'dashboard.scanning' | transloco }} } @else {
+          <fa-icon [icon]="['fas', 'sync']"></fa-icon> {{ 'dashboard.refresh' |
+          transloco }} }
         </button>
       </div>
     </div>
@@ -67,7 +67,9 @@
           <div class="summary-number">
             {{ stats.totalFiles.toLocaleString() }}
           </div>
-          <div class="summary-label">{{ 'dashboard.totalFiles' | transloco }}</div>
+          <div class="summary-label">
+            {{ 'dashboard.totalFiles' | transloco }}
+          </div>
         </div>
         <div class="summary-item">
           <div class="summary-number">
@@ -83,17 +85,23 @@
         </div>
         <div class="summary-item">
           <div class="summary-number">{{ stats.completionPercentage }}%</div>
-          <div class="summary-label">{{ 'dashboard.completion' | transloco }}</div>
+          <div class="summary-label">
+            {{ 'dashboard.completion' | transloco }}
+          </div>
         </div>
         <div class="summary-item">
           <div class="summary-number">{{ stats.totalSizeFormattedLarge }}</div>
-          <div class="summary-label">{{ 'dashboard.totalSize' | transloco }}</div>
+          <div class="summary-label">
+            {{ 'dashboard.totalSize' | transloco }}
+          </div>
         </div>
         <div class="summary-item">
           <div class="summary-number">
             {{ stats.averageBitrateMbps.toFixed(1) }} Mbps
           </div>
-          <div class="summary-label">{{ 'dashboard.avgBitrate' | transloco }}</div>
+          <div class="summary-label">
+            {{ 'dashboard.avgBitrate' | transloco }}
+          </div>
         </div>
       </div>
     </div>

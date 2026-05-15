@@ -166,7 +166,9 @@ describe('MediaStatsService', () => {
       await service.triggerScan();
 
       // Should have called readdirSync with /media fallback
-      expect(mockReaddirSync).toHaveBeenCalledWith('/media', { withFileTypes: true });
+      expect(mockReaddirSync).toHaveBeenCalledWith('/media', {
+        withFileTypes: true,
+      });
     });
   });
 
@@ -181,7 +183,9 @@ describe('MediaStatsService', () => {
       // Test h265 alias
       mockSpawnSync.mockReturnValue({
         status: 0,
-        stdout: JSON.stringify({ streams: [{ codec_name: 'h265', bit_rate: '3000000' }] }),
+        stdout: JSON.stringify({
+          streams: [{ codec_name: 'h265', bit_rate: '3000000' }],
+        }),
         stderr: '',
       });
 
@@ -200,7 +204,9 @@ describe('MediaStatsService', () => {
 
       mockSpawnSync.mockReturnValue({
         status: 0,
-        stdout: JSON.stringify({ streams: [{ codec_name: 'av1', bit_rate: '2000000' }] }),
+        stdout: JSON.stringify({
+          streams: [{ codec_name: 'av1', bit_rate: '2000000' }],
+        }),
         stderr: '',
       });
 
@@ -219,7 +225,9 @@ describe('MediaStatsService', () => {
 
       mockSpawnSync.mockReturnValue({
         status: 0,
-        stdout: JSON.stringify({ streams: [{ codec_name: 'mpeg4', bit_rate: '1000000' }] }),
+        stdout: JSON.stringify({
+          streams: [{ codec_name: 'mpeg4', bit_rate: '1000000' }],
+        }),
         stderr: '',
       });
 
@@ -246,7 +254,9 @@ describe('MediaStatsService', () => {
 
       mockSpawnSync.mockReturnValue({
         status: 0,
-        stdout: JSON.stringify({ streams: [{ codec_name: 'h264', bit_rate: '5000000' }] }),
+        stdout: JSON.stringify({
+          streams: [{ codec_name: 'h264', bit_rate: '5000000' }],
+        }),
         stderr: '',
       });
 
@@ -271,7 +281,9 @@ describe('MediaStatsService', () => {
         const codec = callCount === 1 ? 'h264' : 'hevc';
         return {
           status: 0,
-          stdout: JSON.stringify({ streams: [{ codec_name: codec, bit_rate: '5000000' }] }),
+          stdout: JSON.stringify({
+            streams: [{ codec_name: codec, bit_rate: '5000000' }],
+          }),
           stderr: '',
         };
       });
@@ -359,7 +371,9 @@ describe('MediaStatsService', () => {
       mockStatSync.mockReturnValue({ size: 1024 * 1024 });
       mockSpawnSync.mockReturnValue({
         status: 0,
-        stdout: JSON.stringify({ streams: [{ codec_name: 'h264', bit_rate: '5000000' }] }),
+        stdout: JSON.stringify({
+          streams: [{ codec_name: 'h264', bit_rate: '5000000' }],
+        }),
         stderr: '',
       });
 

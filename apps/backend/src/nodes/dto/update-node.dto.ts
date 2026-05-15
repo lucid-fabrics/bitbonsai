@@ -91,7 +91,9 @@ export class UpdateNodeDto {
     required: false,
   })
   @IsOptional()
-  @IsEnum(NetworkLocation, { message: 'networkLocation must be LOCAL, REMOTE, or UNKNOWN' })
+  @IsEnum(NetworkLocation, {
+    message: 'networkLocation must be LOCAL, REMOTE, or UNKNOWN',
+  })
   networkLocation?: NetworkLocation;
 
   @ApiProperty({

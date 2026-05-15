@@ -25,6 +25,7 @@ npx tsx tools/generators/generate-tests.ts <service-name>
 ```
 
 **Example:**
+
 ```bash
 npx tsx tools/generators/generate-tests.ts libraries
 # ✅ Generated: apps/backend/src/libraries/libraries.service.integration.spec.ts
@@ -37,6 +38,7 @@ npx tsx tools/generators/generate-tests.ts libraries
 ```
 
 This will generate integration tests for:
+
 - Policies
 - Nodes
 - Queue
@@ -48,6 +50,7 @@ This will generate integration tests for:
 Each generated test file includes:
 
 ### Test Setup
+
 - `beforeAll` - Creates test fixtures (License → Node → Library chain)
 - `afterAll` - Cleans up all test data
 - `afterEach` - Resets service-specific data between tests
@@ -81,29 +84,32 @@ Each generated test file includes:
 
 ## Test Coverage Status
 
-| Service | Integration Tests | Status |
-|---------|------------------|--------|
-| Policies | 32 tests (manual) | ✅ Complete |
+| Service   | Integration Tests    | Status       |
+| --------- | -------------------- | ------------ |
+| Policies  | 32 tests (manual)    | ✅ Complete  |
 | Libraries | 13 tests (generated) | ✅ Generated |
-| Nodes | 13 tests (generated) | ✅ Generated |
-| Queue | 13 tests (generated) | ✅ Generated |
-| License | 13 tests (generated) | ✅ Generated |
+| Nodes     | 13 tests (generated) | ✅ Generated |
+| Queue     | 13 tests (generated) | ✅ Generated |
+| License   | 13 tests (generated) | ✅ Generated |
 
 **Total:** ~84 integration tests
 
 ## Running Generated Tests
 
 ### Run all integration tests:
+
 ```bash
 npx nx test backend --testNamePattern="Integration Tests"
 ```
 
 ### Run specific service tests:
+
 ```bash
 npx nx test backend --testFile=libraries.service.integration.spec.ts
 ```
 
 ### Run with coverage:
+
 ```bash
 npx nx test backend --coverage
 ```
@@ -146,8 +152,8 @@ After generation, you may need to manually adjust:
 
 ## Future Enhancements
 
-- [ ] Generate E2E tests (*.e2e.spec.ts)
-- [ ] Generate unit tests (*.spec.ts) with mocks
+- [ ] Generate E2E tests (\*.e2e.spec.ts)
+- [ ] Generate unit tests (\*.spec.ts) with mocks
 - [ ] Auto-detect unique constraints from Prisma schema
 - [ ] Support for custom service methods
 - [ ] Generate test data factories

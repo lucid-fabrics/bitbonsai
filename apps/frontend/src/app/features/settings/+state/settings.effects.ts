@@ -45,7 +45,11 @@ export class SettingsEffects {
         this.settingsService.getEnvironmentInfo().pipe(
           map((info) => SettingsActions.loadEnvironmentInfoSuccess({ info })),
           catchError((error) =>
-            of(SettingsActions.loadEnvironmentInfoFailure({ error: error.message }))
+            of(
+              SettingsActions.loadEnvironmentInfoFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )
@@ -59,7 +63,11 @@ export class SettingsEffects {
         this.settingsService.getSystemSettings().pipe(
           map((settings) => SettingsActions.loadSystemSettingsSuccess({ settings })),
           catchError((error) =>
-            of(SettingsActions.loadSystemSettingsFailure({ error: error.message }))
+            of(
+              SettingsActions.loadSystemSettingsFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )
@@ -73,7 +81,11 @@ export class SettingsEffects {
         this.settingsService.updateSystemSettings(updates).pipe(
           map((settings) => SettingsActions.updateSystemSettingsSuccess({ settings })),
           catchError((error) =>
-            of(SettingsActions.updateSystemSettingsFailure({ error: error.message }))
+            of(
+              SettingsActions.updateSystemSettingsFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )
@@ -126,7 +138,9 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.getAdvancedMode().pipe(
           map((result) =>
-            SettingsActions.loadAdvancedModeSuccess({ enabled: result.advancedModeEnabled })
+            SettingsActions.loadAdvancedModeSuccess({
+              enabled: result.advancedModeEnabled,
+            })
           ),
           catchError((error) =>
             of(SettingsActions.loadAdvancedModeFailure({ error: error.message }))
@@ -142,10 +156,16 @@ export class SettingsEffects {
       switchMap(({ enabled }) =>
         this.settingsService.updateAdvancedMode(enabled).pipe(
           map((result) =>
-            SettingsActions.updateAdvancedModeSuccess({ enabled: result.advancedModeEnabled })
+            SettingsActions.updateAdvancedModeSuccess({
+              enabled: result.advancedModeEnabled,
+            })
           ),
           catchError((error) =>
-            of(SettingsActions.updateAdvancedModeFailure({ error: error.message }))
+            of(
+              SettingsActions.updateAdvancedModeFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )

@@ -140,7 +140,9 @@ export class SshKeyService implements OnModuleInit {
     }
 
     // Append new key
-    writeFileSync(this.authorizedKeysPath, existingKeys + keyEntry, { mode: 0o600 });
+    writeFileSync(this.authorizedKeysPath, existingKeys + keyEntry, {
+      mode: 0o600,
+    });
     this.logger.log(`✅ Added key to authorized_keys${comment ? ` (${comment})` : ''}`);
   }
 

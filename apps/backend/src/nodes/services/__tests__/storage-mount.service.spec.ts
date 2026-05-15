@@ -155,7 +155,10 @@ describe('StorageMountService', () => {
 
       await service.mount('share-1');
 
-      expect(mockFs.mkdir).toHaveBeenCalledWith('/media', { recursive: true, mode: 0o755 });
+      expect(mockFs.mkdir).toHaveBeenCalledWith('/media', {
+        recursive: true,
+        mode: 0o755,
+      });
     });
 
     it('should handle mount verification failure', async () => {
@@ -301,7 +304,10 @@ describe('StorageMountService', () => {
 
   describe('mount - fstab integration', () => {
     it('should add to fstab when addToFstab is true and mount succeeds', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockStrategy.buildFstabEntry.mockResolvedValue(
         '192.168.1.100:/mnt/media /media nfs defaults 0 0'
@@ -320,7 +326,10 @@ describe('StorageMountService', () => {
     });
 
     it('should skip fstab write when entry already exists', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
@@ -336,7 +345,10 @@ describe('StorageMountService', () => {
     });
 
     it('should not fail mount when fstab write throws', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
@@ -393,7 +405,10 @@ describe('StorageMountService', () => {
     });
 
     it('should handle unmount stderr warning without failing', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execResolves('', 'warning: lazy unmount');
       execRejects(new Error('not mounted'));
       mockRepository.updateStatus.mockResolvedValue({});
@@ -404,7 +419,10 @@ describe('StorageMountService', () => {
     });
 
     it('should fail when unmount verification shows still mounted', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execResolves('', '');
       // verifyMount returns true (still mounted)
       execResolves('/media type nfs');
@@ -426,7 +444,10 @@ describe('StorageMountService', () => {
 
   describe('remount', () => {
     it('should return unmount failure without attempting mount', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execRejects(new Error('Device busy'));
 
       const result = await service.remount('share-1');
@@ -545,7 +566,10 @@ describe('StorageMountService', () => {
   // ==========================================================================
   describe('unmount - plain umount command', () => {
     it('should use plain umount when force is false', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execResolves('', '');
       execRejects(new Error('not mounted'));
       mockRepository.updateStatus.mockResolvedValue({});
@@ -563,7 +587,10 @@ describe('StorageMountService', () => {
   // ==========================================================================
   describe('mount - fstab does not exist', () => {
     it('should create fstab entry when file does not exist', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockStrategy.buildFstabEntry.mockResolvedValue(
         '192.168.1.100:/mnt/media /media nfs defaults 0 0'

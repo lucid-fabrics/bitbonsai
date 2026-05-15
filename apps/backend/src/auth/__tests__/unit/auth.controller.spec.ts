@@ -39,7 +39,10 @@ describe('AuthController', () => {
       };
       mockAuthService.login.mockResolvedValue(authResponse);
 
-      const result = await controller.login({ username: 'admin', password: 'pass123' });
+      const result = await controller.login({
+        username: 'admin',
+        password: 'pass123',
+      });
 
       expect(result).toEqual(authResponse);
       expect(mockAuthService.login).toHaveBeenCalledWith({
@@ -66,7 +69,9 @@ describe('AuthController', () => {
       };
       mockAuthService.refreshToken.mockResolvedValue(authResponse);
 
-      const result = await controller.refreshToken({ refreshToken: 'old-refresh-token' });
+      const result = await controller.refreshToken({
+        refreshToken: 'old-refresh-token',
+      });
 
       expect(result).toEqual(authResponse);
       expect(mockAuthService.refreshToken).toHaveBeenCalledWith({

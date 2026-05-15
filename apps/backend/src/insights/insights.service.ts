@@ -130,7 +130,10 @@ export class InsightsService {
 
     for (const metric of metrics) {
       const dateKey = metric.date.toISOString().split('T')[0];
-      const existing = dailyMetrics.get(dateKey) || { savedBytes: BigInt(0), jobsCompleted: 0 };
+      const existing = dailyMetrics.get(dateKey) || {
+        savedBytes: BigInt(0),
+        jobsCompleted: 0,
+      };
 
       dailyMetrics.set(dateKey, {
         savedBytes: existing.savedBytes + metric.totalSavedBytes,

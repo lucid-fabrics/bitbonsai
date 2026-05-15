@@ -15,7 +15,11 @@
 .hero {
   position: relative;
   padding: 120px 0 80px;
-  background: linear-gradient(180deg, variables.$bg-primary 0%, variables.$bg-secondary 100%);
+  background: linear-gradient(
+    180deg,
+    variables.$bg-primary 0%,
+    variables.$bg-secondary 100%
+  );
   overflow: hidden;
 
   // Animated background grid
@@ -63,7 +67,11 @@
   }
 
   &__gradient {
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -221,7 +229,11 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, variables.$bg-secondary 0%, variables.$bg-tertiary 100%);
+  background: linear-gradient(
+    135deg,
+    variables.$bg-secondary 0%,
+    variables.$bg-tertiary 100%
+  );
   border: 1px solid variables.$border-primary;
   border-radius: 16px;
   padding: 24px;
@@ -366,7 +378,11 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     color: #000;
     display: flex;
     align-items: center;
@@ -479,7 +495,11 @@
   &__value {
     font-size: 36px;
     font-weight: 800;
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -547,7 +567,11 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     display: flex;
     align-items: center;
     justify-content: center;
@@ -810,7 +834,11 @@
 // CTA Section
 .cta {
   padding: 120px 0;
-  background: linear-gradient(135deg, variables.$bg-secondary 0%, variables.$bg-primary 100%);
+  background: linear-gradient(
+    135deg,
+    variables.$bg-secondary 0%,
+    variables.$bg-primary 100%
+  );
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -824,7 +852,11 @@
     transform: translate(-50%, -50%);
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(249, 190, 3, 0.1) 0%, transparent 70%);
+    background: radial-gradient(
+      circle,
+      rgba(249, 190, 3, 0.1) 0%,
+      transparent 70%
+    );
     pointer-events: none;
   }
 

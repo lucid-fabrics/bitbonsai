@@ -17,7 +17,6 @@ jest.mock('os', () => ({
 
 // Mock fs.promises only — preserve rest of fs for Prisma compatibility
 jest.mock('fs', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const actual = jest.requireActual<typeof import('fs')>('fs');
   return {
     ...actual,
@@ -31,7 +30,7 @@ jest.mock('fs', () => {
 
 describe('SystemInfoService', () => {
   let service: SystemInfoService;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+
   const osMock = require('os');
 
   beforeEach(async () => {
@@ -73,7 +72,7 @@ describe('SystemInfoService', () => {
       osMock.totalmem.mockReturnValue(16 * 1024 ** 3);
 
       // Mock exec for disk space and GPU detection
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+
       const { exec } = require('child_process');
       exec.mockImplementation((_cmd: string, cb: any) => cb(null, { stdout: '0G', stderr: '' }));
 
@@ -126,11 +125,14 @@ describe('SystemInfoService', () => {
       osMock.networkInterfaces.mockReturnValue({});
       osMock.hostname.mockReturnValue('mac-host');
       osMock.cpus.mockReturnValue([
-        { model: 'Apple M2', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Apple M2',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       osMock.totalmem.mockReturnValue(16 * 1024 ** 3);
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { exec } = require('child_process');
       exec.mockImplementation((_cmd: string, cb: any) => cb(new Error('command not found'), null));
 
@@ -142,16 +144,19 @@ describe('SystemInfoService', () => {
   });
 
   describe('detectContainerType', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fsMock = require('fs').promises;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const { exec } = require('child_process');
 
     function setupBaseOsMocks() {
       osMock.networkInterfaces.mockReturnValue({});
       osMock.hostname.mockReturnValue('host');
       osMock.cpus.mockReturnValue([
-        { model: 'Intel', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       osMock.totalmem.mockReturnValue(8 * 1024 ** 3);
     }
@@ -270,9 +275,8 @@ describe('SystemInfoService', () => {
   });
 
   describe('detectAcceleration', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fsMock = require('fs').promises;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const { exec } = require('child_process');
 
     function setupBaseOsMocks() {
@@ -284,7 +288,11 @@ describe('SystemInfoService', () => {
     it('detects NVIDIA when nvidia-smi succeeds', async () => {
       setupBaseOsMocks();
       osMock.cpus.mockReturnValue([
-        { model: 'Intel', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       fsMock.access.mockRejectedValue(new Error('not found'));
       fsMock.readFile.mockResolvedValue('');
@@ -302,7 +310,11 @@ describe('SystemInfoService', () => {
     it('detects INTEL_QSV when /dev/dri/renderD128 exists and CPU is Intel', async () => {
       setupBaseOsMocks();
       osMock.cpus.mockReturnValue([
-        { model: 'Intel Core i9', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel Core i9',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       fsMock.access.mockImplementation((path: string) => {
         if (path === '/dev/dri/renderD128') return Promise.resolve();
@@ -323,7 +335,11 @@ describe('SystemInfoService', () => {
     it('does NOT detect INTEL_QSV when /dev/dri/renderD128 exists but CPU is not Intel', async () => {
       setupBaseOsMocks();
       osMock.cpus.mockReturnValue([
-        { model: 'AMD Ryzen 9', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'AMD Ryzen 9',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       fsMock.access.mockImplementation((path: string) => {
         if (path === '/dev/dri/renderD128') return Promise.resolve();
@@ -352,7 +368,11 @@ describe('SystemInfoService', () => {
     it('detects AMD when lspci shows VGA', async () => {
       setupBaseOsMocks();
       osMock.cpus.mockReturnValue([
-        { model: 'AMD Ryzen', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'AMD Ryzen',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       fsMock.access.mockRejectedValue(new Error('not found'));
       fsMock.readFile.mockResolvedValue('');
@@ -381,7 +401,11 @@ describe('SystemInfoService', () => {
     it('detects AMD when lspci shows Display', async () => {
       setupBaseOsMocks();
       osMock.cpus.mockReturnValue([
-        { model: 'AMD', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'AMD',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       fsMock.access.mockRejectedValue(new Error('not found'));
       fsMock.readFile.mockResolvedValue('');
@@ -390,7 +414,10 @@ describe('SystemInfoService', () => {
           return cb(new Error('not found'), null);
         }
         if (typeof _cmd === 'string' && _cmd.includes('lspci')) {
-          return cb(null, { stdout: '04:00.0 Display controller: AMD Radeon RX', stderr: '' });
+          return cb(null, {
+            stdout: '04:00.0 Display controller: AMD Radeon RX',
+            stderr: '',
+          });
         }
         return cb(null, { stdout: 'none', stderr: '' });
       });
@@ -407,7 +434,11 @@ describe('SystemInfoService', () => {
     it('falls back to CPU when no acceleration detected on linux', async () => {
       setupBaseOsMocks();
       osMock.cpus.mockReturnValue([
-        { model: 'Unknown CPU', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Unknown CPU',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       fsMock.access.mockRejectedValue(new Error('not found'));
       fsMock.readFile.mockResolvedValue('');
@@ -426,23 +457,30 @@ describe('SystemInfoService', () => {
         writable: true,
         configurable: true,
       });
-      Object.defineProperty(process, 'arch', { value: 'x64', writable: true, configurable: true });
+      Object.defineProperty(process, 'arch', {
+        value: 'x64',
+        writable: true,
+        configurable: true,
+      });
       const result = await service.collectSystemInfo();
       expect(result.acceleration).toBe(AccelerationType.CPU);
     });
   });
 
   describe('getDiskSpace and detectGpu', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fsMock = require('fs').promises;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const { exec } = require('child_process');
 
     function setupBaseOsMocks() {
       osMock.networkInterfaces.mockReturnValue({});
       osMock.hostname.mockReturnValue('host');
       osMock.cpus.mockReturnValue([
-        { model: 'Intel', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel',
+          speed: 0,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       osMock.totalmem.mockReturnValue(8 * 1024 ** 3);
     }

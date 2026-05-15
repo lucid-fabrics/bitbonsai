@@ -129,7 +129,7 @@
   transition: color 0.2s ease;
 
   &:hover {
-    color: color.adjust($danger, $lightness:  10%);
+    color: color.adjust($danger, $lightness: 10%);
   }
 }
 

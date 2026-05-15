@@ -30,9 +30,14 @@ describe('NodesService Integration Tests', () => {
         { provide: DataAccessService, useValue: { getNextJob: jest.fn() } },
         {
           provide: SystemInfoService,
-          useValue: { collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }) },
+          useValue: {
+            collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }),
+          },
         },
-        { provide: StorageShareService, useValue: { getSharedPaths: jest.fn() } },
+        {
+          provide: StorageShareService,
+          useValue: { getSharedPaths: jest.fn() },
+        },
       ],
     }).compile();
 

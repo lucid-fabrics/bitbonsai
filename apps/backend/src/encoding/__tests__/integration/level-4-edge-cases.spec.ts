@@ -228,7 +228,9 @@ describe('Level 4: Edge Cases', () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Check if job is in ENCODING stage
-      const encodingJob = await prisma.job.findUnique({ where: { id: job.id } });
+      const encodingJob = await prisma.job.findUnique({
+        where: { id: job.id },
+      });
       if (encodingJob && encodingJob.stage === JobStage.ENCODING) {
         // Delete the source file during encoding
         if (fs.existsSync(videoPath)) {

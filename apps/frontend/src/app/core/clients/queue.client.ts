@@ -43,7 +43,9 @@ export class QueueClient {
         limit: number;
         totalPages: number;
       }>(this.apiUrl, { params }),
-      this.http.get<QueueStats>(`${this.apiUrl}/stats`, { params: statsParams }),
+      this.http.get<QueueStats>(`${this.apiUrl}/stats`, {
+        params: statsParams,
+      }),
     ]).pipe(
       map(([response, stats]) => ({
         jobs: response.jobs,
@@ -57,7 +59,9 @@ export class QueueClient {
   }
 
   cancelJob(jobId: string, blacklist = false): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${jobId}/cancel`, { blacklist });
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/cancel`, {
+      blacklist,
+    });
   }
 
   cancelAllQueued(): Observable<{ cancelledCount: number }> {
@@ -169,11 +173,21 @@ export class QueueClient {
    */
   skipAllCodecMatch(): Observable<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.http.post<{
       skippedCount: number;
-      jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+      jobs: Array<{
+        id: string;
+        fileLabel: string;
+        sourceCodec: string;
+        targetCodec: string;
+      }>;
     }>(`${this.apiUrl}/skip-codec-match`, {});
   }
 
@@ -187,11 +201,21 @@ export class QueueClient {
    */
   forceEncodeAllCodecMatch(): Observable<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.http.post<{
       queuedCount: number;
-      jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+      jobs: Array<{
+        id: string;
+        fileLabel: string;
+        sourceCodec: string;
+        targetCodec: string;
+      }>;
     }>(`${this.apiUrl}/force-encode-codec-match`, {});
   }
 

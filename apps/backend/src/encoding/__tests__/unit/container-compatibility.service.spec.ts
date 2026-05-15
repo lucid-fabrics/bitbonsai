@@ -175,8 +175,18 @@ describe('ContainerCompatibilityService', () => {
       const streamData = {
         streams: [
           { index: 0, codec_name: 'hevc', codec_type: 'video' },
-          { index: 1, codec_name: 'ac3', codec_type: 'audio', tags: { title: 'Surround 5.1' } },
-          { index: 2, codec_name: 'dts', codec_type: 'audio', tags: { title: 'DTS-HD' } },
+          {
+            index: 1,
+            codec_name: 'ac3',
+            codec_type: 'audio',
+            tags: { title: 'Surround 5.1' },
+          },
+          {
+            index: 2,
+            codec_name: 'dts',
+            codec_type: 'audio',
+            tags: { title: 'DTS-HD' },
+          },
         ],
       };
 

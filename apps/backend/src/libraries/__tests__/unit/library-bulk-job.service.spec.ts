@@ -114,8 +114,14 @@ describe('LibraryBulkJobService', () => {
         { provide: JobRepository, useValue: mockJobRepo },
         { provide: MediaAnalysisService, useValue: mockMediaAnalysis },
         { provide: QueueService, useValue: mockQueueService },
-        { provide: DistributionOrchestratorService, useValue: mockDistributionOrchestrator },
-        { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: DistributionOrchestratorService,
+          useValue: mockDistributionOrchestrator,
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: mockFileFailureTracking,
+        },
       ],
     }).compile();
 
@@ -428,7 +434,10 @@ describe('LibraryBulkJobService', () => {
         expect(result.jobsCreated).toBe(0);
         expect(result.filesSkipped).toBe(1);
         expect(result.skippedFiles).toEqual([
-          { path: autoBlacklisted, reason: 'Auto-blacklisted (repeated failures)' },
+          {
+            path: autoBlacklisted,
+            reason: 'Auto-blacklisted (repeated failures)',
+          },
         ]);
       });
     });

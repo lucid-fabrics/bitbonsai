@@ -60,56 +60,56 @@ import { NotificationContainerComponent } from './shared/components/notification
   `,
   styles: [
     `
-    .app-layout {
-      min-height: 100vh;
-      display: flex;
-    }
+      .app-layout {
+        min-height: 100vh;
+        display: flex;
+      }
 
-    .content-wrapper {
-      flex: 1;
-      margin-left: 240px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .app-header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--surface-color);
-      border-bottom: 1px solid var(--border-color);
-      padding: 0.75rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 56px;
-    }
-
-    .header-spacer {
-      flex: 1;
-    }
-
-    .main-content {
-      flex: 1;
-      background: #1a1a1a;
-      padding-top: 56px; /* Account for sticky app-header height */
-    }
-
-    /* When app-header is not shown (non-main nodes), remove padding */
-    .content-wrapper:not(:has(.app-header)) .main-content {
-      padding-top: 0;
-    }
-
-    @media (max-width: 768px) {
       .content-wrapper {
-        margin-left: 60px;
+        flex: 1;
+        margin-left: 240px;
+        display: flex;
+        flex-direction: column;
       }
 
       .app-header {
-        padding: 0.5rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--surface-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 56px;
       }
-    }
-  `,
+
+      .header-spacer {
+        flex: 1;
+      }
+
+      .main-content {
+        flex: 1;
+        background: #1a1a1a;
+        padding-top: 56px; /* Account for sticky app-header height */
+      }
+
+      /* When app-header is not shown (non-main nodes), remove padding */
+      .content-wrapper:not(:has(.app-header)) .main-content {
+        padding-top: 0;
+      }
+
+      @media (max-width: 768px) {
+        .content-wrapper {
+          margin-left: 60px;
+        }
+
+        .app-header {
+          padding: 0.5rem 1rem;
+        }
+      }
+    `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

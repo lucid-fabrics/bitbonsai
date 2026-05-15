@@ -44,76 +44,98 @@ interface ViewPricingTier {
       @if (!loading && !error) {
         <!-- Header -->
         <section class="pricing-header">
-        <div class="pricing-header__container">
-          <h1 class="pricing-header__title">Simple, Transparent Pricing</h1>
-          <p class="pricing-header__subtitle">
-            Start free. Scale as you grow. No credit card required.
-          </p>
-        </div>
-      </section>
+          <div class="pricing-header__container">
+            <h1 class="pricing-header__title">Simple, Transparent Pricing</h1>
+            <p class="pricing-header__subtitle">
+              Start free. Scale as you grow. No credit card required.
+            </p>
+          </div>
+        </section>
 
-      <!-- Pricing Tiers -->
-      <section class="tiers">
-        <div class="tiers__container">
-          <div class="tiers__grid">
-            @for (tier of tiers; track tier.name; let i = $index) {
-              <div class="tier-card" [class.tier-card--popular]="tier.popular" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-                @if (tier.popular) {
-                  <div class="tier-card__badge">Most Popular</div>
-                }
-
-                <div class="tier-card__header">
-                  <h3 class="tier-card__name">{{ tier.name }}</h3>
-                  <div class="tier-card__price">
-                    <span class="tier-card__currency">$</span>
-                    <span class="tier-card__amount">{{ tier.price }}</span>
-                    <span class="tier-card__period">/{{ tier.period }}</span>
-                  </div>
-                  <p class="tier-card__description">{{ tier.description }}</p>
-                </div>
-
-                <ul class="tier-card__features">
-                  @for (feature of tier.features; track feature) {
-                    <li>
-                      <fa-icon [icon]="faCheckCircle" class="tier-card__check"></fa-icon>
-                      {{ feature }}
-                    </li>
+        <!-- Pricing Tiers -->
+        <section class="tiers">
+          <div class="tiers__container">
+            <div class="tiers__grid">
+              @for (tier of tiers; track tier.name; let i = $index) {
+                <div
+                  class="tier-card"
+                  [class.tier-card--popular]="tier.popular"
+                  bbScrollReveal
+                  [delay]="i * 100"
+                  animation="fade-in-up"
+                >
+                  @if (tier.popular) {
+                    <div class="tier-card__badge">Most Popular</div>
                   }
-                </ul>
 
-                <a [href]="tier.cta" class="tier-card__button" [class.tier-card__button--primary]="tier.popular">
-                  Get Started
-                </a>
-              </div>
-            }
+                  <div class="tier-card__header">
+                    <h3 class="tier-card__name">{{ tier.name }}</h3>
+                    <div class="tier-card__price">
+                      <span class="tier-card__currency">$</span>
+                      <span class="tier-card__amount">{{ tier.price }}</span>
+                      <span class="tier-card__period">/{{ tier.period }}</span>
+                    </div>
+                    <p class="tier-card__description">{{ tier.description }}</p>
+                  </div>
+
+                  <ul class="tier-card__features">
+                    @for (feature of tier.features; track feature) {
+                      <li>
+                        <fa-icon
+                          [icon]="faCheckCircle"
+                          class="tier-card__check"
+                        ></fa-icon>
+                        {{ feature }}
+                      </li>
+                    }
+                  </ul>
+
+                  <a
+                    [href]="tier.cta"
+                    class="tier-card__button"
+                    [class.tier-card__button--primary]="tier.popular"
+                  >
+                    Get Started
+                  </a>
+                </div>
+              }
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- FAQ -->
-      <section class="faq">
-        <div class="faq__container">
-          <h2 class="faq__title">Frequently Asked Questions</h2>
+        <!-- FAQ -->
+        <section class="faq">
+          <div class="faq__container">
+            <h2 class="faq__title">Frequently Asked Questions</h2>
 
-          <div class="faq__grid">
-            @for (item of faqs; track item.question; let i = $index) {
-              <div class="faq-item" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
-                <h3 class="faq-item__question">{{ item.question }}</h3>
-                <p class="faq-item__answer">{{ item.answer }}</p>
-              </div>
-            }
+            <div class="faq__grid">
+              @for (item of faqs; track item.question; let i = $index) {
+                <div
+                  class="faq-item"
+                  bbScrollReveal
+                  [delay]="i * 80"
+                  animation="fade-in-up"
+                >
+                  <h3 class="faq-item__question">{{ item.question }}</h3>
+                  <p class="faq-item__answer">{{ item.answer }}</p>
+                </div>
+              }
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- CTA -->
-      <section class="pricing-cta">
-        <div class="pricing-cta__container">
-          <h2 class="pricing-cta__title">Ready to Get Started?</h2>
-          <p class="pricing-cta__subtitle">Try BitBonsai free. No credit card required.</p>
-          <a routerLink="/download" class="pricing-cta__button">Download Now</a>
-        </div>
-      </section>
+        <!-- CTA -->
+        <section class="pricing-cta">
+          <div class="pricing-cta__container">
+            <h2 class="pricing-cta__title">Ready to Get Started?</h2>
+            <p class="pricing-cta__subtitle">
+              Try BitBonsai free. No credit card required.
+            </p>
+            <a routerLink="/download" class="pricing-cta__button"
+              >Download Now</a
+            >
+          </div>
+        </section>
       }
     </div>
   `,

@@ -50,7 +50,10 @@ describe('PlexIntegrationService', () => {
     });
 
     it('should return false when no settings with plexUrl', async () => {
-      mockSettingsRepository.findFirst.mockResolvedValue({ plexUrl: null, plexToken: null });
+      mockSettingsRepository.findFirst.mockResolvedValue({
+        plexUrl: null,
+        plexToken: null,
+      });
 
       const result = await service.isPlaybackActive();
 
@@ -159,7 +162,12 @@ describe('PlexIntegrationService', () => {
       const result = await service.getActiveSessions();
 
       expect(result).toEqual([
-        { title: 'Breaking Bad - Pilot', user: 'Admin', state: 'playing', type: 'episode' },
+        {
+          title: 'Breaking Bad - Pilot',
+          user: 'Admin',
+          state: 'playing',
+          type: 'episode',
+        },
       ]);
     });
 
@@ -488,7 +496,12 @@ describe('PlexIntegrationService', () => {
           data: {
             MediaContainer: {
               Metadata: [
-                { Player: { state: 'playing' }, type: 'movie', title: 'T', User: { title: 'U' } },
+                {
+                  Player: { state: 'playing' },
+                  type: 'movie',
+                  title: 'T',
+                  User: { title: 'U' },
+                },
               ],
             },
           },
@@ -517,7 +530,12 @@ describe('PlexIntegrationService', () => {
           data: {
             MediaContainer: {
               Metadata: [
-                { Player: { state: 'playing' }, type: 'movie', title: 'T', User: { title: 'U' } },
+                {
+                  Player: { state: 'playing' },
+                  type: 'movie',
+                  title: 'T',
+                  User: { title: 'U' },
+                },
               ],
             },
           },
@@ -533,7 +551,9 @@ describe('PlexIntegrationService', () => {
 
       expect(mockJobRepository.updateManyWhere).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.objectContaining({ contains: 'Plex playback detected' }),
+          error: expect.objectContaining({
+            contains: 'Plex playback detected',
+          }),
         }),
         expect.objectContaining({ error: null })
       );
@@ -655,7 +675,12 @@ describe('PlexIntegrationService', () => {
         data: {
           MediaContainer: {
             Metadata: [
-              { Player: { state: 'playing' }, type: 'movie', title: 'T', User: { title: 'U' } },
+              {
+                Player: { state: 'playing' },
+                type: 'movie',
+                title: 'T',
+                User: { title: 'U' },
+              },
             ],
           },
         },

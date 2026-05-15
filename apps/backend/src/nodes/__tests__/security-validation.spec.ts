@@ -97,7 +97,9 @@ describe('Security Validation Tests', () => {
     });
 
     it('should exclude apiKey from heartbeat response', async () => {
-      const result = await controller.heartbeat('test-node-1', { status: 'ONLINE' });
+      const result = await controller.heartbeat('test-node-1', {
+        status: 'ONLINE',
+      });
 
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('status', 'ONLINE');

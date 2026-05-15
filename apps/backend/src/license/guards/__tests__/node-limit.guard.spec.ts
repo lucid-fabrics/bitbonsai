@@ -23,7 +23,11 @@ describe('NodeLimitGuard', () => {
       getArgs: () => [],
       getArgByIndex: () => null,
       switchToRpc: () => ({ getContext: jest.fn(), getData: jest.fn() }),
-      switchToWs: () => ({ getClient: jest.fn(), getData: jest.fn(), getPattern: jest.fn() }),
+      switchToWs: () => ({
+        getClient: jest.fn(),
+        getData: jest.fn(),
+        getPattern: jest.fn(),
+      }),
       getType: () => 'http',
     } as unknown as ExecutionContext;
   };
@@ -62,7 +66,10 @@ describe('NodeLimitGuard', () => {
   });
 
   it('should allow when node count is below limit', async () => {
-    licenseClient.getCurrentLimits.mockResolvedValue({ maxNodes: 5, maxConcurrentJobs: 10 });
+    licenseClient.getCurrentLimits.mockResolvedValue({
+      maxNodes: 5,
+      maxConcurrentJobs: 10,
+    });
     prisma.node.count.mockResolvedValue(3);
 
     const result = await guard.canActivate(mockExecutionContext());
@@ -71,7 +78,10 @@ describe('NodeLimitGuard', () => {
   });
 
   it('should throw ForbiddenException when node limit is reached', async () => {
-    licenseClient.getCurrentLimits.mockResolvedValue({ maxNodes: 2, maxConcurrentJobs: 10 });
+    licenseClient.getCurrentLimits.mockResolvedValue({
+      maxNodes: 2,
+      maxConcurrentJobs: 10,
+    });
     prisma.node.count.mockResolvedValue(2);
 
     await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
@@ -81,14 +91,20 @@ describe('NodeLimitGuard', () => {
   });
 
   it('should throw ForbiddenException when node count exceeds limit', async () => {
-    licenseClient.getCurrentLimits.mockResolvedValue({ maxNodes: 1, maxConcurrentJobs: 10 });
+    licenseClient.getCurrentLimits.mockResolvedValue({
+      maxNodes: 1,
+      maxConcurrentJobs: 10,
+    });
     prisma.node.count.mockResolvedValue(5);
 
     await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
   });
 
   it('should allow when at zero nodes with limit of 1', async () => {
-    licenseClient.getCurrentLimits.mockResolvedValue({ maxNodes: 1, maxConcurrentJobs: 10 });
+    licenseClient.getCurrentLimits.mockResolvedValue({
+      maxNodes: 1,
+      maxConcurrentJobs: 10,
+    });
     prisma.node.count.mockResolvedValue(0);
 
     const result = await guard.canActivate(mockExecutionContext());
@@ -97,7 +113,10 @@ describe('NodeLimitGuard', () => {
   });
 
   it('should count only ONLINE and OFFLINE nodes (exclude ERROR)', async () => {
-    licenseClient.getCurrentLimits.mockResolvedValue({ maxNodes: 5, maxConcurrentJobs: 10 });
+    licenseClient.getCurrentLimits.mockResolvedValue({
+      maxNodes: 5,
+      maxConcurrentJobs: 10,
+    });
     prisma.node.count.mockResolvedValue(2);
 
     await guard.canActivate(mockExecutionContext());
@@ -110,7 +129,10 @@ describe('NodeLimitGuard', () => {
   });
 
   it('should include upgrade message in error', async () => {
-    licenseClient.getCurrentLimits.mockResolvedValue({ maxNodes: 1, maxConcurrentJobs: 10 });
+    licenseClient.getCurrentLimits.mockResolvedValue({
+      maxNodes: 1,
+      maxConcurrentJobs: 10,
+    });
     prisma.node.count.mockResolvedValue(1);
 
     try {

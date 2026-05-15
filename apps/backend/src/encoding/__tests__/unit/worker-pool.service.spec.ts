@@ -9,7 +9,10 @@ import { WorkerPoolService } from '../../worker-pool.service';
 describe('WorkerPoolService', () => {
   let service: WorkerPoolService;
   let poolLockService: { withLock: jest.Mock };
-  let systemResourceService: { defaultWorkersPerNode: number; maxWorkersPerNode: number };
+  let systemResourceService: {
+    defaultWorkersPerNode: number;
+    maxWorkersPerNode: number;
+  };
   let ffmpegService: { killProcess: jest.Mock };
   let jobRepository: { updateById: jest.Mock };
 

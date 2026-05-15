@@ -65,7 +65,10 @@ describe('DebugController', () => {
 
   describe('killFfmpegProcess', () => {
     it('should kill process by PID', async () => {
-      mockDebugService.killProcessByPid.mockResolvedValue({ killed: true, pid: 1234 });
+      mockDebugService.killProcessByPid.mockResolvedValue({
+        killed: true,
+        pid: 1234,
+      });
 
       const result = await controller.killFfmpegProcess(1234);
 
@@ -98,7 +101,9 @@ describe('DebugController', () => {
         effectiveThreshold: 40,
       });
 
-      const result = await controller.updateLoadThreshold({ loadThresholdMultiplier: 5.0 });
+      const result = await controller.updateLoadThreshold({
+        loadThresholdMultiplier: 5.0,
+      });
 
       expect(result).toEqual({ multiplier: 5.0, effectiveThreshold: 40 });
       expect(mockDebugService.updateLoadThreshold).toHaveBeenCalledWith(5.0);

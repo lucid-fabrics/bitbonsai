@@ -3,15 +3,18 @@
 ## Initial Setup (First Time)
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
 ```
 
 This will install:
+
 - `prisma` (CLI tool)
 - `@prisma/client` (TypeScript client)
 
 ### 2. Configure Environment
+
 ```bash
 # Copy the example environment file
 cp prisma/.env.example .env
@@ -21,6 +24,7 @@ cp prisma/.env.example .env
 ```
 
 ### 3. Generate Prisma Client
+
 ```bash
 npm run prisma:generate
 ```
@@ -28,6 +32,7 @@ npm run prisma:generate
 This generates TypeScript types and the Prisma Client based on your schema.
 
 ### 4. Create Database & Run Migrations
+
 ```bash
 npm run prisma:migrate
 ```
@@ -35,16 +40,19 @@ npm run prisma:migrate
 When prompted for migration name, use something descriptive like: `init`
 
 This will:
+
 - Create the SQLite database file (`prisma/bitbonsai.db`)
 - Apply the schema to create all tables
 - Generate a migration file in `prisma/migrations/`
 
 ### 5. Seed Development Data
+
 ```bash
 npm run prisma:seed
 ```
 
 This will populate your database with:
+
 - 3 sample licenses (FREE, PATREON, COMMERCIAL_PRO)
 - 3 nodes (1 main + 2 workers)
 - 3 libraries (Movies, TV, Anime)
@@ -53,6 +61,7 @@ This will populate your database with:
 - 10 days of metrics data
 
 ### 6. Explore Database (Optional)
+
 ```bash
 npm run prisma:studio
 ```
@@ -64,6 +73,7 @@ Opens Prisma Studio at http://localhost:5555 - a visual database browser.
 ## Daily Development Workflow
 
 ### View Database Contents
+
 ```bash
 npm run prisma:studio
 ```
@@ -73,9 +83,11 @@ npm run prisma:studio
 1. **Update `prisma/schema.prisma`** with your changes
 
 2. **Create migration:**
+
    ```bash
    npm run prisma:migrate
    ```
+
    Name it descriptively: `add_user_preferences`, `update_job_indexes`, etc.
 
 3. **Regenerate client:**
@@ -84,12 +96,14 @@ npm run prisma:studio
    ```
 
 ### Reset Database (Development Only)
+
 ```bash
 # WARNING: This deletes ALL data
 npx prisma migrate reset
 ```
 
 This will:
+
 1. Drop the database
 2. Recreate it
 3. Apply all migrations
@@ -100,6 +114,7 @@ This will:
 ## Using Prisma Client in Your Code
 
 ### Import and Initialize
+
 ```typescript
 import { PrismaClient } from '@prisma/client';
 
@@ -107,6 +122,7 @@ const prisma = new PrismaClient();
 ```
 
 ### NestJS Integration (Recommended)
+
 Create a Prisma service:
 
 ```typescript
@@ -138,13 +154,13 @@ export class JobsService {
       where: {
         nodeId,
         stage: {
-          in: ['QUEUED', 'ENCODING', 'VERIFYING']
-        }
+          in: ['QUEUED', 'ENCODING', 'VERIFYING'],
+        },
       },
       include: {
         policy: true,
-        library: true
-      }
+        library: true,
+      },
     });
   }
 }
@@ -155,6 +171,7 @@ export class JobsService {
 ## Common Operations
 
 ### Create a New Job
+
 ```typescript
 const job = await prisma.job.create({
   data: {
@@ -166,24 +183,26 @@ const job = await prisma.job.create({
     beforeSizeBytes: BigInt('5368709120'), // 5GB
     nodeId: 'node_123',
     libraryId: 'lib_456',
-    policyId: 'pol_789'
-  }
+    policyId: 'pol_789',
+  },
 });
 ```
 
 ### Update Job Progress
+
 ```typescript
 await prisma.job.update({
   where: { id: jobId },
   data: {
     stage: 'ENCODING',
     progress: 45.7,
-    etaSeconds: 1200
-  }
+    etaSeconds: 1200,
+  },
 });
 ```
 
 ### Complete a Job
+
 ```typescript
 const completedJob = await prisma.job.update({
   where: { id: jobId },
@@ -193,12 +212,13 @@ const completedJob = await prisma.job.update({
     afterSizeBytes: BigInt('2684354560'), // 2.5GB
     savedBytes: BigInt('2684354560'), // 5GB - 2.5GB
     savedPercent: 50.0,
-    completedAt: new Date()
-  }
+    completedAt: new Date(),
+  },
 });
 ```
 
 ### Query with Relations
+
 ```typescript
 const nodeWithJobs = await prisma.node.findUnique({
   where: { id: nodeId },
@@ -207,35 +227,39 @@ const nodeWithJobs = await prisma.node.findUnique({
     libraries: true,
     jobs: {
       where: {
-        stage: 'COMPLETED'
+        stage: 'COMPLETED',
       },
       take: 10,
       orderBy: {
-        completedAt: 'desc'
-      }
-    }
-  }
+        completedAt: 'desc',
+      },
+    },
+  },
 });
 ```
 
 ### Aggregations
+
 ```typescript
 // Total storage saved
 const totalSavings = await prisma.job.aggregate({
   where: {
     stage: 'COMPLETED',
-    savedBytes: { gt: 0 }
+    savedBytes: { gt: 0 },
   },
   _sum: {
-    savedBytes: true
+    savedBytes: true,
   },
-  _count: true
+  _count: true,
 });
 
-console.log(`Saved ${totalSavings._sum.savedBytes} bytes across ${totalSavings._count} jobs`);
+console.log(
+  `Saved ${totalSavings._sum.savedBytes} bytes across ${totalSavings._count} jobs`,
+);
 ```
 
 ### Transactions
+
 ```typescript
 // Complete job and update metrics atomically
 await prisma.$transaction(async (tx) => {
@@ -244,8 +268,8 @@ await prisma.$transaction(async (tx) => {
     where: { id: jobId },
     data: {
       stage: 'COMPLETED',
-      completedAt: new Date()
-    }
+      completedAt: new Date(),
+    },
   });
 
   // Update today's metrics
@@ -257,20 +281,20 @@ await prisma.$transaction(async (tx) => {
       date_nodeId_licenseId: {
         date: today,
         nodeId: nodeId,
-        licenseId: licenseId
-      }
+        licenseId: licenseId,
+      },
     },
     create: {
       date: today,
       nodeId,
       licenseId,
       jobsCompleted: 1,
-      totalSavedBytes: savedBytes
+      totalSavedBytes: savedBytes,
     },
     update: {
       jobsCompleted: { increment: 1 },
-      totalSavedBytes: { increment: savedBytes }
-    }
+      totalSavedBytes: { increment: savedBytes },
+    },
   });
 });
 ```
@@ -280,18 +304,22 @@ await prisma.$transaction(async (tx) => {
 ## Troubleshooting
 
 ### "Can't reach database server"
+
 - **SQLite**: Check that `DATABASE_URL` points to a valid file path
 - **PostgreSQL**: Verify the server is running and credentials are correct
 
 ### "Prisma Client not found"
+
 Run: `npm run prisma:generate`
 
 ### Schema changes not reflected
+
 1. `npm run prisma:migrate` - Create migration
 2. `npm run prisma:generate` - Regenerate client
 3. Restart your dev server
 
 ### BigInt handling in JavaScript
+
 ```typescript
 // ✅ Correct
 const size = BigInt('5368709120');
@@ -302,6 +330,7 @@ const size = 5368709120; // Will be number, not BigInt
 ```
 
 ### JSON field TypeScript typing
+
 ```typescript
 // Define types for JSON fields
 interface LicenseFeatures {
@@ -311,7 +340,7 @@ interface LicenseFeatures {
 }
 
 const license = await prisma.license.findUnique({
-  where: { id: licenseId }
+  where: { id: licenseId },
 });
 
 const features = license.features as LicenseFeatures;
@@ -325,21 +354,25 @@ if (features.multiNode) {
 ## Migration Management
 
 ### Create Migration
+
 ```bash
 npm run prisma:migrate
 ```
 
 ### View Migration Status
+
 ```bash
 npx prisma migrate status
 ```
 
 ### Apply Migrations (Production)
+
 ```bash
 npx prisma migrate deploy
 ```
 
 ### Resolve Failed Migration
+
 ```bash
 npx prisma migrate resolve --rolled-back <migration_name>
 ```
@@ -349,6 +382,7 @@ npx prisma migrate resolve --rolled-back <migration_name>
 ## Performance Tips
 
 ### Use `select` to fetch only needed fields
+
 ```typescript
 // ❌ Fetches all fields
 const jobs = await prisma.job.findMany();
@@ -359,22 +393,25 @@ const jobs = await prisma.job.findMany({
     id: true,
     fileLabel: true,
     stage: true,
-    progress: true
-  }
+    progress: true,
+  },
 });
 ```
 
 ### Use pagination for large result sets
+
 ```typescript
 const jobs = await prisma.job.findMany({
   skip: (page - 1) * pageSize,
   take: pageSize,
-  orderBy: { createdAt: 'desc' }
+  orderBy: { createdAt: 'desc' },
 });
 ```
 
 ### Use indexes (already defined in schema)
+
 All frequently queried fields have indexes. If you notice slow queries, check:
+
 ```bash
 npx prisma studio
 # Navigate to table → Indexes tab
@@ -387,7 +424,9 @@ npx prisma studio
 For multi-node deployments or larger scale:
 
 ### 1. Update Schema
+
 Edit `prisma/schema.prisma`:
+
 ```prisma
 datasource db {
   provider = "postgresql"  // Changed from "sqlite"
@@ -396,12 +435,15 @@ datasource db {
 ```
 
 ### 2. Update Environment
+
 Edit `.env`:
+
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/bitbonsai?schema=public"
 ```
 
 ### 3. Regenerate and Migrate
+
 ```bash
 npm run prisma:generate
 npm run prisma:migrate

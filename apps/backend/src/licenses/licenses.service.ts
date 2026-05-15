@@ -82,7 +82,10 @@ export class LicensesService {
       verifyResponse = response.data;
     } catch (error: unknown) {
       // Distinguish between different error types for better UX
-      const axiosError = error as { code?: string; response?: { status?: number } };
+      const axiosError = error as {
+        code?: string;
+        response?: { status?: number };
+      };
 
       if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
         this.logger.error('License verification timed out', error);
@@ -171,7 +174,10 @@ export class LicensesService {
       return response.data;
     } catch (error: unknown) {
       // Distinguish between different error types for better UX
-      const axiosError = error as { code?: string; response?: { status?: number } };
+      const axiosError = error as {
+        code?: string;
+        response?: { status?: number };
+      };
 
       if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
         this.logger.error('License lookup timed out', error);

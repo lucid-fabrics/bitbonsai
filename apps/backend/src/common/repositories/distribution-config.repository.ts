@@ -10,7 +10,9 @@ export class DistributionConfigRepository extends BaseRepository {
   }
 
   async findActive(): Promise<DistributionConfig | null> {
-    return this.findFirst<DistributionConfig | null>({ where: { isActive: true } });
+    return this.findFirst<DistributionConfig | null>({
+      where: { isActive: true },
+    });
   }
 
   async findOrCreateDefault(): Promise<DistributionConfig> {

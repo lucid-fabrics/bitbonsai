@@ -73,6 +73,9 @@ export class LicenseNotFoundError extends BaseError {
     const message = licenseKey
       ? `License with identifier '${licenseKey}' not found`
       : 'License not found';
-    super(message, 404, 'LICENSE_NOT_FOUND', true, { resource: 'License', identifier: licenseKey });
+    super(message, 404, 'LICENSE_NOT_FOUND', true, {
+      resource: 'License',
+      identifier: licenseKey,
+    });
   }
 }

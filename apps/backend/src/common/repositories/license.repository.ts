@@ -42,11 +42,16 @@ export class LicenseRepository extends BaseRepository {
   }
 
   async findFirstActive(): Promise<License | null> {
-    return super.findFirst<License | null>({ where: { status: LicenseStatus.ACTIVE } });
+    return super.findFirst<License | null>({
+      where: { status: LicenseStatus.ACTIVE },
+    });
   }
 
   async findFirstActiveWithSelect<T>(select: Record<string, unknown>): Promise<T | null> {
-    return super.findFirst<T | null>({ where: { status: LicenseStatus.ACTIVE }, select });
+    return super.findFirst<T | null>({
+      where: { status: LicenseStatus.ACTIVE },
+      select,
+    });
   }
 
   async findFirstActiveDesc(): Promise<License | null> {
@@ -119,7 +124,9 @@ export class LicenseRepository extends BaseRepository {
           data: licenseData,
         });
       }
-      return tx.license.create({ data: licenseData as Prisma.LicenseCreateInput });
+      return tx.license.create({
+        data: licenseData as Prisma.LicenseCreateInput,
+      });
     });
   }
 

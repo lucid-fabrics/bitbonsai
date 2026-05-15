@@ -31,7 +31,11 @@ export class InsightsEffects {
         this.insightsService.getCodecDistribution().pipe(
           map((data) => InsightsActions.loadCodecDistributionSuccess({ data })),
           catchError((error) =>
-            of(InsightsActions.loadCodecDistributionFailure({ error: error.message }))
+            of(
+              InsightsActions.loadCodecDistributionFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )
@@ -45,7 +49,11 @@ export class InsightsEffects {
         this.insightsService.getNodePerformance().pipe(
           map((data) => InsightsActions.loadNodePerformanceSuccess({ data })),
           catchError((error) =>
-            of(InsightsActions.loadNodePerformanceFailure({ error: error.message }))
+            of(
+              InsightsActions.loadNodePerformanceFailure({
+                error: error.message,
+              })
+            )
           )
         )
       )

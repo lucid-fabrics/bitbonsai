@@ -86,7 +86,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: '✅ Encoding Complete', emoji: true },
+              text: {
+                type: 'plain_text',
+                text: '✅ Encoding Complete',
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -95,7 +99,10 @@ export class SlackNotificationService {
             {
               type: 'section',
               fields: [
-                { type: 'mrkdwn', text: `*Space Saved:*\n${savedPercent}% (${savedGB} GB)` },
+                {
+                  type: 'mrkdwn',
+                  text: `*Space Saved:*\n${savedPercent}% (${savedGB} GB)`,
+                },
                 { type: 'mrkdwn', text: `*Duration:*\n${durationStr}` },
               ],
             },
@@ -125,7 +132,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: '❌ Encoding Failed', emoji: true },
+              text: {
+                type: 'plain_text',
+                text: '❌ Encoding Failed',
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -138,7 +149,10 @@ export class SlackNotificationService {
                   type: 'mrkdwn',
                   text: `*Error:*\n${job.error?.substring(0, 200) || 'Unknown error'}`,
                 },
-                { type: 'mrkdwn', text: `*Retry Count:*\n${job.retryCount || 0}` },
+                {
+                  type: 'mrkdwn',
+                  text: `*Retry Count:*\n${job.retryCount || 0}`,
+                },
               ],
             },
           ],
@@ -173,7 +187,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: '📊 Batch Encoding Summary', emoji: true },
+              text: {
+                type: 'plain_text',
+                text: '📊 Batch Encoding Summary',
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -181,7 +199,10 @@ export class SlackNotificationService {
                 { type: 'mrkdwn', text: `*Completed:*\n${stats.completed}` },
                 { type: 'mrkdwn', text: `*Failed:*\n${stats.failed}` },
                 { type: 'mrkdwn', text: `*Success Rate:*\n${successRate}%` },
-                { type: 'mrkdwn', text: `*Space Saved:*\n${stats.totalSavedGB.toFixed(2)} GB` },
+                {
+                  type: 'mrkdwn',
+                  text: `*Space Saved:*\n${stats.totalSavedGB.toFixed(2)} GB`,
+                },
               ],
             },
             {
@@ -217,7 +238,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: `${emoji} ${title}`, emoji: true },
+              text: {
+                type: 'plain_text',
+                text: `${emoji} ${title}`,
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -247,11 +272,18 @@ export class SlackNotificationService {
             blocks: [
               {
                 type: 'header',
-                text: { type: 'plain_text', text: '🧪 BitBonsai Test', emoji: true },
+                text: {
+                  type: 'plain_text',
+                  text: '🧪 BitBonsai Test',
+                  emoji: true,
+                },
               },
               {
                 type: 'section',
-                text: { type: 'mrkdwn', text: 'Webhook connection successful!' },
+                text: {
+                  type: 'mrkdwn',
+                  text: 'Webhook connection successful!',
+                },
               },
             ],
           },

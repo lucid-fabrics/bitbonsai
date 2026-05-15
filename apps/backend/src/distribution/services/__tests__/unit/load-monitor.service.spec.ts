@@ -205,7 +205,10 @@ describe('LoadMonitorService', () => {
     });
 
     it('should return 0 for a fully loaded node', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       // Threshold = 8 * 3.0 = 24. Load at 24 = 100%
       const loadData = createLoadData({ load1m: 24, memFreeGB: 16 });
       const score = service.calculateLoadScore(node, loadData);
@@ -213,14 +216,20 @@ describe('LoadMonitorService', () => {
     });
 
     it('should return 0 for overloaded nodes (beyond threshold)', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       const loadData = createLoadData({ load1m: 50, memFreeGB: 16 });
       const score = service.calculateLoadScore(node, loadData);
       expect(score).toBe(0);
     });
 
     it('should give intermediate score for partial load', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       // Threshold = 24. Load 12 = 50% => score ~15
       const loadData = createLoadData({ load1m: 12, memFreeGB: 16 });
       const score = service.calculateLoadScore(node, loadData);
@@ -245,24 +254,41 @@ describe('LoadMonitorService', () => {
     });
 
     it('should not go below 0 even with combined penalties', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       const loadData = createLoadData({ load1m: 24, memFreeGB: 0 });
       const score = service.calculateLoadScore(node, loadData);
       expect(score).toBe(0);
     });
 
     it('should use node.cpuCores when loadData.cpuCount is missing', () => {
-      const node = createMockNode({ cpuCores: 4, loadThresholdMultiplier: 3.0 });
-      const loadData = createLoadData({ load1m: 6, cpuCount: 0, memFreeGB: 16 });
+      const node = createMockNode({
+        cpuCores: 4,
+        loadThresholdMultiplier: 3.0,
+      });
+      const loadData = createLoadData({
+        load1m: 6,
+        cpuCount: 0,
+        memFreeGB: 16,
+      });
       // cpuCount=0, so uses node.cpuCores=4. Threshold=4*3=12. load ratio=6/12=0.5
       const score = service.calculateLoadScore(node, loadData);
       expect(score).toBe(15);
     });
 
     it('should use default multiplier of 3.0 when not set', () => {
-      const node = createMockNode({ cpuCores: 4, loadThresholdMultiplier: null as any });
+      const node = createMockNode({
+        cpuCores: 4,
+        loadThresholdMultiplier: null as any,
+      });
       // Default multiplier = 3.0, cpuCount from loadData=4, threshold = 4*3=12
-      const loadData = createLoadData({ load1m: 12, memFreeGB: 16, cpuCount: 4 });
+      const loadData = createLoadData({
+        load1m: 12,
+        memFreeGB: 16,
+        cpuCount: 4,
+      });
       const score = service.calculateLoadScore(node, loadData);
       expect(score).toBe(0);
     });
@@ -277,7 +303,10 @@ describe('LoadMonitorService', () => {
     });
 
     it('should detect CPU overload', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       // Threshold = 24, load = 25 => overloaded
       const loadData = createLoadData({ load1m: 25, memFreeGB: 16 });
       const result = service.isOverloaded(node, loadData);
@@ -294,14 +323,20 @@ describe('LoadMonitorService', () => {
     });
 
     it('should return not overloaded for healthy node', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       const loadData = createLoadData({ load1m: 5, memFreeGB: 16 });
       const result = service.isOverloaded(node, loadData);
       expect(result.isOverloaded).toBe(false);
     });
 
     it('should check CPU before memory', () => {
-      const node = createMockNode({ cpuCores: 8, loadThresholdMultiplier: 3.0 });
+      const node = createMockNode({
+        cpuCores: 8,
+        loadThresholdMultiplier: 3.0,
+      });
       // Both CPU and memory are overloaded
       const loadData = createLoadData({ load1m: 30, memFreeGB: 1 });
       const result = service.isOverloaded(node, loadData);

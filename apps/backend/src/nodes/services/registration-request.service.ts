@@ -194,7 +194,9 @@ export class RegistrationRequestService {
 
     // If request is APPROVED, fetch the child node's API key
     if (request.status === RegistrationRequestStatus.APPROVED && request.childNodeId) {
-      const childNode = await this.nodeRepository.findUnique<{ apiKey: string } | null>({
+      const childNode = await this.nodeRepository.findUnique<{
+        apiKey: string;
+      } | null>({
         where: { id: request.childNodeId },
         select: { apiKey: true },
       });
@@ -414,7 +416,9 @@ export class RegistrationRequestService {
           this.logger.log(`✅ Created ${shares.length} storage shares for child node to access`);
 
           // Update child node's hasSharedStorage flag if shares were created
-          await this.nodeRepository.updateData(result.newNode.id, { hasSharedStorage: true });
+          await this.nodeRepository.updateData(result.newNode.id, {
+            hasSharedStorage: true,
+          });
 
           this.logger.log(`✅ Child node marked as having shared storage access`);
         } else {

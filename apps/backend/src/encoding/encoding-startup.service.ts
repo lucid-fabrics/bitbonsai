@@ -183,7 +183,9 @@ export class EncodingStartupService {
           stage: JobStage.PAUSED,
           OR: [
             { error: null },
-            { error: { not: { contains: 'Outside scheduled encoding window' } } },
+            {
+              error: { not: { contains: 'Outside scheduled encoding window' } },
+            },
           ],
         },
         select: { id: true, fileLabel: true },
@@ -216,7 +218,11 @@ export class EncodingStartupService {
               OR: [
                 { autoHealClaimedAt: null },
                 { autoHealClaimedBy: nodeId },
-                { autoHealClaimedAt: { lt: new Date(Date.now() - 2 * 60 * 1000) } },
+                {
+                  autoHealClaimedAt: {
+                    lt: new Date(Date.now() - 2 * 60 * 1000),
+                  },
+                },
               ],
             },
             {
@@ -256,10 +262,9 @@ export class EncodingStartupService {
             try {
               // LOW #15 FIX: Use outer query job data instead of redundant inner query
               // The job object already has filePath from the outer findMany query
-              const videoJob = await this.jobRepository.findUniqueSelect<{ filePath: string }>(
-                { id: job.id },
-                { filePath: true }
-              );
+              const videoJob = await this.jobRepository.findUniqueSelect<{
+                filePath: string;
+              }>({ id: job.id }, { filePath: true });
 
               const filePath = videoJob?.filePath;
               if (filePath) {

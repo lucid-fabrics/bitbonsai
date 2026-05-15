@@ -54,7 +54,11 @@ describe('RegistrationRequestRepository', () => {
 
       expect(result).toEqual(mockRequest);
       expect(mockPrismaNodeRegistrationRequest.findFirst).toHaveBeenCalledWith({
-        where: { mainNodeId: 'main-1', macAddress: 'AA:BB:CC:DD:EE:FF', status: 'PENDING' },
+        where: {
+          mainNodeId: 'main-1',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+          status: 'PENDING',
+        },
       });
     });
 
@@ -79,7 +83,9 @@ describe('RegistrationRequestRepository', () => {
       const result = await repository.createRequest(data);
 
       expect(result).toEqual(mockRequest);
-      expect(mockPrismaNodeRegistrationRequest.create).toHaveBeenCalledWith({ data });
+      expect(mockPrismaNodeRegistrationRequest.create).toHaveBeenCalledWith({
+        data,
+      });
     });
 
     it('should propagate errors on create', async () => {
@@ -96,7 +102,9 @@ describe('RegistrationRequestRepository', () => {
       const updated = { ...mockRequest, status: 'APPROVED' as const };
       mockPrismaNodeRegistrationRequest.update.mockResolvedValue(updated);
 
-      const result = await repository.updateById('req-1', { status: 'APPROVED' });
+      const result = await repository.updateById('req-1', {
+        status: 'APPROVED',
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaNodeRegistrationRequest.update).toHaveBeenCalledWith({
@@ -111,7 +119,9 @@ describe('RegistrationRequestRepository', () => {
       const updated = { ...mockRequest, status: 'APPROVED' as const };
       mockPrismaNodeRegistrationRequest.update.mockResolvedValue(updated);
 
-      const result = await repository.updateByPairingToken('token-abc', { status: 'APPROVED' });
+      const result = await repository.updateByPairingToken('token-abc', {
+        status: 'APPROVED',
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaNodeRegistrationRequest.update).toHaveBeenCalledWith({
@@ -124,7 +134,9 @@ describe('RegistrationRequestRepository', () => {
       mockPrismaNodeRegistrationRequest.update.mockRejectedValue(new Error('Record not found'));
 
       await expect(
-        repository.updateByPairingToken('invalid-token', { status: 'APPROVED' })
+        repository.updateByPairingToken('invalid-token', {
+          status: 'APPROVED',
+        })
       ).rejects.toThrow('Record not found');
     });
   });
@@ -157,7 +169,10 @@ describe('RegistrationRequestRepository', () => {
 
   describe('findUniqueById', () => {
     it('should return request with mainNode included', async () => {
-      const withNode = { ...mockRequest, mainNode: { id: 'main-1', name: 'Main Node' } };
+      const withNode = {
+        ...mockRequest,
+        mainNode: { id: 'main-1', name: 'Main Node' },
+      };
       mockPrismaNodeRegistrationRequest.findUnique.mockResolvedValue(withNode);
 
       const result = await repository.findUniqueById('req-1');
@@ -204,7 +219,9 @@ describe('RegistrationRequestRepository', () => {
   describe('updateManyExpired', () => {
     it('should mark expired PENDING requests as EXPIRED', async () => {
       const now = new Date();
-      mockPrismaNodeRegistrationRequest.updateMany.mockResolvedValue({ count: 2 });
+      mockPrismaNodeRegistrationRequest.updateMany.mockResolvedValue({
+        count: 2,
+      });
 
       const result = await repository.updateManyExpired(now);
 
@@ -219,7 +236,9 @@ describe('RegistrationRequestRepository', () => {
     });
 
     it('should return count 0 when no expired requests', async () => {
-      mockPrismaNodeRegistrationRequest.updateMany.mockResolvedValue({ count: 0 });
+      mockPrismaNodeRegistrationRequest.updateMany.mockResolvedValue({
+        count: 0,
+      });
 
       const result = await repository.updateManyExpired(new Date());
 
@@ -230,7 +249,9 @@ describe('RegistrationRequestRepository', () => {
   describe('deleteManyOld', () => {
     it('should delete old requests with matching statuses before cutoff date', async () => {
       const before = new Date('2024-01-01');
-      mockPrismaNodeRegistrationRequest.deleteMany.mockResolvedValue({ count: 5 });
+      mockPrismaNodeRegistrationRequest.deleteMany.mockResolvedValue({
+        count: 5,
+      });
 
       const result = await repository.deleteManyOld(before, ['EXPIRED', 'APPROVED'] as never[]);
 
@@ -244,7 +265,9 @@ describe('RegistrationRequestRepository', () => {
     });
 
     it('should return count 0 when nothing to delete', async () => {
-      mockPrismaNodeRegistrationRequest.deleteMany.mockResolvedValue({ count: 0 });
+      mockPrismaNodeRegistrationRequest.deleteMany.mockResolvedValue({
+        count: 0,
+      });
 
       const result = await repository.deleteManyOld(new Date('2020-01-01'), []);
 

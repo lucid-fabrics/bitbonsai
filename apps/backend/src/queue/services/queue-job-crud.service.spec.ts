@@ -85,8 +85,14 @@ describe('QueueJobCrudService', () => {
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: NodeConfigService, useValue: mockNodeConfig },
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: ContentFingerprintService, useValue: mockContentFingerprint },
-        { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: ContentFingerprintService,
+          useValue: mockContentFingerprint,
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: mockFileFailureTracking,
+        },
         { provide: HttpService, useValue: mockHttpService },
         {
           provide: PreflightService,
@@ -106,7 +112,10 @@ describe('QueueJobCrudService', () => {
   describe('validateJobOwnership', () => {
     it('should return job data when nodeId is null (no node configured)', async () => {
       mockNodeConfig.getNodeId.mockReturnValue(null);
-      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt: new Date() });
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      });
 
       const result = await service.validateJobOwnership('job-1', 'update');
 
@@ -173,7 +182,9 @@ describe('QueueJobCrudService', () => {
       await service.findAll(JobStage.ENCODING);
 
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ stage: JobStage.ENCODING }) })
+        expect.objectContaining({
+          where: expect.objectContaining({ stage: JobStage.ENCODING }),
+        })
       );
     });
   });
@@ -234,7 +245,10 @@ describe('QueueJobCrudService', () => {
   describe('update', () => {
     it('should throw ConflictException when atomic update returns count 0', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
-      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt: new Date() });
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      });
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 0 });
 
       await expect(service.update('job-1', { stage: JobStage.QUEUED })).rejects.toThrow(
@@ -245,7 +259,10 @@ describe('QueueJobCrudService', () => {
     it('should return updated job on success', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
       const updatedAt = new Date();
-      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt });
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt,
+      });
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       const job = { id: 'job-1', stage: JobStage.QUEUED };
       mockJobRepository.findById.mockResolvedValue(job as any);
@@ -262,7 +279,10 @@ describe('QueueJobCrudService', () => {
         nodeId: null,
         updatedAt: new Date(),
       } as any);
-      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
 
       await expect(service.updateProgress('job-1', { progress: 150 } as any)).rejects.toThrow(
         BadRequestException
@@ -275,10 +295,15 @@ describe('QueueJobCrudService', () => {
         nodeId: null,
         updatedAt: new Date(),
       } as any);
-      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
 
       await expect(
-        service.updateProgress('job-1', { stage: JobStage.HEALTH_CHECK } as any)
+        service.updateProgress('job-1', {
+          stage: JobStage.HEALTH_CHECK,
+        } as any)
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -393,7 +418,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/library',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
 
       await expect(service.create(baseDto as any)).rejects.toThrow(NotFoundException);
     });
@@ -402,7 +429,9 @@ describe('QueueJobCrudService', () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
       mockNodeRepository.findById.mockResolvedValue({ id: 'node-1' } as any);
       (mockPrisma.library.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
 
       await expect(service.create(baseDto as any)).rejects.toThrow(NotFoundException);
     });
@@ -426,7 +455,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue({
         id: 'existing',
         stage: JobStage.QUEUED,
@@ -443,7 +474,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue('fp-abc123');
       (mockPrisma.processedFileRecord.findUnique as jest.Mock).mockResolvedValue({
@@ -462,7 +495,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue('fp-blacklisted');
       (mockPrisma.processedFileRecord.findUnique as jest.Mock).mockResolvedValue(null);
@@ -479,7 +514,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       // First call: active job check returns null, second call: old jobs returns []
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockRejectedValue(new Error('IO error'));
@@ -499,7 +536,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
       mockJobRepository.findManyWithInclude.mockResolvedValue([
@@ -525,10 +564,15 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere
         .mockResolvedValueOnce(null) // active job check
-        .mockResolvedValueOnce({ id: 'race-job', stage: JobStage.QUEUED } as any); // conflict lookup
+        .mockResolvedValueOnce({
+          id: 'race-job',
+          stage: JobStage.QUEUED,
+        } as any); // conflict lookup
       mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const prismaError = {
@@ -548,7 +592,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
@@ -607,7 +653,9 @@ describe('QueueJobCrudService', () => {
       await service.findAll(undefined, 'node-1');
 
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ nodeId: 'node-1' }) })
+        expect.objectContaining({
+          where: expect.objectContaining({ nodeId: 'node-1' }),
+        })
       );
     });
 
@@ -618,7 +666,9 @@ describe('QueueJobCrudService', () => {
       await service.findAll(undefined, undefined, undefined, 'lib-1');
 
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ libraryId: 'lib-1' }) })
+        expect.objectContaining({
+          where: expect.objectContaining({ libraryId: 'lib-1' }),
+        })
       );
     });
 
@@ -687,13 +737,18 @@ describe('QueueJobCrudService', () => {
 
       await service.updateJobRaw('job-1', { stage: 'QUEUED' });
 
-      expect(mockJobRepository.updateRaw).toHaveBeenCalledWith('job-1', { stage: 'QUEUED' });
+      expect(mockJobRepository.updateRaw).toHaveBeenCalledWith('job-1', {
+        stage: 'QUEUED',
+      });
     });
   });
 
   describe('updateJobPreview', () => {
     it('should update preview image paths', async () => {
-      const updatedJob = { id: 'job-1', previewImagePaths: '["a.jpg","b.jpg"]' };
+      const updatedJob = {
+        id: 'job-1',
+        previewImagePaths: '["a.jpg","b.jpg"]',
+      };
       mockJobRepository.updateById.mockResolvedValue(updatedJob as any);
 
       const result = await service.updateJobPreview('job-1', ['a.jpg', 'b.jpg']);
@@ -718,7 +773,10 @@ describe('QueueJobCrudService', () => {
         nodeId: null,
         updatedAt: new Date(),
       } as any);
-      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
 
       await expect(service.updateProgress('job-1', { progress: -1 } as any)).rejects.toThrow(
         BadRequestException
@@ -731,7 +789,10 @@ describe('QueueJobCrudService', () => {
         nodeId: null,
         updatedAt: new Date(),
       } as any);
-      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
 
       await expect(service.updateProgress('job-1', { etaSeconds: -5 } as any)).rejects.toThrow(
         BadRequestException
@@ -769,7 +830,10 @@ describe('QueueJobCrudService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ lastHeartbeat: expect.any(Date), heartbeatNodeId: 'node-1' })
+        expect.objectContaining({
+          lastHeartbeat: expect.any(Date),
+          heartbeatNodeId: 'node-1',
+        })
       );
     });
 
@@ -801,7 +865,10 @@ describe('QueueJobCrudService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ resumeTimestamp: 120, lastProgressUpdate: expect.any(Date) })
+        expect.objectContaining({
+          resumeTimestamp: 120,
+          lastProgressUpdate: expect.any(Date),
+        })
       );
     });
   });
@@ -820,7 +887,10 @@ describe('QueueJobCrudService', () => {
     it('should set lastStageChangeAt when stage is included in update', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
       const updatedAt = new Date();
-      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt });
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt,
+      });
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       const job = { id: 'job-1', stage: JobStage.QUEUED };
       mockJobRepository.findById.mockResolvedValue(job as any);
@@ -835,7 +905,10 @@ describe('QueueJobCrudService', () => {
 
     it('should throw NotFoundException when job not found after update', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
-      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt: new Date() });
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt: new Date(),
+      });
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       mockJobRepository.findById.mockResolvedValue(null);
 
@@ -918,7 +991,9 @@ describe('QueueJobCrudService', () => {
 
       jest.spyOn(service, 'fileExists').mockReturnValue(true);
 
-      await service.updateProgress('job-1', { tempFilePath: '/tmp/encode_job1.mkv' } as any);
+      await service.updateProgress('job-1', {
+        tempFilePath: '/tmp/encode_job1.mkv',
+      } as any);
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
@@ -943,7 +1018,9 @@ describe('QueueJobCrudService', () => {
 
       jest.spyOn(service, 'fileExists').mockReturnValue(false);
 
-      await service.updateProgress('job-1', { tempFilePath: '/tmp/nonexistent.mkv' } as any);
+      await service.updateProgress('job-1', {
+        tempFilePath: '/tmp/nonexistent.mkv',
+      } as any);
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
@@ -975,7 +1052,9 @@ describe('QueueJobCrudService', () => {
       const remoteJob = { id: 'job-1', progress: 75 };
       jest.spyOn(require('rxjs'), 'firstValueFrom').mockResolvedValueOnce({ data: remoteJob });
 
-      const result = await service.updateProgress('job-1', { progress: 75 } as any);
+      const result = await service.updateProgress('job-1', {
+        progress: 75,
+      } as any);
 
       expect(result).toEqual(remoteJob);
     });
@@ -985,7 +1064,10 @@ describe('QueueJobCrudService', () => {
     it('should NOT set lastStageChangeAt when stage is not included in update', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
       const updatedAt = new Date();
-      mockJobRepository.findUniqueSelect.mockResolvedValue({ nodeId: null, updatedAt });
+      mockJobRepository.findUniqueSelect.mockResolvedValue({
+        nodeId: null,
+        updatedAt,
+      });
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       const job = { id: 'job-1', progress: 75 };
       mockJobRepository.findById.mockResolvedValue(job as any);
@@ -1028,8 +1110,14 @@ describe('QueueJobCrudService', () => {
         nodeId: null,
         updatedAt: new Date(),
       } as any);
-      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ id: 'job-1', progress: 0 } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        id: 'job-1',
+        progress: 0,
+      } as any);
 
       await expect(service.updateProgress('job-1', { progress: 0 } as any)).resolves.not.toThrow();
     });
@@ -1040,8 +1128,14 @@ describe('QueueJobCrudService', () => {
         nodeId: null,
         updatedAt: new Date(),
       } as any);
-      mockJobRepository.findById.mockResolvedValue({ id: 'job-1', stage: 'QUEUED' } as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ id: 'job-1', progress: 100 } as any);
+      mockJobRepository.findById.mockResolvedValue({
+        id: 'job-1',
+        stage: 'QUEUED',
+      } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        id: 'job-1',
+        progress: 100,
+      } as any);
 
       await expect(
         service.updateProgress('job-1', { progress: 100 } as any)
@@ -1106,7 +1200,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere
         .mockResolvedValueOnce(null) // active job check
         .mockResolvedValueOnce(null); // conflict lookup returns null
@@ -1129,7 +1225,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
@@ -1137,7 +1235,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.createJob.mockResolvedValue(createdJob as any);
 
       const dtoNoType = { ...baseDto };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (dtoNoType as any).type = undefined;
       await service.create(dtoNoType as any);
 
@@ -1153,7 +1251,9 @@ describe('QueueJobCrudService', () => {
         id: 'lib-1',
         path: '/tmp',
       } as any);
-      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({ id: 'policy-1' } as any);
+      (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
+        id: 'policy-1',
+      } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
@@ -1161,7 +1261,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.createJob.mockResolvedValue(createdJob as any);
 
       const dtoNoThrottle = { ...baseDto };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (dtoNoThrottle as any).resourceThrottled = undefined;
       await service.create(dtoNoThrottle as any);
 

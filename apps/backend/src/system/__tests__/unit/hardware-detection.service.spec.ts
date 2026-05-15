@@ -120,8 +120,18 @@ describe('HardwareDetectionService', () => {
 
     it('should prioritize NVIDIA', () => {
       const gpus = [
-        { vendor: GPUVendor.INTEL, model: 'QSV', memory: 0, driverVersion: '1.0' },
-        { vendor: GPUVendor.NVIDIA, model: 'RTX 3080', memory: 10240, driverVersion: '535' },
+        {
+          vendor: GPUVendor.INTEL,
+          model: 'QSV',
+          memory: 0,
+          driverVersion: '1.0',
+        },
+        {
+          vendor: GPUVendor.NVIDIA,
+          model: 'RTX 3080',
+          memory: 10240,
+          driverVersion: '535',
+        },
       ];
 
       const result = (service as any).determineAccelerationType(gpus);
@@ -130,7 +140,14 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return Intel when only Intel GPU', () => {
-      const gpus = [{ vendor: GPUVendor.INTEL, model: 'QSV', memory: 0, driverVersion: '1.0' }];
+      const gpus = [
+        {
+          vendor: GPUVendor.INTEL,
+          model: 'QSV',
+          memory: 0,
+          driverVersion: '1.0',
+        },
+      ];
 
       const result = (service as any).determineAccelerationType(gpus);
 
@@ -138,7 +155,14 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return AMD when only AMD GPU', () => {
-      const gpus = [{ vendor: GPUVendor.AMD, model: 'RX 7900', memory: 0, driverVersion: '1.0' }];
+      const gpus = [
+        {
+          vendor: GPUVendor.AMD,
+          model: 'RX 7900',
+          memory: 0,
+          driverVersion: '1.0',
+        },
+      ];
 
       const result = (service as any).determineAccelerationType(gpus);
 
@@ -146,7 +170,14 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return Apple for Apple Silicon', () => {
-      const gpus = [{ vendor: GPUVendor.APPLE, model: 'M3 Max', memory: 0, driverVersion: '1.0' }];
+      const gpus = [
+        {
+          vendor: GPUVendor.APPLE,
+          model: 'M3 Max',
+          memory: 0,
+          driverVersion: '1.0',
+        },
+      ];
 
       const result = (service as any).determineAccelerationType(gpus);
 
@@ -234,7 +265,10 @@ describe('HardwareDetectionService', () => {
 
   describe('detectIntelGPU', () => {
     it('should return null on non-linux platforms', async () => {
-      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        configurable: true,
+      });
 
       const result = await (service as any).detectIntelGPU();
 
@@ -242,7 +276,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return Intel GPU when vainfo reports intel on linux', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValueOnce('renderD128 renderD129') // ls /dev/dri/
@@ -258,7 +295,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return Intel GPU with unknown driver when vainfo not available (throws)', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValueOnce('renderD128') // ls /dev/dri/
@@ -272,7 +312,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when /dev/dri/ has no renderD', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest.spyOn(service as any, 'executeCommand').mockResolvedValueOnce('card0 card1');
 
       const result = await (service as any).detectIntelGPU();
@@ -281,7 +324,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when ls /dev/dri/ returns null', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest.spyOn(service as any, 'executeCommand').mockResolvedValueOnce(null);
 
       const result = await (service as any).detectIntelGPU();
@@ -290,7 +336,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when vainfo output does not include intel', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValueOnce('renderD128') // ls
@@ -304,7 +353,10 @@ describe('HardwareDetectionService', () => {
 
   describe('detectAMDGPU', () => {
     it('should return null on non-linux platforms', async () => {
-      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        configurable: true,
+      });
 
       const result = await (service as any).detectAMDGPU();
 
@@ -312,7 +364,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return AMD GPU when lspci reports AMD VGA on linux', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValue(
@@ -327,7 +382,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when lspci has no AMD VGA lines', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValue('0000:00:00.0 Host bridge: Intel Corporation');
@@ -338,7 +396,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when lspci returns null', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest.spyOn(service as any, 'executeCommand').mockResolvedValue(null);
 
       const result = await (service as any).detectAMDGPU();
@@ -347,7 +408,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when executeCommand throws', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
       jest.spyOn(service as any, 'executeCommand').mockRejectedValue(new Error('lspci fail'));
 
       const result = await (service as any).detectAMDGPU();
@@ -358,7 +422,10 @@ describe('HardwareDetectionService', () => {
 
   describe('detectAppleGPU', () => {
     it('should return Apple GPU on darwin with Apple silicon CPU', async () => {
-      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        configurable: true,
+      });
       (os.cpus as jest.Mock).mockReturnValue([
         {
           model: 'Apple M3 Max',
@@ -378,7 +445,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null on darwin with non-Apple CPU', async () => {
-      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        configurable: true,
+      });
       (os.cpus as jest.Mock).mockReturnValue([
         {
           model: 'Intel Core i9-12900K',
@@ -393,7 +463,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null on non-darwin platforms', async () => {
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
 
       const result = await (service as any).detectAppleGPU();
 
@@ -401,7 +474,10 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when cpus() returns empty array', async () => {
-      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        configurable: true,
+      });
       (os.cpus as jest.Mock).mockReturnValue([]);
 
       const result = await (service as any).detectAppleGPU();
@@ -413,7 +489,11 @@ describe('HardwareDetectionService', () => {
   describe('detectHardware with NVIDIA GPU', () => {
     it('should detect NVIDIA GPU and set accelerationType to NVIDIA', async () => {
       (os.cpus as jest.Mock).mockReturnValue([
-        { model: 'Intel i9', speed: 3200, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel i9',
+          speed: 3200,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 * 1024 * 1024);
       (os.freemem as jest.Mock).mockReturnValue(16 * 1024 * 1024 * 1024);
@@ -433,7 +513,11 @@ describe('HardwareDetectionService', () => {
   describe('detectGPUs error handling', () => {
     it('should return empty array and log error when detectNvidiaGPU fails catastrophically', async () => {
       (os.cpus as jest.Mock).mockReturnValue([
-        { model: 'Intel i9', speed: 3200, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel i9',
+          speed: 3200,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 * 1024 * 1024);
       (os.freemem as jest.Mock).mockReturnValue(16 * 1024 * 1024 * 1024);
@@ -454,7 +538,11 @@ describe('HardwareDetectionService', () => {
   describe('cache TTL expiry', () => {
     it('should re-detect after cache TTL expires', async () => {
       (os.cpus as jest.Mock).mockReturnValue([
-        { model: 'Intel i9', speed: 3200, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } },
+        {
+          model: 'Intel i9',
+          speed: 3200,
+          times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+        },
       ]);
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 * 1024 * 1024);
       (os.freemem as jest.Mock).mockReturnValue(16 * 1024 * 1024 * 1024);

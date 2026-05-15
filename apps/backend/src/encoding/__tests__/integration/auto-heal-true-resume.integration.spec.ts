@@ -85,7 +85,11 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         },
         {
           provide: NodesService,
-          useValue: { findOne: jest.fn(), findAll: jest.fn(), getCurrentNode: jest.fn() },
+          useValue: {
+            findOne: jest.fn(),
+            findAll: jest.fn(),
+            getCurrentNode: jest.fn(),
+          },
         },
         {
           provide: DataAccessService,

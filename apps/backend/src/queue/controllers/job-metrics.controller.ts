@@ -98,7 +98,13 @@ export class JobMetricsController {
     @Query('libraryId') libraryId?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number
-  ): Promise<{ jobs: Job[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    jobs: Job[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     // LINKED nodes should proxy queue data from MAIN node
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {

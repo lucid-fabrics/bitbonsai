@@ -12,7 +12,10 @@
 
     <div class="dialog-body">
       <div class="warning-message">
-        <p><strong>{{ data.nodeName }}</strong> {{ 'scheduleConflict.outsideWindow' | transloco : { nodeName: '' } }}</p>
+        <p>
+          <strong>{{ data.nodeName }}</strong>
+          {{ 'scheduleConflict.outsideWindow' | transloco: { nodeName: '' } }}
+        </p>
         <p class="conflict-details">{{ data.message }}</p>
       </div>
 

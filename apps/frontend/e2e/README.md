@@ -276,6 +276,7 @@ npx playwright show-trace trace.zip
 ### Screenshots and Videos
 
 Screenshots and videos are automatically captured on failure. Find them in:
+
 - `test-results/` - Screenshots
 - `playwright-report/` - Full HTML report with videos
 

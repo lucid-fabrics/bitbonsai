@@ -140,7 +140,9 @@ export class DashboardController {
     description: 'Returns only health check results without full dashboard data.',
   })
   @ApiOkResponse({ description: 'Health check results' })
-  @ApiInternalServerErrorResponse({ description: 'Failed to run health checks' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to run health checks',
+  })
   async getHealthChecks() {
     return this.dashboardService.runHealthChecks();
   }

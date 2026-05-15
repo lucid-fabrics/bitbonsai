@@ -311,10 +311,10 @@ export class JobRouterService {
     // STEP 6: Move jobs from overloaded to underutilized nodes
     for (const overloadedNode of overloaded) {
       // Get up to 5 queued jobs from this overloaded node
-      const jobsToMove = await this.jobRepository.findManySelect<{ id: string; fileLabel: string }>(
-        { nodeId: overloadedNode.id, stage: 'QUEUED' },
-        { id: true, fileLabel: true }
-      );
+      const jobsToMove = await this.jobRepository.findManySelect<{
+        id: string;
+        fileLabel: string;
+      }>({ nodeId: overloadedNode.id, stage: 'QUEUED' }, { id: true, fileLabel: true });
       const limitedJobs = jobsToMove.slice(0, 5); // Limit batch size to prevent overwhelming target nodes
 
       for (const job of limitedJobs) {

@@ -16,13 +16,13 @@ jest.mock('node:os', () => ({
 }));
 
 // Import mocked versions AFTER jest.mock declarations
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const mockFs = require('node:fs') as {
   existsSync: jest.Mock;
   readFileSync: jest.Mock;
   writeFileSync: jest.Mock;
 };
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const mockOs = require('node:os') as { networkInterfaces: jest.Mock };
 
 describe('NodeConfigService', () => {
@@ -75,7 +75,12 @@ describe('NodeConfigService', () => {
     jest.spyOn((service as any).logger, 'error').mockImplementation();
 
     // Reset internal service state
-    (service as any).config = { nodeId: null, role: null, mainApiUrl: null, apiKey: null };
+    (service as any).config = {
+      nodeId: null,
+      role: null,
+      mainApiUrl: null,
+      apiKey: null,
+    };
     (service as any).isLoaded = false;
   });
 

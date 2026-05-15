@@ -104,7 +104,10 @@ describe('ScheduleEnforcementService', () => {
 
   describe('enforceSchedules', () => {
     it('should pause jobs outside their schedule windows', async () => {
-      const nodeInWindow = createMockNode({ id: 'node-1', scheduleEnabled: false });
+      const nodeInWindow = createMockNode({
+        id: 'node-1',
+        scheduleEnabled: false,
+      });
       const nodeOutOfWindow = createMockNode({
         id: 'node-2',
         scheduleEnabled: true,

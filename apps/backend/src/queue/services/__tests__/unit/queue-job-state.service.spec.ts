@@ -401,7 +401,10 @@ describe('QueueJobStateService', () => {
     });
 
     it('should cancel transfer but skip cleanup when no remoteTempPath', async () => {
-      const job = makeJob({ stage: 'TRANSFERRING' as JobStage, remoteTempPath: null }) as any;
+      const job = makeJob({
+        stage: 'TRANSFERRING' as JobStage,
+        remoteTempPath: null,
+      }) as any;
       jobRepository.findById.mockResolvedValue(job);
       jobRepository.updateById.mockResolvedValue(job);
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
@@ -530,11 +533,16 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.ENCODING }) as any;
       jobRepository.findById.mockResolvedValue(job);
       ffmpegService.pauseEncoding.mockResolvedValue(true);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.PAUSED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.PAUSED,
+      });
 
       const result = await service.pauseJob('job-1');
 
-      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', { stage: JobStage.PAUSED });
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', {
+        stage: JobStage.PAUSED,
+      });
       expect(result.stage).toBe(JobStage.PAUSED);
     });
   });
@@ -558,7 +566,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.PAUSED }) as any;
       jobRepository.findById.mockResolvedValue(job);
       ffmpegService.resumeEncoding.mockResolvedValue(false);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      });
 
       const result = await service.resumeJob('job-1');
 
@@ -576,7 +587,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.PAUSED }) as any;
       jobRepository.findById.mockResolvedValue(job);
       ffmpegService.resumeEncoding.mockResolvedValue(true);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.ENCODING });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.ENCODING,
+      });
 
       const result = await service.resumeJob('job-1');
 
@@ -609,7 +623,10 @@ describe('QueueJobStateService', () => {
         progress: 45.5,
       }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      });
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
       jest.mocked(fs.existsSync).mockReturnValue(true);
 
@@ -633,7 +650,10 @@ describe('QueueJobStateService', () => {
         progress: 30,
       }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      });
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
       jest.mocked(fs.existsSync).mockReturnValue(false);
 
@@ -668,7 +688,10 @@ describe('QueueJobStateService', () => {
     it('should move job to DETECTED stage with epoch createdAt', async () => {
       const job = makeJob({ stage: JobStage.QUEUED }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.DETECTED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.DETECTED,
+      });
 
       await service.forceStartJob('job-1');
 
@@ -694,7 +717,10 @@ describe('QueueJobStateService', () => {
     it('should reset health fields and stage to DETECTED', async () => {
       const job = makeJob({ stage: JobStage.QUEUED }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.DETECTED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.DETECTED,
+      });
 
       await service.recheckHealth('job-1');
 
@@ -791,7 +817,10 @@ describe('QueueJobStateService', () => {
     it('should mark job COMPLETED when action is skip', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.COMPLETED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.COMPLETED,
+      });
 
       const result = await service.resolveDecision('job-1', {
         actionConfig: { action: 'skip' },
@@ -809,7 +838,10 @@ describe('QueueJobStateService', () => {
     it('should mark job CANCELLED when action is cancel', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.CANCELLED });
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.CANCELLED,
+      });
 
       const result = await service.resolveDecision('job-1', {
         actionConfig: { action: 'cancel', reason: 'user_requested' },
@@ -827,7 +859,11 @@ describe('QueueJobStateService', () => {
     it('should set type to REMUX when audioAction is copy', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED, type: 'REMUX' });
+      jobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+        type: 'REMUX',
+      });
 
       const result = await service.resolveDecision('job-1', {
         actionConfig: { audioAction: 'copy' },
@@ -845,7 +881,11 @@ describe('QueueJobStateService', () => {
     it('should set type to ENCODE when action is force_encode', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED, type: 'ENCODE' });
+      jobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+        type: 'ENCODE',
+      });
 
       await service.resolveDecision('job-1', {
         actionConfig: { action: 'force_encode' },
@@ -862,7 +902,10 @@ describe('QueueJobStateService', () => {
     it('should move to QUEUED with no decisionData when called without args', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION }) as any;
       jobRepository.findById.mockResolvedValue(job);
-      jobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED });
+      jobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      });
 
       await service.resolveDecision('job-1');
 
@@ -880,7 +923,9 @@ describe('QueueJobStateService', () => {
 
   describe('delegated bulk operations', () => {
     it('should delegate cancelAllQueued to jobBulkOperationsService', async () => {
-      jobBulkOperationsService.cancelAllQueued.mockResolvedValue({ cancelledCount: 5 });
+      jobBulkOperationsService.cancelAllQueued.mockResolvedValue({
+        cancelledCount: 5,
+      });
 
       const result = await service.cancelAllQueued();
 

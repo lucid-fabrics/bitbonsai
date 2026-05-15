@@ -97,7 +97,11 @@ describe('JobTransferController', () => {
     });
 
     it('should return multiple active transfers', async () => {
-      const secondJob = { ...mockTransferringJob, id: 'job-2', fileLabel: 'Dune (2021).mkv' };
+      const secondJob = {
+        ...mockTransferringJob,
+        id: 'job-2',
+        fileLabel: 'Dune (2021).mkv',
+      };
       const paginatedResult = {
         jobs: [mockTransferringJob, secondJob],
         total: 2,

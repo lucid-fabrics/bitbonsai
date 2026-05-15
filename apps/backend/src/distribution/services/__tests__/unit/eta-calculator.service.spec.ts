@@ -107,7 +107,9 @@ describe('EtaCalculatorService', () => {
         },
       ]);
 
-      const job = createMockJob({ beforeSizeBytes: BigInt(6 * 1024 * 1024 * 1024) }); // 6GB
+      const job = createMockJob({
+        beforeSizeBytes: BigInt(6 * 1024 * 1024 * 1024),
+      }); // 6GB
       const result = await service.estimateDuration(job);
 
       expect(result.confidence).toBe('HIGH');
@@ -443,8 +445,16 @@ describe('EtaCalculatorService', () => {
       service.clearCache();
 
       const jobs = [
-        createMockJob({ id: 'job-1', stage: 'QUEUED' as any, estimatedDuration: 3600 }),
-        createMockJob({ id: 'job-2', stage: 'QUEUED' as any, estimatedDuration: 3600 }),
+        createMockJob({
+          id: 'job-1',
+          stage: 'QUEUED' as any,
+          estimatedDuration: 3600,
+        }),
+        createMockJob({
+          id: 'job-2',
+          stage: 'QUEUED' as any,
+          estimatedDuration: 3600,
+        }),
       ];
 
       jobRepo.findQueuedAndEncodingForNode.mockResolvedValue(jobs);

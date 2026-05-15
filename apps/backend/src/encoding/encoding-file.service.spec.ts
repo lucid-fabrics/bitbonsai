@@ -215,7 +215,10 @@ describe('EncodingFileService — extended coverage', () => {
     } as unknown as jest.Mocked<LibrariesService>;
 
     mockSettingsRepository = { findFirst: jest.fn().mockResolvedValue(null) };
-    mockJobRepository = { updateById: jest.fn().mockResolvedValue(undefined), findById: jest.fn() };
+    mockJobRepository = {
+      updateById: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn(),
+    };
     mockQualityMetricsService = { calculateAllQualityMetrics: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -386,7 +389,10 @@ describe('EncodingFileService — extended coverage', () => {
     });
 
     it('throws "verification failed" after all retries are exhausted', async () => {
-      mockFfmpegService.verifyFile.mockResolvedValue({ isValid: false, error: 'corrupt' });
+      mockFfmpegService.verifyFile.mockResolvedValue({
+        isValid: false,
+        error: 'corrupt',
+      });
       await expect(service.verifyEncodedFile('/tmp/out.mkv')).rejects.toThrow(
         'Verification failed'
       );
@@ -495,7 +501,9 @@ describe('EncodingFileService — extended coverage', () => {
     const mockStatfs = jest.fn();
 
     beforeEach(() => {
-      (fs as unknown as Record<string, unknown>).promises = { statfs: mockStatfs };
+      (fs as unknown as Record<string, unknown>).promises = {
+        statfs: mockStatfs,
+      };
     });
 
     it('resolves when sufficient disk space is available', async () => {
@@ -588,7 +596,10 @@ describe('EncodingFileService — extended coverage', () => {
         p.endsWith('.backup') ? true : p === '/media/video.mkv'
       );
       (fs.unlinkSync as jest.Mock).mockImplementation(() => undefined);
-      mockFfmpegService.verifyFile.mockResolvedValue({ isValid: false, error: 'not playable' });
+      mockFfmpegService.verifyFile.mockResolvedValue({
+        isValid: false,
+        error: 'not playable',
+      });
 
       await expect(
         service.atomicReplaceFileWithVerification('/media/video.mkv', '/tmp/video.mkv.tmp')
@@ -646,7 +657,10 @@ describe('EncodingFileService — extended coverage', () => {
       (fs.renameSync as jest.Mock).mockImplementation(() => undefined);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.unlinkSync as jest.Mock).mockImplementation(() => undefined);
-      mockFfmpegService.verifyFile.mockResolvedValue({ isValid: false, error: 'corrupt' });
+      mockFfmpegService.verifyFile.mockResolvedValue({
+        isValid: false,
+        error: 'corrupt',
+      });
 
       await expect(service.replaceFile(makeJob(true), '/tmp/video.mkv.tmp', true)).rejects.toThrow(
         'Post-replacement verification failed'

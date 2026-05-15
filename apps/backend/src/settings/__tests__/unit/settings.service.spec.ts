@@ -153,7 +153,9 @@ describe('SettingsService', () => {
         createSettingsRecord({ defaultQueueView: 'FAILED' })
       );
 
-      const result = await service.updateDefaultQueueView({ defaultQueueView: 'FAILED' });
+      const result = await service.updateDefaultQueueView({
+        defaultQueueView: 'FAILED',
+      });
 
       expect(result).toEqual({ defaultQueueView: 'FAILED' });
       expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
@@ -166,7 +168,9 @@ describe('SettingsService', () => {
         createSettingsRecord({ defaultQueueView: 'ALL' })
       );
 
-      const result = await service.updateDefaultQueueView({ defaultQueueView: 'ALL' });
+      const result = await service.updateDefaultQueueView({
+        defaultQueueView: 'ALL',
+      });
 
       expect(result).toEqual({ defaultQueueView: 'ALL' });
     });
@@ -449,7 +453,10 @@ describe('SettingsService', () => {
           SettingsService,
           {
             provide: SettingsRepository,
-            useValue: { ...mockSettingsRepository, findFirst: localMockRepo.findFirst },
+            useValue: {
+              ...mockSettingsRepository,
+              findFirst: localMockRepo.findFirst,
+            },
           },
         ],
       }).compile();
@@ -510,7 +517,9 @@ describe('SettingsService', () => {
         createSettingsRecord({ jellyfinUrl: 'http://new-url:8096' })
       );
 
-      await service.updateJellyfinSettings({ jellyfinUrl: 'http://new-url:8096' });
+      await service.updateJellyfinSettings({
+        jellyfinUrl: 'http://new-url:8096',
+      });
 
       expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
         jellyfinUrl: 'http://new-url:8096',
@@ -531,7 +540,10 @@ describe('SettingsService', () => {
 
     it('should create settings when none exist', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ jellyfinUrl: 'http://jf:8096', jellyfinApiKey: 'key' })
+        createSettingsRecord({
+          jellyfinUrl: 'http://jf:8096',
+          jellyfinApiKey: 'key',
+        })
       );
 
       const result = await service.updateJellyfinSettings({
@@ -548,7 +560,9 @@ describe('SettingsService', () => {
         createSettingsRecord({ jellyfinRefreshOnComplete: false })
       );
 
-      await service.updateJellyfinSettings({ jellyfinRefreshOnComplete: false });
+      await service.updateJellyfinSettings({
+        jellyfinRefreshOnComplete: false,
+      });
 
       expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith({
         jellyfinRefreshOnComplete: false,
@@ -560,7 +574,9 @@ describe('SettingsService', () => {
         createSettingsRecord({ jellyfinRefreshOnComplete: undefined })
       );
 
-      const result = await service.updateJellyfinSettings({ jellyfinUrl: 'http://jf:8096' });
+      const result = await service.updateJellyfinSettings({
+        jellyfinUrl: 'http://jf:8096',
+      });
 
       expect(result.jellyfinRefreshOnComplete).toBe(true);
     });
@@ -605,7 +621,9 @@ describe('SettingsService', () => {
     });
 
     it('should use defaults for missing fields', async () => {
-      mockSettingsRepository.findOrCreate.mockResolvedValue({ id: 'settings-1' } as any);
+      mockSettingsRepository.findOrCreate.mockResolvedValue({
+        id: 'settings-1',
+      } as any);
 
       const result = await service.getOperationalSettings();
 
@@ -625,7 +643,9 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings when none exist', async () => {
-      mockSettingsRepository.findOrCreate.mockResolvedValue({ id: 'settings-1' } as any);
+      mockSettingsRepository.findOrCreate.mockResolvedValue({
+        id: 'settings-1',
+      } as any);
 
       const result = await service.getOperationalSettings();
 

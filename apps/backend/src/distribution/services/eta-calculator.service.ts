@@ -190,7 +190,9 @@ export class EtaCalculatorService {
     }
 
     // Get node worker count
-    const node = await this.nodeRepository.findWithSelect<{ maxWorkers: number | null }>(nodeId, {
+    const node = await this.nodeRepository.findWithSelect<{
+      maxWorkers: number | null;
+    }>(nodeId, {
       maxWorkers: true,
     });
 
@@ -208,7 +210,9 @@ export class EtaCalculatorService {
   async updateNodeETAs(nodeId: string): Promise<void> {
     const jobs = await this.jobRepository.findQueuedAndEncodingForNode(nodeId);
 
-    const node = await this.nodeRepository.findWithSelect<{ maxWorkers: number | null }>(nodeId, {
+    const node = await this.nodeRepository.findWithSelect<{
+      maxWorkers: number | null;
+    }>(nodeId, {
       maxWorkers: true,
     });
 
@@ -253,7 +257,9 @@ export class EtaCalculatorService {
 
     // Update node's estimated free time
     const latestSlotFree = new Date(Math.max(...slotFreeTimes.map((d) => d.getTime())));
-    await this.nodeRepository.updateById(nodeId, { estimatedFreeAt: latestSlotFree });
+    await this.nodeRepository.updateById(nodeId, {
+      estimatedFreeAt: latestSlotFree,
+    });
 
     this.logger.debug(`Updated ETAs for ${jobs.length} jobs on node ${nodeId}`);
   }

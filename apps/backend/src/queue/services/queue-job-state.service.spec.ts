@@ -111,7 +111,9 @@ describe('QueueJobStateService', () => {
 
     mockPrisma = {
       $transaction: jest.fn(),
-      processedFileRecord: { deleteMany: jest.fn().mockResolvedValue(undefined) },
+      processedFileRecord: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
     };
 
     mockHttpService = { post: jest.fn(), patch: jest.fn() };
@@ -124,10 +126,19 @@ describe('QueueJobStateService', () => {
         { provide: JobHistoryService, useValue: mockJobHistoryService },
         { provide: NodeConfigService, useValue: mockNodeConfig },
         { provide: QueueJobCrudService, useValue: mockJobCrudService },
-        { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: FileFailureTrackingService,
+          useValue: mockFileFailureTracking,
+        },
         { provide: JobMetricsService, useValue: mockJobMetricsService },
-        { provide: JobBulkOperationsService, useValue: mockJobBulkOperationsService },
-        { provide: JobFileOperationsService, useValue: mockJobFileOperationsService },
+        {
+          provide: JobBulkOperationsService,
+          useValue: mockJobBulkOperationsService,
+        },
+        {
+          provide: JobFileOperationsService,
+          useValue: mockJobFileOperationsService,
+        },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FileTransferService, useValue: mockFileTransferService },
         { provide: HttpService, useValue: mockHttpService },
@@ -201,7 +212,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.killProcess.mockResolvedValue(true);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.CANCELLED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.CANCELLED,
+      } as any);
 
       await service.cancelJob('job-1');
 
@@ -290,7 +304,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.countWhere.mockResolvedValue(0);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, priority: 2 } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        priority: 2,
+      } as any);
       mockFfmpegService.reniceProcess.mockResolvedValue(true);
 
       await service.updateJobPriority('job-1', 2);
@@ -302,7 +319,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.countWhere.mockResolvedValue(0);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, priority: 1 } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        priority: 1,
+      } as any);
       mockFfmpegService.reniceProcess.mockRejectedValue(new Error('process not found'));
 
       await expect(service.updateJobPriority('job-1', 1)).resolves.not.toBeUndefined();
@@ -320,7 +340,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.PAUSED });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.resumeEncoding.mockResolvedValue(true);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.ENCODING } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.ENCODING,
+      } as any);
 
       const result = await service.resumeJob('job-1');
       expect(result.stage).toBe(JobStage.ENCODING);
@@ -330,7 +353,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.PAUSED });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.resumeEncoding.mockResolvedValue(false);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       const result = await service.resumeJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
@@ -416,7 +442,10 @@ describe('QueueJobStateService', () => {
         contentFingerprint: 'fp-abc123',
       });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, isBlacklisted: false } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        isBlacklisted: false,
+      } as any);
 
       await service.unblacklistJob('job-1');
 
@@ -430,7 +459,10 @@ describe('QueueJobStateService', () => {
     it('should force-start a queued job', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.DETECTED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.DETECTED,
+      } as any);
 
       const result = await service.forceStartJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
@@ -466,7 +498,11 @@ describe('QueueJobStateService', () => {
     it('should reset job health fields and set stage to DETECTED', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      const updated = { ...job, stage: JobStage.DETECTED, healthStatus: 'UNKNOWN' };
+      const updated = {
+        ...job,
+        stage: JobStage.DETECTED,
+        healthStatus: 'UNKNOWN',
+      };
       mockJobRepository.updateById.mockResolvedValue(updated as any);
 
       const result = await service.recheckHealth('job-1');
@@ -577,7 +613,10 @@ describe('QueueJobStateService', () => {
     });
 
     it('should cancel transferring job and clean up remote temp file', async () => {
-      const job = makeJob({ stage: 'TRANSFERRING' as JobStage, remoteTempPath: '/tmp/job-1.mkv' });
+      const job = makeJob({
+        stage: 'TRANSFERRING' as JobStage,
+        remoteTempPath: '/tmp/job-1.mkv',
+      });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.updateById.mockResolvedValue({
         ...job,
@@ -591,7 +630,10 @@ describe('QueueJobStateService', () => {
     });
 
     it('should cancel transferring job without remoteTempPath', async () => {
-      const job = makeJob({ stage: 'TRANSFERRING' as JobStage, remoteTempPath: null });
+      const job = makeJob({
+        stage: 'TRANSFERRING' as JobStage,
+        remoteTempPath: null,
+      });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.updateById.mockResolvedValue({
         ...job,
@@ -609,7 +651,10 @@ describe('QueueJobStateService', () => {
     it('should record auto-blacklist warning when file is blacklisted', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.FAILED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.FAILED,
+      } as any);
       mockFileFailureTracking.recordFailure.mockResolvedValue(true);
 
       // Should not throw even though wasBlacklisted=true
@@ -619,7 +664,10 @@ describe('QueueJobStateService', () => {
     it('should not throw when fileFailureTracking.recordFailure throws', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.FAILED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.FAILED,
+      } as any);
       mockFileFailureTracking.recordFailure.mockRejectedValue(new Error('tracking error'));
 
       await expect(service.failJob('job-1', 'error')).resolves.not.toBeUndefined();
@@ -678,7 +726,10 @@ describe('QueueJobStateService', () => {
     it('should queue job for encoding when no specific action', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1');
 
@@ -691,7 +742,10 @@ describe('QueueJobStateService', () => {
     it('should apply targetContainer when actionConfig has it', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { targetContainer: 'mkv' },
@@ -706,7 +760,10 @@ describe('QueueJobStateService', () => {
     it('should set type to REMUX when audioAction is "copy"', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { audioAction: 'copy' },
@@ -721,7 +778,10 @@ describe('QueueJobStateService', () => {
     it('should set type to ENCODE when audioAction is "transcode_aac"', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { audioAction: 'transcode_aac' },
@@ -736,7 +796,10 @@ describe('QueueJobStateService', () => {
     it('should set type to ENCODE when action is "force_encode"', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { action: 'force_encode' },
@@ -792,7 +855,9 @@ describe('QueueJobStateService', () => {
 
   describe('delegation methods', () => {
     it('cancelAllQueued delegates to jobBulkOperationsService', async () => {
-      mockJobBulkOperationsService.cancelAllQueued.mockResolvedValue({ cancelledCount: 5 });
+      mockJobBulkOperationsService.cancelAllQueued.mockResolvedValue({
+        cancelledCount: 5,
+      });
 
       const result = await service.cancelAllQueued();
       expect(result.cancelledCount).toBe(5);

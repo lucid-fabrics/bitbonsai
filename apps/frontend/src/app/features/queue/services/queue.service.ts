@@ -111,14 +111,24 @@ export class QueueService {
 
   skipAllCodecMatch(): Observable<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.queueClient.skipAllCodecMatch();
   }
 
   forceEncodeAllCodecMatch(): Observable<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.queueClient.forceEncodeAllCodecMatch();
   }

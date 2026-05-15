@@ -229,7 +229,9 @@ describe('DiscordNotificationService', () => {
 
       await service.sendJobCompleted({ fileLabel: 'test.mkv' });
 
-      const postedPayload = httpService.post.mock.calls[0][1] as { username: string };
+      const postedPayload = httpService.post.mock.calls[0][1] as {
+        username: string;
+      };
       expect(postedPayload.username).toBe('BitBonsai');
     });
   });

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Node } from '@prisma/client';
 import { NodeRepository } from '../../../common/repositories/node.repository';
@@ -84,7 +83,10 @@ describe('SharedStorageVerifierService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SharedStorageVerifierService,
-        { provide: 'IStorageShareRepository', useValue: mockStorageShareRepository },
+        {
+          provide: 'IStorageShareRepository',
+          useValue: mockStorageShareRepository,
+        },
         { provide: NodeRepository, useValue: mockNodeRepository },
       ],
     }).compile();
@@ -225,7 +227,10 @@ describe('SharedStorageVerifierService', () => {
 
     it('should return accessible when mount and file exist', async () => {
       const target = createMockNode();
-      const source = createMockNode({ id: 'src-1', storageBasePath: '/mnt/nfs/media' });
+      const source = createMockNode({
+        id: 'src-1',
+        storageBasePath: '/mnt/nfs/media',
+      });
 
       mockExecResult('server:/vol on /mnt/nfs/media type nfs (rw)\n');
       mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([

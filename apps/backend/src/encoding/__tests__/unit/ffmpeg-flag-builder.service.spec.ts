@@ -46,7 +46,10 @@ describe('FfmpegFlagBuilderService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FfmpegFlagBuilderService,
-        { provide: HardwareAccelerationService, useValue: mockHardwareAccelerationService },
+        {
+          provide: HardwareAccelerationService,
+          useValue: mockHardwareAccelerationService,
+        },
       ],
     }).compile();
 
@@ -155,13 +158,19 @@ describe('FfmpegFlagBuilderService', () => {
     });
 
     it('sets MKV format for REMUX with mkv container', () => {
-      const job = makeJob({ type: 'REMUX', targetContainer: 'mkv' } as Partial<Job>);
+      const job = makeJob({
+        type: 'REMUX',
+        targetContainer: 'mkv',
+      } as Partial<Job>);
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/movie.mkv');
       expect(args).toContain('matroska');
     });
 
     it('sets MP4 format and movflags for REMUX with mp4 container', () => {
-      const job = makeJob({ type: 'REMUX', targetContainer: 'mp4' } as Partial<Job>);
+      const job = makeJob({
+        type: 'REMUX',
+        targetContainer: 'mp4',
+      } as Partial<Job>);
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/movie.mp4');
       expect(args).toContain('mp4');
       expect(args).toContain('+frag_keyframe+empty_moov+default_base_moof');
@@ -205,7 +214,10 @@ describe('FfmpegFlagBuilderService', () => {
     });
 
     it('spreads hwaccel flags before -i', () => {
-      const hwaccel = makeHwaccel({ flags: ['-hwaccel', 'cuda'], type: 'NVIDIA' });
+      const hwaccel = makeHwaccel({
+        flags: ['-hwaccel', 'cuda'],
+        type: 'NVIDIA',
+      });
       const args = service.buildFfmpegCommand(makeJob(), makePolicy(), hwaccel, '/out/out.mkv');
       expect(args).toContain('-hwaccel');
     });
@@ -248,7 +260,9 @@ describe('FfmpegFlagBuilderService', () => {
 
     it('uses audio bitrate from decisionData', () => {
       const job = makeJob({
-        decisionData: JSON.stringify({ actionConfig: { audioCodec: 'aac', audioBitrate: '192k' } }),
+        decisionData: JSON.stringify({
+          actionConfig: { audioCodec: 'aac', audioBitrate: '192k' },
+        }),
       });
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mkv');
       expect(args).toContain('-b:a');
@@ -256,7 +270,9 @@ describe('FfmpegFlagBuilderService', () => {
     });
 
     it('uses audio codec from policy advancedSettings when decision does not override', () => {
-      const policy = makePolicy({ advancedSettings: { audioCodec: 'eac3' } } as Partial<Policy>);
+      const policy = makePolicy({
+        advancedSettings: { audioCodec: 'eac3' },
+      } as Partial<Policy>);
       const args = service.buildFfmpegCommand(makeJob(), policy, makeHwaccel(), '/out/out.mkv');
       expect(args[args.indexOf('-c:a') + 1]).toBe('eac3');
     });
@@ -287,7 +303,9 @@ describe('FfmpegFlagBuilderService', () => {
 
     it('applies ffmpegFlags from decisionData', () => {
       const job = makeJob({
-        decisionData: JSON.stringify({ actionConfig: { ffmpegFlags: ['-tune', 'film'] } }),
+        decisionData: JSON.stringify({
+          actionConfig: { ffmpegFlags: ['-tune', 'film'] },
+        }),
       });
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mkv');
       expect(args).toContain('-tune');

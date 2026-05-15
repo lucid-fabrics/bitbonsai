@@ -12,7 +12,7 @@ jest.mock('node:child_process', () => ({
 }));
 
 // Import after mock so we get the mocked version
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const childProcess = require('node:child_process') as { spawn: jest.Mock };
 
 // ---------------------------------------------------------------------------

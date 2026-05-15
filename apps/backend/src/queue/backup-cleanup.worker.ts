@@ -93,7 +93,9 @@ export class BackupCleanupWorker implements OnModuleInit {
     const cutoffTime = now - retentionMs;
 
     // Get all library paths
-    const libraries = await this.libraryRepository.findAllLibraries({ enabled: true });
+    const libraries = await this.libraryRepository.findAllLibraries({
+      enabled: true,
+    });
 
     if (libraries.length === 0) {
       this.logger.debug('No enabled libraries found, skipping backup cleanup');

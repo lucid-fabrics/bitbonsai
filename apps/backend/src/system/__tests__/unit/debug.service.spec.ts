@@ -23,11 +23,13 @@ jest.mock('../../../prisma/prisma.service', () => ({
 
 jest.mock('node:os', () => ({
   loadavg: jest.fn().mockReturnValue([0.5, 0.5, 0.5]),
-  cpus: jest
-    .fn()
-    .mockReturnValue(
-      Array(4).fill({ model: 'x', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } })
-    ),
+  cpus: jest.fn().mockReturnValue(
+    Array(4).fill({
+      model: 'x',
+      speed: 0,
+      times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+    })
+  ),
   freemem: jest.fn().mockReturnValue(8 * 1024 ** 3),
   totalmem: jest.fn().mockReturnValue(16 * 1024 ** 3),
   networkInterfaces: jest.fn().mockReturnValue({}),
@@ -40,7 +42,10 @@ jest.mock('node:child_process', () => ({
 describe('DebugService (__tests__/unit)', () => {
   let service: DebugService;
   let mockJobRepository: { findManySelect: jest.Mock };
-  let mockNodeRepository: { findFirstByIpAddresses: jest.Mock; updateById: jest.Mock };
+  let mockNodeRepository: {
+    findFirstByIpAddresses: jest.Mock;
+    updateById: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockJobRepository = { findManySelect: jest.fn().mockResolvedValue([]) };
@@ -477,7 +482,9 @@ describe('DebugService (__tests__/unit)', () => {
 
   describe('updateLoadThreshold', () => {
     it('updates threshold for valid multiplier', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue(undefined);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(8).fill({
@@ -512,7 +519,9 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('handles repository error', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockRejectedValue(new Error('db error'));
 
       const result = await service.updateLoadThreshold(2.0);
@@ -520,7 +529,9 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('accepts boundary value 1.0', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue(undefined);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(4).fill({
@@ -535,7 +546,9 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('accepts boundary value 10.0', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue(undefined);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(4).fill({

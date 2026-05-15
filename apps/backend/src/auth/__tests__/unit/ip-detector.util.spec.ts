@@ -162,7 +162,9 @@ describe('extractClientIp', () => {
   describe('X-Forwarded-For header', () => {
     it('should extract first IP from X-Forwarded-For', () => {
       const req = {
-        headers: { 'x-forwarded-for': '203.0.113.1, 198.51.100.1, 192.168.1.1' },
+        headers: {
+          'x-forwarded-for': '203.0.113.1, 198.51.100.1, 192.168.1.1',
+        },
       };
       expect(extractClientIp(req)).toBe('203.0.113.1');
     });

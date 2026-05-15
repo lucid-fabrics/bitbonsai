@@ -91,7 +91,11 @@ export class ContainerBo {
   /**
    * Get format for UI dropdown display
    */
-  static getFormatOptions(): Array<{ value: string | null; label: string; description: string }> {
+  static getFormatOptions(): Array<{
+    value: string | null;
+    label: string;
+    description: string;
+  }> {
     return ContainerBo.FORMATS.map((format) => ({
       value: format.value,
       label: format.label,

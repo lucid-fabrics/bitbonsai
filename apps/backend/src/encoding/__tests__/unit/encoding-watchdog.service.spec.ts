@@ -106,12 +106,18 @@ describe('EncodingWatchdogService', () => {
   describe('manageLoadBasedPausing', () => {
     it('returns early on win32', async () => {
       const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'win32',
+        configurable: true,
+      });
 
       await expect(service.manageLoadBasedPausing()).resolves.toBeUndefined();
       expect(nodesService.getCurrentNode).not.toHaveBeenCalled();
 
-      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        configurable: true,
+      });
     });
 
     it('returns early when current node not found', async () => {
@@ -209,7 +215,10 @@ describe('EncodingWatchdogService', () => {
   describe('getSystemDiagnostics', () => {
     it('returns diagnostics string on non-win32', async () => {
       const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        configurable: true,
+      });
 
       ffmpegService.hasActiveProcess.mockReturnValue(true);
       workerPoolService.getAllWorkers.mockReturnValue(
@@ -223,12 +232,18 @@ describe('EncodingWatchdogService', () => {
       expect(result).toContain('Active workers: 1/1');
       expect(result).toContain('FFmpeg process active: Yes');
 
-      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        configurable: true,
+      });
     });
 
     it('omits load average on win32', async () => {
       const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: 'win32',
+        configurable: true,
+      });
       ffmpegService.hasActiveProcess.mockReturnValue(false);
       workerPoolService.getAllWorkers.mockReturnValue(new Map());
 
@@ -236,7 +251,10 @@ describe('EncodingWatchdogService', () => {
       expect(result).not.toContain('Load average:');
       expect(result).toContain('FFmpeg process active: No');
 
-      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        configurable: true,
+      });
     });
 
     it('handles os errors gracefully', async () => {

@@ -106,7 +106,14 @@ describe('DashboardComponent', () => {
 
     it('should open dialog and load files when viewFilesToEncode is called', () => {
       const mockFiles = {
-        files: [{ name: 'file1.mp4', codec: 'h264', size_bytes: 1000, bitrate_mbps: 5 }],
+        files: [
+          {
+            name: 'file1.mp4',
+            codec: 'h264',
+            size_bytes: 1000,
+            bitrate_mbps: 5,
+          },
+        ],
       };
       mediaStatsClient.getFolderFiles.mockReturnValue(of(mockFiles));
 

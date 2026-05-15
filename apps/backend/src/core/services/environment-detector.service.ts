@@ -246,8 +246,16 @@ export class EnvironmentDetectorService {
    * Recommend storage method for two nodes
    */
   async recommendStorageMethod(
-    sourceNode: { subnet: string | null; containerType: ContainerType; canMountNFS: boolean },
-    targetNode: { subnet: string | null; containerType: ContainerType; canMountNFS: boolean }
+    sourceNode: {
+      subnet: string | null;
+      containerType: ContainerType;
+      canMountNFS: boolean;
+    },
+    targetNode: {
+      subnet: string | null;
+      containerType: ContainerType;
+      canMountNFS: boolean;
+    }
   ): Promise<StorageMethodRecommendation> {
     // Check if nodes are on same network
     const sameNetwork =

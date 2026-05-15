@@ -163,7 +163,9 @@ export class QueueDelegationService {
       );
 
       const sourceNodeId = job.library.nodeId;
-      const sourceNode = await tx.node.findUnique({ where: { id: sourceNodeId } });
+      const sourceNode = await tx.node.findUnique({
+        where: { id: sourceNodeId },
+      });
 
       if (!sourceNode) {
         throw new NotFoundException(`Source node ${sourceNodeId} not found`);

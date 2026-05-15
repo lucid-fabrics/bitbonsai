@@ -189,7 +189,6 @@ export class QueueJobCrudService {
    * Check if a file exists on disk (extracted for testability)
    */
   fileExists(filePath: string): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require('fs') as typeof import('fs');
     return fs.existsSync(filePath);
   }
@@ -449,7 +448,13 @@ export class QueueJobCrudService {
     libraryId?: string,
     page?: number,
     limit?: number
-  ): Promise<{ jobs: Job[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    jobs: Job[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const currentPage = page && page > 0 ? page : 1;
     const pageSize = limit && limit > 0 ? limit : 20;
     const skip = (currentPage - 1) * pageSize;

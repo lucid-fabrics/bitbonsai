@@ -104,7 +104,11 @@ describe('InsightsService', () => {
 
       mockMetricsRepository.findByDateRange.mockResolvedValue([mockMetrics[0]]);
 
-      await service.getTimeSeriesMetrics({ startDate, endDate, nodeId: 'node1' });
+      await service.getTimeSeriesMetrics({
+        startDate,
+        endDate,
+        nodeId: 'node1',
+      });
 
       expect(mockMetricsRepository.findByDateRange).toHaveBeenCalledWith({
         startDate,
@@ -120,7 +124,11 @@ describe('InsightsService', () => {
 
       mockMetricsRepository.findByDateRange.mockResolvedValue(mockMetrics);
 
-      await service.getTimeSeriesMetrics({ startDate, endDate, licenseId: 'license1' });
+      await service.getTimeSeriesMetrics({
+        startDate,
+        endDate,
+        licenseId: 'license1',
+      });
 
       expect(mockMetricsRepository.findByDateRange).toHaveBeenCalledWith({
         startDate,
@@ -322,7 +330,10 @@ describe('InsightsService', () => {
       const result = await service.getNodeComparison();
 
       const mainNode = result.nodes.find((n) => n.nodeId === 'node1');
-      expect(mainNode).toMatchObject({ nodeId: 'node1', nodeName: 'Main Server' });
+      expect(mainNode).toMatchObject({
+        nodeId: 'node1',
+        nodeName: 'Main Server',
+      });
       expect(mainNode?.jobsCompleted).toBe(80); // Sum of both metrics
       expect(mainNode?.jobsFailed).toBe(3);
       expect(mainNode?.successRate).toBeCloseTo(96.39, 1);
@@ -334,7 +345,10 @@ describe('InsightsService', () => {
       const result = await service.getNodeComparison();
 
       const secondaryNode = result.nodes.find((n) => n.nodeId === 'node2');
-      expect(secondaryNode).toMatchObject({ nodeId: 'node2', nodeName: 'Secondary Server' });
+      expect(secondaryNode).toMatchObject({
+        nodeId: 'node2',
+        nodeName: 'Secondary Server',
+      });
       expect(secondaryNode?.jobsCompleted).toBe(0);
       expect(secondaryNode?.successRate).toBe(0);
       expect(secondaryNode?.avgThroughput).toBe(0);

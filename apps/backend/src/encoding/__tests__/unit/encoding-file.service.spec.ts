@@ -82,7 +82,9 @@ describe('EncodingFileService', () => {
         },
         {
           provide: SettingsRepository,
-          useValue: { findFirst: jest.fn().mockResolvedValue({ qualityMetricsEnabled: false }) },
+          useValue: {
+            findFirst: jest.fn().mockResolvedValue({ qualityMetricsEnabled: false }),
+          },
         },
         {
           provide: FfmpegService,
@@ -124,7 +126,9 @@ describe('EncodingFileService', () => {
         },
         {
           provide: NodesService,
-          useValue: { getCurrentNode: jest.fn().mockResolvedValue({ id: 'node-1' }) },
+          useValue: {
+            getCurrentNode: jest.fn().mockResolvedValue({ id: 'node-1' }),
+          },
         },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
@@ -140,7 +144,10 @@ describe('EncodingFileService', () => {
     _systemResourceService = module.get(SystemResourceService);
 
     // Default fs mocks
-    (fs.statSync as jest.Mock).mockReturnValue({ size: 2 * 1024 ** 3, mtimeMs: 1000 });
+    (fs.statSync as jest.Mock).mockReturnValue({
+      size: 2 * 1024 ** 3,
+      mtimeMs: 1000,
+    });
     (fs.existsSync as jest.Mock).mockReturnValue(false);
     (fs.unlinkSync as jest.Mock).mockReturnValue(undefined);
     (fs.renameSync as jest.Mock).mockReturnValue(undefined);
@@ -538,7 +545,10 @@ describe('EncodingFileService', () => {
     });
 
     it('resolves on first successful verification', async () => {
-      ffmpegService.verifyFile.mockResolvedValue({ isValid: true, error: undefined });
+      ffmpegService.verifyFile.mockResolvedValue({
+        isValid: true,
+        error: undefined,
+      });
 
       await expect(service.verifyEncodedFile('/tmp/out.mkv')).resolves.toBeUndefined();
       expect(ffmpegService.verifyFile).toHaveBeenCalledTimes(1);
@@ -554,7 +564,10 @@ describe('EncodingFileService', () => {
     });
 
     it('throws after exhausting all retries', async () => {
-      ffmpegService.verifyFile.mockResolvedValue({ isValid: false, error: 'corrupt' });
+      ffmpegService.verifyFile.mockResolvedValue({
+        isValid: false,
+        error: 'corrupt',
+      });
 
       await expect(service.verifyEncodedFile('/tmp/out.mkv')).rejects.toThrow(
         'Verification failed after 10 attempts'

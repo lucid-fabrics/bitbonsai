@@ -32,7 +32,12 @@ describe('PoliciesController', () => {
   describe('create', () => {
     it('should call service.create with the dto and return the result', async () => {
       const dto = { name: 'My Policy', codec: 'HEVC', crf: 23 } as never;
-      const expected = { id: 'policy-1', name: 'My Policy', codec: 'HEVC', crf: 23 };
+      const expected = {
+        id: 'policy-1',
+        name: 'My Policy',
+        codec: 'HEVC',
+        crf: 23,
+      };
       mockPoliciesService.create.mockResolvedValue(expected);
 
       const result = await controller.create(dto);

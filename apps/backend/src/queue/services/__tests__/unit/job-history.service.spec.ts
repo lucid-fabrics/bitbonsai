@@ -142,8 +142,16 @@ describe('JobHistoryService', () => {
   describe('getJobHistory', () => {
     it('should return job history sorted by createdAt descending', async () => {
       const mockHistory = [
-        { id: 'h-2', jobId: 'job-1', createdAt: new Date('2026-02-24T12:00:00Z') },
-        { id: 'h-1', jobId: 'job-1', createdAt: new Date('2026-02-24T11:00:00Z') },
+        {
+          id: 'h-2',
+          jobId: 'job-1',
+          createdAt: new Date('2026-02-24T12:00:00Z'),
+        },
+        {
+          id: 'h-1',
+          jobId: 'job-1',
+          createdAt: new Date('2026-02-24T11:00:00Z'),
+        },
       ];
       repo.findManyByJobId.mockResolvedValue(mockHistory);
 

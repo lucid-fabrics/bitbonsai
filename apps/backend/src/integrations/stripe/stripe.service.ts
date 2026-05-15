@@ -283,7 +283,9 @@ export class StripeService {
   private async handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     const customerId = invoice.customer as string;
 
-    const license = await this.licenseRepository.findFirstWhere({ stripeCustomerId: customerId });
+    const license = await this.licenseRepository.findFirstWhere({
+      stripeCustomerId: customerId,
+    });
 
     if (license) {
       this.logger.warn(`Payment failed for license ${license.id}`);

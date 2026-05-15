@@ -19,7 +19,11 @@ describe('ApiKeyGuard', () => {
       getArgs: () => [],
       getArgByIndex: () => null,
       switchToRpc: () => ({ getContext: jest.fn(), getData: jest.fn() }),
-      switchToWs: () => ({ getClient: jest.fn(), getData: jest.fn(), getPattern: jest.fn() }),
+      switchToWs: () => ({
+        getClient: jest.fn(),
+        getData: jest.fn(),
+        getPattern: jest.fn(),
+      }),
       getType: () => 'http',
     } as unknown as ExecutionContext;
   };

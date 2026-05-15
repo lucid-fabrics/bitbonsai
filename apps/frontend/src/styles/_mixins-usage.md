@@ -12,6 +12,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ## Layout Mixins
 
 ### Container Padding
+
 ```scss
 .my-container {
   @include container-padding; // 32px desktop, 16px mobile
@@ -19,6 +20,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Flex Container
+
 ```scss
 .my-flex {
   @include flex-container(20px, row, center, space-between);
@@ -27,6 +29,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Responsive Grid
+
 ```scss
 .my-grid {
   @include responsive-grid(300px, 20px);
@@ -37,6 +40,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ## Card Mixins
 
 ### Basic Card
+
 ```scss
 .my-card {
   @include card-base;
@@ -44,6 +48,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Interactive Card
+
 ```scss
 .my-card {
   @include card-interactive; // Has hover effects
@@ -51,6 +56,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Card Section
+
 ```scss
 .card-header {
   @include card-section(24px); // With padding
@@ -60,6 +66,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ## Button Mixins
 
 ### Primary Button
+
 ```scss
 .my-btn {
   @include btn-primary;
@@ -67,6 +74,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Secondary Button
+
 ```scss
 .my-btn {
   @include btn-secondary;
@@ -74,6 +82,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Danger Button
+
 ```scss
 .delete-btn {
   @include btn-danger;
@@ -81,6 +90,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Icon Button
+
 ```scss
 .icon-btn {
   @include btn-icon(40px); // Custom size
@@ -88,6 +98,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ```
 
 ### Large Button
+
 ```scss
 .cta-btn {
   @include btn-primary;
@@ -98,6 +109,7 @@ This document provides examples of how to use the SCSS mixins defined in `_mixin
 ## Form Mixins
 
 ### Form Input
+
 ```scss
 input[type='text'],
 input[type='email'],
@@ -108,6 +120,7 @@ textarea {
 ```
 
 ### Form Group
+
 ```scss
 .form-field {
   @include form-group(20px); // margin-bottom
@@ -115,6 +128,7 @@ textarea {
 ```
 
 ### Validation Messages
+
 ```scss
 .error-message {
   @include validation-message(error);
@@ -132,6 +146,7 @@ textarea {
 ## Modal Mixins
 
 ### Modal Backdrop
+
 ```scss
 .modal-overlay {
   @include modal-backdrop;
@@ -139,6 +154,7 @@ textarea {
 ```
 
 ### Modal Content
+
 ```scss
 .modal {
   @include modal-content(700px); // max-width
@@ -148,6 +164,7 @@ textarea {
 ## State Mixins
 
 ### Loading State
+
 ```scss
 .loading {
   @include loading-state;
@@ -155,6 +172,7 @@ textarea {
 ```
 
 ### Empty State
+
 ```scss
 .empty {
   @include empty-state;
@@ -162,6 +180,7 @@ textarea {
 ```
 
 ### Alert Banner
+
 ```scss
 .error-banner {
   @include alert-banner(danger);
@@ -179,6 +198,7 @@ textarea {
 ## Badge Mixins
 
 ### Custom Badge
+
 ```scss
 .my-badge {
   @include badge($accent-primary, $text-dark);
@@ -186,15 +206,17 @@ textarea {
 ```
 
 ### Status Badge
+
 ```scss
 .status {
-  @include status-badge(online);  // online, offline, error
+  @include status-badge(online); // online, offline, error
 }
 ```
 
 ## Typography Mixins
 
 ### Page Header
+
 ```scss
 .page-header {
   @include page-header;
@@ -202,6 +224,7 @@ textarea {
 ```
 
 ### Section Header
+
 ```scss
 .section-header {
   @include section-header;
@@ -209,6 +232,7 @@ textarea {
 ```
 
 ### Text Truncation
+
 ```scss
 .truncate-single {
   @include text-truncate;
@@ -222,6 +246,7 @@ textarea {
 ## Animation Mixins
 
 ### Fade In
+
 ```scss
 .fade-in-element {
   @include animation-fade-in(0.3s);
@@ -229,6 +254,7 @@ textarea {
 ```
 
 ### Slide Down
+
 ```scss
 .slide-down-element {
   @include animation-slide-down(0.4s);
@@ -236,6 +262,7 @@ textarea {
 ```
 
 ### Slide Up
+
 ```scss
 .slide-up-element {
   @include animation-slide-up(0.2s);
@@ -245,6 +272,7 @@ textarea {
 ## Utility Mixins
 
 ### Custom Scrollbar
+
 ```scss
 .scrollable-area {
   @include custom-scrollbar;
@@ -252,13 +280,16 @@ textarea {
 ```
 
 ### List Reset
+
 ```scss
-ul, ol {
+ul,
+ol {
   @include list-reset;
 }
 ```
 
 ### Visually Hidden
+
 ```scss
 .sr-only {
   @include visually-hidden;
@@ -266,6 +297,7 @@ ul, ol {
 ```
 
 ### Aspect Ratio
+
 ```scss
 .video-container {
   @include aspect-ratio(16, 9);
@@ -273,6 +305,7 @@ ul, ol {
 ```
 
 ### Absolute Center
+
 ```scss
 .centered {
   @include absolute-center;
@@ -282,6 +315,7 @@ ul, ol {
 ## Table Mixins
 
 ### Data Table
+
 ```scss
 .my-table {
   @include data-table;
@@ -365,7 +399,7 @@ ul, ol {
 To migrate existing components to use mixins:
 
 1. **Identify repeated patterns** in your SCSS
-2. **Find matching mixin** in _mixins.scss
+2. **Find matching mixin** in \_mixins.scss
 3. **Replace CSS rules** with mixin include
 4. **Remove duplicate code**
 5. **Test responsiveness**
@@ -373,6 +407,7 @@ To migrate existing components to use mixins:
 ### Example Migration
 
 **Before:**
+
 ```scss
 .my-card {
   background: $bg-secondary;
@@ -389,6 +424,7 @@ To migrate existing components to use mixins:
 ```
 
 **After:**
+
 ```scss
 .my-card {
   @include card-interactive;

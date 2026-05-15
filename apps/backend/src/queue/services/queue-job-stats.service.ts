@@ -40,8 +40,14 @@ export class QueueJobStatsService {
     ] = await Promise.all([
       this.jobRepository.countWhere({ ...where, stage: JobStage.DETECTED }),
       this.jobRepository.countWhere({ ...where, stage: JobStage.HEALTH_CHECK }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.NEEDS_DECISION }),
-      this.jobRepository.findManyWithInclude<{ sourceCodec: string; targetCodec: string }>({
+      this.jobRepository.countWhere({
+        ...where,
+        stage: JobStage.NEEDS_DECISION,
+      }),
+      this.jobRepository.findManyWithInclude<{
+        sourceCodec: string;
+        targetCodec: string;
+      }>({
         where: { ...where, stage: JobStage.NEEDS_DECISION },
         select: { sourceCodec: true, targetCodec: true },
       }),

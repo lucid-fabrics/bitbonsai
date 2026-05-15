@@ -33,7 +33,10 @@ describe('FileFailureTrackingService', () => {
       providers: [
         FileFailureTrackingService,
         { provide: PrismaService, useValue: prisma },
-        { provide: FileFailureRecordRepository, useValue: fileFailureRecordRepository },
+        {
+          provide: FileFailureRecordRepository,
+          useValue: fileFailureRecordRepository,
+        },
       ],
     }).compile();
 

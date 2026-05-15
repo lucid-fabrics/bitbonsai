@@ -53,7 +53,13 @@ export class QueueService {
     libraryId?: string,
     page?: number,
     limit?: number
-  ): Promise<{ jobs: Job[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    jobs: Job[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     return this.jobCrudService.findAll(stage, nodeId, search, libraryId, page, limit);
   }
 
@@ -181,14 +187,24 @@ export class QueueService {
 
   async skipAllCodecMatch(): Promise<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.jobStateService.skipAllCodecMatch();
   }
 
   async forceEncodeAllCodecMatch(): Promise<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.jobStateService.forceEncodeAllCodecMatch();
   }

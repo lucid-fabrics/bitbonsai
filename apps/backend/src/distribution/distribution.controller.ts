@@ -120,7 +120,11 @@ export class DistributionController {
   })
   @ApiOkResponse({ description: 'Rebalance complete' })
   @ApiInternalServerErrorResponse({ description: 'Rebalance failed' })
-  async rebalanceJobs(): Promise<{ success: boolean; migratedCount: number; reasons: unknown[] }> {
+  async rebalanceJobs(): Promise<{
+    success: boolean;
+    migratedCount: number;
+    reasons: unknown[];
+  }> {
     const result = await this.orchestrator.rebalanceJobs();
 
     return {

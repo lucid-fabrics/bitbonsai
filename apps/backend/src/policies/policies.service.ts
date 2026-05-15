@@ -58,7 +58,10 @@ export class PoliciesService {
   /**
    * Get default codec and quality for a preset
    */
-  private getPresetDefaults(preset: PolicyPreset): { codec: TargetCodec; quality: number } {
+  private getPresetDefaults(preset: PolicyPreset): {
+    codec: TargetCodec;
+    quality: number;
+  } {
     switch (preset) {
       case PolicyPreset.BALANCED_HEVC:
         return { codec: TargetCodec.HEVC, quality: 23 };

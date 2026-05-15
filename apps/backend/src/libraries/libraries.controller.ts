@@ -140,7 +140,10 @@ export class LibrariesController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Ready files cache invalidated successfully' },
+        message: {
+          type: 'string',
+          example: 'Ready files cache invalidated successfully',
+        },
       },
     },
   })

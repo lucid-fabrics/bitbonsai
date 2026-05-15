@@ -1,6 +1,12 @@
 <form [formGroup]="libraryForm" (ngSubmit)="onSubmit()" class="library-form">
   <div class="form-header">
-    <h2>{{ isEditMode ? ('libraries.editLibrary' | transloco) : ('libraries.addNewLibrary' | transloco) }}</h2>
+    <h2>
+      {{
+        isEditMode
+          ? ('libraries.editLibrary' | transloco)
+          : ('libraries.addNewLibrary' | transloco)
+      }}
+    </h2>
   </div>
 
   <div class="form-body">
@@ -35,7 +41,11 @@
         <i class="fas fa-folder-open"></i>
         {{ 'libraryForm.libraryPathStar' | transloco }}
       </label>
-      <div class="path-input-wrapper" #pathWrapper (click)="onWrapperClick($event)">
+      <div
+        class="path-input-wrapper"
+        #pathWrapper
+        (click)="onWrapperClick($event)"
+      >
         <input
           id="path"
           type="text"
@@ -93,10 +103,10 @@
         {{ 'libraryForm.defaultEncodingPolicy' | transloco }}
       </label>
       @if (policies$ | async; as policies) {
-        <select
-          id="defaultPolicyId"
-          formControlName="defaultPolicyId">
-          <option [value]="null">{{ 'libraryForm.noDefaultPolicy' | transloco }}</option>
+        <select id="defaultPolicyId" formControlName="defaultPolicyId">
+          <option [value]="null">
+            {{ 'libraryForm.noDefaultPolicy' | transloco }}
+          </option>
           @for (policy of policies; track policy.id) {
             <option [value]="policy.id">
               {{ policy.name }} ({{ policy.targetCodec }})
@@ -126,12 +136,18 @@
         <label for="enabled" class="toggle-label">
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-status">{{ enabledControl?.value ? ('libraries.enabled' | transloco) : ('libraries.disabled' | transloco) }}</span>
+        <span class="toggle-status">{{
+          enabledControl?.value
+            ? ('libraries.enabled' | transloco)
+            : ('libraries.disabled' | transloco)
+        }}</span>
       </div>
       <div class="field-hint">
         <i class="fas fa-info-circle"></i>
-        <strong>{{ 'library.whenEnabled' | transloco }}</strong> {{ 'library.scanEnabledDesc' | transloco }}
-        <strong>{{ 'library.whenDisabled' | transloco }}</strong> {{ 'library.scanDisabledDesc' | transloco }}
+        <strong>{{ 'library.whenEnabled' | transloco }}</strong>
+        {{ 'library.scanEnabledDesc' | transloco }}
+        <strong>{{ 'library.whenDisabled' | transloco }}</strong>
+        {{ 'library.scanDisabledDesc' | transloco }}
       </div>
     </div>
 
@@ -151,12 +167,18 @@
         <label for="watchEnabled" class="toggle-label">
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-status">{{ watchEnabledControl?.value ? ('libraries.watching' | transloco) : ('libraries.notWatching' | transloco) }}</span>
+        <span class="toggle-status">{{
+          watchEnabledControl?.value
+            ? ('libraries.watching' | transloco)
+            : ('libraries.notWatching' | transloco)
+        }}</span>
       </div>
       <div class="field-hint">
         <i class="fas fa-info-circle"></i>
-        <strong>{{ 'library.whenEnabled' | transloco }}</strong> {{ 'library.watchEnabledDesc' | transloco }}
-        <strong>{{ 'library.whenDisabled' | transloco }}</strong> {{ 'library.watchDisabledDesc' | transloco }}
+        <strong>{{ 'library.whenEnabled' | transloco }}</strong>
+        {{ 'library.watchEnabledDesc' | transloco }}
+        <strong>{{ 'library.whenDisabled' | transloco }}</strong>
+        {{ 'library.watchDisabledDesc' | transloco }}
       </div>
     </div>
   </div>
@@ -166,9 +188,17 @@
       <i class="fas fa-times"></i>
       {{ 'common.cancel' | transloco }}
     </button>
-    <button type="submit" class="btn btn-primary" [disabled]="libraryForm.invalid">
+    <button
+      type="submit"
+      class="btn btn-primary"
+      [disabled]="libraryForm.invalid"
+    >
       <i class="fas fa-check"></i>
-      {{ isEditMode ? ('libraries.updateLibrary' | transloco) : ('libraries.createLibrary' | transloco) }}
+      {{
+        isEditMode
+          ? ('libraries.updateLibrary' | transloco)
+          : ('libraries.createLibrary' | transloco)
+      }}
     </button>
   </div>
 </form>

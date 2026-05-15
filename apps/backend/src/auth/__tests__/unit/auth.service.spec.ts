@@ -62,7 +62,10 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    const loginDto: LoginDto = { username: 'admin', password: 'correct-password' };
+    const loginDto: LoginDto = {
+      username: 'admin',
+      password: 'correct-password',
+    };
 
     it('should return AuthResponseDto with tokens on valid credentials', async () => {
       mockUserRepository.findByUsername.mockResolvedValue(mockUser);
@@ -118,7 +121,10 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException with "Account is disabled" when user is inactive', async () => {
-      mockUserRepository.findByUsername.mockResolvedValue({ ...mockUser, isActive: false });
+      mockUserRepository.findByUsername.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      });
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
       await expect(service.login(loginDto)).rejects.toThrow('Account is disabled');
@@ -136,7 +142,9 @@ describe('AuthService', () => {
   });
 
   describe('refreshToken', () => {
-    const refreshTokenDto: RefreshTokenDto = { refreshToken: 'valid-refresh-token' };
+    const refreshTokenDto: RefreshTokenDto = {
+      refreshToken: 'valid-refresh-token',
+    };
 
     it('should return new AuthResponseDto with rotated tokens on valid refresh token', async () => {
       const userWithToken = {
@@ -233,7 +241,11 @@ describe('AuthService', () => {
 
   describe('validateToken', () => {
     it('should return decoded payload for a valid token', async () => {
-      const mockPayload = { userId: 'user-123', username: 'admin', role: 'ADMIN' };
+      const mockPayload = {
+        userId: 'user-123',
+        username: 'admin',
+        role: 'ADMIN',
+      };
       mockJwtService.verify.mockReturnValue(mockPayload);
 
       const result = await service.validateToken('valid-jwt-token');

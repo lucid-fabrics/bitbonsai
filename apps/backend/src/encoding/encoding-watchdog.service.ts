@@ -288,7 +288,9 @@ export class EncodingWatchdogService {
 
     // Calculate jobs to pause/resume
     const jobsToPause = encodingJobs - targetWorkers;
-    const pausedJobs = await this.jobRepository.countWhere({ stage: 'PAUSED_LOAD' });
+    const pausedJobs = await this.jobRepository.countWhere({
+      stage: 'PAUSED_LOAD',
+    });
 
     // SCENARIO 1: Load is high, need to pause jobs
     if (jobsToPause > 0 && encodingJobs > targetWorkers) {

@@ -140,7 +140,10 @@ describe('LicenseService Integration Tests', () => {
       };
       mockLicenseRepository.createLicense.mockResolvedValue(created);
 
-      const result = await service.createLicense({ tier: LicenseTier.FREE, email: 'a@b.com' });
+      const result = await service.createLicense({
+        tier: LicenseTier.FREE,
+        email: 'a@b.com',
+      });
 
       expect(result).toEqual(created);
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
@@ -150,7 +153,10 @@ describe('LicenseService Integration Tests', () => {
           maxNodes: 1,
           maxConcurrentJobs: 2,
           status: LicenseStatus.ACTIVE,
-          features: expect.objectContaining({ multiNode: false, cloudStorage: false }),
+          features: expect.objectContaining({
+            multiNode: false,
+            cloudStorage: false,
+          }),
         })
       );
     });
@@ -171,7 +177,10 @@ describe('LicenseService Integration Tests', () => {
       };
       mockLicenseRepository.createLicense.mockResolvedValue(created);
 
-      await service.createLicense({ tier: LicenseTier.PATREON_PRO, email: 'pro@test.com' });
+      await service.createLicense({
+        tier: LicenseTier.PATREON_PRO,
+        email: 'pro@test.com',
+      });
 
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -261,14 +270,19 @@ describe('LicenseService Integration Tests', () => {
       });
 
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
-        expect.objectContaining({ validUntil: new Date('2027-01-01T00:00:00.000Z') })
+        expect.objectContaining({
+          validUntil: new Date('2027-01-01T00:00:00.000Z'),
+        })
       );
     });
   });
 
   describe('checkCanAddNode', () => {
     it('should return true when current nodes < maxNodes', async () => {
-      mockLicenseRepository.findUnique.mockResolvedValue({ maxNodes: 5, _count: { nodes: 2 } });
+      mockLicenseRepository.findUnique.mockResolvedValue({
+        maxNodes: 5,
+        _count: { nodes: 2 },
+      });
 
       const result = await service.checkCanAddNode('lic-123');
 
@@ -279,7 +293,10 @@ describe('LicenseService Integration Tests', () => {
     });
 
     it('should return false when current nodes === maxNodes', async () => {
-      mockLicenseRepository.findUnique.mockResolvedValue({ maxNodes: 1, _count: { nodes: 1 } });
+      mockLicenseRepository.findUnique.mockResolvedValue({
+        maxNodes: 1,
+        _count: { nodes: 1 },
+      });
 
       expect(await service.checkCanAddNode('lic-full')).toBe(false);
     });

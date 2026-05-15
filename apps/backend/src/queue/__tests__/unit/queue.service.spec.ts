@@ -723,9 +723,21 @@ describe('QueueService', () => {
         retriedCount: 3,
         totalSizeBytes: '32212254720',
         jobs: [
-          { id: 'job-1', fileLabel: 'Avatar.mkv', beforeSizeBytes: BigInt(10737418240) },
-          { id: 'job-2', fileLabel: 'Dune.mkv', beforeSizeBytes: BigInt(10737418240) },
-          { id: 'job-3', fileLabel: 'Interstellar.mkv', beforeSizeBytes: BigInt(10737418240) },
+          {
+            id: 'job-1',
+            fileLabel: 'Avatar.mkv',
+            beforeSizeBytes: BigInt(10737418240),
+          },
+          {
+            id: 'job-2',
+            fileLabel: 'Dune.mkv',
+            beforeSizeBytes: BigInt(10737418240),
+          },
+          {
+            id: 'job-3',
+            fileLabel: 'Interstellar.mkv',
+            beforeSizeBytes: BigInt(10737418240),
+          },
         ],
       };
       jobStateService.retryAllCancelled.mockResolvedValue(mockResult);
@@ -772,7 +784,14 @@ describe('QueueService', () => {
     it('should skip all codec-match jobs and return summary', async () => {
       const mockResult = {
         skippedCount: 5,
-        jobs: [{ id: 'job-1', fileLabel: 'Avatar.mkv', sourceCodec: 'HEVC', targetCodec: 'HEVC' }],
+        jobs: [
+          {
+            id: 'job-1',
+            fileLabel: 'Avatar.mkv',
+            sourceCodec: 'HEVC',
+            targetCodec: 'HEVC',
+          },
+        ],
       };
       jobStateService.skipAllCodecMatch.mockResolvedValue(mockResult);
 
@@ -787,7 +806,14 @@ describe('QueueService', () => {
     it('should force encode all codec-match jobs and return summary', async () => {
       const mockResult = {
         queuedCount: 4,
-        jobs: [{ id: 'job-1', fileLabel: 'Avatar.mkv', sourceCodec: 'HEVC', targetCodec: 'HEVC' }],
+        jobs: [
+          {
+            id: 'job-1',
+            fileLabel: 'Avatar.mkv',
+            sourceCodec: 'HEVC',
+            targetCodec: 'HEVC',
+          },
+        ],
       };
       jobStateService.forceEncodeAllCodecMatch.mockResolvedValue(mockResult);
 
@@ -824,7 +850,9 @@ describe('QueueService', () => {
 
   describe('deleteOriginalBackup', () => {
     it('should delete original backup and return freed space', async () => {
-      jobStateService.deleteOriginalBackup.mockResolvedValue({ freedSpace: BigInt(5368709120) });
+      jobStateService.deleteOriginalBackup.mockResolvedValue({
+        freedSpace: BigInt(5368709120),
+      });
 
       const result = await service.deleteOriginalBackup('job-1');
 
@@ -1003,7 +1031,10 @@ describe('QueueService', () => {
 
   describe('handleEncodingFailed', () => {
     it('should fail the job when encoding failed event is received', async () => {
-      jobStateService.failJob.mockResolvedValue({ ...mockJob, stage: JobStage.FAILED });
+      jobStateService.failJob.mockResolvedValue({
+        ...mockJob,
+        stage: JobStage.FAILED,
+      });
       const event = new EncodingFailedEvent('job-1', 'FFmpeg: codec not supported');
 
       await service.handleEncodingFailed(event);
@@ -1025,7 +1056,10 @@ describe('QueueService', () => {
 
   describe('handleEncodingCancelled', () => {
     it('should cancel the job when encoding cancelled event is received', async () => {
-      jobStateService.cancelJob.mockResolvedValue({ ...mockJob, stage: JobStage.CANCELLED });
+      jobStateService.cancelJob.mockResolvedValue({
+        ...mockJob,
+        stage: JobStage.CANCELLED,
+      });
       const event = new EncodingCancelledEvent('job-1');
 
       await service.handleEncodingCancelled(event);
@@ -1044,7 +1078,9 @@ describe('QueueService', () => {
   describe('handleEncodingProcessMarked', () => {
     it('should update raw job fields when process-marked event is received', async () => {
       jobCrudService.updateJobRaw.mockResolvedValue(undefined);
-      const updates = { cancelProcessedAt: new Date('2024-01-01T00:00:00.000Z') };
+      const updates = {
+        cancelProcessedAt: new Date('2024-01-01T00:00:00.000Z'),
+      };
       const event = new EncodingProcessMarkedEvent('job-1', updates);
 
       await service.handleEncodingProcessMarked(event);
@@ -1107,7 +1143,9 @@ describe('QueueService', () => {
   describe('handleEncodingProcessMarked — non-Error thrown value', () => {
     it('handles string thrown without crashing', async () => {
       jobCrudService.updateJobRaw.mockRejectedValue('unexpected string');
-      const event = new EncodingProcessMarkedEvent('job-1', { pauseProcessedAt: new Date() });
+      const event = new EncodingProcessMarkedEvent('job-1', {
+        pauseProcessedAt: new Date(),
+      });
 
       await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
     });

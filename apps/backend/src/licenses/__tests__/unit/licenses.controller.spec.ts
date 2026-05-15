@@ -164,7 +164,9 @@ describe('LicensesController', () => {
 
   describe('activateLicense', () => {
     it('should call licensesService.activateLicense and return masked LicenseDto', async () => {
-      const activateDto = { licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234' } as never;
+      const activateDto = {
+        licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234',
+      } as never;
       const activationResult = {
         tier: LicenseTier.PATREON_PRO,
         email: 'user@example.com',
@@ -191,7 +193,9 @@ describe('LicensesController', () => {
 
     it('should set validUntil to ISO date string when expiresAt is set', async () => {
       const expiresAt = new Date('2027-01-01T00:00:00.000Z');
-      const activateDto = { licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234' } as never;
+      const activateDto = {
+        licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234',
+      } as never;
       const activationResult = {
         tier: LicenseTier.PATREON_PRO,
         email: null,
@@ -218,7 +222,10 @@ describe('LicensesController', () => {
   describe('lookupLicense', () => {
     it('should call licensesService.lookupLicenseByEmail with email from dto', async () => {
       const dto = { email: 'user@example.com' } as never;
-      const lookupResult = { found: true, license: { tier: 'PATREON_PRO', maskedKey: '****' } };
+      const lookupResult = {
+        found: true,
+        license: { tier: 'PATREON_PRO', maskedKey: '****' },
+      };
       mockLicensesService.lookupLicenseByEmail.mockResolvedValue(lookupResult);
 
       const result = await controller.lookupLicense(dto);
@@ -228,9 +235,13 @@ describe('LicensesController', () => {
     });
 
     it('should return found: false when no license associated with email', async () => {
-      mockLicensesService.lookupLicenseByEmail.mockResolvedValue({ found: false });
+      mockLicensesService.lookupLicenseByEmail.mockResolvedValue({
+        found: false,
+      });
 
-      const result = await controller.lookupLicense({ email: 'unknown@example.com' } as never);
+      const result = await controller.lookupLicense({
+        email: 'unknown@example.com',
+      } as never);
 
       expect(result).toEqual({ found: false });
     });

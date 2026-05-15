@@ -61,7 +61,9 @@ describe('NodeRepository', () => {
       const result = await repository.findById('node-1');
 
       expect(result).toEqual(mockNode);
-      expect(mockPrismaNode.findUnique).toHaveBeenCalledWith({ where: { id: 'node-1' } });
+      expect(mockPrismaNode.findUnique).toHaveBeenCalledWith({
+        where: { id: 'node-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -80,7 +82,9 @@ describe('NodeRepository', () => {
       const result = await repository.findOnline();
 
       expect(result).toEqual([mockNode]);
-      expect(mockPrismaNode.findMany).toHaveBeenCalledWith({ where: { status: 'ONLINE' } });
+      expect(mockPrismaNode.findMany).toHaveBeenCalledWith({
+        where: { status: 'ONLINE' },
+      });
     });
 
     it('should return empty array when no online nodes', async () => {
@@ -99,7 +103,9 @@ describe('NodeRepository', () => {
       const result = await repository.findByRole('MAIN');
 
       expect(result).toEqual([mockNode]);
-      expect(mockPrismaNode.findMany).toHaveBeenCalledWith({ where: { role: 'MAIN' } });
+      expect(mockPrismaNode.findMany).toHaveBeenCalledWith({
+        where: { role: 'MAIN' },
+      });
     });
 
     it('should return empty array when no nodes match role', async () => {
@@ -118,7 +124,9 @@ describe('NodeRepository', () => {
       const result = await repository.findMain();
 
       expect(result).toEqual(mockNode);
-      expect(mockPrismaNode.findFirst).toHaveBeenCalledWith({ where: { role: 'MAIN' } });
+      expect(mockPrismaNode.findFirst).toHaveBeenCalledWith({
+        where: { role: 'MAIN' },
+      });
     });
 
     it('should return null when no main node', async () => {
@@ -138,7 +146,9 @@ describe('NodeRepository', () => {
       const result = await repository.findLinked();
 
       expect(result).toEqual([linkedNode]);
-      expect(mockPrismaNode.findMany).toHaveBeenCalledWith({ where: { role: 'LINKED' } });
+      expect(mockPrismaNode.findMany).toHaveBeenCalledWith({
+        where: { role: 'LINKED' },
+      });
     });
 
     it('should return empty array when no linked nodes', async () => {
@@ -178,7 +188,9 @@ describe('NodeRepository', () => {
       const result = await repository.countOnline();
 
       expect(result).toBe(3);
-      expect(mockPrismaNode.count).toHaveBeenCalledWith({ where: { status: 'ONLINE' } });
+      expect(mockPrismaNode.count).toHaveBeenCalledWith({
+        where: { status: 'ONLINE' },
+      });
     });
 
     it('should return 0 when no online nodes', async () => {
@@ -216,7 +228,9 @@ describe('NodeRepository', () => {
       const result = await repository.findByApiKey('api-key-123');
 
       expect(result).toEqual(mockNode);
-      expect(mockPrismaNode.findUnique).toHaveBeenCalledWith({ where: { apiKey: 'api-key-123' } });
+      expect(mockPrismaNode.findUnique).toHaveBeenCalledWith({
+        where: { apiKey: 'api-key-123' },
+      });
     });
 
     it('should return null for unknown api key', async () => {
@@ -232,7 +246,10 @@ describe('NodeRepository', () => {
     it('should create a node with provided data', async () => {
       mockPrismaNode.create.mockResolvedValue(mockNode);
 
-      const result = await repository.createNode({ name: 'Main Node', ipAddress: '192.168.1.100' });
+      const result = await repository.createNode({
+        name: 'Main Node',
+        ipAddress: '192.168.1.100',
+      });
 
       expect(result).toEqual(mockNode);
       expect(mockPrismaNode.create).toHaveBeenCalledWith({
@@ -256,7 +273,9 @@ describe('NodeRepository', () => {
       const result = await repository.deleteById('node-1');
 
       expect(result).toEqual(mockNode);
-      expect(mockPrismaNode.delete).toHaveBeenCalledWith({ where: { id: 'node-1' } });
+      expect(mockPrismaNode.delete).toHaveBeenCalledWith({
+        where: { id: 'node-1' },
+      });
     });
 
     it('should propagate errors when not found', async () => {
@@ -273,13 +292,17 @@ describe('NodeRepository', () => {
       const result = await repository.findFirstByRole('MAIN');
 
       expect(result).toEqual(mockNode);
-      expect(mockPrismaNode.findFirst).toHaveBeenCalledWith({ where: { role: 'MAIN' } });
+      expect(mockPrismaNode.findFirst).toHaveBeenCalledWith({
+        where: { role: 'MAIN' },
+      });
     });
 
     it('should pass orderBy when provided', async () => {
       mockPrismaNode.findFirst.mockResolvedValue(mockNode);
 
-      await repository.findFirstByRole('LINKED', { orderBy: { createdAt: 'asc' } });
+      await repository.findFirstByRole('LINKED', {
+        orderBy: { createdAt: 'asc' },
+      });
 
       expect(mockPrismaNode.findFirst).toHaveBeenCalledWith({
         where: { role: 'LINKED' },
@@ -320,7 +343,9 @@ describe('NodeRepository', () => {
 
   describe('aggregateMaxEncodingSpeed', () => {
     it('should return max encoding speed', async () => {
-      mockPrismaNode.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 5.0 } });
+      mockPrismaNode.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 5.0 },
+      });
 
       const result = await repository.aggregateMaxEncodingSpeed();
 
@@ -328,7 +353,9 @@ describe('NodeRepository', () => {
     });
 
     it('should return 0 when no nodes have encoding speed', async () => {
-      mockPrismaNode.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: null } });
+      mockPrismaNode.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: null },
+      });
 
       const result = await repository.aggregateMaxEncodingSpeed();
 

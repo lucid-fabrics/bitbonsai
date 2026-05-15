@@ -86,7 +86,9 @@ describe('LicenseClientService', () => {
 
   describe('getLicenseKey', () => {
     it('should return license key from database', async () => {
-      mockPrismaService.license.findFirst.mockResolvedValue({ key: 'BB-TEST-1234' });
+      mockPrismaService.license.findFirst.mockResolvedValue({
+        key: 'BB-TEST-1234',
+      });
 
       const result = await service.getLicenseKey();
       expect(result).toBe('BB-TEST-1234');
@@ -134,7 +136,9 @@ describe('LicenseClientService', () => {
     });
 
     it('should call API and cache result on first verification', async () => {
-      mockPrismaService.license.findFirst.mockResolvedValue({ key: 'BB-TEST-1234' });
+      mockPrismaService.license.findFirst.mockResolvedValue({
+        key: 'BB-TEST-1234',
+      });
       mockHttpService.post.mockReturnValue(
         of({
           data: {
@@ -158,7 +162,9 @@ describe('LicenseClientService', () => {
 
     it('should return cached license within TTL', async () => {
       // First call - populate cache
-      mockPrismaService.license.findFirst.mockResolvedValue({ key: 'BB-TEST-1234' });
+      mockPrismaService.license.findFirst.mockResolvedValue({
+        key: 'BB-TEST-1234',
+      });
       mockHttpService.post.mockReturnValue(
         of({
           data: {
@@ -185,7 +191,9 @@ describe('LicenseClientService', () => {
 
     it('should fall back to cached license when API fails', async () => {
       // First call - populate cache
-      mockPrismaService.license.findFirst.mockResolvedValue({ key: 'BB-TEST-1234' });
+      mockPrismaService.license.findFirst.mockResolvedValue({
+        key: 'BB-TEST-1234',
+      });
       mockHttpService.post.mockReturnValue(
         of({
           data: {
@@ -302,7 +310,9 @@ describe('LicenseClientService', () => {
     });
 
     it('should throw ServiceUnavailableException on network error', async () => {
-      const networkError = new Error('connect ECONNREFUSED') as Error & { code: string };
+      const networkError = new Error('connect ECONNREFUSED') as Error & {
+        code: string;
+      };
       networkError.code = 'ECONNREFUSED';
       mockHttpService.post.mockReturnValue(throwError(() => networkError));
 

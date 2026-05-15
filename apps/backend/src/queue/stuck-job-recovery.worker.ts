@@ -327,7 +327,10 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         stage: JobStage.TRANSFERRING,
         OR: [
           { transferLastProgressAt: { lt: transferringCutoff } },
-          { transferLastProgressAt: null, transferStartedAt: { lt: transferringCutoff } },
+          {
+            transferLastProgressAt: null,
+            transferStartedAt: { lt: transferringCutoff },
+          },
         ],
       } satisfies Prisma.JobWhereInput,
       {

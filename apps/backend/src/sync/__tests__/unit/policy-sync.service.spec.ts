@@ -273,7 +273,13 @@ describe('PolicySyncService', () => {
 
       await expect(
         service.receiveLibraries([
-          { id: 'l1', name: 'Movies', path: '/media', mediaType: 'MOVIE', enabled: true },
+          {
+            id: 'l1',
+            name: 'Movies',
+            path: '/media',
+            mediaType: 'MOVIE',
+            enabled: true,
+          },
         ] as any)
       ).rejects.toThrow(NotFoundException);
     });
@@ -283,7 +289,13 @@ describe('PolicySyncService', () => {
       mockPrismaService.library.upsert.mockResolvedValue({});
 
       const libraries = [
-        { id: 'l1', name: 'Movies', path: '/media/movies', mediaType: 'MOVIE', enabled: true },
+        {
+          id: 'l1',
+          name: 'Movies',
+          path: '/media/movies',
+          mediaType: 'MOVIE',
+          enabled: true,
+        },
       ];
 
       await service.receiveLibraries(libraries as any);
@@ -294,7 +306,9 @@ describe('PolicySyncService', () => {
 
   describe('receiveSettings', () => {
     it('should update existing settings', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({ id: 'settings-1' });
+      mockPrismaService.settings.findFirst.mockResolvedValue({
+        id: 'settings-1',
+      });
       mockPrismaService.settings.update.mockResolvedValue({});
 
       await service.receiveSettings({

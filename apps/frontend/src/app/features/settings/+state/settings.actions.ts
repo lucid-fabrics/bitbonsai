@@ -28,7 +28,10 @@ export const SettingsActions = createActionGroup({
     'Update System Settings Failure': props<{ error: string }>(),
 
     'Backup Database': emptyProps(),
-    'Backup Database Success': props<{ backupPath: string; timestamp: string }>(),
+    'Backup Database Success': props<{
+      backupPath: string;
+      timestamp: string;
+    }>(),
     'Backup Database Failure': props<{ error: string }>(),
 
     'Reset To Defaults': emptyProps(),

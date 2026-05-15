@@ -109,7 +109,9 @@ export class PoliciesPage extends BasePage {
    * Close the policy form modal
    */
   async closeForm(): Promise<void> {
-    const closeButton = this.page.getByRole('button', { name: /close|cancel/i });
+    const closeButton = this.page.getByRole('button', {
+      name: /close|cancel/i,
+    });
     await closeButton.click();
   }
 

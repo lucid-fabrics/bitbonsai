@@ -9,6 +9,7 @@ BitBonsai supports Ko-fi and Patreon webhooks for automated license activation. 
 ### Environment Variables Required
 
 #### Patreon Integration
+
 ```bash
 PATREON_CLIENT_ID=your_patreon_client_id
 PATREON_CLIENT_SECRET=your_patreon_client_secret
@@ -17,6 +18,7 @@ PATREON_REDIRECT_URI=http://192.168.1.100:3100/api/v1/patreon/callback
 ```
 
 #### Ko-fi Integration
+
 ```bash
 KOFI_VERIFICATION_TOKEN=your_kofi_verification_token
 ```
@@ -32,6 +34,7 @@ curl http://192.168.1.100:3100/api/v1/patreon/status
 ```
 
 **Expected Response:**
+
 ```json
 {
   "configured": true,
@@ -66,6 +69,7 @@ curl -X POST http://192.168.1.100:3100/api/v1/patreon/webhook \
 ```
 
 **Expected Response:**
+
 ```json
 {
   "success": true
@@ -74,20 +78,20 @@ curl -X POST http://192.168.1.100:3100/api/v1/patreon/webhook \
 
 ### 4. Webhook Events Supported
 
-| Event | Description | Action |
-|-------|-------------|--------|
-| `members:pledge:create` | New patron pledge | Creates license |
-| `members:pledge:update` | Patron tier change | Updates license tier |
-| `members:pledge:delete` | Patron cancellation | Revokes license |
+| Event                   | Description         | Action               |
+| ----------------------- | ------------------- | -------------------- |
+| `members:pledge:create` | New patron pledge   | Creates license      |
+| `members:pledge:update` | Patron tier change  | Updates license tier |
+| `members:pledge:delete` | Patron cancellation | Revokes license      |
 
 ### 5. Tier Mapping
 
-| Pledge Amount | License Tier |
-|--------------|--------------|
-| $5/month | PATREON_SUPPORTER |
-| $10/month | PATREON_PLUS |
-| $15/month | PATREON_PRO |
-| $25/month | PATREON_ULTIMATE |
+| Pledge Amount | License Tier      |
+| ------------- | ----------------- |
+| $5/month      | PATREON_SUPPORTER |
+| $10/month     | PATREON_PLUS      |
+| $15/month     | PATREON_PRO       |
+| $25/month     | PATREON_ULTIMATE  |
 
 ## Testing Ko-fi Integration
 
@@ -113,6 +117,7 @@ curl -X POST http://192.168.1.100:3100/api/v1/webhook/kofi \
 ```
 
 **Expected Response:**
+
 ```json
 {
   "received": true
@@ -176,6 +181,7 @@ Comprehensive test suites exist for both integrations:
 - `apps/license-api/src/webhook/__tests__/kofi.controller.spec.ts` (10 tests)
 
 Run tests:
+
 ```bash
 nx test license-api
 ```

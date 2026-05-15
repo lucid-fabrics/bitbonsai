@@ -117,7 +117,10 @@ describe('InsightsController', () => {
 
   describe('getCodecDistribution', () => {
     it('should return codec distribution with licenseId filter', async () => {
-      const dist = { codecs: [{ codec: 'H.264', count: 500, percentage: 59.4 }], totalFiles: 842 };
+      const dist = {
+        codecs: [{ codec: 'H.264', count: 500, percentage: 59.4 }],
+        totalFiles: 842,
+      };
       mockInsightsService.getCodecDistribution.mockResolvedValue(dist);
 
       const response = await controller.getCodecDistribution('lic-1');
@@ -153,7 +156,11 @@ describe('InsightsController', () => {
     });
 
     it('should pass provided days and licenseId to service', async () => {
-      const trend = { dailySavings: [], totalSavedBytes: '500', totalSavedGB: 0.5 };
+      const trend = {
+        dailySavings: [],
+        totalSavedBytes: '500',
+        totalSavedGB: 0.5,
+      };
       mockInsightsService.getSavingsTrend.mockResolvedValue(trend);
 
       const response = await controller.getSavingsTrend(7, 'lic-1');
@@ -178,7 +185,9 @@ describe('InsightsController', () => {
 
   describe('getNodeComparison', () => {
     it('should return node comparison with licenseId', async () => {
-      const comparison = { nodes: [{ nodeId: 'node-1', jobsCompleted: 523, successRate: 98.7 }] };
+      const comparison = {
+        nodes: [{ nodeId: 'node-1', jobsCompleted: 523, successRate: 98.7 }],
+      };
       mockInsightsService.getNodeComparison.mockResolvedValue(comparison);
 
       const response = await controller.getNodeComparison('lic-1');

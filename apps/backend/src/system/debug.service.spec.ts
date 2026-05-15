@@ -23,11 +23,13 @@ jest.mock('../prisma/prisma.service', () => ({
 // Mock node:os to allow re-mocking in tests
 jest.mock('node:os', () => ({
   loadavg: jest.fn().mockReturnValue([0.5, 0.5, 0.5]),
-  cpus: jest
-    .fn()
-    .mockReturnValue(
-      Array(4).fill({ model: 'x', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } })
-    ),
+  cpus: jest.fn().mockReturnValue(
+    Array(4).fill({
+      model: 'x',
+      speed: 0,
+      times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+    })
+  ),
   freemem: jest.fn().mockReturnValue(8 * 1024 ** 3),
   totalmem: jest.fn().mockReturnValue(16 * 1024 ** 3),
   networkInterfaces: jest.fn().mockReturnValue({}),
@@ -41,11 +43,17 @@ jest.mock('node:child_process', () => ({
 describe('DebugService', () => {
   let service: DebugService;
   let mockJobRepository: { findManySelect: jest.Mock };
-  let mockNodeRepository: { findFirstByIpAddresses: jest.Mock; updateById: jest.Mock };
+  let mockNodeRepository: {
+    findFirstByIpAddresses: jest.Mock;
+    updateById: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockJobRepository = { findManySelect: jest.fn() };
-    mockNodeRepository = { findFirstByIpAddresses: jest.fn(), updateById: jest.fn() };
+    mockNodeRepository = {
+      findFirstByIpAddresses: jest.fn(),
+      updateById: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -176,7 +184,9 @@ describe('DebugService', () => {
     });
 
     it('should update load threshold when node found', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue({
         id: 'node-1',
         loadThresholdMultiplier: 3.0,
@@ -385,7 +395,9 @@ describe('DebugService', () => {
 
   describe('updateLoadThreshold – additional branches', () => {
     it('should handle repository error and return failure', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockRejectedValue(new Error('DB write failed'));
 
       const result = await service.updateLoadThreshold(3.0);
@@ -395,7 +407,9 @@ describe('DebugService', () => {
     });
 
     it('should accept boundary value 1.0', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue({
         id: 'node-1',
         loadThresholdMultiplier: 1.0,
@@ -413,7 +427,9 @@ describe('DebugService', () => {
     });
 
     it('should accept boundary value 10.0', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue({
         id: 'node-1',
         loadThresholdMultiplier: 10.0,

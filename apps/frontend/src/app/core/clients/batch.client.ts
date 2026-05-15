@@ -51,13 +51,17 @@ export class BatchClient {
     const params: Record<string, string> = {};
     if (olderThanDays) params.olderThanDays = olderThanDays.toString();
     if (nodeId) params.nodeId = nodeId;
-    return this.http.delete<BatchOperationResult>(`${this.apiUrl}/completed`, { params });
+    return this.http.delete<BatchOperationResult>(`${this.apiUrl}/completed`, {
+      params,
+    });
   }
 
   deleteFailed(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
     if (nodeId) params.nodeId = nodeId;
-    return this.http.delete<BatchOperationResult>(`${this.apiUrl}/failed`, { params });
+    return this.http.delete<BatchOperationResult>(`${this.apiUrl}/failed`, {
+      params,
+    });
   }
 
   clearAll(confirmationToken: string): Observable<BatchOperationResult> {

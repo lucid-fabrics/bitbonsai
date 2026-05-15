@@ -46,7 +46,9 @@ export class StorageSharesController {
     description: 'Configure a new NFS or SMB storage share for a node',
   })
   @ApiCreatedResponse({ description: 'Storage share created successfully' })
-  @ApiBadRequestResponse({ description: 'Invalid configuration or duplicate mount point' })
+  @ApiBadRequestResponse({
+    description: 'Invalid configuration or duplicate mount point',
+  })
   async create(@Body() createDto: CreateStorageShareDto) {
     return this.storageShareService.create(createDto);
   }
@@ -250,7 +252,10 @@ export class StorageSharesController {
     description:
       'Automatically creates NFS storage shares for all enabled libraries on the specified node.',
   })
-  @ApiParam({ name: 'nodeId', description: 'Node ID (typically the MAIN node)' })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'Node ID (typically the MAIN node)',
+  })
   @ApiOkResponse({ description: 'Storage shares created successfully' })
   async createLibraryShares(@Param('nodeId') nodeId: string) {
     return this.storageShareService.autoCreateSharesForLibraries(nodeId);
@@ -266,7 +271,9 @@ export class StorageSharesController {
   })
   @ApiParam({ name: 'id', description: 'Storage share ID' })
   @ApiOkResponse({ description: 'Disk usage retrieved successfully' })
-  @ApiNotFoundResponse({ description: 'Storage share not found or not mounted' })
+  @ApiNotFoundResponse({
+    description: 'Storage share not found or not mounted',
+  })
   async getDiskUsage(@Param('id') id: string) {
     const share = await this.storageShareService.findOne(id);
 

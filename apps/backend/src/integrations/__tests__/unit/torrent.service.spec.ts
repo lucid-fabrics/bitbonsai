@@ -722,7 +722,10 @@ describe('TorrentIntegrationService', () => {
       // getDelugeTorrents: login + web.update_ui
       mockHttpService.post
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=abc; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=abc; path=/'] },
+            data: { result: true },
+          })
         )
         .mockReturnValueOnce(
           of({
@@ -743,7 +746,10 @@ describe('TorrentIntegrationService', () => {
         )
         // getDelugeFiles: login + web.get_torrent_files with nested directory
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=abc; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=abc; path=/'] },
+            data: { result: true },
+          })
         )
         .mockReturnValueOnce(
           of({
@@ -780,7 +786,10 @@ describe('TorrentIntegrationService', () => {
 
       mockHttpService.post
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          })
         )
         .mockReturnValueOnce(
           of({
@@ -800,7 +809,10 @@ describe('TorrentIntegrationService', () => {
           })
         )
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          })
         )
         .mockReturnValueOnce(
           of({
@@ -824,7 +836,10 @@ describe('TorrentIntegrationService', () => {
 
       mockHttpService.post
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          })
         )
         .mockReturnValueOnce(
           of({
@@ -844,7 +859,10 @@ describe('TorrentIntegrationService', () => {
           })
         )
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          })
         )
         .mockReturnValueOnce(
           of({ data: { result: null } }) // null result → extractFiles({})

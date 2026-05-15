@@ -78,10 +78,16 @@ describe('HealthCheckWorker', () => {
           },
         },
         { provide: FileHealthService, useValue: fileHealthService },
-        { provide: ContainerCompatibilityService, useValue: containerCompatibilityService },
+        {
+          provide: ContainerCompatibilityService,
+          useValue: containerCompatibilityService,
+        },
         { provide: FfmpegService, useValue: ffmpegService },
         { provide: FileRelocatorService, useValue: fileRelocatorService },
-        { provide: FileFailureTrackingService, useValue: fileFailureTrackingService },
+        {
+          provide: FileFailureTrackingService,
+          useValue: fileFailureTrackingService,
+        },
         HealthCheckCodecAnalyzerService,
         {
           provide: CircuitBreakerService,
@@ -705,7 +711,10 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-err',
-        expect.objectContaining({ stage: JobStage.DETECTED, healthCheckRetries: 1 })
+        expect.objectContaining({
+          stage: JobStage.DETECTED,
+          healthCheckRetries: 1,
+        })
       );
     });
 
@@ -1025,7 +1034,10 @@ describe('HealthCheckWorker', () => {
     it('should include expectedSavings and minSavingsThreshold in metadata', () => {
       const result = (codecAnalyzer as any).checkCodecMatchWithThreshold('h264', 'hevc', 15, 30);
       expect(result.metadata).toEqual(
-        expect.objectContaining({ expectedSavings: 15, minSavingsThreshold: 30 })
+        expect.objectContaining({
+          expectedSavings: 15,
+          minSavingsThreshold: 30,
+        })
       );
     });
 

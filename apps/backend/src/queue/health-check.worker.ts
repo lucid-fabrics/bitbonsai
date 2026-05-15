@@ -336,8 +336,16 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
       healthCheckStartedAt: Date | null;
       retryCount: number;
     }>(
-      { stage: JobStage.HEALTH_CHECK, healthCheckStartedAt: { lt: tenMinutesAgo } },
-      { id: true, fileLabel: true, healthCheckStartedAt: true, retryCount: true }
+      {
+        stage: JobStage.HEALTH_CHECK,
+        healthCheckStartedAt: { lt: tenMinutesAgo },
+      },
+      {
+        id: true,
+        fileLabel: true,
+        healthCheckStartedAt: true,
+        retryCount: true,
+      }
     );
 
     for (const job of stuckJobs) {
@@ -446,7 +454,11 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
                 stage: JobStage.HEALTH_CHECK,
                 OR: [
                   { healthCheckStartedAt: null },
-                  { healthCheckStartedAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } },
+                  {
+                    healthCheckStartedAt: {
+                      lt: new Date(Date.now() - 60 * 60 * 1000),
+                    },
+                  },
                 ],
               },
             ],

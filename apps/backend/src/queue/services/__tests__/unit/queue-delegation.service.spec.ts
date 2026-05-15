@@ -219,7 +219,11 @@ describe('QueueDelegationService', () => {
     const setupTx = (jobOverrides = {}, targetNodeOverrides = {}, sourceNodeOverrides = {}) => {
       const job = makeDbJob(jobOverrides);
       const targetNode = makeNode(targetNodeOverrides);
-      const sourceNode = makeNode({ id: 'node-1', name: 'Main', ...sourceNodeOverrides });
+      const sourceNode = makeNode({
+        id: 'node-1',
+        name: 'Main',
+        ...sourceNodeOverrides,
+      });
 
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         const tx = {
@@ -254,7 +258,9 @@ describe('QueueDelegationService', () => {
     it('should throw BadRequestException when job is already on target node', async () => {
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         return fn({
-          job: { findUnique: jest.fn().mockResolvedValue(makeDbJob({ nodeId: 'node-2' })) },
+          job: {
+            findUnique: jest.fn().mockResolvedValue(makeDbJob({ nodeId: 'node-2' })),
+          },
           node: { findUnique: jest.fn() },
         });
       });
@@ -294,7 +300,9 @@ describe('QueueDelegationService', () => {
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         return fn({
           job: { findUnique: jest.fn().mockResolvedValue(makeDbJob()) },
-          node: { findUnique: jest.fn().mockResolvedValue(makeNode({ status: 'OFFLINE' })) },
+          node: {
+            findUnique: jest.fn().mockResolvedValue(makeNode({ status: 'OFFLINE' })),
+          },
         });
       });
 
@@ -321,7 +329,10 @@ describe('QueueDelegationService', () => {
     });
 
     it('should set transferRequired=false and translate path when shared storage is accessible', async () => {
-      const job = makeDbJob({ nodeId: 'node-1', library: { nodeId: 'node-source' } });
+      const job = makeDbJob({
+        nodeId: 'node-1',
+        library: { nodeId: 'node-source' },
+      });
       const targetNode = makeNode({ id: 'node-2', hasSharedStorage: true });
       const sourceNode = makeNode({ id: 'node-source', name: 'Source' });
 
@@ -339,7 +350,10 @@ describe('QueueDelegationService', () => {
             findUnique: jest
               .fn()
               .mockResolvedValueOnce(job)
-              .mockResolvedValueOnce({ ...job, filePath: '/mnt/shared/movie.mkv' }),
+              .mockResolvedValueOnce({
+                ...job,
+                filePath: '/mnt/shared/movie.mkv',
+              }),
             updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           },
           node: {
@@ -358,7 +372,10 @@ describe('QueueDelegationService', () => {
     });
 
     it('should set transferRequired=true when shared storage verification fails', async () => {
-      const job = makeDbJob({ nodeId: 'node-1', library: { nodeId: 'node-source' } });
+      const job = makeDbJob({
+        nodeId: 'node-1',
+        library: { nodeId: 'node-source' },
+      });
       const targetNode = makeNode({ id: 'node-2', hasSharedStorage: true });
       const sourceNode = makeNode({ id: 'node-source', name: 'Source' });
 

@@ -157,7 +157,9 @@
     align-items: center;
     justify-content: center;
     opacity: 0.4;
-    transition: opacity 0.3s, transform 0.3s;
+    transition:
+      opacity 0.3s,
+      transform 0.3s;
     cursor: pointer;
     position: relative;
 
@@ -357,7 +359,9 @@
 
   &.active {
     border-color: #4a9eff;
-    box-shadow: 0 0 12px rgba(74, 158, 255, 0.8), 0 0 4px rgba(74, 158, 255, 0.4);
+    box-shadow:
+      0 0 12px rgba(74, 158, 255, 0.8),
+      0 0 4px rgba(74, 158, 255, 0.4);
     transform: scale(1.05);
 
     img {

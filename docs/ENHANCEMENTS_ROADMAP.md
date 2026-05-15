@@ -8,9 +8,11 @@
 ## ✅ COMPLETED: Immediate Tasks
 
 ### 1. Create First Admin User Script
+
 **File:** `apps/license-api/scripts/create-first-admin.ts`
 
 **Usage:**
+
 ```bash
 cd apps/license-api
 
@@ -28,9 +30,11 @@ npx tsx scripts/create-first-admin.ts --force
 ```
 
 ### 2. JWT Secret Configuration
+
 **File:** `apps/license-api/.env.local`
 
 **Added:**
+
 ```bash
 JWT_SECRET="2ec4d435b256669f0071b0d0d9614f84edb2dc23f8a4639a6fbc3f0a126f794a"
 JWT_EXPIRES_IN="7d"
@@ -39,9 +43,11 @@ JWT_EXPIRES_IN="7d"
 **Security:** 256-bit cryptographically random secret
 
 ### 3. Database Migration Ready
+
 **File:** `apps/license-api/prisma/schema.prisma`
 
 **Migration command:**
+
 ```bash
 cd apps/license-api
 npx prisma migrate deploy
@@ -53,11 +59,14 @@ npx prisma generate
 ## ✅ COMPLETED: Short-term Tasks
 
 ### 1. Backend Self-Deactivation Check
+
 **Files Modified:**
+
 - `apps/license-api/src/auth/auth.service.ts:117-181`
 - `apps/license-api/src/auth/auth.controller.ts:49-56`
 
 **Implementation:**
+
 ```typescript
 async toggleAdminStatus(userId: string, currentUserId: string) {
   if (userId === currentUserId) {
@@ -70,7 +79,9 @@ async toggleAdminStatus(userId: string, currentUserId: string) {
 **Security Benefit:** Prevents admin from accidentally locking themselves out
 
 ### 2. Audit Logging for Admin Actions
+
 **Files Modified:**
+
 - `apps/license-api/src/auth/auth.module.ts` (added AuditModule)
 - `apps/license-api/src/auth/auth.service.ts` (added audit calls)
 
@@ -83,6 +94,7 @@ async toggleAdminStatus(userId: string, currentUserId: string) {
 | `admin_deactivated` | Status toggled to inactive | Old/new status, modifier ID |
 
 **Query Examples:**
+
 ```typescript
 // Get all actions by a specific admin
 await auditService.getLogsByUser(adminId);
@@ -95,13 +107,16 @@ await auditService.getAllLogs(100, 0);
 ```
 
 ### 3. Password Reset Flow (Partial)
+
 **Files Created:**
+
 - `apps/license-api/src/auth/dto/request-password-reset.dto.ts`
 - `apps/license-api/src/auth/dto/reset-password.dto.ts`
 
 **Status:** DTOs created, needs full implementation
 
 **TODO for completion:**
+
 1. Add password reset token table to Prisma schema
 2. Implement email service integration
 3. Add reset endpoints to auth controller
@@ -116,6 +131,7 @@ await auditService.getAllLogs(100, 0);
 **Purpose:** View and manage active admin sessions
 
 **Features:**
+
 - List all active JWT tokens (tracked in database)
 - Show login time, IP address, device info
 - Force logout (revoke token)
@@ -126,6 +142,7 @@ await auditService.getAllLogs(100, 0);
 #### Backend Changes
 
 **1. Add Session Tracking Table:**
+
 ```prisma
 model AdminSession {
   id          String    @id @default(cuid())
@@ -148,6 +165,7 @@ model AdminSession {
 ```
 
 **2. Track Sessions on Login:**
+
 ```typescript
 // auth.service.ts
 async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
@@ -169,6 +187,7 @@ async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
 ```
 
 **3. Add Session Management Endpoints:**
+
 ```typescript
 // auth.controller.ts
 @Get('sessions')
@@ -190,6 +209,7 @@ async revokeSession(
 **Location:** `apps/website/src/app/pages/admin/sessions/`
 
 **UI Features:**
+
 - Table of active sessions
 - Current session highlighted
 - Revoke button (except current)
@@ -205,6 +225,7 @@ async revokeSession(
 **Purpose:** Migrate from localStorage to secure cookies
 
 **Security Benefits:**
+
 - Immune to XSS attacks
 - Automatic sending with requests
 - Secure, HttpOnly, SameSite flags
@@ -214,6 +235,7 @@ async revokeSession(
 #### Backend Changes
 
 **1. Update Login Response:**
+
 ```typescript
 // auth.controller.ts
 @Public()
@@ -237,6 +259,7 @@ async login(
 ```
 
 **2. Extract Token from Cookies:**
+
 ```typescript
 // jwt.strategy.ts
 jwtFromRequest: ExtractJwt.fromExtractors([
@@ -250,6 +273,7 @@ jwtFromRequest: ExtractJwt.fromExtractors([
 #### Frontend Changes
 
 **1. Remove Token Management:**
+
 ```typescript
 // auth.service.ts
 login(dto: LoginDto): Observable<LoginResponse> {
@@ -266,6 +290,7 @@ login(dto: LoginDto): Observable<LoginResponse> {
 ```
 
 **2. Update HTTP Interceptor:**
+
 ```typescript
 // auth.interceptor.ts
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -278,6 +303,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 ```
 
 **3. CORS Configuration:**
+
 ```typescript
 // Backend: apps/license-api/src/main.ts
 app.enableCors({
@@ -297,6 +323,7 @@ app.enableCors({
 **Implementation Plan:**
 
 #### Dependencies
+
 ```bash
 npm install otplib qrcode
 npm install --save-dev @types/qrcode
@@ -316,6 +343,7 @@ model AdminUser {
 #### Backend Endpoints
 
 **1. Enable 2FA:**
+
 ```typescript
 @Post('2fa/enable')
 async enableTwoFactor(@CurrentUser() user: AdminUserEntity) {
@@ -332,6 +360,7 @@ async enableTwoFactor(@CurrentUser() user: AdminUserEntity) {
 ```
 
 **2. Verify and Activate:**
+
 ```typescript
 @Post('2fa/verify')
 async verifyTwoFactor(
@@ -355,6 +384,7 @@ async verifyTwoFactor(
 ```
 
 **3. Login with 2FA:**
+
 ```typescript
 @Public()
 @Post('login')
@@ -388,6 +418,7 @@ async login(@Body() loginDto: LoginDto & { twoFactorCode?: string }) {
 #### Frontend UI
 
 **Flow:**
+
 1. User enables 2FA in settings
 2. QR code displayed for scanning with authenticator app
 3. User enters 6-digit code to verify
@@ -407,6 +438,7 @@ async login(@Body() loginDto: LoginDto & { twoFactorCode?: string }) {
 #### Backend Validation
 
 **Custom Validator:**
+
 ```typescript
 // password-complexity.validator.ts
 export function IsStrongPassword() {
@@ -443,6 +475,7 @@ export function IsStrongPassword() {
 ```
 
 **Apply to DTOs:**
+
 ```typescript
 export class CreateAdminDto {
   @IsStrongPassword()
@@ -453,6 +486,7 @@ export class CreateAdminDto {
 #### Frontend Validation
 
 **Password Strength Indicator:**
+
 ```typescript
 // password-strength.component.ts
 @Component({
@@ -562,6 +596,7 @@ model AdminUser {
 #### Guard Implementation
 
 **Permission Guard:**
+
 ```typescript
 // permissions.guard.ts
 @Injectable()
@@ -579,9 +614,11 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user as AdminUserEntity & { permissions: Permission[] };
+    const user = request.user as AdminUserEntity & {
+      permissions: Permission[];
+    };
 
-    return requiredPermissions.every(permission =>
+    return requiredPermissions.every((permission) =>
       user.permissions?.includes(permission),
     );
   }
@@ -589,6 +626,7 @@ export class PermissionsGuard implements CanActivate {
 ```
 
 **Decorator:**
+
 ```typescript
 // permissions.decorator.ts
 export const RequirePermissions = (...permissions: Permission[]) =>
@@ -596,6 +634,7 @@ export const RequirePermissions = (...permissions: Permission[]) =>
 ```
 
 **Usage:**
+
 ```typescript
 @Controller('admin/licenses')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -617,6 +656,7 @@ export class LicenseController {
 #### Frontend Role Management UI
 
 **Features:**
+
 - Create/edit roles
 - Assign permissions (checkbox grid)
 - Assign roles to users
@@ -628,16 +668,16 @@ export class LicenseController {
 
 ## Implementation Priority
 
-| Feature | Priority | Effort | Impact |
-|---------|----------|--------|--------|
-| ✅ Self-deactivation check | Critical | 1h | High |
-| ✅ Audit logging | High | 2h | High |
-| 🚧 Password reset | High | 4h | Medium |
-| 🚧 Session management | Medium | 6h | Medium |
-| 🚧 HttpOnly cookies | Medium | 4h | High |
-| 🚧 2FA | Low | 8h | Medium |
-| 🚧 Password complexity | Low | 3h | Low |
-| 🚧 Granular RBAC | Low | 12h | Medium |
+| Feature                    | Priority | Effort | Impact |
+| -------------------------- | -------- | ------ | ------ |
+| ✅ Self-deactivation check | Critical | 1h     | High   |
+| ✅ Audit logging           | High     | 2h     | High   |
+| 🚧 Password reset          | High     | 4h     | Medium |
+| 🚧 Session management      | Medium   | 6h     | Medium |
+| 🚧 HttpOnly cookies        | Medium   | 4h     | High   |
+| 🚧 2FA                     | Low      | 8h     | Medium |
+| 🚧 Password complexity     | Low      | 3h     | Low    |
+| 🚧 Granular RBAC           | Low      | 12h    | Medium |
 
 **Total Estimated Effort (Remaining):** 37 hours (~1 week)
 
@@ -646,17 +686,20 @@ export class LicenseController {
 ## Testing Checklist
 
 ### Immediate Features
+
 - [x] Admin user creation script
 - [x] JWT secret configuration
 - [x] Database migration ready
 
 ### Short-term Features
+
 - [x] Self-deactivation prevention (backend + frontend)
 - [x] Audit logging (login, create, toggle)
 - [ ] Password reset flow (email sending)
 - [ ] Session management (list, revoke)
 
 ### Long-term Features
+
 - [ ] HttpOnly cookies (backend + frontend)
 - [ ] 2FA setup and verification
 - [ ] Password complexity validation
@@ -669,6 +712,7 @@ export class LicenseController {
 **Before deploying enhancements:**
 
 1. **Run database migrations:**
+
    ```bash
    npx prisma migrate deploy
    ```

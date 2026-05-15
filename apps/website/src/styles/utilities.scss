@@ -2,17 +2,37 @@
 
 // Icon utility classes for FontAwesome
 .icon {
-  &--xs { font-size: 14px; }
-  &--sm { font-size: 18px; }
-  &--md { font-size: 24px; }
-  &--lg { font-size: 32px; }
-  &--xl { font-size: 48px; }
-  &--xxl { font-size: 64px; }
+  &--xs {
+    font-size: 14px;
+  }
+  &--sm {
+    font-size: 18px;
+  }
+  &--md {
+    font-size: 24px;
+  }
+  &--lg {
+    font-size: 32px;
+  }
+  &--xl {
+    font-size: 48px;
+  }
+  &--xxl {
+    font-size: 64px;
+  }
 
-  &--accent { color: variables.$accent-primary; }
-  &--success { color: variables.$success; }
-  &--muted { color: variables.$text-secondary; }
-  &--primary { color: variables.$text-primary; }
+  &--accent {
+    color: variables.$accent-primary;
+  }
+  &--success {
+    color: variables.$success;
+  }
+  &--muted {
+    color: variables.$text-secondary;
+  }
+  &--primary {
+    color: variables.$text-primary;
+  }
 }
 
 // Animation utilities

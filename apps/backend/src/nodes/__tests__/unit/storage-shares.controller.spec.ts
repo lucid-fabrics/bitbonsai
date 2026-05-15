@@ -254,7 +254,10 @@ describe('StorageSharesController', () => {
     });
 
     it('should unmount with force=true when body specifies it', async () => {
-      mockStorageMountService.unmount.mockResolvedValue({ ...mockShare, isMounted: false });
+      mockStorageMountService.unmount.mockResolvedValue({
+        ...mockShare,
+        isMounted: false,
+      });
 
       await controller.unmount('share-1', { force: true } as any);
 
@@ -296,7 +299,11 @@ describe('StorageSharesController', () => {
 
   describe('testConnectivity', () => {
     it('should test connectivity and return result', async () => {
-      const connectResult = { reachable: true, nfsSupported: true, smbSupported: false };
+      const connectResult = {
+        reachable: true,
+        nfsSupported: true,
+        smbSupported: false,
+      };
       mockStorageMountService.testConnectivity.mockResolvedValue(connectResult);
       const body = { serverAddress: '192.168.1.100', protocol: 'NFS' as const };
 
@@ -310,7 +317,10 @@ describe('StorageSharesController', () => {
       mockStorageMountService.testConnectivity.mockRejectedValue(new Error('Host unreachable'));
 
       await expect(
-        controller.testConnectivity({ serverAddress: 'bad-host', protocol: 'NFS' as const } as any)
+        controller.testConnectivity({
+          serverAddress: 'bad-host',
+          protocol: 'NFS' as const,
+        } as any)
       ).rejects.toThrow('Host unreachable');
     });
   });
@@ -321,7 +331,11 @@ describe('StorageSharesController', () => {
 
   describe('getNodeStats', () => {
     it('should return storage statistics for a node', async () => {
-      const stats = { totalShares: 2, mountedShares: 1, totalSizeBytes: 1000000 };
+      const stats = {
+        totalShares: 2,
+        mountedShares: 1,
+        totalSizeBytes: 1000000,
+      };
       mockStorageShareService.getNodeStats.mockResolvedValue(stats);
 
       const result = await controller.getNodeStats('node-1');
@@ -394,7 +408,10 @@ describe('StorageSharesController', () => {
       const result = await controller.autoExportDockerVolumes();
 
       expect(mockNfsAutoExportService.autoExportDockerVolumes).toHaveBeenCalledTimes(1);
-      expect(result).toEqual({ success: true, message: 'Docker volumes auto-export completed' });
+      expect(result).toEqual({
+        success: true,
+        message: 'Docker volumes auto-export completed',
+      });
     });
 
     it('should propagate errors from NFS export service', async () => {
@@ -436,8 +453,16 @@ describe('StorageSharesController', () => {
 
   describe('getDiskUsage', () => {
     it('should return disk usage for a mounted share', async () => {
-      const mountedShare = { ...mockShare, isMounted: true, mountPoint: '/mnt/remote/media' };
-      const usage = { totalBytes: 1000000, availableBytes: 500000, usedPercent: 50 };
+      const mountedShare = {
+        ...mockShare,
+        isMounted: true,
+        mountPoint: '/mnt/remote/media',
+      };
+      const usage = {
+        totalBytes: 1000000,
+        availableBytes: 500000,
+        usedPercent: 50,
+      };
       mockStorageShareService.findOne.mockResolvedValue(mountedShare);
       mockStorageMountService.getDiskUsage.mockResolvedValue(usage);
       mockStorageShareService.updateUsageStats.mockResolvedValue(undefined);

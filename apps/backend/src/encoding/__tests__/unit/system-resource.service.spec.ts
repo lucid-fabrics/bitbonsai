@@ -178,7 +178,9 @@ describe('SystemResourceService', () => {
   describe('performResourcePreflightChecks', () => {
     beforeEach(() => {
       (fs.promises.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.promises.stat as jest.Mock).mockResolvedValue({ size: 1 * 1024 ** 3 });
+      (fs.promises.stat as jest.Mock).mockResolvedValue({
+        size: 1 * 1024 ** 3,
+      });
       (fs.promises.statfs as jest.Mock).mockResolvedValue({
         bavail: 10_000_000, // ~40 GB available
         bsize: 4096,
@@ -248,7 +250,9 @@ describe('SystemResourceService', () => {
     });
 
     it('uses default multiplier when node has no loadThresholdMultiplier', async () => {
-      nodesService.getCurrentNode.mockResolvedValueOnce({ id: 'node-1' } as never);
+      nodesService.getCurrentNode.mockResolvedValueOnce({
+        id: 'node-1',
+      } as never);
 
       await service.reloadLoadThreshold();
 
@@ -268,7 +272,9 @@ describe('SystemResourceService', () => {
 
     it('falls back to ENV for encodingTempPath when not in database', async () => {
       process.env.ENCODING_TEMP_PATH = '/tmp/encode';
-      nodesService.getCurrentNode.mockResolvedValueOnce({ id: 'node-1' } as never);
+      nodesService.getCurrentNode.mockResolvedValueOnce({
+        id: 'node-1',
+      } as never);
 
       await service.reloadLoadThreshold();
 
@@ -278,7 +284,9 @@ describe('SystemResourceService', () => {
 
     it('sets encodingTempPath to null when neither DB nor ENV configured', async () => {
       process.env.ENCODING_TEMP_PATH = '';
-      nodesService.getCurrentNode.mockResolvedValueOnce({ id: 'node-1' } as never);
+      nodesService.getCurrentNode.mockResolvedValueOnce({
+        id: 'node-1',
+      } as never);
 
       await service.reloadLoadThreshold();
 

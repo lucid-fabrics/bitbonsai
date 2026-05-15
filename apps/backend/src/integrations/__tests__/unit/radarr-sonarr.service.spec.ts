@@ -218,8 +218,14 @@ describe('RadarrSonarrIntegrationService', () => {
                 id: 1,
                 path: '/movies/test.mkv',
                 size: 1024,
-                quality: { quality: { name: 'Bluray-1080p', resolution: 1080 } },
-                mediaInfo: { videoCodec: 'HEVC', audioCodec: 'AAC', videoBitrate: 5000 },
+                quality: {
+                  quality: { name: 'Bluray-1080p', resolution: 1080 },
+                },
+                mediaInfo: {
+                  videoCodec: 'HEVC',
+                  audioCodec: 'AAC',
+                  videoBitrate: 5000,
+                },
               },
             },
           ],
@@ -246,8 +252,14 @@ describe('RadarrSonarrIntegrationService', () => {
                 id: 1,
                 path: '/movies/test.mkv',
                 size: 1024,
-                quality: { quality: { name: 'Bluray-1080p', resolution: 1080 } },
-                mediaInfo: { videoCodec: 'AVC', audioCodec: 'AAC', videoBitrate: 5000 },
+                quality: {
+                  quality: { name: 'Bluray-1080p', resolution: 1080 },
+                },
+                mediaInfo: {
+                  videoCodec: 'AVC',
+                  audioCodec: 'AAC',
+                  videoBitrate: 5000,
+                },
               },
             },
           ],
@@ -421,7 +433,10 @@ describe('RadarrSonarrIntegrationService', () => {
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ onMovieFileDelete: true, onEpisodeFileDelete: false }),
+        expect.objectContaining({
+          onMovieFileDelete: true,
+          onEpisodeFileDelete: false,
+        }),
         expect.any(Object)
       );
     });
@@ -438,7 +453,10 @@ describe('RadarrSonarrIntegrationService', () => {
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ onEpisodeFileDelete: true, onMovieFileDelete: false }),
+        expect.objectContaining({
+          onEpisodeFileDelete: true,
+          onMovieFileDelete: false,
+        }),
         expect.any(Object)
       );
     });
@@ -667,7 +685,11 @@ describe('RadarrSonarrIntegrationService', () => {
                 path: '/movies/test.mkv',
                 size: 512,
                 quality: { quality: { name: 'Bluray-4K', resolution: 2160 } },
-                mediaInfo: { videoCodec: 'AV1', audioCodec: 'AAC', videoBitrate: 3000 },
+                mediaInfo: {
+                  videoCodec: 'AV1',
+                  audioCodec: 'AAC',
+                  videoBitrate: 3000,
+                },
               },
             },
           ],
@@ -833,11 +855,26 @@ describe('RadarrSonarrIntegrationService', () => {
       // Third call (getConfig SONARR) returns sonarr config
       // Fourth call (getSonarrSeries via get) returns a match
       mockSettingsRepository.findFirst
-        .mockResolvedValueOnce({ radarrUrl: 'http://radarr:7878', radarrApiKey: 'key' })
-        .mockResolvedValueOnce({ radarrUrl: 'http://radarr:7878', radarrApiKey: 'key' })
-        .mockResolvedValueOnce({ sonarrUrl: 'http://sonarr:8989', sonarrApiKey: 'key' })
-        .mockResolvedValueOnce({ sonarrUrl: 'http://sonarr:8989', sonarrApiKey: 'key' })
-        .mockResolvedValue({ sonarrUrl: 'http://sonarr:8989', sonarrApiKey: 'key' });
+        .mockResolvedValueOnce({
+          radarrUrl: 'http://radarr:7878',
+          radarrApiKey: 'key',
+        })
+        .mockResolvedValueOnce({
+          radarrUrl: 'http://radarr:7878',
+          radarrApiKey: 'key',
+        })
+        .mockResolvedValueOnce({
+          sonarrUrl: 'http://sonarr:8989',
+          sonarrApiKey: 'key',
+        })
+        .mockResolvedValueOnce({
+          sonarrUrl: 'http://sonarr:8989',
+          sonarrApiKey: 'key',
+        })
+        .mockResolvedValue({
+          sonarrUrl: 'http://sonarr:8989',
+          sonarrApiKey: 'key',
+        });
 
       mockHttpService.get
         .mockReturnValueOnce(throwError(() => new Error('Radarr unavailable')))
@@ -869,10 +906,22 @@ describe('RadarrSonarrIntegrationService', () => {
 
     it('should do nothing when file matches no series in Sonarr either', async () => {
       mockSettingsRepository.findFirst
-        .mockResolvedValueOnce({ radarrUrl: 'http://radarr:7878', radarrApiKey: 'key' })
-        .mockResolvedValueOnce({ radarrUrl: 'http://radarr:7878', radarrApiKey: 'key' })
-        .mockResolvedValueOnce({ sonarrUrl: 'http://sonarr:8989', sonarrApiKey: 'key' })
-        .mockResolvedValue({ sonarrUrl: 'http://sonarr:8989', sonarrApiKey: 'key' });
+        .mockResolvedValueOnce({
+          radarrUrl: 'http://radarr:7878',
+          radarrApiKey: 'key',
+        })
+        .mockResolvedValueOnce({
+          radarrUrl: 'http://radarr:7878',
+          radarrApiKey: 'key',
+        })
+        .mockResolvedValueOnce({
+          sonarrUrl: 'http://sonarr:8989',
+          sonarrApiKey: 'key',
+        })
+        .mockResolvedValue({
+          sonarrUrl: 'http://sonarr:8989',
+          sonarrApiKey: 'key',
+        });
 
       // Radarr returns no matching movie, Sonarr returns no matching series
       mockHttpService.get.mockReturnValue(of({ data: [] }));

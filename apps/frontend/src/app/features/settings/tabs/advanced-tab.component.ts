@@ -92,9 +92,11 @@ import { SettingsService } from '../services/settings.service';
             <div class="setting-note">
               <i class="fa fa-info-circle"></i>
               @if (qualityMetricsEnabled()) {
-                Calculating quality metrics after each encode (adds CPU overhead)
+                Calculating quality metrics after each encode (adds CPU
+                overhead)
               } @else {
-                Enable to measure encoding quality with industry-standard metrics
+                Enable to measure encoding quality with industry-standard
+                metrics
               }
             </div>
           </div>

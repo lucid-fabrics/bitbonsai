@@ -296,7 +296,11 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
 
       const res = await request(app.getHttpServer())
         .post('/queue/job-1/complete')
-        .send({ afterSizeBytes: '800000000', savedBytes: '200000000', savedPercent: 20 })
+        .send({
+          afterSizeBytes: '800000000',
+          savedBytes: '200000000',
+          savedPercent: 20,
+        })
         .expect(201);
 
       expect(res.body.stage).toBe('COMPLETED');
@@ -343,7 +347,12 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
     it('returns 200 with job history timeline', async () => {
       const job = makeJob();
       const history = [
-        { id: 'h1', eventType: 'FAILED', progress: 45.3, createdAt: new Date().toISOString() },
+        {
+          id: 'h1',
+          eventType: 'FAILED',
+          progress: 45.3,
+          createdAt: new Date().toISOString(),
+        },
       ];
       mockQueueService.findOne.mockResolvedValue(job);
       mockJobHistoryService.getJobHistory.mockResolvedValue(history);

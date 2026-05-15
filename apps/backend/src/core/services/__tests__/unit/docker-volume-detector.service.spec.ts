@@ -33,7 +33,10 @@ function mockExecSequence(responses: Array<{ stdout?: string; stderr?: string; e
     if (response.error) {
       callback(response.error, { stdout: '', stderr: '' });
     } else {
-      callback(null, { stdout: response.stdout || '', stderr: response.stderr || '' });
+      callback(null, {
+        stdout: response.stdout || '',
+        stderr: response.stderr || '',
+      });
     }
   });
 }
@@ -137,8 +140,18 @@ describe('DockerVolumeDetectorService', () => {
       const mockContainerInfo = JSON.stringify([
         {
           Mounts: [
-            { Type: 'bind', Source: '/mnt/user/media', Destination: '/media', RW: true },
-            { Type: 'bind', Source: '/etc/resolv.conf', Destination: '/etc/resolv.conf', RW: true },
+            {
+              Type: 'bind',
+              Source: '/mnt/user/media',
+              Destination: '/media',
+              RW: true,
+            },
+            {
+              Type: 'bind',
+              Source: '/etc/resolv.conf',
+              Destination: '/etc/resolv.conf',
+              RW: true,
+            },
           ],
         },
       ]);
@@ -161,7 +174,12 @@ describe('DockerVolumeDetectorService', () => {
       const mockContainerInfo = JSON.stringify([
         {
           Mounts: [
-            { Type: 'bind', Source: '/mnt/user/downloads', Destination: '/downloads', RW: false },
+            {
+              Type: 'bind',
+              Source: '/mnt/user/downloads',
+              Destination: '/downloads',
+              RW: false,
+            },
           ],
         },
       ]);
@@ -183,7 +201,14 @@ describe('DockerVolumeDetectorService', () => {
       const containerId = 'a'.repeat(64);
       const mockContainerInfo = JSON.stringify([
         {
-          Mounts: [{ Type: 'bind', Source: '/mnt/cache/appdata', Destination: '/data', RW: true }],
+          Mounts: [
+            {
+              Type: 'bind',
+              Source: '/mnt/cache/appdata',
+              Destination: '/data',
+              RW: true,
+            },
+          ],
         },
       ]);
 
@@ -238,8 +263,18 @@ describe('DockerVolumeDetectorService', () => {
 
     it('should exclude paths under /app', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/host/app', destination: '/app', readOnly: false, type: 'bind' },
-        { source: '/host/app/config', destination: '/app/config', readOnly: false, type: 'bind' },
+        {
+          source: '/host/app',
+          destination: '/app',
+          readOnly: false,
+          type: 'bind',
+        },
+        {
+          source: '/host/app/config',
+          destination: '/app/config',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(0);
     });
@@ -253,29 +288,54 @@ describe('DockerVolumeDetectorService', () => {
 
     it('should include /media paths', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/host/media', destination: '/media', readOnly: false, type: 'bind' },
+        {
+          source: '/host/media',
+          destination: '/media',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(1);
     });
 
     it('should include paths with Unraid source pattern /mnt/user/', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/mnt/user/tv', destination: '/tv-shows', readOnly: false, type: 'bind' },
+        {
+          source: '/mnt/user/tv',
+          destination: '/tv-shows',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(1);
     });
 
     it('should exclude paths that match neither allowed dest nor allowed source', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/some/random', destination: '/random', readOnly: false, type: 'bind' },
+        {
+          source: '/some/random',
+          destination: '/random',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(0);
     });
 
     it('should include /storage paths', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/host/storage', destination: '/storage', readOnly: false, type: 'bind' },
-        { source: '/host/storage/nas', destination: '/storage/nas', readOnly: true, type: 'bind' },
+        {
+          source: '/host/storage',
+          destination: '/storage',
+          readOnly: false,
+          type: 'bind',
+        },
+        {
+          source: '/host/storage/nas',
+          destination: '/storage/nas',
+          readOnly: true,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(2);
     });
@@ -285,8 +345,18 @@ describe('DockerVolumeDetectorService', () => {
     it('should only include bind mounts', () => {
       const containerInfo = {
         Mounts: [
-          { Type: 'bind', Source: '/mnt/user/media', Destination: '/media', RW: true },
-          { Type: 'volume', Source: 'some-volume', Destination: '/data', RW: true },
+          {
+            Type: 'bind',
+            Source: '/mnt/user/media',
+            Destination: '/media',
+            RW: true,
+          },
+          {
+            Type: 'volume',
+            Source: 'some-volume',
+            Destination: '/data',
+            RW: true,
+          },
           { Type: 'tmpfs', Source: '', Destination: '/tmp', RW: true },
         ],
       };
@@ -304,7 +374,14 @@ describe('DockerVolumeDetectorService', () => {
 
     it('should correctly map readOnly from RW field', () => {
       const containerInfo = {
-        Mounts: [{ Type: 'bind', Source: '/mnt/user/media', Destination: '/media', RW: false }],
+        Mounts: [
+          {
+            Type: 'bind',
+            Source: '/mnt/user/media',
+            Destination: '/media',
+            RW: false,
+          },
+        ],
       };
 
       const result = (service as any).parseVolumeMounts(containerInfo);
@@ -377,7 +454,12 @@ describe('DockerVolumeDetectorService', () => {
   describe('filterSystemMounts - additional cases', () => {
     it('excludes /var paths', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/host/var/lib', destination: '/var', readOnly: false, type: 'bind' },
+        {
+          source: '/host/var/lib',
+          destination: '/var',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(0);
     });
@@ -391,7 +473,12 @@ describe('DockerVolumeDetectorService', () => {
 
     it('includes /data paths', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/mnt/cache/appdata', destination: '/data', readOnly: false, type: 'bind' },
+        {
+          source: '/mnt/cache/appdata',
+          destination: '/data',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(1);
     });
@@ -403,8 +490,18 @@ describe('DockerVolumeDetectorService', () => {
 
     it('includes multiple valid mounts', () => {
       const result = (service as any).filterSystemMounts([
-        { source: '/mnt/user/media', destination: '/media', readOnly: false, type: 'bind' },
-        { source: '/mnt/user/tv', destination: '/tv', readOnly: false, type: 'bind' },
+        {
+          source: '/mnt/user/media',
+          destination: '/media',
+          readOnly: false,
+          type: 'bind',
+        },
+        {
+          source: '/mnt/user/tv',
+          destination: '/tv',
+          readOnly: false,
+          type: 'bind',
+        },
       ]);
       expect(result).toHaveLength(2);
     });
@@ -416,7 +513,14 @@ describe('DockerVolumeDetectorService', () => {
     it('returns cached volumes without re-running exec when cache is fresh', async () => {
       const mockContainerInfo = JSON.stringify([
         {
-          Mounts: [{ Type: 'bind', Source: '/mnt/user/media', Destination: '/media', RW: true }],
+          Mounts: [
+            {
+              Type: 'bind',
+              Source: '/mnt/user/media',
+              Destination: '/media',
+              RW: true,
+            },
+          ],
         },
       ]);
 

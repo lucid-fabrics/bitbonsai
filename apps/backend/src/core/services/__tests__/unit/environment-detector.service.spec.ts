@@ -171,8 +171,16 @@ describe('EnvironmentDetectorService', () => {
   describe('recommendStorageMethod', () => {
     it('should recommend NFS when both nodes on same network can mount', async () => {
       const result = await service.recommendStorageMethod(
-        { subnet: '192.168.1.0/24', containerType: ContainerType.BARE_METAL, canMountNFS: true },
-        { subnet: '192.168.1.0/24', containerType: ContainerType.BARE_METAL, canMountNFS: true }
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.BARE_METAL,
+          canMountNFS: true,
+        },
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.BARE_METAL,
+          canMountNFS: true,
+        }
       );
 
       expect(result.recommended).toBe(StorageRecommendation.NFS);
@@ -180,8 +188,16 @@ describe('EnvironmentDetectorService', () => {
 
     it('should recommend RSYNC when target is non-privileged LXC', async () => {
       const result = await service.recommendStorageMethod(
-        { subnet: '192.168.1.0/24', containerType: ContainerType.BARE_METAL, canMountNFS: true },
-        { subnet: '192.168.1.0/24', containerType: ContainerType.LXC, canMountNFS: false }
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.BARE_METAL,
+          canMountNFS: true,
+        },
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.LXC,
+          canMountNFS: false,
+        }
       );
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);
@@ -193,8 +209,16 @@ describe('EnvironmentDetectorService', () => {
 
     it('should recommend RSYNC when target cannot mount NFS', async () => {
       const result = await service.recommendStorageMethod(
-        { subnet: '192.168.1.0/24', containerType: ContainerType.BARE_METAL, canMountNFS: true },
-        { subnet: '192.168.1.0/24', containerType: ContainerType.DOCKER, canMountNFS: false }
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.BARE_METAL,
+          canMountNFS: true,
+        },
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.DOCKER,
+          canMountNFS: false,
+        }
       );
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);
@@ -202,8 +226,16 @@ describe('EnvironmentDetectorService', () => {
 
     it('should recommend EITHER when nodes on different networks both support NFS', async () => {
       const result = await service.recommendStorageMethod(
-        { subnet: '192.168.1.0/24', containerType: ContainerType.BARE_METAL, canMountNFS: true },
-        { subnet: '10.0.0.0/24', containerType: ContainerType.BARE_METAL, canMountNFS: true }
+        {
+          subnet: '192.168.1.0/24',
+          containerType: ContainerType.BARE_METAL,
+          canMountNFS: true,
+        },
+        {
+          subnet: '10.0.0.0/24',
+          containerType: ContainerType.BARE_METAL,
+          canMountNFS: true,
+        }
       );
 
       expect(result.recommended).toBe(StorageRecommendation.EITHER);
@@ -212,8 +244,16 @@ describe('EnvironmentDetectorService', () => {
 
     it('should recommend RSYNC as fallback', async () => {
       const result = await service.recommendStorageMethod(
-        { subnet: null, containerType: ContainerType.UNKNOWN, canMountNFS: false },
-        { subnet: null, containerType: ContainerType.UNKNOWN, canMountNFS: true }
+        {
+          subnet: null,
+          containerType: ContainerType.UNKNOWN,
+          canMountNFS: false,
+        },
+        {
+          subnet: null,
+          containerType: ContainerType.UNKNOWN,
+          canMountNFS: true,
+        }
       );
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);

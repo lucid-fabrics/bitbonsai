@@ -22,6 +22,7 @@ Or use any existing video file you have.
 ```
 
 **Parameters:**
+
 - **First argument:** Path to your sample video file
 - **Second argument:** (Optional) Root directory for test media (default: `/Users/wassimmehanna/test-media`)
 
@@ -95,6 +96,7 @@ To completely reset and repopulate with fresh files:
 ```
 
 The script will:
+
 1. ✓ Clean existing test media
 2. ✓ Create new files with random names
 3. ✓ Show summary of what was created
@@ -112,6 +114,7 @@ NUM_TV_EPISODES_PER_SHOW=5  # Episodes per show
 ```
 
 Or add your own names to the arrays:
+
 - `ANIME_NAMES`
 - `MOVIE_NAMES`
 - `TV_SHOW_NAMES`
@@ -151,14 +154,17 @@ ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default
 ## Troubleshooting
 
 ### "Sample video not found"
+
 - Ensure the video file path is correct
 - Use absolute paths (e.g., `/Users/you/Downloads/video.mp4`)
 
 ### "Permission denied"
+
 - Make sure the script is executable: `chmod +x scripts/populate-test-media.sh`
 - Check write permissions for the target directory
 
 ### Files not showing in BitBonsai
+
 - Verify library paths in BitBonsai UI match the created folders
 - Check that video files are supported formats (MP4, MKV, AVI, etc.)
 - Trigger a library scan if needed

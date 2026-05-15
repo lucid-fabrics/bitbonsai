@@ -16,7 +16,10 @@ export const TIER_LIMITS: Record<LicenseTier, { maxNodes: number; maxConcurrentJ
   // Commercial tiers - businesses
   [LicenseTier.COMMERCIAL_STARTER]: { maxNodes: 15, maxConcurrentJobs: 30 },
   [LicenseTier.COMMERCIAL_PRO]: { maxNodes: 50, maxConcurrentJobs: 100 },
-  [LicenseTier.COMMERCIAL_ENTERPRISE]: { maxNodes: 999, maxConcurrentJobs: 999 },
+  [LicenseTier.COMMERCIAL_ENTERPRISE]: {
+    maxNodes: 999,
+    maxConcurrentJobs: 999,
+  },
 };
 
 /**

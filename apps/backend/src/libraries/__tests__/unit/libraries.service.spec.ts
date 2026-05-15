@@ -201,11 +201,19 @@ describe('LibrariesService', () => {
         },
         {
           provide: MediaAnalysisService,
-          useValue: { analyze: jest.fn(), getMediaInfo: jest.fn(), getVideoCodecInfo: jest.fn() },
+          useValue: {
+            analyze: jest.fn(),
+            getMediaInfo: jest.fn(),
+            getVideoCodecInfo: jest.fn(),
+          },
         },
         {
           provide: QueueService,
-          useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+          useValue: {
+            create: jest.fn(),
+            findAll: jest.fn(),
+            getJobStats: jest.fn(),
+          },
         },
         {
           provide: SettingsService,
@@ -509,7 +517,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -542,9 +554,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -595,7 +609,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -628,9 +646,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -682,7 +702,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -715,9 +739,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -794,7 +820,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -819,9 +849,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1023,7 +1055,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -1056,9 +1092,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1104,7 +1142,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -1137,9 +1179,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1199,7 +1243,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -1224,9 +1272,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1278,7 +1328,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -1303,9 +1357,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1361,7 +1417,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -1386,9 +1446,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1428,7 +1490,10 @@ describe('LibrariesService', () => {
       mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
 
       // createJobsFromScan delegates to scanner; stub it to return 0 jobs
-      mockLibraryScannerService.createJobsFromScan.mockResolvedValue({ jobsCreated: 0, jobs: [] });
+      mockLibraryScannerService.createJobsFromScan.mockResolvedValue({
+        jobsCreated: 0,
+        jobs: [],
+      });
 
       const result = await service.createJobsFromScan('lib-1', 'policy-1', ['/media/movie.mkv']);
       expect(result).not.toBeNull();
@@ -1594,7 +1659,11 @@ describe('LibrariesService', () => {
           { provide: MediaAnalysisService, useValue: mockMediaAnalysis },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -1694,7 +1763,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -1719,9 +1792,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1741,7 +1816,9 @@ describe('LibrariesService', () => {
       // Manually set an expired cache (timestamp in the past beyond TTL)
       // 5 min TTL = 300_000ms, set timestamp 10 minutes ago
       (
-        scannerSvc as unknown as { readyFilesCache: { data: unknown; timestamp: number } }
+        scannerSvc as unknown as {
+          readyFilesCache: { data: unknown; timestamp: number };
+        }
       ).readyFilesCache = {
         data: [],
         timestamp: Date.now() - 10 * 60 * 1000,
@@ -1783,7 +1860,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -1808,9 +1889,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1859,7 +1942,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -1884,9 +1971,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -1963,7 +2052,11 @@ describe('LibrariesService', () => {
           { provide: MediaAnalysisService, useValue: mockMediaAnalysis },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           {
             provide: SettingsService,
@@ -1996,9 +2089,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -2171,7 +2266,11 @@ describe('LibrariesService', () => {
           },
           {
             provide: QueueService,
-            useValue: { create: jest.fn(), findAll: jest.fn(), getJobStats: jest.fn() },
+            useValue: {
+              create: jest.fn(),
+              findAll: jest.fn(),
+              getJobStats: jest.fn(),
+            },
           },
           { provide: SettingsService, useValue: mockSettingsService },
           {
@@ -2196,9 +2295,11 @@ describe('LibrariesService', () => {
             provide: LibraryBulkJobService,
             useValue: {
               createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
-              createAllJobs: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, filesSkipped: 0, skippedFiles: [] }),
+              createAllJobs: jest.fn().mockResolvedValue({
+                jobsCreated: 0,
+                filesSkipped: 0,
+                skippedFiles: [],
+              }),
               getLibraryFiles: jest.fn().mockResolvedValue({
                 libraryId: 'lib-1',
                 totalFiles: 0,
@@ -2281,7 +2382,10 @@ describe('LibrariesService', () => {
       };
 
       // createJobsFromScan delegates fully to scanner; stub it to return empty result
-      mockLibraryScannerService.createJobsFromScan.mockResolvedValue({ jobsCreated: 0, jobs: [] });
+      mockLibraryScannerService.createJobsFromScan.mockResolvedValue({
+        jobsCreated: 0,
+        jobs: [],
+      });
 
       // No filePaths provided → scanner handles scanPreview branch → returns empty
       const result = await service.createJobsFromScan('lib-1', 'policy-1');

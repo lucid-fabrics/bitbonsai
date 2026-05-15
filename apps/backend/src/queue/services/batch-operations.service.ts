@@ -57,7 +57,9 @@ export class BatchOperationsService {
 
       // CRITICAL #3 FIX: Two-phase pause to prevent QUEUED→ENCODING race
       // Phase 1: Mark all jobs with pause request timestamp
-      await this.jobRepository.atomicUpdateMany(where, { pauseRequestedAt: now });
+      await this.jobRepository.atomicUpdateMany(where, {
+        pauseRequestedAt: now,
+      });
 
       // Phase 2: Only transition jobs still in QUEUED stage
       // Workers check pauseRequestedAt before starting encoding
