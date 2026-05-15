@@ -2536,8 +2536,12 @@ describe('LibrariesService', () => {
 
       // createJobsFromScan delegates to libraryScanner — stub the scanner mock's return value
       (
-        (service as any).libraryScanner as unknown as { createJobsFromScan: jest.Mock }
-      ).createJobsFromScan = jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] });
+        (service as any).libraryScanner as unknown as {
+          createJobsFromScan: jest.Mock;
+        }
+      ).createJobsFromScan = jest
+        .fn()
+        .mockResolvedValue({ jobsCreated: 0, jobs: [] });
 
       const result = await service.createJobsFromScan('lib-1', 'policy-1', [
         '/media/movie1.mkv',
