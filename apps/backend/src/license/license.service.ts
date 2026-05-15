@@ -1,15 +1,6 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  type License,
-  LicenseStatus,
-  LicenseTier,
-  type Prisma,
-} from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { type License, LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { LicenseRepository } from '../common/repositories/license.repository';
 import type { CreateLicenseDto } from './dto/create-license.dto';
@@ -154,8 +145,7 @@ export class LicenseService {
     const _isPatreon = data.tier.startsWith('PATREON');
     const isCommercial = data.tier.startsWith('COMMERCIAL');
     const isPatreonProOrHigher =
-      data.tier === LicenseTier.PATREON_PRO ||
-      data.tier === LicenseTier.PATREON_ULTIMATE;
+      data.tier === LicenseTier.PATREON_PRO || data.tier === LicenseTier.PATREON_ULTIMATE;
 
     const features: LicenseFeatures = {
       multiNode: data.tier !== LicenseTier.FREE,

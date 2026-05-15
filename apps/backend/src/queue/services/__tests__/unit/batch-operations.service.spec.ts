@@ -19,10 +19,7 @@ describe('BatchOperationsService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BatchOperationsService,
-        { provide: JobRepository, useValue: jobRepository },
-      ],
+      providers: [BatchOperationsService, { provide: JobRepository, useValue: jobRepository }],
     }).compile();
 
     service = module.get<BatchOperationsService>(BatchOperationsService);
@@ -60,14 +57,12 @@ describe('BatchOperationsService', () => {
         expect.objectContaining({
           nodeId: 'node-1',
         }),
-        expect.anything(),
+        expect.anything()
       );
     });
 
     it('should handle database errors gracefully', async () => {
-      jobRepository.atomicUpdateMany.mockRejectedValue(
-        new Error('Connection lost'),
-      );
+      jobRepository.atomicUpdateMany.mockRejectedValue(new Error('Connection lost'));
 
       const result = await service.pauseAll();
 
@@ -89,7 +84,7 @@ describe('BatchOperationsService', () => {
         expect.anything(),
         expect.objectContaining({
           stage: JobStage.QUEUED,
-        }),
+        })
       );
     });
 
@@ -103,7 +98,7 @@ describe('BatchOperationsService', () => {
         expect.objectContaining({
           nodeId: 'node-2',
         }),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -130,7 +125,7 @@ describe('BatchOperationsService', () => {
         expect.objectContaining({
           stage: JobStage.CANCELLED,
           error: 'Batch cancelled by user',
-        }),
+        })
       );
     });
 
@@ -143,7 +138,7 @@ describe('BatchOperationsService', () => {
         expect.anything(),
         expect.objectContaining({
           cancelRequestedAt: expect.any(Date),
-        }),
+        })
       );
     });
 
@@ -181,7 +176,7 @@ describe('BatchOperationsService', () => {
         expect.objectContaining({
           stage: JobStage.QUEUED,
           progress: 0,
-        }),
+        })
       );
     });
 
@@ -194,7 +189,7 @@ describe('BatchOperationsService', () => {
         expect.objectContaining({
           retryCount: { lt: 5 },
         }),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -207,9 +202,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      jobRepository.atomicUpdateMany.mockRejectedValue(
-        new Error('Retry failed'),
-      );
+      jobRepository.atomicUpdateMany.mockRejectedValue(new Error('Retry failed'));
 
       const result = await service.retryAllFailed();
 
@@ -231,7 +224,7 @@ describe('BatchOperationsService', () => {
           completedAt: {
             lt: expect.any(Date),
           },
-        }),
+        })
       );
     });
 
@@ -245,9 +238,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      jobRepository.deleteManyWhere.mockRejectedValue(
-        new Error('Delete failed'),
-      );
+      jobRepository.deleteManyWhere.mockRejectedValue(new Error('Delete failed'));
 
       const result = await service.deleteCompletedOlderThan(30);
 
@@ -266,7 +257,7 @@ describe('BatchOperationsService', () => {
       expect(jobRepository.deleteManyWhere).toHaveBeenCalledWith(
         expect.objectContaining({
           stage: JobStage.FAILED,
-        }),
+        })
       );
     });
 
@@ -313,7 +304,7 @@ describe('BatchOperationsService', () => {
 
       expect(result.success).toBe(false);
       expect(result.errors).toContain(
-        'Invalid confirmation token. Use "CLEAR_ALL_JOBS" to confirm.',
+        'Invalid confirmation token. Use "CLEAR_ALL_JOBS" to confirm.'
       );
       expect(jobRepository.deleteManyWhere).not.toHaveBeenCalled();
     });
@@ -329,9 +320,7 @@ describe('BatchOperationsService', () => {
     });
 
     it('should handle database errors', async () => {
-      jobRepository.deleteManyWhere.mockRejectedValue(
-        new Error('Clear failed'),
-      );
+      jobRepository.deleteManyWhere.mockRejectedValue(new Error('Clear failed'));
 
       const result = await service.clearAll('CLEAR_ALL_JOBS');
 

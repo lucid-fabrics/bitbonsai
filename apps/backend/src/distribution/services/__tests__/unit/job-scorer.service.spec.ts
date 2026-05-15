@@ -118,9 +118,7 @@ describe('JobScorerService', () => {
     service.clearCaches();
   });
 
-  const createNode = (
-    overrides: Partial<NodeWithCounts> = {},
-  ): NodeWithCounts =>
+  const createNode = (overrides: Partial<NodeWithCounts> = {}): NodeWithCounts =>
     ({
       id: 'node-1',
       name: 'Test Node',
@@ -139,9 +137,7 @@ describe('JobScorerService', () => {
       ...overrides,
     }) as unknown as NodeWithCounts;
 
-  const createJob = (
-    overrides: Partial<JobWithRelations> = {},
-  ): JobWithRelations =>
+  const createJob = (overrides: Partial<JobWithRelations> = {}): JobWithRelations =>
     ({
       id: 'job-1',
       filePath: '/media/movie.mkv',

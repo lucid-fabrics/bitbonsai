@@ -37,9 +37,7 @@ describe('EncryptionService', () => {
       const encrypted = service.encrypt(plaintext);
 
       expect(encrypted).not.toEqual(plaintext);
-      expect(encrypted).toMatch(
-        /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/,
-      );
+      expect(encrypted).toMatch(/^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/);
     });
 
     it('should return empty string for empty input', () => {
@@ -92,9 +90,7 @@ describe('EncryptionService', () => {
     });
 
     it('should throw error for invalid format', () => {
-      expect(() => service.decrypt('invalid-format')).toThrow(
-        'Failed to decrypt data',
-      );
+      expect(() => service.decrypt('invalid-format')).toThrow('Failed to decrypt data');
     });
 
     it('should throw error for wrong encryption key', () => {
@@ -104,14 +100,11 @@ describe('EncryptionService', () => {
       // Change the key
       process.env.ENCRYPTION_KEY = 'different-key-32-characters-long!';
 
-      expect(() => service.decrypt(encrypted)).toThrow(
-        'Failed to decrypt data',
-      );
+      expect(() => service.decrypt(encrypted)).toThrow('Failed to decrypt data');
     });
 
     it('should handle all base64 characters', () => {
-      const plaintext =
-        'Base64: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      const plaintext = 'Base64: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
       const encrypted = service.encrypt(plaintext);
       const decrypted = service.decrypt(encrypted);
 
@@ -150,18 +143,14 @@ describe('EncryptionService', () => {
       process.env.ENCRYPTION_KEY = '';
 
       const newService = new EncryptionService();
-      expect(() => newService.encrypt('test')).toThrow(
-        'Failed to encrypt data',
-      );
+      expect(() => newService.encrypt('test')).toThrow('Failed to encrypt data');
     });
 
     it('should throw error when ENCRYPTION_KEY is too short', () => {
       process.env.ENCRYPTION_KEY = 'short';
 
       const newService = new EncryptionService();
-      expect(() => newService.encrypt('test')).toThrow(
-        'Failed to encrypt data',
-      );
+      expect(() => newService.encrypt('test')).toThrow('Failed to encrypt data');
     });
   });
 });

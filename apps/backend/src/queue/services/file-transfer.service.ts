@@ -43,9 +43,7 @@ export class FileTransferService implements OnModuleInit {
       exec('pkill -f "^(ssh|rsync).*bitbonsai"', (error, stdout, stderr) => {
         // Exit code 1 means no processes found (expected on clean start)
         if (!error || error.code === 1) {
-          this.logger.log(
-            '🧹 CRITICAL #2 FIX: Killed orphaned SSH/rsync processes',
-          );
+          this.logger.log('🧹 CRITICAL #2 FIX: Killed orphaned SSH/rsync processes');
         } else {
           this.logger.warn(`Failed to kill orphaned processes: ${stderr}`);
         }
@@ -78,7 +76,7 @@ export class FileTransferService implements OnModuleInit {
     // SEC #1 FIX: Strict character whitelist - NO SPACES to prevent shell expansion
     if (!/^[a-zA-Z0-9/_\-.]+$/.test(path)) {
       throw new Error(
-        'Invalid path characters detected (spaces and special chars not allowed for security)',
+        'Invalid path characters detected (spaces and special chars not allowed for security)'
       );
     }
 
@@ -118,18 +116,16 @@ export class FileTransferService implements OnModuleInit {
     jobId: string,
     sourceFilePath: string,
     sourceNode: Node,
-    targetNode: Node,
+    targetNode: Node
   ): Promise<void> {
     this.logger.log(
-      `Starting file transfer for job ${jobId}: ${sourceNode.name} -> ${targetNode.name}`,
+      `Starting file transfer for job ${jobId}: ${sourceNode.name} -> ${targetNode.name}`
     );
 
     try {
       // Check if target node has shared storage (should not be called in this case)
       if (targetNode.hasSharedStorage) {
-        this.logger.warn(
-          `Target node ${targetNode.name} has shared storage, transfer not needed`,
-        );
+        this.logger.warn(`Target node ${targetNode.name} has shared storage, transfer not needed`);
         return;
       }
 
@@ -160,18 +156,10 @@ export class FileTransferService implements OnModuleInit {
       await this.jobRepository.updateById(jobId, { remoteTempPath });
 
       // Create temp directory on target node
-      await this.executeRemoteCommand(
-        targetNode,
-        `mkdir -p /tmp/bitbonsai-transfer`,
-      );
+      await this.executeRemoteCommand(targetNode, `mkdir -p /tmp/bitbonsai-transfer`);
 
       // Start rsync transfer
-      await this.rsyncTransfer(
-        jobId,
-        sourceFilePath,
-        remoteTempPath,
-        targetNode,
-      );
+      await this.rsyncTransfer(jobId, sourceFilePath, remoteTempPath, targetNode);
 
       // Mark transfer as completed
       await this.jobRepository.updateById(jobId, {
@@ -185,8 +173,7 @@ export class FileTransferService implements OnModuleInit {
 
       this.logger.log(`File transfer completed for job ${jobId}`);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`File transfer failed for job ${jobId}:`, error);
 
       // Increment retry count
@@ -213,9 +200,7 @@ export class FileTransferService implements OnModuleInit {
           stage: 'DETECTED', // Reset to DETECTED for retry
         });
 
-        this.logger.log(
-          `Will retry transfer for job ${jobId} (attempt ${retryCount + 1})`,
-        );
+        this.logger.log(`Will retry transfer for job ${jobId} (attempt ${retryCount + 1})`);
       }
 
       throw error;
@@ -234,7 +219,7 @@ export class FileTransferService implements OnModuleInit {
     jobId: string,
     sourcePath: string,
     remotePath: string,
-    targetNode: Node,
+    targetNode: Node
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       // Create abort controller for cancellation support
@@ -273,9 +258,7 @@ export class FileTransferService implements OnModuleInit {
 
       // HIGH #15 FIX: Register abort handler to cleanup streams
       abortController.signal.addEventListener('abort', () => {
-        this.logger.log(
-          `Transfer aborted for job ${jobId}, cleaning up rsync process`,
-        );
+        this.logger.log(`Transfer aborted for job ${jobId}, cleaning up rsync process`);
         cleanup();
       });
 
@@ -331,7 +314,7 @@ export class FileTransferService implements OnModuleInit {
 
             if (wasUpdating) {
               this.logger.debug(
-                `Skipping progress update for job ${jobId} - another update is in progress`,
+                `Skipping progress update for job ${jobId} - another update is in progress`
               );
               return;
             }
@@ -345,10 +328,7 @@ export class FileTransferService implements OnModuleInit {
                 transferLastProgressAt: new Date(), // P0 FIX: Track progress for stall detection
               }),
               new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error('Progress update timeout (5s)')),
-                  5000,
-                ),
+                setTimeout(() => reject(new Error('Progress update timeout (5s)')), 5000)
               ),
             ]);
 
@@ -358,16 +338,13 @@ export class FileTransferService implements OnModuleInit {
                 progressState.consecutiveUpdateFailures++;
                 this.logger.error(
                   `Failed to update transfer progress for job ${jobId} (${progressState.consecutiveUpdateFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
-                  err,
+                  err
                 );
 
                 // If too many consecutive failures, abort transfer
-                if (
-                  progressState.consecutiveUpdateFailures >=
-                  MAX_CONSECUTIVE_FAILURES
-                ) {
+                if (progressState.consecutiveUpdateFailures >= MAX_CONSECUTIVE_FAILURES) {
                   this.logger.error(
-                    `Aborting transfer for job ${jobId}: ${MAX_CONSECUTIVE_FAILURES} consecutive progress update failures`,
+                    `Aborting transfer for job ${jobId}: ${MAX_CONSECUTIVE_FAILURES} consecutive progress update failures`
                   );
                   abortController.abort();
                 }
@@ -403,8 +380,7 @@ export class FileTransferService implements OnModuleInit {
           resolve();
         } else {
           // MEDIUM #4 FIX: Include stderr in error message for debugging
-          const errorMessage =
-            stderrBuffer.trim() || `rsync exited with code ${code}`;
+          const errorMessage = stderrBuffer.trim() || `rsync exited with code ${code}`;
           reject(new Error(errorMessage));
         }
       });
@@ -437,7 +413,7 @@ export class FileTransferService implements OnModuleInit {
   private async executeRemoteCommand(
     targetNode: Node,
     command: string,
-    timeoutMs = 30000,
+    timeoutMs = 30000
   ): Promise<string> {
     const commandId = `${targetNode.id}-${Date.now()}-${Math.random()}`;
     const sshArgs = [
@@ -496,8 +472,8 @@ export class FileTransferService implements OnModuleInit {
 
           reject(
             new Error(
-              `SSH command timed out after ${timeoutMs}ms on ${targetNode.name} (${targetNode.ipAddress})`,
-            ),
+              `SSH command timed out after ${timeoutMs}ms on ${targetNode.name} (${targetNode.ipAddress})`
+            )
           );
         }, timeoutMs);
 
@@ -517,9 +493,7 @@ export class FileTransferService implements OnModuleInit {
           if (code === 0) {
             resolve(stdout);
           } else {
-            reject(
-              new Error(`SSH command failed with code ${code}: ${stderr}`),
-            );
+            reject(new Error(`SSH command failed with code ${code}: ${stderr}`));
           }
         });
 
@@ -564,7 +538,7 @@ export class FileTransferService implements OnModuleInit {
         transferSpeedMBps: true,
         transferError: true,
         beforeSizeBytes: true,
-      },
+      }
     );
 
     if (!job) {
@@ -572,9 +546,7 @@ export class FileTransferService implements OnModuleInit {
     }
 
     const totalBytes = job.beforeSizeBytes;
-    const bytesTransferred = BigInt(
-      Math.floor((Number(totalBytes) * job.transferProgress) / 100),
-    );
+    const bytesTransferred = BigInt(Math.floor((Number(totalBytes) * job.transferProgress) / 100));
 
     let status: TransferProgress['status'] = 'PENDING';
     if (job.stage === 'TRANSFERRING') {
@@ -589,9 +561,8 @@ export class FileTransferService implements OnModuleInit {
       job.transferSpeedMBps && job.transferProgress > 0
         ? Math.floor(
             (Number(totalBytes) / (1024 * 1024) -
-              (Number(totalBytes) / (1024 * 1024)) *
-                (job.transferProgress / 100)) /
-              job.transferSpeedMBps,
+              (Number(totalBytes) / (1024 * 1024)) * (job.transferProgress / 100)) /
+              job.transferSpeedMBps
           )
         : null;
 
@@ -643,7 +614,7 @@ export class FileTransferService implements OnModuleInit {
       {
         remoteTempPath: true,
         node: { select: { id: true, name: true, ipAddress: true } },
-      },
+      }
     );
 
     if (!job?.remoteTempPath) {
@@ -651,23 +622,15 @@ export class FileTransferService implements OnModuleInit {
     }
 
     try {
-      this.logger.log(
-        `Cleaning up remote temp file for job ${jobId}: ${job.remoteTempPath}`,
-      );
+      this.logger.log(`Cleaning up remote temp file for job ${jobId}: ${job.remoteTempPath}`);
 
-      await this.executeRemoteCommand(
-        job.node as Node,
-        `rm -f "${job.remoteTempPath}"`,
-      );
+      await this.executeRemoteCommand(job.node as Node, `rm -f "${job.remoteTempPath}"`);
 
       await this.jobRepository.updateById(jobId, { remoteTempPath: null });
 
       this.logger.log(`Remote temp file cleaned up for job ${jobId}`);
     } catch (error: unknown) {
-      this.logger.error(
-        `Failed to clean up remote temp file for job ${jobId}:`,
-        error,
-      );
+      this.logger.error(`Failed to clean up remote temp file for job ${jobId}:`, error);
     }
   }
 }

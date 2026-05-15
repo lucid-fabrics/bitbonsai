@@ -50,16 +50,10 @@ describe('SshKeyService', () => {
 
       await service.onModuleInit();
 
-      expect(mockMkdirSync).toHaveBeenCalledWith(
-        expect.stringContaining('.ssh'),
-        {
-          recursive: true,
-        },
-      );
-      expect(mockChmodSync).toHaveBeenCalledWith(
-        expect.stringContaining('.ssh'),
-        0o700,
-      );
+      expect(mockMkdirSync).toHaveBeenCalledWith(expect.stringContaining('.ssh'), {
+        recursive: true,
+      });
+      expect(mockChmodSync).toHaveBeenCalledWith(expect.stringContaining('.ssh'), 0o700);
     });
 
     it('should not create .ssh directory if it already exists', async () => {
@@ -85,7 +79,7 @@ describe('SshKeyService', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'ssh-keygen',
-        expect.arrayContaining(['-t', 'rsa', '-b', '4096']),
+        expect.arrayContaining(['-t', 'rsa', '-b', '4096'])
       );
     });
 
@@ -125,7 +119,7 @@ describe('SshKeyService', () => {
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining('authorized_keys'),
         `${publicKey} # my-node\n`,
-        { mode: 0o600 },
+        { mode: 0o600 }
       );
     });
 
@@ -138,7 +132,7 @@ describe('SshKeyService', () => {
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining('authorized_keys'),
         `ssh-rsa OTHER_KEY old@host\n${publicKey}\n`,
-        { mode: 0o600 },
+        { mode: 0o600 }
       );
     });
 
@@ -160,7 +154,7 @@ describe('SshKeyService', () => {
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining('authorized_keys'),
         `${publicKey}\n`,
-        { mode: 0o600 },
+        { mode: 0o600 }
       );
     });
   });
@@ -170,16 +164,14 @@ describe('SshKeyService', () => {
 
     it('should remove key from authorized_keys', () => {
       mockExistsSync.mockReturnValue(true);
-      mockReadFileSync.mockReturnValue(
-        'ssh-rsa AAAA1234 test@host\nssh-rsa OTHER keep@host\n',
-      );
+      mockReadFileSync.mockReturnValue('ssh-rsa AAAA1234 test@host\nssh-rsa OTHER keep@host\n');
 
       service.removeAuthorizedKey(publicKey);
 
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining('authorized_keys'),
         expect.not.stringContaining('AAAA1234'),
-        { mode: 0o600 },
+        { mode: 0o600 }
       );
     });
 
@@ -208,7 +200,7 @@ describe('SshKeyService', () => {
           '-o',
           'BatchMode=yes',
           'root@192.168.1.100',
-        ]),
+        ])
       );
     });
 
@@ -234,10 +226,7 @@ describe('SshKeyService', () => {
 
       await service.testConnection('192.168.1.100', 2222);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'ssh',
-        expect.arrayContaining(['-p', '2222']),
-      );
+      expect(mockSpawn).toHaveBeenCalledWith('ssh', expect.arrayContaining(['-p', '2222']));
     });
   });
 
@@ -247,31 +236,26 @@ describe('SshKeyService', () => {
       mockSpawn.mockReturnValue(mockProcess);
 
       await expect(
-        service.copyKeyToRemote('192.168.1.100', 'ssh-rsa KEY'),
+        service.copyKeyToRemote('192.168.1.100', 'ssh-rsa KEY')
       ).resolves.toBeUndefined();
     });
 
     it('should reject on failed key copy', async () => {
-      const mockProcess = createMockChildProcess(
-        1,
-        '',
-        undefined,
-        'Permission denied',
-      );
+      const mockProcess = createMockChildProcess(1, '', undefined, 'Permission denied');
       mockSpawn.mockReturnValue(mockProcess);
 
-      await expect(
-        service.copyKeyToRemote('192.168.1.100', 'ssh-rsa KEY'),
-      ).rejects.toThrow('ssh failed with code 1');
+      await expect(service.copyKeyToRemote('192.168.1.100', 'ssh-rsa KEY')).rejects.toThrow(
+        'ssh failed with code 1'
+      );
     });
 
     it('should reject on spawn error', async () => {
       const mockProcess = createMockChildProcess(null, '', new Error('ENOENT'));
       mockSpawn.mockReturnValue(mockProcess);
 
-      await expect(
-        service.copyKeyToRemote('192.168.1.100', 'ssh-rsa KEY'),
-      ).rejects.toThrow('ENOENT');
+      await expect(service.copyKeyToRemote('192.168.1.100', 'ssh-rsa KEY')).rejects.toThrow(
+        'ENOENT'
+      );
     });
   });
 });
@@ -283,7 +267,7 @@ function createMockChildProcess(
   exitCode: number | null,
   stdoutData = '',
   spawnError?: Error,
-  stderrData = '',
+  stderrData = ''
 ) {
   const stdoutListeners: Record<string, any[]> = {};
   const stderrListeners: Record<string, any[]> = {};
@@ -317,12 +301,10 @@ function createMockChildProcess(
       for (const cb of processListeners.error ?? []) cb(spawnError);
     } else {
       if (stdoutData) {
-        for (const cb of stdoutListeners.data ?? [])
-          cb(Buffer.from(stdoutData));
+        for (const cb of stdoutListeners.data ?? []) cb(Buffer.from(stdoutData));
       }
       if (stderrData) {
-        for (const cb of stderrListeners.data ?? [])
-          cb(Buffer.from(stderrData));
+        for (const cb of stderrListeners.data ?? []) cb(Buffer.from(stderrData));
       }
       for (const cb of processListeners.close ?? []) cb(exitCode);
     }

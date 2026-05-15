@@ -41,8 +41,7 @@ export class PairResponseDto {
   status!: PairingStatus;
 
   @ApiProperty({
-    description:
-      'Registration request ID - use this to poll for status updates',
+    description: 'Registration request ID - use this to poll for status updates',
     example: 'clq8x9z8x0000qh8x9z8x0000',
     required: false,
   })

@@ -129,7 +129,7 @@ export class NotificationBellComponent implements OnInit {
     interval(30000)
       .pipe(
         switchMap(() => this.notificationService.getUnreadCount()),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (response) => {

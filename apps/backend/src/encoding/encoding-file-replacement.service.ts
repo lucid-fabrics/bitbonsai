@@ -18,7 +18,7 @@ export class EncodingFileReplacementService {
 
   constructor(
     private readonly ffmpegService: FfmpegService,
-    private readonly queueService: QueueService,
+    private readonly queueService: QueueService
   ) {}
 
   /**
@@ -35,7 +35,7 @@ export class EncodingFileReplacementService {
     originalPath: string,
     tmpPath: string,
     originalSize: bigint,
-    tmpSize: bigint,
+    tmpSize: bigint
   ): Promise<void> {
     const outputDir = path.dirname(originalPath);
 
@@ -60,25 +60,20 @@ export class EncodingFileReplacementService {
             `Original file: ${(Number(originalSize) / 1024 ** 3).toFixed(2)} GB\n` +
             `Encoded file: ${(Number(tmpSize) / 1024 ** 3).toFixed(2)} GB\n\n` +
             `During atomic replacement, both files exist temporarily.\n` +
-            `Please free up disk space before retrying this job.`,
+            `Please free up disk space before retrying this job.`
         );
       }
 
       this.logger.log(
         `Disk space check passed: ${availableGB.toFixed(2)}GB available, ` +
-          `${requiredGB.toFixed(2)}GB needed for atomic replacement`,
+          `${requiredGB.toFixed(2)}GB needed for atomic replacement`
       );
     } catch (error: unknown) {
-      if (
-        error instanceof Error &&
-        error.message.includes('Insufficient disk space')
-      ) {
+      if (error instanceof Error && error.message.includes('Insufficient disk space')) {
         throw error; // Re-throw our custom error
       }
       // If statfs fails, log warning but don't fail the job
-      this.logger.warn(
-        `Could not check disk space for replacement on ${outputDir}: ${error}`,
-      );
+      this.logger.warn(`Could not check disk space for replacement on ${outputDir}: ${error}`);
     }
   }
 
@@ -88,11 +83,7 @@ export class EncodingFileReplacementService {
    * KEEP ORIGINAL FEATURE: If user requested to keep original via "Keep Original" button,
    * rename original to .original instead of deleting it
    */
-  async replaceFile(
-    job: JobWithPolicy,
-    tmpPath: string,
-    atomicReplace: boolean,
-  ): Promise<void> {
+  async replaceFile(job: JobWithPolicy, tmpPath: string, atomicReplace: boolean): Promise<void> {
     const originalPath = job.filePath;
 
     // KEEP ORIGINAL FEATURE: Check if user requested to keep the original file
@@ -100,9 +91,7 @@ export class EncodingFileReplacementService {
       // User clicked "Keep Original" - rename original to .original and keep both files
       const originalBackupPath = `${originalPath}.original`;
 
-      this.logger.log(
-        `KEEP ORIGINAL: Renaming original to ${originalBackupPath}`,
-      );
+      this.logger.log(`KEEP ORIGINAL: Renaming original to ${originalBackupPath}`);
       this.crossFsSafeRenameSync(originalPath, originalBackupPath);
       this.crossFsSafeRenameSync(tmpPath, originalPath);
 
@@ -113,7 +102,7 @@ export class EncodingFileReplacementService {
       const smokeTest = await this.ffmpegService.verifyFile(originalPath);
       if (!smokeTest.isValid) {
         this.logger.error(
-          `KEEP ORIGINAL: Post-replacement verification FAILED! Rolling back. Error: ${smokeTest.error}`,
+          `KEEP ORIGINAL: Post-replacement verification FAILED! Rolling back. Error: ${smokeTest.error}`
         );
 
         // Rollback: restore original from backup
@@ -122,17 +111,13 @@ export class EncodingFileReplacementService {
             fs.unlinkSync(originalPath); // Delete failed encoded file
           }
           this.crossFsSafeRenameSync(originalBackupPath, originalPath);
-          this.logger.log(
-            `KEEP ORIGINAL: Successfully rolled back to original`,
-          );
+          this.logger.log(`KEEP ORIGINAL: Successfully rolled back to original`);
         } catch (_rollbackError: unknown) {
-          this.logger.error(
-            `KEEP ORIGINAL: Rollback failed! Backup at: ${originalBackupPath}`,
-          );
+          this.logger.error(`KEEP ORIGINAL: Rollback failed! Backup at: ${originalBackupPath}`);
         }
 
         throw new Error(
-          `Post-replacement verification failed: ${smokeTest.error}. Original restored from backup.`,
+          `Post-replacement verification failed: ${smokeTest.error}. Original restored from backup.`
         );
       }
 
@@ -143,9 +128,7 @@ export class EncodingFileReplacementService {
         replacementAction: 'KEPT_BOTH',
       });
 
-      this.logger.log(
-        `KEEP ORIGINAL: Successfully kept original as backup (verified playable)`,
-      );
+      this.logger.log(`KEEP ORIGINAL: Successfully kept original as backup (verified playable)`);
     } else {
       // Default behavior: replace original file (delete it)
       if (atomicReplace) {
@@ -156,7 +139,7 @@ export class EncodingFileReplacementService {
         this.logger.warn(
           `⚠️  Using non-atomic replace mode - original will be deleted before verification!\n` +
             `If smoke test fails, data loss is possible. Consider enabling atomic replace.\n` +
-            `File: ${originalPath}`,
+            `File: ${originalPath}`
         );
 
         this.crossFsSafeRenameSync(tmpPath, originalPath);
@@ -171,7 +154,7 @@ export class EncodingFileReplacementService {
             `⚠️  CRITICAL: Post-replacement verification FAILED (non-atomic mode)!\n` +
               `Original file is GONE. Encoded file may be corrupt.\n` +
               `Error: ${smokeTest.error}\n` +
-              `File: ${originalPath}`,
+              `File: ${originalPath}`
           );
           // Don't throw - file is already replaced, nothing to rollback to
           // User will see the error in job status
@@ -210,7 +193,7 @@ export class EncodingFileReplacementService {
       if ((error as NodeJS.ErrnoException).code === 'EXDEV') {
         this.logger.warn(
           `Cross-filesystem rename detected (${sourcePath} -> ${destPath}), ` +
-            `falling back to copy+delete`,
+            `falling back to copy+delete`
         );
 
         try {
@@ -224,9 +207,7 @@ export class EncodingFileReplacementService {
           // AUDIT FIX: Verify copy succeeded by checking BOTH existence AND size
           // This catches partial copies from disk-full or interrupted operations
           if (!fs.existsSync(destPath)) {
-            throw new Error(
-              'Copy verification failed - destination file does not exist',
-            );
+            throw new Error('Copy verification failed - destination file does not exist');
           }
 
           const destStats = fs.statSync(destPath);
@@ -241,7 +222,7 @@ export class EncodingFileReplacementService {
               `Copy verification failed - size mismatch!\n` +
                 `Source: ${sourceSize} bytes\n` +
                 `Dest: ${destStats.size} bytes\n` +
-                `This usually indicates disk full or interrupted copy.`,
+                `This usually indicates disk full or interrupted copy.`
             );
           }
 
@@ -249,7 +230,7 @@ export class EncodingFileReplacementService {
           fs.unlinkSync(sourcePath);
 
           this.logger.log(
-            `Successfully moved file across filesystems: ${sourcePath} -> ${destPath} (${sourceSize} bytes verified)`,
+            `Successfully moved file across filesystems: ${sourcePath} -> ${destPath} (${sourceSize} bytes verified)`
           );
         } catch (fallbackError: unknown) {
           // Clean up partial copy if it exists
@@ -257,14 +238,12 @@ export class EncodingFileReplacementService {
             try {
               fs.unlinkSync(destPath);
             } catch (cleanupError: unknown) {
-              this.logger.error(
-                `Failed to cleanup partial copy: ${cleanupError}`,
-              );
+              this.logger.error(`Failed to cleanup partial copy: ${cleanupError}`);
             }
           }
 
           throw new Error(
-            `Cross-filesystem move failed: ${fallbackError}. Source: ${sourcePath}, Dest: ${destPath}`,
+            `Cross-filesystem move failed: ${fallbackError}. Source: ${sourcePath}, Dest: ${destPath}`
           );
         }
       } else {
@@ -280,10 +259,7 @@ export class EncodingFileReplacementService {
    * This enhanced version keeps the backup UNTIL the new file is verified playable.
    * If verification fails, it automatically rolls back to the original.
    */
-  async atomicReplaceFileWithVerification(
-    originalPath: string,
-    tmpPath: string,
-  ): Promise<void> {
+  async atomicReplaceFileWithVerification(originalPath: string, tmpPath: string): Promise<void> {
     const backupPath = `${originalPath}.backup`;
 
     try {
@@ -299,7 +275,7 @@ export class EncodingFileReplacementService {
       const smokeTest = await this.ffmpegService.verifyFile(originalPath);
       if (!smokeTest.isValid) {
         this.logger.error(
-          `Post-replacement verification FAILED! Rolling back. Error: ${smokeTest.error}`,
+          `Post-replacement verification FAILED! Rolling back. Error: ${smokeTest.error}`
         );
 
         // Rollback: restore backup
@@ -308,23 +284,19 @@ export class EncodingFileReplacementService {
             fs.unlinkSync(originalPath); // Delete failed encoded file
           }
           this.crossFsSafeRenameSync(backupPath, originalPath);
-          this.logger.log(
-            `Successfully rolled back to backup for ${originalPath}`,
-          );
+          this.logger.log(`Successfully rolled back to backup for ${originalPath}`);
         } catch (rollbackError: unknown) {
-          this.logger.error(
-            `CRITICAL: Rollback failed! Backup at: ${backupPath}`,
-          );
+          this.logger.error(`CRITICAL: Rollback failed! Backup at: ${backupPath}`);
           throw new Error(
             `Post-replacement verification failed AND rollback failed.\n` +
               `Verification error: ${smokeTest.error}\n` +
               `Rollback error: ${rollbackError}\n` +
-              `Backup may still exist at: ${backupPath}`,
+              `Backup may still exist at: ${backupPath}`
           );
         }
 
         throw new Error(
-          `Post-replacement verification failed: ${smokeTest.error}. Original restored from backup.`,
+          `Post-replacement verification failed: ${smokeTest.error}. Original restored from backup.`
         );
       }
 
@@ -333,14 +305,10 @@ export class EncodingFileReplacementService {
         fs.unlinkSync(backupPath);
       } catch (cleanupError: unknown) {
         // Non-fatal: Log warning but don't fail the operation
-        this.logger.warn(
-          `Failed to cleanup backup file ${backupPath}: ${cleanupError}`,
-        );
+        this.logger.warn(`Failed to cleanup backup file ${backupPath}: ${cleanupError}`);
       }
 
-      this.logger.log(
-        `Atomic replacement complete with verification for ${originalPath}`,
-      );
+      this.logger.log(`Atomic replacement complete with verification for ${originalPath}`);
     } catch (error: unknown) {
       // If backup exists and original doesn't, try to restore
       if (fs.existsSync(backupPath) && !fs.existsSync(originalPath)) {
@@ -348,9 +316,7 @@ export class EncodingFileReplacementService {
           this.crossFsSafeRenameSync(backupPath, originalPath);
           this.logger.log(`Restored backup after error for ${originalPath}`);
         } catch (restoreError: unknown) {
-          this.logger.error(
-            `Failed to restore backup after error: ${restoreError}`,
-          );
+          this.logger.error(`Failed to restore backup after error: ${restoreError}`);
         }
       }
       throw error;

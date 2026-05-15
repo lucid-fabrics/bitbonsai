@@ -112,9 +112,7 @@ export class NodesClient {
    * Get recommended optimal configuration for a node
    */
   getRecommendedConfig(id: string): Observable<OptimalConfig> {
-    return this.http.get<OptimalConfig>(
-      `${this.apiUrl}/${id}/recommended-config`,
-    );
+    return this.http.get<OptimalConfig>(`${this.apiUrl}/${id}/recommended-config`);
   }
 
   /**
@@ -138,7 +136,7 @@ export class NodesClient {
   unregisterSelf(): Observable<{ success: boolean; message: string }> {
     return this.http.post<{ success: boolean; message: string }>(
       `${this.apiUrl}/unregister-self`,
-      {},
+      {}
     );
   }
 
@@ -150,64 +148,47 @@ export class NodesClient {
    * Discover MAIN nodes on the network via mDNS
    */
   discoverMainNodes(): Observable<DiscoveredMainNode[]> {
-    return this.http.get<DiscoveredMainNode[]>(
-      `${this.apiUrl}/discovery/main-nodes`,
-    );
+    return this.http.get<DiscoveredMainNode[]>(`${this.apiUrl}/discovery/main-nodes`);
   }
 
   /**
    * Create a registration request from CHILD to MAIN node
    */
-  createRegistrationRequest(
-    data: CreateRegistrationRequestDto,
-  ): Observable<RegistrationRequest> {
-    return this.http.post<RegistrationRequest>(
-      `${this.apiUrl}/registration-requests`,
-      data,
-    );
+  createRegistrationRequest(data: CreateRegistrationRequestDto): Observable<RegistrationRequest> {
+    return this.http.post<RegistrationRequest>(`${this.apiUrl}/registration-requests`, data);
   }
 
   /**
    * Get all pending registration requests (for MAIN node)
    */
   getPendingRequests(): Observable<RegistrationRequest[]> {
-    return this.http.get<RegistrationRequest[]>(
-      `${this.apiUrl}/registration-requests/pending`,
-    );
+    return this.http.get<RegistrationRequest[]>(`${this.apiUrl}/registration-requests/pending`);
   }
 
   /**
    * Get a specific registration request
    */
   getRegistrationRequest(id: string): Observable<RegistrationRequest> {
-    return this.http.get<RegistrationRequest>(
-      `${this.apiUrl}/registration-requests/${id}`,
-    );
+    return this.http.get<RegistrationRequest>(`${this.apiUrl}/registration-requests/${id}`);
   }
 
   /**
    * Approve a registration request
    */
-  approveRequest(
-    id: string,
-    data?: ApproveRequestDto,
-  ): Observable<RegistrationRequest> {
+  approveRequest(id: string, data?: ApproveRequestDto): Observable<RegistrationRequest> {
     return this.http.post<RegistrationRequest>(
       `${this.apiUrl}/registration-requests/${id}/approve`,
-      data || {},
+      data || {}
     );
   }
 
   /**
    * Reject a registration request
    */
-  rejectRequest(
-    id: string,
-    data: RejectRequestDto,
-  ): Observable<RegistrationRequest> {
+  rejectRequest(id: string, data: RejectRequestDto): Observable<RegistrationRequest> {
     return this.http.post<RegistrationRequest>(
       `${this.apiUrl}/registration-requests/${id}/reject`,
-      data,
+      data
     );
   }
 
@@ -216,7 +197,7 @@ export class NodesClient {
    */
   cancelRequest(id: string): Observable<RegistrationRequest> {
     return this.http.delete<RegistrationRequest>(
-      `${this.apiUrl}/registration-requests/${id}/cancel`,
+      `${this.apiUrl}/registration-requests/${id}/cancel`
     );
   }
 
@@ -225,7 +206,7 @@ export class NodesClient {
    */
   cancelRequestByToken(token: string): Observable<RegistrationRequest> {
     return this.http.delete<RegistrationRequest>(
-      `${this.apiUrl}/registration-requests/token/${token}/cancel`,
+      `${this.apiUrl}/registration-requests/token/${token}/cancel`
     );
   }
 
@@ -239,7 +220,7 @@ export class NodesClient {
   testCapabilities(nodeId: string): Observable<NodeCapabilityTestResult> {
     return this.http.post<NodeCapabilityTestResult>(
       `${this.apiUrl}/${nodeId}/test-capabilities`,
-      {},
+      {}
     );
   }
 
@@ -247,9 +228,7 @@ export class NodesClient {
    * Get node capabilities summary
    */
   getNodeCapabilities(nodeId: string): Observable<NodeCapabilities> {
-    return this.http.get<NodeCapabilities>(
-      `${this.apiUrl}/${nodeId}/capabilities`,
-    );
+    return this.http.get<NodeCapabilities>(`${this.apiUrl}/${nodeId}/capabilities`);
   }
 
   // ============================================================================
@@ -271,9 +250,7 @@ export class NodesClient {
    * Get this node's SSH public key
    */
   getSshPublicKey(): Observable<{ publicKey: string }> {
-    return this.http.get<{ publicKey: string }>(
-      `${this.apiUrl}/ssh/public-key`,
-    );
+    return this.http.get<{ publicKey: string }>(`${this.apiUrl}/ssh/public-key`);
   }
 
   /**
@@ -281,11 +258,11 @@ export class NodesClient {
    */
   addAuthorizedKey(
     publicKey: string,
-    comment?: string,
+    comment?: string
   ): Observable<{ success: boolean; message: string }> {
     return this.http.post<{ success: boolean; message: string }>(
       `${this.apiUrl}/ssh/authorized-keys`,
-      { publicKey, comment },
+      { publicKey, comment }
     );
   }
 }

@@ -1,14 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PolicyPreset, TargetCodec } from '@prisma/client';
-import {
-  IsArray,
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class PolicySyncDto {
   @ApiProperty({

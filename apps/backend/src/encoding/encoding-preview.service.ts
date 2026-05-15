@@ -42,7 +42,7 @@ export class EncodingPreviewService {
     jobId: string,
     tempFilePath: string,
     durationSeconds: number,
-    _currentProgress: number,
+    _currentProgress: number
   ): Promise<string[]> {
     try {
       // Create preview directory for this job
@@ -68,10 +68,7 @@ export class EncodingPreviewService {
       // Extract screenshots in parallel
       await Promise.all(
         timestamps.map(async (timestamp, index) => {
-          const outputPath = path.join(
-            jobPreviewDir,
-            `preview-${index + 1}.jpg`,
-          );
+          const outputPath = path.join(jobPreviewDir, `preview-${index + 1}.jpg`);
 
           try {
             // Use FFmpeg with fast seeking
@@ -125,22 +122,21 @@ export class EncodingPreviewService {
             if (existsSync(outputPath)) {
               previewPaths.push(outputPath);
               this.logger.debug(
-                `Generated preview ${index + 1}/9 for job ${jobId} at ${timestamp.toFixed(1)}s`,
+                `Generated preview ${index + 1}/9 for job ${jobId} at ${timestamp.toFixed(1)}s`
               );
             } else {
               this.logger.warn(
-                `Preview ${index + 1} file not found after extraction for job ${jobId}`,
+                `Preview ${index + 1} file not found after extraction for job ${jobId}`
               );
             }
           } catch (error: unknown) {
-            const message =
-              error instanceof Error ? error.message : String(error);
+            const message = error instanceof Error ? error.message : String(error);
             this.logger.warn(
-              `Failed to generate preview ${index + 1} for job ${jobId}: ${message}`,
+              `Failed to generate preview ${index + 1} for job ${jobId}: ${message}`
             );
             // Continue with other previews even if one fails
           }
-        }),
+        })
       );
 
       return previewPaths.sort(); // Ensure correct order
@@ -161,11 +157,7 @@ export class EncodingPreviewService {
    * @returns Path to the captured preview image
    * @throws Error if ffprobe or ffmpeg fails
    */
-  async captureManualPreview(
-    jobId: string,
-    filePath: string,
-    progress: number,
-  ): Promise<string> {
+  async captureManualPreview(jobId: string, filePath: string, progress: number): Promise<string> {
     // Get duration from source file using ffprobe
     let durationSeconds: number;
     try {
@@ -182,7 +174,7 @@ export class EncodingPreviewService {
         ],
         {
           timeout: 5000,
-        },
+        }
       );
       durationSeconds = parseFloat(stdout.trim());
 
@@ -190,8 +182,7 @@ export class EncodingPreviewService {
         throw new Error('Invalid duration');
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Failed to get file duration', {
         jobId,
         filePath,
@@ -230,30 +221,24 @@ export class EncodingPreviewService {
         ],
         {
           timeout: 10000, // 10 second timeout (seeking can take time on large files)
-        },
+        }
       );
 
       // Verify file exists before returning path
       if (!existsSync(manualPreviewPath)) {
-        this.logger.error(
-          'Manual preview file not found after FFmpeg extraction',
-          {
-            jobId,
-            manualPreviewPath,
-            timestampSeconds,
-          },
-        );
-        throw new Error(
-          'Preview file not created. FFmpeg may have failed silently.',
-        );
+        this.logger.error('Manual preview file not found after FFmpeg extraction', {
+          jobId,
+          manualPreviewPath,
+          timestampSeconds,
+        });
+        throw new Error('Preview file not created. FFmpeg may have failed silently.');
       }
 
       this.logger.log(
-        `Preview captured successfully for job ${jobId} at ${timestampSeconds.toFixed(1)}s (${progress}%)`,
+        `Preview captured successfully for job ${jobId} at ${timestampSeconds.toFixed(1)}s (${progress}%)`
       );
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const execError = error as {
         stderr?: string;
         stdout?: string;

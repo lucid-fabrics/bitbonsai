@@ -172,9 +172,7 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
 
   args.push('-y', outputPath);
 
-  logger.log(
-    `Generating ${options.codec} video: ${options.filename} (${targetSizeMB}MB)`,
-  );
+  logger.log(`Generating ${options.codec} video: ${options.filename} (${targetSizeMB}MB)`);
 
   return new Promise((resolve, reject) => {
     const ffmpeg = spawn('ffmpeg', args, {
@@ -191,7 +189,7 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
         const stats = fs.statSync(outputPath);
         const actualSizeMB = stats.size / 1024 / 1024;
         logger.log(
-          `Generated ${options.filename}: ${actualSizeMB.toFixed(2)}MB (target: ${targetSizeMB}MB)`,
+          `Generated ${options.filename}: ${actualSizeMB.toFixed(2)}MB (target: ${targetSizeMB}MB)`
         );
         resolve(outputPath);
       } else {
@@ -210,9 +208,7 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
 /**
  * Generate a corrupted video file
  */
-export async function generateCorruptedVideo(
-  options: CorruptedVideoOptions,
-): Promise<string> {
+export async function generateCorruptedVideo(options: CorruptedVideoOptions): Promise<string> {
   const fixturesDir = getFixturesDir();
   const outputPath = path.join(fixturesDir, options.filename);
 
@@ -222,9 +218,7 @@ export async function generateCorruptedVideo(
     return outputPath;
   }
 
-  logger.log(
-    `Generating corrupted video: ${options.filename} (${options.corruptionType})`,
-  );
+  logger.log(`Generating corrupted video: ${options.filename} (${options.corruptionType})`);
 
   switch (options.corruptionType) {
     case 'missing-header': {
@@ -258,10 +252,7 @@ export async function generateCorruptedVideo(
 
       // Keep only first 50%
       const data = fs.readFileSync(tempPath);
-      fs.writeFileSync(
-        outputPath,
-        data.subarray(0, Math.floor(data.length / 2)),
-      );
+      fs.writeFileSync(outputPath, data.subarray(0, Math.floor(data.length / 2)));
       fs.unlinkSync(tempPath);
       break;
     }
@@ -296,7 +287,7 @@ export async function generateSeriesEpisodes(
   seriesName: string,
   season: number,
   episodeCount: number,
-  options: Partial<VideoOptions> = {},
+  options: Partial<VideoOptions> = {}
 ): Promise<string[]> {
   const episodes: string[] = [];
 

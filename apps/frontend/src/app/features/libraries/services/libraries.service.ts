@@ -51,17 +51,11 @@ export class LibrariesService {
     return this.librariesClient.getAllReadyFiles();
   }
 
-  createJobsFromScan(
-    id: string,
-    dto: CreateJobsFromScanDto,
-  ): Observable<CreateJobsFromScanResult> {
+  createJobsFromScan(id: string, dto: CreateJobsFromScanDto): Observable<CreateJobsFromScanResult> {
     return this.librariesClient.createJobsFromScan(id, dto);
   }
 
-  createAllJobs(
-    id: string,
-    dto: CreateAllJobsDto,
-  ): Observable<BulkJobCreationResult> {
+  createAllJobs(id: string, dto: CreateAllJobsDto): Observable<BulkJobCreationResult> {
     return this.librariesClient.createAllJobs(id, dto);
   }
 

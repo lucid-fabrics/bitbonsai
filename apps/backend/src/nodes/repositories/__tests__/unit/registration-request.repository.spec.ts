@@ -36,15 +36,10 @@ describe('RegistrationRequestRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RegistrationRequestRepository,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [RegistrationRequestRepository, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
-    repository = module.get<RegistrationRequestRepository>(
-      RegistrationRequestRepository,
-    );
+    repository = module.get<RegistrationRequestRepository>(RegistrationRequestRepository);
   });
 
   it('should be defined', () => {
@@ -53,15 +48,9 @@ describe('RegistrationRequestRepository', () => {
 
   describe('findFirstByMac', () => {
     it('should return request matching mainNodeId, macAddress, and status', async () => {
-      mockPrismaNodeRegistrationRequest.findFirst.mockResolvedValue(
-        mockRequest,
-      );
+      mockPrismaNodeRegistrationRequest.findFirst.mockResolvedValue(mockRequest);
 
-      const result = await repository.findFirstByMac(
-        'main-1',
-        'AA:BB:CC:DD:EE:FF',
-        'PENDING',
-      );
+      const result = await repository.findFirstByMac('main-1', 'AA:BB:CC:DD:EE:FF', 'PENDING');
 
       expect(result).toEqual(mockRequest);
       expect(mockPrismaNodeRegistrationRequest.findFirst).toHaveBeenCalledWith({
@@ -76,11 +65,7 @@ describe('RegistrationRequestRepository', () => {
     it('should return null when no matching request', async () => {
       mockPrismaNodeRegistrationRequest.findFirst.mockResolvedValue(null);
 
-      const result = await repository.findFirstByMac(
-        'main-1',
-        'XX:XX:XX:XX:XX:XX',
-        'PENDING',
-      );
+      const result = await repository.findFirstByMac('main-1', 'XX:XX:XX:XX:XX:XX', 'PENDING');
 
       expect(result).toBeNull();
     });
@@ -104,13 +89,11 @@ describe('RegistrationRequestRepository', () => {
     });
 
     it('should propagate errors on create', async () => {
-      mockPrismaNodeRegistrationRequest.create.mockRejectedValue(
-        new Error('Unique constraint'),
-      );
+      mockPrismaNodeRegistrationRequest.create.mockRejectedValue(new Error('Unique constraint'));
 
-      await expect(
-        repository.createRequest({ mainNodeId: 'main-1' }),
-      ).rejects.toThrow('Unique constraint');
+      await expect(repository.createRequest({ mainNodeId: 'main-1' })).rejects.toThrow(
+        'Unique constraint'
+      );
     });
   });
 
@@ -148,23 +131,19 @@ describe('RegistrationRequestRepository', () => {
     });
 
     it('should propagate errors when token not found', async () => {
-      mockPrismaNodeRegistrationRequest.update.mockRejectedValue(
-        new Error('Record not found'),
-      );
+      mockPrismaNodeRegistrationRequest.update.mockRejectedValue(new Error('Record not found'));
 
       await expect(
         repository.updateByPairingToken('invalid-token', {
           status: 'APPROVED',
-        }),
+        })
       ).rejects.toThrow('Record not found');
     });
   });
 
   describe('findManyPending', () => {
     it('should return pending requests that have not expired', async () => {
-      mockPrismaNodeRegistrationRequest.findMany.mockResolvedValue([
-        mockRequest,
-      ]);
+      mockPrismaNodeRegistrationRequest.findMany.mockResolvedValue([mockRequest]);
 
       const result = await repository.findManyPending('main-1');
 
@@ -199,12 +178,10 @@ describe('RegistrationRequestRepository', () => {
       const result = await repository.findUniqueById('req-1');
 
       expect(result).toEqual(withNode);
-      expect(mockPrismaNodeRegistrationRequest.findUnique).toHaveBeenCalledWith(
-        {
-          where: { id: 'req-1' },
-          include: { mainNode: true },
-        },
-      );
+      expect(mockPrismaNodeRegistrationRequest.findUnique).toHaveBeenCalledWith({
+        where: { id: 'req-1' },
+        include: { mainNode: true },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -224,12 +201,10 @@ describe('RegistrationRequestRepository', () => {
       const result = await repository.findUniqueByToken('token-abc');
 
       expect(result).toEqual(withNode);
-      expect(mockPrismaNodeRegistrationRequest.findUnique).toHaveBeenCalledWith(
-        {
-          where: { pairingToken: 'token-abc' },
-          include: { mainNode: true },
-        },
-      );
+      expect(mockPrismaNodeRegistrationRequest.findUnique).toHaveBeenCalledWith({
+        where: { pairingToken: 'token-abc' },
+        include: { mainNode: true },
+      });
     });
 
     it('should return null when token not found', async () => {
@@ -251,15 +226,13 @@ describe('RegistrationRequestRepository', () => {
       const result = await repository.updateManyExpired(now);
 
       expect(result).toEqual({ count: 2 });
-      expect(mockPrismaNodeRegistrationRequest.updateMany).toHaveBeenCalledWith(
-        {
-          where: {
-            status: 'PENDING',
-            tokenExpiresAt: { lt: now },
-          },
-          data: { status: 'EXPIRED' },
+      expect(mockPrismaNodeRegistrationRequest.updateMany).toHaveBeenCalledWith({
+        where: {
+          status: 'PENDING',
+          tokenExpiresAt: { lt: now },
         },
-      );
+        data: { status: 'EXPIRED' },
+      });
     });
 
     it('should return count 0 when no expired requests', async () => {
@@ -280,20 +253,15 @@ describe('RegistrationRequestRepository', () => {
         count: 5,
       });
 
-      const result = await repository.deleteManyOld(before, [
-        'EXPIRED',
-        'APPROVED',
-      ] as never[]);
+      const result = await repository.deleteManyOld(before, ['EXPIRED', 'APPROVED'] as never[]);
 
       expect(result).toEqual({ count: 5 });
-      expect(mockPrismaNodeRegistrationRequest.deleteMany).toHaveBeenCalledWith(
-        {
-          where: {
-            createdAt: { lt: before },
-            status: { in: ['EXPIRED', 'APPROVED'] },
-          },
+      expect(mockPrismaNodeRegistrationRequest.deleteMany).toHaveBeenCalledWith({
+        where: {
+          createdAt: { lt: before },
+          status: { in: ['EXPIRED', 'APPROVED'] },
         },
-      );
+      });
     });
 
     it('should return count 0 when nothing to delete', async () => {

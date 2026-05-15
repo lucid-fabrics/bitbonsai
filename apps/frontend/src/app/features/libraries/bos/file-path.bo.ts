@@ -32,16 +32,7 @@ export class FilePathBo {
    * Check if path is a video file based on extension
    */
   static isVideoFile(filePath: string): boolean {
-    const videoExtensions = [
-      'mp4',
-      'mkv',
-      'avi',
-      'mov',
-      'wmv',
-      'flv',
-      'webm',
-      'm4v',
-    ];
+    const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v'];
     const extension = FilePathBo.getFileExtension(filePath);
     return videoExtensions.includes(extension);
   }

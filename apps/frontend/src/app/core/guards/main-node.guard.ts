@@ -39,6 +39,6 @@ export const mainNodeGuard: CanActivateFn = () => {
 
       // If node is LINKED, redirect to queue page (child nodes can only view queue)
       return router.createUrlTree(['/queue']);
-    }),
+    })
   );
 };

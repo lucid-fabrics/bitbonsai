@@ -107,9 +107,7 @@ describe('EncodingProcessorService Integration Tests', () => {
           provide: SystemInfoService,
           useValue: {
             getSystemInfo: jest.fn(),
-            collectSystemInfo: jest
-              .fn()
-              .mockResolvedValue({ ipAddress: '127.0.0.1' }),
+            collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }),
           },
         },
         {
@@ -144,9 +142,7 @@ describe('EncodingProcessorService Integration Tests', () => {
           useValue: {
             startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
             manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
-            getSystemDiagnostics: jest
-              .fn()
-              .mockResolvedValue('System Diagnostics:\n- No issues'),
+            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
           },
         },
       ],
@@ -288,9 +284,7 @@ describe('EncodingProcessorService Integration Tests', () => {
         },
       });
 
-      jest
-        .spyOn(ffmpegService, 'encode')
-        .mockRejectedValue(new Error('FFmpeg failed'));
+      jest.spyOn(ffmpegService, 'encode').mockRejectedValue(new Error('FFmpeg failed'));
 
       await service.processNextJob(testNode.id);
 
@@ -324,12 +318,8 @@ describe('EncodingProcessorService Integration Tests', () => {
       const updated = await prisma.job.findUnique({ where: { id: job.id } });
 
       expect(updated?.completedAt).not.toBeNull();
-      expect(updated?.completedAt?.getTime()).toBeGreaterThanOrEqual(
-        before.getTime(),
-      );
-      expect(updated?.completedAt?.getTime()).toBeLessThanOrEqual(
-        after.getTime(),
-      );
+      expect(updated?.completedAt?.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(updated?.completedAt?.getTime()).toBeLessThanOrEqual(after.getTime());
     });
   });
 

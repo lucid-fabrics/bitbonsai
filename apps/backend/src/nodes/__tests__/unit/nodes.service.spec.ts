@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
   AccelerationType,
@@ -44,8 +40,7 @@ describe('NodesService', () => {
     status: NodeStatus.ONLINE,
     version: '1.0.0',
     acceleration: AccelerationType.NVIDIA,
-    apiKey:
-      'bb_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
+    apiKey: 'bb_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
     pairingToken: '123456',
     pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
     lastHeartbeat: new Date(),
@@ -186,7 +181,7 @@ describe('NodesService', () => {
           pairingExpiresAt: expect.any(Date),
           lastHeartbeat: expect.any(Date),
           licenseId: mockLicense.id,
-        }),
+        })
       );
     });
 
@@ -206,18 +201,16 @@ describe('NodesService', () => {
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
         expect.objectContaining({
           role: NodeRole.LINKED,
-        }),
+        })
       );
     });
 
     it('should throw BadRequestException if license is invalid', async () => {
       mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(null);
 
+      await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.registerNode(registerDto)).rejects.toThrow(
-        'Invalid or inactive license key',
+        'Invalid or inactive license key'
       );
     });
 
@@ -228,11 +221,9 @@ describe('NodesService', () => {
       };
       mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(inactiveLicense);
 
+      await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.registerNode(registerDto)).rejects.toThrow(
-        'Invalid or inactive license key',
+        'Invalid or inactive license key'
       );
     });
 
@@ -244,11 +235,9 @@ describe('NodesService', () => {
       };
       mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(fullLicense);
 
+      await expect(service.registerNode(registerDto)).rejects.toThrow(ConflictException);
       await expect(service.registerNode(registerDto)).rejects.toThrow(
-        ConflictException,
-      );
-      await expect(service.registerNode(registerDto)).rejects.toThrow(
-        'Maximum nodes (3) reached for this license',
+        'Maximum nodes (3) reached for this license'
       );
     });
   });
@@ -284,23 +273,15 @@ describe('NodesService', () => {
     it('should throw NotFoundException if token is invalid', async () => {
       mockNodeRepo.findFirst.mockResolvedValue(null);
 
-      await expect(service.pairNode('999999')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.pairNode('999999')).rejects.toThrow(
-        'Invalid or expired pairing token',
-      );
+      await expect(service.pairNode('999999')).rejects.toThrow(NotFoundException);
+      await expect(service.pairNode('999999')).rejects.toThrow('Invalid or expired pairing token');
     });
 
     it('should throw NotFoundException if token is expired', async () => {
       mockNodeRepo.findFirst.mockResolvedValue(null);
 
-      await expect(service.pairNode('123456')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.pairNode('123456')).rejects.toThrow(
-        'Invalid or expired pairing token',
-      );
+      await expect(service.pairNode('123456')).rejects.toThrow(NotFoundException);
+      await expect(service.pairNode('123456')).rejects.toThrow('Invalid or expired pairing token');
     });
   });
 
@@ -328,12 +309,12 @@ describe('NodesService', () => {
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findById.mockResolvedValue(null);
 
-      await expect(
-        service.generatePairingTokenForNode('non-existent'),
-      ).rejects.toThrow(NotFoundException);
-      await expect(
-        service.generatePairingTokenForNode('non-existent'),
-      ).rejects.toThrow('Node with ID non-existent not found');
+      await expect(service.generatePairingTokenForNode('non-existent')).rejects.toThrow(
+        NotFoundException
+      );
+      await expect(service.generatePairingTokenForNode('non-existent')).rejects.toThrow(
+        'Node with ID non-existent not found'
+      );
     });
   });
 
@@ -356,7 +337,7 @@ describe('NodesService', () => {
         expect.objectContaining({
           status: NodeStatus.ONLINE,
           uptimeSeconds: { increment: 60 },
-        }),
+        })
       );
     });
 
@@ -376,18 +357,16 @@ describe('NodesService', () => {
         expect.objectContaining({
           status: NodeStatus.ERROR,
           uptimeSeconds: { increment: 60 },
-        }),
+        })
       );
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findById.mockResolvedValue(null);
 
+      await expect(service.heartbeat('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.heartbeat('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.heartbeat('non-existent')).rejects.toThrow(
-        'Node with ID non-existent not found',
+        'Node with ID non-existent not found'
       );
     });
   });
@@ -408,11 +387,9 @@ describe('NodesService', () => {
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findWithStats.mockResolvedValue(null);
 
+      await expect(service.getNodeStats('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.getNodeStats('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.getNodeStats('non-existent')).rejects.toThrow(
-        'Node with ID non-existent not found',
+        'Node with ID non-existent not found'
       );
     });
   });
@@ -446,11 +423,9 @@ describe('NodesService', () => {
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findById.mockResolvedValue(null);
 
+      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.findOne('non-existent')).rejects.toThrow(
-        'Node with ID non-existent not found',
+        'Node with ID non-existent not found'
       );
     });
   });
@@ -468,11 +443,9 @@ describe('NodesService', () => {
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findWithSelect.mockResolvedValue(null);
 
+      await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.remove('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.remove('non-existent')).rejects.toThrow(
-        'Node with ID non-existent not found',
+        'Node with ID non-existent not found'
       );
     });
   });
@@ -590,7 +563,7 @@ describe('NodesService', () => {
 
       await expect(service.getCurrentNode()).rejects.toThrow(NotFoundException);
       await expect(service.getCurrentNode()).rejects.toThrow(
-        'Node with ID invalid-node-id (from NODE_ID env) not found',
+        'Node with ID invalid-node-id (from NODE_ID env) not found'
       );
     });
 
@@ -641,10 +614,7 @@ describe('NodesService', () => {
         role: NodeRole.LINKED,
         ipAddress: '192.168.1.100',
       };
-      mockNodeRepo.findManyByIp.mockResolvedValue([
-        linkedNodeWithIp,
-        mainNodeWithIp,
-      ]);
+      mockNodeRepo.findManyByIp.mockResolvedValue([linkedNodeWithIp, mainNodeWithIp]);
 
       const result = await service.getCurrentNode();
 
@@ -663,10 +633,7 @@ describe('NodesService', () => {
 
       const result = await service.getCurrentNode();
 
-      expect(mockNodeRepo.findManyByRole).toHaveBeenCalledWith(
-        NodeRole.MAIN,
-        expect.anything(),
-      );
+      expect(mockNodeRepo.findManyByRole).toHaveBeenCalledWith(NodeRole.MAIN, expect.anything());
       expect(result.id).toBe('node-1');
     });
 
@@ -722,16 +689,16 @@ describe('NodesService', () => {
       expect(result.name).toBe('New Name');
       expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ name: 'New Name' }),
+        expect.objectContaining({ name: 'New Name' })
       );
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findById.mockResolvedValue(null);
 
-      await expect(
-        service.update('non-existent', { name: 'Test' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw BadRequestException when maxWorkers is critically too high', async () => {
@@ -741,9 +708,9 @@ describe('NodesService', () => {
       });
 
       // Set absurdly high workers (>2x recommended for any CPU count)
-      await expect(
-        service.update('node-1', { maxWorkers: 9999 }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.update('node-1', { maxWorkers: 9999 })).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should allow updating maxWorkers at or below 2x recommended', async () => {
@@ -783,7 +750,7 @@ describe('NodesService', () => {
           cpuLimit: 80,
           hasSharedStorage: true,
           networkLocation: NetworkLocation.LOCAL,
-        }),
+        })
       );
     });
   });
@@ -827,12 +794,10 @@ describe('NodesService', () => {
     it('should throw NotFoundException if node does not exist', async () => {
       mockNodeRepo.findWithSelect.mockResolvedValue(null);
 
-      await expect(
-        service.getRecommendedConfig('non-existent'),
-      ).rejects.toThrow(NotFoundException);
-      await expect(
-        service.getRecommendedConfig('non-existent'),
-      ).rejects.toThrow('Node with ID non-existent not found');
+      await expect(service.getRecommendedConfig('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.getRecommendedConfig('non-existent')).rejects.toThrow(
+        'Node with ID non-existent not found'
+      );
     });
   });
 
@@ -851,7 +816,7 @@ describe('NodesService', () => {
 
       expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ ipAddress: '192.168.2.50' }),
+        expect.objectContaining({ ipAddress: '192.168.2.50' })
       );
     });
 
@@ -869,7 +834,7 @@ describe('NodesService', () => {
 
       expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ ipAddress: '192.168.1.100' }),
+        expect.objectContaining({ ipAddress: '192.168.1.100' })
       );
     });
 
@@ -887,7 +852,7 @@ describe('NodesService', () => {
       // MAIN node always auto-detects and includes ipAddress in the update
       expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ ipAddress: '192.168.1.100' }),
+        expect.objectContaining({ ipAddress: '192.168.1.100' })
       );
     });
   });
@@ -913,23 +878,21 @@ describe('NodesService', () => {
           };
         }
       ).nodeRegistration;
-      nodeRegistration.storageShareService.autoDetectAndMount = jest
-        .fn()
-        .mockResolvedValue({
-          detected: 2,
-          created: 1,
-          mounted: 1,
-          errors: [],
-        });
+      nodeRegistration.storageShareService.autoDetectAndMount = jest.fn().mockResolvedValue({
+        detected: 2,
+        created: 1,
+        mounted: 1,
+        errors: [],
+      });
 
       await service.pairNode('123456');
 
       // Give async operation a tick to start
       await new Promise((resolve) => setImmediate(resolve));
 
-      expect(
-        nodeRegistration.storageShareService.autoDetectAndMount,
-      ).toHaveBeenCalledWith(mockNode.id);
+      expect(nodeRegistration.storageShareService.autoDetectAndMount).toHaveBeenCalledWith(
+        mockNode.id
+      );
     });
 
     it('should not trigger storage mount for MAIN nodes', async () => {
@@ -957,9 +920,7 @@ describe('NodesService', () => {
       await service.pairNode('123456');
       await new Promise((resolve) => setImmediate(resolve));
 
-      expect(
-        nodeRegistration.storageShareService.autoDetectAndMount,
-      ).not.toHaveBeenCalled();
+      expect(nodeRegistration.storageShareService.autoDetectAndMount).not.toHaveBeenCalled();
     });
   });
 
@@ -986,18 +947,16 @@ describe('NodesService', () => {
       expect(result.role).toBe(NodeRole.LINKED);
       expect(mockLicenseRepo.findByKeyWithInclude).toHaveBeenCalledWith(
         'BB-MAIN-LICENSE',
-        expect.anything(),
+        expect.anything()
       );
     });
 
     it('should throw BadRequestException when no licenseKey and no main node found', async () => {
       mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
 
+      await expect(service.registerNode({} as any)).rejects.toThrow(BadRequestException);
       await expect(service.registerNode({} as any)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.registerNode({} as any)).rejects.toThrow(
-        'No main node found. License key is required for first node registration.',
+        'No main node found. License key is required for first node registration.'
       );
     });
 
@@ -1012,7 +971,7 @@ describe('NodesService', () => {
         service.registerNode({
           name: 'Duplicate',
           licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-        } as any),
+        } as any)
       ).rejects.toThrow(ConflictException);
     });
 
@@ -1029,7 +988,7 @@ describe('NodesService', () => {
       } as any);
 
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Main Node 1' }),
+        expect.objectContaining({ name: 'Main Node 1' })
       );
     });
 
@@ -1047,7 +1006,7 @@ describe('NodesService', () => {
       } as any);
 
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
-        expect.objectContaining({ acceleration: 'CPU' }),
+        expect.objectContaining({ acceleration: 'CPU' })
       );
     });
   });
@@ -1097,12 +1056,8 @@ describe('NodesService', () => {
       };
       mockNodeRepo.findManyByIp.mockResolvedValue([mainNode]);
 
-      await expect(service.unregisterSelf()).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.unregisterSelf()).rejects.toThrow(
-        'MAIN nodes cannot unregister',
-      );
+      await expect(service.unregisterSelf()).rejects.toThrow(BadRequestException);
+      await expect(service.unregisterSelf()).rejects.toThrow('MAIN nodes cannot unregister');
     });
 
     it('should clear local config and return success for LINKED node', async () => {
@@ -1127,7 +1082,7 @@ describe('NodesService', () => {
           pairingToken: null,
           pairingExpiresAt: null,
           mainNodeUrl: null,
-        }),
+        })
       );
     });
   });
@@ -1185,7 +1140,7 @@ describe('NodesService', () => {
       // ipAddress is present in payload so it goes into update even if unchanged
       expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ ipAddress: '192.168.2.50' }),
+        expect.objectContaining({ ipAddress: '192.168.2.50' })
       );
     });
   });
@@ -1240,7 +1195,7 @@ describe('NodesService', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         'http://child.example.com/api/v1/nodes/unregister-self',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({ method: 'POST' })
       );
       expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
     });
@@ -1336,7 +1291,7 @@ describe('NodesService', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         `http://main.example.com/api/v1/nodes/node-linked`,
-        expect.objectContaining({ method: 'DELETE' }),
+        expect.objectContaining({ method: 'DELETE' })
       );
       expect(result.success).toBe(true);
     });
@@ -1351,16 +1306,14 @@ describe('NodesService', () => {
       };
       mockNodeRepo.findManyByIp.mockResolvedValue([linkedNode]);
       mockNodeRepo.updateData.mockResolvedValue(linkedNode);
-      (global.fetch as jest.Mock).mockRejectedValue(
-        new Error('Connection refused'),
-      );
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Connection refused'));
 
       const result = await service.unregisterSelf();
 
       expect(result.success).toBe(true);
       expect(mockNodeRepo.updateData).toHaveBeenCalledWith(
         'node-linked',
-        expect.objectContaining({ pairingToken: null, mainNodeUrl: null }),
+        expect.objectContaining({ pairingToken: null, mainNodeUrl: null })
       );
     });
 
@@ -1407,7 +1360,7 @@ describe('NodesService', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         'http://child-via-main.example.com/api/v1/nodes/unregister-self',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({ method: 'POST' })
       );
       expect(mockNodeRepo.deleteById).toHaveBeenCalledWith('node-1');
     });
@@ -1446,9 +1399,7 @@ describe('NodesService', () => {
           systemInfoService: { collectSystemInfo: jest.Mock };
         }
       ).systemInfoService;
-      systemInfoService.collectSystemInfo = jest
-        .fn()
-        .mockResolvedValue({ ipAddress: null });
+      systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: null });
 
       const mainNode = { ...mockNode, ipAddress: null };
       mockNodeRepo.findManyByRole.mockResolvedValue([mainNode]);
@@ -1468,9 +1419,7 @@ describe('NodesService', () => {
           systemInfoService: { collectSystemInfo: jest.Mock };
         }
       ).systemInfoService;
-      systemInfoService.collectSystemInfo = jest
-        .fn()
-        .mockResolvedValue({ ipAddress: '127.0.0.1' });
+      systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' });
 
       const node = { ...mockNode, ipAddress: '192.168.1.100' };
       mockNodeRepo.findById.mockResolvedValue(node);
@@ -1544,7 +1493,7 @@ describe('NodesService', () => {
 
       expect(capabilityDetector.detectCapabilities).toHaveBeenCalledWith(
         'node-1',
-        'node.example.com',
+        'node.example.com'
       );
     });
 
@@ -1574,10 +1523,7 @@ describe('NodesService', () => {
 
       await service.testNodeCapabilities('node-1');
 
-      expect(capabilityDetector.detectCapabilities).toHaveBeenCalledWith(
-        'node-1',
-        '127.0.0.1',
-      );
+      expect(capabilityDetector.detectCapabilities).toHaveBeenCalledWith('node-1', '127.0.0.1');
     });
 
     it('should report sharedStorage status as warning when hasSharedStorage is false', async () => {
@@ -1605,9 +1551,7 @@ describe('NodesService', () => {
       const result = await service.testNodeCapabilities('node-1');
 
       expect((result as any).tests.sharedStorage.status).toBe('warning');
-      expect((result as any).tests.sharedStorage.message).toBe(
-        'No shared storage access',
-      );
+      expect((result as any).tests.sharedStorage.message).toBe('No shared storage access');
     });
   });
 });

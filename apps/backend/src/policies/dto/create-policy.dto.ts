@@ -86,8 +86,7 @@ export class CreatePolicyDto {
   })
   @IsOptional()
   @IsIn(['mkv', 'mp4', 'webm', null], {
-    message:
-      'Container format must be one of: mkv, mp4, webm, or null (keep original)',
+    message: 'Container format must be one of: mkv, mp4, webm, or null (keep original)',
   })
   targetContainer?: string | null;
 
@@ -126,8 +125,7 @@ export class CreatePolicyDto {
   minSavingsPercent?: number;
 
   @ApiPropertyOptional({
-    description:
-      'Optional library ID to associate this policy with a specific media library',
+    description: 'Optional library ID to associate this policy with a specific media library',
     example: 'clxxxx123456789',
     nullable: true,
   })

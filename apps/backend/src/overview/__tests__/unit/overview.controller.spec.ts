@@ -44,9 +44,7 @@ describe('OverviewController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockOverviewService.getOverview.mockRejectedValue(
-        new Error('db unavailable'),
-      );
+      mockOverviewService.getOverview.mockRejectedValue(new Error('db unavailable'));
       await expect(controller.getOverview()).rejects.toThrow('db unavailable');
     });
   });

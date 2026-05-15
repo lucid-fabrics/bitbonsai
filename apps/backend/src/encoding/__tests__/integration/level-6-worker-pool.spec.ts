@@ -42,9 +42,7 @@ describe('Level 6: Worker Pool Management', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(
-      EncodingProcessorService,
-    );
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     // Initialize in-memory database

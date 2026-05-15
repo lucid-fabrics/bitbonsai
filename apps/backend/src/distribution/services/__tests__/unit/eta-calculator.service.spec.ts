@@ -401,7 +401,7 @@ describe('EtaCalculatorService', () => {
         'node-1',
         expect.objectContaining({
           estimatedFreeAt: expect.any(Date),
-        }),
+        })
       );
 
       jest.useRealTimers();
@@ -433,7 +433,7 @@ describe('EtaCalculatorService', () => {
         'job-1',
         expect.objectContaining({
           estimatedDuration: 5000,
-        }),
+        })
       );
 
       jest.useRealTimers();

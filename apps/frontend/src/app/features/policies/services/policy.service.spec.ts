@@ -31,10 +31,7 @@ describe('PolicyService', () => {
     } as jest.Mocked<PolicyClient>;
 
     TestBed.configureTestingModule({
-      providers: [
-        PolicyService,
-        { provide: PolicyClient, useValue: policyClientSpy },
-      ],
+      providers: [PolicyService, { provide: PolicyClient, useValue: policyClientSpy }],
     });
 
     service = TestBed.inject(PolicyService);

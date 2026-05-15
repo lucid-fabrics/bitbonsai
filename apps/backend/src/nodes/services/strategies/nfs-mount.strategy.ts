@@ -58,13 +58,11 @@ export class NFSMountStrategy implements IMountStrategy {
     try {
       // Sanitize server address to prevent command injection
       const safeServerAddress = sanitizeServerAddress(serverAddress);
-      const { stdout } = await execAsync(
-        `showmount -e ${escapeShellArg(safeServerAddress)} 2>&1`,
-      );
+      const { stdout } = await execAsync(`showmount -e ${escapeShellArg(safeServerAddress)} 2>&1`);
       return !stdout.includes('RPC') && !stdout.includes('error');
     } catch (error: unknown) {
       this.logger.debug(
-        `NFS connectivity test failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `NFS connectivity test failed: ${error instanceof Error ? error.message : 'unknown error'}`
       );
       return false;
     }

@@ -92,19 +92,14 @@ export class AnalyticsController {
   @ApiOkResponse({ description: 'Complete analytics summary' })
   @ApiInternalServerErrorResponse({ description: 'Failed to build summary' })
   async getSummary(@Query('period') period?: TimePeriod) {
-    const [
-      spaceSavings,
-      encodingSpeed,
-      costSavings,
-      nodePerformance,
-      codecPerformance,
-    ] = await Promise.all([
-      this.analyticsService.getSpaceSavingsOverTime(period || '30d'),
-      this.analyticsService.getEncodingSpeedTrends(period || '30d'),
-      this.analyticsService.getCostSavings('AWS S3'),
-      this.analyticsService.getNodePerformance(period || '30d'),
-      this.analyticsService.getCodecPerformance(period || '30d'),
-    ]);
+    const [spaceSavings, encodingSpeed, costSavings, nodePerformance, codecPerformance] =
+      await Promise.all([
+        this.analyticsService.getSpaceSavingsOverTime(period || '30d'),
+        this.analyticsService.getEncodingSpeedTrends(period || '30d'),
+        this.analyticsService.getCostSavings('AWS S3'),
+        this.analyticsService.getNodePerformance(period || '30d'),
+        this.analyticsService.getCodecPerformance(period || '30d'),
+      ]);
 
     return {
       period: period || '30d',

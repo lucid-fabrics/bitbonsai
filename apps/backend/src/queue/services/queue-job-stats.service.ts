@@ -60,7 +60,7 @@ export class QueueJobStatsService {
       this.jobRepository.countWhere({ ...where, stage: JobStage.CANCELLED }),
       this.jobRepository.aggregateSumWhere(
         { ...where, stage: JobStage.COMPLETED },
-        { savedBytes: true },
+        { savedBytes: true }
       ),
     ]);
 
@@ -82,9 +82,7 @@ export class QueueJobStatsService {
       completed,
       failed,
       cancelled,
-      totalSavedBytes: (
-        (totalSaved._sum.savedBytes as bigint | null) || BigInt(0)
-      ).toString(),
+      totalSavedBytes: ((totalSaved._sum.savedBytes as bigint | null) || BigInt(0)).toString(),
       nodeId,
     };
   }

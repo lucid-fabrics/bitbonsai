@@ -88,5 +88,5 @@ export const nodesReducer = createReducer(
     ...state,
     error,
     isLoading: false,
-  })),
+  }))
 );

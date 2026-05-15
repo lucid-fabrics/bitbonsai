@@ -40,10 +40,7 @@ describe('UserRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UserRepository,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [UserRepository, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     repository = module.get<UserRepository>(UserRepository);
@@ -229,9 +226,7 @@ describe('UserRepository', () => {
     it('should propagate error when user not found', async () => {
       mockPrismaUser.delete.mockRejectedValue(new Error('Record not found'));
 
-      await expect(repository.delete('ghost')).rejects.toThrow(
-        'Record not found',
-      );
+      await expect(repository.delete('ghost')).rejects.toThrow('Record not found');
     });
   });
 
