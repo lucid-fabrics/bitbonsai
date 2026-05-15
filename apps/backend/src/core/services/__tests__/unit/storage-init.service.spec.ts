@@ -48,10 +48,13 @@ describe('StorageInitService', () => {
     mockExec.mockImplementation(
       (
         _cmd: string,
-        callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+        callback: (
+          error: Error | null,
+          result: { stdout: string; stderr: string },
+        ) => void,
       ) => {
         callback(null, { stdout: '', stderr: '' });
-      }
+      },
     );
   });
 
@@ -76,7 +79,8 @@ describe('StorageInitService', () => {
   });
 
   describe('initializeStorage (via private method)', () => {
-    const callInit = (svc: StorageInitService) => (svc as any).initializeStorage();
+    const callInit = (svc: StorageInitService) =>
+      (svc as any).initializeStorage();
 
     it('should skip when no node found', async () => {
       nodeRepository.findFirstNode.mockResolvedValue(null);
@@ -106,13 +110,16 @@ describe('StorageInitService', () => {
       mockExec.mockImplementation(
         (
           _cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           callback(null, {
             stdout: '192.168.1.100:/media on /media type nfs4\n',
             stderr: '',
           });
-        }
+        },
       );
 
       await callInit(service);
@@ -122,7 +129,7 @@ describe('StorageInitService', () => {
         expect.objectContaining({
           hasSharedStorage: true,
           networkLocation: 'LOCAL',
-        })
+        }),
       );
     });
 
@@ -135,10 +142,13 @@ describe('StorageInitService', () => {
       mockExec.mockImplementation(
         (
           _cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           callback(null, { stdout: '', stderr: '' });
-        }
+        },
       );
 
       await callInit(service);
@@ -147,7 +157,7 @@ describe('StorageInitService', () => {
         expect.any(String),
         expect.objectContaining({
           hasSharedStorage: false,
-        })
+        }),
       );
     });
 
@@ -160,17 +170,20 @@ describe('StorageInitService', () => {
       mockExec.mockImplementation(
         (
           _cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           callback(null, { stdout: '', stderr: '' });
-        }
+        },
       );
 
       await callInit(service);
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         StorageAutoDetectMountEvent.event,
-        expect.any(StorageAutoDetectMountEvent)
+        expect.any(StorageAutoDetectMountEvent),
       );
     });
 
@@ -189,10 +202,13 @@ describe('StorageInitService', () => {
       mockExec.mockImplementation(
         (
           _cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           callback(null, { stdout: '', stderr: '' });
-        }
+        },
       );
 
       await callInit(service);
@@ -200,7 +216,7 @@ describe('StorageInitService', () => {
       // Event is emitted; error handling happens in the event listener (StorageShareService)
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         StorageAutoDetectMountEvent.event,
-        expect.objectContaining({ nodeId: 'node-2' })
+        expect.objectContaining({ nodeId: 'node-2' }),
       );
     });
   });

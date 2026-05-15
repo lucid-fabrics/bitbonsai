@@ -26,7 +26,7 @@ export interface OptimalWorkerConfig {
 export function calculateOptimalWorkers(
   cpuCores: number,
   acceleration: AccelerationType,
-  ramGb?: number
+  ramGb?: number,
 ): OptimalWorkerConfig {
   // Minimum cores required for encoding (reserve some for system)
   const MIN_CORES_FOR_SYSTEM = 2;
@@ -95,7 +95,7 @@ export function calculateOptimalWorkers(
  */
 export function getRecommendationSummary(
   currentWorkers: number,
-  config: OptimalWorkerConfig
+  config: OptimalWorkerConfig,
 ): string {
   if (currentWorkers === config.recommendedMaxWorkers) {
     return `✅ Your configuration is optimal (${currentWorkers} workers)`;

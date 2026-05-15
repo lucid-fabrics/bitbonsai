@@ -95,7 +95,12 @@ describe('EncodingPreviewService', () => {
         return proc;
       });
 
-      const result = await service.generatePreviews('job-1', '/tmp/encoded.mkv', 3600, 50);
+      const result = await service.generatePreviews(
+        'job-1',
+        '/tmp/encoded.mkv',
+        3600,
+        50,
+      );
 
       expect(spawn).toHaveBeenCalledTimes(9);
       expect(result.length).toBe(9);
@@ -122,7 +127,12 @@ describe('EncodingPreviewService', () => {
 
       (existsSync as jest.Mock).mockReturnValue(true);
 
-      const result = await service.generatePreviews('job-1', '/tmp/encoded.mkv', 3600, 100);
+      const result = await service.generatePreviews(
+        'job-1',
+        '/tmp/encoded.mkv',
+        3600,
+        100,
+      );
 
       // 8 successful + 1 failed = 8 previews
       expect(result.length).toBe(8);
@@ -144,15 +154,27 @@ describe('EncodingPreviewService', () => {
 
       (existsSync as jest.Mock).mockReturnValue(false); // Files don't actually exist
 
-      const result = await service.generatePreviews('job-1', '/tmp/encoded.mkv', 3600, 50);
+      const result = await service.generatePreviews(
+        'job-1',
+        '/tmp/encoded.mkv',
+        3600,
+        50,
+      );
 
       expect(result).toEqual([]);
     });
 
     it('should return empty array on directory creation failure', async () => {
-      (fsp.mkdir as jest.Mock).mockRejectedValue(new Error('Permission denied'));
+      (fsp.mkdir as jest.Mock).mockRejectedValue(
+        new Error('Permission denied'),
+      );
 
-      const result = await service.generatePreviews('job-1', '/tmp/encoded.mkv', 3600, 50);
+      const result = await service.generatePreviews(
+        'job-1',
+        '/tmp/encoded.mkv',
+        3600,
+        50,
+      );
 
       expect(result).toEqual([]);
     });
@@ -173,7 +195,12 @@ describe('EncodingPreviewService', () => {
 
       (existsSync as jest.Mock).mockReturnValue(true);
 
-      const result = await service.generatePreviews('job-1', '/tmp/encoded.mkv', 3600, 100);
+      const result = await service.generatePreviews(
+        'job-1',
+        '/tmp/encoded.mkv',
+        3600,
+        100,
+      );
 
       // Verify sorted
       for (let i = 1; i < result.length; i++) {
@@ -216,7 +243,11 @@ describe('EncodingPreviewService', () => {
     });
 
     it('should filter non-preview files', async () => {
-      (fsp.readdir as jest.Mock).mockResolvedValue(['preview-1.jpg', 'thumbnail.png', 'README.md']);
+      (fsp.readdir as jest.Mock).mockResolvedValue([
+        'preview-1.jpg',
+        'thumbnail.png',
+        'README.md',
+      ]);
 
       const result = await service.getPreviewPaths('job-1');
 

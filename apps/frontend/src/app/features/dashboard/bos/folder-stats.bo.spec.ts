@@ -40,7 +40,9 @@ describe('FolderStatsBo', () => {
         name: 'Test',
       };
 
-      expect(() => new FolderStatsBo(mockModel as FolderStatsModel)).not.toThrow();
+      expect(
+        () => new FolderStatsBo(mockModel as FolderStatsModel),
+      ).not.toThrow();
     });
   });
 

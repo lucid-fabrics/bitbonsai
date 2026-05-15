@@ -12,7 +12,7 @@ import { SMBMountStrategy } from './smb-mount.strategy';
 export class MountStrategyFactory {
   constructor(
     private readonly nfsStrategy: NFSMountStrategy,
-    private readonly smbStrategy: SMBMountStrategy
+    private readonly smbStrategy: SMBMountStrategy,
   ) {}
 
   /**

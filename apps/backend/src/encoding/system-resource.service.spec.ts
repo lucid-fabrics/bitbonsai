@@ -21,7 +21,10 @@ describe('SystemResourceService', () => {
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SystemResourceService, { provide: NodesService, useValue: mockNodesService }],
+      providers: [
+        SystemResourceService,
+        { provide: NodesService, useValue: mockNodesService },
+      ],
     }).compile();
 
     service = module.get<SystemResourceService>(SystemResourceService);
@@ -61,7 +64,7 @@ describe('SystemResourceService', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       (os.loadavg as jest.Mock).mockReturnValue([1, 1, 1]);
       (os.freemem as jest.Mock).mockReturnValue(8 * 1024 ** 3);
@@ -77,7 +80,7 @@ describe('SystemResourceService', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       (os.loadavg as jest.Mock).mockReturnValue([100, 100, 100]);
       (os.freemem as jest.Mock).mockReturnValue(8 * 1024 ** 3);
@@ -94,7 +97,7 @@ describe('SystemResourceService', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       (os.loadavg as jest.Mock).mockReturnValue([0.1, 0.1, 0.1]);
       (os.freemem as jest.Mock).mockReturnValue(1 * 1024 ** 3); // 1GB < 4GB threshold
@@ -113,7 +116,7 @@ describe('SystemResourceService', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       (os.loadavg as jest.Mock).mockReturnValue([1, 2, 3]);
       (os.freemem as jest.Mock).mockReturnValue(8 * 1024 ** 3);

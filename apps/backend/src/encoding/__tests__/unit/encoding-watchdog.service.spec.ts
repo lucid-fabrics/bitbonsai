@@ -56,7 +56,9 @@ describe('EncodingWatchdogService', () => {
     } as unknown as jest.Mocked<NodesService>;
 
     ffmpegService = {
-      killAllZombieFfmpegProcesses: jest.fn().mockResolvedValue({ killed: 0, failed: 0 }),
+      killAllZombieFfmpegProcesses: jest
+        .fn()
+        .mockResolvedValue({ killed: 0, failed: 0 }),
       killProcess: jest.fn().mockResolvedValue(false),
       getLastStderr: jest.fn().mockReturnValue(null),
       hasActiveProcess: jest.fn().mockReturnValue(false),
@@ -144,7 +146,9 @@ describe('EncodingWatchdogService', () => {
       nodesService.getCurrentNode.mockResolvedValue(currentNode as never);
       // cpus=1, load=6 → ratio=6 > normalThreshold=5 → moderate → targetWorkers=ceil(10*0.8)=8
       // encodingJobs=10 > targetWorkers=8 → jobsToPause=2
-      jobRepository.countWhere.mockResolvedValueOnce(10).mockResolvedValueOnce(0);
+      jobRepository.countWhere
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(0);
 
       jest.spyOn(os, 'loadavg').mockReturnValue([6.0, 6.0, 6.0]);
       jest.spyOn(os, 'cpus').mockReturnValue(Array(1).fill({}) as os.CpuInfo[]);
@@ -156,7 +160,7 @@ describe('EncodingWatchdogService', () => {
       await service.manageLoadBasedPausing();
       expect(queueService.update).toHaveBeenCalledWith(
         'job-2',
-        expect.objectContaining({ stage: 'PAUSED_LOAD' })
+        expect.objectContaining({ stage: 'PAUSED_LOAD' }),
       );
     });
 
@@ -177,7 +181,7 @@ describe('EncodingWatchdogService', () => {
       await service.manageLoadBasedPausing();
       expect(queueService.update).toHaveBeenCalledWith(
         'job-3',
-        expect.objectContaining({ stage: 'QUEUED' })
+        expect.objectContaining({ stage: 'QUEUED' }),
       );
     });
 
@@ -185,7 +189,9 @@ describe('EncodingWatchdogService', () => {
       const currentNode = { id: 'node-1', maxWorkers: 10 };
       nodesService.getCurrentNode.mockResolvedValue(currentNode as never);
       // ratio=80/1=80 > highThreshold=15
-      jobRepository.countWhere.mockResolvedValueOnce(10).mockResolvedValueOnce(0);
+      jobRepository.countWhere
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(0);
 
       jest.spyOn(os, 'loadavg').mockReturnValue([80, 80, 80]);
       jest.spyOn(os, 'cpus').mockReturnValue(Array(1).fill({}) as os.CpuInfo[]);
@@ -201,7 +207,9 @@ describe('EncodingWatchdogService', () => {
     it('uses node maxWorkers when set', async () => {
       const currentNode = { id: 'node-1', maxWorkers: 6 };
       nodesService.getCurrentNode.mockResolvedValue(currentNode as never);
-      jobRepository.countWhere.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
+      jobRepository.countWhere
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(0);
 
       jest.spyOn(os, 'loadavg').mockReturnValue([1.0, 1.0, 1.0]);
       jest.spyOn(os, 'cpus').mockReturnValue(Array(4).fill({}) as os.CpuInfo[]);
@@ -222,7 +230,7 @@ describe('EncodingWatchdogService', () => {
 
       ffmpegService.hasActiveProcess.mockReturnValue(true);
       workerPoolService.getAllWorkers.mockReturnValue(
-        new Map([['w1', { currentJobId: 'job-1' }]]) as never
+        new Map([['w1', { currentJobId: 'job-1' }]]) as never,
       );
 
       const result = await service.getSystemDiagnostics('job-1');

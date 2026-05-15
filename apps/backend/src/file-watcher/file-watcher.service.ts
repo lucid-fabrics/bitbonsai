@@ -1,5 +1,10 @@
 import { basename, extname } from 'node:path';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import type { FSWatcher } from 'chokidar';
 import * as chokidar from 'chokidar';
@@ -56,7 +61,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly libraryRepository: LibraryRepository,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -135,7 +140,10 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
       this.watchers.set(libraryId, { watcher, libraryId, path });
       this.logger.log(`Started watcher for library ${libraryId} at ${path}`);
     } catch (error: unknown) {
-      this.logger.error(`Failed to start watcher for library ${libraryId}`, error);
+      this.logger.error(
+        `Failed to start watcher for library ${libraryId}`,
+        error,
+      );
       throw error;
     }
   }
@@ -155,7 +163,10 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
       this.watchers.delete(libraryId);
       this.logger.log(`Stopped watcher for library ${libraryId}`);
     } catch (error: unknown) {
-      this.logger.error(`Failed to stop watcher for library ${libraryId}`, error);
+      this.logger.error(
+        `Failed to stop watcher for library ${libraryId}`,
+        error,
+      );
       throw error;
     }
   }
@@ -165,7 +176,7 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    */
   private async stopAllWatchers(): Promise<void> {
     const promises = Array.from(this.watchers.keys()).map((libraryId) =>
-      this.stopWatcher(libraryId)
+      this.stopWatcher(libraryId),
     );
     await Promise.all(promises);
   }
@@ -203,7 +214,10 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
   /**
    * Create encoding job for detected file
    */
-  private async createJobForFile(libraryId: string, filePath: string): Promise<void> {
+  private async createJobForFile(
+    libraryId: string,
+    filePath: string,
+  ): Promise<void> {
     try {
       this.logger.log(`New video file detected: ${filePath}`);
 
@@ -235,7 +249,10 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Update database
-    await this.libraryRepository.updateLibrary({ id: libraryId }, { watchEnabled: true });
+    await this.libraryRepository.updateLibrary(
+      { id: libraryId },
+      { watchEnabled: true },
+    );
 
     // Start watcher
     await this.startWatcher(libraryId, library.path);
@@ -246,7 +263,10 @@ export class FileWatcherService implements OnModuleInit, OnModuleDestroy {
    */
   async disableWatcher(libraryId: string): Promise<void> {
     // Update database
-    await this.libraryRepository.updateLibrary({ id: libraryId }, { watchEnabled: false });
+    await this.libraryRepository.updateLibrary(
+      { id: libraryId },
+      { watchEnabled: false },
+    );
 
     // Stop watcher
     await this.stopWatcher(libraryId);

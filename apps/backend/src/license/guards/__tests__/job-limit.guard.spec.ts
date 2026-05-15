@@ -85,9 +85,11 @@ describe('JobLimitGuard', () => {
     });
     prisma.job.count.mockResolvedValue(4);
 
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
     await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
-      /Concurrent job limit reached \(4\/4\)/
+      ForbiddenException,
+    );
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
+      /Concurrent job limit reached \(4\/4\)/,
     );
   });
 
@@ -98,7 +100,9 @@ describe('JobLimitGuard', () => {
     });
     prisma.job.count.mockResolvedValue(10);
 
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('should allow when zero jobs are encoding', async () => {
@@ -138,14 +142,20 @@ describe('JobLimitGuard', () => {
       await guard.canActivate(mockExecutionContext());
       fail('Should have thrown');
     } catch (error: unknown) {
-      expect((error as ForbiddenException).message).toContain('Upgrade your license');
+      expect((error as ForbiddenException).message).toContain(
+        'Upgrade your license',
+      );
     }
   });
 
   it('should propagate errors from license client', async () => {
-    licenseClient.getCurrentLimits.mockRejectedValue(new Error('Service unavailable'));
+    licenseClient.getCurrentLimits.mockRejectedValue(
+      new Error('Service unavailable'),
+    );
 
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow('Service unavailable');
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
+      'Service unavailable',
+    );
   });
 
   it('should handle maxConcurrentJobs of 0 (all blocked)', async () => {
@@ -156,6 +166,8 @@ describe('JobLimitGuard', () => {
     prisma.job.count.mockResolvedValue(0);
 
     // 0 >= 0 is true, so should block
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 });

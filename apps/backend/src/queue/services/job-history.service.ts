@@ -41,19 +41,20 @@ export class JobHistoryService {
         tempFileExists: params.tempFileExists,
         retryNumber: params.retryNumber,
         triggeredBy: params.triggeredBy,
-        systemMessage: params.systemMessage ?? this.generateSystemMessage(params),
+        systemMessage:
+          params.systemMessage ?? this.generateSystemMessage(params),
         fps: params.fps,
         etaSeconds: params.etaSeconds,
         startedFromSeconds: params.startedFromSeconds,
       });
 
       this.logger.log(
-        `Recorded ${params.eventType} event for job ${params.jobId} at ${params.progress.toFixed(1)}%`
+        `Recorded ${params.eventType} event for job ${params.jobId} at ${params.progress.toFixed(1)}%`,
       );
     } catch (error: unknown) {
       this.logger.error(
         `Failed to record job history event`,
-        error instanceof Error ? error.stack : String(error)
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
@@ -108,7 +109,9 @@ export class JobHistoryService {
         return `Encoding interrupted by backend restart at ${params.progress.toFixed(1)}%`;
 
       case JobEventType.TIMEOUT: {
-        const hours = params.etaSeconds ? Math.floor(params.etaSeconds / 3600) : 0;
+        const hours = params.etaSeconds
+          ? Math.floor(params.etaSeconds / 3600)
+          : 0;
         return `Encoding timed out after ${hours} hours at ${params.progress.toFixed(1)}%`;
       }
 

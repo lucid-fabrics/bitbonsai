@@ -22,7 +22,13 @@ import { LibraryScannerService } from './library-scanner.service';
  * MediaAnalysisService is provided by MediaModule to avoid circular dependencies.
  */
 @Module({
-  imports: [QueueModule, MediaModule, DistributionModule, SettingsModule, PrismaModule],
+  imports: [
+    QueueModule,
+    MediaModule,
+    DistributionModule,
+    SettingsModule,
+    PrismaModule,
+  ],
   controllers: [LibrariesController],
   providers: [
     LibrariesService,

@@ -68,12 +68,14 @@ describe('InsightsController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockInsightsService.getTimeSeriesMetrics.mockRejectedValue(new Error('query failed'));
+      mockInsightsService.getTimeSeriesMetrics.mockRejectedValue(
+        new Error('query failed'),
+      );
       await expect(
         controller.getMetrics({
           startDate: '2024-01-01T00:00:00Z',
           endDate: '2024-12-31T23:59:59Z',
-        } as never)
+        } as never),
       ).rejects.toThrow('query failed');
     });
   });
@@ -90,7 +92,9 @@ describe('InsightsController', () => {
 
       const response = await controller.getStats('lic-1');
 
-      expect(mockInsightsService.getAggregatedStats).toHaveBeenCalledWith('lic-1');
+      expect(mockInsightsService.getAggregatedStats).toHaveBeenCalledWith(
+        'lic-1',
+      );
       expect(response).toEqual(stats);
     });
 
@@ -105,12 +109,16 @@ describe('InsightsController', () => {
 
       const response = await controller.getStats();
 
-      expect(mockInsightsService.getAggregatedStats).toHaveBeenCalledWith(undefined);
+      expect(mockInsightsService.getAggregatedStats).toHaveBeenCalledWith(
+        undefined,
+      );
       expect(response).toEqual(stats);
     });
 
     it('should propagate service errors', async () => {
-      mockInsightsService.getAggregatedStats.mockRejectedValue(new Error('stats error'));
+      mockInsightsService.getAggregatedStats.mockRejectedValue(
+        new Error('stats error'),
+      );
       await expect(controller.getStats()).rejects.toThrow('stats error');
     });
   });
@@ -125,7 +133,9 @@ describe('InsightsController', () => {
 
       const response = await controller.getCodecDistribution('lic-1');
 
-      expect(mockInsightsService.getCodecDistribution).toHaveBeenCalledWith('lic-1');
+      expect(mockInsightsService.getCodecDistribution).toHaveBeenCalledWith(
+        'lic-1',
+      );
       expect(response).toEqual(dist);
     });
 
@@ -135,12 +145,18 @@ describe('InsightsController', () => {
 
       await controller.getCodecDistribution(undefined);
 
-      expect(mockInsightsService.getCodecDistribution).toHaveBeenCalledWith(undefined);
+      expect(mockInsightsService.getCodecDistribution).toHaveBeenCalledWith(
+        undefined,
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockInsightsService.getCodecDistribution.mockRejectedValue(new Error('codec error'));
-      await expect(controller.getCodecDistribution()).rejects.toThrow('codec error');
+      mockInsightsService.getCodecDistribution.mockRejectedValue(
+        new Error('codec error'),
+      );
+      await expect(controller.getCodecDistribution()).rejects.toThrow(
+        'codec error',
+      );
     });
   });
 
@@ -151,7 +167,10 @@ describe('InsightsController', () => {
 
       const response = await controller.getSavingsTrend();
 
-      expect(mockInsightsService.getSavingsTrend).toHaveBeenCalledWith(30, undefined);
+      expect(mockInsightsService.getSavingsTrend).toHaveBeenCalledWith(
+        30,
+        undefined,
+      );
       expect(response).toEqual(trend);
     });
 
@@ -165,7 +184,10 @@ describe('InsightsController', () => {
 
       const response = await controller.getSavingsTrend(7, 'lic-1');
 
-      expect(mockInsightsService.getSavingsTrend).toHaveBeenCalledWith(7, 'lic-1');
+      expect(mockInsightsService.getSavingsTrend).toHaveBeenCalledWith(
+        7,
+        'lic-1',
+      );
       expect(response).toEqual(trend);
     });
 
@@ -174,11 +196,16 @@ describe('InsightsController', () => {
 
       await controller.getSavingsTrend('90' as never);
 
-      expect(mockInsightsService.getSavingsTrend).toHaveBeenCalledWith(90, undefined);
+      expect(mockInsightsService.getSavingsTrend).toHaveBeenCalledWith(
+        90,
+        undefined,
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockInsightsService.getSavingsTrend.mockRejectedValue(new Error('trend error'));
+      mockInsightsService.getSavingsTrend.mockRejectedValue(
+        new Error('trend error'),
+      );
       await expect(controller.getSavingsTrend()).rejects.toThrow('trend error');
     });
   });
@@ -192,7 +219,9 @@ describe('InsightsController', () => {
 
       const response = await controller.getNodeComparison('lic-1');
 
-      expect(mockInsightsService.getNodeComparison).toHaveBeenCalledWith('lic-1');
+      expect(mockInsightsService.getNodeComparison).toHaveBeenCalledWith(
+        'lic-1',
+      );
       expect(response).toEqual(comparison);
     });
 
@@ -201,12 +230,18 @@ describe('InsightsController', () => {
 
       await controller.getNodeComparison(undefined);
 
-      expect(mockInsightsService.getNodeComparison).toHaveBeenCalledWith(undefined);
+      expect(mockInsightsService.getNodeComparison).toHaveBeenCalledWith(
+        undefined,
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockInsightsService.getNodeComparison.mockRejectedValue(new Error('nodes error'));
-      await expect(controller.getNodeComparison()).rejects.toThrow('nodes error');
+      mockInsightsService.getNodeComparison.mockRejectedValue(
+        new Error('nodes error'),
+      );
+      await expect(controller.getNodeComparison()).rejects.toThrow(
+        'nodes error',
+      );
     });
   });
 });

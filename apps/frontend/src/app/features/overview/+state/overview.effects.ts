@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { interval, of } from 'rxjs';
-import { catchError, map, mergeMap, startWith, switchMap, takeUntil } from 'rxjs/operators';
+import {
+  catchError,
+  map,
+  mergeMap,
+  startWith,
+  switchMap,
+  takeUntil,
+} from 'rxjs/operators';
 import { OverviewService } from '../services/overview.service';
 import { OverviewActions } from './overview.actions';
 
@@ -18,8 +25,8 @@ export class OverviewEffects {
         OverviewActions.loadNodes(),
         OverviewActions.loadEnvironmentInfo(),
         OverviewActions.startPolling(),
-      ])
-    )
+      ]),
+    ),
   );
 
   // Load overview data
@@ -29,10 +36,12 @@ export class OverviewEffects {
       switchMap(() =>
         this.overviewService.getOverview().pipe(
           map((data) => OverviewActions.loadOverviewSuccess({ data })),
-          catchError((error) => of(OverviewActions.loadOverviewFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(OverviewActions.loadOverviewFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   // Load nodes
@@ -42,10 +51,12 @@ export class OverviewEffects {
       switchMap(() =>
         this.overviewService.getNodes().pipe(
           map((nodes) => OverviewActions.loadNodesSuccess({ nodes })),
-          catchError((error) => of(OverviewActions.loadNodesFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(OverviewActions.loadNodesFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   // Load environment info
@@ -54,17 +65,19 @@ export class OverviewEffects {
       ofType(OverviewActions.loadEnvironmentInfo),
       switchMap(() =>
         this.overviewService.getEnvironmentInfo().pipe(
-          map((environmentInfo) => OverviewActions.loadEnvironmentInfoSuccess({ environmentInfo })),
+          map((environmentInfo) =>
+            OverviewActions.loadEnvironmentInfoSuccess({ environmentInfo }),
+          ),
           catchError((error) =>
             of(
               OverviewActions.loadEnvironmentInfoFailure({
                 error: error.message,
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   // Start polling - poll every 5 seconds
@@ -74,10 +87,13 @@ export class OverviewEffects {
       switchMap(() =>
         interval(5000).pipe(
           startWith(0), // Start immediately
-          mergeMap(() => [OverviewActions.loadOverview(), OverviewActions.loadNodes()]),
-          takeUntil(this.actions$.pipe(ofType(OverviewActions.stopPolling)))
-        )
-      )
-    )
+          mergeMap(() => [
+            OverviewActions.loadOverview(),
+            OverviewActions.loadNodes(),
+          ]),
+          takeUntil(this.actions$.pipe(ofType(OverviewActions.stopPolling))),
+        ),
+      ),
+    ),
   );
 }

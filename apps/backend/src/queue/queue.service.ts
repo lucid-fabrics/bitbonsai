@@ -37,7 +37,7 @@ export class QueueService {
     private readonly jobCrudService: QueueJobCrudService,
     private readonly jobStateService: QueueJobStateService,
     private readonly delegationService: QueueDelegationService,
-    private readonly processingService: QueueProcessingService
+    private readonly processingService: QueueProcessingService,
   ) {}
 
   // ─── CRUD Operations (QueueJobCrudService) ─────────────────────────
@@ -52,7 +52,7 @@ export class QueueService {
     search?: string,
     libraryId?: string,
     page?: number,
-    limit?: number
+    limit?: number,
   ): Promise<{
     jobs: Job[];
     total: number;
@@ -60,7 +60,14 @@ export class QueueService {
     limit: number;
     totalPages: number;
   }> {
-    return this.jobCrudService.findAll(stage, nodeId, search, libraryId, page, limit);
+    return this.jobCrudService.findAll(
+      stage,
+      nodeId,
+      search,
+      libraryId,
+      page,
+      limit,
+    );
   }
 
   async findOne(id: string): Promise<Job> {
@@ -209,7 +216,10 @@ export class QueueService {
     return this.jobStateService.detectAndRequeueIfUncompressed(id);
   }
 
-  async resolveDecision(id: string, decisionData?: Record<string, any>): Promise<Job> {
+  async resolveDecision(
+    id: string,
+    decisionData?: Record<string, any>,
+  ): Promise<Job> {
     return this.jobStateService.resolveDecision(id, decisionData);
   }
 
@@ -236,7 +246,9 @@ export class QueueService {
   // ─── Event Listeners (from FfmpegService via EventEmitter) ──────────
 
   @OnEvent(EncodingProgressUpdateEvent.event)
-  async handleEncodingProgressUpdate(event: EncodingProgressUpdateEvent): Promise<void> {
+  async handleEncodingProgressUpdate(
+    event: EncodingProgressUpdateEvent,
+  ): Promise<void> {
     try {
       await this.updateProgress(event.jobId, {
         progress: event.data.progress,
@@ -247,18 +259,20 @@ export class QueueService {
       });
     } catch (error: unknown) {
       this.logger.warn(
-        `Progress update failed for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Progress update failed for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
 
   @OnEvent(EncodingPreviewUpdateEvent.event)
-  async handleEncodingPreviewUpdate(event: EncodingPreviewUpdateEvent): Promise<void> {
+  async handleEncodingPreviewUpdate(
+    event: EncodingPreviewUpdateEvent,
+  ): Promise<void> {
     try {
       await this.updateJobPreview(event.jobId, event.previewPaths);
     } catch (error: unknown) {
       this.logger.warn(
-        `Preview update failed for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Preview update failed for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -269,7 +283,7 @@ export class QueueService {
       await this.failJob(event.jobId, event.errorMessage);
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to mark job ${event.jobId} as failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to mark job ${event.jobId} as failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -280,18 +294,20 @@ export class QueueService {
       await this.cancelJob(event.jobId);
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to cancel job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to cancel job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
 
   @OnEvent(EncodingProcessMarkedEvent.event)
-  async handleEncodingProcessMarked(event: EncodingProcessMarkedEvent): Promise<void> {
+  async handleEncodingProcessMarked(
+    event: EncodingProcessMarkedEvent,
+  ): Promise<void> {
     try {
       await this.updateJobRaw(event.jobId, event.updates);
     } catch (error: unknown) {
       this.logger.warn(
-        `Failed to mark process state for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to mark process state for job ${event.jobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }

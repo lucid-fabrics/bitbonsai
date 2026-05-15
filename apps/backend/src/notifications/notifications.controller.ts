@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApiBadRequestResponse,
@@ -25,7 +34,7 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -49,7 +58,9 @@ export class NotificationsController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to retrieve notifications',
   })
-  async getNotifications(@Query('includeRead') includeRead = 'true'): Promise<NotificationDto[]> {
+  async getNotifications(
+    @Query('includeRead') includeRead = 'true',
+  ): Promise<NotificationDto[]> {
     const include = includeRead === 'true';
     return this.notificationsService.getNotifications(include);
   }
@@ -87,7 +98,9 @@ export class NotificationsController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to retrieve notification',
   })
-  async getNotificationById(@Param('id') id: string): Promise<NotificationDto | undefined> {
+  async getNotificationById(
+    @Param('id') id: string,
+  ): Promise<NotificationDto | undefined> {
     return this.notificationsService.getNotificationById(id);
   }
 
@@ -97,7 +110,8 @@ export class NotificationsController {
   @Post()
   @ApiOperation({
     summary: 'Create a new notification',
-    description: 'Creates a new notification and broadcasts it to connected clients',
+    description:
+      'Creates a new notification and broadcasts it to connected clients',
   })
   @ApiCreatedResponse({
     description: 'Notification created',
@@ -107,8 +121,11 @@ export class NotificationsController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to create notification',
   })
-  async createNotification(@Body() dto: CreateNotificationDto): Promise<NotificationDto> {
-    const notification = await this.notificationsService.createNotification(dto);
+  async createNotification(
+    @Body() dto: CreateNotificationDto,
+  ): Promise<NotificationDto> {
+    const notification =
+      await this.notificationsService.createNotification(dto);
 
     // Emit event for WebSocket broadcast
     this.eventEmitter.emit('notification.created', notification);

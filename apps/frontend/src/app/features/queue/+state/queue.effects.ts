@@ -16,10 +16,12 @@ export class QueueEffects {
       switchMap(({ filters }) =>
         this.queueService.getQueue(filters).pipe(
           map((data) => QueueActions.loadQueueSuccess({ data })),
-          catchError((error) => of(QueueActions.loadQueueFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(QueueActions.loadQueueFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   cancelJob$ = createEffect(() =>
@@ -28,10 +30,12 @@ export class QueueEffects {
       switchMap(({ jobId }) =>
         this.queueService.cancelJob(jobId).pipe(
           map(() => QueueActions.cancelJobSuccess({ jobId })),
-          catchError((error) => of(QueueActions.cancelJobFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(QueueActions.cancelJobFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   retryJob$ = createEffect(() =>
@@ -40,9 +44,11 @@ export class QueueEffects {
       switchMap(({ jobId }) =>
         this.queueService.retryJob(jobId).pipe(
           map(() => QueueActions.retryJobSuccess({ jobId })),
-          catchError((error) => of(QueueActions.retryJobFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(QueueActions.retryJobFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 }

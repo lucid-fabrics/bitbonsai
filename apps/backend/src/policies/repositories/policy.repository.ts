@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { JobStage, type Policy, PolicyPreset, TargetCodec } from '@prisma/client';
+import {
+  JobStage,
+  type Policy,
+  PolicyPreset,
+  TargetCodec,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface PolicyWithStats extends Policy {

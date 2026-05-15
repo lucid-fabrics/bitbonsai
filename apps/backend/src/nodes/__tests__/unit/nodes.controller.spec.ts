@@ -49,13 +49,18 @@ describe('NodesController', () => {
 
       const result = await controller.heartbeat('node1', heartbeatDto as any);
 
-      expect(mockNodesService.heartbeat).toHaveBeenCalledWith('node1', heartbeatDto);
+      expect(mockNodesService.heartbeat).toHaveBeenCalledWith(
+        'node1',
+        heartbeatDto,
+      );
       expect(result).toMatchObject({ id: 'node1', status: 'ONLINE' });
     });
 
     it('should propagate errors for unknown node', async () => {
       mockNodesService.heartbeat.mockRejectedValue(new Error('node not found'));
-      await expect(controller.heartbeat('missing', undefined)).rejects.toThrow('node not found');
+      await expect(controller.heartbeat('missing', undefined)).rejects.toThrow(
+        'node not found',
+      );
     });
   });
 
@@ -76,8 +81,12 @@ describe('NodesController', () => {
     });
 
     it('should propagate errors when no nodes registered', async () => {
-      mockNodesService.getCurrentNode.mockRejectedValue(new Error('no nodes found'));
-      await expect(controller.getCurrentNode()).rejects.toThrow('no nodes found');
+      mockNodesService.getCurrentNode.mockRejectedValue(
+        new Error('no nodes found'),
+      );
+      await expect(controller.getCurrentNode()).rejects.toThrow(
+        'no nodes found',
+      );
     });
   });
 
@@ -113,8 +122,12 @@ describe('NodesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockJobAttribution.getAllNodeScores.mockRejectedValue(new Error('score calc failed'));
-      await expect(controller.getNodeScores()).rejects.toThrow('score calc failed');
+      mockJobAttribution.getAllNodeScores.mockRejectedValue(
+        new Error('score calc failed'),
+      );
+      await expect(controller.getNodeScores()).rejects.toThrow(
+        'score calc failed',
+      );
     });
   });
 
@@ -164,13 +177,19 @@ describe('NodesController', () => {
 
       const result = await controller.getRecommendedConfig('node1');
 
-      expect(mockNodesService.getRecommendedConfig).toHaveBeenCalledWith('node1');
+      expect(mockNodesService.getRecommendedConfig).toHaveBeenCalledWith(
+        'node1',
+      );
       expect(result).toEqual(config);
     });
 
     it('should propagate service errors', async () => {
-      mockNodesService.getRecommendedConfig.mockRejectedValue(new Error('node not found'));
-      await expect(controller.getRecommendedConfig('node1')).rejects.toThrow('node not found');
+      mockNodesService.getRecommendedConfig.mockRejectedValue(
+        new Error('node not found'),
+      );
+      await expect(controller.getRecommendedConfig('node1')).rejects.toThrow(
+        'node not found',
+      );
     });
   });
 
@@ -188,7 +207,9 @@ describe('NodesController', () => {
 
     it('should propagate service errors', async () => {
       mockNodesService.update.mockRejectedValue(new Error('invalid update'));
-      await expect(controller.update('node1', {} as any)).rejects.toThrow('invalid update');
+      await expect(controller.update('node1', {} as any)).rejects.toThrow(
+        'invalid update',
+      );
     });
   });
 
@@ -225,13 +246,19 @@ describe('NodesController', () => {
 
       const result = await controller.testNodeCapabilities('node1');
 
-      expect(mockNodesService.testNodeCapabilities).toHaveBeenCalledWith('node1');
+      expect(mockNodesService.testNodeCapabilities).toHaveBeenCalledWith(
+        'node1',
+      );
       expect(result).toMatchObject({ nodeId: 'node1', nodeName: 'Worker' });
     });
 
     it('should propagate service errors', async () => {
-      mockNodesService.testNodeCapabilities.mockRejectedValue(new Error('not found'));
-      await expect(controller.testNodeCapabilities('missing')).rejects.toThrow('not found');
+      mockNodesService.testNodeCapabilities.mockRejectedValue(
+        new Error('not found'),
+      );
+      await expect(controller.testNodeCapabilities('missing')).rejects.toThrow(
+        'not found',
+      );
     });
   });
 
@@ -264,7 +291,9 @@ describe('NodesController', () => {
 
     it('should propagate errors', async () => {
       mockNodesService.findOne.mockRejectedValue(new Error('not found'));
-      await expect(controller.getNodeCapabilities('missing')).rejects.toThrow('not found');
+      await expect(controller.getNodeCapabilities('missing')).rejects.toThrow(
+        'not found',
+      );
     });
   });
 

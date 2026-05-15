@@ -49,7 +49,7 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
   // ==========================================================================
   if (!config.DATABASE_URL) {
     errors.push(
-      'DATABASE_URL is required. Example: postgresql://user:pass@localhost:5432/bitbonsai'
+      'DATABASE_URL is required. Example: postgresql://user:pass@localhost:5432/bitbonsai',
     );
   }
 
@@ -60,13 +60,13 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
 
   if (isProduction && !config.JWT_SECRET) {
     errors.push(
-      'JWT_SECRET is required in production mode. Generate with: openssl rand -base64 32'
+      'JWT_SECRET is required in production mode. Generate with: openssl rand -base64 32',
     );
   }
 
   if (config.JWT_SECRET && config.JWT_SECRET.length < 32) {
     errors.push(
-      `JWT_SECRET must be at least 32 characters (current: ${config.JWT_SECRET.length}). Generate with: openssl rand -base64 32`
+      `JWT_SECRET must be at least 32 characters (current: ${config.JWT_SECRET.length}). Generate with: openssl rand -base64 32`,
     );
   }
 
@@ -76,7 +76,7 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
   if (config.ENCRYPTION_KEY) {
     if (config.ENCRYPTION_KEY.length < 32) {
       errors.push(
-        `ENCRYPTION_KEY must be at least 32 characters (current: ${config.ENCRYPTION_KEY.length}). Generate with: openssl rand -base64 32`
+        `ENCRYPTION_KEY must be at least 32 characters (current: ${config.ENCRYPTION_KEY.length}). Generate with: openssl rand -base64 32`,
       );
     }
 
@@ -84,7 +84,7 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
     const base64Regex = /^[A-Za-z0-9+/]+=*$/;
     if (!base64Regex.test(config.ENCRYPTION_KEY.replace(/\s/g, ''))) {
       warnings.push(
-        'ENCRYPTION_KEY should be base64 encoded for best compatibility. Generate with: openssl rand -base64 32'
+        'ENCRYPTION_KEY should be base64 encoded for best compatibility. Generate with: openssl rand -base64 32',
       );
     }
   }
@@ -94,12 +94,14 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
   // ==========================================================================
   const validRoles = ['MAIN', 'LINKED'];
   if (config.NODE_ROLE && !validRoles.includes(config.NODE_ROLE)) {
-    errors.push(`NODE_ROLE must be one of: ${validRoles.join(', ')} (got: ${config.NODE_ROLE})`);
+    errors.push(
+      `NODE_ROLE must be one of: ${validRoles.join(', ')} (got: ${config.NODE_ROLE})`,
+    );
   }
 
   if (config.NODE_ROLE === 'LINKED' && !config.MAIN_API_URL) {
     errors.push(
-      'MAIN_API_URL is required when NODE_ROLE is LINKED. Example: http://192.168.1.100:3100'
+      'MAIN_API_URL is required when NODE_ROLE is LINKED. Example: http://192.168.1.100:3100',
     );
   }
 
@@ -118,7 +120,9 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
     try {
       new URL(config.LICENSE_API_URL);
     } catch {
-      errors.push(`LICENSE_API_URL is not a valid URL: ${config.LICENSE_API_URL}`);
+      errors.push(
+        `LICENSE_API_URL is not a valid URL: ${config.LICENSE_API_URL}`,
+      );
     }
   }
 
@@ -148,7 +152,7 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
       logger.error(`  ❌ ${error}`);
     }
     throw new Error(
-      `Environment validation failed with ${errors.length} error(s). See logs above for details.`
+      `Environment validation failed with ${errors.length} error(s). See logs above for details.`,
     );
   }
 

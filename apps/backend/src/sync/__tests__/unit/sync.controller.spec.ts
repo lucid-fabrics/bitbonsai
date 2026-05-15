@@ -92,7 +92,9 @@ describe('SyncController', () => {
 
       await controller.receivePolicies(dto as any);
 
-      expect(mockSyncService.receivePolicies).toHaveBeenCalledWith(dto.policies);
+      expect(mockSyncService.receivePolicies).toHaveBeenCalledWith(
+        dto.policies,
+      );
     });
   });
 
@@ -103,7 +105,9 @@ describe('SyncController', () => {
 
       await controller.receiveLibraries(dto as any);
 
-      expect(mockSyncService.receiveLibraries).toHaveBeenCalledWith(dto.libraries);
+      expect(mockSyncService.receiveLibraries).toHaveBeenCalledWith(
+        dto.libraries,
+      );
     });
   });
 

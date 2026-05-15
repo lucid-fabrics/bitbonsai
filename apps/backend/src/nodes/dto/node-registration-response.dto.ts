@@ -18,7 +18,8 @@ export class NodeRegistrationResponseDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Role assigned to the node (MAIN for first node, LINKED for additional)',
+    description:
+      'Role assigned to the node (MAIN for first node, LINKED for additional)',
     enum: ['MAIN', 'LINKED'],
     example: 'MAIN',
   })
@@ -45,13 +46,16 @@ export class NodeRegistrationResponseDto {
   acceleration!: AccelerationType;
 
   @ApiProperty({
-    description: 'API key for authenticating this node (SAVE THIS - only shown once)',
-    example: 'bb_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2',
+    description:
+      'API key for authenticating this node (SAVE THIS - only shown once)',
+    example:
+      'bb_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2',
   })
   apiKey!: string;
 
   @ApiProperty({
-    description: '6-digit pairing token for completing registration (expires in 10 minutes)',
+    description:
+      '6-digit pairing token for completing registration (expires in 10 minutes)',
     example: '123456',
   })
   pairingToken!: string;

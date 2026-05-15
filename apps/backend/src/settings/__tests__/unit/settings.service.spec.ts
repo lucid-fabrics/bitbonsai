@@ -68,7 +68,7 @@ describe('SettingsService', () => {
   describe('getSecuritySettings', () => {
     it('should return existing security settings', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ allowLocalNetworkWithoutAuth: true })
+        createSettingsRecord({ allowLocalNetworkWithoutAuth: true }),
       );
 
       const result = await service.getSecuritySettings();
@@ -78,13 +78,15 @@ describe('SettingsService', () => {
 
     it('should create default settings when none exist', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ allowLocalNetworkWithoutAuth: false })
+        createSettingsRecord({ allowLocalNetworkWithoutAuth: false }),
       );
 
       const result = await service.getSecuritySettings();
 
       expect(result).toEqual({ allowLocalNetworkWithoutAuth: false });
-      expect(mockSettingsRepository.findOrCreateWithDefaults).toHaveBeenCalledWith({
+      expect(
+        mockSettingsRepository.findOrCreateWithDefaults,
+      ).toHaveBeenCalledWith({
         allowLocalNetworkWithoutAuth: false,
       });
     });
@@ -93,7 +95,7 @@ describe('SettingsService', () => {
   describe('updateSecuritySettings', () => {
     it('should update existing security settings', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ allowLocalNetworkWithoutAuth: true })
+        createSettingsRecord({ allowLocalNetworkWithoutAuth: true }),
       );
 
       const result = await service.updateSecuritySettings({
@@ -108,7 +110,7 @@ describe('SettingsService', () => {
 
     it('should create settings when none exist', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ allowLocalNetworkWithoutAuth: true })
+        createSettingsRecord({ allowLocalNetworkWithoutAuth: true }),
       );
 
       const result = await service.updateSecuritySettings({
@@ -125,7 +127,7 @@ describe('SettingsService', () => {
   describe('getDefaultQueueView', () => {
     it('should return existing default queue view', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ defaultQueueView: 'COMPLETED' })
+        createSettingsRecord({ defaultQueueView: 'COMPLETED' }),
       );
 
       const result = await service.getDefaultQueueView();
@@ -135,13 +137,15 @@ describe('SettingsService', () => {
 
     it('should create default settings with ENCODING view when none exist', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ defaultQueueView: 'ENCODING' })
+        createSettingsRecord({ defaultQueueView: 'ENCODING' }),
       );
 
       const result = await service.getDefaultQueueView();
 
       expect(result).toEqual({ defaultQueueView: 'ENCODING' });
-      expect(mockSettingsRepository.findOrCreateWithDefaults).toHaveBeenCalledWith({
+      expect(
+        mockSettingsRepository.findOrCreateWithDefaults,
+      ).toHaveBeenCalledWith({
         defaultQueueView: 'ENCODING',
       });
     });
@@ -150,7 +154,7 @@ describe('SettingsService', () => {
   describe('updateDefaultQueueView', () => {
     it('should update existing queue view', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ defaultQueueView: 'FAILED' })
+        createSettingsRecord({ defaultQueueView: 'FAILED' }),
       );
 
       const result = await service.updateDefaultQueueView({
@@ -165,7 +169,7 @@ describe('SettingsService', () => {
 
     it('should create settings with specified queue view when none exist', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ defaultQueueView: 'ALL' })
+        createSettingsRecord({ defaultQueueView: 'ALL' }),
       );
 
       const result = await service.updateDefaultQueueView({
@@ -182,7 +186,7 @@ describe('SettingsService', () => {
   describe('getReadyFilesCacheTtl', () => {
     it('should return existing cache TTL', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ readyFilesCacheTtlMinutes: 30 })
+        createSettingsRecord({ readyFilesCacheTtlMinutes: 30 }),
       );
 
       const result = await service.getReadyFilesCacheTtl();
@@ -192,7 +196,7 @@ describe('SettingsService', () => {
 
     it('should create default settings with 5-minute TTL when none exist', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ readyFilesCacheTtlMinutes: 5 })
+        createSettingsRecord({ readyFilesCacheTtlMinutes: 5 }),
       );
 
       const result = await service.getReadyFilesCacheTtl();
@@ -204,7 +208,7 @@ describe('SettingsService', () => {
   describe('updateReadyFilesCacheTtl', () => {
     it('should update existing cache TTL', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ readyFilesCacheTtlMinutes: 60 })
+        createSettingsRecord({ readyFilesCacheTtlMinutes: 60 }),
       );
 
       const result = await service.updateReadyFilesCacheTtl(60);
@@ -217,7 +221,7 @@ describe('SettingsService', () => {
 
     it('should create settings when none exist', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ readyFilesCacheTtlMinutes: 10 })
+        createSettingsRecord({ readyFilesCacheTtlMinutes: 10 }),
       );
 
       const result = await service.updateReadyFilesCacheTtl(10);
@@ -226,15 +230,17 @@ describe('SettingsService', () => {
     });
 
     it('should throw BadRequestException when TTL is less than 5', async () => {
-      await expect(service.updateReadyFilesCacheTtl(4)).rejects.toThrow(BadRequestException);
+      await expect(service.updateReadyFilesCacheTtl(4)).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.updateReadyFilesCacheTtl(0)).rejects.toThrow(
-        'Cache TTL must be at least 5 minutes'
+        'Cache TTL must be at least 5 minutes',
       );
     });
 
     it('should accept exactly 5 minutes as minimum valid TTL', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ readyFilesCacheTtlMinutes: 5 })
+        createSettingsRecord({ readyFilesCacheTtlMinutes: 5 }),
       );
 
       const result = await service.updateReadyFilesCacheTtl(5);
@@ -249,7 +255,7 @@ describe('SettingsService', () => {
   describe('getAutoHealRetryLimit', () => {
     it('should return existing auto-heal retry limit', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ maxAutoHealRetries: 20 })
+        createSettingsRecord({ maxAutoHealRetries: 20 }),
       );
 
       const result = await service.getAutoHealRetryLimit();
@@ -259,7 +265,7 @@ describe('SettingsService', () => {
 
     it('should create default settings with limit of 15 when none exist', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ maxAutoHealRetries: 15 })
+        createSettingsRecord({ maxAutoHealRetries: 15 }),
       );
 
       const result = await service.getAutoHealRetryLimit();
@@ -271,7 +277,7 @@ describe('SettingsService', () => {
   describe('updateAutoHealRetryLimit', () => {
     it('should update existing retry limit', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ maxAutoHealRetries: 25 })
+        createSettingsRecord({ maxAutoHealRetries: 25 }),
       );
 
       const result = await service.updateAutoHealRetryLimit(25);
@@ -284,7 +290,7 @@ describe('SettingsService', () => {
 
     it('should create settings when none exist', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ maxAutoHealRetries: 10 })
+        createSettingsRecord({ maxAutoHealRetries: 10 }),
       );
 
       const result = await service.updateAutoHealRetryLimit(10);
@@ -293,15 +299,17 @@ describe('SettingsService', () => {
     });
 
     it('should throw BadRequestException when retry limit is less than 3', async () => {
-      await expect(service.updateAutoHealRetryLimit(2)).rejects.toThrow(BadRequestException);
+      await expect(service.updateAutoHealRetryLimit(2)).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.updateAutoHealRetryLimit(0)).rejects.toThrow(
-        'Auto-heal retry limit must be at least 3'
+        'Auto-heal retry limit must be at least 3',
       );
     });
 
     it('should accept exactly 3 as minimum valid retry limit', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ maxAutoHealRetries: 3 })
+        createSettingsRecord({ maxAutoHealRetries: 3 }),
       );
 
       const result = await service.updateAutoHealRetryLimit(3);
@@ -316,7 +324,7 @@ describe('SettingsService', () => {
   describe('getAdvancedMode', () => {
     it('should return existing advanced mode setting', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ advancedModeEnabled: true })
+        createSettingsRecord({ advancedModeEnabled: true }),
       );
 
       const result = await service.getAdvancedMode();
@@ -326,7 +334,7 @@ describe('SettingsService', () => {
 
     it('should create default settings with advanced mode disabled when none exist', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ advancedModeEnabled: false })
+        createSettingsRecord({ advancedModeEnabled: false }),
       );
 
       const result = await service.getAdvancedMode();
@@ -338,7 +346,7 @@ describe('SettingsService', () => {
   describe('updateAdvancedMode', () => {
     it('should enable advanced mode', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ advancedModeEnabled: true })
+        createSettingsRecord({ advancedModeEnabled: true }),
       );
 
       const result = await service.updateAdvancedMode(true);
@@ -351,7 +359,7 @@ describe('SettingsService', () => {
 
     it('should disable advanced mode', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ advancedModeEnabled: false })
+        createSettingsRecord({ advancedModeEnabled: false }),
       );
 
       const result = await service.updateAdvancedMode(false);
@@ -361,7 +369,7 @@ describe('SettingsService', () => {
 
     it('should create settings when none exist', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ advancedModeEnabled: true })
+        createSettingsRecord({ advancedModeEnabled: true }),
       );
 
       const result = await service.updateAdvancedMode(true);
@@ -380,7 +388,7 @@ describe('SettingsService', () => {
           jellyfinUrl: 'http://192.168.1.100:8096',
           jellyfinApiKey: 'secret-api-key-123',
           jellyfinRefreshOnComplete: true,
-        })
+        }),
       );
 
       const result = await service.getJellyfinSettings();
@@ -398,7 +406,7 @@ describe('SettingsService', () => {
           jellyfinUrl: null,
           jellyfinApiKey: null,
           jellyfinRefreshOnComplete: true,
-        })
+        }),
       );
 
       const result = await service.getJellyfinSettings();
@@ -411,7 +419,9 @@ describe('SettingsService', () => {
     });
 
     it('should create default settings when none exist', async () => {
-      mockSettingsRepository.findOrCreate.mockResolvedValue(createSettingsRecord());
+      mockSettingsRepository.findOrCreate.mockResolvedValue(
+        createSettingsRecord(),
+      );
 
       const result = await service.getJellyfinSettings();
 
@@ -422,7 +432,7 @@ describe('SettingsService', () => {
 
     it('should default jellyfinRefreshOnComplete to true when undefined', async () => {
       mockSettingsRepository.findOrCreate.mockResolvedValue(
-        createSettingsRecord({ jellyfinRefreshOnComplete: undefined })
+        createSettingsRecord({ jellyfinRefreshOnComplete: undefined }),
       );
 
       const result = await service.getJellyfinSettings();
@@ -432,7 +442,7 @@ describe('SettingsService', () => {
 
     it('should return null for empty string URL', async () => {
       mockSettingsRepository.findOrCreate.mockResolvedValue(
-        createSettingsRecord({ jellyfinUrl: '', jellyfinApiKey: '' })
+        createSettingsRecord({ jellyfinUrl: '', jellyfinApiKey: '' }),
       );
 
       const result = await service.getJellyfinSettings();
@@ -466,7 +476,7 @@ describe('SettingsService', () => {
 
     it('should return the actual API key unmasked', async () => {
       localMockRepo.findFirst.mockResolvedValue(
-        createSettingsRecord({ jellyfinApiKey: 'real-secret-key' })
+        createSettingsRecord({ jellyfinApiKey: 'real-secret-key' }),
       );
 
       const result = await service.getUnmaskedJellyfinApiKey();
@@ -483,7 +493,9 @@ describe('SettingsService', () => {
     });
 
     it('should return null when API key is empty', async () => {
-      localMockRepo.findFirst.mockResolvedValue(createSettingsRecord({ jellyfinApiKey: '' }));
+      localMockRepo.findFirst.mockResolvedValue(
+        createSettingsRecord({ jellyfinApiKey: '' }),
+      );
 
       const result = await service.getUnmaskedJellyfinApiKey();
 
@@ -498,7 +510,7 @@ describe('SettingsService', () => {
           jellyfinUrl: 'http://jellyfin.local:8096',
           jellyfinApiKey: 'new-key',
           jellyfinRefreshOnComplete: false,
-        })
+        }),
       );
 
       const result = await service.updateJellyfinSettings({
@@ -514,7 +526,7 @@ describe('SettingsService', () => {
 
     it('should only update provided fields', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ jellyfinUrl: 'http://new-url:8096' })
+        createSettingsRecord({ jellyfinUrl: 'http://new-url:8096' }),
       );
 
       await service.updateJellyfinSettings({
@@ -528,7 +540,7 @@ describe('SettingsService', () => {
 
     it('should set null when empty string URL provided', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ jellyfinUrl: null })
+        createSettingsRecord({ jellyfinUrl: null }),
       );
 
       await service.updateJellyfinSettings({ jellyfinUrl: '' });
@@ -543,7 +555,7 @@ describe('SettingsService', () => {
         createSettingsRecord({
           jellyfinUrl: 'http://jf:8096',
           jellyfinApiKey: 'key',
-        })
+        }),
       );
 
       const result = await service.updateJellyfinSettings({
@@ -557,7 +569,7 @@ describe('SettingsService', () => {
 
     it('should skip undefined fields in update data', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ jellyfinRefreshOnComplete: false })
+        createSettingsRecord({ jellyfinRefreshOnComplete: false }),
       );
 
       await service.updateJellyfinSettings({
@@ -571,7 +583,7 @@ describe('SettingsService', () => {
 
     it('should handle jellyfinRefreshOnComplete undefined in response', async () => {
       mockSettingsRepository.upsertSettings.mockResolvedValue(
-        createSettingsRecord({ jellyfinRefreshOnComplete: undefined })
+        createSettingsRecord({ jellyfinRefreshOnComplete: undefined }),
       );
 
       const result = await service.updateJellyfinSettings({
@@ -600,7 +612,7 @@ describe('SettingsService', () => {
           maxRetryAttempts: 5,
           backupCleanupIntervalMs: 7200000,
           backupRetentionHours: 48,
-        })
+        }),
       );
 
       const result = await service.getOperationalSettings();

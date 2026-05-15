@@ -1,8 +1,19 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, interval, map, Observable, of, switchMap, takeWhile } from 'rxjs';
+import {
+  catchError,
+  interval,
+  map,
+  Observable,
+  of,
+  switchMap,
+  takeWhile,
+} from 'rxjs';
 import { DiscoveryService } from '../../features/node-setup/services/discovery.service';
-import type { CapabilityTestProgress, CapabilityTestResult } from '../models/capability-test.model';
+import type {
+  CapabilityTestProgress,
+  CapabilityTestResult,
+} from '../models/capability-test.model';
 
 /**
  * Capability Test Service
@@ -80,7 +91,7 @@ export class CapabilityTestService {
             };
 
             return progress;
-          })
+          }),
         );
       }),
       catchError((error) => {
@@ -94,7 +105,7 @@ export class CapabilityTestService {
           error: error?.message || 'Unknown error occurred',
         };
         return of(errorProgress);
-      })
+      }),
     );
   }
 
@@ -112,7 +123,7 @@ export class CapabilityTestService {
     }
 
     return this.http.get<CapabilityTestResult>(
-      `${mainNodeUrl}/api/v1/nodes/${nodeId}/capabilities`
+      `${mainNodeUrl}/api/v1/nodes/${nodeId}/capabilities`,
     );
   }
 

@@ -77,7 +77,8 @@ describe('SetupController', () => {
         mainNodeUrl: 'http://192.168.1.100:3100',
       };
       setupService.initializeSetup.mockResolvedValue({
-        message: 'Child node setup completed. Use the pairing token to connect to a main node.',
+        message:
+          'Child node setup completed. Use the pairing token to connect to a main node.',
         pairingToken: 'BITBONSAI-ABCD1234',
       });
 
@@ -93,10 +94,12 @@ describe('SetupController', () => {
         password: 'securePass1',
         allowLocalNetworkWithoutAuth: false,
       };
-      setupService.initializeSetup.mockRejectedValue(new Error('Setup has already been completed'));
+      setupService.initializeSetup.mockRejectedValue(
+        new Error('Setup has already been completed'),
+      );
 
       await expect(controller.initializeSetup(dto)).rejects.toThrow(
-        'Setup has already been completed'
+        'Setup has already been completed',
       );
     });
   });
@@ -107,7 +110,8 @@ describe('SetupController', () => {
   describe('resetSetup', () => {
     it('should delegate reset to service', async () => {
       setupService.resetSetup.mockResolvedValue({
-        message: 'Setup reset successfully. You can now run first-time setup again.',
+        message:
+          'Setup reset successfully. You can now run first-time setup again.',
       });
 
       const result = await controller.resetSetup();
@@ -118,11 +122,11 @@ describe('SetupController', () => {
 
     it('should propagate production guard errors', async () => {
       setupService.resetSetup.mockRejectedValue(
-        new Error('Reset setup is not allowed in production')
+        new Error('Reset setup is not allowed in production'),
       );
 
       await expect(controller.resetSetup()).rejects.toThrow(
-        'Reset setup is not allowed in production'
+        'Reset setup is not allowed in production',
       );
     });
   });

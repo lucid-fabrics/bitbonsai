@@ -115,7 +115,8 @@ export class CreateJobDto {
   ffmpegThreads?: number;
 
   @ApiPropertyOptional({
-    description: 'Job type: ENCODE (full transcode) or REMUX (container change only)',
+    description:
+      'Job type: ENCODE (full transcode) or REMUX (container change only)',
     example: 'ENCODE',
     enum: ['ENCODE', 'REMUX'],
   })
@@ -133,7 +134,8 @@ export class CreateJobDto {
   @IsOptional()
   @IsString()
   @Matches(/^(mkv|mp4|matroska)$/, {
-    message: 'Source container must be mkv, mp4, or matroska (tested formats only)',
+    message:
+      'Source container must be mkv, mp4, or matroska (tested formats only)',
   })
   sourceContainer?: string;
 

@@ -7,7 +7,10 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { createMockPrismaService } from '../../../testing/mock-providers';
 import { AccelerationType } from '../../dto/hardware-capabilities.dto';
 import { HardwareDetectionService } from '../../hardware-detection.service';
-import { HealthDashboardService, HealthStatus } from '../../health-dashboard.service';
+import {
+  HealthDashboardService,
+  HealthStatus,
+} from '../../health-dashboard.service';
 
 jest.mock('os');
 jest.mock('node:fs', () => ({
@@ -77,7 +80,7 @@ describe('HealthDashboardService', () => {
         model: 'Test CPU',
         speed: 3200,
         times: { user: 100, nice: 0, sys: 50, idle: 850, irq: 0 },
-      })
+      }),
     );
     (os.loadavg as jest.Mock).mockReturnValue([1.0, 1.5, 2.0]);
     (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 * 1024 * 1024);
@@ -296,7 +299,9 @@ describe('HealthDashboardService', () => {
     });
 
     it('should handle hardware detection failure gracefully', async () => {
-      hardwareDetection.detectHardware.mockRejectedValue(new Error('Detection failed'));
+      hardwareDetection.detectHardware.mockRejectedValue(
+        new Error('Detection failed'),
+      );
 
       const dashboard = await service.getDashboard();
 

@@ -31,7 +31,9 @@ describe('NodesService Integration Tests', () => {
         {
           provide: SystemInfoService,
           useValue: {
-            collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }),
+            collectSystemInfo: jest
+              .fn()
+              .mockResolvedValue({ ipAddress: '127.0.0.1' }),
           },
         },
         {
@@ -143,7 +145,9 @@ describe('NodesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.findOne('non-existent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -163,7 +167,9 @@ describe('NodesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

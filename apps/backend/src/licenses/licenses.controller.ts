@@ -29,7 +29,7 @@ import { LicensesService } from './licenses.service';
 export class LicensesController {
   constructor(
     private readonly licenseGuard: LicenseGuardService,
-    private readonly licensesService: LicensesService
+    private readonly licensesService: LicensesService,
   ) {}
 
   @Get('current')
@@ -44,7 +44,8 @@ export class LicensesController {
 
     return {
       tier: capabilities.tier,
-      licenseKey: capabilities.tier === LicenseTier.FREE ? 'FREE-TIER' : 'ACTIVATED',
+      licenseKey:
+        capabilities.tier === LicenseTier.FREE ? 'FREE-TIER' : 'ACTIVATED',
       email: null,
       validUntil: 'Lifetime',
       maxNodes: capabilities.maxNodes,
@@ -71,12 +72,14 @@ export class LicensesController {
   @Get('capabilities')
   @ApiOperation({
     summary: 'Get license capabilities and usage',
-    description: 'Returns current license limits, usage, and whether upgrades are recommended.',
+    description:
+      'Returns current license limits, usage, and whether upgrades are recommended.',
   })
   @ApiOkResponse({ description: 'Capabilities and usage retrieved' })
   async getCapabilities(): Promise<unknown> {
     const capabilities = await this.licenseGuard.getCapabilities();
-    const upgradeRecommendation = await this.licenseGuard.getUpgradeRecommendation();
+    const upgradeRecommendation =
+      await this.licenseGuard.getUpgradeRecommendation();
 
     return {
       ...capabilities,
@@ -87,7 +90,8 @@ export class LicensesController {
   @Get('tiers')
   @ApiOperation({
     summary: 'Get available license tiers',
-    description: 'Returns all available license tiers with their limits and features.',
+    description:
+      'Returns all available license tiers with their limits and features.',
   })
   @ApiOkResponse({ description: 'Available tiers retrieved' })
   async getAvailableTiers(): Promise<unknown> {
@@ -126,7 +130,12 @@ export class LicensesController {
           priceUnit: 'month',
           maxNodes: 5,
           maxConcurrentJobs: 10,
-          features: ['Multi-node (5)', 'API access', 'Webhooks', 'Priority queue'],
+          features: [
+            'Multi-node (5)',
+            'API access',
+            'Webhooks',
+            'Priority queue',
+          ],
           recommended: true,
         },
         {
@@ -163,7 +172,11 @@ export class LicensesController {
           priceUnit: 'contact',
           maxNodes: 999,
           maxConcurrentJobs: 999,
-          features: ['Unlimited nodes', 'Custom integrations', 'On-premise support'],
+          features: [
+            'Unlimited nodes',
+            'Custom integrations',
+            'On-premise support',
+          ],
         },
       ],
     };
@@ -180,7 +193,9 @@ export class LicensesController {
   @ApiOkResponse({ description: 'License activated', type: LicenseDto })
   @ApiBadRequestResponse({ description: 'Invalid license key' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async activateLicense(@Body() activateDto: ActivateLicenseDto): Promise<LicenseDto> {
+  async activateLicense(
+    @Body() activateDto: ActivateLicenseDto,
+  ): Promise<LicenseDto> {
     const result = await this.licensesService.activateLicense(activateDto);
 
     // Get capabilities to get current node count
@@ -191,14 +206,17 @@ export class LicensesController {
 
     // Determine features based on tier
     const isPatreonProOrHigher =
-      result.tier === LicenseTier.PATREON_PRO || result.tier === LicenseTier.PATREON_ULTIMATE;
+      result.tier === LicenseTier.PATREON_PRO ||
+      result.tier === LicenseTier.PATREON_ULTIMATE;
     const isCommercial = result.tier.startsWith('COMMERCIAL');
 
     return {
       tier: result.tier,
       licenseKey: maskedKey,
       email: result.email,
-      validUntil: result.expiresAt ? result.expiresAt.toISOString() : 'Lifetime',
+      validUntil: result.expiresAt
+        ? result.expiresAt.toISOString()
+        : 'Lifetime',
       maxNodes: result.maxNodes,
       usedNodes: capabilities.currentNodes,
       maxConcurrentJobs: result.maxConcurrentJobs,
@@ -222,7 +240,8 @@ export class LicensesController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute - matches licensing-service
   @ApiOperation({
     summary: 'Lookup license by email',
-    description: 'Find license associated with an email address (for post-Stripe checkout flow).',
+    description:
+      'Find license associated with an email address (for post-Stripe checkout flow).',
   })
   @ApiOkResponse({ description: 'License lookup result' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })

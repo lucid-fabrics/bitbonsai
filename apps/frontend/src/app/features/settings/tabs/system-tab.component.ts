@@ -1,12 +1,21 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe } from '@angular/common';
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
-import { selectIsLinkedNode, selectMainNode } from '../../../core/+state/current-node.selectors';
+import {
+  selectIsLinkedNode,
+  selectMainNode,
+} from '../../../core/+state/current-node.selectors';
 import { NodesClient } from '../../../core/clients/nodes.client';
 import { ErrorLoggerService } from '../../../core/services/error-logger.service';
 import {
@@ -201,7 +210,8 @@ export class SystemTabComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly dialog = inject(Dialog);
 
-  readonly isLinkedNode$: Observable<boolean> = this.store.select(selectIsLinkedNode);
+  readonly isLinkedNode$: Observable<boolean> =
+    this.store.select(selectIsLinkedNode);
   readonly mainNode$ = this.store.select(selectMainNode);
 
   systemSettings = signal<SystemSettings | null>(null);
@@ -238,7 +248,9 @@ export class SystemTabComponent implements OnInit {
       .subscribe({
         next: (result: { backupPath: string }) => {
           this.loading.set(false);
-          this.successMessage.set(`Database backed up to: ${result.backupPath}`);
+          this.successMessage.set(
+            `Database backed up to: ${result.backupPath}`,
+          );
         },
         error: () => {
           this.error.set('Failed to backup database');
@@ -273,28 +285,30 @@ export class SystemTabComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
-      if (confirmed === true) {
-        this.loading.set(true);
-        this.error.set(null);
-        this.successMessage.set(null);
+    dialogRef.closed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed === true) {
+          this.loading.set(true);
+          this.error.set(null);
+          this.successMessage.set(null);
 
-        this.settingsService
-          .resetToDefaults()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (result: { message: string }) => {
-              this.loading.set(false);
-              this.successMessage.set(result.message);
-              this.loadSystemSettings();
-            },
-            error: () => {
-              this.error.set('Failed to reset settings');
-              this.loading.set(false);
-            },
-          });
-      }
-    });
+          this.settingsService
+            .resetToDefaults()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (result: { message: string }) => {
+                this.loading.set(false);
+                this.successMessage.set(result.message);
+                this.loadSystemSettings();
+              },
+              error: () => {
+                this.error.set('Failed to reset settings');
+                this.loading.set(false);
+              },
+            });
+        }
+      });
   }
 
   unregisterNode(): void {
@@ -324,31 +338,35 @@ export class SystemTabComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
-      if (confirmed === true) {
-        this.loading.set(true);
-        this.error.set(null);
-        this.successMessage.set(null);
+    dialogRef.closed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed === true) {
+          this.loading.set(true);
+          this.error.set(null);
+          this.successMessage.set(null);
 
-        this.nodesClient
-          .unregisterSelf()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (result) => {
-              this.loading.set(false);
-              this.successMessage.set(result.message);
+          this.nodesClient
+            .unregisterSelf()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (result) => {
+                this.loading.set(false);
+                this.successMessage.set(result.message);
 
-              // Redirect to setup after successful unregistration
-              setTimeout(() => {
-                this.router.navigate(['/setup']);
-              }, 2000);
-            },
-            error: (err) => {
-              this.loading.set(false);
-              this.error.set(err.error?.message || 'Failed to unregister node');
-            },
-          });
-      }
-    });
+                // Redirect to setup after successful unregistration
+                setTimeout(() => {
+                  this.router.navigate(['/setup']);
+                }, 2000);
+              },
+              error: (err) => {
+                this.loading.set(false);
+                this.error.set(
+                  err.error?.message || 'Failed to unregister node',
+                );
+              },
+            });
+        }
+      });
   }
 }

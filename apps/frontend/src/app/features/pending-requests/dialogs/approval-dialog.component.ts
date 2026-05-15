@@ -393,7 +393,7 @@ export class ApprovalDialogComponent {
           return this.nodesClient.getNodeCapabilities(this.approvedNodeId);
         }),
         delay(500), // Brief delay for smooth UX
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (results: NodeCapabilities) => {
@@ -403,9 +403,13 @@ export class ApprovalDialogComponent {
           this.dialogTitle.set('Node Capabilities Detected');
         },
         error: (err) => {
-          this.errorLogger.error('Error during approval/capability detection', err);
+          this.errorLogger.error(
+            'Error during approval/capability detection',
+            err,
+          );
           this.errorMessage.set(
-            err?.error?.message || 'Failed to approve node or detect capabilities'
+            err?.error?.message ||
+              'Failed to approve node or detect capabilities',
           );
           this.isApproving.set(false);
         },

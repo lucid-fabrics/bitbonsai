@@ -50,7 +50,7 @@ export class StorageSetupWizardModal implements OnInit {
 
   constructor(
     @Inject(DIALOG_DATA) data: StorageSetupWizardData,
-    private dialogRef: DialogRef<{ configured: boolean }>
+    private dialogRef: DialogRef<{ configured: boolean }>,
   ) {
     // Initialize from dialog data
     this.sourceNodeId = data.sourceNodeId;

@@ -52,7 +52,9 @@ export class FolderStatsBo {
   }
 
   get h264Percentage(): number {
-    return this.fileCount > 0 ? (this.codecDistribution.h264 / this.fileCount) * 100 : 0;
+    return this.fileCount > 0
+      ? (this.codecDistribution.h264 / this.fileCount) * 100
+      : 0;
   }
 
   get badge(): { text: string; class: string } {

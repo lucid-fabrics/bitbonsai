@@ -4,7 +4,7 @@
 export class SavingsTrendBO {
   constructor(
     public readonly date: string,
-    public readonly savingsGB: number
+    public readonly savingsGB: number,
   ) {}
 
   static fromDto(dto: { date: string; savedGB: number }): SavingsTrendBO {

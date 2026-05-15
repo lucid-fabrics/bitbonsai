@@ -14,7 +14,11 @@ import {
   seedTestDatabase,
   waitForJobCompletion,
 } from '../fixtures/test-helpers';
-import { cleanupFixtures, generateVideo, verifyVideoFile } from '../fixtures/video-generator';
+import {
+  cleanupFixtures,
+  generateVideo,
+  verifyVideoFile,
+} from '../fixtures/video-generator';
 
 /**
  * Level 8: Video Quality Verification (CRITICAL)
@@ -54,7 +58,9 @@ interface VideoQualityMetrics {
 /**
  * Get comprehensive video quality metrics using FFprobe
  */
-async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMetrics> {
+async function getVideoQualityMetrics(
+  filePath: string,
+): Promise<VideoQualityMetrics> {
   return new Promise((resolve, reject) => {
     const ffprobe = spawn('ffprobe', [
       '-v',
@@ -81,9 +87,13 @@ async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMet
       try {
         const data = JSON.parse(output);
 
-        const videoStream = data.streams?.find((s: any) => s.codec_type === 'video');
-        const audioStreams = data.streams?.filter((s: any) => s.codec_type === 'audio') || [];
-        const subtitleStreams = data.streams?.filter((s: any) => s.codec_type === 'subtitle') || [];
+        const videoStream = data.streams?.find(
+          (s: any) => s.codec_type === 'video',
+        );
+        const audioStreams =
+          data.streams?.filter((s: any) => s.codec_type === 'audio') || [];
+        const subtitleStreams =
+          data.streams?.filter((s: any) => s.codec_type === 'subtitle') || [];
 
         if (!videoStream) {
           reject(new Error('No video stream found'));
@@ -118,7 +128,10 @@ async function getVideoQualityMetrics(filePath: string): Promise<VideoQualityMet
  * Calculate PSNR (Peak Signal-to-Noise Ratio) between original and encoded
  * Higher PSNR = better quality (>30 dB is good, >40 dB is excellent)
  */
-async function _calculatePSNR(originalPath: string, encodedPath: string): Promise<number> {
+async function _calculatePSNR(
+  originalPath: string,
+  encodedPath: string,
+): Promise<number> {
   return new Promise((resolve, reject) => {
     const ffmpeg = spawn('ffmpeg', [
       '-i',
@@ -171,7 +184,9 @@ describe('Level 8: Video Quality Verification (CRITICAL)', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(
+      EncodingProcessorService,
+    );
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();

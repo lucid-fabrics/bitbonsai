@@ -87,15 +87,23 @@ describe('StorageSharesController', () => {
     });
 
     it('should propagate errors for invalid configuration', async () => {
-      mockStorageShareService.create.mockRejectedValue(new Error('Invalid configuration'));
+      mockStorageShareService.create.mockRejectedValue(
+        new Error('Invalid configuration'),
+      );
 
-      await expect(controller.create({} as any)).rejects.toThrow('Invalid configuration');
+      await expect(controller.create({} as any)).rejects.toThrow(
+        'Invalid configuration',
+      );
     });
 
     it('should propagate errors for duplicate mount point', async () => {
-      mockStorageShareService.create.mockRejectedValue(new Error('Duplicate mount point'));
+      mockStorageShareService.create.mockRejectedValue(
+        new Error('Duplicate mount point'),
+      );
 
-      await expect(controller.create({} as any)).rejects.toThrow('Duplicate mount point');
+      await expect(controller.create({} as any)).rejects.toThrow(
+        'Duplicate mount point',
+      );
     });
   });
 
@@ -109,7 +117,9 @@ describe('StorageSharesController', () => {
 
       const result = await controller.findAllByNode('node-1');
 
-      expect(mockStorageShareService.findAllByNode).toHaveBeenCalledWith('node-1');
+      expect(mockStorageShareService.findAllByNode).toHaveBeenCalledWith(
+        'node-1',
+      );
       expect(result).toEqual([mockShare]);
     });
 
@@ -129,11 +139,15 @@ describe('StorageSharesController', () => {
   describe('findMountedByNode', () => {
     it('should return only mounted shares for a node', async () => {
       const mountedShare = { ...mockShare, isMounted: true };
-      mockStorageShareService.findMountedByNode.mockResolvedValue([mountedShare]);
+      mockStorageShareService.findMountedByNode.mockResolvedValue([
+        mountedShare,
+      ]);
 
       const result = await controller.findMountedByNode('node-1');
 
-      expect(mockStorageShareService.findMountedByNode).toHaveBeenCalledWith('node-1');
+      expect(mockStorageShareService.findMountedByNode).toHaveBeenCalledWith(
+        'node-1',
+      );
       expect(result).toEqual([mountedShare]);
     });
 
@@ -161,9 +175,13 @@ describe('StorageSharesController', () => {
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageShareService.findOne.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageShareService.findOne.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.findOne('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -179,14 +197,21 @@ describe('StorageSharesController', () => {
 
       const result = await controller.update('share-1', updateDto as any);
 
-      expect(mockStorageShareService.update).toHaveBeenCalledWith('share-1', updateDto);
+      expect(mockStorageShareService.update).toHaveBeenCalledWith(
+        'share-1',
+        updateDto,
+      );
       expect(result).toEqual(updated);
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageShareService.update.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageShareService.update.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.update('missing', {} as any)).rejects.toThrow(NotFoundException);
+      await expect(controller.update('missing', {} as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -204,15 +229,23 @@ describe('StorageSharesController', () => {
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageShareService.delete.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageShareService.delete.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.delete('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.delete('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should propagate errors when trying to delete a mounted share', async () => {
-      mockStorageShareService.delete.mockRejectedValue(new Error('Cannot delete mounted share'));
+      mockStorageShareService.delete.mockRejectedValue(
+        new Error('Cannot delete mounted share'),
+      );
 
-      await expect(controller.delete('share-1')).rejects.toThrow('Cannot delete mounted share');
+      await expect(controller.delete('share-1')).rejects.toThrow(
+        'Cannot delete mounted share',
+      );
     });
   });
 
@@ -232,9 +265,13 @@ describe('StorageSharesController', () => {
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageMountService.mount.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageMountService.mount.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.mount('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.mount('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -249,7 +286,10 @@ describe('StorageSharesController', () => {
 
       const result = await controller.unmount('share-1');
 
-      expect(mockStorageMountService.unmount).toHaveBeenCalledWith('share-1', false);
+      expect(mockStorageMountService.unmount).toHaveBeenCalledWith(
+        'share-1',
+        false,
+      );
       expect(result).toEqual(unmountResult);
     });
 
@@ -261,13 +301,20 @@ describe('StorageSharesController', () => {
 
       await controller.unmount('share-1', { force: true } as any);
 
-      expect(mockStorageMountService.unmount).toHaveBeenCalledWith('share-1', true);
+      expect(mockStorageMountService.unmount).toHaveBeenCalledWith(
+        'share-1',
+        true,
+      );
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageMountService.unmount.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageMountService.unmount.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.unmount('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.unmount('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -287,9 +334,13 @@ describe('StorageSharesController', () => {
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageMountService.remount.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageMountService.remount.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.remount('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.remount('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -309,18 +360,23 @@ describe('StorageSharesController', () => {
 
       const result = await controller.testConnectivity(body as any);
 
-      expect(mockStorageMountService.testConnectivity).toHaveBeenCalledWith('192.168.1.100', 'NFS');
+      expect(mockStorageMountService.testConnectivity).toHaveBeenCalledWith(
+        '192.168.1.100',
+        'NFS',
+      );
       expect(result).toEqual(connectResult);
     });
 
     it('should propagate errors for unreachable server', async () => {
-      mockStorageMountService.testConnectivity.mockRejectedValue(new Error('Host unreachable'));
+      mockStorageMountService.testConnectivity.mockRejectedValue(
+        new Error('Host unreachable'),
+      );
 
       await expect(
         controller.testConnectivity({
           serverAddress: 'bad-host',
           protocol: 'NFS' as const,
-        } as any)
+        } as any),
       ).rejects.toThrow('Host unreachable');
     });
   });
@@ -340,14 +396,20 @@ describe('StorageSharesController', () => {
 
       const result = await controller.getNodeStats('node-1');
 
-      expect(mockStorageShareService.getNodeStats).toHaveBeenCalledWith('node-1');
+      expect(mockStorageShareService.getNodeStats).toHaveBeenCalledWith(
+        'node-1',
+      );
       expect(result).toEqual(stats);
     });
 
     it('should propagate errors for unknown node', async () => {
-      mockStorageShareService.getNodeStats.mockRejectedValue(new Error('Node not found'));
+      mockStorageShareService.getNodeStats.mockRejectedValue(
+        new Error('Node not found'),
+      );
 
-      await expect(controller.getNodeStats('missing')).rejects.toThrow('Node not found');
+      await expect(controller.getNodeStats('missing')).rejects.toThrow(
+        'Node not found',
+      );
     });
   });
 
@@ -357,12 +419,16 @@ describe('StorageSharesController', () => {
 
   describe('autoDetect', () => {
     it('should auto-detect available shares for a node', async () => {
-      const detected = [{ serverAddress: '192.168.1.100', remotePath: '/mnt/media' }];
+      const detected = [
+        { serverAddress: '192.168.1.100', remotePath: '/mnt/media' },
+      ];
       mockStorageShareService.autoDetectShares.mockResolvedValue(detected);
 
       const result = await controller.autoDetect('node-1');
 
-      expect(mockStorageShareService.autoDetectShares).toHaveBeenCalledWith('node-1');
+      expect(mockStorageShareService.autoDetectShares).toHaveBeenCalledWith(
+        'node-1',
+      );
       expect(result).toEqual(detected);
     });
 
@@ -386,14 +452,20 @@ describe('StorageSharesController', () => {
 
       const result = await controller.autoDetectAndMount('node-1');
 
-      expect(mockStorageShareService.autoDetectAndMount).toHaveBeenCalledWith('node-1');
+      expect(mockStorageShareService.autoDetectAndMount).toHaveBeenCalledWith(
+        'node-1',
+      );
       expect(result).toEqual(mountResult);
     });
 
     it('should propagate errors from underlying service', async () => {
-      mockStorageShareService.autoDetectAndMount.mockRejectedValue(new Error('Detection failed'));
+      mockStorageShareService.autoDetectAndMount.mockRejectedValue(
+        new Error('Detection failed'),
+      );
 
-      await expect(controller.autoDetectAndMount('node-1')).rejects.toThrow('Detection failed');
+      await expect(controller.autoDetectAndMount('node-1')).rejects.toThrow(
+        'Detection failed',
+      );
     });
   });
 
@@ -403,11 +475,15 @@ describe('StorageSharesController', () => {
 
   describe('autoExportDockerVolumes', () => {
     it('should auto-export Docker volumes and return success', async () => {
-      mockNfsAutoExportService.autoExportDockerVolumes.mockResolvedValue(undefined);
+      mockNfsAutoExportService.autoExportDockerVolumes.mockResolvedValue(
+        undefined,
+      );
 
       const result = await controller.autoExportDockerVolumes();
 
-      expect(mockNfsAutoExportService.autoExportDockerVolumes).toHaveBeenCalledTimes(1);
+      expect(
+        mockNfsAutoExportService.autoExportDockerVolumes,
+      ).toHaveBeenCalledTimes(1);
       expect(result).toEqual({
         success: true,
         message: 'Docker volumes auto-export completed',
@@ -416,10 +492,12 @@ describe('StorageSharesController', () => {
 
     it('should propagate errors from NFS export service', async () => {
       mockNfsAutoExportService.autoExportDockerVolumes.mockRejectedValue(
-        new Error('NFS export failed')
+        new Error('NFS export failed'),
       );
 
-      await expect(controller.autoExportDockerVolumes()).rejects.toThrow('NFS export failed');
+      await expect(controller.autoExportDockerVolumes()).rejects.toThrow(
+        'NFS export failed',
+      );
     });
   });
 
@@ -430,20 +508,26 @@ describe('StorageSharesController', () => {
   describe('createLibraryShares', () => {
     it('should create library shares for a node', async () => {
       const result = { created: 3 };
-      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue(result);
+      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue(
+        result,
+      );
 
       const res = await controller.createLibraryShares('node-1');
 
-      expect(mockStorageShareService.autoCreateSharesForLibraries).toHaveBeenCalledWith('node-1');
+      expect(
+        mockStorageShareService.autoCreateSharesForLibraries,
+      ).toHaveBeenCalledWith('node-1');
       expect(res).toEqual(result);
     });
 
     it('should propagate errors for unknown node', async () => {
       mockStorageShareService.autoCreateSharesForLibraries.mockRejectedValue(
-        new Error('Node not found')
+        new Error('Node not found'),
       );
 
-      await expect(controller.createLibraryShares('missing')).rejects.toThrow('Node not found');
+      await expect(controller.createLibraryShares('missing')).rejects.toThrow(
+        'Node not found',
+      );
     });
   });
 
@@ -470,12 +554,17 @@ describe('StorageSharesController', () => {
       const result = await controller.getDiskUsage('share-1');
 
       expect(mockStorageShareService.findOne).toHaveBeenCalledWith('share-1');
-      expect(mockStorageMountService.getDiskUsage).toHaveBeenCalledWith('/mnt/remote/media');
-      expect(mockStorageShareService.updateUsageStats).toHaveBeenCalledWith('share-1', {
-        totalSizeBytes: usage.totalBytes,
-        availableSizeBytes: usage.availableBytes,
-        usedPercent: usage.usedPercent,
-      });
+      expect(mockStorageMountService.getDiskUsage).toHaveBeenCalledWith(
+        '/mnt/remote/media',
+      );
+      expect(mockStorageShareService.updateUsageStats).toHaveBeenCalledWith(
+        'share-1',
+        {
+          totalSizeBytes: usage.totalBytes,
+          availableSizeBytes: usage.availableBytes,
+          usedPercent: usage.usedPercent,
+        },
+      );
       expect(result).toEqual(usage);
     });
 
@@ -483,16 +572,20 @@ describe('StorageSharesController', () => {
       mockStorageShareService.findOne.mockResolvedValue(mockShare); // isMounted: false
 
       await expect(controller.getDiskUsage('share-1')).rejects.toThrow(
-        'Share must be mounted to get disk usage'
+        'Share must be mounted to get disk usage',
       );
 
       expect(mockStorageMountService.getDiskUsage).not.toHaveBeenCalled();
     });
 
     it('should propagate NotFoundException for unknown share', async () => {
-      mockStorageShareService.findOne.mockRejectedValue(new NotFoundException('Share not found'));
+      mockStorageShareService.findOne.mockRejectedValue(
+        new NotFoundException('Share not found'),
+      );
 
-      await expect(controller.getDiskUsage('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.getDiskUsage('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

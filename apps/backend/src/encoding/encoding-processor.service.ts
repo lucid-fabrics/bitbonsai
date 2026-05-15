@@ -1,6 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import type { Library, Policy } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
@@ -11,7 +16,11 @@ import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { NodesService } from '../nodes/nodes.service';
 import { QueueService } from '../queue/queue.service';
-import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
+import {
+  EncodingFileService,
+  type JobResult,
+  type JobWithPolicy,
+} from './encoding-file.service';
 import { EncodingStartupService } from './encoding-startup.service';
 import { EncodingWatchdogService } from './encoding-watchdog.service';
 import { FfmpegService } from './ffmpeg.service';
@@ -64,7 +73,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly workerPoolService: WorkerPoolService,
     private readonly jobRetryStrategyService: JobRetryStrategyService,
     private readonly encodingStartupService: EncodingStartupService,
-    private readonly encodingWatchdogService: EncodingWatchdogService
+    private readonly encodingWatchdogService: EncodingWatchdogService,
   ) {}
 
   /**
@@ -82,10 +91,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // PERF: Log cache pool configuration (loaded from DB via reloadNodeSettings)
     if (this.systemResourceService.getEncodingTempPath()) {
       this.logger.log(
-        `⚡ Cache pool ENABLED: Using ${this.systemResourceService.getEncodingTempPath()} for temp files (faster SSD I/O)`
+        `⚡ Cache pool ENABLED: Using ${this.systemResourceService.getEncodingTempPath()} for temp files (faster SSD I/O)`,
       );
     } else {
-      this.logger.log('📂 Cache pool DISABLED: Using source directory for temp files');
+      this.logger.log(
+        '📂 Cache pool DISABLED: Using source directory for temp files',
+      );
     }
 
     // Load load threshold from database
@@ -95,22 +106,28 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // HYBRID APPROACH: Initial delay + volume mount probing + file system stabilization + retry logic
       // Step 1: Small initial delay to let basic initialization complete
       this.logger.log('⏳ Waiting for basic initialization...');
-      await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_INITIAL_DELAY_MS));
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.AUTO_HEAL_INITIAL_DELAY_MS),
+      );
 
       // Step 2: Wait for volume mounts to be accessible
       await this.encodingStartupService.waitForVolumeMounts();
 
       // Step 3: Let file system stabilize after volumes are mounted
       this.logger.log('⏳ Waiting for file system to stabilize...');
-      await new Promise((resolve) => setTimeout(resolve, this.AUTO_HEAL_STABILIZATION_DELAY_MS));
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.AUTO_HEAL_STABILIZATION_DELAY_MS),
+      );
 
       // HIGH #10 FIX: Kill ALL ffmpeg processes before auto-heal
       // This prevents orphaned processes from previous crash/restart from consuming resources
-      this.logger.log('🧹 Killing all ffmpeg processes from previous session...');
+      this.logger.log(
+        '🧹 Killing all ffmpeg processes from previous session...',
+      );
       const killResult = await this.ffmpegService.killAllFfmpegProcesses();
       if (killResult.killed > 0) {
         this.logger.log(
-          `✅ Killed ${killResult.killed} orphaned ffmpeg process(es) from previous session`
+          `✅ Killed ${killResult.killed} orphaned ffmpeg process(es) from previous session`,
         );
       }
 
@@ -120,7 +137,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       const currentNode = await this.nodesService.getCurrentNode();
 
       if (!currentNode) {
-        this.logger.warn('Current node not found - skipping auto-heal and worker startup');
+        this.logger.warn(
+          'Current node not found - skipping auto-heal and worker startup',
+        );
         return;
       }
 
@@ -133,37 +152,44 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`   - Node ID: ${currentNode.id}`);
       this.logger.log(`   - Node Name: ${currentNode.name}`);
       this.logger.log(`   - Node Role: ${currentNode.role}`);
-      this.logger.log(`   - Main Node URL: ${currentNode.mainNodeUrl || 'N/A (this is MAIN)'}`);
-      this.logger.log(`   - Has Shared Storage: ${currentNode.hasSharedStorage}`);
       this.logger.log(
-        `   - Max Workers: ${currentNode.maxWorkers || this.systemResourceService.defaultWorkersPerNode}`
+        `   - Main Node URL: ${currentNode.mainNodeUrl || 'N/A (this is MAIN)'}`,
+      );
+      this.logger.log(
+        `   - Has Shared Storage: ${currentNode.hasSharedStorage}`,
+      );
+      this.logger.log(
+        `   - Max Workers: ${currentNode.maxWorkers || this.systemResourceService.defaultWorkersPerNode}`,
       );
 
       // STEP 3: Start worker pool for the current node using its configured maxWorkers
-      const maxWorkers = currentNode.maxWorkers || this.systemResourceService.defaultWorkersPerNode;
+      const maxWorkers =
+        currentNode.maxWorkers ||
+        this.systemResourceService.defaultWorkersPerNode;
 
       this.logger.log(
-        `🚀 MULTI-NODE: Starting ${maxWorkers} worker(s) for ${currentNode.role} node: ${currentNode.name}`
+        `🚀 MULTI-NODE: Starting ${maxWorkers} worker(s) for ${currentNode.role} node: ${currentNode.name}`,
       );
 
       const workersStarted = await this.workerPoolService.startWorkerPool(
         currentNode.id,
         maxWorkers,
-        (workerId, nodeId) => this.processLoop(workerId, nodeId)
+        (workerId, nodeId) => this.processLoop(workerId, nodeId),
       );
 
       if (workersStarted > 0) {
         this.logger.log(
-          `✅ MULTI-NODE: Successfully started ${workersStarted} worker(s) for ${currentNode.role} node: ${currentNode.name} (max: ${maxWorkers})`
+          `✅ MULTI-NODE: Successfully started ${workersStarted} worker(s) for ${currentNode.role} node: ${currentNode.name} (max: ${maxWorkers})`,
         );
       } else {
         this.logger.error(
-          `❌ MULTI-NODE: FAILED to start workers for ${currentNode.role} node: ${currentNode.name}`
+          `❌ MULTI-NODE: FAILED to start workers for ${currentNode.role} node: ${currentNode.name}`,
         );
       }
 
       // STEP 4: Start background watchdog to detect stuck jobs
-      this.watchdogIntervalId = this.encodingWatchdogService.startStuckJobWatchdog();
+      this.watchdogIntervalId =
+        this.encodingWatchdogService.startStuckJobWatchdog();
       EncodingProcessorService.activeIntervals.add(this.watchdogIntervalId);
     } catch (error: unknown) {
       this.logger.error('Failed to initialize encoding processor:', error);
@@ -189,7 +215,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // CRITICAL #5 FIX: Safety - clear ALL tracked intervals (hot reload protection)
     if (EncodingProcessorService.activeIntervals.size > 0) {
       this.logger.warn(
-        `⚠️ Clearing ${EncodingProcessorService.activeIntervals.size} stale interval(s) from previous session`
+        `⚠️ Clearing ${EncodingProcessorService.activeIntervals.size} stale interval(s) from previous session`,
       );
       for (const interval of EncodingProcessorService.activeIntervals) {
         clearInterval(interval);
@@ -211,10 +237,12 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   async startWorkerPool(
     nodeId: string,
-    maxWorkers = this.systemResourceService.defaultWorkersPerNode
+    maxWorkers = this.systemResourceService.defaultWorkersPerNode,
   ): Promise<number> {
-    return this.workerPoolService.startWorkerPool(nodeId, maxWorkers, (workerId, nodeId) =>
-      this.processLoop(workerId, nodeId)
+    return this.workerPoolService.startWorkerPool(
+      nodeId,
+      maxWorkers,
+      (workerId, nodeId) => this.processLoop(workerId, nodeId),
     );
   }
 
@@ -251,22 +279,28 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       // Get next job from queue (respects concurrent limits)
       // CRITICAL FIX: Use QueueService directly since we only start workers for the current node
       // DataAccessService is only for LINKED nodes calling MAIN node's API
-      this.logger.debug(`[${workerId}] 🔍 MULTI-NODE: Polling for next job (nodeId: ${nodeId})`);
+      this.logger.debug(
+        `[${workerId}] 🔍 MULTI-NODE: Polling for next job (nodeId: ${nodeId})`,
+      );
 
       const job = await this.queueService.getNextJob(nodeId);
 
       if (!job) {
-        this.logger.debug(`[${workerId}] 🔍 MULTI-NODE: No job available for nodeId: ${nodeId}`);
+        this.logger.debug(
+          `[${workerId}] 🔍 MULTI-NODE: No job available for nodeId: ${nodeId}`,
+        );
         return null;
       }
 
       this.logger.log(
-        `[${workerId}] ✅ MULTI-NODE: Got job ${job.id} (${job.fileLabel}) assigned to nodeId: ${nodeId}`
+        `[${workerId}] ✅ MULTI-NODE: Got job ${job.id} (${job.fileLabel}) assigned to nodeId: ${nodeId}`,
       );
 
       // SELF-HEALING: Validate and heal job's policy before processing
       // Handles deleted policies and codec mismatches silently
-      const healedJob = await this.validateAndHealJobPolicy(job as JobWithPolicy);
+      const healedJob = await this.validateAndHealJobPolicy(
+        job as JobWithPolicy,
+      );
       // Update local reference if job was healed
       Object.assign(job, healedJob);
 
@@ -286,7 +320,7 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
 
         if (freshJob?.pauseRequestedAt) {
           this.logger.log(
-            `[${workerId}] DEEP AUDIT P2: Job ${job.id} has pause request, transitioning to PAUSED`
+            `[${workerId}] DEEP AUDIT P2: Job ${job.id} has pause request, transitioning to PAUSED`,
           );
           await this.queueService.update(job.id, {
             stage: JobStage.PAUSED,
@@ -300,19 +334,23 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
           const dirExists = fs.existsSync(path.dirname(job.filePath));
 
           // SELF-HEALING: Try to relocate file if it was moved/renamed by media server
-          this.logger.warn(`[${workerId}] Source file not found, attempting auto-relocation...`);
+          this.logger.warn(
+            `[${workerId}] Source file not found, attempting auto-relocation...`,
+          );
           const relocationResult = await this.fileRelocatorService.relocateFile(
             job.filePath,
-            job.beforeSizeBytes
+            job.beforeSizeBytes,
           );
 
           if (relocationResult.found && relocationResult.newPath) {
             // File was relocated - update job and continue
             this.logger.log(
-              `[${workerId}] ✅ AUTO-RELOCATED: File found at new location (${relocationResult.matchType}, ${relocationResult.confidence}% confidence)`
+              `[${workerId}] ✅ AUTO-RELOCATED: File found at new location (${relocationResult.matchType}, ${relocationResult.confidence}% confidence)`,
             );
             this.logger.log(`[${workerId}]    Old path: ${job.filePath}`);
-            this.logger.log(`[${workerId}]    New path: ${relocationResult.newPath}`);
+            this.logger.log(
+              `[${workerId}]    New path: ${relocationResult.newPath}`,
+            );
 
             // Update job path in database
             await this.jobRepository.updateById(job.id, {
@@ -345,7 +383,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
         }
 
         // Perform resource preflight checks
-        await this.systemResourceService.performResourcePreflightChecks(job.filePath, job.id);
+        await this.systemResourceService.performResourcePreflightChecks(
+          job.filePath,
+          job.id,
+        );
 
         // Perform encoding
         const result = await this.encodingFileService.encodeFile(job);
@@ -364,17 +405,21 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (error: unknown) {
       // BULLETPROOF FIX: Log full error details including stack trace
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
 
       this.logger.error(
         `[${workerId}] Error processing job: ${errorMessage}`,
-        errorStack || 'No stack trace available'
+        errorStack || 'No stack trace available',
       );
 
       // Log additional error context if available
       if (error && typeof error === 'object') {
-        this.logger.error(`[${workerId}] Error details:`, JSON.stringify(error, null, 2));
+        this.logger.error(
+          `[${workerId}] Error details:`,
+          JSON.stringify(error, null, 2),
+        );
       }
 
       return null;
@@ -389,7 +434,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @param job - Completed job
    * @param result - Job result with file sizes
    */
-  async handleJobCompletion(job: JobWithPolicy, result: JobResult): Promise<void> {
+  async handleJobCompletion(
+    job: JobWithPolicy,
+    result: JobResult,
+  ): Promise<void> {
     this.logger.log(`Job ${job.id} completed successfully`);
 
     try {
@@ -401,10 +449,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Update library statistics
-      await this.encodingFileService.updateLibraryStats(job.libraryId, result.savedBytes);
+      await this.encodingFileService.updateLibraryStats(
+        job.libraryId,
+        result.savedBytes,
+      );
 
       this.logger.log(
-        `Job ${job.id} saved ${this.formatBytes(Number(result.savedBytes))} (${result.savedPercent.toFixed(2)}%)`
+        `Job ${job.id} saved ${this.formatBytes(Number(result.savedBytes))} (${result.savedPercent.toFixed(2)}%)`,
       );
     } catch (error: unknown) {
       this.logger.error(`Error completing job ${job.id}:`, error);
@@ -439,9 +490,13 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    * @param job - Job to validate and potentially heal
    * @returns Updated job with valid policy, or original if no changes needed
    */
-  private async validateAndHealJobPolicy(job: JobWithPolicy): Promise<JobWithPolicy> {
+  private async validateAndHealJobPolicy(
+    job: JobWithPolicy,
+  ): Promise<JobWithPolicy> {
     // Fetch current policy from database
-    const currentPolicy = job.policyId ? await this.policyRepository.findById(job.policyId) : null;
+    const currentPolicy = job.policyId
+      ? await this.policyRepository.findById(job.policyId)
+      : null;
 
     // Case 1: Policy exists and codec matches - no healing needed
     if (currentPolicy && job.targetCodec === currentPolicy.targetCodec) {
@@ -451,28 +506,31 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // Case 2: Policy exists but codec mismatches - update job's codec
     if (currentPolicy && job.targetCodec !== currentPolicy.targetCodec) {
       this.logger.warn(
-        `[${job.id}] POLICY HEAL: targetCodec mismatch (job: ${job.targetCodec}, policy: ${currentPolicy.targetCodec}) - updating job`
+        `[${job.id}] POLICY HEAL: targetCodec mismatch (job: ${job.targetCodec}, policy: ${currentPolicy.targetCodec}) - updating job`,
       );
 
-      const updatedJob = await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
-        job.id,
-        { targetCodec: currentPolicy.targetCodec },
-        { policy: true }
-      );
+      const updatedJob =
+        await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
+          job.id,
+          { targetCodec: currentPolicy.targetCodec },
+          { policy: true },
+        );
 
       return updatedJob;
     }
 
     // Case 3: Policy is missing - need to find alternative
     this.logger.warn(
-      `[${job.id}] POLICY HEAL: Policy ${job.policyId} not found - finding alternative`
+      `[${job.id}] POLICY HEAL: Policy ${job.policyId} not found - finding alternative`,
     );
 
     // Get library for this job to find appropriate policy
     const library = (await this.libraryRepository.findUniqueWithInclude(
       { id: job.libraryId },
-      { defaultPolicy: true, policies: true }
-    )) as (Library & { defaultPolicy: Policy | null; policies: Policy[] }) | null;
+      { defaultPolicy: true, policies: true },
+    )) as
+      | (Library & { defaultPolicy: Policy | null; policies: Policy[] })
+      | null;
 
     // Find replacement policy in priority order
     let newPolicy = null;
@@ -480,19 +538,25 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     // Priority 1: Library's default policy
     if (library?.defaultPolicy) {
       newPolicy = library.defaultPolicy;
-      this.logger.log(`[${job.id}] POLICY HEAL: Using library default policy: ${newPolicy.name}`);
+      this.logger.log(
+        `[${job.id}] POLICY HEAL: Using library default policy: ${newPolicy.name}`,
+      );
     }
     // Priority 2: Any policy assigned to this library
     else if (library?.policies && library.policies.length > 0) {
       newPolicy = library.policies[0];
-      this.logger.log(`[${job.id}] POLICY HEAL: Using library's first policy: ${newPolicy.name}`);
+      this.logger.log(
+        `[${job.id}] POLICY HEAL: Using library's first policy: ${newPolicy.name}`,
+      );
     }
     // Priority 3: First available policy in system
     else {
       const allPolicies = await this.policyRepository.findAll();
       newPolicy = allPolicies[0] ?? null;
       if (newPolicy) {
-        this.logger.log(`[${job.id}] POLICY HEAL: Using system's first policy: ${newPolicy.name}`);
+        this.logger.log(
+          `[${job.id}] POLICY HEAL: Using system's first policy: ${newPolicy.name}`,
+        );
       }
     }
 
@@ -500,19 +564,20 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     if (!newPolicy) {
       throw new Error(
         `No policies available to assign to job ${job.id}. ` +
-          `Please create at least one encoding policy.`
+          `Please create at least one encoding policy.`,
       );
     }
 
     // Update job with new policy and matching targetCodec
-    const updatedJob = await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
-      job.id,
-      { policyId: newPolicy.id, targetCodec: newPolicy.targetCodec },
-      { policy: true }
-    );
+    const updatedJob =
+      await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
+        job.id,
+        { policyId: newPolicy.id, targetCodec: newPolicy.targetCodec },
+        { policy: true },
+      );
 
     this.logger.log(
-      `[${job.id}] POLICY HEAL: Job updated - policy: ${newPolicy.name}, codec: ${newPolicy.targetCodec}`
+      `[${job.id}] POLICY HEAL: Job updated - policy: ${newPolicy.name}, codec: ${newPolicy.targetCodec}`,
     );
 
     return updatedJob as JobWithPolicy;
@@ -547,11 +612,16 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
             {
               lastHeartbeat: new Date(),
               heartbeatNodeId: worker.nodeId,
-            }
+            },
           );
-          this.logger.debug(`[${workerId}] Heartbeat sent for job ${worker.currentJobId}`);
+          this.logger.debug(
+            `[${workerId}] Heartbeat sent for job ${worker.currentJobId}`,
+          );
         } catch (error: unknown) {
-          this.logger.debug(`[${workerId}] Heartbeat update failed (non-fatal):`, error);
+          this.logger.debug(
+            `[${workerId}] Heartbeat update failed (non-fatal):`,
+            error,
+          );
         }
       }
     }, 30000); // Every 30 seconds
@@ -588,7 +658,9 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
       this.workerPoolService.removeWorker(workerId);
       this.workerPoolService.resolveShutdown(workerId);
 
-      this.logger.debug(`[${workerId}] Worker cleanup complete in finally block`);
+      this.logger.debug(
+        `[${workerId}] Worker cleanup complete in finally block`,
+      );
     }
   }
 

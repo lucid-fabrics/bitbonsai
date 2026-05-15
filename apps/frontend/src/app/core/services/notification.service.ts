@@ -23,7 +23,9 @@ export class NotificationService implements OnDestroy {
 
   private socket: Socket | null = null;
   private readonly notificationSubject = new Subject<Notification>();
-  private readonly connectionStatusSubject = new BehaviorSubject<boolean>(false);
+  private readonly connectionStatusSubject = new BehaviorSubject<boolean>(
+    false,
+  );
 
   // Observable stream of incoming notifications
   readonly notification$ = this.notificationSubject.asObservable();

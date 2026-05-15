@@ -1,4 +1,10 @@
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -694,7 +700,7 @@ export class DebugTabComponent implements OnInit {
           this.savingThreshold.set(false);
           if (result.success) {
             this.showSuccess(
-              `Load threshold updated to ${result.loadThresholdMultiplier}x (max load: ${result.maxLoad})`
+              `Load threshold updated to ${result.loadThresholdMultiplier}x (max load: ${result.maxLoad})`,
             );
             this.loadSystemInfo(); // Refresh to show new values
           } else {
@@ -735,7 +741,9 @@ export class DebugTabComponent implements OnInit {
       .subscribe({
         next: (result) => {
           this.killingZombies.set(false);
-          this.showSuccess(`Killed ${result.killed} zombie processes (${result.failed} failed)`);
+          this.showSuccess(
+            `Killed ${result.killed} zombie processes (${result.failed} failed)`,
+          );
           this.loadFfmpegProcesses(); // Refresh list
         },
         error: () => {
