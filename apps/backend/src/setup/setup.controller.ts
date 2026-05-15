@@ -26,7 +26,10 @@ export class SetupController {
     description:
       'Check if the initial setup has been completed. Setup is considered complete if at least one user exists in the database. This endpoint is public and does not require authentication.',
   })
-  @ApiOkResponse({ description: 'Setup status retrieved', type: SetupStatusDto })
+  @ApiOkResponse({
+    description: 'Setup status retrieved',
+    type: SetupStatusDto,
+  })
   async getSetupStatus(): Promise<SetupStatusDto> {
     return this.setupService.getSetupStatus();
   }
@@ -44,7 +47,9 @@ export class SetupController {
   @ApiBadRequestResponse({
     description: 'Setup has already been completed or validation failed',
   })
-  async initializeSetup(@Body() dto: InitializeSetupDto): Promise<{ message: string }> {
+  async initializeSetup(
+    @Body() dto: InitializeSetupDto,
+  ): Promise<{ message: string }> {
     return this.setupService.initializeSetup(dto);
   }
 

@@ -22,6 +22,7 @@
 ### 2. Configuration
 
 #### Required Settings
+
 - **WebUI Port**: 4210 (or any available port)
 - **API Port**: 3100 (must remain 3100)
 - **Media Library**: `/mnt/user/media` (your media location)
@@ -29,6 +30,7 @@
 - **Encoding Cache**: `/mnt/cache/bitbonsai-temp` ⚡ **CRITICAL for performance!**
 
 #### Optional Settings
+
 - **Downloads Folder**: `/mnt/user/Downloads`
 - **PUID/PGID**: 99/100 (Unraid defaults)
 - **Timezone**: Your local timezone
@@ -37,13 +39,16 @@
 #### Hardware Acceleration (Optional but Recommended)
 
 **NVIDIA GPU:**
+
 1. Extra Parameters: `--runtime=nvidia --gpus all`
 2. NVIDIA_VISIBLE_DEVICES: `all`
 
 **Intel QuickSync:**
+
 1. Device: `/dev/dri` → `/dev/dri`
 
 **AMD GPU:**
+
 1. Device: `/dev/dri/renderD128` → `/dev/dri/renderD128`
 
 ### 3. Start Container
@@ -64,12 +69,14 @@
 ## Post-Installation
 
 ### Create Your First Library
+
 1. Click **Libraries** → **Add Library**
 2. Name: "Movies" (or your preference)
 3. Path: Select `/media` or subdirectory
 4. Save
 
 ### Create Encoding Policy
+
 1. Click **Policies** → **Add Policy**
 2. Name: "H.265 Balanced"
 3. Source Codec: H.264
@@ -79,6 +86,7 @@
 7. Save
 
 ### Monitor Progress
+
 1. Click **Queue** to see encoding jobs
 2. View real-time progress, ETA, and stats
 3. Check **History** for completed jobs

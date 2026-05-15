@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { type Policy, type PolicyPreset, type Prisma, type TargetCodec } from '@prisma/client';
+import {
+  type Policy,
+  type PolicyPreset,
+  type Prisma,
+  type TargetCodec,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface PolicyWithRelations extends Policy {
@@ -98,7 +103,8 @@ export class PolicyRepository {
         targetCodec: data.targetCodec,
         targetQuality: data.targetQuality,
         deviceProfiles: data.deviceProfiles as unknown as Prisma.InputJsonValue,
-        advancedSettings: data.advancedSettings as unknown as Prisma.InputJsonValue,
+        advancedSettings:
+          data.advancedSettings as unknown as Prisma.InputJsonValue,
         atomicReplace: data.atomicReplace ?? true,
         verifyOutput: data.verifyOutput ?? true,
         skipSeeding: data.skipSeeding ?? false,
@@ -124,7 +130,7 @@ export class PolicyRepository {
       allowSameCodec: boolean;
       minSavingsPercent: number;
       libraryId: string | null;
-    }>
+    }>,
   ): Promise<Policy> {
     return this.prisma.policy.update({
       where: { id },
@@ -147,7 +153,7 @@ export class PolicyRepository {
   async upsert(
     where: Prisma.PolicyWhereUniqueInput,
     create: Prisma.PolicyUncheckedCreateInput,
-    update: Prisma.PolicyUncheckedUpdateInput
+    update: Prisma.PolicyUncheckedUpdateInput,
   ): Promise<Policy> {
     return this.prisma.policy.upsert({ where, create, update });
   }

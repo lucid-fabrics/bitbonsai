@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { type Job, JobStage, type Library, type Node, Prisma } from '@prisma/client';
+import {
+  type Job,
+  JobStage,
+  type Library,
+  type Node,
+  Prisma,
+} from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { FileTransferService } from './services/file-transfer.service';
 
@@ -31,7 +37,7 @@ export class FileTransferWorker {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly fileTransferService: FileTransferService
+    private readonly fileTransferService: FileTransferService,
   ) {}
 
   /**
@@ -42,27 +48,30 @@ export class FileTransferWorker {
     try {
       // HIGH #1 FIX: Skip processing if circuit breaker is open
       if (this.circuitOpen) {
-        this.logger.warn('🚨 Circuit breaker OPEN - skipping transfers until reset');
+        this.logger.warn(
+          '🚨 Circuit breaker OPEN - skipping transfers until reset',
+        );
         return;
       }
 
       // Find jobs needing transfer
-      const jobs = await this.jobRepository.findManyWithInclude<JobWithTransferIncludes>({
-        where: {
-          transferRequired: true,
-          stage: JobStage.DETECTED,
-          transferProgress: { lt: 100 },
-        },
-        include: {
-          library: {
-            include: {
-              node: true,
-            },
+      const jobs =
+        await this.jobRepository.findManyWithInclude<JobWithTransferIncludes>({
+          where: {
+            transferRequired: true,
+            stage: JobStage.DETECTED,
+            transferProgress: { lt: 100 },
           },
-          node: true,
-        },
-        take: this.MAX_CONCURRENT_TRANSFERS,
-      } satisfies Prisma.JobFindManyArgs);
+          include: {
+            library: {
+              include: {
+                node: true,
+              },
+            },
+            node: true,
+          },
+          take: this.MAX_CONCURRENT_TRANSFERS,
+        } satisfies Prisma.JobFindManyArgs);
 
       if (jobs.length === 0) {
         return;
@@ -90,11 +99,14 @@ export class FileTransferWorker {
           job.id,
           job.filePath,
           job.library.node,
-          job.node
+          job.node,
         );
 
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Transfer timeout (30min)')), 30 * 60 * 1000)
+          setTimeout(
+            () => reject(new Error('Transfer timeout (30min)')),
+            30 * 60 * 1000,
+          ),
         );
 
         Promise.race([transferPromise, timeoutPromise])
@@ -112,7 +124,9 @@ export class FileTransferWorker {
             // HIGH #1 FIX: Increment timeout count and open circuit if needed
             if (error.message?.includes('timeout')) {
               this.timeoutCount++;
-              this.logger.warn(`⚠️ Timeout ${this.timeoutCount}/${this.MAX_TIMEOUT_COUNT}`);
+              this.logger.warn(
+                `⚠️ Timeout ${this.timeoutCount}/${this.MAX_TIMEOUT_COUNT}`,
+              );
 
               if (this.timeoutCount >= this.MAX_TIMEOUT_COUNT) {
                 this.openCircuit();
@@ -135,7 +149,7 @@ export class FileTransferWorker {
   private openCircuit(): void {
     this.circuitOpen = true;
     this.logger.error(
-      '🚨 Circuit breaker OPENED: All transfer slots timed out. Pausing transfers for 5 minutes.'
+      '🚨 Circuit breaker OPENED: All transfer slots timed out. Pausing transfers for 5 minutes.',
     );
 
     // Clear existing reset timeout if any
@@ -150,7 +164,7 @@ export class FileTransferWorker {
         this.timeoutCount = 0;
         this.logger.log('✅ Circuit breaker CLOSED: Resuming file transfers');
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     );
   }
 }

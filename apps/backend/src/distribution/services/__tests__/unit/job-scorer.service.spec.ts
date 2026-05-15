@@ -118,7 +118,9 @@ describe('JobScorerService', () => {
     service.clearCaches();
   });
 
-  const createNode = (overrides: Partial<NodeWithCounts> = {}): NodeWithCounts =>
+  const createNode = (
+    overrides: Partial<NodeWithCounts> = {},
+  ): NodeWithCounts =>
     ({
       id: 'node-1',
       name: 'Test Node',
@@ -137,7 +139,9 @@ describe('JobScorerService', () => {
       ...overrides,
     }) as unknown as NodeWithCounts;
 
-  const createJob = (overrides: Partial<JobWithRelations> = {}): JobWithRelations =>
+  const createJob = (
+    overrides: Partial<JobWithRelations> = {},
+  ): JobWithRelations =>
     ({
       id: 'job-1',
       filePath: '/media/movie.mkv',
@@ -169,7 +173,9 @@ describe('JobScorerService', () => {
       jest.setSystemTime(new Date('2026-02-22T00:00:00Z')); // Sunday
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.totalScore).toBe(0);
@@ -183,7 +189,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.totalScore).toBeGreaterThan(0);
@@ -207,7 +215,9 @@ describe('JobScorerService', () => {
       });
 
       prisma.job.count.mockResolvedValue(10);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 100 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 100 },
+      });
       loadMonitor.calculateLoadScore.mockReturnValue(0);
 
       const score = await service.calculateScore(node, job);
@@ -221,7 +231,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.hardware).toBe(15);
@@ -232,7 +244,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.hardware).toBe(10); // No GPU + 16 cores max = 10
@@ -243,7 +257,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.hardware).toBe(25);
@@ -254,7 +270,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.hardware).toBe(10); // Capped at 10
@@ -267,7 +285,9 @@ describe('JobScorerService', () => {
       const job = createJob({ targetCodec: 'HEVC' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(20);
@@ -278,29 +298,41 @@ describe('JobScorerService', () => {
       const job = createJob({ targetCodec: 'AV1' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(15);
     });
 
     it('should give 18 points for Intel QSV + HEVC', async () => {
-      const node = createNode({ hasGpu: true, acceleration: 'INTEL_QSV' as any });
+      const node = createNode({
+        hasGpu: true,
+        acceleration: 'INTEL_QSV' as any,
+      });
       const job = createJob({ targetCodec: 'HEVC' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(18);
     });
 
     it('should give 18 points for Intel QSV + AV1', async () => {
-      const node = createNode({ hasGpu: true, acceleration: 'INTEL_QSV' as any });
+      const node = createNode({
+        hasGpu: true,
+        acceleration: 'INTEL_QSV' as any,
+      });
       const job = createJob({ targetCodec: 'AV1' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(18);
@@ -311,7 +343,9 @@ describe('JobScorerService', () => {
       const job = createJob({ targetCodec: 'HEVC' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(20);
@@ -322,7 +356,9 @@ describe('JobScorerService', () => {
       const job = createJob({ targetCodec: 'HEVC' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(0);
@@ -333,7 +369,9 @@ describe('JobScorerService', () => {
       const job = createJob({ targetCodec: 'AV1' }); // Apple M doesn't support AV1
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(0);
@@ -344,7 +382,9 @@ describe('JobScorerService', () => {
       const job = createJob({ targetCodec: 'HEVC' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.codecMatch).toBe(18);
@@ -357,7 +397,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.performance).toBe(12);
@@ -393,7 +435,9 @@ describe('JobScorerService', () => {
 
       // Return 0 for queued jobs count
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.queueDepth).toBe(20);
@@ -407,7 +451,9 @@ describe('JobScorerService', () => {
       prisma.job.count
         .mockResolvedValueOnce(4) // queueDepth query
         .mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.queueDepth).toBe(0);
@@ -420,7 +466,9 @@ describe('JobScorerService', () => {
       const job = createJob({ nodeId: undefined });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.stickiness).toBe(0);
@@ -431,7 +479,9 @@ describe('JobScorerService', () => {
       const job = createJob({ nodeId: 'node-1' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.stickiness).toBe(0);
@@ -445,7 +495,9 @@ describe('JobScorerService', () => {
       });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.stickiness).toBe(-20);
@@ -460,7 +512,9 @@ describe('JobScorerService', () => {
       });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.stickiness).toBe(-10); // 2 * -5
@@ -475,7 +529,9 @@ describe('JobScorerService', () => {
       });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.stickiness).toBe(-20);
@@ -488,7 +544,9 @@ describe('JobScorerService', () => {
       const job = createJob({ library: { nodeId: 'other-node' } });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.transferCost).toBe(0);
@@ -499,7 +557,9 @@ describe('JobScorerService', () => {
       const job = createJob({ library: { nodeId: 'node-1' } });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.transferCost).toBe(0);
@@ -510,7 +570,9 @@ describe('JobScorerService', () => {
       const job = createJob({ library: { nodeId: 'node-2' } });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.transferCost).toBe(-25);
@@ -523,7 +585,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.reliability).toBe(0);
@@ -534,7 +598,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.reliability).toBe(-5);
@@ -545,7 +611,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.reliability).toBe(-10);
@@ -556,7 +624,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.reliability).toBe(-15);
@@ -569,7 +639,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.etaBalance).toBe(15);
@@ -582,7 +654,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.etaBalance).toBe(15);
@@ -595,7 +669,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.etaBalance).toBe(12);
@@ -608,7 +684,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.etaBalance).toBe(0);
@@ -623,7 +701,9 @@ describe('JobScorerService', () => {
       });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.fileSizeSpread).toBe(8);
@@ -638,7 +718,9 @@ describe('JobScorerService', () => {
       // First count call (queueDepth) returns 0, second (libraryAffinity) returns 0,
       // third (fileSizeSpread) returns 0
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
       expect(score.factors.fileSizeSpread).toBe(15);
@@ -675,7 +757,9 @@ describe('JobScorerService', () => {
       const candidate = createNode({ id: 'candidate' });
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const result = await service.shouldMigrate(job, current, candidate);
       // Both nodes score similarly, so delta should be below threshold
@@ -704,7 +788,9 @@ describe('JobScorerService', () => {
 
       // Make candidate much better
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
       loadMonitor.calculateLoadScore.mockReturnValue(30); // High score for both
 
       const result = await service.shouldMigrate(job, current, candidate);
@@ -721,7 +807,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       await service.calculateScore(node, job);
 
@@ -733,7 +821,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       await service.calculateScore(node, job);
       await service.calculateScore(node, job);
@@ -749,7 +839,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       await service.calculateScore(node, job);
 
@@ -775,7 +867,9 @@ describe('JobScorerService', () => {
       const job = createJob();
 
       prisma.job.count.mockResolvedValue(0);
-      prisma.node.aggregate.mockResolvedValue({ _max: { avgEncodingSpeed: 0 } });
+      prisma.node.aggregate.mockResolvedValue({
+        _max: { avgEncodingSpeed: 0 },
+      });
 
       const score = await service.calculateScore(node, job);
 

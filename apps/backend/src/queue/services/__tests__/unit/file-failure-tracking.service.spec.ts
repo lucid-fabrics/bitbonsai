@@ -33,11 +33,16 @@ describe('FileFailureTrackingService', () => {
       providers: [
         FileFailureTrackingService,
         { provide: PrismaService, useValue: prisma },
-        { provide: FileFailureRecordRepository, useValue: fileFailureRecordRepository },
+        {
+          provide: FileFailureRecordRepository,
+          useValue: fileFailureRecordRepository,
+        },
       ],
     }).compile();
 
-    service = module.get<FileFailureTrackingService>(FileFailureTrackingService);
+    service = module.get<FileFailureTrackingService>(
+      FileFailureTrackingService,
+    );
 
     jest.spyOn((service as any).logger, 'log').mockImplementation();
     jest.spyOn((service as any).logger, 'warn').mockImplementation();
@@ -59,7 +64,11 @@ describe('FileFailureTrackingService', () => {
         { id: 'record-1', totalFailures: 1, autoBlacklisted: false },
       ]);
 
-      const result = await service.recordFailure(filePath, libraryId, 'encode error');
+      const result = await service.recordFailure(
+        filePath,
+        libraryId,
+        'encode error',
+      );
 
       expect(result).toBe(false);
       expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
@@ -70,7 +79,11 @@ describe('FileFailureTrackingService', () => {
         { id: 'record-1', totalFailures: 3, autoBlacklisted: false },
       ]);
 
-      const result = await service.recordFailure(filePath, libraryId, 'encode error');
+      const result = await service.recordFailure(
+        filePath,
+        libraryId,
+        'encode error',
+      );
 
       expect(result).toBe(false);
     });
@@ -80,11 +93,15 @@ describe('FileFailureTrackingService', () => {
         { id: 'record-1', totalFailures: 5, autoBlacklisted: true },
       ]);
 
-      const result = await service.recordFailure(filePath, libraryId, 'encode error');
+      const result = await service.recordFailure(
+        filePath,
+        libraryId,
+        'encode error',
+      );
 
       expect(result).toBe(true);
       expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Auto-blacklisted file after 5 failures')
+        expect.stringContaining('Auto-blacklisted file after 5 failures'),
       );
     });
 
@@ -93,7 +110,11 @@ describe('FileFailureTrackingService', () => {
         { id: 'record-1', totalFailures: 7, autoBlacklisted: true },
       ]);
 
-      const result = await service.recordFailure(filePath, libraryId, 'encode error');
+      const result = await service.recordFailure(
+        filePath,
+        libraryId,
+        'encode error',
+      );
 
       expect(result).toBe(true);
     });
@@ -107,7 +128,7 @@ describe('FileFailureTrackingService', () => {
         filePath,
         libraryId,
         'encode error',
-        'fingerprint-abc123'
+        'fingerprint-abc123',
       );
 
       expect(result).toBe(false);
@@ -157,7 +178,7 @@ describe('FileFailureTrackingService', () => {
       expect(fileFailureRecordRepository.isBlacklisted).toHaveBeenCalledWith(
         filePath,
         libraryId,
-        undefined
+        undefined,
       );
     });
 
@@ -172,13 +193,17 @@ describe('FileFailureTrackingService', () => {
     it('should return true when blacklisted by contentFingerprint', async () => {
       fileFailureRecordRepository.isBlacklisted.mockResolvedValue(true);
 
-      const result = await service.isBlacklisted(filePath, libraryId, 'fingerprint-abc123');
+      const result = await service.isBlacklisted(
+        filePath,
+        libraryId,
+        'fingerprint-abc123',
+      );
 
       expect(result).toBe(true);
       expect(fileFailureRecordRepository.isBlacklisted).toHaveBeenCalledWith(
         filePath,
         libraryId,
-        'fingerprint-abc123'
+        'fingerprint-abc123',
       );
     });
 
@@ -195,18 +220,22 @@ describe('FileFailureTrackingService', () => {
     const libraryId = 'lib-1';
 
     it('should return empty set for empty input', async () => {
-      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(new Set());
+      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(
+        new Set(),
+      );
 
       const result = await service.getBlacklistedPaths([], libraryId);
 
       expect(result).toEqual(new Set());
-      expect(fileFailureRecordRepository.getBlacklistedPaths).toHaveBeenCalledWith([], libraryId);
+      expect(
+        fileFailureRecordRepository.getBlacklistedPaths,
+      ).toHaveBeenCalledWith([], libraryId);
     });
 
     it('should return set of blacklisted paths', async () => {
       const paths = ['/path/a.mkv', '/path/b.mkv', '/path/c.mkv'];
       fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(
-        new Set(['/path/a.mkv', '/path/c.mkv'])
+        new Set(['/path/a.mkv', '/path/c.mkv']),
       );
 
       const result = await service.getBlacklistedPaths(paths, libraryId);
@@ -217,14 +246,15 @@ describe('FileFailureTrackingService', () => {
 
     it('should delegate to repository with correct arguments', async () => {
       const paths = ['/path/a.mkv'];
-      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(new Set(['/path/a.mkv']));
+      fileFailureRecordRepository.getBlacklistedPaths.mockResolvedValue(
+        new Set(['/path/a.mkv']),
+      );
 
       await service.getBlacklistedPaths(paths, libraryId);
 
-      expect(fileFailureRecordRepository.getBlacklistedPaths).toHaveBeenCalledWith(
-        paths,
-        libraryId
-      );
+      expect(
+        fileFailureRecordRepository.getBlacklistedPaths,
+      ).toHaveBeenCalledWith(paths, libraryId);
     });
   });
 
@@ -235,14 +265,17 @@ describe('FileFailureTrackingService', () => {
     it('should delegate to repository', async () => {
       await service.clearBlacklist(filePath, libraryId);
 
-      expect(fileFailureRecordRepository.clearBlacklist).toHaveBeenCalledWith(filePath, libraryId);
+      expect(fileFailureRecordRepository.clearBlacklist).toHaveBeenCalledWith(
+        filePath,
+        libraryId,
+      );
     });
 
     it('should log the clear action', async () => {
       await service.clearBlacklist(filePath, libraryId);
 
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        `Cleared failure record for: ${filePath}`
+        `Cleared failure record for: ${filePath}`,
       );
     });
   });
@@ -257,7 +290,10 @@ describe('FileFailureTrackingService', () => {
       const result = await service.getFailureCount(filePath, libraryId);
 
       expect(result).toBe(0);
-      expect(fileFailureRecordRepository.getFailureCount).toHaveBeenCalledWith(filePath, libraryId);
+      expect(fileFailureRecordRepository.getFailureCount).toHaveBeenCalledWith(
+        filePath,
+        libraryId,
+      );
     });
 
     it('should return correct count when record exists', async () => {

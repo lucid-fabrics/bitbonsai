@@ -7,4 +7,8 @@ export type {
   HardwareCapabilities,
   MemoryInfo,
 } from '../../../core/models/discovery.model';
-export { AccelerationType, DiscoveryStatus, GPUVendor } from '../../../core/models/discovery.model';
+export {
+  AccelerationType,
+  DiscoveryStatus,
+  GPUVendor,
+} from '../../../core/models/discovery.model';

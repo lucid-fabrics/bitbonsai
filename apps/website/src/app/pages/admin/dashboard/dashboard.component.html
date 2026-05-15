@@ -15,7 +15,10 @@
     }
 
     <div class="actions">
-      <button (click)="showCreateForm.set(!showCreateForm())" class="btn-primary">
+      <button
+        (click)="showCreateForm.set(!showCreateForm())"
+        class="btn-primary"
+      >
         {{ showCreateForm() ? 'Cancel' : 'Create New Admin' }}
       </button>
     </div>
@@ -106,7 +109,13 @@
                   {{ admin.isActive ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td>{{ admin.lastLoginAt ? (admin.lastLoginAt | date: 'short') : 'Never' }}</td>
+              <td>
+                {{
+                  admin.lastLoginAt
+                    ? (admin.lastLoginAt | date: 'short')
+                    : 'Never'
+                }}
+              </td>
               <td>
                 <button
                   (click)="toggleAdminStatus(admin.id)"

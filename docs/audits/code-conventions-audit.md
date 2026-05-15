@@ -10,12 +10,12 @@
 
 BitBonsai is **80% compliant** with established code conventions. The codebase demonstrates solid fundamentals with modern patterns, but lacks critical architectural layers required by the constitution.
 
-| Category | Status | Count |
-|----------|--------|-------|
-| ✅ Compliant | 13 areas | Type safety, DI, naming, modern Angular, auth |
-| 🔴 Critical gaps | 6 areas | Backend: Repository, BOs, controller logic / Frontend: NgRx, signals, i18n |
-| 🟡 Medium issues | 5 areas | Large components, file organization |
-| 🟢 Low priority | 4 areas | Documentation, validation depth |
+| Category         | Status   | Count                                                                      |
+| ---------------- | -------- | -------------------------------------------------------------------------- |
+| ✅ Compliant     | 13 areas | Type safety, DI, naming, modern Angular, auth                              |
+| 🔴 Critical gaps | 6 areas  | Backend: Repository, BOs, controller logic / Frontend: NgRx, signals, i18n |
+| 🟡 Medium issues | 5 areas  | Large components, file organization                                        |
+| 🟢 Low priority  | 4 areas  | Documentation, validation depth                                            |
 
 **Effort to achieve full compliance:** 24-33 working days
 
@@ -24,6 +24,7 @@ BitBonsai is **80% compliant** with established code conventions. The codebase d
 ## ✅ What's Working Well
 
 ### Backend (NestJS)
+
 - **Type safety:** Zero `any` types found
 - **Modular architecture:** Clean module boundaries with explicit imports/exports
 - **Error handling:** Custom `BaseError` hierarchy with operational flags
@@ -31,6 +32,7 @@ BitBonsai is **80% compliant** with established code conventions. The codebase d
 - **Security:** No hardcoded secrets, JWT auth, rate limiting
 
 ### Frontend (Angular)
+
 - **Modern patterns:** Standalone components, OnPush change detection
 - **Control flow:** New `@if`, `@for`, `@switch` syntax (no legacy `*ngIf`)
 - **API clients:** Typed clients in `core/clients/*.client.ts`
@@ -38,6 +40,7 @@ BitBonsai is **80% compliant** with established code conventions. The codebase d
 - **Guards:** Proper auth guard stack (setup → auth → role)
 
 ### Shared
+
 - **Naming conventions:** Consistent `*.service.ts`, `*.controller.ts`, `*.dto.ts`, `*.bo.ts`
 - **Conventional commits:** Recent commits follow `feat:`, `fix:`, `docs:` format
 - **Interceptors:** API base URL, error handling, auth token injection
@@ -53,11 +56,13 @@ BitBonsai is **80% compliant** with established code conventions. The codebase d
 **Violation:** Services directly inject `PrismaService` and make database calls.
 
 **Why it matters:**
+
 - Tight coupling to Prisma ORM (hard to test, hard to swap)
 - No DAO ↔ BO transformation layer
 - Business logic mixed with data access
 
 **Current pattern:**
+
 ```typescript
 // queue.service.ts - VIOLATES CONVENTION
 @Injectable()
@@ -71,6 +76,7 @@ export class QueueService {
 ```
 
 **Required pattern:**
+
 ```typescript
 // _repositories/queue.repository.ts
 @Injectable()
@@ -97,6 +103,7 @@ export class QueueService {
 ```
 
 **Impact:**
+
 - **20+ services** need refactoring
 - **20+ repositories** need creation
 - All Prisma queries move to repository layer
@@ -108,11 +115,13 @@ export class QueueService {
 **Violation:** Backend returns Prisma entities directly. No BO layer for business logic.
 
 **Why it matters:**
+
 - Business logic scattered across services
 - No centralized place for calculations, validations, state transitions
 - DTO transformations happen inline (not reusable)
 
 **Required pattern:**
+
 ```typescript
 // models/job.bo.ts
 export class JobBo {
@@ -154,6 +163,7 @@ export class JobBo {
 ```
 
 **Impact:**
+
 - **20+ BO classes** need creation (one per Prisma model)
 - Business logic extracted from services to BOs
 - DTOs use `JobDto.fromBo(bo)` pattern
@@ -165,11 +175,13 @@ export class JobBo {
 **Violation:** Controllers contain validation, transformation, and business rules.
 
 **Why it matters:**
+
 - Violates layered architecture (Controller → Service → Repository → DAO)
 - Logic not reusable (locked in HTTP layer)
 - Harder to test (need HTTP context)
 
 **Example violation:**
+
 ```typescript
 // queue.controller.ts - VIOLATES CONVENTION
 @Patch(':id')
@@ -183,6 +195,7 @@ async updateJob(@Param('id') id: string, @Body() dto: UpdateJobDto) {
 ```
 
 **Required pattern:**
+
 ```typescript
 // Controller: HTTP handling ONLY
 @Patch(':id')
@@ -214,6 +227,7 @@ async updateJob(id: string, dto: UpdateJobDto): Promise<JobDto> {
 ```
 
 **Impact:**
+
 - **28 controllers** need logic extraction
 - Services become orchestrators (not just passthroughs)
 
@@ -226,11 +240,13 @@ async updateJob(id: string, dto: UpdateJobDto): Promise<JobDto> {
 **Violation:** Global state managed with BehaviorSubjects instead of NgRx.
 
 **Why it matters:**
+
 - Convention principle #2: "NgRx EVERYWHERE for global state"
 - No time-travel debugging, no devtools support
 - State mutations not tracked (hard to debug)
 
 **Current pattern:**
+
 ```typescript
 // queue.page.ts - VIOLATES CONVENTION
 private readonly refreshTrigger$ = new BehaviorSubject({ showLoading: true });
@@ -242,6 +258,7 @@ this.queueData$ = this.refreshTrigger$.pipe(
 ```
 
 **Required pattern:**
+
 ```typescript
 // features/queue/+state/queue.actions.ts
 export const QueueActions = createActionGroup({
@@ -250,25 +267,28 @@ export const QueueActions = createActionGroup({
     'Load Queue': props<{ filters: QueueFilters }>(),
     'Load Queue Success': props<{ data: QueueResponse }>(),
     'Load Queue Failure': props<{ error: string }>(),
-  }
+  },
 });
 
 // features/queue/+state/queue.effects.ts
-loadQueue$ = createEffect(() => this.actions$.pipe(
-  ofType(QueueActions.loadQueue),
-  switchMap(({ filters }) =>
-    this.queueClient.getQueue(filters).pipe(
-      map(data => QueueActions.loadQueueSuccess({ data })),
-      catchError(error => of(QueueActions.loadQueueFailure({ error })))
-    )
-  )
-));
+loadQueue$ = createEffect(() =>
+  this.actions$.pipe(
+    ofType(QueueActions.loadQueue),
+    switchMap(({ filters }) =>
+      this.queueClient.getQueue(filters).pipe(
+        map((data) => QueueActions.loadQueueSuccess({ data })),
+        catchError((error) => of(QueueActions.loadQueueFailure({ error }))),
+      ),
+    ),
+  ),
+);
 
 // Component uses selectors
 this.queueData$ = this.store.select(selectQueueData);
 ```
 
 **Impact:**
+
 - **10+ features** need NgRx migration (queue, libraries, policies, nodes, etc.)
 - Create `+state/` folders with actions, effects, reducers, selectors
 - Components dispatch actions instead of calling services directly
@@ -280,11 +300,13 @@ this.queueData$ = this.store.select(selectQueueData);
 **Violation:** Component-local state uses BehaviorSubjects instead of signals.
 
 **Why it matters:**
+
 - Convention principle #4: "Signals for local state"
 - BehaviorSubjects require `| async` pipe (boilerplate)
 - Signals integrate with Angular's new reactivity model
 
 **Current pattern:**
+
 ```typescript
 // queue.page.ts - VIOLATES CONVENTION
 private readonly loadingSubject$ = new BehaviorSubject<boolean>(false);
@@ -295,6 +317,7 @@ loading$ = this.loadingSubject$.asObservable();
 ```
 
 **Required pattern:**
+
 ```typescript
 // Use signals
 loading = signal(false);
@@ -308,6 +331,7 @@ canBulkDelete = computed(() => this.selectedIds().length > 0);
 ```
 
 **Impact:**
+
 - **15+ components** using BehaviorSubjects need migration
 - Templates lose `| async` pipe (cleaner syntax)
 - Better change detection performance
@@ -319,11 +343,13 @@ canBulkDelete = computed(() => this.selectedIds().length > 0);
 **Violation:** Hardcoded strings throughout templates and services.
 
 **Why it matters:**
+
 - Convention principle #10: "i18n ALL text"
 - Can't localize to other languages
 - Text changes require code changes (not config)
 
 **Current pattern:**
+
 ```html
 <!-- queue.page.html - VIOLATES CONVENTION -->
 <h1>Queue</h1>
@@ -332,6 +358,7 @@ canBulkDelete = computed(() => this.selectedIds().length > 0);
 ```
 
 **Required pattern:**
+
 ```html
 <h1>{{ 'queue.title' | translate }}</h1>
 <button>{{ 'queue.addFiles' | translate }}</button>
@@ -350,6 +377,7 @@ canBulkDelete = computed(() => this.selectedIds().length > 0);
 ```
 
 **Impact:**
+
 - Install `@ngx-translate/core` + `@ngx-translate/http-loader`
 - Create translation files (`en.json`, `fr.json`)
 - **100+ templates** need string extraction
@@ -366,6 +394,7 @@ canBulkDelete = computed(() => this.selectedIds().length > 0);
 **Convention:** Max 80-100 lines per method; break into sub-components.
 
 **Recommendation:**
+
 ```
 queue/
 ├── queue.page.ts (orchestrator, ~300 lines)
@@ -377,6 +406,7 @@ queue/
 ```
 
 **Impact:**
+
 - **5-8 large components** need splitting
 - Better testability, reusability
 
@@ -387,6 +417,7 @@ queue/
 **Issue:** Backend lacks `_services/`, `_repositories/`, `_dtos/` prefixes.
 
 **Current structure:**
+
 ```
 queue/
 ├── queue.controller.ts
@@ -397,6 +428,7 @@ queue/
 ```
 
 **Required structure:**
+
 ```
 queue/
 ├── queue.controller.ts
@@ -412,6 +444,7 @@ queue/
 ```
 
 **Impact:**
+
 - **30+ modules** need folder reorganization
 - Clearer visual hierarchy
 
@@ -512,19 +545,20 @@ queue/
 
 ## Estimated Timeline & Effort
 
-| Phase | Duration | Effort (days) | Risk |
-|-------|----------|---------------|------|
-| Backend Architecture | Weeks 1-4 | 12-14 | HIGH (breaking changes) |
-| Frontend State | Weeks 5-6 | 10-14 | HIGH (state rewrite) |
-| i18n | Week 7 | 4-5 | MEDIUM (template updates) |
-| Code Quality | Week 8 | 2-3 | LOW (incremental) |
-| **TOTAL** | **8 weeks** | **28-36 days** | - |
+| Phase                | Duration    | Effort (days)  | Risk                      |
+| -------------------- | ----------- | -------------- | ------------------------- |
+| Backend Architecture | Weeks 1-4   | 12-14          | HIGH (breaking changes)   |
+| Frontend State       | Weeks 5-6   | 10-14          | HIGH (state rewrite)      |
+| i18n                 | Week 7      | 4-5            | MEDIUM (template updates) |
+| Code Quality         | Week 8      | 2-3            | LOW (incremental)         |
+| **TOTAL**            | **8 weeks** | **28-36 days** | -                         |
 
 ---
 
 ## Verification Checklist
 
 ### Backend Compliance
+
 - [ ] Repository pattern implemented (Controller → Service → Repository → Prisma)
 - [ ] Business Objects created for all entities
 - [ ] Controllers contain ONLY HTTP handling
@@ -534,6 +568,7 @@ queue/
 - [ ] File structure: `_services/`, `_repositories/`, `_dtos/`, `models/`
 
 ### Frontend Compliance
+
 - [ ] NgRx implemented for all global state (queue, libraries, policies, etc.)
 - [ ] Signals used for all component-local state
 - [ ] No BehaviorSubjects for state management
@@ -548,11 +583,13 @@ queue/
 ## Testing Strategy
 
 ### Backend Testing (Per Module)
+
 1. **Unit tests** - Business Objects, Services
 2. **Integration tests** - Repositories (with test DB)
 3. **E2E tests** - Full workflows through controllers
 
 ### Frontend Testing (Per Feature)
+
 1. **Unit tests** - Effects, Reducers, Selectors
 2. **Component tests** - UI interactions, state integration
 3. **E2E tests** - User workflows (Playwright)
@@ -562,6 +599,7 @@ queue/
 ## Risk Mitigation
 
 ### High-Risk Changes
+
 1. **Repository pattern introduction**
    - Risk: Breaking existing code
    - Mitigation: Incremental rollout (one module at a time), comprehensive testing
@@ -571,6 +609,7 @@ queue/
    - Mitigation: Pilot with queue module, validate before rollout
 
 ### Recommended Approach
+
 - **Incremental:** One module/feature at a time
 - **Test-first:** Write tests before refactoring
 - **Feature flags:** Optional - toggle new patterns on/off
@@ -595,11 +634,13 @@ BitBonsai is **well-structured** but lacks critical architectural layers mandate
 **Recommended first step:** Implement repository pattern for one backend module (e.g., queue) as a pilot. Validate the pattern, then roll out systematically.
 
 **Quick wins (low-hanging fruit):**
+
 - Extract controller logic to services (1-2 days)
 - Reorganize file structure (1 day)
 - Split large components (2-3 days)
 
 **Long-term investment:**
+
 - Repository pattern + BOs (backend foundation)
 - NgRx + signals (frontend predictability)
 - i18n (future-proofing)

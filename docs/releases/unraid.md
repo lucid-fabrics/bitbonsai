@@ -5,29 +5,35 @@ This guide covers how to create and publish BitBonsai releases for the Unraid Co
 ## Quick Commands
 
 ### Generate Release Package Only
+
 ```bash
 nx unraid:release
 ```
+
 Generates all Unraid release files using the current version from `package.json`.
 
 ### Bump Version and Generate Release
 
 **Patch Release** (Bug fixes: 1.0.0 → 1.0.1)
+
 ```bash
 nx release:unraid
 ```
 
 **Minor Release** (New features: 1.0.0 → 1.1.0)
+
 ```bash
 nx release:unraid:minor
 ```
 
 **Major Release** (Breaking changes: 1.0.0 → 2.0.0)
+
 ```bash
 nx release:unraid:major
 ```
 
 ### Manual Version Bumping
+
 ```bash
 nx version:patch   # 1.0.0 → 1.0.1
 nx version:minor   # 1.0.0 → 1.1.0
@@ -47,6 +53,7 @@ The version is stored in `package.json` and automatically used by all release to
 ## Complete Release Workflow
 
 ### 1. Prepare Release
+
 ```bash
 # Make sure all changes are committed
 git status
@@ -56,15 +63,18 @@ nx release:unraid:minor  # or patch/major
 ```
 
 This will:
+
 - Update `package.json` version (1.0.0 → 1.1.0)
 - Generate all files in `unraid-release/` directory
 
 ### 2. Review Generated Files
+
 ```bash
 ls -lah unraid-release/
 ```
 
 Files generated:
+
 - `bitbonsai.xml` - Unraid template (for Community Apps)
 - `docker-compose.production.yml` - Production deployment
 - `README-UNRAID.md` - User guide
@@ -73,6 +83,7 @@ Files generated:
 - `RELEASE_NOTES.txt` - Release checklist
 
 ### 3. Build and Push Docker Image
+
 ```bash
 # Get current version
 VERSION=$(node -p "require('./package.json').version")
@@ -89,6 +100,7 @@ docker push lucidfabrics/bitbonsai:latest
 ```
 
 ### 4. Commit and Create GitHub Release
+
 ```bash
 # Commit version bump and release files
 git add package.json unraid-release/
@@ -105,12 +117,14 @@ gh release create v$VERSION \
 ### 5. Submit to Community Applications
 
 **First Time Submission:**
+
 1. Fork the [Community Applications repository](https://github.com/Squidly271/docker-templates)
 2. Add `unraid-release/bitbonsai.xml` to appropriate category folder
 3. Submit pull request
 
 **Updates:**
 Template updates automatically via GitHub URL:
+
 ```
 https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/unraid-release/bitbonsai.xml
 ```
@@ -118,7 +132,9 @@ https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/unraid-release/bi
 ## Generated Files Explained
 
 ### bitbonsai.xml
+
 Unraid template defining:
+
 - Container configuration
 - Port mappings (4210, 3100)
 - Volume paths (media, cache pool)
@@ -127,7 +143,9 @@ Unraid template defining:
 - WebUI URL
 
 ### docker-compose.production.yml
+
 Production-ready compose file with:
+
 - Host networking (mDNS discovery)
 - Cache pool SSD optimization
 - Media library mappings
@@ -135,6 +153,7 @@ Production-ready compose file with:
 - GPU configuration examples
 
 ### Documentation Files
+
 - **README-UNRAID.md**: Quick start, performance tips, troubleshooting
 - **INSTALL.md**: Step-by-step installation guide
 - **CHANGELOG.md**: Version history and changes
@@ -145,6 +164,7 @@ Production-ready compose file with:
 All releases include optimized SSD cache pool support:
 
 **In Template:**
+
 ```xml
 <Config Name="Encoding Cache (SSD)"
         Target="/cache"
@@ -155,6 +175,7 @@ All releases include optimized SSD cache pool support:
 ```
 
 **In Docker Compose:**
+
 ```yaml
 volumes:
   - /mnt/cache/bitbonsai-temp:/cache:rw
@@ -165,6 +186,7 @@ environment:
 ## Testing Before Release
 
 1. **Install from generated template locally**
+
    ```bash
    # Copy XML to Unraid
    scp unraid-release/bitbonsai.xml root@unraid:/boot/config/plugins/dockerMan/templates-user/
@@ -181,6 +203,7 @@ environment:
    - Confirm 10-100x performance improvement
 
 4. **Test GPU passthrough** (if applicable)
+
    ```bash
    docker exec bitbonsai nvidia-smi  # NVIDIA
    docker exec bitbonsai ls -la /dev/dri  # Intel/AMD
@@ -193,6 +216,7 @@ environment:
 ## Troubleshooting
 
 ### Version Not Updating
+
 ```bash
 # Manually update package.json
 npm version patch --no-git-tag-version
@@ -202,6 +226,7 @@ nx unraid:release
 ```
 
 ### Docker Build Fails
+
 ```bash
 # Check Docker daemon
 docker info
@@ -211,7 +236,9 @@ docker builder prune -a
 ```
 
 ### Template Validation
+
 Use Unraid's template validator:
+
 ```bash
 xmllint --noout unraid-release/bitbonsai.xml
 ```

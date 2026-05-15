@@ -30,7 +30,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 // Error State
@@ -136,7 +138,11 @@
     top: -12px;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     color: #000;
     padding: 6px 16px;
     border-radius: 20px;
@@ -296,7 +302,11 @@
 // CTA
 .pricing-cta {
   padding: 100px 0;
-  background: linear-gradient(135deg, variables.$bg-primary 0%, variables.$bg-secondary 100%);
+  background: linear-gradient(
+    135deg,
+    variables.$bg-primary 0%,
+    variables.$bg-secondary 100%
+  );
   text-align: center;
 
   &__container {

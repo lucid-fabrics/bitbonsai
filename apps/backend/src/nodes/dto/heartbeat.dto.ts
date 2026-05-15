@@ -51,7 +51,8 @@ export class HeartbeatDto {
   activeJobs?: number;
 
   @ApiProperty({
-    description: 'IP address of the node sending the heartbeat (for LINKED nodes)',
+    description:
+      'IP address of the node sending the heartbeat (for LINKED nodes)',
     example: '192.168.1.170',
     required: false,
   })
@@ -60,7 +61,7 @@ export class HeartbeatDto {
     /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
     {
       message: 'IP address must be a valid IPv4 address',
-    }
+    },
   )
   ipAddress?: string;
 }

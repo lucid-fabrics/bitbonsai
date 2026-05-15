@@ -80,7 +80,9 @@ describe('PolicySyncService', () => {
     it('should throw NotFoundException when child node not found', async () => {
       mockPrismaService.node.findUnique.mockResolvedValue(null);
 
-      await expect(service.syncToChildNode('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.syncToChildNode('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should sync successfully and return COMPLETED result', async () => {
@@ -144,7 +146,7 @@ describe('PolicySyncService', () => {
 
       expect(mockPrismaService.node.update).toHaveBeenCalledWith(
         'child-1',
-        expect.objectContaining({ syncStatus: SyncStatus.SYNCING })
+        expect.objectContaining({ syncStatus: SyncStatus.SYNCING }),
       );
     });
 
@@ -166,7 +168,9 @@ describe('PolicySyncService', () => {
     it('should throw NotFoundException when node not found', async () => {
       mockPrismaService.node.findUnique.mockResolvedValue(null);
 
-      await expect(service.getSyncStatus('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getSyncStatus('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return sync status for existing node', async () => {
@@ -220,7 +224,7 @@ describe('PolicySyncService', () => {
         expect.objectContaining({
           syncRetryCount: 0,
           syncStatus: SyncStatus.PENDING,
-        })
+        }),
       );
     });
   });
@@ -262,7 +266,7 @@ describe('PolicySyncService', () => {
       expect(mockPrismaService.policy.upsert).toHaveBeenCalledWith(
         { id: 'p1' },
         expect.objectContaining({ id: 'p1' }),
-        expect.objectContaining({ name: 'Policy1' })
+        expect.objectContaining({ name: 'Policy1' }),
       );
     });
   });
@@ -273,8 +277,14 @@ describe('PolicySyncService', () => {
 
       await expect(
         service.receiveLibraries([
-          { id: 'l1', name: 'Movies', path: '/media', mediaType: 'MOVIE', enabled: true },
-        ] as any)
+          {
+            id: 'l1',
+            name: 'Movies',
+            path: '/media',
+            mediaType: 'MOVIE',
+            enabled: true,
+          },
+        ] as any),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -283,7 +293,13 @@ describe('PolicySyncService', () => {
       mockPrismaService.library.upsert.mockResolvedValue({});
 
       const libraries = [
-        { id: 'l1', name: 'Movies', path: '/media/movies', mediaType: 'MOVIE', enabled: true },
+        {
+          id: 'l1',
+          name: 'Movies',
+          path: '/media/movies',
+          mediaType: 'MOVIE',
+          enabled: true,
+        },
       ];
 
       await service.receiveLibraries(libraries as any);
@@ -294,7 +310,9 @@ describe('PolicySyncService', () => {
 
   describe('receiveSettings', () => {
     it('should update existing settings', async () => {
-      mockPrismaService.settings.findFirst.mockResolvedValue({ id: 'settings-1' });
+      mockPrismaService.settings.findFirst.mockResolvedValue({
+        id: 'settings-1',
+      });
       mockPrismaService.settings.update.mockResolvedValue({});
 
       await service.receiveSettings({

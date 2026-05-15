@@ -11,7 +11,7 @@ import { NodesService } from '../../nodes/nodes.service';
 export class ApiKeyGuard implements CanActivate {
   constructor(
     @Inject(NodesService)
-    private readonly nodesService: NodesService
+    private readonly nodesService: NodesService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PolicyPreset, TargetCodec } from '@prisma/client';
-import type { AdvancedSettings, CreatePolicyDto, DeviceProfiles } from './dto/create-policy.dto';
+import type {
+  AdvancedSettings,
+  CreatePolicyDto,
+  DeviceProfiles,
+} from './dto/create-policy.dto';
 import type { PolicyDto } from './dto/policy.dto';
 import type { PolicyStatsDto } from './dto/policy-stats.dto';
 import type { PresetInfoDto } from './dto/preset-info.dto';
@@ -25,17 +29,19 @@ export class PoliciesService {
       xbox: true,
     };
 
-    const advancedSettings: AdvancedSettings = createPolicyDto.advancedSettings || {
-      ffmpegFlags: ['-preset', 'medium'],
-      hwaccel: 'auto',
-      audioCodec: 'copy',
-      subtitleHandling: 'copy',
-    };
+    const advancedSettings: AdvancedSettings =
+      createPolicyDto.advancedSettings || {
+        ffmpegFlags: ['-preset', 'medium'],
+        hwaccel: 'auto',
+        audioCodec: 'copy',
+        subtitleHandling: 'copy',
+      };
 
     // Derive targetCodec and targetQuality from preset if not provided
     const presetDefaults = this.getPresetDefaults(createPolicyDto.preset);
     const targetCodec = createPolicyDto.targetCodec ?? presetDefaults.codec;
-    const targetQuality = createPolicyDto.targetQuality ?? presetDefaults.quality;
+    const targetQuality =
+      createPolicyDto.targetQuality ?? presetDefaults.quality;
 
     const policy = await this.policyRepository.create({
       name: createPolicyDto.name,
@@ -58,7 +64,10 @@ export class PoliciesService {
   /**
    * Get default codec and quality for a preset
    */
-  private getPresetDefaults(preset: PolicyPreset): { codec: TargetCodec; quality: number } {
+  private getPresetDefaults(preset: PolicyPreset): {
+    codec: TargetCodec;
+    quality: number;
+  } {
     switch (preset) {
       case PolicyPreset.BALANCED_HEVC:
         return { codec: TargetCodec.HEVC, quality: 23 };
@@ -97,7 +106,10 @@ export class PoliciesService {
   /**
    * Update a policy
    */
-  async update(id: string, updatePolicyDto: UpdatePolicyDto): Promise<PolicyDto> {
+  async update(
+    id: string,
+    updatePolicyDto: UpdatePolicyDto,
+  ): Promise<PolicyDto> {
     // Check if policy exists
     await this.findOne(id);
 
@@ -169,7 +181,8 @@ export class PoliciesService {
       {
         preset: PolicyPreset.CUSTOM,
         name: 'Custom',
-        description: 'Fully customizable encoding policy with manual control over all parameters.',
+        description:
+          'Fully customizable encoding policy with manual control over all parameters.',
         defaultCodec: TargetCodec.HEVC,
         recommendedQuality: 23,
       },

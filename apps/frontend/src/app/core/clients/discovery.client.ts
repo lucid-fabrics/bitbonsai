@@ -47,7 +47,10 @@ export class DiscoveryClient {
    * Approve a discovered node and add it to the network
    */
   approveNode(request: ApproveNodeRequest): Observable<ApproveNodeResponse> {
-    return this.http.post<ApproveNodeResponse>(`${this.apiUrl}/approve`, request);
+    return this.http.post<ApproveNodeResponse>(
+      `${this.apiUrl}/approve`,
+      request,
+    );
   }
 
   /**

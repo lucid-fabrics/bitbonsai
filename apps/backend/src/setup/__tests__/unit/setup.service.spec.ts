@@ -23,14 +23,21 @@ jest.mock('crypto', () => ({
 describe('SetupService', () => {
   let service: SetupService;
   let prisma: Record<string, Record<string, jest.Mock>>;
-  let mockLicenseRepository: { findFirstWhere: jest.Mock; createLicense: jest.Mock };
+  let mockLicenseRepository: {
+    findFirstWhere: jest.Mock;
+    createLicense: jest.Mock;
+  };
   let mockNodeRepository: { findFirstByRole: jest.Mock; createNode: jest.Mock };
   let mockSettingsRepository: {
     findFirst: jest.Mock;
     upsertSettings: jest.Mock;
     update: jest.Mock;
   };
-  let mockUserRepository: { count: jest.Mock; create: jest.Mock; deleteMany: jest.Mock };
+  let mockUserRepository: {
+    count: jest.Mock;
+    create: jest.Mock;
+    deleteMany: jest.Mock;
+  };
 
   function createMockPrisma() {
     return {
@@ -65,9 +72,11 @@ describe('SetupService', () => {
       upsertSettings: jest.fn().mockImplementation(async () => {
         return prisma.settings.update() ?? prisma.settings.create();
       }),
-      update: jest.fn().mockImplementation(async (_where: unknown, data: unknown) => {
-        return prisma.settings.update({ where: _where, data });
-      }),
+      update: jest
+        .fn()
+        .mockImplementation(async (_where: unknown, data: unknown) => {
+          return prisma.settings.update({ where: _where, data });
+        }),
     };
 
     mockUserRepository = {
@@ -161,7 +170,7 @@ describe('SetupService', () => {
           username: 'admin',
           password: 'password123',
           allowLocalNetworkWithoutAuth: false,
-        })
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -172,8 +181,10 @@ describe('SetupService', () => {
         service.initializeSetup({
           nodeType: NodeType.Main,
           allowLocalNetworkWithoutAuth: false,
-        })
-      ).rejects.toThrow('Username and password are required for main node setup');
+        }),
+      ).rejects.toThrow(
+        'Username and password are required for main node setup',
+      );
     });
 
     it('should throw if main node setup missing password', async () => {
@@ -184,8 +195,10 @@ describe('SetupService', () => {
           username: 'admin',
           nodeType: NodeType.Main,
           allowLocalNetworkWithoutAuth: false,
-        })
-      ).rejects.toThrow('Username and password are required for main node setup');
+        }),
+      ).rejects.toThrow(
+        'Username and password are required for main node setup',
+      );
     });
 
     it('should create admin user and MAIN node on main setup', async () => {
@@ -211,13 +224,13 @@ describe('SetupService', () => {
           email: 'admin@local.bitbonsai',
           role: 'ADMIN',
           passwordHash: 'hashed_password_abc',
-        })
+        }),
       );
       expect(prisma.node.create).toHaveBeenCalledWith(
         expect.objectContaining({
           role: 'MAIN',
           status: 'ONLINE',
-        })
+        }),
       );
     });
 
@@ -240,7 +253,7 @@ describe('SetupService', () => {
         expect.objectContaining({
           isSetupComplete: true,
           allowLocalNetworkWithoutAuth: true,
-        })
+        }),
       );
       expect(prisma.settings.create).not.toHaveBeenCalled();
     });
@@ -262,7 +275,7 @@ describe('SetupService', () => {
 
       expect(prisma.license.create).not.toHaveBeenCalled();
       expect(prisma.node.create).toHaveBeenCalledWith(
-        expect.objectContaining({ licenseId: 'license-1' })
+        expect.objectContaining({ licenseId: 'license-1' }),
       );
     });
 
@@ -285,7 +298,7 @@ describe('SetupService', () => {
         expect.objectContaining({
           role: 'LINKED',
           mainNodeUrl: 'http://192.168.1.100:3100',
-        })
+        }),
       );
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
@@ -319,7 +332,7 @@ describe('SetupService', () => {
       process.env.NODE_ENV = 'production';
 
       await expect(service.resetSetup()).rejects.toThrow(
-        'Reset setup is not allowed in production'
+        'Reset setup is not allowed in production',
       );
 
       process.env.NODE_ENV = originalEnv;
@@ -378,7 +391,7 @@ describe('SetupService', () => {
           password: 'pass',
           allowLocalNetworkWithoutAuth: false,
           nodeType: NodeType.Main,
-        })
+        }),
       ).rejects.toThrow('DB connection lost');
     });
 
@@ -396,7 +409,7 @@ describe('SetupService', () => {
           password: 'pass',
           allowLocalNetworkWithoutAuth: false,
           nodeType: NodeType.Main,
-        })
+        }),
       ).rejects.toThrow('Node insert failed');
     });
 
@@ -405,14 +418,16 @@ describe('SetupService', () => {
       prisma.settings.findFirst.mockResolvedValue(null);
       prisma.settings.create.mockResolvedValue({});
       prisma.license.findFirst.mockResolvedValue(baseLicense);
-      prisma.node.create.mockRejectedValue(new Error('Child node insert failed'));
+      prisma.node.create.mockRejectedValue(
+        new Error('Child node insert failed'),
+      );
 
       await expect(
         service.initializeSetup({
           allowLocalNetworkWithoutAuth: false,
           nodeType: NodeType.Child,
           mainNodeUrl: 'http://192.168.1.100:3100',
-        })
+        }),
       ).rejects.toThrow('Child node insert failed');
     });
 
@@ -433,7 +448,7 @@ describe('SetupService', () => {
       });
 
       expect(prisma.node.create).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Main Node (my-custom-host)' })
+        expect.objectContaining({ name: 'Main Node (my-custom-host)' }),
       );
       process.env.HOSTNAME = '';
     });
@@ -455,7 +470,7 @@ describe('SetupService', () => {
       });
 
       expect(prisma.node.create).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Main Node (main-node)' })
+        expect.objectContaining({ name: 'Main Node (main-node)' }),
       );
     });
 
@@ -464,7 +479,10 @@ describe('SetupService', () => {
       prisma.settings.findFirst.mockResolvedValue(null);
       prisma.settings.create.mockResolvedValue({});
       prisma.license.findFirst.mockResolvedValue(null);
-      prisma.license.create.mockResolvedValue({ ...baseLicense, id: 'license-child' });
+      prisma.license.create.mockResolvedValue({
+        ...baseLicense,
+        id: 'license-child',
+      });
       prisma.node.create.mockResolvedValue({});
 
       await service.initializeSetup({
@@ -475,8 +493,10 @@ describe('SetupService', () => {
 
       expect(prisma.license.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ email: 'child-node@bitbonsai.local' }),
-        })
+          data: expect.objectContaining({
+            email: 'child-node@bitbonsai.local',
+          }),
+        }),
       );
     });
 
@@ -512,7 +532,7 @@ describe('SetupService', () => {
               webhooks: false,
             }),
           }),
-        })
+        }),
       );
     });
 
@@ -546,7 +566,10 @@ describe('SetupService', () => {
       });
 
       expect(mockSettingsRepository.upsertSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ isSetupComplete: true, allowLocalNetworkWithoutAuth: true })
+        expect.objectContaining({
+          isSetupComplete: true,
+          allowLocalNetworkWithoutAuth: true,
+        }),
       );
     });
   });

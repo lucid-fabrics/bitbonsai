@@ -121,22 +121,23 @@ export class HealthDashboardService {
     private readonly jobRepository: JobRepository,
     private readonly nodeRepository: NodeRepository,
     private readonly hardwareDetection: HardwareDetectionService,
-    private readonly librariesService: LibrariesService
+    private readonly librariesService: LibrariesService,
   ) {}
 
   /**
    * Get comprehensive system dashboard
    */
   async getDashboard(): Promise<SystemDashboard> {
-    const [checks, system, queue, storage, nodes, encoding, hardware] = await Promise.all([
-      this.runHealthChecks(),
-      this.getSystemMetrics(),
-      this.getQueueStats(),
-      this.getStorageStats(),
-      this.getNodeStats(),
-      this.getEncodingStats(),
-      this.getHardwareInfo(),
-    ]);
+    const [checks, system, queue, storage, nodes, encoding, hardware] =
+      await Promise.all([
+        this.runHealthChecks(),
+        this.getSystemMetrics(),
+        this.getQueueStats(),
+        this.getStorageStats(),
+        this.getNodeStats(),
+        this.getEncodingStats(),
+        this.getHardwareInfo(),
+      ]);
 
     // Determine overall status from health checks
     const overallStatus = this.calculateOverallStatus(checks);
@@ -245,12 +246,17 @@ export class HealthDashboardService {
     });
 
     // Node Status Check
-    const offlineNodes = await this.nodeRepository.count({ where: { status: 'OFFLINE' } });
+    const offlineNodes = await this.nodeRepository.count({
+      where: { status: 'OFFLINE' },
+    });
 
     checks.push({
       name: 'Node Status',
       status: offlineNodes > 0 ? HealthStatus.WARNING : HealthStatus.HEALTHY,
-      message: offlineNodes > 0 ? `${offlineNodes} node(s) offline` : 'All nodes online',
+      message:
+        offlineNodes > 0
+          ? `${offlineNodes} node(s) offline`
+          : 'All nodes online',
       value: offlineNodes,
       threshold: 0,
     });
@@ -315,7 +321,8 @@ export class HealthDashboardService {
 
     // Calculate average processing time (completed jobs in last 24h)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const completedJobs = await this.jobRepository.findCompletedSince(oneDayAgo);
+    const completedJobs =
+      await this.jobRepository.findCompletedSince(oneDayAgo);
 
     let avgProcessingTimeMs = 0;
     let avgWaitTimeMs = 0;
@@ -330,7 +337,8 @@ export class HealthDashboardService {
         .map((j) => j.startedAt!.getTime() - j.createdAt.getTime());
 
       if (processingTimes.length > 0) {
-        avgProcessingTimeMs = processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;
+        avgProcessingTimeMs =
+          processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;
       }
       if (waitTimes.length > 0) {
         avgWaitTimeMs = waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length;
@@ -380,7 +388,9 @@ export class HealthDashboardService {
           usedPercent: Math.round(usedPercent * 10) / 10,
         });
       } catch (error: unknown) {
-        this.logger.warn(`Failed to get storage stats for ${mediaPath}: ${error}`);
+        this.logger.warn(
+          `Failed to get storage stats for ${mediaPath}: ${error}`,
+        );
       }
     }
 
@@ -396,7 +406,10 @@ export class HealthDashboardService {
     offline: number;
     byRole: Record<string, number>;
   }> {
-    const nodes = await this.nodeRepository.findMany<{ status: string; role: string }>({
+    const nodes = await this.nodeRepository.findMany<{
+      status: string;
+      role: string;
+    }>({
       select: { status: true, role: true },
     });
 
@@ -435,10 +448,14 @@ export class HealthDashboardService {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Total processed
-    const totalProcessed = await this.jobRepository.countWhere({ stage: JobStage.COMPLETED });
+    const totalProcessed = await this.jobRepository.countWhere({
+      stage: JobStage.COMPLETED,
+    });
 
     // Total saved bytes and avg saved percent
-    const savedAgg = await this.jobRepository.aggregateWithAvgCount({ stage: JobStage.COMPLETED });
+    const savedAgg = await this.jobRepository.aggregateWithAvgCount({
+      stage: JobStage.COMPLETED,
+    });
 
     // Last 24h stats
     const last24hCompleted = await this.jobRepository.countWhere({
@@ -453,12 +470,14 @@ export class HealthDashboardService {
 
     // Failure rate
     const totalAttempted = last24hCompleted + last24hFailed;
-    const failureRate = totalAttempted > 0 ? (last24hFailed / totalAttempted) * 100 : 0;
+    const failureRate =
+      totalAttempted > 0 ? (last24hFailed / totalAttempted) * 100 : 0;
 
     return {
       totalProcessed,
       totalSavedBytes: (savedAgg._sum.savedBytes || BigInt(0)).toString(),
-      avgSavedPercent: Math.round((savedAgg._avg.savedPercent || 0) * 100) / 100,
+      avgSavedPercent:
+        Math.round((savedAgg._avg.savedPercent || 0) * 100) / 100,
       failureRate: Math.round(failureRate * 100) / 100,
       last24hCompleted,
       last24hFailed,
@@ -488,7 +507,7 @@ export class HealthDashboardService {
       };
     } catch (error: unknown) {
       this.logger.warn(
-        `[getHardwareInfo] Hardware detection failed: ${error instanceof Error ? error.message : String(error)}`
+        `[getHardwareInfo] Hardware detection failed: ${error instanceof Error ? error.message : String(error)}`,
       );
       return {
         accelerationType: 'CPU',

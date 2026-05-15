@@ -16,7 +16,9 @@ describe('ContainerCompatibilityService', () => {
       providers: [ContainerCompatibilityService],
     }).compile();
 
-    service = module.get<ContainerCompatibilityService>(ContainerCompatibilityService);
+    service = module.get<ContainerCompatibilityService>(
+      ContainerCompatibilityService,
+    );
 
     jest.spyOn((service as any).logger, 'log').mockImplementation();
     jest.spyOn((service as any).logger, 'warn').mockImplementation();
@@ -95,7 +97,9 @@ describe('ContainerCompatibilityService', () => {
       const issues = await service.checkCompatibility('/test/file.mkv', 'mp4');
 
       expect(issues).toHaveLength(1);
-      expect(issues[0].metadata?.incompatibleCodecs).toContain('E-AC3 (Dolby Digital Plus)');
+      expect(issues[0].metadata?.incompatibleCodecs).toContain(
+        'E-AC3 (Dolby Digital Plus)',
+      );
     });
 
     it('should detect DTS audio incompatibility', async () => {
@@ -175,8 +179,18 @@ describe('ContainerCompatibilityService', () => {
       const streamData = {
         streams: [
           { index: 0, codec_name: 'hevc', codec_type: 'video' },
-          { index: 1, codec_name: 'ac3', codec_type: 'audio', tags: { title: 'Surround 5.1' } },
-          { index: 2, codec_name: 'dts', codec_type: 'audio', tags: { title: 'DTS-HD' } },
+          {
+            index: 1,
+            codec_name: 'ac3',
+            codec_type: 'audio',
+            tags: { title: 'Surround 5.1' },
+          },
+          {
+            index: 2,
+            codec_name: 'dts',
+            codec_type: 'audio',
+            tags: { title: 'DTS-HD' },
+          },
         ],
       };
 
@@ -204,11 +218,15 @@ describe('ContainerCompatibilityService', () => {
       expect(Array.isArray(issues[0].suggestedActions)).toBe(true);
       expect(issues[0].suggestedActions.length).toBeGreaterThanOrEqual(2);
 
-      const mkv = issues[0].suggestedActions.find((a: any) => a.id === 'use_mkv_container');
+      const mkv = issues[0].suggestedActions.find(
+        (a: any) => a.id === 'use_mkv_container',
+      );
       expect(mkv).not.toBeUndefined();
       expect(mkv!.recommended).toBe(true);
 
-      const aac = issues[0].suggestedActions.find((a: any) => a.id === 'transcode_audio_aac');
+      const aac = issues[0].suggestedActions.find(
+        (a: any) => a.id === 'transcode_audio_aac',
+      );
       expect(aac).not.toBeUndefined();
     });
 
@@ -234,7 +252,10 @@ describe('ContainerCompatibilityService', () => {
     it('should return empty on non-zero exit code', async () => {
       createMockProcess(1, '', 'Error reading file');
 
-      const issues = await service.checkCompatibility('/test/missing.mkv', 'mp4');
+      const issues = await service.checkCompatibility(
+        '/test/missing.mkv',
+        'mp4',
+      );
 
       expect(issues).toEqual([]);
     });

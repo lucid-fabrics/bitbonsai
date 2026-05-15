@@ -53,6 +53,7 @@ Timeline: 20.5 days | Tech Stack: Angular 21+, NestJS, Prisma, PostgreSQL, Docke
 ```
 
 ### Two Separate Databases (By Design)
+
 - **Remote License DB**: Manages subscriptions, licenses, payments, analytics
 - **Local BitBonsai DB**: Stores encoding jobs, nodes, configuration
 
@@ -85,21 +86,22 @@ libs/shared-ui/
 ```
 
 ### Color Variables (Exact Match)
+
 ```scss
 // apps/frontend/src/styles/_variables.scss → libs/shared-ui/src/lib/styles/_variables.scss
-$accent-primary: #f9be03;              // Golden yellow
+$accent-primary: #f9be03; // Golden yellow
 $accent-primary-hover: #fcd34d;
 
-$bg-primary: #1a1a1a;                  // Darkest
-$bg-secondary: #252525;                // Cards
-$bg-tertiary: #2a2a2a;                 // Hover states
+$bg-primary: #1a1a1a; // Darkest
+$bg-secondary: #252525; // Cards
+$bg-tertiary: #2a2a2a; // Hover states
 
 $border-primary: #2d2d2d;
 $border-secondary: #3d3d3d;
 
-$text-primary: #e0e0e0;                // Main text
-$text-secondary: #888;                 // Labels
-$text-tertiary: #666;                  // Disabled
+$text-primary: #e0e0e0; // Main text
+$text-secondary: #888; // Labels
+$text-tertiary: #666; // Disabled
 
 $success: #4ade80;
 $warning: #fbbf24;
@@ -109,16 +111,17 @@ $info: #38bdf8;
 
 ### Key Components to Extract
 
-| Component | Source | Purpose |
-|-----------|--------|---------|
-| `bb-button` | apps/frontend | Styled buttons with golden accent |
-| `bb-card` | apps/frontend | Dark theme cards with borders |
-| `bb-table` | apps/frontend | Data tables with sorting |
-| `bb-form-field` | apps/frontend | Input fields with validation |
-| `bb-stat-card` | apps/frontend | Metrics display (for analytics) |
-| `bb-badge` | apps/frontend | Status indicators |
+| Component       | Source        | Purpose                           |
+| --------------- | ------------- | --------------------------------- |
+| `bb-button`     | apps/frontend | Styled buttons with golden accent |
+| `bb-card`       | apps/frontend | Dark theme cards with borders     |
+| `bb-table`      | apps/frontend | Data tables with sorting          |
+| `bb-form-field` | apps/frontend | Input fields with validation      |
+| `bb-stat-card`  | apps/frontend | Metrics display (for analytics)   |
+| `bb-badge`      | apps/frontend | Status indicators                 |
 
 ### Usage in Admin Dashboard
+
 ```typescript
 // apps/website-admin/src/app/dashboard/dashboard.component.ts
 import { BbButtonComponent, BbStatCardComponent } from '@bitbonsai/shared-ui';
@@ -241,15 +244,15 @@ model EmailTemplate {
 
 **Admin API Endpoints:**
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/admin/pricing` | GET | List all tiers (draft + published) |
-| `/admin/pricing` | POST | Create new tier (draft) |
-| `/admin/pricing/:id` | PATCH | Update tier (unpublished only) |
-| `/admin/pricing/:id/publish` | POST | Publish tier → creates Stripe prices |
-| `/admin/pricing/:id/deactivate` | POST | Mark tier inactive (soft delete) |
-| `/admin/patreon/tiers` | GET | List Patreon tiers (via API) |
-| `/admin/pricing/:id/map-patreon` | POST | Map Patreon tier ID to pricing tier |
+| Endpoint                         | Method | Purpose                              |
+| -------------------------------- | ------ | ------------------------------------ |
+| `/admin/pricing`                 | GET    | List all tiers (draft + published)   |
+| `/admin/pricing`                 | POST   | Create new tier (draft)              |
+| `/admin/pricing/:id`             | PATCH  | Update tier (unpublished only)       |
+| `/admin/pricing/:id/publish`     | POST   | Publish tier → creates Stripe prices |
+| `/admin/pricing/:id/deactivate`  | POST   | Mark tier inactive (soft delete)     |
+| `/admin/patreon/tiers`           | GET    | List Patreon tiers (via API)         |
+| `/admin/pricing/:id/map-patreon` | POST   | Map Patreon tier ID to pricing tier  |
 
 **Publishing Flow (apps/license-api/src/pricing/pricing.service.ts):**
 
@@ -337,13 +340,13 @@ private async determineTier(priceId: string): Promise<LicenseTier> {
 
 **Admin API:**
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/admin/promo-codes` | GET | List all promo codes |
-| `/admin/promo-codes` | POST | Create new code |
-| `/admin/promo-codes/:id` | PATCH | Update code (if unused) |
-| `/admin/promo-codes/:id/deactivate` | POST | Mark inactive |
-| `/promo-codes/validate` | POST | Public: Validate code before checkout |
+| Endpoint                            | Method | Purpose                               |
+| ----------------------------------- | ------ | ------------------------------------- |
+| `/admin/promo-codes`                | GET    | List all promo codes                  |
+| `/admin/promo-codes`                | POST   | Create new code                       |
+| `/admin/promo-codes/:id`            | PATCH  | Update code (if unused)               |
+| `/admin/promo-codes/:id/deactivate` | POST   | Mark inactive                         |
+| `/promo-codes/validate`             | POST   | Public: Validate code before checkout |
 
 **Validation Logic (apps/license-api/src/promo/promo.service.ts):**
 
@@ -409,6 +412,7 @@ async handleWebhook(@Body() payload: KofiWebhookPayload): Promise<{ received: bo
 ```
 
 **Admin Review UI:**
+
 - Admin dashboard shows pending donations
 - Admin can:
   - **Convert to License**: Manually create license for donor
@@ -418,16 +422,17 @@ async handleWebhook(@Body() payload: KofiWebhookPayload): Promise<{ received: bo
 ### 1.4 Config UI with Encryption (1 day)
 
 **Bootstrap Problem Solved:**
+
 - Encryption key stored in `.env` (ENCRYPTION_KEY)
 - All other configs stored in `app_config` table (encrypted)
 
 **Admin API:**
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/admin/config` | GET | List all configs (masked if secret) |
-| `/admin/config/:key` | GET | Get single config (full value if authorized) |
-| `/admin/config/:key` | PUT | Update config value |
+| Endpoint             | Method | Purpose                                      |
+| -------------------- | ------ | -------------------------------------------- |
+| `/admin/config`      | GET    | List all configs (masked if secret)          |
+| `/admin/config/:key` | GET    | Get single config (full value if authorized) |
+| `/admin/config/:key` | PUT    | Update config value                          |
 
 **Encryption Service (apps/license-api/src/crypto/config-crypto.service.ts):**
 
@@ -462,7 +467,7 @@ export class ConfigCryptoService {
     const decipher = crypto.createDecipheriv(
       this.algorithm,
       this.key,
-      Buffer.from(ivHex, 'hex')
+      Buffer.from(ivHex, 'hex'),
     );
     decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
 
@@ -504,15 +509,15 @@ async getConfigForDisplay(key: string): Promise<{ key: string; value: string; is
 
 **Config Keys:**
 
-| Key | Secret | Description |
-|-----|--------|-------------|
-| STRIPE_SECRET_KEY | Yes | Stripe API secret |
-| STRIPE_WEBHOOK_SECRET | Yes | Stripe webhook signing |
-| PATREON_CLIENT_ID | No | Patreon OAuth client |
-| PATREON_CLIENT_SECRET | Yes | Patreon OAuth secret |
-| PATREON_WEBHOOK_SECRET | Yes | Patreon webhook signing |
-| RESEND_API_KEY | Yes | Email service |
-| DATABASE_URL | Yes | PostgreSQL connection |
+| Key                    | Secret | Description             |
+| ---------------------- | ------ | ----------------------- |
+| STRIPE_SECRET_KEY      | Yes    | Stripe API secret       |
+| STRIPE_WEBHOOK_SECRET  | Yes    | Stripe webhook signing  |
+| PATREON_CLIENT_ID      | No     | Patreon OAuth client    |
+| PATREON_CLIENT_SECRET  | Yes    | Patreon OAuth secret    |
+| PATREON_WEBHOOK_SECRET | Yes    | Patreon webhook signing |
+| RESEND_API_KEY         | Yes    | Email service           |
+| DATABASE_URL           | Yes    | PostgreSQL connection   |
 
 ### 1.5 Audit Logging (0.5 days)
 
@@ -520,7 +525,11 @@ async getConfigForDisplay(key: string): Promise<{ key: string; value: string; is
 
 ```typescript
 export function Audited(entityType: string) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
@@ -611,7 +620,8 @@ export class LicenseClientService {
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
   ) {
-    this.apiUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.io';
+    this.apiUrl =
+      this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.io';
   }
 
   async verifyLicense(): Promise<License> {
@@ -619,7 +629,8 @@ export class LicenseClientService {
 
     // Return cache if verified within 24h
     if (this.cachedLicense && this.lastVerification) {
-      const hoursSinceVerification = (now.getTime() - this.lastVerification.getTime()) / (1000 * 60 * 60);
+      const hoursSinceVerification =
+        (now.getTime() - this.lastVerification.getTime()) / (1000 * 60 * 60);
       if (hoursSinceVerification < 24) {
         return this.cachedLicense;
       }
@@ -637,7 +648,7 @@ export class LicenseClientService {
           key: licenseKey,
           machineId: this.getMachineId(),
           machineName: os.hostname(),
-        })
+        }),
       );
 
       this.cachedLicense = response.data;
@@ -654,7 +665,10 @@ export class LicenseClientService {
     }
   }
 
-  async getCurrentLimits(): Promise<{ maxNodes: number; maxConcurrentJobs: number }> {
+  async getCurrentLimits(): Promise<{
+    maxNodes: number;
+    maxConcurrentJobs: number;
+  }> {
     const license = await this.verifyLicense();
     return {
       maxNodes: license.maxNodes,
@@ -667,7 +681,10 @@ export class LicenseClientService {
     const networkInterfaces = os.networkInterfaces();
     const macs = Object.values(networkInterfaces)
       .flat()
-      .filter((iface) => iface && !iface.internal && iface.mac !== '00:00:00:00:00:00')
+      .filter(
+        (iface) =>
+          iface && !iface.internal && iface.mac !== '00:00:00:00:00:00',
+      )
       .map((iface) => iface.mac);
 
     const uniqueString = `${macs.join('-')}-${os.hostname()}`;
@@ -694,7 +711,7 @@ export class NodeLimitGuard implements CanActivate {
 
     if (currentNodeCount >= maxNodes) {
       throw new ForbiddenException(
-        `Node limit reached (${currentNodeCount}/${maxNodes}). Upgrade license to add more nodes.`
+        `Node limit reached (${currentNodeCount}/${maxNodes}). Upgrade license to add more nodes.`,
       );
     }
 
@@ -723,17 +740,17 @@ async createNode(@Body() dto: CreateNodeDto): Promise<Node> {
 
 ```typescript
 export interface RevenueMetrics {
-  mrr: number;                          // Monthly Recurring Revenue
-  arr: number;                          // Annual Recurring Revenue
-  churnRate: number;                    // % of cancelled subscriptions
-  clv: number;                          // Customer Lifetime Value
+  mrr: number; // Monthly Recurring Revenue
+  arr: number; // Annual Recurring Revenue
+  churnRate: number; // % of cancelled subscriptions
+  clv: number; // Customer Lifetime Value
   activeSubscriptions: number;
   newSubscriptionsThisMonth: number;
   revenueByTier: Record<string, number>;
   subscriptionHealth: {
-    healthy: number;                    // Active, no issues
-    expiringSoon: number;               // < 7 days to expiry
-    overdue: number;                    // Past expiry, not cancelled
+    healthy: number; // Active, no issues
+    expiringSoon: number; // < 7 days to expiry
+    overdue: number; // Past expiry, not cancelled
   };
 }
 
@@ -745,13 +762,14 @@ export class MetricsService {
     });
 
     // MRR calculation
-    const mrr = activeSubscriptions.reduce((sum, license) => {
-      const tier = license.tier;
-      const monthlyRevenue = tier.priceYearly
-        ? tier.priceYearly / 12
-        : tier.priceMonthly;
-      return sum + monthlyRevenue;
-    }, 0) / 100; // Convert from cents
+    const mrr =
+      activeSubscriptions.reduce((sum, license) => {
+        const tier = license.tier;
+        const monthlyRevenue = tier.priceYearly
+          ? tier.priceYearly / 12
+          : tier.priceMonthly;
+        return sum + monthlyRevenue;
+      }, 0) / 100; // Convert from cents
 
     // ARR = MRR × 12
     const arr = mrr * 12;
@@ -768,18 +786,26 @@ export class MetricsService {
     });
 
     const totalAtStart = activeSubscriptions.length + cancelledCount;
-    const churnRate = totalAtStart > 0 ? (cancelledCount / totalAtStart) * 100 : 0;
+    const churnRate =
+      totalAtStart > 0 ? (cancelledCount / totalAtStart) * 100 : 0;
 
     // CLV = Average monthly revenue / churn rate
-    const avgMonthlyRevenue = activeSubscriptions.length > 0 ? mrr / activeSubscriptions.length : 0;
-    const clv = churnRate > 0 ? avgMonthlyRevenue / (churnRate / 100) : avgMonthlyRevenue * 12;
+    const avgMonthlyRevenue =
+      activeSubscriptions.length > 0 ? mrr / activeSubscriptions.length : 0;
+    const clv =
+      churnRate > 0
+        ? avgMonthlyRevenue / (churnRate / 100)
+        : avgMonthlyRevenue * 12;
 
     // Revenue by tier
     const revenueByTier: Record<string, number> = {};
     activeSubscriptions.forEach((license) => {
       const tier = license.tier;
-      const monthlyRevenue = tier.priceYearly ? tier.priceYearly / 12 : tier.priceMonthly;
-      revenueByTier[tier.displayName] = (revenueByTier[tier.displayName] || 0) + monthlyRevenue / 100;
+      const monthlyRevenue = tier.priceYearly
+        ? tier.priceYearly / 12
+        : tier.priceMonthly;
+      revenueByTier[tier.displayName] =
+        (revenueByTier[tier.displayName] || 0) + monthlyRevenue / 100;
     });
 
     // Subscription health
@@ -787,9 +813,16 @@ export class MetricsService {
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     const subscriptionHealth = {
-      healthy: activeSubscriptions.filter((l) => !l.expiresAt || l.expiresAt > sevenDaysFromNow).length,
-      expiringSoon: activeSubscriptions.filter((l) => l.expiresAt && l.expiresAt <= sevenDaysFromNow && l.expiresAt > now).length,
-      overdue: activeSubscriptions.filter((l) => l.expiresAt && l.expiresAt <= now).length,
+      healthy: activeSubscriptions.filter(
+        (l) => !l.expiresAt || l.expiresAt > sevenDaysFromNow,
+      ).length,
+      expiringSoon: activeSubscriptions.filter(
+        (l) =>
+          l.expiresAt && l.expiresAt <= sevenDaysFromNow && l.expiresAt > now,
+      ).length,
+      overdue: activeSubscriptions.filter(
+        (l) => l.expiresAt && l.expiresAt <= now,
+      ).length,
     };
 
     return {
@@ -820,16 +853,17 @@ export class MetricsService {
 
 **Admin API:**
 
-| Endpoint | Purpose |
-|----------|---------|
-| `/admin/analytics/revenue` | Get RevenueMetrics |
-| `/admin/analytics/revenue-chart?period=30d` | Daily revenue data |
-| `/admin/analytics/tier-distribution` | Subscriber count per tier |
-| `/admin/analytics/churn-chart?period=12m` | Monthly churn rates |
+| Endpoint                                    | Purpose                   |
+| ------------------------------------------- | ------------------------- |
+| `/admin/analytics/revenue`                  | Get RevenueMetrics        |
+| `/admin/analytics/revenue-chart?period=30d` | Daily revenue data        |
+| `/admin/analytics/tier-distribution`        | Subscriber count per tier |
+| `/admin/analytics/churn-chart?period=12m`   | Monthly churn rates       |
 
 ### 3.2 Admin Dashboard UI (3 days)
 
 **Tech Stack:**
+
 - Angular 21+ standalone components
 - NgRx for state management
 - Chart.js for visualizations
@@ -949,15 +983,21 @@ Chart.register(...registerables);
         <bb-card title="Subscription Health">
           <div class="health-stats">
             <div class="health-stat healthy">
-              <span class="count">{{ metrics?.subscriptionHealth.healthy }}</span>
+              <span class="count">{{
+                metrics?.subscriptionHealth.healthy
+              }}</span>
               <span class="label">Healthy</span>
             </div>
             <div class="health-stat warning">
-              <span class="count">{{ metrics?.subscriptionHealth.expiringSoon }}</span>
+              <span class="count">{{
+                metrics?.subscriptionHealth.expiringSoon
+              }}</span>
               <span class="label">Expiring Soon</span>
             </div>
             <div class="health-stat danger">
-              <span class="count">{{ metrics?.subscriptionHealth.overdue }}</span>
+              <span class="count">{{
+                metrics?.subscriptionHealth.overdue
+              }}</span>
               <span class="label">Overdue</span>
             </div>
           </div>
@@ -1065,6 +1105,7 @@ export class DashboardComponent implements OnInit {
 ### 3.3 License Management UI (1 day)
 
 **Features:**
+
 - List all licenses (with filters: active, cancelled, expired)
 - View license details + activation history
 - Manual license creation (for giveaways, influencers)
@@ -1077,7 +1118,12 @@ export class DashboardComponent implements OnInit {
 @Component({
   selector: 'app-license-list',
   standalone: true,
-  imports: [CommonModule, BbTableComponent, BbButtonComponent, BbBadgeComponent],
+  imports: [
+    CommonModule,
+    BbTableComponent,
+    BbButtonComponent,
+    BbBadgeComponent,
+  ],
   template: `
     <div class="license-list">
       <div class="header">
@@ -1145,6 +1191,7 @@ export class LicenseListComponent implements OnInit {
 ### 3.4 Email Template Editor (1 day)
 
 **Features:**
+
 - WYSIWYG editor for HTML emails
 - Variable insertion: `{{email}}`, `{{licenseKey}}`, `{{expiresAt}}`
 - Preview mode
@@ -1162,7 +1209,13 @@ import { QuillModule } from 'ngx-quill';
 @Component({
   selector: 'app-template-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillModule, BbButtonComponent, BbFormFieldComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    QuillModule,
+    BbButtonComponent,
+    BbFormFieldComponent,
+  ],
   template: `
     <div class="template-editor">
       <h1>Email Templates</h1>
@@ -1191,7 +1244,8 @@ import { QuillModule } from 'ngx-quill';
 
         <div class="variables-help">
           <strong>Available Variables:</strong>
-          <code>{{email}}</code> <code>{{licenseKey}}</code> <code>{{expiresAt}}</code>
+          <code>{{ email }}</code> <code>{{ licenseKey }}</code>
+          <code>{{ expiresAt }}</code>
         </div>
       </div>
 
@@ -1214,7 +1268,7 @@ export class TemplateEditorComponent implements OnInit {
   quillModules = {
     toolbar: [
       ['bold', 'italic', 'underline'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ list: 'ordered' }, { list: 'bullet' }],
       ['link'],
     ],
   };
@@ -1256,7 +1310,11 @@ export class RefundService {
     private readonly auditService: AuditService,
   ) {}
 
-  async processRefund(licenseId: string, reason: string, adminUserId: string): Promise<void> {
+  async processRefund(
+    licenseId: string,
+    reason: string,
+    adminUserId: string,
+  ): Promise<void> {
     return this.prisma.$transaction(async (tx) => {
       const license = await tx.license.findUnique({ where: { id: licenseId } });
 
@@ -1292,14 +1350,19 @@ export class RefundService {
   }
 
   private async refundStripeSubscription(customerId: string): Promise<void> {
-    const subscriptions = await this.stripe.subscriptions.list({ customer: customerId });
+    const subscriptions = await this.stripe.subscriptions.list({
+      customer: customerId,
+    });
 
     if (subscriptions.data.length > 0) {
       const subscription = subscriptions.data[0];
       await this.stripe.subscriptions.cancel(subscription.id);
 
       // Refund latest invoice
-      const invoices = await this.stripe.invoices.list({ customer: customerId, limit: 1 });
+      const invoices = await this.stripe.invoices.list({
+        customer: customerId,
+        limit: 1,
+      });
       if (invoices.data.length > 0 && invoices.data[0].payment_intent) {
         await this.stripe.refunds.create({
           payment_intent: invoices.data[0].payment_intent as string,
@@ -1311,6 +1374,7 @@ export class RefundService {
 ```
 
 **Admin UI:**
+
 - "Refund" button on license detail page
 - Confirmation dialog with reason field
 - Displays refund status (success, pending manual action for Patreon)
@@ -1328,7 +1392,9 @@ export class WebhookReplayService {
   ) {}
 
   async replayEvent(eventId: string, adminUserId: string): Promise<void> {
-    const event = await this.prisma.webhookEvent.findUnique({ where: { id: eventId } });
+    const event = await this.prisma.webhookEvent.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       throw new NotFoundException('Webhook event not found');
@@ -1370,6 +1436,7 @@ export class WebhookReplayService {
 ```
 
 **Admin UI:**
+
 - Webhook log page shows all events (with status: success, failed, pending)
 - "Replay" button for failed events
 - Shows event payload (JSON viewer)
@@ -1420,7 +1487,8 @@ apps/website/
       Transform Your Video Library to <span class="accent">HEVC/AV1</span>
     </h1>
     <p class="hero-subtitle">
-      Multi-node transcoding platform that saves 40-60% storage with zero quality loss
+      Multi-node transcoding platform that saves 40-60% storage with zero
+      quality loss
     </p>
     <div class="hero-actions">
       <a routerLink="/download" class="btn btn-primary">Download Free</a>
@@ -1432,12 +1500,12 @@ apps/website/
 
 **Features Section:**
 
-| Feature | Description |
-|---------|-------------|
-| Multi-Node Scaling | Add worker nodes via NFS for horizontal scaling |
-| Auto-Healing | Recovers from failures without manual intervention |
-| Smart Encoding | Preserves quality while reducing file size 40-60% |
-| Zero Configuration | Works out-of-the-box with intelligent defaults |
+| Feature            | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| Multi-Node Scaling | Add worker nodes via NFS for horizontal scaling    |
+| Auto-Healing       | Recovers from failures without manual intervention |
+| Smart Encoding     | Preserves quality while reducing file size 40-60%  |
+| Zero Configuration | Works out-of-the-box with intelligent defaults     |
 
 **Stats Section:**
 
@@ -1490,7 +1558,10 @@ apps/website/
               <li>Email support</li>
             </ul>
 
-            <bb-button (click)="selectPlan(tier)" [variant]="tier.name === 'FREE' ? 'outline' : 'primary'">
+            <bb-button
+              (click)="selectPlan(tier)"
+              [variant]="tier.name === 'FREE' ? 'outline' : 'primary'"
+            >
               {{ tier.name === 'FREE' ? 'Download' : 'Subscribe' }}
             </bb-button>
           </bb-card>
@@ -1544,10 +1615,12 @@ export class PricingComponent implements OnInit {
 ```typescript
 export class CheckoutService {
   async createSession(tier: PricingTier, promo?: PromoCode): Promise<void> {
-    const response = await this.http.post('/checkout/create-session', {
-      priceId: tier.stripePriceIdMonthly,
-      promoCode: promo?.code,
-    }).toPromise();
+    const response = await this.http
+      .post('/checkout/create-session', {
+        priceId: tier.stripePriceIdMonthly,
+        promoCode: promo?.code,
+      })
+      .toPromise();
 
     // Redirect to Stripe
     window.location.href = response.url;
@@ -1558,6 +1631,7 @@ export class CheckoutService {
 ### 4.4 Download Page (0.5 days)
 
 **Features:**
+
 - Download links for Windows, macOS, Linux (Docker Compose)
 - Installation instructions
 - Quickstart guide
@@ -1610,14 +1684,17 @@ http://localhost:4210
 
       <div class="license-section">
         <h2>Activate License</h2>
-        <p>After purchasing, enter your license key in the UI: Settings → License</p>
+        <p>
+          After purchasing, enter your license key in the UI: Settings → License
+        </p>
       </div>
     </div>
   `,
 })
 export class DownloadComponent {
   downloadDocker(): void {
-    window.location.href = 'https://github.com/bitbonsai/bitbonsai/releases/latest';
+    window.location.href =
+      'https://github.com/bitbonsai/bitbonsai/releases/latest';
   }
 }
 ```
@@ -1683,7 +1760,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3100:3100"
+      - '3100:3100'
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@postgres:5432/bitbonsai_licenses
@@ -1705,7 +1782,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3100/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3100/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -1716,7 +1793,7 @@ services:
       context: .
       dockerfile: apps/website/Dockerfile
     ports:
-      - "4210:80"
+      - '4210:80'
     restart: unless-stopped
 
   website-admin:
@@ -1725,7 +1802,7 @@ services:
       context: .
       dockerfile: apps/website-admin/Dockerfile
     ports:
-      - "4220:80"
+      - '4220:80'
     environment:
       API_URL: http://license-api:3100
     restart: unless-stopped
@@ -1739,10 +1816,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - '5433:5432'
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1831,6 +1908,7 @@ VERSION=1.0.0
 ```
 
 **Secrets Management:**
+
 - Use `.env.local` for local development (gitignored)
 - Production: Use Docker secrets or environment variables from hosting provider
 
@@ -1929,14 +2007,15 @@ pm2 status
 
 **Monitors to Create:**
 
-| Monitor | Type | URL | Alert Threshold |
-|---------|------|-----|-----------------|
-| License API Health | HTTP(s) | https://api.bitbonsai.io/health | 5 minutes downtime |
-| Website | HTTP(s) | https://bitbonsai.io | 5 minutes downtime |
-| Admin Dashboard | HTTP(s) | https://admin.bitbonsai.io | 5 minutes downtime |
-| Stripe Webhooks | Keyword | https://api.bitbonsai.io/webhooks/stripe | (monitor 200 response) |
+| Monitor            | Type    | URL                                      | Alert Threshold        |
+| ------------------ | ------- | ---------------------------------------- | ---------------------- |
+| License API Health | HTTP(s) | https://api.bitbonsai.io/health          | 5 minutes downtime     |
+| Website            | HTTP(s) | https://bitbonsai.io                     | 5 minutes downtime     |
+| Admin Dashboard    | HTTP(s) | https://admin.bitbonsai.io               | 5 minutes downtime     |
+| Stripe Webhooks    | Keyword | https://api.bitbonsai.io/webhooks/stripe | (monitor 200 response) |
 
 **Alert Channels:**
+
 - Email notifications
 - Slack webhook (optional)
 
@@ -2017,7 +2096,7 @@ describe('LicenseService', () => {
     await service.activateLicense(license.key, 'machine-123');
 
     await expect(
-      service.activateLicense(license.key, 'machine-123')
+      service.activateLicense(license.key, 'machine-123'),
     ).rejects.toThrow('Already activated');
   });
 });
@@ -2081,48 +2160,48 @@ describe('Stripe Webhooks (E2E)', () => {
 
 ## Security Checklist
 
-| Security Measure | Status |
-|------------------|--------|
-| Webhook signature verification (Stripe) | ✅ Implemented |
-| Webhook signature verification (Patreon) | ✅ Implemented (MD5) |
-| Rate limiting (30 req/min on webhooks) | ✅ Implemented |
-| CORS configuration | ✅ Implemented |
-| Helmet security headers | ✅ Implemented |
-| HSTS enforcement | ✅ Implemented |
-| Encrypted config storage | ✅ Implemented (AES-256-GCM) |
-| Admin API key authentication | ✅ Implemented |
-| Audit logging | ✅ Implemented |
-| SQL injection prevention (Prisma) | ✅ ORM-based queries |
-| XSS prevention (Angular) | ✅ Built-in sanitization |
-| Database transactions (prevent race conditions) | ✅ Implemented |
+| Security Measure                                | Status                       |
+| ----------------------------------------------- | ---------------------------- |
+| Webhook signature verification (Stripe)         | ✅ Implemented               |
+| Webhook signature verification (Patreon)        | ✅ Implemented (MD5)         |
+| Rate limiting (30 req/min on webhooks)          | ✅ Implemented               |
+| CORS configuration                              | ✅ Implemented               |
+| Helmet security headers                         | ✅ Implemented               |
+| HSTS enforcement                                | ✅ Implemented               |
+| Encrypted config storage                        | ✅ Implemented (AES-256-GCM) |
+| Admin API key authentication                    | ✅ Implemented               |
+| Audit logging                                   | ✅ Implemented               |
+| SQL injection prevention (Prisma)               | ✅ ORM-based queries         |
+| XSS prevention (Angular)                        | ✅ Built-in sanitization     |
+| Database transactions (prevent race conditions) | ✅ Implemented               |
 
 ---
 
 ## Future Enhancements (v8)
 
-| Feature | Complexity | Value |
-|---------|-----------|-------|
-| Patreon API automation (tier detection) | Medium | High |
-| BullMQ webhook retry queue | Medium | Medium |
-| Subscription analytics dashboard (churn prediction) | High | Medium |
-| Multi-language support (i18n for website) | Medium | Low |
-| License transfer system (change machine) | Low | Medium |
-| API rate limiting per license tier | Low | Low |
+| Feature                                             | Complexity | Value  |
+| --------------------------------------------------- | ---------- | ------ |
+| Patreon API automation (tier detection)             | Medium     | High   |
+| BullMQ webhook retry queue                          | Medium     | Medium |
+| Subscription analytics dashboard (churn prediction) | High       | Medium |
+| Multi-language support (i18n for website)           | Medium     | Low    |
+| License transfer system (change machine)            | Low        | Medium |
+| API rate limiting per license tier                  | Low        | Low    |
 
 ---
 
 ## Timeline Summary
 
-| Phase | Duration | Tasks |
-|-------|----------|-------|
-| Phase 0: Shared UI Library | 1 day | Extract components from BitBonsai frontend |
-| Phase 1: License API Enhancements | 4 days | Pricing, promos, donations, config, audit |
-| Phase 2: BitBonsai Integration | 2 days | License storage in DB, verification client, guards |
-| Phase 3: Admin Dashboard | 7 days | Analytics, UI, license mgmt, emails, refunds, webhooks |
-| Phase 4: Marketing Website | 4 days | Home, pricing, download, docs |
-| Phase 5: Docker Deployment | 2 days | Docker Compose, Dockerfiles, scripts |
-| Phase 5.5: Monitoring | 0.5 days | PM2, Uptime Robot, MONITORING.md |
-| **TOTAL** | **20.5 days** | |
+| Phase                             | Duration      | Tasks                                                  |
+| --------------------------------- | ------------- | ------------------------------------------------------ |
+| Phase 0: Shared UI Library        | 1 day         | Extract components from BitBonsai frontend             |
+| Phase 1: License API Enhancements | 4 days        | Pricing, promos, donations, config, audit              |
+| Phase 2: BitBonsai Integration    | 2 days        | License storage in DB, verification client, guards     |
+| Phase 3: Admin Dashboard          | 7 days        | Analytics, UI, license mgmt, emails, refunds, webhooks |
+| Phase 4: Marketing Website        | 4 days        | Home, pricing, download, docs                          |
+| Phase 5: Docker Deployment        | 2 days        | Docker Compose, Dockerfiles, scripts                   |
+| Phase 5.5: Monitoring             | 0.5 days      | PM2, Uptime Robot, MONITORING.md                       |
+| **TOTAL**                         | **20.5 days** |                                                        |
 
 ---
 
@@ -2166,6 +2245,7 @@ nx serve website-admin        # http://localhost:4220
 ### Code Conventions
 
 Follow conventions from `~/git/code-conventions`:
+
 - **NgRx** for state management
 - **Standalone components** (no modules except root)
 - **Signals** for local reactive state
@@ -2176,9 +2256,9 @@ Follow conventions from `~/git/code-conventions`:
 ### Color Scheme (Golden Dark Theme)
 
 ```scss
-$accent-primary: #f9be03;         // Golden yellow
-$bg-primary: #1a1a1a;             // Darkest background
-$bg-secondary: #252525;           // Cards
+$accent-primary: #f9be03; // Golden yellow
+$bg-primary: #1a1a1a; // Darkest background
+$bg-secondary: #252525; // Cards
 $success: #4ade80;
 $danger: #ff6b6b;
 ```

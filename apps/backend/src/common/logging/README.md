@@ -32,14 +32,14 @@ APP_VERSION=0.1.0
 
 ### Log Levels
 
-| Level | Priority | Usage |
-|-------|----------|-------|
-| error | 0 | Application errors, exceptions |
-| warn | 1 | Warnings, deprecations |
-| info | 2 | General informational messages |
-| http | 3 | HTTP request/response logs |
-| debug | 4 | Detailed debugging information |
-| verbose | 5 | Very detailed tracing |
+| Level   | Priority | Usage                          |
+| ------- | -------- | ------------------------------ |
+| error   | 0        | Application errors, exceptions |
+| warn    | 1        | Warnings, deprecations         |
+| info    | 2        | General informational messages |
+| http    | 3        | HTTP request/response logs     |
+| debug   | 4        | Detailed debugging information |
+| verbose | 5        | Very detailed tracing          |
 
 ## Usage in Services
 

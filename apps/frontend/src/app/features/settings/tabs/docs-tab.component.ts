@@ -326,7 +326,9 @@ export class DocsTabComponent implements OnInit {
           // DEEP AUDIT P1-1: Sanitize HTML with DOMPurify before trusting
           // This prevents XSS attacks from malicious markdown content
           const sanitizedHtml = DOMPurify.sanitize(html as string);
-          this.renderedContent.set(this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml));
+          this.renderedContent.set(
+            this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml),
+          );
           this.loading.set(false);
         } catch (_err: unknown) {
           this.error.set('Failed to render documentation');

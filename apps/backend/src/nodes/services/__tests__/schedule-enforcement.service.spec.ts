@@ -4,13 +4,16 @@ import { JobRepository } from '../../../common/repositories/job.repository';
 import { NodeRepository } from '../../../common/repositories/node.repository';
 import { createMockJob, createMockNode } from '../../../testing/mock-factories';
 import * as scheduleChecker from '../../utils/schedule-checker';
-import { JobAttributionService, type NodeScore } from '../job-attribution.service';
+import {
+  JobAttributionService,
+  type NodeScore,
+} from '../job-attribution.service';
 import { ScheduleEnforcementService } from '../schedule-enforcement.service';
 
 const createMockNodeScore = (
   nodeId: string,
   totalScore: number,
-  overrides?: Partial<NodeScore>
+  overrides?: Partial<NodeScore>,
 ): NodeScore => ({
   nodeId,
   nodeName: `Node ${nodeId}`,
@@ -83,7 +86,9 @@ describe('ScheduleEnforcementService', () => {
       ],
     }).compile();
 
-    service = module.get<ScheduleEnforcementService>(ScheduleEnforcementService);
+    service = module.get<ScheduleEnforcementService>(
+      ScheduleEnforcementService,
+    );
     _jobAttribution = module.get<JobAttributionService>(JobAttributionService);
 
     // Mock logger to prevent console output during tests
@@ -104,7 +109,10 @@ describe('ScheduleEnforcementService', () => {
 
   describe('enforceSchedules', () => {
     it('should pause jobs outside their schedule windows', async () => {
-      const nodeInWindow = createMockNode({ id: 'node-1', scheduleEnabled: false });
+      const nodeInWindow = createMockNode({
+        id: 'node-1',
+        scheduleEnabled: false,
+      });
       const nodeOutOfWindow = createMockNode({
         id: 'node-2',
         scheduleEnabled: true,
@@ -127,21 +135,26 @@ describe('ScheduleEnforcementService', () => {
       }) as any;
       jobOutOfWindow.node = nodeOutOfWindow;
 
-      mockPrismaService.job.findMany.mockResolvedValue([jobInWindow, jobOutOfWindow]);
+      mockPrismaService.job.findMany.mockResolvedValue([
+        jobInWindow,
+        jobOutOfWindow,
+      ]);
 
       // Mock isNodeInAllowedWindow to return true for node-1, false for node-2
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockImplementation((node: any) => {
-        if (node.id === 'node-1') return true;
-        if (node.id === 'node-2') return false;
-        return true;
-      });
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockImplementation((node: any) => {
+          if (node.id === 'node-1') return true;
+          if (node.id === 'node-2') return false;
+          return true;
+        });
 
       await service.enforceSchedules();
 
       // Should call atomicUpdateMany with only job-2 (signature: (where, data))
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['job-2'] } },
-        { stage: 'PAUSED' }
+        { stage: 'PAUSED' },
       );
     });
 
@@ -155,7 +168,9 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.enforceSchedules();
 
@@ -184,7 +199,9 @@ describe('ScheduleEnforcementService', () => {
       const node = createMockNode({
         id: 'node-out',
         scheduleEnabled: true,
-        scheduleWindows: JSON.stringify([{ dayOfWeek: 1, startHour: 9, endHour: 17 }]),
+        scheduleWindows: JSON.stringify([
+          { dayOfWeek: 1, startHour: 9, endHour: 17 },
+        ]),
       });
 
       const jobs = [
@@ -211,13 +228,15 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue(jobs);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(false);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(false);
 
       await service.enforceSchedules();
 
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['job-1', 'job-2', 'job-3'] } },
-        { stage: 'PAUSED' }
+        { stage: 'PAUSED' },
       );
 
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledTimes(1);
@@ -231,7 +250,10 @@ describe('ScheduleEnforcementService', () => {
 
       await service.enforceSchedules();
 
-      expect(errorSpy).toHaveBeenCalledWith('Error enforcing schedules:', error);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Error enforcing schedules:',
+        error,
+      );
     });
 
     it('should query only ENCODING stage jobs', async () => {
@@ -244,7 +266,7 @@ describe('ScheduleEnforcementService', () => {
           where: {
             stage: 'ENCODING',
           },
-        })
+        }),
       );
     });
 
@@ -258,7 +280,7 @@ describe('ScheduleEnforcementService', () => {
           include: {
             node: true,
           },
-        })
+        }),
       );
     });
   });
@@ -275,7 +297,9 @@ describe('ScheduleEnforcementService', () => {
 
       expect(mockPrismaService.job.findMany).toHaveBeenCalled();
       expect(mockPrismaService.node.findMany).not.toHaveBeenCalled();
-      expect(mockJobAttributionService.calculateNodeScore).not.toHaveBeenCalled();
+      expect(
+        mockJobAttributionService.calculateNodeScore,
+      ).not.toHaveBeenCalled();
       expect(mockPrismaService.job.update).not.toHaveBeenCalled();
     });
 
@@ -287,7 +311,9 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       expect(mockPrismaService.node.findMany).toHaveBeenCalled();
-      expect(mockJobAttributionService.calculateNodeScore).not.toHaveBeenCalled();
+      expect(
+        mockJobAttributionService.calculateNodeScore,
+      ).not.toHaveBeenCalled();
       expect(mockPrismaService.job.update).not.toHaveBeenCalled();
     });
 
@@ -333,7 +359,9 @@ describe('ScheduleEnforcementService', () => {
       await service.autoAssignQueuedJobs();
 
       // Should calculate score for each node only once
-      expect(mockJobAttributionService.calculateNodeScore).toHaveBeenCalledTimes(2);
+      expect(
+        mockJobAttributionService.calculateNodeScore,
+      ).toHaveBeenCalledTimes(2);
     });
 
     it('should move job to highest scoring node using Prisma transaction', async () => {
@@ -527,11 +555,11 @@ describe('ScheduleEnforcementService', () => {
       // Verify updateById was called for both jobs (signature: updateById(id, data))
       expect(mockPrismaService.job.update).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ nodeId: 'node-2' })
+        expect.objectContaining({ nodeId: 'node-2' }),
       );
       expect(mockPrismaService.job.update).toHaveBeenCalledWith(
         'job-2',
-        expect.objectContaining({ nodeId: 'node-2' })
+        expect.objectContaining({ nodeId: 'node-2' }),
       );
     });
 
@@ -546,7 +574,7 @@ describe('ScheduleEnforcementService', () => {
             stage: 'QUEUED',
             manualAssignment: false,
           },
-        })
+        }),
       );
     });
 
@@ -558,7 +586,7 @@ describe('ScheduleEnforcementService', () => {
       expect(mockPrismaService.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           take: 50,
-        })
+        }),
       );
     });
 
@@ -570,7 +598,7 @@ describe('ScheduleEnforcementService', () => {
       expect(mockPrismaService.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
-        })
+        }),
       );
     });
 
@@ -604,7 +632,10 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      expect(errorSpy).toHaveBeenCalledWith('Error auto-assigning jobs:', error);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Error auto-assigning jobs:',
+        error,
+      );
     });
 
     it('should handle transaction errors gracefully', async () => {
@@ -637,7 +668,10 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      expect(errorSpy).toHaveBeenCalledWith('Error auto-assigning jobs:', txError);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Error auto-assigning jobs:',
+        txError,
+      );
     });
   });
 
@@ -657,13 +691,15 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.resumePausedJobs();
 
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['job-1'] } },
-        { stage: 'QUEUED' }
+        { stage: 'QUEUED' },
       );
     });
 
@@ -671,7 +707,9 @@ describe('ScheduleEnforcementService', () => {
       const node = createMockNode({
         id: 'node-1',
         scheduleEnabled: true,
-        scheduleWindows: JSON.stringify([{ dayOfWeek: 1, startHour: 9, endHour: 17 }]),
+        scheduleWindows: JSON.stringify([
+          { dayOfWeek: 1, startHour: 9, endHour: 17 },
+        ]),
       });
 
       const job = createMockJob({
@@ -683,7 +721,9 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(false);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(false);
 
       await service.resumePausedJobs();
 
@@ -734,13 +774,15 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue(jobs);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.resumePausedJobs();
 
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['job-1', 'job-2', 'job-3'] } },
-        { stage: 'QUEUED' }
+        { stage: 'QUEUED' },
       );
 
       // Should be single batch call, not individual updates
@@ -757,14 +799,19 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.resumePausedJobs();
 
       // Verify jobs are moved to QUEUED, not back to ENCODING
-      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(expect.any(Object), {
-        stage: 'QUEUED',
-      });
+      expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
+        expect.any(Object),
+        {
+          stage: 'QUEUED',
+        },
+      );
     });
 
     it('should selectively resume jobs based on schedule', async () => {
@@ -776,7 +823,9 @@ describe('ScheduleEnforcementService', () => {
       const nodeOutOfWindow = createMockNode({
         id: 'node-2',
         scheduleEnabled: true,
-        scheduleWindows: JSON.stringify([{ dayOfWeek: 1, startHour: 9, endHour: 17 }]),
+        scheduleWindows: JSON.stringify([
+          { dayOfWeek: 1, startHour: 9, endHour: 17 },
+        ]),
       });
 
       const jobInWindow = createMockJob({
@@ -793,18 +842,23 @@ describe('ScheduleEnforcementService', () => {
       }) as any;
       jobOutOfWindow.node = nodeOutOfWindow;
 
-      mockPrismaService.job.findMany.mockResolvedValue([jobInWindow, jobOutOfWindow]);
+      mockPrismaService.job.findMany.mockResolvedValue([
+        jobInWindow,
+        jobOutOfWindow,
+      ]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockImplementation((node: any) => {
-        return node.id === 'node-1';
-      });
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockImplementation((node: any) => {
+          return node.id === 'node-1';
+        });
 
       await service.resumePausedJobs();
 
       // Only job-1 should be resumed
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['job-1'] } },
-        { stage: 'QUEUED' }
+        { stage: 'QUEUED' },
       );
     });
 
@@ -829,7 +883,7 @@ describe('ScheduleEnforcementService', () => {
           where: {
             stage: 'PAUSED',
           },
-        })
+        }),
       );
     });
 
@@ -843,7 +897,7 @@ describe('ScheduleEnforcementService', () => {
           include: {
             node: true,
           },
-        })
+        }),
       );
     });
   });
@@ -890,7 +944,9 @@ describe('ScheduleEnforcementService', () => {
 
       // Mock enforceSchedules call
       mockPrismaService.job.findMany.mockResolvedValueOnce([encodingJob]);
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.enforceSchedules();
 
@@ -914,7 +970,9 @@ describe('ScheduleEnforcementService', () => {
       // Mock resumePausedJobs call
       jest.clearAllMocks();
       mockPrismaService.job.findMany.mockResolvedValueOnce([pausedJob]);
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.resumePausedJobs();
 
@@ -955,14 +1013,16 @@ describe('ScheduleEnforcementService', () => {
 
       // Step 1: Check schedules - node is outside window (assume it's Saturday)
       mockPrismaService.job.findMany.mockResolvedValueOnce([encodingJob]);
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(false);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(false);
 
       await service.enforceSchedules();
 
       // Should pause the job
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['encoding-job'] } },
-        { stage: 'PAUSED' }
+        { stage: 'PAUSED' },
       );
 
       // Step 2: Check queued jobs (with node still outside window)
@@ -981,14 +1041,16 @@ describe('ScheduleEnforcementService', () => {
       // Step 3: Resume when back in schedule
       jest.clearAllMocks();
       mockPrismaService.job.findMany.mockResolvedValueOnce([pausedJob]);
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.resumePausedJobs();
 
       // Should resume the job
       expect(mockPrismaService.job.updateMany).toHaveBeenCalledWith(
         { id: { in: ['paused-job'] } },
-        { stage: 'QUEUED' }
+        { stage: 'QUEUED' },
       );
     });
   });
@@ -1013,7 +1075,9 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       await service.enforceSchedules();
 
@@ -1053,7 +1117,7 @@ describe('ScheduleEnforcementService', () => {
           stage: 'QUEUED',
           nodeId: 'node-1',
           priority: 10 - (i % 10),
-        })
+        }),
       );
 
       mockPrismaService.job.findMany.mockResolvedValue(jobs);
@@ -1092,7 +1156,9 @@ describe('ScheduleEnforcementService', () => {
 
       // First call
       await service.autoAssignQueuedJobs();
-      expect(mockJobAttributionService.calculateNodeScore).toHaveBeenCalledTimes(1);
+      expect(
+        mockJobAttributionService.calculateNodeScore,
+      ).toHaveBeenCalledTimes(1);
 
       // Second call should calculate again (no caching in this test context)
       jest.clearAllMocks();
@@ -1101,7 +1167,9 @@ describe('ScheduleEnforcementService', () => {
       mockJobAttributionService.calculateNodeScore.mockResolvedValue(nodeScore);
 
       await service.autoAssignQueuedJobs();
-      expect(mockJobAttributionService.calculateNodeScore).toHaveBeenCalledTimes(1);
+      expect(
+        mockJobAttributionService.calculateNodeScore,
+      ).toHaveBeenCalledTimes(1);
     });
 
     it('should safely handle special characters in job IDs via parameterized queries', async () => {
@@ -1138,7 +1206,7 @@ describe('ScheduleEnforcementService', () => {
       expect(mockPrismaService.job.update).toHaveBeenCalled();
       expect(mockPrismaService.job.update).toHaveBeenCalledWith(
         "job-1'; DROP TABLE jobs; --",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -1152,7 +1220,9 @@ describe('ScheduleEnforcementService', () => {
       const node = createMockNode({
         id: 'node-1',
         scheduleEnabled: true,
-        scheduleWindows: JSON.stringify([{ dayOfWeek: 1, startHour: 9, endHour: 17 }]),
+        scheduleWindows: JSON.stringify([
+          { dayOfWeek: 1, startHour: 9, endHour: 17 },
+        ]),
       });
 
       const job = createMockJob({
@@ -1163,13 +1233,17 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(false);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(false);
 
       const logSpy = jest.spyOn(Logger.prototype, 'log');
 
       await service.enforceSchedules();
 
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Paused 1 job(s)'));
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Paused 1 job(s)'),
+      );
     });
 
     it('should log when moving jobs in autoAssignQueuedJobs', async () => {
@@ -1199,7 +1273,9 @@ describe('ScheduleEnforcementService', () => {
 
       await service.autoAssignQueuedJobs();
 
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Moving job'));
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Moving job'),
+      );
     });
 
     it('should log when resuming jobs in resumePausedJobs', async () => {
@@ -1213,13 +1289,17 @@ describe('ScheduleEnforcementService', () => {
 
       mockPrismaService.job.findMany.mockResolvedValue([job]);
 
-      jest.spyOn(scheduleChecker, 'isNodeInAllowedWindow').mockReturnValue(true);
+      jest
+        .spyOn(scheduleChecker, 'isNodeInAllowedWindow')
+        .mockReturnValue(true);
 
       const logSpy = jest.spyOn(Logger.prototype, 'log');
 
       await service.resumePausedJobs();
 
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Resumed 1 job(s)'));
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Resumed 1 job(s)'),
+      );
     });
   });
 });

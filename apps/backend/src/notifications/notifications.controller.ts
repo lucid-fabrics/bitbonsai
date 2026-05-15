@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApiBadRequestResponse,
@@ -25,7 +34,7 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -42,9 +51,16 @@ export class NotificationsController {
     type: Boolean,
     description: 'Include read notifications (default: true)',
   })
-  @ApiOkResponse({ description: 'Notifications retrieved', type: [NotificationDto] })
-  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve notifications' })
-  async getNotifications(@Query('includeRead') includeRead = 'true'): Promise<NotificationDto[]> {
+  @ApiOkResponse({
+    description: 'Notifications retrieved',
+    type: [NotificationDto],
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retrieve notifications',
+  })
+  async getNotifications(
+    @Query('includeRead') includeRead = 'true',
+  ): Promise<NotificationDto[]> {
     const include = includeRead === 'true';
     return this.notificationsService.getNotifications(include);
   }
@@ -61,7 +77,9 @@ export class NotificationsController {
     description: 'Unread count retrieved',
     schema: { type: 'object', properties: { count: { type: 'number' } } },
   })
-  @ApiInternalServerErrorResponse({ description: 'Failed to count notifications' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to count notifications',
+  })
   async getUnreadCount(): Promise<{ count: number }> {
     const count = await this.notificationsService.getUnreadCount();
     return { count };
@@ -77,8 +95,12 @@ export class NotificationsController {
   })
   @ApiOkResponse({ description: 'Notification found', type: NotificationDto })
   @ApiNotFoundResponse({ description: 'Notification not found' })
-  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve notification' })
-  async getNotificationById(@Param('id') id: string): Promise<NotificationDto | undefined> {
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retrieve notification',
+  })
+  async getNotificationById(
+    @Param('id') id: string,
+  ): Promise<NotificationDto | undefined> {
     return this.notificationsService.getNotificationById(id);
   }
 
@@ -88,13 +110,22 @@ export class NotificationsController {
   @Post()
   @ApiOperation({
     summary: 'Create a new notification',
-    description: 'Creates a new notification and broadcasts it to connected clients',
+    description:
+      'Creates a new notification and broadcasts it to connected clients',
   })
-  @ApiCreatedResponse({ description: 'Notification created', type: NotificationDto })
+  @ApiCreatedResponse({
+    description: 'Notification created',
+    type: NotificationDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid request' })
-  @ApiInternalServerErrorResponse({ description: 'Failed to create notification' })
-  async createNotification(@Body() dto: CreateNotificationDto): Promise<NotificationDto> {
-    const notification = await this.notificationsService.createNotification(dto);
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to create notification',
+  })
+  async createNotification(
+    @Body() dto: CreateNotificationDto,
+  ): Promise<NotificationDto> {
+    const notification =
+      await this.notificationsService.createNotification(dto);
 
     // Emit event for WebSocket broadcast
     this.eventEmitter.emit('notification.created', notification);
@@ -130,7 +161,9 @@ export class NotificationsController {
   })
   @ApiOkResponse({ description: 'Notification dismissed' })
   @ApiNotFoundResponse({ description: 'Notification not found' })
-  @ApiInternalServerErrorResponse({ description: 'Failed to dismiss notification' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to dismiss notification',
+  })
   async dismiss(@Param('id') id: string): Promise<void> {
     await this.notificationsService.dismiss(id);
 

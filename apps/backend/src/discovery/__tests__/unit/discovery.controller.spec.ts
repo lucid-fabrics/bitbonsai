@@ -36,7 +36,10 @@ describe('DiscoveryController', () => {
       providers: [
         { provide: NodeDiscoveryService, useValue: mockDiscoveryService },
         { provide: PolicySyncService, useValue: mockSyncService },
-        { provide: RegistrationRequestService, useValue: mockRegistrationRequestService },
+        {
+          provide: RegistrationRequestService,
+          useValue: mockRegistrationRequestService,
+        },
         { provide: SystemInfoService, useValue: mockSystemInfoService },
       ],
     }).compile();
@@ -48,7 +51,12 @@ describe('DiscoveryController', () => {
   describe('scanForMainNodes', () => {
     it('should return discovered nodes with scan duration', async () => {
       const mockNodes = [
-        { nodeId: 'node-1', name: 'Main Node', ipAddress: '192.168.1.100', apiPort: 3000 },
+        {
+          nodeId: 'node-1',
+          name: 'Main Node',
+          ipAddress: '192.168.1.100',
+          apiPort: 3000,
+        },
       ];
       mockDiscoveryService.scanForMainNodes.mockResolvedValue(mockNodes);
 
@@ -213,7 +221,9 @@ describe('DiscoveryController', () => {
     });
 
     it('should return ERROR when service throws', async () => {
-      mockRegistrationRequestService.getRequest.mockRejectedValue(new Error('Request not found'));
+      mockRegistrationRequestService.getRequest.mockRejectedValue(
+        new Error('Request not found'),
+      );
 
       const result = await controller.getPairingStatus('bad-id');
 
@@ -295,7 +305,9 @@ describe('DiscoveryController', () => {
 
     it('should still return success even if sync fails (background)', async () => {
       mockDiscoveryService.approveNode.mockResolvedValue({ id: 'node-1' });
-      mockSyncService.syncToChildNode.mockRejectedValue(new Error('Sync failed'));
+      mockSyncService.syncToChildNode.mockRejectedValue(
+        new Error('Sync failed'),
+      );
 
       const result = await controller.approveNode('node-1');
 

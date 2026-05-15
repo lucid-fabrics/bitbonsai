@@ -40,7 +40,7 @@ export class HealthService {
     private readonly prisma: PrismaService,
     private readonly nodeRepository: NodeRepository,
     private readonly jobRepository: JobRepository,
-    private readonly libraryRepository: LibraryRepository
+    private readonly libraryRepository: LibraryRepository,
   ) {}
 
   /**
@@ -278,7 +278,9 @@ export class HealthService {
       const nodes = await this.nodeRepository.findAllSummary();
 
       const total = nodes.length;
-      const online = nodes.filter((node) => node.status === NodeStatus.ONLINE).length;
+      const online = nodes.filter(
+        (node) => node.status === NodeStatus.ONLINE,
+      ).length;
       const offline = total - online;
 
       return {
@@ -338,21 +340,28 @@ export class HealthService {
   async monitorLibraryDiskSpace(): Promise<DiskSpaceMonitoringDto> {
     try {
       // Get all libraries with their queued jobs
-      const libraries = (await this.libraryRepository.findAllLibraries(undefined, {
-        jobs: {
-          where: {
-            stage: {
-              in: ['QUEUED', 'ENCODING'],
+      const libraries = (await this.libraryRepository.findAllLibraries(
+        undefined,
+        {
+          jobs: {
+            where: {
+              stage: {
+                in: ['QUEUED', 'ENCODING'],
+              },
+            },
+            select: {
+              id: true,
+              filePath: true,
+              beforeSizeBytes: true,
             },
           },
-          select: {
-            id: true,
-            filePath: true,
-            beforeSizeBytes: true,
-          },
         },
-      })) as (import('@prisma/client').Library & {
-        jobs: { id: string; filePath: string; beforeSizeBytes: bigint | null }[];
+      )) as (import('@prisma/client').Library & {
+        jobs: {
+          id: string;
+          filePath: string;
+          beforeSizeBytes: bigint | null;
+        }[];
       })[];
 
       const librarySpaceData: LibraryDiskSpaceDto[] = [];
@@ -399,7 +408,8 @@ export class HealthService {
             for (const job of library.jobs) {
               const jobSize = BigInt(job.beforeSizeBytes || 0);
               const jobSpaceNeeded =
-                (jobSize * BigInt(100 + this.DISK_SPACE_BUFFER_PERCENT)) / BigInt(100);
+                (jobSize * BigInt(100 + this.DISK_SPACE_BUFFER_PERCENT)) /
+                BigInt(100);
               queueSpaceEstimate += jobSpaceNeeded;
             }
 
@@ -408,14 +418,17 @@ export class HealthService {
 
             // Check if available space is sufficient
             const minimumRequired =
-              queueSpaceEstimate + BigInt(this.MIN_FREE_DISK_SPACE_GB) * BigInt(1024 ** 3);
+              queueSpaceEstimate +
+              BigInt(this.MIN_FREE_DISK_SPACE_GB) * BigInt(1024 ** 3);
             hasEnoughSpaceForQueue = availableBytes >= minimumRequired;
 
             if (!hasEnoughSpaceForQueue) {
               const shortfall = minimumRequired - availableBytes;
               const shortfallGB = Number(shortfall) / 1024 ** 3;
               warningMessage = `Insufficient space: need ${shortfallGB.toFixed(1)} GB more to complete ${queuedJobsCount} queued jobs`;
-              globalWarnings.push(`Library "${library.name}": ${warningMessage}`);
+              globalWarnings.push(
+                `Library "${library.name}": ${warningMessage}`,
+              );
 
               // Escalate status to critical if queue won't fit
               if (status === 'ok') status = 'warning';
@@ -441,14 +454,15 @@ export class HealthService {
             availableFormatted: this.formatBytes(Number(availableBytes)),
             totalFormatted: this.formatBytes(Number(totalBytes)),
             queuedJobsCount,
-            estimatedSpaceNeededBytes: estimatedSpaceNeededBytes?.toString() ?? null,
+            estimatedSpaceNeededBytes:
+              estimatedSpaceNeededBytes?.toString() ?? null,
             hasEnoughSpaceForQueue,
             warningMessage,
           });
         } catch (error: unknown) {
           this.logger.warn(
             `Failed to check disk space for library ${library.name} at ${library.path}`,
-            error
+            error,
           );
 
           // Add library with error status
@@ -466,13 +480,16 @@ export class HealthService {
             queuedJobsCount: library.jobs.length,
             estimatedSpaceNeededBytes: null,
             hasEnoughSpaceForQueue: false,
-            warningMessage: 'Failed to check disk space (path may not exist or be inaccessible)',
+            warningMessage:
+              'Failed to check disk space (path may not exist or be inaccessible)',
           });
         }
       }
 
       // Determine if system can accommodate entire queue
-      const canAccommodateQueue = librarySpaceData.every((lib) => lib.hasEnoughSpaceForQueue);
+      const canAccommodateQueue = librarySpaceData.every(
+        (lib) => lib.hasEnoughSpaceForQueue,
+      );
 
       return {
         overallStatus,
@@ -481,7 +498,9 @@ export class HealthService {
         globalWarnings,
         totalQueuedJobs,
         totalEstimatedSpaceNeeded:
-          totalQueuedJobs > 0 ? totalEstimatedSpaceNeededBigInt.toString() : null,
+          totalQueuedJobs > 0
+            ? totalEstimatedSpaceNeededBigInt.toString()
+            : null,
         canAccommodateQueue,
       };
     } catch (error: unknown) {

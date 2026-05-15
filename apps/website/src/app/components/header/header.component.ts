@@ -16,7 +16,11 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
         </a>
 
         <nav class="header__nav">
-          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <a
+            routerLink="/"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
             Home
           </a>
           <a routerLink="/pricing" routerLinkActive="active">Pricing</a>

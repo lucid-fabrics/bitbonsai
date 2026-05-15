@@ -62,10 +62,14 @@ export class DocsController implements OnModuleInit {
     const safeName = filename.replace(/[^a-zA-Z0-9_-]/g, '');
     const filePath = join(this.docsPath, `${safeName}.md`);
 
-    this.logger.debug(`📚 Looking for: ${filePath} (exists: ${existsSync(filePath)})`);
+    this.logger.debug(
+      `📚 Looking for: ${filePath} (exists: ${existsSync(filePath)})`,
+    );
 
     if (!existsSync(filePath)) {
-      throw new NotFoundException(`Documentation file "${filename}" not found at ${filePath}`);
+      throw new NotFoundException(
+        `Documentation file "${filename}" not found at ${filePath}`,
+      );
     }
 
     try {
@@ -74,7 +78,9 @@ export class DocsController implements OnModuleInit {
       res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
       res.send(content);
     } catch {
-      throw new NotFoundException(`Failed to read documentation file "${filename}"`);
+      throw new NotFoundException(
+        `Failed to read documentation file "${filename}"`,
+      );
     }
   }
 }

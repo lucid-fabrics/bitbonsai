@@ -32,7 +32,12 @@ describe('PoliciesController', () => {
   describe('create', () => {
     it('should call service.create with the dto and return the result', async () => {
       const dto = { name: 'My Policy', codec: 'HEVC', crf: 23 } as never;
-      const expected = { id: 'policy-1', name: 'My Policy', codec: 'HEVC', crf: 23 };
+      const expected = {
+        id: 'policy-1',
+        name: 'My Policy',
+        codec: 'HEVC',
+        crf: 23,
+      };
       mockPoliciesService.create.mockResolvedValue(expected);
 
       const result = await controller.create(dto);
@@ -44,7 +49,9 @@ describe('PoliciesController', () => {
 
     it('should propagate service errors', async () => {
       mockPoliciesService.create.mockRejectedValue(new Error('create failed'));
-      await expect(controller.create({} as never)).rejects.toThrow('create failed');
+      await expect(controller.create({} as never)).rejects.toThrow(
+        'create failed',
+      );
     });
   });
 
@@ -96,7 +103,9 @@ describe('PoliciesController', () => {
 
     it('should propagate not-found errors', async () => {
       mockPoliciesService.findOne.mockRejectedValue(new Error('not found'));
-      await expect(controller.findOne('missing-id')).rejects.toThrow('not found');
+      await expect(controller.findOne('missing-id')).rejects.toThrow(
+        'not found',
+      );
     });
   });
 
@@ -115,7 +124,9 @@ describe('PoliciesController', () => {
 
     it('should propagate service errors', async () => {
       mockPoliciesService.update.mockRejectedValue(new Error('update failed'));
-      await expect(controller.update('p1', {} as never)).rejects.toThrow('update failed');
+      await expect(controller.update('p1', {} as never)).rejects.toThrow(
+        'update failed',
+      );
     });
   });
 

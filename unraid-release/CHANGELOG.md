@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added (Latest Features)
+
 - ⚡ **Cache Pool Support**: SSD temp file storage for 10-100x faster encoding
 - 🔄 **Auto-Healing**: Automatic job recovery with smart temp file detection
 - ♻️ **Resume Capability**: Jobs resume from checkpoint after crashes/reboots
@@ -12,12 +13,14 @@
 - 🏥 **Health Monitoring**: Stuck job detection and recovery
 
 ### Changed
+
 - Improved temp file persistence across container restarts
 - Enhanced manual retry to preserve resume state
 - Better logging for debugging and monitoring
 - Optimized database queries with composite indexes
 
 ### Fixed
+
 - Temp files now correctly preserved on manual retry
 - Auto-healing properly detects and reports missing temp files
 - Progress tracking accuracy improved for resumed jobs

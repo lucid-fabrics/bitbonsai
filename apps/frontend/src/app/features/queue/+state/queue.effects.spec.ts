@@ -38,7 +38,13 @@ describe('QueueEffects', () => {
     it('should return loadSuccess action on success', (done) => {
       const mockData = {
         jobs: [],
-        stats: { queued: 0, encoding: 0, completed: 0, failed: 0, totalSavedBytes: '0' },
+        stats: {
+          queued: 0,
+          encoding: 0,
+          completed: 0,
+          failed: 0,
+          totalSavedBytes: '0',
+        },
       } as never;
       service.getQueue.mockReturnValue(of(mockData));
 

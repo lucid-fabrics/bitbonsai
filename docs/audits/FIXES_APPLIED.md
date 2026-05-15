@@ -29,6 +29,7 @@ npx prisma migrate deploy
 ### 2. Environment Variables
 
 Add to production .env:
+
 ```bash
 JWT_SECRET="your-256-bit-secret-here"  # openssl rand -hex 32
 JWT_EXPIRES_IN="7d"
@@ -71,52 +72,54 @@ open https://bitbonsai.app/admin/login
 
 ### Backend
 
-| File | Change |
-|------|--------|
-| prisma/schema.prisma | Added AdminUser model |
-| src/auth/*.ts | Complete auth module (15 files) |
-| scripts/create-first-admin.ts | Admin creation script |
-| src/stripe/stripe.controller.ts | Added @Public() |
-| src/promo/promo.controller.ts | Added @Public() |
-| src/webhook/*.controller.ts | Fixed imports |
-| .env.local | Added JWT config |
+| File                            | Change                          |
+| ------------------------------- | ------------------------------- |
+| prisma/schema.prisma            | Added AdminUser model           |
+| src/auth/\*.ts                  | Complete auth module (15 files) |
+| scripts/create-first-admin.ts   | Admin creation script           |
+| src/stripe/stripe.controller.ts | Added @Public()                 |
+| src/promo/promo.controller.ts   | Added @Public()                 |
+| src/webhook/\*.controller.ts    | Fixed imports                   |
+| .env.local                      | Added JWT config                |
 
 ### Frontend
 
-| File | Change |
-|------|--------|
-| services/auth.service.ts | Signal-based auth state |
-| pages/admin/login/* | Login component (3 files) |
-| pages/admin/dashboard/* | Dashboard component (3 files) |
-| guards/auth.guard.ts | Route protection |
-| interceptors/auth.interceptor.ts | JWT injection |
-| app.routes.ts | Added admin routes |
-| app.config.ts | Added interceptor |
+| File                             | Change                        |
+| -------------------------------- | ----------------------------- |
+| services/auth.service.ts         | Signal-based auth state       |
+| pages/admin/login/\*             | Login component (3 files)     |
+| pages/admin/dashboard/\*         | Dashboard component (3 files) |
+| guards/auth.guard.ts             | Route protection              |
+| interceptors/auth.interceptor.ts | JWT injection                 |
+| app.routes.ts                    | Added admin routes            |
+| app.config.ts                    | Added interceptor             |
 
 ---
 
 ## Build Errors Fixed
 
-| Error | Fix |
-|-------|-----|
-| Missing @Public() on checkout | Added decorator |
-| Missing @Public() on promo validate | Added decorator |
-| Spread operator in template | Separate signals |
-| Missing DatePipe | Added import |
-| Import after decorator | Moved to top |
-| @prisma/license-client not found | Symlink created |
-| JWT expiresIn type mismatch | Removed generic type |
+| Error                               | Fix                  |
+| ----------------------------------- | -------------------- |
+| Missing @Public() on checkout       | Added decorator      |
+| Missing @Public() on promo validate | Added decorator      |
+| Spread operator in template         | Separate signals     |
+| Missing DatePipe                    | Added import         |
+| Import after decorator              | Moved to top         |
+| @prisma/license-client not found    | Symlink created      |
+| JWT expiresIn type mismatch         | Removed generic type |
 
 ---
 
 ## API Endpoints
 
 ### Public
+
 - POST /api/auth/login
 - POST /api/stripe/checkout
 - POST /api/promo-codes/validate
 
 ### Protected (JWT required)
+
 - GET /api/auth/me
 - POST /api/auth/admins
 - GET /api/auth/admins
@@ -139,6 +142,7 @@ open https://bitbonsai.app/admin/login
 ## Testing Checklist
 
 Backend:
+
 - [x] Login with valid credentials
 - [x] Login rejected for wrong password
 - [x] Inactive user cannot login
@@ -149,6 +153,7 @@ Backend:
 - [x] Audit logs created
 
 Frontend:
+
 - [x] Login page renders
 - [x] Login success redirects to dashboard
 - [x] Login failure shows error

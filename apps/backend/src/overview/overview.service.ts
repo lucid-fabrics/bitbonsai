@@ -4,7 +4,10 @@ import { JobStage, NodeStatus } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { LibraryRepository } from '../common/repositories/library.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
-import type { NodeStatusModel, OverviewResponseDto } from './dto/overview-response.dto';
+import type {
+  NodeStatusModel,
+  OverviewResponseDto,
+} from './dto/overview-response.dto';
 import type {
   OverviewStatsDto,
   QueueStatsDto,
@@ -22,12 +25,16 @@ import type {
 @Injectable()
 export class OverviewService {
   private readonly logger = new Logger(OverviewService.name);
-  private lastCpuMeasure: { idle: number; total: number; timestamp: number } | null = null;
+  private lastCpuMeasure: {
+    idle: number;
+    total: number;
+    timestamp: number;
+  } | null = null;
 
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly nodeRepository: NodeRepository,
-    private readonly libraryRepository: LibraryRepository
+    private readonly libraryRepository: LibraryRepository,
   ) {}
 
   /**
@@ -52,7 +59,11 @@ export class OverviewService {
 
     // If we don't have a previous measure, store current and return 0
     if (!this.lastCpuMeasure) {
-      this.lastCpuMeasure = { idle: totalIdle, total: totalTick, timestamp: now };
+      this.lastCpuMeasure = {
+        idle: totalIdle,
+        total: totalTick,
+        timestamp: now,
+      };
       return 0;
     }
 
@@ -64,7 +75,8 @@ export class OverviewService {
     this.lastCpuMeasure = { idle: totalIdle, total: totalTick, timestamp: now };
 
     // Calculate usage percentage from delta
-    const cpuUsage = totalDelta === 0 ? 0 : 100 - (100 * idleDelta) / totalDelta;
+    const cpuUsage =
+      totalDelta === 0 ? 0 : 100 - (100 * idleDelta) / totalDelta;
     return Number(cpuUsage.toFixed(1));
   }
 
@@ -85,13 +97,14 @@ export class OverviewService {
     this.logger.log('Fetching overview statistics for frontend');
 
     // Execute all queries in parallel for optimal performance
-    const [systemHealth, queueStats, nodeStatus, recentActivity, topLibraries] = await Promise.all([
-      this.getSystemHealth(),
-      this.getQueueSummary(),
-      this.getNodeStatus(),
-      this.getRecentActivity(),
-      this.getTopLibraries(),
-    ]);
+    const [systemHealth, queueStats, nodeStatus, recentActivity, topLibraries] =
+      await Promise.all([
+        this.getSystemHealth(),
+        this.getQueueSummary(),
+        this.getNodeStatus(),
+        this.getRecentActivity(),
+        this.getTopLibraries(),
+      ]);
 
     // Calculate total nodes
     const totalNodes = systemHealth.activeNodes + systemHealth.offlineNodes;
@@ -102,7 +115,8 @@ export class OverviewService {
 
     // Calculate success rate from queue stats
     const totalJobs = queueStats.completed + queueStats.failed;
-    const successRate = totalJobs > 0 ? (queueStats.completed / totalJobs) * 100 : 0;
+    const successRate =
+      totalJobs > 0 ? (queueStats.completed / totalJobs) * 100 : 0;
 
     // Transform to snake_case format
     return {
@@ -133,8 +147,12 @@ export class OverviewService {
       node_status: nodeStatus,
       recent_activity: recentActivity.map((activity) => {
         const beforeSizeBytes = BigInt(activity.beforeSizeBytes);
-        const afterSizeBytes = activity.afterSizeBytes ? BigInt(activity.afterSizeBytes) : null;
-        const savedBytes = activity.savedBytes ? BigInt(activity.savedBytes) : null;
+        const afterSizeBytes = activity.afterSizeBytes
+          ? BigInt(activity.afterSizeBytes)
+          : null;
+        const savedBytes = activity.savedBytes
+          ? BigInt(activity.savedBytes)
+          : null;
 
         return {
           id: activity.id,
@@ -181,12 +199,13 @@ export class OverviewService {
     this.logger.log('Fetching complete overview statistics');
 
     // Execute all queries in parallel for optimal performance
-    const [systemHealth, queueStats, recentActivity, topLibraries] = await Promise.all([
-      this.getSystemHealth(),
-      this.getQueueSummary(),
-      this.getRecentActivity(),
-      this.getTopLibraries(),
-    ]);
+    const [systemHealth, queueStats, recentActivity, topLibraries] =
+      await Promise.all([
+        this.getSystemHealth(),
+        this.getQueueSummary(),
+        this.getRecentActivity(),
+        this.getTopLibraries(),
+      ]);
 
     return {
       systemHealth,
@@ -212,10 +231,13 @@ export class OverviewService {
     // Get node counts by status
     const nodeStats = await this.nodeRepository.groupByStatusCount();
 
-    const activeNodes = nodeStats.find((s) => s.status === NodeStatus.ONLINE)?._count.status || 0;
+    const activeNodes =
+      nodeStats.find((s) => s.status === NodeStatus.ONLINE)?._count.status || 0;
     const offlineNodes =
-      (nodeStats.find((s) => s.status === NodeStatus.OFFLINE)?._count.status || 0) +
-      (nodeStats.find((s) => s.status === NodeStatus.ERROR)?._count.status || 0);
+      (nodeStats.find((s) => s.status === NodeStatus.OFFLINE)?._count.status ||
+        0) +
+      (nodeStats.find((s) => s.status === NodeStatus.ERROR)?._count.status ||
+        0);
 
     // Calculate overall system status
     let status: 'HEALTHY' | 'DEGRADED' | 'OFFLINE';
@@ -234,7 +256,9 @@ export class OverviewService {
     // In production, this should be calculated from actual disk capacity
     const ESTIMATED_TOTAL_STORAGE = BigInt('5497558138880'); // 5TB in bytes
     const usedStorage = storageStats._sum.totalSizeBytes || BigInt(0);
-    const storagePercent = Number((usedStorage * BigInt(100)) / ESTIMATED_TOTAL_STORAGE);
+    const storagePercent = Number(
+      (usedStorage * BigInt(100)) / ESTIMATED_TOTAL_STORAGE,
+    );
 
     // Calculate current CPU utilization
     const cpuPercent = this.calculateCpuUsage();
@@ -263,25 +287,33 @@ export class OverviewService {
     // Get job counts by stage
     const jobsByStage = await this.jobRepository.groupByStageCount({});
 
-    const queued = jobsByStage.find((s) => s.stage === JobStage.QUEUED)?._count || 0;
-    const encoding = jobsByStage.find((s) => s.stage === JobStage.ENCODING)?._count || 0;
-    const completed = jobsByStage.find((s) => s.stage === JobStage.COMPLETED)?._count || 0;
-    const failed = jobsByStage.find((s) => s.stage === JobStage.FAILED)?._count || 0;
+    const queued =
+      jobsByStage.find((s) => s.stage === JobStage.QUEUED)?._count || 0;
+    const encoding =
+      jobsByStage.find((s) => s.stage === JobStage.ENCODING)?._count || 0;
+    const completed =
+      jobsByStage.find((s) => s.stage === JobStage.COMPLETED)?._count || 0;
+    const failed =
+      jobsByStage.find((s) => s.stage === JobStage.FAILED)?._count || 0;
 
     // Calculate total savings from completed jobs
     const savingsStats = await this.jobRepository.aggregateSumWhere(
       { stage: JobStage.COMPLETED, savedBytes: { not: null } },
-      { savedBytes: true, beforeSizeBytes: true }
+      { savedBytes: true, beforeSizeBytes: true },
     );
 
     const totalSavedBytes =
-      (savingsStats._sum as Record<string, bigint | null>).savedBytes || BigInt(0);
+      (savingsStats._sum as Record<string, bigint | null>).savedBytes ||
+      BigInt(0);
     const totalBeforeBytes =
-      (savingsStats._sum as Record<string, bigint | null>).beforeSizeBytes || BigInt(1);
+      (savingsStats._sum as Record<string, bigint | null>).beforeSizeBytes ||
+      BigInt(1);
 
     // Calculate percentage saved
     const totalSavedPercent =
-      totalBeforeBytes > BigInt(0) ? Number((totalSavedBytes * BigInt(100)) / totalBeforeBytes) : 0;
+      totalBeforeBytes > BigInt(0)
+        ? Number((totalSavedBytes * BigInt(100)) / totalBeforeBytes)
+        : 0;
 
     return {
       queued,
@@ -357,11 +389,13 @@ export class OverviewService {
     // Get completed job counts and savings per node
     const completedStats = await this.jobRepository.groupByNodeIdSum(
       { stage: JobStage.COMPLETED },
-      { savedBytes: true }
+      { savedBytes: true },
     );
 
     // Get failed job counts per node
-    const failedCounts = await this.jobRepository.groupByNodeIdCount({ stage: JobStage.FAILED });
+    const failedCounts = await this.jobRepository.groupByNodeIdCount({
+      stage: JobStage.FAILED,
+    });
 
     // Get queued jobs per node (for time estimation)
     const queuedJobsByNode = await this.jobRepository.groupByNodeIdCount({
@@ -373,8 +407,12 @@ export class OverviewService {
       startedAt: Date | null;
       completedAt: Date | null;
     }>(
-      { stage: JobStage.COMPLETED, startedAt: { not: null }, completedAt: { not: null } },
-      { startedAt: true, completedAt: true }
+      {
+        stage: JobStage.COMPLETED,
+        startedAt: { not: null },
+        completedAt: { not: null },
+      },
+      { startedAt: true, completedAt: true },
     );
 
     let avgEncodingTime = 0;
@@ -393,20 +431,26 @@ export class OverviewService {
 
     // Map nodes to response format
     return nodes.map((node) => {
-      const encodingCount = encodingCounts.find((c) => c.nodeId === node.id)?._count || 0;
+      const encodingCount =
+        encodingCounts.find((c) => c.nodeId === node.id)?._count || 0;
       const completedStat = completedStats.find((s) => s.nodeId === node.id);
       const completedCount = completedStat?._count?.id || 0;
-      const failedCount = failedCounts.find((f) => f.nodeId === node.id)?._count || 0;
+      const failedCount =
+        failedCounts.find((f) => f.nodeId === node.id)?._count || 0;
       const totalSavedBytes =
-        (completedStat?._sum as Record<string, bigint | null> | undefined)?.savedBytes || BigInt(0);
+        (completedStat?._sum as Record<string, bigint | null> | undefined)
+          ?.savedBytes || BigInt(0);
 
       // Calculate success rate (show 0% if no jobs completed yet)
       const totalJobs = completedCount + failedCount;
       const successRate =
-        totalJobs > 0 ? Number(((completedCount / totalJobs) * 100).toFixed(1)) : 0;
+        totalJobs > 0
+          ? Number(((completedCount / totalJobs) * 100).toFixed(1))
+          : 0;
 
       // Calculate total queue time for this specific node
-      const queuedForNode = queuedJobsByNode.find((q) => q.nodeId === node.id)?._count || 0;
+      const queuedForNode =
+        queuedJobsByNode.find((q) => q.nodeId === node.id)?._count || 0;
       const totalQueueTime =
         queuedForNode > 0 && avgEncodingTime > 0
           ? Math.ceil(queuedForNode * avgEncodingTime)
@@ -442,7 +486,8 @@ export class OverviewService {
     this.logger.debug('Fetching top libraries');
 
     // Get top 5 libraries with total job counts only (no job data)
-    const libraries = await this.libraryRepository.findManyWithJobCountOrdered(5);
+    const libraries =
+      await this.libraryRepository.findManyWithJobCountOrdered(5);
 
     // If no libraries, return empty array
     if (libraries.length === 0) {
@@ -466,13 +511,16 @@ export class OverviewService {
     // Aggregate savings per library
     const librarySavings = await this.jobRepository.groupByLibraryIdSum(
       { stage: JobStage.COMPLETED, libraryId: { in: libraryIds } },
-      { savedBytes: true, beforeSizeBytes: true }
+      { savedBytes: true, beforeSizeBytes: true },
     );
 
     // Combine the data
     return libraries.map((library) => {
-      const completed = completedCounts.find((c) => c.libraryId === library.id)?._count?.id || 0;
-      const encoding = encodingCounts.find((e) => e.libraryId === library.id)?._count?.id || 0;
+      const completed =
+        completedCounts.find((c) => c.libraryId === library.id)?._count?.id ||
+        0;
+      const encoding =
+        encodingCounts.find((e) => e.libraryId === library.id)?._count?.id || 0;
       const savings = librarySavings.find((s) => s.libraryId === library.id);
 
       return {
@@ -484,10 +532,12 @@ export class OverviewService {
         completedJobs: completed,
         encodingJobs: encoding,
         totalSavedBytes: (
-          (savings?._sum as Record<string, bigint | null> | undefined)?.savedBytes || BigInt(0)
+          (savings?._sum as Record<string, bigint | null> | undefined)
+            ?.savedBytes || BigInt(0)
         ).toString(),
         totalBeforeBytes: (
-          (savings?._sum as Record<string, bigint | null> | undefined)?.beforeSizeBytes || BigInt(0)
+          (savings?._sum as Record<string, bigint | null> | undefined)
+            ?.beforeSizeBytes || BigInt(0)
         ).toString(),
       };
     });

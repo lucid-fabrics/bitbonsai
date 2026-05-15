@@ -31,7 +31,8 @@ export class RegisterNodeDto {
   @IsString({ message: 'License key must be a string' })
   @Length(11, 255, { message: 'License key must be at least 11 characters' })
   @Matches(/^[A-Z]{3}-[a-z0-9]+$/i, {
-    message: 'License key must follow format: PREFIX-random (e.g., FRE-x8k2p9m4n7)',
+    message:
+      'License key must follow format: PREFIX-random (e.g., FRE-x8k2p9m4n7)',
   })
   licenseKey?: string;
 
@@ -43,7 +44,9 @@ export class RegisterNodeDto {
   })
   @IsOptional()
   @IsString({ message: 'Version must be a string' })
-  @Matches(/^\d+\.\d+\.\d+$/, { message: 'Version must be in semver format (e.g., 1.0.0)' })
+  @Matches(/^\d+\.\d+\.\d+$/, {
+    message: 'Version must be in semver format (e.g., 1.0.0)',
+  })
   version?: string;
 
   @ApiProperty({

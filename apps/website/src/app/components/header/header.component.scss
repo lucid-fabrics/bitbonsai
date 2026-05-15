@@ -7,7 +7,10 @@
   background: rgba(variables.$bg-primary, 0.95);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid variables.$border-primary;
-  transition: background 0.3s ease, box-shadow 0.3s ease, padding 0.3s ease;
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    padding 0.3s ease;
 
   &.scrolled {
     background: rgba(variables.$bg-primary, 0.98);
@@ -47,7 +50,11 @@
   }
 
   &__logo-text {
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

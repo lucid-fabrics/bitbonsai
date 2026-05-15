@@ -4,7 +4,10 @@ import { LicenseTier } from '@prisma/client';
 /**
  * Tier-based node and job limits
  */
-export const TIER_LIMITS: Record<LicenseTier, { maxNodes: number; maxConcurrentJobs: number }> = {
+export const TIER_LIMITS: Record<
+  LicenseTier,
+  { maxNodes: number; maxConcurrentJobs: number }
+> = {
   // Free tier - single node, limited concurrency
   [LicenseTier.FREE]: { maxNodes: 1, maxConcurrentJobs: 2 },
   // Patreon tiers - individual supporters
@@ -16,7 +19,10 @@ export const TIER_LIMITS: Record<LicenseTier, { maxNodes: number; maxConcurrentJ
   // Commercial tiers - businesses
   [LicenseTier.COMMERCIAL_STARTER]: { maxNodes: 15, maxConcurrentJobs: 30 },
   [LicenseTier.COMMERCIAL_PRO]: { maxNodes: 50, maxConcurrentJobs: 100 },
-  [LicenseTier.COMMERCIAL_ENTERPRISE]: { maxNodes: 999, maxConcurrentJobs: 999 },
+  [LicenseTier.COMMERCIAL_ENTERPRISE]: {
+    maxNodes: 999,
+    maxConcurrentJobs: 999,
+  },
 };
 
 /**

@@ -44,7 +44,7 @@ export class WorkerPoolService {
     private readonly poolLockService: PoolLockService,
     private readonly systemResourceService: SystemResourceService,
     private readonly ffmpegService: FfmpegService,
-    private readonly jobRepository: JobRepository
+    private readonly jobRepository: JobRepository,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -80,77 +80,81 @@ export class WorkerPoolService {
   async startWorkerPool(
     nodeId: string,
     maxWorkers = this.systemResourceService.defaultWorkersPerNode,
-    startWorkerFn: (workerId: string, nodeId: string) => Promise<void>
+    startWorkerFn: (workerId: string, nodeId: string) => Promise<void>,
   ): Promise<number> {
     // CRITICAL #3 FIX: Use withPoolLock to ensure release on error
-    return await this.poolLockService.withLock(nodeId, 'startWorkerPool', async () => {
-      // Validate maxWorkers
-      const validatedMaxWorkers = Math.min(
-        Math.max(1, maxWorkers),
-        this.systemResourceService.maxWorkersPerNode
-      );
+    return await this.poolLockService.withLock(
+      nodeId,
+      'startWorkerPool',
+      async () => {
+        // Validate maxWorkers
+        const validatedMaxWorkers = Math.min(
+          Math.max(1, maxWorkers),
+          this.systemResourceService.maxWorkersPerNode,
+        );
 
-      // Get or create worker pool for this node
-      let pool = this.workerPools.get(nodeId);
+        // Get or create worker pool for this node
+        let pool = this.workerPools.get(nodeId);
 
-      if (pool) {
-        // Pool already exists - check if we can add more workers
+        if (pool) {
+          // Pool already exists - check if we can add more workers
+          const currentWorkerCount = pool.activeWorkers.size;
+          if (currentWorkerCount >= validatedMaxWorkers) {
+            this.logger.warn(
+              `Worker pool for node ${nodeId} already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`,
+            );
+            return 0;
+          }
+
+          // Update max workers if different
+          pool.maxWorkers = validatedMaxWorkers;
+        } else {
+          // Create new worker pool
+          pool = {
+            nodeId,
+            maxWorkers: validatedMaxWorkers,
+            activeWorkers: new Set(),
+          };
+          this.workerPools.set(nodeId, pool);
+        }
+
+        // CRITICAL #29 FIX: Calculate how many workers needed
         const currentWorkerCount = pool.activeWorkers.size;
-        if (currentWorkerCount >= validatedMaxWorkers) {
-          this.logger.warn(
-            `Worker pool for node ${nodeId} already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
+        const workersToStart = validatedMaxWorkers - currentWorkerCount;
+
+        if (workersToStart <= 0) {
+          this.logger.debug(
+            `Worker pool already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`,
           );
           return 0;
         }
 
-        // Update max workers if different
-        pool.maxWorkers = validatedMaxWorkers;
-      } else {
-        // Create new worker pool
-        pool = {
-          nodeId,
-          maxWorkers: validatedMaxWorkers,
-          activeWorkers: new Set(),
-        };
-        this.workerPools.set(nodeId, pool);
-      }
+        // CRITICAL #29 FIX: Start only the needed workers (not all from 1 to max)
+        let workersStarted = 0;
+        for (let i = currentWorkerCount + 1; i <= validatedMaxWorkers; i++) {
+          const workerId = `${nodeId}-worker-${i}`;
 
-      // CRITICAL #29 FIX: Calculate how many workers needed
-      const currentWorkerCount = pool.activeWorkers.size;
-      const workersToStart = validatedMaxWorkers - currentWorkerCount;
+          // HIGH #7 FIX: Add to Set BEFORE starting worker (prevents race)
+          // If startWorker fails, we remove from Set in the catch block
+          pool.activeWorkers.add(workerId);
 
-      if (workersToStart <= 0) {
-        this.logger.debug(
-          `Worker pool already at capacity (${currentWorkerCount}/${validatedMaxWorkers})`
-        );
-        return 0;
-      }
-
-      // CRITICAL #29 FIX: Start only the needed workers (not all from 1 to max)
-      let workersStarted = 0;
-      for (let i = currentWorkerCount + 1; i <= validatedMaxWorkers; i++) {
-        const workerId = `${nodeId}-worker-${i}`;
-
-        // HIGH #7 FIX: Add to Set BEFORE starting worker (prevents race)
-        // If startWorker fails, we remove from Set in the catch block
-        pool.activeWorkers.add(workerId);
-
-        try {
-          await this.startWorker(workerId, nodeId, startWorkerFn);
-          workersStarted++;
-        } catch (error: unknown) {
-          // HIGH #7 FIX: Rollback on error - remove from Set
-          pool.activeWorkers.delete(workerId);
-          this.logger.error(`Failed to start worker ${workerId}:`, error);
+          try {
+            await this.startWorker(workerId, nodeId, startWorkerFn);
+            workersStarted++;
+          } catch (error: unknown) {
+            // HIGH #7 FIX: Rollback on error - remove from Set
+            pool.activeWorkers.delete(workerId);
+            this.logger.error(`Failed to start worker ${workerId}:`, error);
+          }
         }
-      }
 
-      this.logger.log(
-        `Started ${workersStarted} worker(s) for node ${nodeId} (total: ${pool.activeWorkers.size}/${validatedMaxWorkers})`
-      );
+        this.logger.log(
+          `Started ${workersStarted} worker(s) for node ${nodeId} (total: ${pool.activeWorkers.size}/${validatedMaxWorkers})`,
+        );
 
-      return workersStarted;
-    });
+        return workersStarted;
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -170,7 +174,7 @@ export class WorkerPoolService {
   async startWorker(
     workerId: string,
     nodeId: string,
-    startWorkerFn: (workerId: string, nodeId: string) => Promise<void>
+    startWorkerFn: (workerId: string, nodeId: string) => Promise<void>,
   ): Promise<void> {
     if (this.workers.has(workerId)) {
       this.logger.warn(`Worker ${workerId} already running`);
@@ -202,14 +206,16 @@ export class WorkerPoolService {
       const pool = this.workerPools.get(nodeId);
 
       if (!crashedWorker || !pool) {
-        this.logger.error(`[${workerId}] Worker or pool not found during crash cleanup`);
+        this.logger.error(
+          `[${workerId}] Worker or pool not found during crash cleanup`,
+        );
         return;
       }
 
       // CRITICAL #7 FIX: Kill active FFmpeg process if encoding
       if (crashedWorker.currentJobId) {
         this.logger.warn(
-          `[${workerId}] Killing orphaned FFmpeg for job ${crashedWorker.currentJobId}`
+          `[${workerId}] Killing orphaned FFmpeg for job ${crashedWorker.currentJobId}`,
         );
 
         try {
@@ -217,7 +223,7 @@ export class WorkerPoolService {
         } catch (killError: unknown) {
           this.logger.error(
             `[${workerId}] Failed to kill FFmpeg for job ${crashedWorker.currentJobId}`,
-            killError
+            killError,
           );
         }
 
@@ -228,11 +234,13 @@ export class WorkerPoolService {
             error: `Worker ${workerId} crashed during encoding`,
             retryCount: { increment: 1 },
           });
-          this.logger.log(`[${workerId}] Reset job ${crashedWorker.currentJobId} to QUEUED`);
+          this.logger.log(
+            `[${workerId}] Reset job ${crashedWorker.currentJobId} to QUEUED`,
+          );
         } catch (jobError: unknown) {
           this.logger.error(
             `[${workerId}] Failed to reset job ${crashedWorker.currentJobId}`,
-            jobError
+            jobError,
           );
         }
       }
@@ -250,7 +258,7 @@ export class WorkerPoolService {
       const remainingWorkers = pool.activeWorkers.size;
       if (remainingWorkers < pool.maxWorkers) {
         this.logger.warn(
-          `[${nodeId}] Worker pool degraded to ${remainingWorkers}/${pool.maxWorkers}, restarting worker`
+          `[${nodeId}] Worker pool degraded to ${remainingWorkers}/${pool.maxWorkers}, restarting worker`,
         );
 
         try {
@@ -258,9 +266,14 @@ export class WorkerPoolService {
           const { randomUUID } = await import('crypto');
           const newWorkerId = `${nodeId}-worker-${randomUUID().slice(0, 8)}`;
           await this.startWorker(newWorkerId, nodeId, startWorkerFn);
-          this.logger.log(`[${nodeId}] Replacement worker ${newWorkerId} started`);
+          this.logger.log(
+            `[${nodeId}] Replacement worker ${newWorkerId} started`,
+          );
         } catch (restartError: unknown) {
-          this.logger.error(`[${nodeId}] Failed to restart worker after crash`, restartError);
+          this.logger.error(
+            `[${nodeId}] Failed to restart worker after crash`,
+            restartError,
+          );
         }
       }
 
@@ -310,10 +323,12 @@ export class WorkerPoolService {
         // Wait for current job to complete
         if (worker.currentJobId) {
           this.logger.log(
-            `Waiting for worker ${workerId} to complete job ${worker.currentJobId}...`
+            `Waiting for worker ${workerId} to complete job ${worker.currentJobId}...`,
           );
           await worker.shutdownPromise;
-          this.logger.log(`Worker ${workerId} completed its job and stopped gracefully`);
+          this.logger.log(
+            `Worker ${workerId} completed its job and stopped gracefully`,
+          );
         } else {
           await worker.shutdownPromise;
           this.logger.log(`Worker ${workerId} stopped gracefully`);
@@ -325,7 +340,9 @@ export class WorkerPoolService {
       } else {
         // CRITICAL #6 FIX: Snapshot worker IDs to avoid concurrent modification during iteration
         const workerIds = Array.from(pool.activeWorkers);
-        this.logger.log(`Stopping all ${workerIds.length} worker(s) for node ${nodeId}...`);
+        this.logger.log(
+          `Stopping all ${workerIds.length} worker(s) for node ${nodeId}...`,
+        );
 
         const shutdownPromises: Promise<void>[] = [];
 
@@ -337,7 +354,7 @@ export class WorkerPoolService {
 
             if (worker.currentJobId) {
               this.logger.log(
-                `Waiting for worker ${wId} to complete job ${worker.currentJobId}...`
+                `Waiting for worker ${wId} to complete job ${worker.currentJobId}...`,
               );
             }
 

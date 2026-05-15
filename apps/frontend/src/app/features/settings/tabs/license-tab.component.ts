@@ -1,4 +1,10 @@
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -1168,7 +1174,11 @@ export class LicenseTabComponent implements OnInit {
       priceUnit: 'month',
       maxNodes: 50,
       maxConcurrentJobs: 100,
-      features: ['Everything in Starter', 'Custom presets', 'Dedicated support'],
+      features: [
+        'Everything in Starter',
+        'Custom presets',
+        'Dedicated support',
+      ],
       badge: 'Popular',
     },
     {
@@ -1197,22 +1207,26 @@ export class LicenseTabComponent implements OnInit {
   }
 
   private handleCallbackParams(): void {
-    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      // Handle Stripe callback
-      if (params.stripe) {
-        if (params.stripe === 'success') {
-          this.callbackSuccess.set(true);
-          this.callbackMessage.set(
-            'Payment successful! Enter your email below to retrieve your license.'
-          );
-          // Show the license lookup section
-          this.showStripeLookup.set(true);
-        } else if (params.stripe === 'cancelled') {
-          this.callbackSuccess.set(false);
-          this.callbackMessage.set('Checkout was cancelled. No payment was processed.');
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        // Handle Stripe callback
+        if (params.stripe) {
+          if (params.stripe === 'success') {
+            this.callbackSuccess.set(true);
+            this.callbackMessage.set(
+              'Payment successful! Enter your email below to retrieve your license.',
+            );
+            // Show the license lookup section
+            this.showStripeLookup.set(true);
+          } else if (params.stripe === 'cancelled') {
+            this.callbackSuccess.set(false);
+            this.callbackMessage.set(
+              'Checkout was cancelled. No payment was processed.',
+            );
+          }
         }
-      }
-    });
+      });
   }
 
   dismissCallback(): void {
@@ -1267,7 +1281,11 @@ export class LicenseTabComponent implements OnInit {
       capabilities: this.licenseService.getCapabilities(),
       stripePlans: this.licenseService
         .getStripePlans()
-        .pipe(catchError(() => of({ configured: false, plans: [] as StripePlan[] }))),
+        .pipe(
+          catchError(() =>
+            of({ configured: false, plans: [] as StripePlan[] }),
+          ),
+        ),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -1300,7 +1318,10 @@ export class LicenseTabComponent implements OnInit {
   getJobUsagePercent(): number {
     const cap = this.capabilities();
     if (!cap || cap.maxConcurrentJobs === 0) return 0;
-    return Math.min(100, (cap.currentConcurrentJobs / cap.maxConcurrentJobs) * 100);
+    return Math.min(
+      100,
+      (cap.currentConcurrentJobs / cap.maxConcurrentJobs) * 100,
+    );
   }
 
   scrollToTiers(): void {
@@ -1344,7 +1365,11 @@ export class LicenseTabComponent implements OnInit {
     this.checkoutEmail = '';
   }
 
-  private processCheckout(_tier: LicenseTierInfo, email: string, priceId: string): void {
+  private processCheckout(
+    _tier: LicenseTierInfo,
+    email: string,
+    priceId: string,
+  ): void {
     this.stripeLoading.set(true);
     this.error.set(null);
 
@@ -1386,7 +1411,9 @@ export class LicenseTabComponent implements OnInit {
             this.loadData();
           },
           error: () => {
-            this.error.set('Failed to activate license. Please check your key and try again.');
+            this.error.set(
+              'Failed to activate license. Please check your key and try again.',
+            );
             this.activating.set(false);
           },
         });

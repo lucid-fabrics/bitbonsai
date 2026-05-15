@@ -5,12 +5,20 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { StorageProtocol, StorageShare, StorageShareStatus } from '@prisma/client';
+import {
+  StorageProtocol,
+  StorageShare,
+  StorageShareStatus,
+} from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import { promisify } from 'util';
 import { type IStorageShareRepository } from '../repositories/storage-share.repository.interface';
-import { escapeShellArg, sanitizePath, sanitizeServerAddress } from '../utils/input-sanitizer';
+import {
+  escapeShellArg,
+  sanitizePath,
+  sanitizeServerAddress,
+} from '../utils/input-sanitizer';
 import { MountStrategyFactory } from './strategies/mount-strategy.factory';
 
 const execAsync = promisify(exec);
@@ -41,7 +49,7 @@ export class StorageMountService {
   constructor(
     private readonly strategyFactory: MountStrategyFactory,
     @Inject('IStorageShareRepository')
-    private readonly repository: IStorageShareRepository
+    private readonly repository: IStorageShareRepository,
   ) {}
 
   /**
@@ -94,18 +102,25 @@ export class StorageMountService {
         await this.addToFstab(share);
       }
 
-      this.logger.log(`✓ Successfully mounted ${share.name} at ${share.mountPoint}`);
+      this.logger.log(
+        `✓ Successfully mounted ${share.name} at ${share.mountPoint}`,
+      );
 
       return {
         success: true,
         message: `Successfully mounted ${share.name}`,
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error during mount';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error during mount';
       this.logger.error(`Failed to mount ${share.name}: ${errorMessage}`);
 
       // Update share status to error via repository
-      await this.repository.updateStatus(shareId, StorageShareStatus.ERROR, errorMessage);
+      await this.repository.updateStatus(
+        shareId,
+        StorageShareStatus.ERROR,
+        errorMessage,
+      );
 
       return {
         success: false,
@@ -136,7 +151,9 @@ export class StorageMountService {
       const safeMountPoint = escapeShellArg(sanitizePath(share.mountPoint));
 
       // Build unmount command
-      const unmountCommand = force ? `umount -f ${safeMountPoint}` : `umount ${safeMountPoint}`;
+      const unmountCommand = force
+        ? `umount -f ${safeMountPoint}`
+        : `umount ${safeMountPoint}`;
 
       this.logger.debug(`Executing unmount command: ${unmountCommand}`);
 
@@ -169,7 +186,8 @@ export class StorageMountService {
         message: `Successfully unmounted ${share.name}`,
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error during unmount';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error during unmount';
       this.logger.error(`Failed to unmount ${share.name}: ${errorMessage}`);
 
       return {
@@ -202,7 +220,7 @@ export class StorageMountService {
    */
   async testConnectivity(
     serverAddress: string,
-    protocol?: StorageProtocol
+    protocol?: StorageProtocol,
   ): Promise<ShareConnectivityTest> {
     this.logger.log(`Testing connectivity to ${serverAddress}`);
 
@@ -218,10 +236,13 @@ export class StorageMountService {
 
       // Test basic reachability with ping
       const startTime = Date.now();
-      const { stdout } = await execAsync(`ping -c 1 -W 2 ${escapeShellArg(safeServerAddress)}`);
+      const { stdout } = await execAsync(
+        `ping -c 1 -W 2 ${escapeShellArg(safeServerAddress)}`,
+      );
       const endTime = Date.now();
 
-      result.isReachable = stdout.includes('1 received') || stdout.includes('1 packets received');
+      result.isReachable =
+        stdout.includes('1 received') || stdout.includes('1 packets received');
       result.latencyMs = endTime - startTime;
 
       if (!result.isReachable) {
@@ -231,19 +252,24 @@ export class StorageMountService {
 
       // Test NFS if protocol not specified or is NFS
       if (!protocol || protocol === StorageProtocol.NFS) {
-        const nfsStrategy = this.strategyFactory.getStrategy(StorageProtocol.NFS);
+        const nfsStrategy = this.strategyFactory.getStrategy(
+          StorageProtocol.NFS,
+        );
         result.supportsNFS = await nfsStrategy.testConnectivity(serverAddress);
       }
 
       // Test SMB if protocol not specified or is SMB
       if (!protocol || protocol === StorageProtocol.SMB) {
-        const smbStrategy = this.strategyFactory.getStrategy(StorageProtocol.SMB);
+        const smbStrategy = this.strategyFactory.getStrategy(
+          StorageProtocol.SMB,
+        );
         result.supportsSMB = await smbStrategy.testConnectivity(serverAddress);
       }
 
       return result;
     } catch (error: unknown) {
-      result.error = error instanceof Error ? error.message : 'Connectivity test failed';
+      result.error =
+        error instanceof Error ? error.message : 'Connectivity test failed';
       return result;
     }
   }
@@ -280,7 +306,7 @@ export class StorageMountService {
       };
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to get disk usage for ${mountPoint}: ${error instanceof Error ? error.message : 'unknown error'}`
+        `Failed to get disk usage for ${mountPoint}: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
       throw new InternalServerErrorException('Failed to get disk usage');
     }
@@ -295,7 +321,9 @@ export class StorageMountService {
       const safeMountPoint = sanitizePath(mountPoint);
 
       // Use grep with fixed-string mode (-F) to prevent regex injection
-      const { stdout } = await execAsync(`mount | grep -F ${escapeShellArg(safeMountPoint)}`);
+      const { stdout } = await execAsync(
+        `mount | grep -F ${escapeShellArg(safeMountPoint)}`,
+      );
       return stdout.includes(safeMountPoint);
     } catch {
       return false;
@@ -365,7 +393,7 @@ export class StorageMountService {
       this.logger.log(`✓ Added ${share.name} to /etc/fstab`);
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to add to fstab: ${error instanceof Error ? error.message : 'unknown error'}`
+        `Failed to add to fstab: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
       // Don't throw - mounting succeeded, fstab is optional
     }
@@ -404,7 +432,7 @@ export class StorageMountService {
       this.logger.log(`✓ Removed ${share.name} from /etc/fstab`);
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to remove from fstab: ${error instanceof Error ? error.message : 'unknown error'}`
+        `Failed to remove from fstab: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
     }
   }

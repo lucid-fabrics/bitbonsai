@@ -31,19 +31,25 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   // Configuration
   private readonly INTERVAL_MS = parseInt(
     process.env.RECOVERY_INTERVAL_MS || `${2 * 60 * 1000}`,
-    10
+    10,
   ); // 2 minutes (reduced from 5)
   private readonly HEALTH_CHECK_TIMEOUT_MIN = parseInt(
     process.env.HEALTH_CHECK_TIMEOUT_MIN || '5',
-    10
+    10,
   );
   // CAPA FIX: Reduced from 60min to 10min for faster stuck job detection
-  private readonly ENCODING_TIMEOUT_MIN = parseInt(process.env.ENCODING_TIMEOUT_MIN || '10', 10);
-  private readonly VERIFYING_TIMEOUT_MIN = parseInt(process.env.VERIFYING_TIMEOUT_MIN || '30', 10);
+  private readonly ENCODING_TIMEOUT_MIN = parseInt(
+    process.env.ENCODING_TIMEOUT_MIN || '10',
+    10,
+  );
+  private readonly VERIFYING_TIMEOUT_MIN = parseInt(
+    process.env.VERIFYING_TIMEOUT_MIN || '30',
+    10,
+  );
   // DEEP AUDIT P0: TRANSFERRING stage timeout (15 min with no progress = stalled)
   private readonly TRANSFERRING_TIMEOUT_MIN = parseInt(
     process.env.TRANSFERRING_TIMEOUT_MIN || '15',
-    10
+    10,
   );
 
   // Max times a stuck ENCODING job can be recovered before permanent FAIL
@@ -54,14 +60,16 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly ffmpegService: FfmpegService,
-    private readonly fileFailureTracking: FileFailureTrackingService
+    private readonly fileFailureTracking: FileFailureTrackingService,
   ) {}
 
   /**
    * Start the recovery worker when module initializes
    */
   async onModuleInit(): Promise<void> {
-    this.logger.log(`Starting StuckJobRecoveryWorker (interval: ${this.INTERVAL_MS / 1000}s)`);
+    this.logger.log(
+      `Starting StuckJobRecoveryWorker (interval: ${this.INTERVAL_MS / 1000}s)`,
+    );
     this.start();
   }
 
@@ -86,7 +94,8 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       try {
         await this.recoverStuckJobs();
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         this.logger.error(`Recovery worker error: ${errorMessage}`);
       }
 
@@ -102,7 +111,9 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     const now = new Date();
 
     // Scenario 1: Jobs stuck in HEALTH_CHECK for too long
-    const healthCheckCutoff = new Date(now.getTime() - this.HEALTH_CHECK_TIMEOUT_MIN * 60 * 1000);
+    const healthCheckCutoff = new Date(
+      now.getTime() - this.HEALTH_CHECK_TIMEOUT_MIN * 60 * 1000,
+    );
     const stuckHealthCheck = await this.jobRepository.findManySelect<{
       id: string;
       fileLabel: string;
@@ -112,12 +123,12 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         stage: JobStage.HEALTH_CHECK,
         updatedAt: { lt: healthCheckCutoff },
       },
-      { id: true, fileLabel: true, updatedAt: true }
+      { id: true, fileLabel: true, updatedAt: true },
     );
 
     if (stuckHealthCheck.length > 0) {
       this.logger.warn(
-        `Found ${stuckHealthCheck.length} job(s) stuck in HEALTH_CHECK for >${this.HEALTH_CHECK_TIMEOUT_MIN}min`
+        `Found ${stuckHealthCheck.length} job(s) stuck in HEALTH_CHECK for >${this.HEALTH_CHECK_TIMEOUT_MIN}min`,
       );
 
       for (const job of stuckHealthCheck) {
@@ -127,14 +138,16 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         });
 
         this.logger.log(
-          `🔄 Recovered stuck HEALTH_CHECK job: ${job.fileLabel} (stuck for ${Math.round((now.getTime() - job.updatedAt.getTime()) / 1000 / 60)}min) → DETECTED`
+          `🔄 Recovered stuck HEALTH_CHECK job: ${job.fileLabel} (stuck for ${Math.round((now.getTime() - job.updatedAt.getTime()) / 1000 / 60)}min) → DETECTED`,
         );
       }
     }
 
     // Scenario 2: Jobs stuck in ENCODING for too long without progress
     // CAPA FIX: Use lastProgressUpdate instead of updatedAt for more accurate stuck detection
-    const encodingCutoff = new Date(now.getTime() - this.ENCODING_TIMEOUT_MIN * 60 * 1000);
+    const encodingCutoff = new Date(
+      now.getTime() - this.ENCODING_TIMEOUT_MIN * 60 * 1000,
+    );
     const stuckEncoding = await this.jobRepository.findManySelect<{
       id: string;
       fileLabel: string;
@@ -163,19 +176,19 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         progress: true,
         stuckRecoveryCount: true,
         contentFingerprint: true,
-      }
+      },
     );
 
     if (stuckEncoding.length > 0) {
       this.logger.warn(
-        `Found ${stuckEncoding.length} job(s) stuck in ENCODING for >${this.ENCODING_TIMEOUT_MIN}min`
+        `Found ${stuckEncoding.length} job(s) stuck in ENCODING for >${this.ENCODING_TIMEOUT_MIN}min`,
       );
 
       for (const job of stuckEncoding) {
         // Check if this job has exceeded recovery cap
         if (job.stuckRecoveryCount >= this.MAX_STUCK_RECOVERY) {
           this.logger.warn(
-            `✗ Stuck recovery cap reached: ${job.fileLabel} (${job.stuckRecoveryCount}/${this.MAX_STUCK_RECOVERY}) → FAILED permanently`
+            `✗ Stuck recovery cap reached: ${job.fileLabel} (${job.stuckRecoveryCount}/${this.MAX_STUCK_RECOVERY}) → FAILED permanently`,
           );
 
           // Kill process if active before failing
@@ -196,12 +209,14 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
               job.filePath,
               job.libraryId,
               errorMsg,
-              job.contentFingerprint ?? undefined
+              job.contentFingerprint ?? undefined,
             );
           } catch (trackingErr: unknown) {
             this.logger.error(
               `Failed to record failure tracking for ${job.fileLabel}`,
-              trackingErr instanceof Error ? trackingErr.stack : String(trackingErr)
+              trackingErr instanceof Error
+                ? trackingErr.stack
+                : String(trackingErr),
             );
           }
 
@@ -216,32 +231,36 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
           // vs just slow (FFmpeg producing output, but slowly)
           const isTrulyStuck = this.ffmpegService.isProcessTrulyStuck(
             job.id,
-            this.ENCODING_TIMEOUT_MIN
+            this.ENCODING_TIMEOUT_MIN,
           );
 
           if (!isTrulyStuck) {
             // FFmpeg is still producing output (just slowly) - let it continue
             const lastOutputTime = this.ffmpegService.getLastOutputTime(job.id);
             const minutesSinceOutput = lastOutputTime
-              ? Math.round((now.getTime() - lastOutputTime.getTime()) / 1000 / 60)
+              ? Math.round(
+                  (now.getTime() - lastOutputTime.getTime()) / 1000 / 60,
+                )
               : 'unknown';
             this.logger.debug(
-              `Job ${job.fileLabel} is slow but ACTIVE (last FFmpeg output ${minutesSinceOutput}min ago, progress: ${job.progress}%). Letting it continue...`
+              `Job ${job.fileLabel} is slow but ACTIVE (last FFmpeg output ${minutesSinceOutput}min ago, progress: ${job.progress}%). Letting it continue...`,
             );
             continue; // Skip this job - it's not stuck, just slow
           }
 
           // Process is TRULY frozen (no FFmpeg output for >10min)
           this.logger.warn(
-            `Job ${job.fileLabel} has FROZEN FFmpeg process (no output for >${this.ENCODING_TIMEOUT_MIN}min, progress: ${job.progress}%). Killing process...`
+            `Job ${job.fileLabel} has FROZEN FFmpeg process (no output for >${this.ENCODING_TIMEOUT_MIN}min, progress: ${job.progress}%). Killing process...`,
           );
 
           const killed = await this.ffmpegService.killProcess(job.id);
           if (killed) {
-            this.logger.log(`✅ Successfully killed frozen FFmpeg process for job ${job.id}`);
+            this.logger.log(
+              `✅ Successfully killed frozen FFmpeg process for job ${job.id}`,
+            );
           } else {
             this.logger.error(
-              `❌ Failed to kill FFmpeg process for job ${job.id}. Job will NOT be reset.`
+              `❌ Failed to kill FFmpeg process for job ${job.id}. Job will NOT be reset.`,
             );
             continue; // Skip this job if we couldn't kill the process
           }
@@ -258,15 +277,19 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
 
         // CAPA FIX: Show lastProgressUpdate time for better visibility
         const lastUpdate = job.lastProgressUpdate || job.updatedAt;
-        const stuckMinutes = Math.round((now.getTime() - lastUpdate.getTime()) / 1000 / 60);
+        const stuckMinutes = Math.round(
+          (now.getTime() - lastUpdate.getTime()) / 1000 / 60,
+        );
         this.logger.log(
-          `🔄 Recovered stuck ENCODING job: ${job.fileLabel} (progress: ${job.progress}%, no progress for ${stuckMinutes}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}) → QUEUED`
+          `🔄 Recovered stuck ENCODING job: ${job.fileLabel} (progress: ${job.progress}%, no progress for ${stuckMinutes}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}) → QUEUED`,
         );
       }
     }
 
     // Scenario 3: Jobs stuck in VERIFYING for too long
-    const verifyingCutoff = new Date(now.getTime() - this.VERIFYING_TIMEOUT_MIN * 60 * 1000);
+    const verifyingCutoff = new Date(
+      now.getTime() - this.VERIFYING_TIMEOUT_MIN * 60 * 1000,
+    );
     const stuckVerifying = await this.jobRepository.findManySelect<{
       id: string;
       fileLabel: string;
@@ -276,12 +299,12 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         stage: JobStage.VERIFYING,
         updatedAt: { lt: verifyingCutoff },
       },
-      { id: true, fileLabel: true, updatedAt: true }
+      { id: true, fileLabel: true, updatedAt: true },
     );
 
     if (stuckVerifying.length > 0) {
       this.logger.warn(
-        `Found ${stuckVerifying.length} job(s) stuck in VERIFYING for >${this.VERIFYING_TIMEOUT_MIN}min`
+        `Found ${stuckVerifying.length} job(s) stuck in VERIFYING for >${this.VERIFYING_TIMEOUT_MIN}min`,
       );
 
       for (const job of stuckVerifying) {
@@ -293,14 +316,16 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         });
 
         this.logger.log(
-          `🔄 Recovered stuck VERIFYING job: ${job.fileLabel} (stuck for ${Math.round((now.getTime() - job.updatedAt.getTime()) / 1000 / 60)}min) → QUEUED`
+          `🔄 Recovered stuck VERIFYING job: ${job.fileLabel} (stuck for ${Math.round((now.getTime() - job.updatedAt.getTime()) / 1000 / 60)}min) → QUEUED`,
         );
       }
     }
 
     // DEEP AUDIT P0: Scenario 4 - Jobs stuck in TRANSFERRING (no progress for >15 min)
     // This catches file transfers that stall mid-progress (e.g., network issues, rsync hangs)
-    const transferringCutoff = new Date(now.getTime() - this.TRANSFERRING_TIMEOUT_MIN * 60 * 1000);
+    const transferringCutoff = new Date(
+      now.getTime() - this.TRANSFERRING_TIMEOUT_MIN * 60 * 1000,
+    );
     const stuckTransferring = await this.jobRepository.findManySelect<{
       id: string;
       fileLabel: string;
@@ -313,7 +338,10 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         stage: JobStage.TRANSFERRING,
         OR: [
           { transferLastProgressAt: { lt: transferringCutoff } },
-          { transferLastProgressAt: null, transferStartedAt: { lt: transferringCutoff } },
+          {
+            transferLastProgressAt: null,
+            transferStartedAt: { lt: transferringCutoff },
+          },
         ],
       } satisfies Prisma.JobWhereInput,
       {
@@ -323,17 +351,20 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
         transferLastProgressAt: true,
         transferProgress: true,
         transferRetryCount: true,
-      }
+      },
     );
 
     if (stuckTransferring.length > 0) {
       this.logger.warn(
-        `Found ${stuckTransferring.length} job(s) stuck in TRANSFERRING for >${this.TRANSFERRING_TIMEOUT_MIN}min`
+        `Found ${stuckTransferring.length} job(s) stuck in TRANSFERRING for >${this.TRANSFERRING_TIMEOUT_MIN}min`,
       );
 
       for (const job of stuckTransferring) {
-        const lastProgress = job.transferLastProgressAt || job.transferStartedAt || now;
-        const stuckMinutes = Math.round((now.getTime() - lastProgress.getTime()) / 1000 / 60);
+        const lastProgress =
+          job.transferLastProgressAt || job.transferStartedAt || now;
+        const stuckMinutes = Math.round(
+          (now.getTime() - lastProgress.getTime()) / 1000 / 60,
+        );
         const retryCount = job.transferRetryCount + 1;
 
         if (retryCount >= this.MAX_TRANSFER_RETRIES) {
@@ -345,7 +376,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
             transferError: `Transfer stalled - no progress for ${stuckMinutes} minutes`,
           });
           this.logger.error(
-            `✗ Transfer failed (max retries): ${job.fileLabel} (progress: ${job.transferProgress}%) → FAILED`
+            `✗ Transfer failed (max retries): ${job.fileLabel} (progress: ${job.transferProgress}%) → FAILED`,
           );
         } else {
           // Reset to DETECTED for retry
@@ -358,7 +389,7 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
             transferError: `Transfer stalled at ${job.transferProgress}% (no progress for ${stuckMinutes}min). Retrying...`,
           });
           this.logger.log(
-            `🔄 Recovered stuck TRANSFERRING job: ${job.fileLabel} (progress: ${job.transferProgress}%, no progress for ${stuckMinutes}min, retry ${retryCount}/${this.MAX_TRANSFER_RETRIES}) → DETECTED`
+            `🔄 Recovered stuck TRANSFERRING job: ${job.fileLabel} (progress: ${job.transferProgress}%, no progress for ${stuckMinutes}min, retry ${retryCount}/${this.MAX_TRANSFER_RETRIES}) → DETECTED`,
           );
         }
       }
@@ -371,7 +402,9 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       stuckVerifying.length +
       stuckTransferring.length;
     if (totalRecovered > 0) {
-      this.logger.log(`✅ Recovery complete: ${totalRecovered} job(s) recovered`);
+      this.logger.log(
+        `✅ Recovery complete: ${totalRecovered} job(s) recovered`,
+      );
     }
   }
 

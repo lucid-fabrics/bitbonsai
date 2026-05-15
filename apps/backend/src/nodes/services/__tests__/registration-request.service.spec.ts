@@ -1,6 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { AccelerationType, ContainerType, RegistrationRequestStatus } from '@prisma/client';
+import {
+  AccelerationType,
+  ContainerType,
+  RegistrationRequestStatus,
+} from '@prisma/client';
 import { NodeRepository } from '../../../common/repositories/node.repository';
 import { NotificationsGateway } from '../../../notifications/notifications.gateway';
 import { NotificationsService } from '../../../notifications/notifications.service';
@@ -79,10 +83,16 @@ describe('RegistrationRequestService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RegistrationRequestService,
-        { provide: RegistrationRequestRepository, useValue: mockRegistrationRequestRepository },
+        {
+          provide: RegistrationRequestRepository,
+          useValue: mockRegistrationRequestRepository,
+        },
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: SystemInfoService, useValue: mockSystemInfoService },
-        { provide: NodeCapabilityDetectorService, useValue: mockCapabilityDetector },
+        {
+          provide: NodeCapabilityDetectorService,
+          useValue: mockCapabilityDetector,
+        },
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: NotificationsGateway, useValue: mockNotificationsGateway },
         { provide: SshKeyService, useValue: mockSshKeyService },
@@ -90,7 +100,9 @@ describe('RegistrationRequestService', () => {
       ],
     }).compile();
 
-    service = module.get<RegistrationRequestService>(RegistrationRequestService);
+    service = module.get<RegistrationRequestService>(
+      RegistrationRequestService,
+    );
   });
 
   describe('createRegistrationRequest', () => {
@@ -102,13 +114,19 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.PENDING,
         pairingToken: '123456',
       };
-      mockRegistrationRequestRepository.createRequest.mockResolvedValue(createdRequest);
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-1' });
+      mockRegistrationRequestRepository.createRequest.mockResolvedValue(
+        createdRequest,
+      );
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-1',
+      });
 
       const result = await service.createRegistrationRequest(createDto);
 
       expect(result).toEqual(createdRequest);
-      expect(mockRegistrationRequestRepository.createRequest).toHaveBeenCalledWith(
+      expect(
+        mockRegistrationRequestRepository.createRequest,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           mainNodeId: 'main-1',
           childNodeName: 'Child Node',
@@ -116,7 +134,7 @@ describe('RegistrationRequestService', () => {
           hostname: 'child-host',
           macAddress: 'AA:BB:CC:DD:EE:FF',
           containerType: ContainerType.LXC,
-        })
+        }),
       );
       expect(mockNotificationsGateway.sendToAll).toHaveBeenCalled();
     });
@@ -127,7 +145,9 @@ describe('RegistrationRequestService', () => {
         macAddress: 'AA:BB:CC:DD:EE:FF',
         status: RegistrationRequestStatus.PENDING,
       };
-      mockRegistrationRequestRepository.findFirstByMac.mockResolvedValue(existingRequest);
+      mockRegistrationRequestRepository.findFirstByMac.mockResolvedValue(
+        existingRequest,
+      );
       mockRegistrationRequestRepository.updateById.mockResolvedValue({
         ...existingRequest,
         tokenExpiresAt: new Date(),
@@ -139,32 +159,46 @@ describe('RegistrationRequestService', () => {
         'existing-1',
         expect.objectContaining({
           status: RegistrationRequestStatus.PENDING,
-        })
+        }),
       );
-      expect(mockRegistrationRequestRepository.createRequest).not.toHaveBeenCalled();
+      expect(
+        mockRegistrationRequestRepository.createRequest,
+      ).not.toHaveBeenCalled();
     });
 
     it('should skip duplicate check when macAddress is null', async () => {
       const dtoNoMac = { ...createDto, macAddress: null };
-      mockRegistrationRequestRepository.createRequest.mockResolvedValue({ id: 'req-1' });
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'n' });
+      mockRegistrationRequestRepository.createRequest.mockResolvedValue({
+        id: 'req-1',
+      });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'n',
+      });
 
       await service.createRegistrationRequest(dtoNoMac);
 
-      expect(mockRegistrationRequestRepository.findFirstByMac).not.toHaveBeenCalled();
-      expect(mockRegistrationRequestRepository.createRequest).toHaveBeenCalled();
+      expect(
+        mockRegistrationRequestRepository.findFirstByMac,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockRegistrationRequestRepository.createRequest,
+      ).toHaveBeenCalled();
     });
   });
 
   describe('getPendingRequests', () => {
     it('should return pending non-expired requests', async () => {
       const requests = [{ id: 'req-1' }, { id: 'req-2' }];
-      mockRegistrationRequestRepository.findManyPending.mockResolvedValue(requests);
+      mockRegistrationRequestRepository.findManyPending.mockResolvedValue(
+        requests,
+      );
 
       const result = await service.getPendingRequests('main-1');
 
       expect(result).toEqual(requests);
-      expect(mockRegistrationRequestRepository.findManyPending).toHaveBeenCalledWith('main-1');
+      expect(
+        mockRegistrationRequestRepository.findManyPending,
+      ).toHaveBeenCalledWith('main-1');
     });
   });
 
@@ -175,7 +209,9 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.PENDING,
         childNodeId: null,
       };
-      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(
+        request,
+      );
 
       const result = await service.getRequest('req-1');
       expect(result).toEqual(request);
@@ -184,7 +220,9 @@ describe('RegistrationRequestService', () => {
     it('should throw NotFoundException when request not found', async () => {
       mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(null);
 
-      await expect(service.getRequest('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getRequest('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should include apiKey when request is APPROVED with childNodeId', async () => {
@@ -193,8 +231,12 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.APPROVED,
         childNodeId: 'child-1',
       };
-      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
-      mockNodeRepository.findUnique.mockResolvedValue({ apiKey: 'bb_secret_key' });
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(
+        request,
+      );
+      mockNodeRepository.findUnique.mockResolvedValue({
+        apiKey: 'bb_secret_key',
+      });
 
       const result = await service.getRequest('req-1');
       expect((result as any).apiKey).toBe('bb_secret_key');
@@ -208,16 +250,22 @@ describe('RegistrationRequestService', () => {
         pairingToken: '123456',
         tokenExpiresAt: new Date(Date.now() + 60000),
       };
-      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(request);
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(
+        request,
+      );
 
       const result = await service.getRequestByToken('123456');
       expect(result.id).toBe('req-1');
     });
 
     it('should throw NotFoundException for invalid token', async () => {
-      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(null);
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(
+        null,
+      );
 
-      await expect(service.getRequestByToken('000000')).rejects.toThrow(NotFoundException);
+      await expect(service.getRequestByToken('000000')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException for expired token', async () => {
@@ -226,7 +274,9 @@ describe('RegistrationRequestService', () => {
         tokenExpiresAt: new Date(Date.now() - 60000),
       });
 
-      await expect(service.getRequestByToken('123456')).rejects.toThrow(BadRequestException);
+      await expect(service.getRequestByToken('123456')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -238,14 +288,18 @@ describe('RegistrationRequestService', () => {
         childNodeName: 'Child',
         ipAddress: '1.1.1.1',
       };
-      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(
+        request,
+      );
       mockRegistrationRequestRepository.updateById.mockResolvedValue({
         ...request,
         status: RegistrationRequestStatus.REJECTED,
         rejectionReason: 'Not authorized',
       });
 
-      const result = await service.rejectRequest('req-1', { reason: 'Not authorized' });
+      const result = await service.rejectRequest('req-1', {
+        reason: 'Not authorized',
+      });
 
       expect(result.status).toBe(RegistrationRequestStatus.REJECTED);
       expect(mockRegistrationRequestRepository.updateById).toHaveBeenCalledWith(
@@ -253,7 +307,7 @@ describe('RegistrationRequestService', () => {
         expect.objectContaining({
           status: RegistrationRequestStatus.REJECTED,
           rejectionReason: 'Not authorized',
-        })
+        }),
       );
     });
 
@@ -263,9 +317,9 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.APPROVED,
       });
 
-      await expect(service.rejectRequest('req-1', { reason: 'Too late' })).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        service.rejectRequest('req-1', { reason: 'Too late' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -292,23 +346,29 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.REJECTED,
       });
 
-      await expect(service.cancelRequest('req-1')).rejects.toThrow(BadRequestException);
+      await expect(service.cancelRequest('req-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('cleanupExpiredRequests', () => {
     it('should mark expired PENDING requests as EXPIRED', async () => {
-      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({ count: 3 });
+      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({
+        count: 3,
+      });
 
       await service.cleanupExpiredRequests();
 
-      expect(mockRegistrationRequestRepository.updateManyExpired).toHaveBeenCalledWith(
-        expect.any(Date)
-      );
+      expect(
+        mockRegistrationRequestRepository.updateManyExpired,
+      ).toHaveBeenCalledWith(expect.any(Date));
     });
 
     it('should handle errors gracefully', async () => {
-      mockRegistrationRequestRepository.updateManyExpired.mockRejectedValue(new Error('DB error'));
+      mockRegistrationRequestRepository.updateManyExpired.mockRejectedValue(
+        new Error('DB error'),
+      );
 
       await expect(service.cleanupExpiredRequests()).resolves.toBeUndefined();
     });
@@ -316,23 +376,29 @@ describe('RegistrationRequestService', () => {
 
   describe('deleteOldRequests', () => {
     it('should delete requests older than 30 days', async () => {
-      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({ count: 5 });
+      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({
+        count: 5,
+      });
 
       await service.deleteOldRequests();
 
-      expect(mockRegistrationRequestRepository.deleteManyOld).toHaveBeenCalledWith(
+      expect(
+        mockRegistrationRequestRepository.deleteManyOld,
+      ).toHaveBeenCalledWith(
         expect.any(Date),
         expect.arrayContaining([
           RegistrationRequestStatus.APPROVED,
           RegistrationRequestStatus.REJECTED,
           RegistrationRequestStatus.EXPIRED,
           RegistrationRequestStatus.CANCELLED,
-        ])
+        ]),
       );
     });
 
     it('should handle errors gracefully', async () => {
-      mockRegistrationRequestRepository.deleteManyOld.mockRejectedValue(new Error('DB error'));
+      mockRegistrationRequestRepository.deleteManyOld.mockRejectedValue(
+        new Error('DB error'),
+      );
 
       await expect(service.deleteOldRequests()).resolves.toBeUndefined();
     });
@@ -345,7 +411,9 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.PENDING,
         tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       };
-      mockRegistrationRequestRepository.updateById.mockResolvedValue(updatedRequest);
+      mockRegistrationRequestRepository.updateById.mockResolvedValue(
+        updatedRequest,
+      );
 
       const result = await service.resetRequestTTL('req-1');
 
@@ -357,7 +425,7 @@ describe('RegistrationRequestService', () => {
           tokenExpiresAt: expect.any(Date),
           tokenGeneratedAt: expect.any(Date),
           requestedAt: expect.any(Date),
-        })
+        }),
       );
     });
   });
@@ -372,8 +440,12 @@ describe('RegistrationRequestService', () => {
         childNodeName: 'Child',
         ipAddress: '1.2.3.4',
       };
-      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(pendingRequest);
-      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(pendingRequest);
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(
+        pendingRequest,
+      );
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(
+        pendingRequest,
+      );
       mockRegistrationRequestRepository.updateById.mockResolvedValue({
         ...pendingRequest,
         status: RegistrationRequestStatus.CANCELLED,
@@ -385,9 +457,13 @@ describe('RegistrationRequestService', () => {
     });
 
     it('should throw NotFoundException for invalid token', async () => {
-      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(null);
+      mockRegistrationRequestRepository.findUniqueByToken.mockResolvedValue(
+        null,
+      );
 
-      await expect(service.cancelRequestByToken('000000')).rejects.toThrow(NotFoundException);
+      await expect(service.cancelRequestByToken('000000')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -398,32 +474,44 @@ describe('RegistrationRequestService', () => {
         status: RegistrationRequestStatus.APPROVED,
         childNodeId: 'child-99',
       };
-      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(request);
+      mockRegistrationRequestRepository.findUniqueById.mockResolvedValue(
+        request,
+      );
       mockNodeRepository.findUnique.mockResolvedValue(null);
 
       const result = await service.getRequest('req-1');
 
-      expect((result as unknown as Record<string, unknown>).apiKey).toBeUndefined();
+      expect(
+        (result as unknown as Record<string, unknown>).apiKey,
+      ).toBeUndefined();
     });
   });
 
   describe('cleanupExpiredRequests - no expired', () => {
     it('should not log when no requests expired', async () => {
-      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({ count: 0 });
+      mockRegistrationRequestRepository.updateManyExpired.mockResolvedValue({
+        count: 0,
+      });
 
       await service.cleanupExpiredRequests();
 
-      expect(mockRegistrationRequestRepository.updateManyExpired).toHaveBeenCalled();
+      expect(
+        mockRegistrationRequestRepository.updateManyExpired,
+      ).toHaveBeenCalled();
     });
   });
 
   describe('deleteOldRequests - no deletions', () => {
     it('should not log when count is 0', async () => {
-      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({ count: 0 });
+      mockRegistrationRequestRepository.deleteManyOld.mockResolvedValue({
+        count: 0,
+      });
 
       await service.deleteOldRequests();
 
-      expect(mockRegistrationRequestRepository.deleteManyOld).toHaveBeenCalled();
+      expect(
+        mockRegistrationRequestRepository.deleteManyOld,
+      ).toHaveBeenCalled();
     });
   });
 
@@ -434,7 +522,7 @@ describe('RegistrationRequestService', () => {
         mainNode: unknown;
         duplicateNode: unknown;
         newNode: unknown;
-      }> = {}
+      }> = {},
     ) => {
       const defaultRequest = {
         id: 'req-1',
@@ -468,7 +556,9 @@ describe('RegistrationRequestService', () => {
         async (cb: (tx: unknown) => unknown) => {
           const tx = {
             nodeRegistrationRequest: {
-              findUnique: jest.fn().mockResolvedValue(overrides.request ?? defaultRequest),
+              findUnique: jest
+                .fn()
+                .mockResolvedValue(overrides.request ?? defaultRequest),
               findMany: jest.fn().mockResolvedValue([]),
               update: jest.fn().mockResolvedValue({
                 ...(overrides.request ?? defaultRequest),
@@ -481,12 +571,16 @@ describe('RegistrationRequestService', () => {
                 .fn()
                 .mockResolvedValueOnce(overrides.mainNode ?? defaultMainNode)
                 .mockResolvedValue(null),
-              findFirst: jest.fn().mockResolvedValue(overrides.duplicateNode ?? null),
-              create: jest.fn().mockResolvedValue(overrides.newNode ?? defaultNewNode),
+              findFirst: jest
+                .fn()
+                .mockResolvedValue(overrides.duplicateNode ?? null),
+              create: jest
+                .fn()
+                .mockResolvedValue(overrides.newNode ?? defaultNewNode),
             },
           };
           return cb(tx);
-        }
+        },
       );
     };
 
@@ -499,10 +593,12 @@ describe('RegistrationRequestService', () => {
             },
           };
           return cb(tx);
-        }
+        },
       );
 
-      await expect(service.approveRequest('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.approveRequest('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when request is not PENDING', async () => {
@@ -520,10 +616,12 @@ describe('RegistrationRequestService', () => {
             },
           };
           return cb(tx);
-        }
+        },
       );
 
-      await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
+      await expect(service.approveRequest('req-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when request is expired', async () => {
@@ -541,10 +639,12 @@ describe('RegistrationRequestService', () => {
             },
           };
           return cb(tx);
-        }
+        },
       );
 
-      await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
+      await expect(service.approveRequest('req-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw NotFoundException when main node not found', async () => {
@@ -565,10 +665,12 @@ describe('RegistrationRequestService', () => {
             },
           };
           return cb(tx);
-        }
+        },
       );
 
-      await expect(service.approveRequest('req-1')).rejects.toThrow(NotFoundException);
+      await expect(service.approveRequest('req-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw ConflictException when license node limit reached', async () => {
@@ -597,11 +699,13 @@ describe('RegistrationRequestService', () => {
             },
           };
           return cb(tx);
-        }
+        },
       );
 
       await expect(service.approveRequest('req-1')).rejects.toThrow(
-        expect.objectContaining({ message: expect.stringContaining('Maximum nodes') })
+        expect.objectContaining({
+          message: expect.stringContaining('Maximum nodes'),
+        }),
       );
     });
 
@@ -614,13 +718,20 @@ describe('RegistrationRequestService', () => {
         storageBasePath: null,
         latencyMs: 5,
       });
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-2' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-2',
+      });
       mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
-      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([]);
+      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue(
+        [],
+      );
 
       const result = await service.approveRequest('req-1');
 
-      expect(result).toMatchObject({ id: 'req-1', status: RegistrationRequestStatus.APPROVED });
+      expect(result).toMatchObject({
+        id: 'req-1',
+        status: RegistrationRequestStatus.APPROVED,
+      });
       expect(mockNotificationsGateway.sendToAll).toHaveBeenCalled();
     });
 
@@ -662,11 +773,13 @@ describe('RegistrationRequestService', () => {
                 })
                 .mockResolvedValue(null),
               findFirst: jest.fn().mockResolvedValue(null),
-              create: jest.fn().mockResolvedValue({ id: 'new-node-ssh', apiKey: 'bb_sshkey' }),
+              create: jest
+                .fn()
+                .mockResolvedValue({ id: 'new-node-ssh', apiKey: 'bb_sshkey' }),
             },
           };
           return cb(tx);
-        }
+        },
       );
 
       mockCapabilityDetector.detectCapabilities.mockResolvedValue({
@@ -676,19 +789,23 @@ describe('RegistrationRequestService', () => {
         latencyMs: 5,
       });
       mockSshKeyService.getPublicKey.mockReturnValue('ssh-rsa MAIN_PUBLIC_KEY');
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'n-ssh' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'n-ssh',
+      });
       mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
-      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([]);
+      mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue(
+        [],
+      );
 
       const result = await service.approveRequest('req-ssh');
 
       expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(
         'ssh-rsa AAAA...publickey child@node',
-        expect.stringContaining('new-node-ssh')
+        expect.stringContaining('new-node-ssh'),
       );
-      expect((result as unknown as Record<string, unknown>).mainNodePublicKey).toBe(
-        'ssh-rsa MAIN_PUBLIC_KEY'
-      );
+      expect(
+        (result as unknown as Record<string, unknown>).mainNodePublicKey,
+      ).toBe('ssh-rsa MAIN_PUBLIC_KEY');
     });
 
     it('should mark child node as having shared storage when shares are created', async () => {
@@ -700,13 +817,18 @@ describe('RegistrationRequestService', () => {
         storageBasePath: null,
         latencyMs: 5,
       });
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-3' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-3',
+      });
       mockNodeRepository.findMain.mockResolvedValue({ id: 'main-1' });
       mockStorageShareService.autoCreateSharesForLibraries.mockResolvedValue([
         { id: 'share-1' },
         { id: 'share-2' },
       ]);
-      mockNodeRepository.updateData.mockResolvedValue({ id: 'new-node-1', hasSharedStorage: true });
+      mockNodeRepository.updateData.mockResolvedValue({
+        id: 'new-node-1',
+        hasSharedStorage: true,
+      });
 
       await service.approveRequest('req-1');
 

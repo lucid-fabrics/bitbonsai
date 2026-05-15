@@ -35,7 +35,9 @@ export class DatabaseInitService implements OnModuleInit {
       if (licenseCount === 0) {
         // Don't auto-create nodes - let the setup wizard handle it
         // Just create a default license for the setup wizard to use
-        this.logger.log('📦 No licenses found. Creating default FREE license...');
+        this.logger.log(
+          '📦 No licenses found. Creating default FREE license...',
+        );
         await this.createDefaultLicense();
       } else {
         this.logger.log('✅ Database already initialized');
@@ -78,7 +80,9 @@ export class DatabaseInitService implements OnModuleInit {
 
     const hostname = process.env.HOSTNAME || 'main-node';
     const apiKey = `bb_${require('crypto').randomBytes(48).toString('base64').slice(0, 64)}`;
-    const pairingToken = (100000 + require('crypto').randomInt(900000)).toString();
+    const pairingToken = (
+      100000 + require('crypto').randomInt(900000)
+    ).toString();
 
     await this.prisma.node.create({
       data: {
@@ -118,7 +122,9 @@ export class DatabaseInitService implements OnModuleInit {
     });
 
     this.logger.log(`✅ Created FREE license: ${license.key}`);
-    this.logger.log('🎉 Database initialization complete! Run setup wizard to create nodes.');
+    this.logger.log(
+      '🎉 Database initialization complete! Run setup wizard to create nodes.',
+    );
   }
 
   /**

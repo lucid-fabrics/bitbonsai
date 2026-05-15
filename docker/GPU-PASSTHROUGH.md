@@ -3,6 +3,7 @@
 This guide covers hardware acceleration setup for NVIDIA, Intel, and AMD GPUs on Unraid and standard Docker environments.
 
 ## Table of Contents
+
 - [Unraid Configuration](#unraid-configuration)
 - [Docker Compose Configuration](#docker-compose-configuration)
 - [Verification](#verification)
@@ -15,6 +16,7 @@ This guide covers hardware acceleration setup for NVIDIA, Intel, and AMD GPUs on
 ### NVIDIA GPU (NVENC)
 
 **Prerequisites:**
+
 - NVIDIA GPU with NVENC support (GTX 10xx series or newer)
 - Unraid NVIDIA Plugin installed (`Settings > Plugins > Install Plugin`)
 - NVIDIA drivers loaded (check `Tools > System Devices`)
@@ -37,6 +39,7 @@ Hardware Acceleration (NVIDIA):
 ```
 
 **Manual Docker Command (Unraid Terminal):**
+
 ```bash
 docker run -d \
   --name=bitbonsai \
@@ -53,6 +56,7 @@ docker run -d \
 ```
 
 **Verify NVIDIA GPU:**
+
 ```bash
 docker exec bitbonsai nvidia-smi
 # Should show your GPU(s)
@@ -63,6 +67,7 @@ docker exec bitbonsai nvidia-smi
 ### Intel QuickSync (QSV)
 
 **Prerequisites:**
+
 - Intel CPU with integrated graphics (6th gen or newer recommended)
 - `/dev/dri` device available on host
 - Intel graphics drivers loaded
@@ -81,6 +86,7 @@ Hardware Acceleration (Intel QSV):
 ```
 
 **Manual Docker Command (Unraid Terminal):**
+
 ```bash
 docker run -d \
   --name=bitbonsai \
@@ -96,6 +102,7 @@ docker run -d \
 ```
 
 **Verify Intel QSV:**
+
 ```bash
 docker exec bitbonsai ls -la /dev/dri
 # Should show renderD128, card0, etc.
@@ -109,6 +116,7 @@ docker exec bitbonsai vainfo
 ### AMD GPU (AMF)
 
 **Prerequisites:**
+
 - AMD GPU with AMF support (RX 400 series or newer)
 - `/dev/dri` devices available
 - AMDGPU drivers loaded
@@ -128,6 +136,7 @@ Hardware Acceleration (AMD):
 ```
 
 **Manual Docker Command (Unraid Terminal):**
+
 ```bash
 docker run -d \
   --name=bitbonsai \
@@ -144,6 +153,7 @@ docker run -d \
 ```
 
 **Verify AMD GPU:**
+
 ```bash
 docker exec bitbonsai ls -la /dev/dri
 # Should show renderD128, card0
@@ -168,8 +178,8 @@ services:
     container_name: bitbonsai
     restart: unless-stopped
     ports:
-      - "4200:4200"
-      - "3000:3000"
+      - '4200:4200'
+      - '3000:3000'
     volumes:
       - /mnt/user/media:/library
       - /mnt/user/appdata/bitbonsai:/config
@@ -193,8 +203,8 @@ services:
     container_name: bitbonsai
     restart: unless-stopped
     ports:
-      - "4200:4200"
-      - "3000:3000"
+      - '4200:4200'
+      - '3000:3000'
     volumes:
       - /mnt/user/media:/library
       - /mnt/user/appdata/bitbonsai:/config
@@ -211,8 +221,8 @@ services:
     container_name: bitbonsai
     restart: unless-stopped
     ports:
-      - "4200:4200"
-      - "3000:3000"
+      - '4200:4200'
+      - '3000:3000'
     volumes:
       - /mnt/user/media:/library
       - /mnt/user/appdata/bitbonsai:/config
@@ -251,11 +261,13 @@ services:
 ### Monitor GPU Usage
 
 **NVIDIA:**
+
 ```bash
 watch -n 1 nvidia-smi
 ```
 
 **Intel/AMD:**
+
 ```bash
 # Install intel-gpu-tools or radeontop
 intel_gpu_top
@@ -272,18 +284,22 @@ radeontop
 **Issue:** BitBonsai shows NVIDIA as unavailable
 
 **Solutions:**
+
 1. Verify NVIDIA plugin installed on Unraid:
+
    ```bash
    ls /usr/bin/nvidia-smi
    ```
 
 2. Check NVIDIA runtime:
+
    ```bash
    docker info | grep -i runtime
    # Should show "nvidia"
    ```
 
 3. Verify GPU visible to Docker:
+
    ```bash
    docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
    ```
@@ -297,18 +313,22 @@ radeontop
 **Issue:** BitBonsai shows Intel QSV as unavailable
 
 **Solutions:**
+
 1. Check `/dev/dri` devices exist:
+
    ```bash
    ls -la /dev/dri
    ```
 
 2. Verify Intel GPU vendor ID:
+
    ```bash
    cat /sys/class/drm/card0/device/vendor
    # Should show: 0x8086
    ```
 
 3. Check permissions:
+
    ```bash
    # Add user to video/render group
    usermod -aG video,render nobody
@@ -323,18 +343,22 @@ radeontop
 **Issue:** BitBonsai shows AMD GPU as unavailable
 
 **Solutions:**
+
 1. Check render device exists:
+
    ```bash
    ls -la /dev/dri/renderD128
    ```
 
 2. Verify AMD GPU vendor ID:
+
    ```bash
    cat /sys/class/drm/card0/device/vendor
    # Should show: 0x1002
    ```
 
 3. Install AMDGPU drivers if needed:
+
    ```bash
    # On Unraid, check kernel modules
    lsmod | grep amdgpu
@@ -349,6 +373,7 @@ radeontop
 ### Multiple GPUs
 
 **NVIDIA - Specific GPU:**
+
 ```bash
 # Find GPU UUID
 nvidia-smi -L
@@ -358,6 +383,7 @@ nvidia-smi -L
 ```
 
 **Intel/AMD - Specific Device:**
+
 ```bash
 # List all DRI devices
 ls -la /dev/dri
@@ -376,6 +402,7 @@ ls -la /dev/dri
    - AMD: `radeontop`
 
 2. **Verify FFmpeg is using hardware encoder:**
+
    ```bash
    docker exec bitbonsai ffmpeg -hide_banner -encoders | grep -E "(nvenc|qsv|amf)"
    ```
@@ -398,9 +425,9 @@ ls -la /dev/dri
 
 ## Quick Reference
 
-| GPU Type | Device Mapping | Extra Params | Encoder |
-|----------|---------------|--------------|---------|
-| NVIDIA   | N/A           | `--runtime=nvidia --gpus all` | `h264_nvenc`, `hevc_nvenc` |
-| Intel QSV | `--device=/dev/dri:/dev/dri` | None | `h264_qsv`, `hevc_qsv` |
-| AMD AMF   | `--device=/dev/dri/renderD128` `--device=/dev/dri/card0` | None | `h264_amf`, `hevc_amf` |
-| CPU Only  | None | None | `libx264`, `libx265` |
+| GPU Type  | Device Mapping                                           | Extra Params                  | Encoder                    |
+| --------- | -------------------------------------------------------- | ----------------------------- | -------------------------- |
+| NVIDIA    | N/A                                                      | `--runtime=nvidia --gpus all` | `h264_nvenc`, `hevc_nvenc` |
+| Intel QSV | `--device=/dev/dri:/dev/dri`                             | None                          | `h264_qsv`, `hevc_qsv`     |
+| AMD AMF   | `--device=/dev/dri/renderD128` `--device=/dev/dri/card0` | None                          | `h264_amf`, `hevc_amf`     |
+| CPU Only  | None                                                     | None                          | `libx264`, `libx265`       |

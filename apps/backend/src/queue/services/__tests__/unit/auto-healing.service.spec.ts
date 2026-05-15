@@ -52,7 +52,10 @@ describe('AutoHealingService', () => {
     jest.restoreAllMocks();
   });
 
-  const createFailedJob = (id: string, overrides: Record<string, unknown> = {}) => ({
+  const createFailedJob = (
+    id: string,
+    overrides: Record<string, unknown> = {},
+  ) => ({
     id,
     fileLabel: `test-${id}.mkv`,
     retryCount: 0,
@@ -65,19 +68,23 @@ describe('AutoHealingService', () => {
 
   describe('healFailedJobs', () => {
     it('should return 0 when no eligible failed jobs', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
       jobRepository.findManySelect.mockResolvedValue([]);
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(0);
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'No failed jobs eligible for auto-healing'
+        'No failed jobs eligible for auto-healing',
       );
     });
 
     it('should heal failed jobs by resetting to QUEUED', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
       jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', { retryCount: 2, progress: 30 }),
         createFailedJob('job-2', { retryCount: 0, progress: 0 }),
@@ -105,12 +112,14 @@ describe('AutoHealingService', () => {
           autoHealedProgress: 30,
           resumeTimestamp: null,
           tempFilePath: null,
-        })
+        }),
       );
     });
 
     it('should preserve progress when temp file exists for resume', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
       jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', {
           retryCount: 1,
@@ -134,12 +143,14 @@ describe('AutoHealingService', () => {
           resumeTimestamp: '00:45:30',
           tempFilePath: '/tmp/encode-job-1.mkv',
           autoHealedProgress: 65,
-        })
+        }),
       );
     });
 
     it('should clear resume state when temp file is missing', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
       jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', {
           retryCount: 1,
@@ -161,12 +172,14 @@ describe('AutoHealingService', () => {
           progress: 0, // Reset since temp file gone
           resumeTimestamp: null,
           tempFilePath: null,
-        })
+        }),
       );
     });
 
     it('should create audit trail history entry', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
       jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1', { retryCount: 0, progress: 20 }),
       ]);
@@ -185,12 +198,16 @@ describe('AutoHealingService', () => {
         tempFileExists: false,
         retryNumber: 1,
         triggeredBy: 'BACKEND_RESTART',
-        systemMessage: expect.stringContaining('starting encoding from scratch'),
+        systemMessage: expect.stringContaining(
+          'starting encoding from scratch',
+        ),
       });
     });
 
     it('should continue processing if one job fails to heal', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
       jobRepository.findManySelect.mockResolvedValue([
         createFailedJob('job-1'),
         createFailedJob('job-2'),
@@ -209,7 +226,7 @@ describe('AutoHealingService', () => {
       expect(result).toBe(2); // 2 out of 3 healed
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to heal job job-2'),
-        expect.any(Error)
+        expect.any(Error),
       );
     });
 
@@ -219,26 +236,34 @@ describe('AutoHealingService', () => {
 
       await service.healFailedJobs();
 
-      expect((service as any).logger.log).toHaveBeenCalledWith('Auto-heal max retry limit: 15');
+      expect((service as any).logger.log).toHaveBeenCalledWith(
+        'Auto-heal max retry limit: 15',
+      );
     });
 
     it('should handle database error gracefully', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 15 });
-      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection lost'));
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
+      jobRepository.findManySelect.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(0);
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to heal failed jobs',
-        expect.any(Error)
+        expect.any(Error),
       );
     });
   });
 
   describe('onModuleInit', () => {
     it('should call healFailedJobs on startup', async () => {
-      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(5);
+      const healSpy = jest
+        .spyOn(service, 'healFailedJobs')
+        .mockResolvedValue(5);
 
       await service.onModuleInit();
 
@@ -248,7 +273,9 @@ describe('AutoHealingService', () => {
 
   describe('settings cache', () => {
     it('should cache maxRetries for 1 minute', async () => {
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 10 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 10,
+      });
       jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.healFailedJobs();
@@ -262,7 +289,9 @@ describe('AutoHealingService', () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-02-21T12:00:00Z'));
 
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 10 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 10,
+      });
       jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.healFailedJobs();
@@ -270,7 +299,9 @@ describe('AutoHealingService', () => {
       // Advance past cache TTL (60 seconds)
       jest.advanceTimersByTime(61000);
 
-      settingsRepository.findFirst.mockResolvedValue({ maxAutoHealRetries: 20 });
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 20,
+      });
 
       await service.healFailedJobs();
 

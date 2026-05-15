@@ -13,7 +13,11 @@ import {
   seedTestDatabase,
   waitForJobCompletion,
 } from '../fixtures/test-helpers';
-import { cleanupFixtures, generateVideo, verifyVideoFile } from '../fixtures/video-generator';
+import {
+  cleanupFixtures,
+  generateVideo,
+  verifyVideoFile,
+} from '../fixtures/video-generator';
 
 /**
  * Level 2: Multiple Codecs
@@ -44,7 +48,9 @@ describe('Level 2: Multiple Codecs', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(
+      EncodingProcessorService,
+    );
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();

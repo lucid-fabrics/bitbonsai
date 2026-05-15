@@ -8,11 +8,14 @@ import { StripeService } from '../stripe.service';
 // Helper to build a configured service with a mocked Stripe instance
 async function buildConfiguredService(
   licenseRepositoryMock: Record<string, jest.Mock>,
-  stripeMock: Record<string, unknown>
+  stripeMock: Record<string, unknown>,
 ): Promise<StripeService> {
   process.env.STRIPE_SECRET_KEY = 'sk_test_abc';
   const module: TestingModule = await Test.createTestingModule({
-    providers: [StripeService, { provide: LicenseRepository, useValue: licenseRepositoryMock }],
+    providers: [
+      StripeService,
+      { provide: LicenseRepository, useValue: licenseRepositoryMock },
+    ],
   }).compile();
   const svc = module.get<StripeService>(StripeService);
   // Inject mock stripe instance directly
@@ -36,7 +39,10 @@ describe('StripeService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [StripeService, { provide: LicenseRepository, useValue: licenseRepositoryMock }],
+      providers: [
+        StripeService,
+        { provide: LicenseRepository, useValue: licenseRepositoryMock },
+      ],
     }).compile();
 
     service = module.get<StripeService>(StripeService);
@@ -63,7 +69,10 @@ describe('StripeService', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_123';
 
       const module: TestingModule = await Test.createTestingModule({
-        providers: [StripeService, { provide: LicenseRepository, useValue: licenseRepositoryMock }],
+        providers: [
+          StripeService,
+          { provide: LicenseRepository, useValue: licenseRepositoryMock },
+        ],
       }).compile();
 
       const newService = module.get<StripeService>(StripeService);
@@ -79,16 +88,24 @@ describe('StripeService', () => {
           priceId: 'price_1',
           successUrl: 'http://ok',
           cancelUrl: 'http://cancel',
-        })
+        }),
       ).rejects.toThrow('Stripe is not configured');
     });
 
     it('should create a checkout session and return sessionId + url', async () => {
-      const mockSession = { id: 'sess_123', url: 'https://checkout.stripe.com/sess_123' };
-      const stripeMock = {
-        checkout: { sessions: { create: jest.fn().mockResolvedValue(mockSession) } },
+      const mockSession = {
+        id: 'sess_123',
+        url: 'https://checkout.stripe.com/sess_123',
       };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const stripeMock = {
+        checkout: {
+          sessions: { create: jest.fn().mockResolvedValue(mockSession) },
+        },
+      };
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
 
       const result = await svc.createCheckoutSession({
         email: 'test@example.com',
@@ -103,29 +120,37 @@ describe('StripeService', () => {
           mode: 'subscription',
           customer_email: 'test@example.com',
           line_items: [{ price: 'price_pro', quantity: 1 }],
-        })
+        }),
       );
     });
   });
 
   describe('getCustomerPortalUrl', () => {
     it('should throw when stripe is not configured', async () => {
-      await expect(service.getCustomerPortalUrl('cus_123', 'https://app')).rejects.toThrow(
-        'Stripe is not configured'
-      );
+      await expect(
+        service.getCustomerPortalUrl('cus_123', 'https://app'),
+      ).rejects.toThrow('Stripe is not configured');
     });
 
     it('should return billing portal session url', async () => {
       const stripeMock = {
         billingPortal: {
           sessions: {
-            create: jest.fn().mockResolvedValue({ url: 'https://billing.stripe.com/p' }),
+            create: jest
+              .fn()
+              .mockResolvedValue({ url: 'https://billing.stripe.com/p' }),
           },
         },
       };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
 
-      const url = await svc.getCustomerPortalUrl('cus_abc', 'https://app/return');
+      const url = await svc.getCustomerPortalUrl(
+        'cus_abc',
+        'https://app/return',
+      );
       expect(url).toBe('https://billing.stripe.com/p');
       expect(stripeMock.billingPortal.sessions.create).toHaveBeenCalledWith({
         customer: 'cus_abc',
@@ -154,7 +179,10 @@ describe('StripeService', () => {
 
       const pricesRetrieve = jest.fn().mockResolvedValue(mockPrice);
       const stripeMock = { prices: { retrieve: pricesRetrieve } };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
 
       const plans = await svc.getPlans();
       expect(plans.length).toBeGreaterThan(0);
@@ -170,9 +198,14 @@ describe('StripeService', () => {
       process.env.STRIPE_PRICE_PRO = 'price_missing2';
       process.env.STRIPE_PRICE_ENTERPRISE = 'price_missing3';
 
-      const pricesRetrieve = jest.fn().mockRejectedValue(new Error('No such price'));
+      const pricesRetrieve = jest
+        .fn()
+        .mockRejectedValue(new Error('No such price'));
       const stripeMock = { prices: { retrieve: pricesRetrieve } };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
 
       const plans = await svc.getPlans();
       expect(plans).toEqual([]);
@@ -184,10 +217,17 @@ describe('StripeService', () => {
       process.env.STRIPE_PRICE_ENTERPRISE = 'price_free3';
 
       const mockProduct: Partial<Stripe.Product> = { name: 'Free Plan' };
-      const mockPrice = { unit_amount: null, recurring: null, product: mockProduct };
+      const mockPrice = {
+        unit_amount: null,
+        recurring: null,
+        product: mockProduct,
+      };
       const pricesRetrieve = jest.fn().mockResolvedValue(mockPrice);
       const stripeMock = { prices: { retrieve: pricesRetrieve } };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
 
       const plans = await svc.getPlans();
       expect(plans[0].price).toBe(0);
@@ -197,19 +237,22 @@ describe('StripeService', () => {
 
   describe('handleWebhook', () => {
     it('should throw when stripe is not configured', async () => {
-      await expect(service.handleWebhook('sig', Buffer.from('body'))).rejects.toThrow(
-        'Stripe is not configured'
-      );
+      await expect(
+        service.handleWebhook('sig', Buffer.from('body')),
+      ).rejects.toThrow('Stripe is not configured');
     });
 
     it('should throw when STRIPE_WEBHOOK_SECRET is not set', async () => {
       process.env.STRIPE_WEBHOOK_SECRET = '';
       const stripeMock = { webhooks: { constructEvent: jest.fn() } };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).rejects.toThrow(
-        'STRIPE_WEBHOOK_SECRET not configured'
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
       );
+
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).rejects.toThrow('STRIPE_WEBHOOK_SECRET not configured');
     });
 
     it('should throw UnauthorizedException when signature verification fails', async () => {
@@ -218,11 +261,14 @@ describe('StripeService', () => {
         throw new Error('Invalid signature');
       });
       const stripeMock = { webhooks: { constructEvent } };
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-
-      await expect(svc.handleWebhook('bad_sig', Buffer.from('body'))).rejects.toThrow(
-        UnauthorizedException
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
       );
+
+      await expect(
+        svc.handleWebhook('bad_sig', Buffer.from('body')),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should handle checkout.session.completed with existing license', async () => {
@@ -232,7 +278,11 @@ describe('StripeService', () => {
       const mockSubscription: Partial<Stripe.Subscription> = {
         id: 'sub_1',
         items: {
-          data: [{ price: { id: 'price_starter_mapped' } } as Stripe.SubscriptionItem],
+          data: [
+            {
+              price: { id: 'price_starter_mapped' },
+            } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -248,7 +298,9 @@ describe('StripeService', () => {
       } as unknown as Stripe.Event;
 
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
-      const subscriptionsRetrieve = jest.fn().mockResolvedValue(mockSubscription);
+      const subscriptionsRetrieve = jest
+        .fn()
+        .mockResolvedValue(mockSubscription);
       const stripeMock = {
         webhooks: { constructEvent },
         subscriptions: { retrieve: subscriptionsRetrieve },
@@ -259,7 +311,10 @@ describe('StripeService', () => {
       ]);
       licenseRepositoryMock.updateByKey.mockResolvedValue({});
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
       await svc.handleWebhook('sig', Buffer.from('body'));
 
       expect(licenseRepositoryMock.updateByKey).toHaveBeenCalledWith(
@@ -268,7 +323,7 @@ describe('StripeService', () => {
           tier: LicenseTier.COMMERCIAL_STARTER,
           status: LicenseStatus.ACTIVE,
           maxNodes: 15,
-        })
+        }),
       );
     });
 
@@ -279,7 +334,9 @@ describe('StripeService', () => {
       const mockSubscription: Partial<Stripe.Subscription> = {
         id: 'sub_2',
         items: {
-          data: [{ price: { id: 'price_pro_mapped' } } as Stripe.SubscriptionItem],
+          data: [
+            { price: { id: 'price_pro_mapped' } } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -296,7 +353,9 @@ describe('StripeService', () => {
       } as unknown as Stripe.Event;
 
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
-      const subscriptionsRetrieve = jest.fn().mockResolvedValue(mockSubscription);
+      const subscriptionsRetrieve = jest
+        .fn()
+        .mockResolvedValue(mockSubscription);
       const stripeMock = {
         webhooks: { constructEvent },
         subscriptions: { retrieve: subscriptionsRetrieve },
@@ -305,7 +364,10 @@ describe('StripeService', () => {
       licenseRepositoryMock.findByEmail.mockResolvedValue([]);
       licenseRepositoryMock.upsertByEmail.mockResolvedValue({});
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
       await svc.handleWebhook('sig', Buffer.from('body'));
 
       expect(licenseRepositoryMock.upsertByEmail).toHaveBeenCalledWith(
@@ -315,7 +377,7 @@ describe('StripeService', () => {
           tier: LicenseTier.COMMERCIAL_PRO,
           status: LicenseStatus.ACTIVE,
           maxNodes: 50,
-        })
+        }),
       );
     });
 
@@ -341,8 +403,13 @@ describe('StripeService', () => {
         subscriptions: { retrieve: subscriptionsRetrieve },
       };
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
       expect(subscriptionsRetrieve).not.toHaveBeenCalled();
     });
 
@@ -352,7 +419,9 @@ describe('StripeService', () => {
       const mockSubscription: Partial<Stripe.Subscription> = {
         id: 'sub_3',
         items: {
-          data: [{ price: { id: 'price_unknown_xyz' } } as Stripe.SubscriptionItem],
+          data: [
+            { price: { id: 'price_unknown_xyz' } } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -368,14 +437,21 @@ describe('StripeService', () => {
       } as unknown as Stripe.Event;
 
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
-      const subscriptionsRetrieve = jest.fn().mockResolvedValue(mockSubscription);
+      const subscriptionsRetrieve = jest
+        .fn()
+        .mockResolvedValue(mockSubscription);
       const stripeMock = {
         webhooks: { constructEvent },
         subscriptions: { retrieve: subscriptionsRetrieve },
       };
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
       expect(licenseRepositoryMock.findByEmail).not.toHaveBeenCalled();
     });
 
@@ -387,7 +463,9 @@ describe('StripeService', () => {
         id: 'sub_ent',
         status: 'active',
         items: {
-          data: [{ price: { id: 'price_ent_mapped' } } as Stripe.SubscriptionItem],
+          data: [
+            { price: { id: 'price_ent_mapped' } } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -402,7 +480,10 @@ describe('StripeService', () => {
       licenseRepositoryMock.findFirstWhere.mockResolvedValue({ id: 'lic_ent' });
       licenseRepositoryMock.updateById.mockResolvedValue({});
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
       await svc.handleWebhook('sig', Buffer.from('body'));
 
       expect(licenseRepositoryMock.updateById).toHaveBeenCalledWith(
@@ -411,7 +492,7 @@ describe('StripeService', () => {
           tier: LicenseTier.COMMERCIAL_ENTERPRISE,
           status: LicenseStatus.ACTIVE,
           maxNodes: 999,
-        })
+        }),
       );
     });
 
@@ -423,7 +504,9 @@ describe('StripeService', () => {
         id: 'sub_inactive',
         status: 'past_due',
         items: {
-          data: [{ price: { id: 'price_st_inactive' } } as Stripe.SubscriptionItem],
+          data: [
+            { price: { id: 'price_st_inactive' } } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -438,12 +521,15 @@ describe('StripeService', () => {
       licenseRepositoryMock.findFirstWhere.mockResolvedValue({ id: 'lic_x' });
       licenseRepositoryMock.updateById.mockResolvedValue({});
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
       await svc.handleWebhook('sig', Buffer.from('body'));
 
       expect(licenseRepositoryMock.updateById).toHaveBeenCalledWith(
         'lic_x',
-        expect.objectContaining({ status: LicenseStatus.EXPIRED })
+        expect.objectContaining({ status: LicenseStatus.EXPIRED }),
       );
     });
 
@@ -454,7 +540,9 @@ describe('StripeService', () => {
         id: 'sub_unk',
         status: 'active',
         items: {
-          data: [{ price: { id: 'price_nonexistent' } } as Stripe.SubscriptionItem],
+          data: [
+            { price: { id: 'price_nonexistent' } } as Stripe.SubscriptionItem,
+          ],
         } as Stripe.ApiList<Stripe.SubscriptionItem>,
       };
 
@@ -466,8 +554,13 @@ describe('StripeService', () => {
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
       const stripeMock = { webhooks: { constructEvent } };
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
       expect(licenseRepositoryMock.updateById).not.toHaveBeenCalled();
     });
 
@@ -483,10 +576,15 @@ describe('StripeService', () => {
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
       const stripeMock = { webhooks: { constructEvent } };
 
-      licenseRepositoryMock.findFirstWhere.mockResolvedValue({ id: 'lic_to_downgrade' });
+      licenseRepositoryMock.findFirstWhere.mockResolvedValue({
+        id: 'lic_to_downgrade',
+      });
       licenseRepositoryMock.updateById.mockResolvedValue({});
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
       await svc.handleWebhook('sig', Buffer.from('body'));
 
       expect(licenseRepositoryMock.updateById).toHaveBeenCalledWith(
@@ -496,7 +594,7 @@ describe('StripeService', () => {
           status: LicenseStatus.EXPIRED,
           maxNodes: 1,
           maxConcurrentJobs: 2,
-        })
+        }),
       );
     });
 
@@ -512,8 +610,13 @@ describe('StripeService', () => {
       const stripeMock = { webhooks: { constructEvent } };
       licenseRepositoryMock.findFirstWhere.mockResolvedValue(null);
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
       expect(licenseRepositoryMock.updateById).not.toHaveBeenCalled();
     });
 
@@ -527,10 +630,17 @@ describe('StripeService', () => {
 
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
       const stripeMock = { webhooks: { constructEvent } };
-      licenseRepositoryMock.findFirstWhere.mockResolvedValue({ id: 'lic_fail' });
+      licenseRepositoryMock.findFirstWhere.mockResolvedValue({
+        id: 'lic_fail',
+      });
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
       // No downgrade on first failure
       expect(licenseRepositoryMock.updateById).not.toHaveBeenCalled();
     });
@@ -547,8 +657,13 @@ describe('StripeService', () => {
       const stripeMock = { webhooks: { constructEvent } };
       licenseRepositoryMock.findFirstWhere.mockResolvedValue(null);
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
     });
 
     it('should handle unrecognized event types without throwing', async () => {
@@ -562,8 +677,13 @@ describe('StripeService', () => {
       const constructEvent = jest.fn().mockReturnValue(mockEvent);
       const stripeMock = { webhooks: { constructEvent } };
 
-      const svc = await buildConfiguredService(licenseRepositoryMock, stripeMock);
-      await expect(svc.handleWebhook('sig', Buffer.from('body'))).resolves.not.toThrow();
+      const svc = await buildConfiguredService(
+        licenseRepositoryMock,
+        stripeMock,
+      );
+      await expect(
+        svc.handleWebhook('sig', Buffer.from('body')),
+      ).resolves.not.toThrow();
     });
   });
 });

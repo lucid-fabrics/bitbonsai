@@ -11,6 +11,7 @@ chmod +x *.sh scripts/*.sh
 ```
 
 **Examples:**
+
 ```bash
 # Development environment (16 cores, 32GB RAM, 500GB storage)
 ./deploy-to-proxmox.sh pve-mirna 192.168.1.2 200 dev
@@ -33,6 +34,7 @@ chmod +x *.sh scripts/*.sh
 ## Container Specifications
 
 ### Development Environment (default)
+
 - **CPU:** 16 cores
 - **RAM:** 32GB
 - **Swap:** 8GB
@@ -42,6 +44,7 @@ chmod +x *.sh scripts/*.sh
 **Use case:** Heavy encoding workload, multiple concurrent jobs, testing
 
 ### Production Environment
+
 - **CPU:** 4 cores
 - **RAM:** 4GB
 - **Swap:** 2GB
@@ -55,6 +58,7 @@ chmod +x *.sh scripts/*.sh
 ## Post-Deployment
 
 After deployment completes, you'll see:
+
 - Container IP address
 - Frontend URL
 - API URL
@@ -63,24 +67,28 @@ After deployment completes, you'll see:
 ## Managing the Container
 
 **Direct SSH access to container:**
+
 ```bash
 ssh root@<container-ip>
 # Password: bitbonsai
 ```
 
 **Access via Proxmox:**
+
 ```bash
 ssh -i ~/.ssh/pve_ai_key root@proxmox-ip
 pct enter 200
 ```
 
 **View logs:**
+
 ```bash
 pct enter 200
 journalctl -u bitbonsai-backend -f
 ```
 
 **Restart services:**
+
 ```bash
 pct enter 200
 systemctl restart bitbonsai-backend
@@ -90,18 +98,21 @@ systemctl restart nginx
 ## Troubleshooting
 
 **Container won't start:**
+
 ```bash
 pct status 200
 pct start 200
 ```
 
 **Check backend status:**
+
 ```bash
 pct enter 200
 systemctl status bitbonsai-backend
 ```
 
 **Check nginx status:**
+
 ```bash
 pct enter 200
 systemctl status nginx
@@ -111,14 +122,17 @@ nginx -t
 ## Configuration
 
 ### Environment Variables
+
 Environment variables are stored in `/opt/bitbonsai/.env` inside the container.
 
 Default settings:
+
 - PORT: 3000
 - DATABASE_URL: file:/opt/bitbonsai/data/bitbonsai.db
 - JWT_SECRET: Auto-generated on install
 
 ### Custom Container Specs
+
 To customize CPU, RAM, and storage specs, edit `lxc-specs.conf`:
 
 ```bash

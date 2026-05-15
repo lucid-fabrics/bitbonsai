@@ -19,7 +19,11 @@
   .icon-wrapper {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
+    background: linear-gradient(
+      135deg,
+      $accent-primary,
+      color.adjust($accent-primary, $lightness: 10%)
+    );
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -90,7 +94,11 @@
 
 // Calculation Card
 .calculation-card {
-  background: linear-gradient(135deg, rgba($accent-primary, 0.05), rgba($accent-primary, 0.02));
+  background: linear-gradient(
+    135deg,
+    rgba($accent-primary, 0.05),
+    rgba($accent-primary, 0.02)
+  );
   border: 1px solid rgba($accent-primary, 0.2);
   border-radius: 8px;
   padding: 20px;
@@ -140,7 +148,11 @@
 
   .worker-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 15%));
+    background: linear-gradient(
+      90deg,
+      $accent-primary,
+      color.adjust($accent-primary, $lightness: 15%)
+    );
     transition: width 0.5s ease;
     border-radius: 16px;
   }
@@ -381,7 +393,11 @@
 
     .memory-bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
+      background: linear-gradient(
+        90deg,
+        $accent-primary,
+        color.adjust($accent-primary, $lightness: 10%)
+      );
       transition: width 0.5s ease;
     }
   }

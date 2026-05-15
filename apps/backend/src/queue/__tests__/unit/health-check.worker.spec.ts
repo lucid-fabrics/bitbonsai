@@ -69,16 +69,24 @@ describe('HealthCheckWorker', () => {
           },
         },
         { provide: FileHealthService, useValue: fileHealthService },
-        { provide: ContainerCompatibilityService, useValue: containerCompatibilityService },
+        {
+          provide: ContainerCompatibilityService,
+          useValue: containerCompatibilityService,
+        },
         { provide: FfmpegService, useValue: ffmpegService },
         { provide: FileRelocatorService, useValue: fileRelocatorService },
-        { provide: FileFailureTrackingService, useValue: fileFailureTrackingService },
+        {
+          provide: FileFailureTrackingService,
+          useValue: fileFailureTrackingService,
+        },
         HealthCheckCodecAnalyzerService,
       ],
     }).compile();
 
     worker = module.get<HealthCheckWorker>(HealthCheckWorker);
-    codecAnalyzer = module.get<HealthCheckCodecAnalyzerService>(HealthCheckCodecAnalyzerService);
+    codecAnalyzer = module.get<HealthCheckCodecAnalyzerService>(
+      HealthCheckCodecAnalyzerService,
+    );
     jobRepository = module.get(JobRepository) as any;
 
     // Prevent the worker loop from starting during tests
@@ -124,7 +132,9 @@ describe('HealthCheckWorker', () => {
       ];
 
       // First findManySelect: eligible jobs, second findManySelect: exhausted jobs
-      jobRepository.findManySelect.mockResolvedValueOnce(corruptedJobs).mockResolvedValueOnce([]);
+      jobRepository.findManySelect
+        .mockResolvedValueOnce(corruptedJobs)
+        .mockResolvedValueOnce([]);
       jobRepository.updateById.mockResolvedValue({});
 
       await worker.autoRequeueCorruptedJobs();
@@ -133,7 +143,7 @@ describe('HealthCheckWorker', () => {
         expect.objectContaining({
           healthStatus: FileHealthStatus.CORRUPTED,
         }),
-        expect.anything()
+        expect.anything(),
       );
 
       // Now uses individual updateById calls per job with corruptedRequeueCount increment
@@ -143,13 +153,15 @@ describe('HealthCheckWorker', () => {
         expect.objectContaining({
           stage: JobStage.DETECTED,
           healthStatus: FileHealthStatus.UNKNOWN,
-        })
+        }),
       );
     });
 
     it('should skip when no CORRUPTED jobs found', async () => {
       // First findManySelect: eligible jobs, second findManySelect: exhausted jobs
-      jobRepository.findManySelect.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      jobRepository.findManySelect
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
 
       await worker.autoRequeueCorruptedJobs();
 
@@ -183,7 +195,9 @@ describe('HealthCheckWorker', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection failed'));
+      jobRepository.findManySelect.mockRejectedValue(
+        new Error('DB connection failed'),
+      );
 
       // Should not throw
       await expect(worker.autoRequeueCorruptedJobs()).resolves.not.toThrow();
@@ -214,7 +228,7 @@ describe('HealthCheckWorker', () => {
         expect.objectContaining({
           stage: JobStage.FAILED,
           healthStatus: FileHealthStatus.CORRUPTED,
-        })
+        }),
       );
     });
 
@@ -237,7 +251,7 @@ describe('HealthCheckWorker', () => {
           stage: JobStage.DETECTED,
           retryCount: 2,
           healthCheckStartedAt: null,
-        })
+        }),
       );
     });
 
@@ -452,7 +466,7 @@ describe('HealthCheckWorker', () => {
       expect(result.suggestedActions).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ id: 'skip_encoding', recommended: true }),
-        ])
+        ]),
       );
     });
 
@@ -468,8 +482,12 @@ describe('HealthCheckWorker', () => {
 
   describe('getCodecDisplayName', () => {
     it('should return friendly name for known codecs', () => {
-      expect((codecAnalyzer as any).getCodecDisplayName('hevc')).toBe('HEVC (H.265)');
-      expect((codecAnalyzer as any).getCodecDisplayName('h264')).toBe('H.264 (AVC)');
+      expect((codecAnalyzer as any).getCodecDisplayName('hevc')).toBe(
+        'HEVC (H.265)',
+      );
+      expect((codecAnalyzer as any).getCodecDisplayName('h264')).toBe(
+        'H.264 (AVC)',
+      );
       expect((codecAnalyzer as any).getCodecDisplayName('av1')).toBe('AV1');
       expect((codecAnalyzer as any).getCodecDisplayName('vp9')).toBe('VP9');
     });
@@ -486,7 +504,7 @@ describe('HealthCheckWorker', () => {
       const result = (codecAnalyzer as any).calculateExpectedSavingsPercent(
         'hevc',
         'hevc',
-        BigInt(0)
+        BigInt(0),
       );
       expect(result).toBe(5);
     });
@@ -495,7 +513,7 @@ describe('HealthCheckWorker', () => {
       const result = (codecAnalyzer as any).calculateExpectedSavingsPercent(
         'h264',
         'hevc',
-        BigInt(0)
+        BigInt(0),
       );
       expect(result).toBe(35);
     });
@@ -504,7 +522,7 @@ describe('HealthCheckWorker', () => {
       const result = (codecAnalyzer as any).calculateExpectedSavingsPercent(
         'hevc',
         'h264',
-        BigInt(0)
+        BigInt(0),
       );
       expect(result).toBeLessThan(0);
     });
@@ -513,7 +531,7 @@ describe('HealthCheckWorker', () => {
       const result = (codecAnalyzer as any).calculateExpectedSavingsPercent(
         'mpeg2',
         'wmv',
-        BigInt(0)
+        BigInt(0),
       );
       expect(result).toBe(0);
     });
@@ -523,22 +541,37 @@ describe('HealthCheckWorker', () => {
 
   describe('checkCodecMatchWithThreshold', () => {
     it('should return SAVINGS_BELOW_THRESHOLD issue', () => {
-      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold('h264', 'hevc', 10, 20);
+      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        20,
+      );
       expect(result).not.toBeNull();
       expect(result.code).toBe('SAVINGS_BELOW_THRESHOLD');
       expect(result.severity).toBe('BLOCKER');
     });
 
     it('should include expected savings in message', () => {
-      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
       expect(result.message).toContain('10%');
       expect(result.message).toContain('30%');
     });
 
     it('should have skip_encoding as recommended action', () => {
-      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold('h264', 'hevc', 5, 25);
+      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        5,
+        25,
+      );
       const recommended = result.suggestedActions.find(
-        (a: { recommended: boolean }) => a.recommended
+        (a: { recommended: boolean }) => a.recommended,
       );
       expect(recommended.id).toBe('skip_encoding');
     });
@@ -567,7 +600,7 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'ex-1',
-        expect.objectContaining({ stage: JobStage.FAILED })
+        expect.objectContaining({ stage: JobStage.FAILED }),
       );
       expect(fileFailureTrackingService.recordFailure).toHaveBeenCalled();
     });
@@ -582,9 +615,13 @@ describe('HealthCheckWorker', () => {
         contentFingerprint: null,
       };
 
-      jobRepository.findManySelect.mockResolvedValueOnce([]).mockResolvedValueOnce([exhaustedJob]);
+      jobRepository.findManySelect
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([exhaustedJob]);
       jobRepository.updateById.mockResolvedValue({});
-      fileFailureTrackingService.recordFailure.mockRejectedValue(new Error('tracking DB down'));
+      fileFailureTrackingService.recordFailure.mockRejectedValue(
+        new Error('tracking DB down'),
+      );
 
       // Should not throw
       await expect(worker.autoRequeueCorruptedJobs()).resolves.not.toThrow();
@@ -630,7 +667,9 @@ describe('HealthCheckWorker', () => {
         policy: null,
       };
 
-      jobRepository.findManyWithInclude.mockResolvedValue([recentHealthCheckJob]);
+      jobRepository.findManyWithInclude.mockResolvedValue([
+        recentHealthCheckJob,
+      ]);
 
       await (worker as any).processHealthChecks();
 
@@ -661,7 +700,9 @@ describe('HealthCheckWorker', () => {
       }));
 
       // fileHealthService.analyzeFile throws
-      fileHealthService.analyzeFile.mockRejectedValue(new Error('ffprobe failed'));
+      fileHealthService.analyzeFile.mockRejectedValue(
+        new Error('ffprobe failed'),
+      );
 
       // findUniqueSelect for retry count
       jobRepository.findUniqueSelect.mockResolvedValue({
@@ -680,7 +721,10 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-err',
-        expect.objectContaining({ stage: JobStage.DETECTED, healthCheckRetries: 1 })
+        expect.objectContaining({
+          stage: JobStage.DETECTED,
+          healthCheckRetries: 1,
+        }),
       );
     });
 
@@ -716,7 +760,7 @@ describe('HealthCheckWorker', () => {
         expect.objectContaining({
           stage: JobStage.FAILED,
           healthStatus: FileHealthStatus.CORRUPTED,
-        })
+        }),
       );
     });
 
@@ -775,7 +819,7 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'stuck-null',
-        expect.objectContaining({ stage: JobStage.FAILED })
+        expect.objectContaining({ stage: JobStage.FAILED }),
       );
     });
 
@@ -802,11 +846,11 @@ describe('HealthCheckWorker', () => {
       // Both should be reset to DETECTED
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'stuck-backoff-0',
-        expect.objectContaining({ stage: JobStage.DETECTED, retryCount: 1 })
+        expect.objectContaining({ stage: JobStage.DETECTED, retryCount: 1 }),
       );
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'stuck-backoff-1',
-        expect.objectContaining({ stage: JobStage.DETECTED, retryCount: 2 })
+        expect.objectContaining({ stage: JobStage.DETECTED, retryCount: 2 }),
       );
     });
 
@@ -844,7 +888,7 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'stuck-capped',
-        expect.objectContaining({ stage: JobStage.FAILED })
+        expect.objectContaining({ stage: JobStage.FAILED }),
       );
     });
 
@@ -901,7 +945,9 @@ describe('HealthCheckWorker', () => {
         libraryId: 'lib1',
       }));
 
-      jobRepository.findManySelect.mockResolvedValueOnce(manyJobs).mockResolvedValueOnce([]);
+      jobRepository.findManySelect
+        .mockResolvedValueOnce(manyJobs)
+        .mockResolvedValueOnce([]);
       jobRepository.updateById.mockResolvedValue({});
 
       await worker.autoRequeueCorruptedJobs();
@@ -985,7 +1031,9 @@ describe('HealthCheckWorker', () => {
   describe('checkCodecMatch - metadata', () => {
     it('should include metadata with codecMatch=true in returned issue', () => {
       const result = (codecAnalyzer as any).checkCodecMatch('hevc', 'hevc');
-      expect(result.metadata).toEqual(expect.objectContaining({ codecMatch: true }));
+      expect(result.metadata).toEqual(
+        expect.objectContaining({ codecMatch: true }),
+      );
     });
 
     it('should set category to CODEC', () => {
@@ -998,14 +1046,27 @@ describe('HealthCheckWorker', () => {
 
   describe('checkCodecMatchWithThreshold - metadata', () => {
     it('should include expectedSavings and minSavingsThreshold in metadata', () => {
-      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold('h264', 'hevc', 15, 30);
+      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        15,
+        30,
+      );
       expect(result.metadata).toEqual(
-        expect.objectContaining({ expectedSavings: 15, minSavingsThreshold: 30 })
+        expect.objectContaining({
+          expectedSavings: 15,
+          minSavingsThreshold: 30,
+        }),
       );
     });
 
     it('should list all three action ids', () => {
-      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold('h264', 'hevc', 5, 20);
+      const result = (codecAnalyzer as any).checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        5,
+        20,
+      );
       const ids = result.suggestedActions.map((a: { id: string }) => a.id);
       expect(ids).toContain('skip_encoding');
       expect(ids).toContain('force_reencode');
@@ -1073,7 +1134,7 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-healthy',
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({ stage: JobStage.QUEUED }),
       );
     });
 
@@ -1096,7 +1157,7 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-healthy',
-        expect.objectContaining({ stage: JobStage.FAILED })
+        expect.objectContaining({ stage: JobStage.FAILED }),
       );
     });
 
@@ -1128,7 +1189,7 @@ describe('HealthCheckWorker', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-healthy',
-        expect.objectContaining({ stage: JobStage.NEEDS_DECISION })
+        expect.objectContaining({ stage: JobStage.NEEDS_DECISION }),
       );
     });
   });
@@ -1166,7 +1227,7 @@ describe('HealthCheckWorker', () => {
       // Should add BLOCKER codec match issue → NEEDS_DECISION
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-same',
-        expect.objectContaining({ stage: JobStage.NEEDS_DECISION })
+        expect.objectContaining({ stage: JobStage.NEEDS_DECISION }),
       );
     });
 
@@ -1202,7 +1263,7 @@ describe('HealthCheckWorker', () => {
       // hevc→av1 = 25% < 30% threshold → NEEDS_DECISION
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-savings',
-        expect.objectContaining({ stage: JobStage.NEEDS_DECISION })
+        expect.objectContaining({ stage: JobStage.NEEDS_DECISION }),
       );
     });
 
@@ -1238,7 +1299,7 @@ describe('HealthCheckWorker', () => {
       // 35% savings > 20% threshold, no codec issue → QUEUED
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-high-savings',
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({ stage: JobStage.QUEUED }),
       );
     });
 
@@ -1274,7 +1335,7 @@ describe('HealthCheckWorker', () => {
       // allowSameCodec=true, minSavingsPercent=0 → skip codec check → QUEUED
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-allow-all',
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({ stage: JobStage.QUEUED }),
       );
     });
   });

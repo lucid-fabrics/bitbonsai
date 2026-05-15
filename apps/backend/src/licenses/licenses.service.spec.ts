@@ -1,5 +1,8 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
@@ -38,7 +41,10 @@ describe('LicensesService', () => {
   });
 
   describe('activateLicense', () => {
-    const validDto = { email: 'user@example.com', licenseKey: 'VALID-KEY-1234' };
+    const validDto = {
+      email: 'user@example.com',
+      licenseKey: 'VALID-KEY-1234',
+    };
 
     it('should activate license when verification succeeds', async () => {
       const verifyResponse = {
@@ -63,22 +69,32 @@ describe('LicensesService', () => {
 
     it('should throw BadRequestException when license is invalid', async () => {
       mockHttpService.post.mockReturnValue(
-        of({ data: { valid: false, error: 'License not found' } })
+        of({ data: { valid: false, error: 'License not found' } }),
       );
 
-      await expect(service.activateLicense(validDto)).rejects.toThrow(BadRequestException);
+      await expect(service.activateLicense(validDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw ServiceUnavailableException on connection refused', async () => {
-      mockHttpService.post.mockReturnValue(throwError(() => ({ code: 'ECONNREFUSED' })));
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ code: 'ECONNREFUSED' })),
+      );
 
-      await expect(service.activateLicense(validDto)).rejects.toThrow(ServiceUnavailableException);
+      await expect(service.activateLicense(validDto)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
 
     it('should throw ServiceUnavailableException on timeout', async () => {
-      mockHttpService.post.mockReturnValue(throwError(() => ({ code: 'ECONNABORTED' })));
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ code: 'ECONNABORTED' })),
+      );
 
-      await expect(service.activateLicense(validDto)).rejects.toThrow(ServiceUnavailableException);
+      await expect(service.activateLicense(validDto)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
 
     it('should correctly map expiresAt date when provided', async () => {
@@ -95,7 +111,7 @@ describe('LicensesService', () => {
               expiresAt,
             },
           },
-        })
+        }),
       );
 
       const result = await service.activateLicense(validDto);
@@ -123,11 +139,13 @@ describe('LicensesService', () => {
     });
 
     it('should throw ServiceUnavailableException when service unreachable', async () => {
-      mockHttpService.post.mockReturnValue(throwError(() => ({ code: 'ENOTFOUND' })));
-
-      await expect(service.lookupLicenseByEmail('user@example.com')).rejects.toThrow(
-        ServiceUnavailableException
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ code: 'ENOTFOUND' })),
       );
+
+      await expect(
+        service.lookupLicenseByEmail('user@example.com'),
+      ).rejects.toThrow(ServiceUnavailableException);
     });
   });
 });

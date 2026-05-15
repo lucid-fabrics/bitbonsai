@@ -29,8 +29,12 @@ import { AuthService } from './auth.service';
  */
 export const authGuard: CanActivateFn = (
   _route: ActivatedRouteSnapshot,
-  state: RouterStateSnapshot
-): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree => {
+  state: RouterStateSnapshot,
+):
+  | Observable<boolean | UrlTree>
+  | Promise<boolean | UrlTree>
+  | boolean
+  | UrlTree => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const http = inject(HttpClient);
@@ -45,28 +49,32 @@ export const authGuard: CanActivateFn = (
 
       // If not authenticated, check if local network bypass is enabled
       // DEEP AUDIT P2: Add 5-second timeout to prevent guard from hanging
-      return http.get<{ allowLocalNetworkWithoutAuth: boolean }>('/api/v1/settings/security').pipe(
-        timeout(5000), // DEEP AUDIT P2: 5-second timeout
-        map((settings) => {
-          // If local network bypass is enabled, allow access without authentication
-          if (settings.allowLocalNetworkWithoutAuth) {
-            return true;
-          }
+      return http
+        .get<{
+          allowLocalNetworkWithoutAuth: boolean;
+        }>('/api/v1/settings/security')
+        .pipe(
+          timeout(5000), // DEEP AUDIT P2: 5-second timeout
+          map((settings) => {
+            // If local network bypass is enabled, allow access without authentication
+            if (settings.allowLocalNetworkWithoutAuth) {
+              return true;
+            }
 
-          // Otherwise, redirect to login
-          return router.createUrlTree(['/login'], {
-            queryParams: { returnUrl: state.url },
-          });
-        }),
-        catchError(() => {
-          // If security settings check fails or times out, redirect to login
-          return of(
-            router.createUrlTree(['/login'], {
+            // Otherwise, redirect to login
+            return router.createUrlTree(['/login'], {
               queryParams: { returnUrl: state.url },
-            })
-          );
-        })
-      );
-    })
+            });
+          }),
+          catchError(() => {
+            // If security settings check fails or times out, redirect to login
+            return of(
+              router.createUrlTree(['/login'], {
+                queryParams: { returnUrl: state.url },
+              }),
+            );
+          }),
+        );
+    }),
   );
 };

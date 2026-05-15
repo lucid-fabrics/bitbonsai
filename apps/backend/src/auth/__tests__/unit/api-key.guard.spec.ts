@@ -7,7 +7,9 @@ describe('ApiKeyGuard', () => {
   let guard: ApiKeyGuard;
   let nodesService: { findByApiKey: jest.Mock };
 
-  const mockExecutionContext = (headers: Record<string, string> = {}): ExecutionContext => {
+  const mockExecutionContext = (
+    headers: Record<string, string> = {},
+  ): ExecutionContext => {
     const request = { headers, node: undefined };
     return {
       switchToHttp: () => ({
@@ -19,7 +21,11 @@ describe('ApiKeyGuard', () => {
       getArgs: () => [],
       getArgByIndex: () => null,
       switchToRpc: () => ({ getContext: jest.fn(), getData: jest.fn() }),
-      switchToWs: () => ({ getClient: jest.fn(), getData: jest.fn(), getPattern: jest.fn() }),
+      switchToWs: () => ({
+        getClient: jest.fn(),
+        getData: jest.fn(),
+        getPattern: jest.fn(),
+      }),
       getType: () => 'http',
     } as unknown as ExecutionContext;
   };
@@ -30,7 +36,10 @@ describe('ApiKeyGuard', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ApiKeyGuard, { provide: NodesService, useValue: nodesService }],
+      providers: [
+        ApiKeyGuard,
+        { provide: NodesService, useValue: nodesService },
+      ],
     }).compile();
 
     guard = module.get<ApiKeyGuard>(ApiKeyGuard);
@@ -47,15 +56,21 @@ describe('ApiKeyGuard', () => {
   it('should throw UnauthorizedException when no API key is provided', async () => {
     const context = mockExecutionContext({});
 
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
-    await expect(guard.canActivate(context)).rejects.toThrow('API key required');
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      UnauthorizedException,
+    );
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      'API key required',
+    );
   });
 
   it('should throw UnauthorizedException for invalid API key', async () => {
     nodesService.findByApiKey.mockResolvedValue(null);
     const context = mockExecutionContext({ 'x-api-key': 'invalid-key' });
 
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      UnauthorizedException,
+    );
     await expect(guard.canActivate(context)).rejects.toThrow('Invalid API key');
     expect(nodesService.findByApiKey).toHaveBeenCalledWith('invalid-key');
   });

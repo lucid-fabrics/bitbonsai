@@ -1,7 +1,10 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobEventType, JobStage } from '@prisma/client';
 import { JobHistoryRepository } from '../../../../common/repositories/job-history.repository';
-import { JobHistoryService, type RecordJobEventParams } from '../../job-history.service';
+import {
+  JobHistoryService,
+  type RecordJobEventParams,
+} from '../../job-history.service';
 
 const createMockJobHistoryRepository = () => ({
   createEntry: jest.fn(),
@@ -17,7 +20,10 @@ describe('JobHistoryService', () => {
     repo = createMockJobHistoryRepository();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [JobHistoryService, { provide: JobHistoryRepository, useValue: repo }],
+      providers: [
+        JobHistoryService,
+        { provide: JobHistoryRepository, useValue: repo },
+      ],
     }).compile();
 
     service = module.get<JobHistoryService>(JobHistoryService);
@@ -86,7 +92,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           wasAutoHealed: false,
-        })
+        }),
       );
     });
 
@@ -101,7 +107,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Attempt #3 failed at 45.5%',
-        })
+        }),
       );
     });
 
@@ -111,7 +117,7 @@ describe('JobHistoryService', () => {
       await service.recordEvent(baseParams);
 
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Recorded FAILED event for job job-1 at 45.5%'
+        'Recorded FAILED event for job job-1 at 45.5%',
       );
     });
 
@@ -123,7 +129,7 @@ describe('JobHistoryService', () => {
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to record job history event',
-        expect.stringContaining('DB write failed')
+        expect.stringContaining('DB write failed'),
       );
     });
 
@@ -134,7 +140,7 @@ describe('JobHistoryService', () => {
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to record job history event',
-        'string error'
+        'string error',
       );
     });
   });
@@ -142,8 +148,16 @@ describe('JobHistoryService', () => {
   describe('getJobHistory', () => {
     it('should return job history sorted by createdAt descending', async () => {
       const mockHistory = [
-        { id: 'h-2', jobId: 'job-1', createdAt: new Date('2026-02-24T12:00:00Z') },
-        { id: 'h-1', jobId: 'job-1', createdAt: new Date('2026-02-24T11:00:00Z') },
+        {
+          id: 'h-2',
+          jobId: 'job-1',
+          createdAt: new Date('2026-02-24T12:00:00Z'),
+        },
+        {
+          id: 'h-1',
+          jobId: 'job-1',
+          createdAt: new Date('2026-02-24T11:00:00Z'),
+        },
       ];
       repo.findManyByJobId.mockResolvedValue(mockHistory);
 
@@ -200,7 +214,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Attempt #2 failed at 55.3%',
-        })
+        }),
       );
     });
 
@@ -217,7 +231,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Encoding failed at 30.0%',
-        })
+        }),
       );
     });
 
@@ -235,7 +249,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Cancelled by user at 70.0%',
-        })
+        }),
       );
     });
 
@@ -253,7 +267,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Cancelled by system at 40.0%',
-        })
+        }),
       );
     });
 
@@ -271,7 +285,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Restarted from 30 minutes',
-        })
+        }),
       );
     });
 
@@ -288,7 +302,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Restarted encoding from beginning',
-        })
+        }),
       );
     });
 
@@ -306,8 +320,9 @@ describe('JobHistoryService', () => {
 
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
-          systemMessage: 'Successfully resumed from 65.0% after backend restart',
-        })
+          systemMessage:
+            'Successfully resumed from 65.0% after backend restart',
+        }),
       );
     });
 
@@ -325,8 +340,9 @@ describe('JobHistoryService', () => {
 
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
-          systemMessage: 'Attempted to auto-heal but temp file was lost - restarting from 0%',
-        })
+          systemMessage:
+            'Attempted to auto-heal but temp file was lost - restarting from 0%',
+        }),
       );
     });
 
@@ -343,7 +359,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Encoding interrupted by backend restart at 80.0%',
-        })
+        }),
       );
     });
 
@@ -361,7 +377,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Encoding timed out after 2 hours at 90.0%',
-        })
+        }),
       );
     });
 
@@ -378,7 +394,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Encoding timed out after 0 hours at 85.0%',
-        })
+        }),
       );
     });
 
@@ -395,7 +411,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Event occurred at 25.0%',
-        })
+        }),
       );
     });
 
@@ -413,7 +429,7 @@ describe('JobHistoryService', () => {
       expect(repo.createEntry).toHaveBeenCalledWith(
         expect.objectContaining({
           systemMessage: 'Custom override message',
-        })
+        }),
       );
     });
   });

@@ -51,7 +51,11 @@
 
 // Modal Container
 .modal-container {
-  background: linear-gradient(135deg, $bg-secondary 0%, color.adjust($bg-secondary, $lightness: -2%) 100%);
+  background: linear-gradient(
+    135deg,
+    $bg-secondary 0%,
+    color.adjust($bg-secondary, $lightness: -2%) 100%
+  );
   border: 1px solid $border-secondary;
   border-radius: $border-radius-lg;
   max-width: 1000px;
@@ -59,7 +63,9 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
   animation: slideIn 0.3s ease-out;
 }
 
@@ -70,7 +76,11 @@
   justify-content: space-between;
   padding: $spacing-xl;
   border-bottom: 1px solid $border-primary;
-  background: linear-gradient(180deg, rgba($accent-primary, 0.03) 0%, transparent 100%);
+  background: linear-gradient(
+    180deg,
+    rgba($accent-primary, 0.03) 0%,
+    transparent 100%
+  );
 
   .header-content {
     display: flex;
@@ -81,7 +91,11 @@
   .header-icon {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -10%) 100%);
+    background: linear-gradient(
+      135deg,
+      $accent-primary 0%,
+      color.adjust($accent-primary, $lightness: -10%) 100%
+    );
     border-radius: $border-radius-md;
     display: flex;
     align-items: center;
@@ -341,7 +355,11 @@
 }
 
 .activity-card {
-  background: linear-gradient(135deg, color.adjust($bg-tertiary, $lightness: -2%) 0%, $bg-tertiary 100%);
+  background: linear-gradient(
+    135deg,
+    color.adjust($bg-tertiary, $lightness: -2%) 0%,
+    $bg-tertiary 100%
+  );
   border: 1px solid $border-primary;
   border-radius: $border-radius-md;
   padding: $spacing-xl;
@@ -360,7 +378,11 @@
   .activity-icon {
     width: 64px;
     height: 64px;
-    background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -10%) 100%);
+    background: linear-gradient(
+      135deg,
+      $accent-primary 0%,
+      color.adjust($accent-primary, $lightness: -10%) 100%
+    );
     border-radius: $border-radius-md;
     display: flex;
     align-items: center;
@@ -416,7 +438,11 @@
 
 // License Card
 .license-card {
-  background: linear-gradient(135deg, rgba($accent-primary, 0.05) 0%, transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba($accent-primary, 0.05) 0%,
+    transparent 100%
+  );
   border: 1px solid $border-primary;
   border-radius: $border-radius-md;
   padding: $spacing-lg;
@@ -430,7 +456,11 @@
     border-bottom: 1px solid $border-primary;
 
     .tier-badge {
-      background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -10%) 100%);
+      background: linear-gradient(
+        135deg,
+        $accent-primary 0%,
+        color.adjust($accent-primary, $lightness: -10%) 100%
+      );
       color: $text-dark;
       padding: 0.5rem 1.5rem;
       border-radius: $border-radius-sm;
@@ -637,12 +667,20 @@
     letter-spacing: 0.5px;
 
     &.btn-primary {
-      background: linear-gradient(135deg, $accent-primary 0%, color.adjust($accent-primary, $lightness: -5%) 100%);
+      background: linear-gradient(
+        135deg,
+        $accent-primary 0%,
+        color.adjust($accent-primary, $lightness: -5%) 100%
+      );
       color: $text-dark;
       box-shadow: 0 2px 8px rgba($accent-primary, 0.3);
 
       &:hover {
-        background: linear-gradient(135deg, $accent-primary-hover 0%, $accent-primary 100%);
+        background: linear-gradient(
+          135deg,
+          $accent-primary-hover 0%,
+          $accent-primary 100%
+        );
         box-shadow: 0 4px 12px rgba($accent-primary, 0.4);
         transform: translateY(-1px);
       }

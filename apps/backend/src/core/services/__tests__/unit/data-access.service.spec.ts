@@ -47,7 +47,7 @@ describe('DataAccessService', () => {
       mockNodeConfigService.getRole.mockReturnValue('MAIN');
 
       await expect(service.getNextJob('node-1')).rejects.toThrow(
-        'getNextJob should not be called directly on MAIN nodes'
+        'getNextJob should not be called directly on MAIN nodes',
       );
     });
 
@@ -63,7 +63,10 @@ describe('DataAccessService', () => {
       expect(result).toEqual(mockJob);
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/next-job',
-        expect.objectContaining({ params: { nodeId: 'node-1' }, timeout: 10000 })
+        expect.objectContaining({
+          params: { nodeId: 'node-1' },
+          timeout: 10000,
+        }),
       );
     });
 
@@ -80,9 +83,13 @@ describe('DataAccessService', () => {
     it('should propagate errors from MAIN API', async () => {
       mockNodeConfigService.getRole.mockReturnValue('LINKED');
       mockNodeConfigService.getMainApiUrl.mockReturnValue('http://main:3000');
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Network error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Network error')),
+      );
 
-      await expect(service.getNextJob('node-1')).rejects.toThrow('Network error');
+      await expect(service.getNextJob('node-1')).rejects.toThrow(
+        'Network error',
+      );
     });
   });
 
@@ -91,7 +98,7 @@ describe('DataAccessService', () => {
       mockNodeConfigService.getRole.mockReturnValue('MAIN');
 
       await expect(service.updateJobProgress('job-1', 50, 120)).rejects.toThrow(
-        'updateJobProgress should not be called directly on MAIN nodes'
+        'updateJobProgress should not be called directly on MAIN nodes',
       );
     });
 
@@ -105,16 +112,20 @@ describe('DataAccessService', () => {
       expect(mockHttpService.patch).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/job-1/progress',
         { progress: 75.5, etaSeconds: 60 },
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
     });
 
     it('should not throw on API error (non-critical)', async () => {
       mockNodeConfigService.getRole.mockReturnValue('LINKED');
       mockNodeConfigService.getMainApiUrl.mockReturnValue('http://main:3000');
-      mockHttpService.patch.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.patch.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
-      await expect(service.updateJobProgress('job-1', 50, 60)).resolves.not.toThrow();
+      await expect(
+        service.updateJobProgress('job-1', 50, 60),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -122,8 +133,10 @@ describe('DataAccessService', () => {
     it('should throw on MAIN node', async () => {
       mockNodeConfigService.getRole.mockReturnValue('MAIN');
 
-      await expect(service.updateJobStage('job-1', 'ENCODING' as any)).rejects.toThrow(
-        'updateJobStage should not be called directly on MAIN nodes'
+      await expect(
+        service.updateJobStage('job-1', 'ENCODING' as any),
+      ).rejects.toThrow(
+        'updateJobStage should not be called directly on MAIN nodes',
       );
     });
 
@@ -132,23 +145,27 @@ describe('DataAccessService', () => {
       mockNodeConfigService.getMainApiUrl.mockReturnValue('http://main:3000');
       mockHttpService.patch.mockReturnValue(of({ data: {} }));
 
-      await service.updateJobStage('job-1', 'COMPLETED' as any, { outputSize: 1024 });
+      await service.updateJobStage('job-1', 'COMPLETED' as any, {
+        outputSize: 1024,
+      });
 
       expect(mockHttpService.patch).toHaveBeenCalledWith(
         'http://main:3000/api/v1/queue/job-1/stage',
         { stage: 'COMPLETED', outputSize: 1024 },
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
     });
 
     it('should propagate errors from MAIN API', async () => {
       mockNodeConfigService.getRole.mockReturnValue('LINKED');
       mockNodeConfigService.getMainApiUrl.mockReturnValue('http://main:3000');
-      mockHttpService.patch.mockReturnValue(throwError(() => new Error('Server error')));
-
-      await expect(service.updateJobStage('job-1', 'ENCODING' as any)).rejects.toThrow(
-        'Server error'
+      mockHttpService.patch.mockReturnValue(
+        throwError(() => new Error('Server error')),
       );
+
+      await expect(
+        service.updateJobStage('job-1', 'ENCODING' as any),
+      ).rejects.toThrow('Server error');
     });
   });
 
@@ -157,14 +174,16 @@ describe('DataAccessService', () => {
       mockNodeConfigService.getRole.mockReturnValue('MAIN');
 
       await expect(service.sendHeartbeat('node-1')).rejects.toThrow(
-        'sendHeartbeat should not be called directly on MAIN nodes'
+        'sendHeartbeat should not be called directly on MAIN nodes',
       );
     });
 
     it('should not throw on API error (non-critical)', async () => {
       mockNodeConfigService.getRole.mockReturnValue('LINKED');
       mockNodeConfigService.getMainApiUrl.mockReturnValue('http://main:3000');
-      mockHttpService.post.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.post.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       await expect(service.sendHeartbeat('node-1')).resolves.not.toThrow();
     });
@@ -175,7 +194,7 @@ describe('DataAccessService', () => {
       mockNodeConfigService.getRole.mockReturnValue('MAIN');
 
       await expect(service.getNode('node-1')).rejects.toThrow(
-        'getNode should not be called directly on MAIN nodes'
+        'getNode should not be called directly on MAIN nodes',
       );
     });
 

@@ -48,5 +48,5 @@ export const currentNodeReducer = createReducer(
   on(CurrentNodeActions.loadMainNodeFailure, (state, { error }) => ({
     ...state,
     error,
-  }))
+  })),
 );

@@ -66,17 +66,22 @@ describe('StorageMountService', () => {
     mockExec.mockImplementationOnce(
       (
         _cmd: string,
-        cb: (err: Error | null, result: { stdout: string; stderr: string }) => void
+        cb: (
+          err: Error | null,
+          result: { stdout: string; stderr: string },
+        ) => void,
       ) => {
         cb(null, { stdout, stderr });
-      }
+      },
     );
   }
 
   function execRejects(error: Error) {
-    mockExec.mockImplementationOnce((_cmd: string, cb: (err: Error | null) => void) => {
-      cb(error);
-    });
+    mockExec.mockImplementationOnce(
+      (_cmd: string, cb: (err: Error | null) => void) => {
+        cb(error);
+      },
+    );
   }
 
   beforeEach(async () => {
@@ -109,7 +114,7 @@ describe('StorageMountService', () => {
     it('should mount share successfully', async () => {
       mockRepository.findById.mockResolvedValue(baseShare);
       mockStrategy.buildMountCommand.mockResolvedValue(
-        'mount -t nfs 192.168.1.100:/mnt/media /media'
+        'mount -t nfs 192.168.1.100:/mnt/media /media',
       );
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
@@ -122,7 +127,7 @@ describe('StorageMountService', () => {
       expect(result.message).toContain('Successfully mounted');
       expect(mockRepository.updateStatus).toHaveBeenCalledWith(
         'share-1',
-        StorageShareStatus.MOUNTED
+        StorageShareStatus.MOUNTED,
       );
     });
 
@@ -140,7 +145,7 @@ describe('StorageMountService', () => {
       expect(mockRepository.updateStatus).toHaveBeenCalledWith(
         'share-1',
         StorageShareStatus.ERROR,
-        expect.stringContaining('Permission denied')
+        expect.stringContaining('Permission denied'),
       );
     });
 
@@ -155,7 +160,10 @@ describe('StorageMountService', () => {
 
       await service.mount('share-1');
 
-      expect(mockFs.mkdir).toHaveBeenCalledWith('/media', { recursive: true, mode: 0o755 });
+      expect(mockFs.mkdir).toHaveBeenCalledWith('/media', {
+        recursive: true,
+        mode: 0o755,
+      });
     });
 
     it('should handle mount verification failure', async () => {
@@ -200,7 +208,7 @@ describe('StorageMountService', () => {
       expect(result.success).toBe(true);
       expect(mockRepository.updateStatus).toHaveBeenCalledWith(
         'share-1',
-        StorageShareStatus.UNMOUNTED
+        StorageShareStatus.UNMOUNTED,
       );
     });
 
@@ -268,7 +276,9 @@ describe('StorageMountService', () => {
 
       await service.testConnectivity('192.168.1.100', StorageProtocol.NFS);
 
-      expect(mockStrategyFactory.getStrategy).toHaveBeenCalledWith(StorageProtocol.NFS);
+      expect(mockStrategyFactory.getStrategy).toHaveBeenCalledWith(
+        StorageProtocol.NFS,
+      );
     });
   });
 
@@ -276,7 +286,7 @@ describe('StorageMountService', () => {
     it('should parse df output correctly', async () => {
       execResolves(
         'Filesystem     1B-blocks    Used Available Use% Mounted on\n' +
-          '/dev/sda1 1000000000000 400000000000 600000000000  40% /media'
+          '/dev/sda1 1000000000000 400000000000 600000000000  40% /media',
       );
 
       const result = await service.getDiskUsage('/media');
@@ -289,22 +299,29 @@ describe('StorageMountService', () => {
     it('should throw InternalServerErrorException on exec failure', async () => {
       execRejects(new Error('df failed'));
 
-      await expect(service.getDiskUsage('/media')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getDiskUsage('/media')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
 
     it('should throw on invalid df output (single line)', async () => {
       execResolves('invalid');
 
-      await expect(service.getDiskUsage('/media')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getDiskUsage('/media')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
   describe('mount - fstab integration', () => {
     it('should add to fstab when addToFstab is true and mount succeeds', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockStrategy.buildFstabEntry.mockResolvedValue(
-        '192.168.1.100:/mnt/media /media nfs defaults 0 0'
+        '192.168.1.100:/mnt/media /media nfs defaults 0 0',
       );
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
@@ -320,14 +337,19 @@ describe('StorageMountService', () => {
     });
 
     it('should skip fstab write when entry already exists', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
       execResolves('/media type nfs');
       mockRepository.updateStatus.mockResolvedValue({});
       // fstab already has an entry for /media
-      mockFs.readFile.mockResolvedValue('192.168.1.100:/mnt/media /media nfs defaults 0 0');
+      mockFs.readFile.mockResolvedValue(
+        '192.168.1.100:/mnt/media /media nfs defaults 0 0',
+      );
 
       const result = await service.mount('share-1');
 
@@ -336,7 +358,10 @@ describe('StorageMountService', () => {
     });
 
     it('should not fail mount when fstab write throws', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
@@ -368,7 +393,7 @@ describe('StorageMountService', () => {
       mockRepository.findById.mockResolvedValue(null);
 
       await expect(service.mount('missing-share')).rejects.toThrow(
-        'Storage share missing-share not found'
+        'Storage share missing-share not found',
       );
     });
   });
@@ -383,7 +408,9 @@ describe('StorageMountService', () => {
       execResolves('', '');
       execRejects(new Error('not mounted'));
       mockRepository.updateStatus.mockResolvedValue({});
-      mockFs.readFile.mockResolvedValue('192.168.1.100:/mnt/media /media nfs defaults 0 0\n');
+      mockFs.readFile.mockResolvedValue(
+        '192.168.1.100:/mnt/media /media nfs defaults 0 0\n',
+      );
       mockFs.writeFile.mockResolvedValue(undefined);
 
       const result = await service.unmount('share-1');
@@ -393,7 +420,10 @@ describe('StorageMountService', () => {
     });
 
     it('should handle unmount stderr warning without failing', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execResolves('', 'warning: lazy unmount');
       execRejects(new Error('not mounted'));
       mockRepository.updateStatus.mockResolvedValue({});
@@ -404,7 +434,10 @@ describe('StorageMountService', () => {
     });
 
     it('should fail when unmount verification shows still mounted', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execResolves('', '');
       // verifyMount returns true (still mounted)
       execResolves('/media type nfs');
@@ -419,14 +452,17 @@ describe('StorageMountService', () => {
       mockRepository.findById.mockResolvedValue(null);
 
       await expect(service.unmount('missing-share')).rejects.toThrow(
-        'Storage share missing-share not found'
+        'Storage share missing-share not found',
       );
     });
   });
 
   describe('remount', () => {
     it('should return unmount failure without attempting mount', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execRejects(new Error('Device busy'));
 
       const result = await service.remount('share-1');
@@ -466,8 +502,12 @@ describe('StorageMountService', () => {
 
       await service.testConnectivity('192.168.1.100', StorageProtocol.SMB);
 
-      expect(mockStrategyFactory.getStrategy).toHaveBeenCalledWith(StorageProtocol.SMB);
-      expect(mockStrategyFactory.getStrategy).not.toHaveBeenCalledWith(StorageProtocol.NFS);
+      expect(mockStrategyFactory.getStrategy).toHaveBeenCalledWith(
+        StorageProtocol.SMB,
+      );
+      expect(mockStrategyFactory.getStrategy).not.toHaveBeenCalledWith(
+        StorageProtocol.NFS,
+      );
     });
 
     it('should test both NFS and SMB when no protocol specified', async () => {
@@ -498,7 +538,7 @@ describe('StorageMountService', () => {
     it('should correctly strip % from usedPercent field', async () => {
       execResolves(
         'Filesystem     1B-blocks    Used Available Use% Mounted on\n' +
-          '/dev/sda1 2000000000000 1000000000000 1000000000000  50% /media'
+          '/dev/sda1 2000000000000 1000000000000 1000000000000  50% /media',
       );
 
       const result = await service.getDiskUsage('/media');
@@ -510,7 +550,7 @@ describe('StorageMountService', () => {
     it('should parse availableBytes independently from usedBytes', async () => {
       execResolves(
         'Filesystem 1B-blocks Used Available Use% Mounted on\n' +
-          '/dev/sdb1 500000000000 100000000000 400000000000  20% /data'
+          '/dev/sdb1 500000000000 100000000000 400000000000  20% /data',
       );
 
       const result = await service.getDiskUsage('/data');
@@ -545,7 +585,10 @@ describe('StorageMountService', () => {
   // ==========================================================================
   describe('unmount - plain umount command', () => {
     it('should use plain umount when force is false', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, isMounted: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        isMounted: true,
+      });
       execResolves('', '');
       execRejects(new Error('not mounted'));
       mockRepository.updateStatus.mockResolvedValue({});
@@ -563,17 +606,22 @@ describe('StorageMountService', () => {
   // ==========================================================================
   describe('mount - fstab does not exist', () => {
     it('should create fstab entry when file does not exist', async () => {
-      mockRepository.findById.mockResolvedValue({ ...baseShare, addToFstab: true });
+      mockRepository.findById.mockResolvedValue({
+        ...baseShare,
+        addToFstab: true,
+      });
       mockStrategy.buildMountCommand.mockResolvedValue('mount ...');
       mockStrategy.buildFstabEntry.mockResolvedValue(
-        '192.168.1.100:/mnt/media /media nfs defaults 0 0'
+        '192.168.1.100:/mnt/media /media nfs defaults 0 0',
       );
       mockFs.access.mockResolvedValue(undefined);
       execResolves('', '');
       execResolves('/media type nfs');
       mockRepository.updateStatus.mockResolvedValue({});
       // readFile throws ENOENT — fstab doesn't exist
-      mockFs.readFile.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+      mockFs.readFile.mockRejectedValue(
+        Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
+      );
       mockFs.appendFile.mockResolvedValue(undefined);
 
       const result = await service.mount('share-1');
@@ -625,10 +673,17 @@ describe('StorageMountService', () => {
       execResolves('1 received');
       mockStrategy.testConnectivity.mockResolvedValue(true);
 
-      const result = await service.testConnectivity('192.168.1.100', StorageProtocol.NFS);
+      const result = await service.testConnectivity(
+        '192.168.1.100',
+        StorageProtocol.NFS,
+      );
 
-      expect(mockStrategyFactory.getStrategy).toHaveBeenCalledWith(StorageProtocol.NFS);
-      expect(mockStrategyFactory.getStrategy).not.toHaveBeenCalledWith(StorageProtocol.SMB);
+      expect(mockStrategyFactory.getStrategy).toHaveBeenCalledWith(
+        StorageProtocol.NFS,
+      );
+      expect(mockStrategyFactory.getStrategy).not.toHaveBeenCalledWith(
+        StorageProtocol.SMB,
+      );
       expect(result.supportsNFS).toBe(true);
       expect(result.supportsSMB).toBe(false);
     });

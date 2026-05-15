@@ -24,37 +24,37 @@ This guide covers all installation methods for BitBonsai. Choose the method that
 
 ### Minimum Requirements
 
-| Component | Requirement |
-|-----------|-------------|
-| **OS** | Linux (Ubuntu 20.04+, Debian 11+, Unraid 6.9+) |
-| **CPU** | 2 cores (4+ recommended for concurrent encoding) |
-| **RAM** | 4GB (8GB+ recommended) |
+| Component   | Requirement                                                     |
+| ----------- | --------------------------------------------------------------- |
+| **OS**      | Linux (Ubuntu 20.04+, Debian 11+, Unraid 6.9+)                  |
+| **CPU**     | 2 cores (4+ recommended for concurrent encoding)                |
+| **RAM**     | 4GB (8GB+ recommended)                                          |
 | **Storage** | 10GB for application + 20% of media library size for temp files |
-| **Docker** | 20.10+ (if using Docker) |
-| **Node.js** | 20.x LTS (bare metal only) |
+| **Docker**  | 20.10+ (if using Docker)                                        |
+| **Node.js** | 20.x LTS (bare metal only)                                      |
 
 ### Recommended Hardware
 
 For optimal performance:
 
-| Hardware | Benefit | Example |
-|----------|---------|---------|
-| **GPU** | 5-10x faster encoding | NVIDIA GTX 1650+, Intel i5-8xxx+ (QuickSync), AMD RX 5000+ |
-| **SSD** | 10-100x faster temp I/O | NVMe or SATA SSD for `/cache` volume |
-| **Multi-core CPU** | Parallel processing | Intel i7/i9, AMD Ryzen 7/9 |
-| **Fast Network** | Multi-node efficiency | 1Gbps+ Ethernet |
+| Hardware           | Benefit                 | Example                                                    |
+| ------------------ | ----------------------- | ---------------------------------------------------------- |
+| **GPU**            | 5-10x faster encoding   | NVIDIA GTX 1650+, Intel i5-8xxx+ (QuickSync), AMD RX 5000+ |
+| **SSD**            | 10-100x faster temp I/O | NVMe or SATA SSD for `/cache` volume                       |
+| **Multi-core CPU** | Parallel processing     | Intel i7/i9, AMD Ryzen 7/9                                 |
+| **Fast Network**   | Multi-node efficiency   | 1Gbps+ Ethernet                                            |
 
 ### Supported Platforms
 
-| Platform | Support Level | Notes |
-|----------|--------------|-------|
-| **Docker** | ✅ Official | Recommended deployment method |
-| **Unraid** | ✅ Official | Community Apps template available |
-| **Proxmox LXC** | ✅ Official | Automated deployment script provided |
-| **Kubernetes** | ⚠️ Community | Helm charts community-maintained |
-| **Bare Metal** | ⚠️ Advanced | For developers only |
-| **Windows** | ❌ Not supported | Use WSL2 + Docker |
-| **macOS** | ⚠️ Development only | Docker Desktop for testing |
+| Platform        | Support Level       | Notes                                |
+| --------------- | ------------------- | ------------------------------------ |
+| **Docker**      | ✅ Official         | Recommended deployment method        |
+| **Unraid**      | ✅ Official         | Community Apps template available    |
+| **Proxmox LXC** | ✅ Official         | Automated deployment script provided |
+| **Kubernetes**  | ⚠️ Community        | Helm charts community-maintained     |
+| **Bare Metal**  | ⚠️ Advanced         | For developers only                  |
+| **Windows**     | ❌ Not supported    | Use WSL2 + Docker                    |
+| **macOS**       | ⚠️ Development only | Docker Desktop for testing           |
 
 ---
 
@@ -101,10 +101,12 @@ docker run -d \
 ```
 
 **Prerequisites:**
+
 - NVIDIA Docker runtime installed
 - NVIDIA drivers installed on host
 
 **Install NVIDIA Docker runtime:**
+
 ```bash
 # Add NVIDIA Docker repository
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
@@ -137,6 +139,7 @@ docker run -d \
 ```
 
 **Prerequisites:**
+
 - Intel CPU with QuickSync (8th gen+)
 - i965-va-driver or intel-media-driver installed
 
@@ -158,16 +161,16 @@ docker run -d \
 
 #### Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `TZ` | Timezone (e.g., America/New_York) | UTC | No |
-| `NODE_ENV` | Environment (production/development) | production | Yes |
-| `PORT` | Frontend port | 4210 | No |
-| `API_PORT` | Backend API port | 3100 | No |
-| `DATABASE_URL` | Database connection string | file:/data/bitbonsai.db | No |
-| `LOG_LEVEL` | Logging level (debug/info/warn/error) | info | No |
-| `ENCODING_TEMP_PATH` | Temp file location for encoding | /tmp | No |
-| `MAX_CONCURRENT_JOBS` | Max parallel encoding jobs | 2 | No |
+| Variable              | Description                           | Default                 | Required |
+| --------------------- | ------------------------------------- | ----------------------- | -------- |
+| `TZ`                  | Timezone (e.g., America/New_York)     | UTC                     | No       |
+| `NODE_ENV`            | Environment (production/development)  | production              | Yes      |
+| `PORT`                | Frontend port                         | 4210                    | No       |
+| `API_PORT`            | Backend API port                      | 3100                    | No       |
+| `DATABASE_URL`        | Database connection string            | file:/data/bitbonsai.db | No       |
+| `LOG_LEVEL`           | Logging level (debug/info/warn/error) | info                    | No       |
+| `ENCODING_TEMP_PATH`  | Temp file location for encoding       | /tmp                    | No       |
+| `MAX_CONCURRENT_JOBS` | Max parallel encoding jobs            | 2                       | No       |
 
 ---
 
@@ -188,14 +191,14 @@ services:
     container_name: bitbonsai
     restart: unless-stopped
     ports:
-      - "4210:4210"  # Frontend
-      - "3100:3100"  # API
+      - '4210:4210' # Frontend
+      - '3100:3100' # API
     environment:
       - TZ=America/New_York
       - NODE_ENV=production
     volumes:
-      - /mnt/user/media:/media:ro              # Media library (read-only)
-      - bitbonsai-data:/data                   # Application data
+      - /mnt/user/media:/media:ro # Media library (read-only)
+      - bitbonsai-data:/data # Application data
     # Optional: GPU passthrough
     # devices:
     #   - /dev/dri:/dev/dri  # Intel QuickSync
@@ -208,6 +211,7 @@ volumes:
 ```
 
 **Start services:**
+
 ```bash
 docker-compose up -d
 ```
@@ -228,15 +232,15 @@ services:
       - postgres
       - redis
     ports:
-      - "4210:4210"
-      - "3100:3100"
+      - '4210:4210'
+      - '3100:3100'
     environment:
       - TZ=America/New_York
       - NODE_ENV=production
       - DATABASE_URL=postgresql://bitbonsai:${POSTGRES_PASSWORD}@postgres:5432/bitbonsai
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - LICENSE_KEY=${LICENSE_KEY}  # Commercial license
+      - LICENSE_KEY=${LICENSE_KEY} # Commercial license
     volumes:
       - /mnt/user/media:/media:ro
       - bitbonsai-data:/data
@@ -277,12 +281,14 @@ networks:
 ```
 
 **Create `.env` file:**
+
 ```bash
 POSTGRES_PASSWORD=your_secure_password_here
 LICENSE_KEY=your_commercial_license_key
 ```
 
 **Start stack:**
+
 ```bash
 docker-compose --env-file .env up -d
 ```
@@ -349,11 +355,13 @@ docker run -d \
 ### Unraid Updates
 
 **Via Community Applications:**
+
 1. Docker tab → Check for Updates
 2. Click **Update** when available
 3. Container restarts automatically
 
 **Manual:**
+
 ```bash
 docker pull lucidfabrics/bitbonsai:latest
 docker stop bitbonsai
@@ -390,6 +398,7 @@ cd ~/git/bitbonsai/deploy-lxc
 ```
 
 **What it does:**
+
 1. Creates Ubuntu 24.04 LXC container
 2. Configures networking and storage
 3. Installs Node.js 20.x, FFmpeg 7.1, PostgreSQL
@@ -406,6 +415,7 @@ cd ~/git/bitbonsai/deploy-lxc
 If you prefer manual setup:
 
 1. **Create LXC Container**
+
    ```bash
    pct create 202 local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst \
      --hostname bitbonsai \
@@ -418,12 +428,14 @@ If you prefer manual setup:
    ```
 
 2. **Start and enter container**
+
    ```bash
    pct start 202
    pct enter 202
    ```
 
 3. **Install dependencies**
+
    ```bash
    # Update system
    apt update && apt upgrade -y
@@ -443,6 +455,7 @@ If you prefer manual setup:
    ```
 
 4. **Deploy BitBonsai**
+
    ```bash
    # Clone repository
    git clone https://github.com/lucidfabrics/bitbonsai.git /opt/bitbonsai
@@ -484,6 +497,7 @@ For advanced users and development.
 ### Installation Steps
 
 1. **Install System Dependencies**
+
    ```bash
    # Update system
    sudo apt update && sudo apt upgrade -y
@@ -509,17 +523,20 @@ For advanced users and development.
    ```
 
 2. **Clone Repository**
+
    ```bash
    git clone https://github.com/lucidfabrics/bitbonsai.git
    cd bitbonsai
    ```
 
 3. **Install Dependencies**
+
    ```bash
    npm install
    ```
 
 4. **Configure Environment**
+
    ```bash
    # Copy environment template
    cp .env.example .env
@@ -529,6 +546,7 @@ For advanced users and development.
    ```
 
    **`.env` contents:**
+
    ```bash
    NODE_ENV=production
    PORT=4210
@@ -539,6 +557,7 @@ For advanced users and development.
    ```
 
 5. **Setup Database**
+
    ```bash
    # Generate Prisma Client
    npx prisma generate
@@ -551,6 +570,7 @@ For advanced users and development.
    ```
 
 6. **Build Applications**
+
    ```bash
    # Build frontend
    npx nx build frontend --prod
@@ -562,6 +582,7 @@ For advanced users and development.
 7. **Start Services**
 
    **Option 1: PM2 (Recommended)**
+
    ```bash
    # Install PM2
    sudo npm install -g pm2
@@ -582,6 +603,7 @@ For advanced users and development.
    **Option 2: systemd**
 
    Create `/etc/systemd/system/bitbonsai-backend.service`:
+
    ```ini
    [Unit]
    Description=BitBonsai Backend
@@ -600,6 +622,7 @@ For advanced users and development.
    ```
 
    Enable and start:
+
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable bitbonsai-backend
@@ -617,6 +640,7 @@ For advanced users and development.
 ### 1. Verify Installation
 
 **Check service status:**
+
 ```bash
 # Docker
 docker ps | grep bitbonsai
@@ -629,6 +653,7 @@ sudo systemctl status bitbonsai-backend
 ```
 
 **Check logs:**
+
 ```bash
 # Docker
 docker logs bitbonsai
@@ -643,6 +668,7 @@ sudo journalctl -u bitbonsai-backend -f
 ### 2. Configure Firewall
 
 **UFW (Ubuntu/Debian):**
+
 ```bash
 sudo ufw allow 4210/tcp  # Frontend
 sudo ufw allow 3100/tcp  # API
@@ -650,6 +676,7 @@ sudo ufw allow 5353/udp  # mDNS (for node discovery)
 ```
 
 **Firewalld (RHEL/CentOS):**
+
 ```bash
 sudo firewall-cmd --permanent --add-port=4210/tcp
 sudo firewall-cmd --permanent --add-port=3100/tcp

@@ -55,7 +55,9 @@ interface DocItem {
                   {{ copied ? 'Copied!' : 'Copy' }}
                 </button>
               </div>
-              <pre class="code-block__content"><code>{{ dockerCommand }}</code></pre>
+              <pre
+                class="code-block__content"
+              ><code>{{ dockerCommand }}</code></pre>
             </div>
 
             <div class="quick-start__steps">
@@ -63,21 +65,27 @@ interface DocItem {
                 <div class="step__number">1</div>
                 <div class="step__content">
                   <h3 class="step__title">Start Container</h3>
-                  <p class="step__description">Run the Docker command above to start BitBonsai</p>
+                  <p class="step__description">
+                    Run the Docker command above to start BitBonsai
+                  </p>
                 </div>
               </div>
               <div class="step">
                 <div class="step__number">2</div>
                 <div class="step__content">
                   <h3 class="step__title">Open UI</h3>
-                  <p class="step__description">Navigate to http://localhost:4210 in your browser</p>
+                  <p class="step__description">
+                    Navigate to http://localhost:4210 in your browser
+                  </p>
                 </div>
               </div>
               <div class="step">
                 <div class="step__number">3</div>
                 <div class="step__content">
                   <h3 class="step__title">Add Library</h3>
-                  <p class="step__description">Point BitBonsai at your media folder and start encoding</p>
+                  <p class="step__description">
+                    Point BitBonsai at your media folder and start encoding
+                  </p>
                 </div>
               </div>
             </div>
@@ -86,16 +94,26 @@ interface DocItem {
           <!-- Documentation Sections -->
           <div class="doc-sections">
             @for (section of docSections; track section.title; let i = $index) {
-              <div class="doc-section" bbScrollReveal [delay]="i * 120" animation="fade-in-up">
+              <div
+                class="doc-section"
+                bbScrollReveal
+                [delay]="i * 120"
+                animation="fade-in-up"
+              >
                 <div class="doc-section__header">
-                  <fa-icon [icon]="section.faIcon" class="doc-section__icon"></fa-icon>
+                  <fa-icon
+                    [icon]="section.faIcon"
+                    class="doc-section__icon"
+                  ></fa-icon>
                   <h2 class="doc-section__title">{{ section.title }}</h2>
                 </div>
                 <div class="doc-section__items">
                   @for (item of section.items; track item.title) {
                     <div class="doc-item">
                       <h3 class="doc-item__title">{{ item.title }}</h3>
-                      <p class="doc-item__description">{{ item.description }}</p>
+                      <p class="doc-item__description">
+                        {{ item.description }}
+                      </p>
                     </div>
                   }
                 </div>

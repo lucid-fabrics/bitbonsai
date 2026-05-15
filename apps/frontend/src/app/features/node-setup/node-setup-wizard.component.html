@@ -27,7 +27,11 @@
       <div
         class="step"
         [class.active]="currentStep() >= WizardStep.SelectNode"
-        [class.current]="currentStep() === WizardStep.SelectNode || currentStep() === WizardStep.Scanning || currentStep() === WizardStep.ManualCode"
+        [class.current]="
+          currentStep() === WizardStep.SelectNode ||
+          currentStep() === WizardStep.Scanning ||
+          currentStep() === WizardStep.ManualCode
+        "
       >
         <div class="step-number">3</div>
         <div class="step-label">{{ 'nodeSetup.connect' | transloco }}</div>
@@ -43,7 +47,10 @@
       <div
         class="step"
         [class.active]="currentStep() >= WizardStep.CapabilityTest"
-        [class.current]="currentStep() === WizardStep.CapabilityTest || currentStep() === WizardStep.CapabilityResults"
+        [class.current]="
+          currentStep() === WizardStep.CapabilityTest ||
+          currentStep() === WizardStep.CapabilityResults
+        "
       >
         <div class="step-number">5</div>
         <div class="step-label">{{ 'nodeSetup.testing' | transloco }}</div>
@@ -99,26 +106,38 @@
       </p>
 
       <div class="method-cards">
-        <div class="method-card" (click)="selectPairingMethod(PairingMethod.AutoDiscovery)">
+        <div
+          class="method-card"
+          (click)="selectPairingMethod(PairingMethod.AutoDiscovery)"
+        >
           <div class="method-icon">
             <fa-icon icon="radar"></fa-icon>
           </div>
           <h3>{{ 'nodeSetup.autoDiscover' | transloco }}</h3>
           <p>{{ 'nodeSetup.autoDiscoverDesc' | transloco }}</p>
           <div class="method-badges">
-            <span class="badge badge-primary">{{ 'nodes.recommended' | transloco }}</span>
-            <span class="badge badge-info">{{ 'nodeSetup.fast' | transloco }}</span>
+            <span class="badge badge-primary">{{
+              'nodes.recommended' | transloco
+            }}</span>
+            <span class="badge badge-info">{{
+              'nodeSetup.fast' | transloco
+            }}</span>
           </div>
         </div>
 
-        <div class="method-card" (click)="selectPairingMethod(PairingMethod.ManualCode)">
+        <div
+          class="method-card"
+          (click)="selectPairingMethod(PairingMethod.ManualCode)"
+        >
           <div class="method-icon">
             <fa-icon icon="keyboard"></fa-icon>
           </div>
           <h3>{{ 'nodeSetup.manualCode' | transloco }}</h3>
           <p>{{ 'nodeSetup.manualCodeDesc' | transloco }}</p>
           <div class="method-badges">
-            <span class="badge badge-secondary">{{ 'nodeSetup.advanced' | transloco }}</span>
+            <span class="badge badge-secondary">{{
+              'nodeSetup.advanced' | transloco
+            }}</span>
           </div>
         </div>
       </div>
@@ -142,7 +161,9 @@
 
       <div class="manual-form">
         <div class="form-group">
-          <label for="pairingCode">{{ 'nodeSetup.pairingCode' | transloco }}</label>
+          <label for="pairingCode">{{
+            'nodeSetup.pairingCode' | transloco
+          }}</label>
           <input
             type="text"
             id="pairingCode"
@@ -152,12 +173,16 @@
             [(ngModel)]="manualPairingCode"
             (input)="errorMessage.set(null)"
           />
-          <p class="input-hint" [innerHTML]="'nodeSetup.pairingCodeHint' | transloco">
-          </p>
+          <p
+            class="input-hint"
+            [innerHTML]="'nodeSetup.pairingCodeHint' | transloco"
+          ></p>
         </div>
 
         <div class="form-group">
-          <label for="mainNodeUrl">{{ 'nodeSetup.mainNodeAddress' | transloco }}</label>
+          <label for="mainNodeUrl">{{
+            'nodeSetup.mainNodeAddress' | transloco
+          }}</label>
           <input
             type="text"
             id="mainNodeUrl"
@@ -177,10 +202,7 @@
           <fa-icon icon="arrow-left"></fa-icon>
           {{ 'common.back' | transloco }}
         </button>
-        <button
-          class="btn btn-link"
-          (click)="switchToAutoDiscovery()"
-        >
+        <button class="btn btn-link" (click)="switchToAutoDiscovery()">
           <fa-icon icon="radar"></fa-icon>
           {{ 'nodeSetup.switchToAutoDiscover' | transloco }}
         </button>
@@ -278,7 +300,9 @@
               </div>
               <div class="node-info">
                 <h3>{{ node.name }}</h3>
-                <div class="node-address">{{ node.ipAddress }}:{{ node.apiPort }}</div>
+                <div class="node-address">
+                  {{ node.ipAddress }}:{{ node.apiPort }}
+                </div>
               </div>
               <div class="node-selection">
                 @if (selectedNodeId() === node.nodeId) {
@@ -304,7 +328,9 @@
 
       @if (selectedNode()) {
         <div class="node-name-input">
-          <label for="childNodeName">{{ 'nodeSetup.childNodeName' | transloco }}</label>
+          <label for="childNodeName">{{
+            'nodeSetup.childNodeName' | transloco
+          }}</label>
           <input
             type="text"
             id="childNodeName"
@@ -352,7 +378,9 @@
       @if (errorMessage()) {
         <div class="step-pairing__error">
           <fa-icon icon="circle-xmark"></fa-icon>
-          <h2 class="step-pairing__error-title">{{ 'nodeSetup.connectionFailed' | transloco }}</h2>
+          <h2 class="step-pairing__error-title">
+            {{ 'nodeSetup.connectionFailed' | transloco }}
+          </h2>
           <p class="step-pairing__error-message">{{ errorMessage() }}</p>
           <div class="step-pairing__error-actions">
             <button class="btn btn-secondary" (click)="goBack()">
@@ -375,12 +403,15 @@
         <h2>{{ 'nodeSetup.requestingConnection' | transloco }}</h2>
         <p class="step-pairing__description">
           {{ 'nodeSetup.sendingPairingRequest' | transloco }}
-          <strong>{{ selectedNode()?.name }}</strong>...
+          <strong>{{ selectedNode()?.name }}</strong
+          >...
         </p>
 
         @if (pairingCode()) {
           <div class="step-pairing__code-section">
-            <p class="step-pairing__code-label">{{ 'nodeSetup.pairingCodeLabel' | transloco }}</p>
+            <p class="step-pairing__code-label">
+              {{ 'nodeSetup.pairingCodeLabel' | transloco }}
+            </p>
             <div class="step-pairing__code">{{ pairingCode() }}</div>
             <p class="step-pairing__code-hint">
               {{ 'nodeSetup.enterCodeOnMain' | transloco }}
@@ -391,7 +422,9 @@
         @if (pairingStatus() === PairingStatus.WAITING_APPROVAL) {
           <div class="step-pairing__waiting">
             <div class="step-pairing__spinner"></div>
-            <p class="step-pairing__waiting-text">{{ 'nodeSetup.waitingForApproval' | transloco }}</p>
+            <p class="step-pairing__waiting-text">
+              {{ 'nodeSetup.waitingForApproval' | transloco }}
+            </p>
             <div class="step-pairing__timeout-progress">
               <div class="step-pairing__timeout-bar">
                 <div
@@ -455,43 +488,66 @@
 
       @if (hardwareDetection()) {
         <div class="step-complete__hardware">
-          <h3 class="step-complete__hardware-title">{{ 'nodeSetup.hardwareDetectionSummary' | transloco }}</h3>
+          <h3 class="step-complete__hardware-title">
+            {{ 'nodeSetup.hardwareDetectionSummary' | transloco }}
+          </h3>
           <div class="step-complete__hardware-grid">
             <div class="step-complete__hardware-item">
               <fa-icon icon="microchip"></fa-icon>
               <div class="step-complete__hardware-info">
-                <div class="step-complete__hardware-label">{{ 'nodeSetup.acceleration' | transloco }}</div>
+                <div class="step-complete__hardware-label">
+                  {{ 'nodeSetup.acceleration' | transloco }}
+                </div>
                 <div class="step-complete__hardware-value">
-                  {{ NodeBo.getAccelerationLabel(hardwareDetection()!.acceleration) }}
+                  {{
+                    NodeBo.getAccelerationLabel(
+                      hardwareDetection()!.acceleration
+                    )
+                  }}
                 </div>
               </div>
             </div>
             <div class="step-complete__hardware-item">
               <fa-icon icon="memory"></fa-icon>
               <div class="step-complete__hardware-info">
-                <div class="step-complete__hardware-label">{{ 'nodeSetup.cpuCores' | transloco }}</div>
-                <div class="step-complete__hardware-value">{{ hardwareDetection()!.cpuCores }}</div>
+                <div class="step-complete__hardware-label">
+                  {{ 'nodeSetup.cpuCores' | transloco }}
+                </div>
+                <div class="step-complete__hardware-value">
+                  {{ hardwareDetection()!.cpuCores }}
+                </div>
               </div>
             </div>
             <div class="step-complete__hardware-item">
               <fa-icon icon="server"></fa-icon>
               <div class="step-complete__hardware-info">
-                <div class="step-complete__hardware-label">{{ 'nodeSetup.memory' | transloco }}</div>
-                <div class="step-complete__hardware-value">{{ hardwareDetection()!.totalMemoryGB }} GB</div>
+                <div class="step-complete__hardware-label">
+                  {{ 'nodeSetup.memory' | transloco }}
+                </div>
+                <div class="step-complete__hardware-value">
+                  {{ hardwareDetection()!.totalMemoryGB }} GB
+                </div>
               </div>
             </div>
             <div class="step-complete__hardware-item">
               <fa-icon icon="hard-drive"></fa-icon>
               <div class="step-complete__hardware-info">
-                <div class="step-complete__hardware-label">{{ 'nodeSetup.availableDisk' | transloco }}</div>
-                <div class="step-complete__hardware-value">{{ hardwareDetection()!.availableDiskGB }} GB</div>
+                <div class="step-complete__hardware-label">
+                  {{ 'nodeSetup.availableDisk' | transloco }}
+                </div>
+                <div class="step-complete__hardware-value">
+                  {{ hardwareDetection()!.availableDiskGB }} GB
+                </div>
               </div>
             </div>
           </div>
         </div>
       }
 
-      <button class="btn btn-primary step-complete__btn" (click)="completeWizard()">
+      <button
+        class="btn btn-primary step-complete__btn"
+        (click)="completeWizard()"
+      >
         <fa-icon icon="rocket"></fa-icon>
         {{ 'nodeSetup.startEncoding' | transloco }}
       </button>

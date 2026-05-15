@@ -27,25 +27,31 @@ export class NodeRegistrationService {
   constructor(
     private readonly nodeRepository: NodeRepository,
     private readonly licenseRepository: LicenseRepository,
-    private readonly storageShareService: StorageShareService
+    private readonly storageShareService: StorageShareService,
   ) {}
 
   /**
    * Register a new node with license validation
    */
-  async registerNode(data: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
+  async registerNode(
+    data: RegisterNodeDto,
+  ): Promise<NodeRegistrationResponseDto> {
     let licenseKey = data.licenseKey;
     if (!licenseKey) {
-      const mainNode = await this.nodeRepository.findFirstWithLicense({ role: NodeRole.MAIN });
+      const mainNode = await this.nodeRepository.findFirstWithLicense({
+        role: NodeRole.MAIN,
+      });
 
       if (!mainNode) {
         throw new BadRequestException(
-          'No main node found. License key is required for first node registration.'
+          'No main node found. License key is required for first node registration.',
         );
       }
 
       licenseKey = mainNode.license.key;
-      this.logger.debug(`Using main node's license (${licenseKey}) for child node registration`);
+      this.logger.debug(
+        `Using main node's license (${licenseKey}) for child node registration`,
+      );
     }
 
     const license = await this.licenseRepository.findByKeyWithInclude<{
@@ -60,7 +66,9 @@ export class NodeRegistrationService {
     }
 
     if (license._count.nodes >= license.maxNodes) {
-      throw new ConflictException(`Maximum nodes (${license.maxNodes}) reached for this license`);
+      throw new ConflictException(
+        `Maximum nodes (${license.maxNodes}) reached for this license`,
+      );
     }
 
     const pairingToken = this.generatePairingToken();
@@ -76,16 +84,17 @@ export class NodeRegistrationService {
 
       if (existingMainNode) {
         this.logger.error(
-          `❌ Attempted to create duplicate MAIN node! Existing MAIN: ${existingMainNode.name} (${existingMainNode.id})`
+          `❌ Attempted to create duplicate MAIN node! Existing MAIN: ${existingMainNode.name} (${existingMainNode.id})`,
         );
         throw new ConflictException(
-          'A MAIN node already exists for this license. Only one MAIN node is allowed per license.'
+          'A MAIN node already exists for this license. Only one MAIN node is allowed per license.',
         );
       }
     }
 
     const nodeName =
-      data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
+      data.name ||
+      `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
     const nodeVersion = data.version || APP_VERSION;
     const nodeAcceleration = data.acceleration || 'CPU';
 
@@ -140,14 +149,14 @@ export class NodeRegistrationService {
 
     if (pairedNode.role === 'LINKED') {
       this.logger.log(
-        `🗂️  Pairing complete - auto-mounting storage shares for ${pairedNode.name}...`
+        `🗂️  Pairing complete - auto-mounting storage shares for ${pairedNode.name}...`,
       );
 
       this.storageShareService
         .autoDetectAndMount(pairedNode.id)
         .then((result) => {
           this.logger.log(
-            `✅ Storage auto-mount complete for ${pairedNode.name}: ${result.detected} detected, ${result.created} created, ${result.mounted} mounted`
+            `✅ Storage auto-mount complete for ${pairedNode.name}: ${result.detected} detected, ${result.created} created, ${result.mounted} mounted`,
           );
           if (result.errors.length > 0) {
             this.logger.warn(`⚠️  Mount errors: ${result.errors.join(', ')}`);
@@ -156,7 +165,7 @@ export class NodeRegistrationService {
         .catch((error) => {
           this.logger.error(
             `❌ Failed to auto-mount storage shares for ${pairedNode.name}:`,
-            error instanceof Error ? error.stack : error
+            error instanceof Error ? error.stack : error,
           );
         });
     }
@@ -167,7 +176,9 @@ export class NodeRegistrationService {
   /**
    * Generate a new pairing token for an existing node
    */
-  async generatePairingTokenForNode(nodeId: string): Promise<NodeRegistrationResponseDto> {
+  async generatePairingTokenForNode(
+    nodeId: string,
+  ): Promise<NodeRegistrationResponseDto> {
     const node = await this.nodeRepository.findById(nodeId);
 
     if (!node) {

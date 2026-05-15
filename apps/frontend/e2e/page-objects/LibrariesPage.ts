@@ -75,7 +75,9 @@ export class LibrariesPage extends BasePage {
    * Delete library by name
    */
   async deleteLibrary(name: string): Promise<void> {
-    const card = this.page.locator('[data-testid="library-card"]', { hasText: name });
+    const card = this.page.locator('[data-testid="library-card"]', {
+      hasText: name,
+    });
     await card.getByRole('button', { name: /delete/i }).click();
     await this.clickButton('Delete');
   }

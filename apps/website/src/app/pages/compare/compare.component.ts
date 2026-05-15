@@ -36,10 +36,17 @@ interface ComparisonSection {
       <section class="summary">
         <div class="summary__container">
           <div class="summary__grid">
-            <div class="summary-card summary-card--bitbonsai" bbScrollReveal [delay]="0" animation="slide-in-left">
+            <div
+              class="summary-card summary-card--bitbonsai"
+              bbScrollReveal
+              [delay]="0"
+              animation="slide-in-left"
+            >
               <fa-icon [icon]="faSeedling" class="summary-card__logo"></fa-icon>
               <h3 class="summary-card__name">BitBonsai</h3>
-              <p class="summary-card__tagline">Intelligent multi-node encoding</p>
+              <p class="summary-card__tagline">
+                Intelligent multi-node encoding
+              </p>
               <ul class="summary-card__highlights">
                 <li>5-minute setup</li>
                 <li>TRUE RESUME™</li>
@@ -47,10 +54,17 @@ interface ComparisonSection {
                 <li>Multi-node distribution</li>
                 <li>Zero configuration</li>
               </ul>
-              <a routerLink="/download" class="summary-card__cta">Get Started</a>
+              <a routerLink="/download" class="summary-card__cta"
+                >Get Started</a
+              >
             </div>
 
-            <div class="summary-card" bbScrollReveal [delay]="100" animation="slide-in-right">
+            <div
+              class="summary-card"
+              bbScrollReveal
+              [delay]="100"
+              animation="slide-in-right"
+            >
               <fa-icon [icon]="faVideo" class="summary-card__logo"></fa-icon>
               <h3 class="summary-card__name">Tdarr</h3>
               <p class="summary-card__tagline">Plugin-based transcoding</p>
@@ -71,14 +85,35 @@ interface ComparisonSection {
         <div class="comparison__container">
           <h2 class="comparison__title">Feature Comparison</h2>
 
-          @for (section of comparisonSections; track section.title; let i = $index) {
-            <div class="comparison-table" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
+          @for (
+            section of comparisonSections;
+            track section.title;
+            let i = $index
+          ) {
+            <div
+              class="comparison-table"
+              bbScrollReveal
+              [delay]="i * 150"
+              animation="fade-in-up"
+            >
               <h3 class="comparison-table__section">{{ section.title }}</h3>
 
               <div class="comparison-table__header">
-                <div class="comparison-table__cell comparison-table__cell--feature">Feature</div>
-                <div class="comparison-table__cell comparison-table__cell--bitbonsai">BitBonsai</div>
-                <div class="comparison-table__cell comparison-table__cell--tdarr">Tdarr</div>
+                <div
+                  class="comparison-table__cell comparison-table__cell--feature"
+                >
+                  Feature
+                </div>
+                <div
+                  class="comparison-table__cell comparison-table__cell--bitbonsai"
+                >
+                  BitBonsai
+                </div>
+                <div
+                  class="comparison-table__cell comparison-table__cell--tdarr"
+                >
+                  Tdarr
+                </div>
               </div>
 
               @for (row of section.rows; track row.feature) {
@@ -86,28 +121,36 @@ interface ComparisonSection {
                   class="comparison-table__row"
                   [class.comparison-table__row--highlight]="row.highlight"
                 >
-                  <div class="comparison-table__cell comparison-table__cell--feature">{{ row.feature }}</div>
-                  <div class="comparison-table__cell comparison-table__cell--bitbonsai">
-                    @if (typeof(row.bitbonsai) === 'boolean') {
+                  <div
+                    class="comparison-table__cell comparison-table__cell--feature"
+                  >
+                    {{ row.feature }}
+                  </div>
+                  <div
+                    class="comparison-table__cell comparison-table__cell--bitbonsai"
+                  >
+                    @if (typeof row.bitbonsai === 'boolean') {
                       @if (row.bitbonsai) {
                         <span class="check">✓</span>
                       } @else {
                         <span class="cross">✗</span>
                       }
                     }
-                    @if (typeof(row.bitbonsai) === 'string') {
+                    @if (typeof row.bitbonsai === 'string') {
                       {{ row.bitbonsai }}
                     }
                   </div>
-                  <div class="comparison-table__cell comparison-table__cell--tdarr">
-                    @if (typeof(row.tdarr) === 'boolean') {
+                  <div
+                    class="comparison-table__cell comparison-table__cell--tdarr"
+                  >
+                    @if (typeof row.tdarr === 'boolean') {
                       @if (row.tdarr) {
                         <span class="check">✓</span>
                       } @else {
                         <span class="cross">✗</span>
                       }
                     }
-                    @if (typeof(row.tdarr) === 'string') {
+                    @if (typeof row.tdarr === 'string') {
                       {{ row.tdarr }}
                     }
                   </div>
@@ -125,7 +168,9 @@ interface ComparisonSection {
 
           <div class="use-cases__grid">
             <div class="use-case-card use-case-card--bitbonsai">
-              <h3 class="use-case-card__title">Choose BitBonsai If You Want:</h3>
+              <h3 class="use-case-card__title">
+                Choose BitBonsai If You Want:
+              </h3>
               <ul class="use-case-card__list">
                 <li>Zero-friction setup (5 minutes)</li>
                 <li>Multi-node distributed encoding</li>
@@ -161,7 +206,10 @@ interface ComparisonSection {
             Start encoding in under 5 minutes. No credit card required.
           </p>
           <div class="compare-cta__buttons">
-            <a routerLink="/download" class="compare-cta__button compare-cta__button--primary">
+            <a
+              routerLink="/download"
+              class="compare-cta__button compare-cta__button--primary"
+            >
               Download Now
             </a>
             <a routerLink="/docs" class="compare-cta__button">
@@ -199,7 +247,11 @@ export class CompareComponent {
         },
         { feature: 'Docker Compose', bitbonsai: true, tdarr: true },
         { feature: 'Unraid Template', bitbonsai: true, tdarr: true },
-        { feature: 'Customization Depth', bitbonsai: 'Moderate', tdarr: 'Extensive' },
+        {
+          feature: 'Customization Depth',
+          bitbonsai: 'Moderate',
+          tdarr: 'Extensive',
+        },
       ],
     },
     {
@@ -229,7 +281,12 @@ export class CompareComponent {
     {
       title: 'Multi-Node Processing',
       rows: [
-        { feature: 'Distributed Processing', bitbonsai: true, tdarr: true, highlight: true },
+        {
+          feature: 'Distributed Processing',
+          bitbonsai: true,
+          tdarr: true,
+          highlight: true,
+        },
         {
           feature: 'Load Balancing',
           bitbonsai: 'Automatic',
@@ -251,8 +308,16 @@ export class CompareComponent {
           bitbonsai: 'NVIDIA, Intel, AMD, Apple',
           tdarr: 'NVIDIA, Intel, AMD',
         },
-        { feature: 'Concurrent Jobs', bitbonsai: '2-20 (tier-based)', tdarr: 'Unlimited' },
-        { feature: 'Quality Presets', bitbonsai: 'Smart defaults', tdarr: 'Custom via plugins' },
+        {
+          feature: 'Concurrent Jobs',
+          bitbonsai: '2-20 (tier-based)',
+          tdarr: 'Unlimited',
+        },
+        {
+          feature: 'Quality Presets',
+          bitbonsai: 'Smart defaults',
+          tdarr: 'Custom via plugins',
+        },
       ],
     },
     {
@@ -264,8 +329,17 @@ export class CompareComponent {
           tdarr: 'Feature-rich',
           highlight: true,
         },
-        { feature: 'Learning Curve', bitbonsai: 'Minimal', tdarr: 'Moderate', highlight: true },
-        { feature: 'Progress Tracking', bitbonsai: 'Real-time', tdarr: 'Real-time' },
+        {
+          feature: 'Learning Curve',
+          bitbonsai: 'Minimal',
+          tdarr: 'Moderate',
+          highlight: true,
+        },
+        {
+          feature: 'Progress Tracking',
+          bitbonsai: 'Real-time',
+          tdarr: 'Real-time',
+        },
         { feature: 'Job Queue', bitbonsai: 'Visual grid', tdarr: 'Table view' },
       ],
     },
@@ -282,9 +356,21 @@ export class CompareComponent {
     {
       title: 'Licensing & Support',
       rows: [
-        { feature: 'Free Tier', bitbonsai: '1 node, 2 concurrent', tdarr: 'Unlimited' },
-        { feature: 'Paid Options', bitbonsai: '$3-$20/mo', tdarr: 'Free (donations welcome)' },
-        { feature: 'Community Support', bitbonsai: 'Discord', tdarr: 'Discord, Reddit' },
+        {
+          feature: 'Free Tier',
+          bitbonsai: '1 node, 2 concurrent',
+          tdarr: 'Unlimited',
+        },
+        {
+          feature: 'Paid Options',
+          bitbonsai: '$3-$20/mo',
+          tdarr: 'Free (donations welcome)',
+        },
+        {
+          feature: 'Community Support',
+          bitbonsai: 'Discord',
+          tdarr: 'Discord, Reddit',
+        },
         { feature: 'Active Development', bitbonsai: true, tdarr: true },
       ],
     },

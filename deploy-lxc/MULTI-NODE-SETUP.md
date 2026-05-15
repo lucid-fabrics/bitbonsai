@@ -64,8 +64,8 @@ services:
     container_name: bitbonsai-linked
     restart: unless-stopped
     ports:
-      - "3100:3100"  # Backend API
-      - "4210:4210"  # Frontend UI
+      - '3100:3100' # Backend API
+      - '4210:4210' # Frontend UI
     environment:
       - NODE_ENV=production
       - PORT=3100
@@ -73,7 +73,7 @@ services:
     # A) Mount NFS on host and bind-mount into container
     # B) Use Docker volume with NFS driver
     volumes:
-      - ./data:/app/data  # Persistent database
+      - ./data:/app/data # Persistent database
     # Optional: If using Docker NFS volume
     # volumes:
     #   - type: volume
@@ -85,7 +85,6 @@ services:
     #         type: nfs
     #         o: addr=192.168.1.100,rw,nolock,soft
     #         device: ":/mnt/user/media"
-
 # Optional: NFS volume definition
 # volumes:
 #   media:
@@ -101,6 +100,7 @@ services:
 ### MAIN Node (Automatic)
 
 On startup, the MAIN node:
+
 1. Detects Docker volume mounts (e.g., `/mnt/user/media`)
 2. Configures NFS exports for the local network
 3. Creates StorageShare records in the database
@@ -109,6 +109,7 @@ On startup, the MAIN node:
 ### LINKED Node (Automatic)
 
 On startup or after pairing, LINKED nodes:
+
 1. Query the MAIN node's API for available NFS shares
 2. Create local StorageShare records
 3. Execute NFS mount commands to `/media`, `/cache`, etc.
@@ -137,6 +138,7 @@ On startup or after pairing, LINKED nodes:
 **Symptom**: LINKED node shows `No NFS shares detected`
 
 **Solution**:
+
 1. Check MAIN node has NFS exports: `ssh root@main-ip "cat /etc/exports"`
 2. Verify NFS server is running: `ssh root@main-ip "systemctl status nfs-server"`
 3. Check network connectivity: `showmount -e <main-node-ip>` from LINKED node
@@ -146,6 +148,7 @@ On startup or after pairing, LINKED nodes:
 **Symptom**: Can read files but not write, or "Permission denied" errors
 
 **Solution**: Check NFS export options in `/etc/exports` on MAIN node:
+
 - For read-write: `rw,no_root_squash`
 - For read-only: `ro,all_squash`
 
@@ -166,5 +169,6 @@ On startup or after pairing, LINKED nodes:
 ## Support
 
 For issues or questions:
+
 - GitHub Issues: https://github.com/wassimmehanna/bitbonsai/issues
 - Documentation: https://github.com/wassimmehanna/bitbonsai/wiki

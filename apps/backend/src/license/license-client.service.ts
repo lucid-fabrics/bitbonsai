@@ -54,18 +54,23 @@ export class LicenseClientService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-    private readonly licenseRepository: LicenseRepository
+    private readonly licenseRepository: LicenseRepository,
   ) {
-    const configuredUrl = this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
+    const configuredUrl =
+      this.configService.get('LICENSE_API_URL') || 'https://api.bitbonsai.app';
 
     // M4: Enforce HTTPS in production
-    if (!configuredUrl.startsWith('https://') && process.env.NODE_ENV === 'production') {
+    if (
+      !configuredUrl.startsWith('https://') &&
+      process.env.NODE_ENV === 'production'
+    ) {
       throw new Error('LICENSE_API_URL must use HTTPS in production');
     }
 
     this.apiUrl = configuredUrl;
     this.cacheTtlHours =
-      this.configService.get<number>('LICENSE_CACHE_TTL_HOURS') || DEFAULT_CACHE_TTL_HOURS;
+      this.configService.get<number>('LICENSE_CACHE_TTL_HOURS') ||
+      DEFAULT_CACHE_TTL_HOURS;
   }
 
   /**
@@ -74,12 +79,16 @@ export class LicenseClientService {
   private maskLicenseKey(key: string): string {
     if (!key || key.length < 8) return '****';
     const lastFour = key.slice(-4);
-    const prefix = key.includes('-') ? `${key.split('-').slice(0, -1).join('-')}-` : '';
+    const prefix = key.includes('-')
+      ? `${key.split('-').slice(0, -1).join('-')}-`
+      : '';
     return `${prefix}****${lastFour}`;
   }
 
   async getLicenseKey(): Promise<string | null> {
-    const license = await this.licenseRepository.findFirst<{ key: string } | null>({});
+    const license = await this.licenseRepository.findFirst<{
+      key: string;
+    } | null>({});
     return license?.key || null;
   }
 
@@ -103,7 +112,9 @@ export class LicenseClientService {
       const hoursSinceVerification =
         (now.getTime() - this.lastVerification.getTime()) / (1000 * 60 * 60);
       if (hoursSinceVerification < this.cacheTtlHours) {
-        this.logger.debug(`Using cached license (verified within ${this.cacheTtlHours}h)`);
+        this.logger.debug(
+          `Using cached license (verified within ${this.cacheTtlHours}h)`,
+        );
         // Return with masked key for security
         return {
           ...this.cachedLicense,
@@ -142,8 +153,8 @@ export class LicenseClientService {
           },
           {
             timeout: DEFAULT_HTTP_TIMEOUT,
-          }
-        )
+          },
+        ),
       );
 
       const verifiedLicense = response.data;
@@ -155,7 +166,7 @@ export class LicenseClientService {
       this.lastVerification = now;
 
       this.logger.log(
-        `License verified: ${verifiedLicense.tier} (${verifiedLicense.maxNodes} nodes, ${verifiedLicense.maxConcurrentJobs} jobs)`
+        `License verified: ${verifiedLicense.tier} (${verifiedLicense.maxNodes} nodes, ${verifiedLicense.maxConcurrentJobs} jobs)`,
       );
 
       // Return with masked key for security
@@ -184,7 +195,9 @@ export class LicenseClientService {
       const localLicense = await this.licenseRepository.findFirstActiveDesc();
 
       if (localLicense) {
-        this.logger.warn('License API unreachable, using local database license');
+        this.logger.warn(
+          'License API unreachable, using local database license',
+        );
         const licenseInfo: LicenseInfo = {
           key: this.maskLicenseKey(localLicense.key),
           email: localLicense.email,
@@ -202,12 +215,18 @@ export class LicenseClientService {
         return licenseInfo;
       }
 
-      this.logger.error('License verification failed and no cache available', errorDetails);
+      this.logger.error(
+        'License verification failed and no cache available',
+        errorDetails,
+      );
       throw new UnauthorizedException('License verification failed');
     }
   }
 
-  async getCurrentLimits(): Promise<{ maxNodes: number; maxConcurrentJobs: number }> {
+  async getCurrentLimits(): Promise<{
+    maxNodes: number;
+    maxConcurrentJobs: number;
+  }> {
     const license = await this.verifyLicense();
     return {
       maxNodes: license.maxNodes,
@@ -221,7 +240,8 @@ export class LicenseClientService {
     try {
       await this.verifyLicense();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error('Daily license verification failed', errorMessage);
     }
   }
@@ -232,8 +252,13 @@ export class LicenseClientService {
    *
    * Uses transaction to prevent race conditions (M6)
    */
-  async activateLicense(licenseKey: string, email?: string): Promise<LicenseInfo> {
-    this.logger.log(`Activating license key for ${email || 'unknown email'}...`);
+  async activateLicense(
+    licenseKey: string,
+    email?: string,
+  ): Promise<LicenseInfo> {
+    this.logger.log(
+      `Activating license key for ${email || 'unknown email'}...`,
+    );
 
     try {
       // Call licensing-service to verify the license key
@@ -241,8 +266,8 @@ export class LicenseClientService {
         this.httpService.post(
           `${this.apiUrl}/licenses/verify`,
           { licenseKey },
-          { timeout: DEFAULT_HTTP_TIMEOUT }
-        )
+          { timeout: DEFAULT_HTTP_TIMEOUT },
+        ),
       );
 
       const result = response.data;
@@ -266,9 +291,12 @@ export class LicenseClientService {
         maxNodes: limits.maxNodes,
         maxConcurrentJobs: limits.maxConcurrentJobs,
         features: features as unknown as Prisma.InputJsonValue,
-        validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
+        validUntil: verifiedPayload.expiresAt
+          ? new Date(verifiedPayload.expiresAt)
+          : null,
       };
-      const savedLicense = await this.licenseRepository.transactionFindFirstAndUpsert(licenseData);
+      const savedLicense =
+        await this.licenseRepository.transactionFindFirstAndUpsert(licenseData);
       this.logger.log(`Saved license to ${internalTier}`);
 
       // Update cache with full key (for internal use)
@@ -299,15 +327,18 @@ export class LicenseClientService {
 
       // M1: Better error messages based on error type
       if (errorDetails.isNetworkError) {
-        this.logger.error('License activation failed - network error', errorDetails);
+        this.logger.error(
+          'License activation failed - network error',
+          errorDetails,
+        );
         throw new ServiceUnavailableException(
-          'Unable to reach licensing service. Please check your internet connection and try again.'
+          'Unable to reach licensing service. Please check your internet connection and try again.',
         );
       }
 
       this.logger.error('License activation failed', errorDetails);
       throw new BadRequestException(
-        'Failed to activate license. Please check the key and try again.'
+        'Failed to activate license. Please check the key and try again.',
       );
     }
   }
@@ -324,8 +355,8 @@ export class LicenseClientService {
         this.httpService.post(
           `${this.apiUrl}/licenses/lookup`,
           { email },
-          { timeout: DEFAULT_HTTP_TIMEOUT }
-        )
+          { timeout: DEFAULT_HTTP_TIMEOUT },
+        ),
       );
 
       const result = response.data;
@@ -388,7 +419,10 @@ export class LicenseClientService {
     const networkInterfaces = os.networkInterfaces();
     const macs = Object.values(networkInterfaces)
       .flat()
-      .filter((iface) => iface && !iface.internal && iface.mac !== '00:00:00:00:00:00')
+      .filter(
+        (iface) =>
+          iface && !iface.internal && iface.mac !== '00:00:00:00:00:00',
+      )
       .map((iface) => iface?.mac);
 
     const uniqueString = `${macs.join('-')}-${os.hostname()}`;

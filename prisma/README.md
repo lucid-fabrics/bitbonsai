@@ -7,19 +7,23 @@ This schema defines the complete database structure for BitBonsai, a media optim
 ## Core Models
 
 ### 1. License
+
 **Purpose**: Manages subscription tiers and feature access control.
 
 **Key Features**:
-- Supports multiple tiers (FREE, PATREON, COMMERCIAL_*)
+
+- Supports multiple tiers (FREE, PATREON, COMMERCIAL\_\*)
 - Stripe integration for payment tracking
 - Feature flags stored as JSON for flexible feature gating
 - Can have unlimited or time-limited validity
 
 **Relationships**:
+
 - One-to-many with Nodes (one license can have multiple nodes up to maxNodes)
 - One-to-many with Metrics (for license-level analytics)
 
 **Important Fields**:
+
 - `maxNodes`: Controls how many nodes can be activated
 - `maxConcurrentJobs`: Controls parallel encoding capacity
 - `features`: JSON object like `{ multiNode: true, advancedPresets: true, api: true }`
@@ -28,9 +32,11 @@ This schema defines the complete database structure for BitBonsai, a media optim
 ---
 
 ### 2. Node
+
 **Purpose**: Represents a physical or virtual machine running the encoding worker.
 
 **Key Features**:
+
 - Supports MAIN (primary) and LINKED (worker) roles
 - Hardware acceleration detection (CPU, Intel QSV, NVIDIA, AMD, Apple Silicon)
 - Pairing token for secure node registration
@@ -38,12 +44,14 @@ This schema defines the complete database structure for BitBonsai, a media optim
 - Heartbeat tracking for health monitoring
 
 **Relationships**:
+
 - Belongs to one License
 - Has many Libraries
 - Processes many Jobs
 - Generates Metrics
 
 **Important Fields**:
+
 - `pairingToken`: Temporary token during initial pairing (null after paired)
 - `apiKey`: Permanent authentication key for node-to-node communication
 - `lastHeartbeat`: Updated every 30-60 seconds by node
@@ -52,20 +60,24 @@ This schema defines the complete database structure for BitBonsai, a media optim
 ---
 
 ### 3. Library
+
 **Purpose**: Represents a media folder to be monitored and optimized.
 
 **Key Features**:
+
 - Supports different media types (Movies, TV Shows, Mixed, Other)
 - Can be enabled/disabled without deletion
 - Tracks total files and storage usage
 - Records last scan timestamp
 
 **Relationships**:
+
 - Belongs to one Node
 - Has many Policies (rules for how to encode media)
 - Generates many Jobs
 
 **Important Fields**:
+
 - `path`: Absolute filesystem path
 - `mediaType`: Helps with metadata detection and naming conventions
 - `totalSizeBytes`: BigInt to support large libraries (>2TB)
@@ -75,19 +87,23 @@ This schema defines the complete database structure for BitBonsai, a media optim
 ---
 
 ### 4. Policy
+
 **Purpose**: Defines encoding rules and parameters.
 
 **Key Features**:
+
 - Preset templates for common use cases
 - Custom advanced FFmpeg settings
 - Device compatibility profiles
 - Safety features (atomic replace, verification)
 
 **Relationships**:
+
 - Can be associated with a Library (library-specific policy)
 - Applied to many Jobs
 
 **Important Fields**:
+
 - `preset`: Quick templates (BALANCED_HEVC, FAST_HEVC, QUALITY_AV1, etc.)
 - `targetQuality`: CRF value (0-51, lower = better quality)
 - `deviceProfiles`: JSON like `{ appleTv: true, roku: true, web: true }`
@@ -98,20 +114,24 @@ This schema defines the complete database structure for BitBonsai, a media optim
 ---
 
 ### 5. Job
+
 **Purpose**: Represents a single file encoding task.
 
 **Key Features**:
+
 - Complete lifecycle tracking (DETECTED → QUEUED → ENCODING → VERIFYING → COMPLETED/FAILED)
 - Real-time progress and ETA
 - Storage savings calculation
 - User-friendly file labels (hides full path complexity)
 
 **Relationships**:
+
 - Belongs to one Node (worker processing the job)
 - Belongs to one Library (source location)
 - Uses one Policy (encoding rules)
 
 **Important Fields**:
+
 - `filePath`: Full path for system operations
 - `fileLabel`: Clean name for UI display (e.g., "The Matrix (1999).mkv")
 - `progress`: 0.0 to 100.0 for UI progress bars
@@ -119,26 +139,31 @@ This schema defines the complete database structure for BitBonsai, a media optim
 - `savedPercent`: Calculated as `((beforeSize - afterSize) / beforeSize) * 100`
 
 **Performance Indexes**:
+
 - Composite index on `[stage, nodeId]` for efficient queue queries
 - Index on `completedAt` for historical analytics
 
 ---
 
 ### 6. Metric
+
 **Purpose**: Aggregated analytics for Insights dashboard.
 
 **Key Features**:
+
 - Time-bucketed data (daily aggregation)
 - Node-specific or system-wide metrics
 - Codec distribution tracking
 - Throughput calculations
 
 **Relationships**:
+
 - Can belong to a Node (node-specific metrics)
 - Can belong to a License (license-wide metrics)
 - Both nullable for system-wide aggregation
 
 **Important Fields**:
+
 - `date`: Date bucket for time-series queries
 - `codecDistribution`: JSON like `{ "H.264": 62, "HEVC": 34, "AV1": 4 }`
 - `avgThroughputFilesPerHour`: Calculated from completed jobs
@@ -150,6 +175,7 @@ This schema defines the complete database structure for BitBonsai, a media optim
 ## Enums Reference
 
 ### LicenseTier
+
 ```
 FREE                    - Basic features, 1 node, 2 concurrent jobs
 PATREON                 - Supporter tier, 2 nodes, 5 concurrent jobs
@@ -159,6 +185,7 @@ COMMERCIAL_ENTERPRISE   - Unlimited nodes and jobs
 ```
 
 ### LicenseStatus
+
 ```
 ACTIVE   - Currently valid and usable
 EXPIRED  - Past validUntil date
@@ -166,12 +193,14 @@ REVOKED  - Manually disabled (refund, violation, etc.)
 ```
 
 ### NodeRole
+
 ```
 MAIN    - Primary node (hosts web UI, coordinates work)
 LINKED  - Worker node (receives jobs from MAIN)
 ```
 
 ### NodeStatus
+
 ```
 ONLINE  - Active and responding to heartbeats
 OFFLINE - No heartbeat in last 2 minutes
@@ -179,6 +208,7 @@ ERROR   - Encountered critical error
 ```
 
 ### AccelerationType
+
 ```
 CPU        - Software encoding (slowest, most compatible)
 INTEL_QSV  - Intel Quick Sync Video
@@ -188,6 +218,7 @@ APPLE_M    - Apple Silicon Media Engine
 ```
 
 ### MediaType
+
 ```
 MOVIE    - Movie library
 TV_SHOW  - TV series library
@@ -196,6 +227,7 @@ OTHER    - Music videos, home videos, etc.
 ```
 
 ### PolicyPreset
+
 ```
 BALANCED_HEVC        - Good quality/speed balance, HEVC
 FAST_HEVC            - Faster encoding, slightly lower quality
@@ -205,6 +237,7 @@ CUSTOM               - User-defined FFmpeg parameters
 ```
 
 ### TargetCodec
+
 ```
 HEVC  - H.265 (best balance)
 AV1   - AV1 (best compression, slower)
@@ -213,6 +246,7 @@ H264  - H.264 (legacy compatibility)
 ```
 
 ### JobStage
+
 ```
 DETECTED   - File detected, awaiting queue insertion
 QUEUED     - In queue, waiting for available worker
@@ -228,6 +262,7 @@ CANCELLED  - User-cancelled or policy skip
 ## Database Indexes
 
 ### Performance-Critical Indexes
+
 ```prisma
 // License lookups
 @@index([status])
@@ -251,26 +286,31 @@ CANCELLED  - User-cancelled or policy skip
 ## Database Setup
 
 ### Install Prisma
+
 ```bash
 npm install prisma @prisma/client --save
 ```
 
 ### Generate Prisma Client
+
 ```bash
 npx prisma generate
 ```
 
 ### Create Migration
+
 ```bash
 npx prisma migrate dev --name init
 ```
 
 ### Push to Database (development)
+
 ```bash
 npx prisma db push
 ```
 
 ### Studio (GUI)
+
 ```bash
 npx prisma studio
 ```
@@ -280,73 +320,77 @@ npx prisma studio
 ## Example Queries
 
 ### Get Active Jobs for a Node
+
 ```typescript
 const activeJobs = await prisma.job.findMany({
   where: {
     nodeId: 'node_abc123',
     stage: {
-      in: ['QUEUED', 'ENCODING', 'VERIFYING']
-    }
+      in: ['QUEUED', 'ENCODING', 'VERIFYING'],
+    },
   },
   include: {
     policy: true,
-    library: true
+    library: true,
   },
   orderBy: {
-    createdAt: 'asc'
-  }
+    createdAt: 'asc',
+  },
 });
 ```
 
 ### Calculate Total Storage Savings
+
 ```typescript
 const savings = await prisma.job.aggregate({
   where: {
     stage: 'COMPLETED',
     savedBytes: {
-      gt: 0
-    }
+      gt: 0,
+    },
   },
   _sum: {
-    savedBytes: true
-  }
+    savedBytes: true,
+  },
 });
 ```
 
 ### Get License Usage
+
 ```typescript
 const licenseUsage = await prisma.license.findUnique({
   where: { id: 'lic_xyz789' },
   include: {
     nodes: {
       where: {
-        status: 'ONLINE'
-      }
+        status: 'ONLINE',
+      },
     },
     _count: {
       select: {
-        nodes: true
-      }
-    }
-  }
+        nodes: true,
+      },
+    },
+  },
 });
 
 const canAddNode = licenseUsage._count.nodes < licenseUsage.maxNodes;
 ```
 
 ### Get Daily Metrics
+
 ```typescript
 const dailyMetrics = await prisma.metric.findMany({
   where: {
     date: {
       gte: new Date('2025-09-01'),
-      lte: new Date('2025-09-30')
+      lte: new Date('2025-09-30'),
     },
-    nodeId: null  // System-wide metrics
+    nodeId: null, // System-wide metrics
   },
   orderBy: {
-    date: 'asc'
-  }
+    date: 'asc',
+  },
 });
 ```
 
@@ -355,41 +399,45 @@ const dailyMetrics = await prisma.metric.findMany({
 ## JSON Field Schemas
 
 ### License.features
+
 ```typescript
 interface LicenseFeatures {
-  multiNode: boolean;          // Can link multiple nodes
-  advancedPresets: boolean;    // Access to AV1 and custom presets
-  api: boolean;                // REST API access
-  priorityQueue: boolean;      // Priority job scheduling
-  cloudStorage: boolean;       // S3/cloud upload support
-  webhooks: boolean;           // Custom webhook notifications
+  multiNode: boolean; // Can link multiple nodes
+  advancedPresets: boolean; // Access to AV1 and custom presets
+  api: boolean; // REST API access
+  priorityQueue: boolean; // Priority job scheduling
+  cloudStorage: boolean; // S3/cloud upload support
+  webhooks: boolean; // Custom webhook notifications
 }
 ```
 
 ### Policy.deviceProfiles
+
 ```typescript
 interface DeviceProfiles {
-  appleTv: boolean;      // Apple TV compatibility
-  roku: boolean;         // Roku compatibility
-  web: boolean;          // Web browser compatibility
-  chromecast: boolean;   // Chromecast compatibility
-  ps5: boolean;          // PlayStation 5 compatibility
-  xbox: boolean;         // Xbox compatibility
+  appleTv: boolean; // Apple TV compatibility
+  roku: boolean; // Roku compatibility
+  web: boolean; // Web browser compatibility
+  chromecast: boolean; // Chromecast compatibility
+  ps5: boolean; // PlayStation 5 compatibility
+  xbox: boolean; // Xbox compatibility
 }
 ```
 
 ### Policy.advancedSettings
+
 ```typescript
 interface AdvancedSettings {
-  ffmpegFlags: string[];      // Custom FFmpeg flags ['-preset', 'slow']
-  hwaccel: string;            // Hardware acceleration method
-  audioCodec: string;         // Audio codec override
-  subtitleHandling: string;   // 'copy' | 'burn' | 'remove'
-  customFilter: string;       // Custom FFmpeg filter chain
+  ffmpegFlags: string[]; // Custom FFmpeg flags ['-preset', 'slow']
+  hwaccel: string; // Hardware acceleration method
+  audioCodec: string; // Audio codec override
+  subtitleHandling: string; // 'copy' | 'burn' | 'remove'
+  customFilter: string; // Custom FFmpeg filter chain
 }
 ```
 
 ### Metric.codecDistribution
+
 ```typescript
 interface CodecDistribution {
   [codecName: string]: number;  // Percentage or count
@@ -408,12 +456,14 @@ interface CodecDistribution {
 ## Migration Strategy
 
 ### Production Deployment
+
 1. Always use migrations: `npx prisma migrate deploy`
 2. Never use `db push` in production
 3. Test migrations on staging environment first
 4. Backup database before running migrations
 
 ### Rollback Strategy
+
 ```bash
 # View migration history
 npx prisma migrate status
@@ -429,16 +479,19 @@ npx prisma migrate resolve --rolled-back <migration_name>
 ## Performance Considerations
 
 ### BigInt Fields
+
 - `totalSizeBytes`, `beforeSizeBytes`, `afterSizeBytes`, `savedBytes` use BigInt
 - JavaScript: Use `BigInt()` constructor or `n` suffix: `1024n`
 - Can store values up to 2^63-1 (9 exabytes)
 
 ### JSON Fields
+
 - Indexed using GIN indexes in PostgreSQL (automatic)
 - Use `@db.JsonB` for better query performance if needed
 - Keep JSON structures flat for better performance
 
 ### Cascading Deletes
+
 - **License deleted** → All nodes, metrics deleted
 - **Node deleted** → All libraries, jobs, metrics deleted
 - **Library deleted** → All jobs deleted
@@ -449,6 +502,7 @@ npx prisma migrate resolve --rolled-back <migration_name>
 ## Security Best Practices
 
 1. **Never expose apiKey or pairingToken in API responses**
+
    ```typescript
    // Good - exclude sensitive fields
    select: {
@@ -460,13 +514,16 @@ npx prisma migrate resolve --rolled-back <migration_name>
    ```
 
 2. **Validate license before operations**
+
    ```typescript
    const license = await prisma.license.findUnique({
-     where: { id: licenseId }
+     where: { id: licenseId },
    });
 
-   if (license.status !== 'ACTIVE' ||
-       (license.validUntil && license.validUntil < new Date())) {
+   if (
+     license.status !== 'ACTIVE' ||
+     (license.validUntil && license.validUntil < new Date())
+   ) {
      throw new Error('Invalid or expired license');
    }
    ```

@@ -73,7 +73,9 @@ describe('QueueJobStateService', () => {
     } as any;
 
     mockJobCrudService = {
-      validateJobOwnership: jest.fn().mockResolvedValue({ nodeId: null, updatedAt: new Date() }),
+      validateJobOwnership: jest
+        .fn()
+        .mockResolvedValue({ nodeId: null, updatedAt: new Date() }),
     } as any;
 
     mockFileFailureTracking = {
@@ -109,7 +111,9 @@ describe('QueueJobStateService', () => {
 
     mockPrisma = {
       $transaction: jest.fn(),
-      processedFileRecord: { deleteMany: jest.fn().mockResolvedValue(undefined) },
+      processedFileRecord: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
     };
 
     mockHttpService = { post: jest.fn(), patch: jest.fn() };
@@ -122,10 +126,19 @@ describe('QueueJobStateService', () => {
         { provide: JobHistoryService, useValue: mockJobHistoryService },
         { provide: NodeConfigService, useValue: mockNodeConfig },
         { provide: QueueJobCrudService, useValue: mockJobCrudService },
-        { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: FileFailureTrackingService,
+          useValue: mockFileFailureTracking,
+        },
         { provide: JobMetricsService, useValue: mockJobMetricsService },
-        { provide: JobBulkOperationsService, useValue: mockJobBulkOperationsService },
-        { provide: JobFileOperationsService, useValue: mockJobFileOperationsService },
+        {
+          provide: JobBulkOperationsService,
+          useValue: mockJobBulkOperationsService,
+        },
+        {
+          provide: JobFileOperationsService,
+          useValue: mockJobFileOperationsService,
+        },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FileTransferService, useValue: mockFileTransferService },
         { provide: HttpService, useValue: mockHttpService },
@@ -150,7 +163,7 @@ describe('QueueJobStateService', () => {
         expect.objectContaining({
           stage: JobStage.FAILED,
           error: 'FFmpeg crashed',
-        })
+        }),
       );
       expect(mockJobHistoryService.recordEvent).toHaveBeenCalled();
       expect(result.stage).toBe(JobStage.FAILED);
@@ -167,7 +180,9 @@ describe('QueueJobStateService', () => {
 
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
-      await expect(service.failJob('missing', 'error')).rejects.toThrow(NotFoundException);
+      await expect(service.failJob('missing', 'error')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -184,22 +199,29 @@ describe('QueueJobStateService', () => {
         'job-1',
         expect.objectContaining({
           stage: JobStage.CANCELLED,
-        })
+        }),
       );
       expect(result.stage).toBe(JobStage.CANCELLED);
     });
 
     it('should throw BadRequestException when cancelling a completed job', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.COMPLETED }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.COMPLETED }) as any,
+      );
 
-      await expect(service.cancelJob('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.cancelJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should kill FFmpeg process when job is encoding', async () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.killProcess.mockResolvedValue(true);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.CANCELLED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.CANCELLED,
+      } as any);
 
       await service.cancelJob('job-1');
 
@@ -220,9 +242,13 @@ describe('QueueJobStateService', () => {
     });
 
     it('should throw BadRequestException when job is not encoding', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.QUEUED }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.QUEUED }) as any,
+      );
 
-      await expect(service.pauseJob('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.pauseJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -239,14 +265,18 @@ describe('QueueJobStateService', () => {
         expect.objectContaining({
           stage: JobStage.QUEUED,
           retryCount: 1,
-        })
+        }),
       );
     });
 
     it('should throw BadRequestException when job is not failed or cancelled', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.ENCODING }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.ENCODING }) as any,
+      );
 
-      await expect(service.retryJob('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.retryJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -261,34 +291,45 @@ describe('QueueJobStateService', () => {
       const _result = await service.updateJobPriority('job-1', 1);
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ priority: 1 })
+        expect.objectContaining({ priority: 1 }),
       );
     });
 
     it('should throw BadRequestException for out-of-range priority', async () => {
       mockJobRepository.findById.mockResolvedValue(makeJob() as any);
 
-      await expect(service.updateJobPriority('job-1', 5)).rejects.toThrow(BadRequestException);
+      await expect(service.updateJobPriority('job-1', 5)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException for negative priority', async () => {
       mockJobRepository.findById.mockResolvedValue(makeJob() as any);
 
-      await expect(service.updateJobPriority('job-1', -1)).rejects.toThrow(BadRequestException);
+      await expect(service.updateJobPriority('job-1', -1)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when max top-priority jobs reached', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.QUEUED }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.QUEUED }) as any,
+      );
       mockJobRepository.countWhere.mockResolvedValue(3);
 
-      await expect(service.updateJobPriority('job-1', 2)).rejects.toThrow(BadRequestException);
+      await expect(service.updateJobPriority('job-1', 2)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should renice FFmpeg process when job is encoding', async () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.countWhere.mockResolvedValue(0);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, priority: 2 } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        priority: 2,
+      } as any);
       mockFfmpegService.reniceProcess.mockResolvedValue(true);
 
       await service.updateJobPriority('job-1', 2);
@@ -300,16 +341,25 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.countWhere.mockResolvedValue(0);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, priority: 1 } as any);
-      mockFfmpegService.reniceProcess.mockRejectedValue(new Error('process not found'));
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        priority: 1,
+      } as any);
+      mockFfmpegService.reniceProcess.mockRejectedValue(
+        new Error('process not found'),
+      );
 
-      await expect(service.updateJobPriority('job-1', 1)).resolves.not.toBeUndefined();
+      await expect(
+        service.updateJobPriority('job-1', 1),
+      ).resolves.not.toBeUndefined();
     });
 
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.updateJobPriority('missing', 1)).rejects.toThrow(NotFoundException);
+      await expect(service.updateJobPriority('missing', 1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -318,7 +368,10 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.PAUSED });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.resumeEncoding.mockResolvedValue(true);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.ENCODING } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.ENCODING,
+      } as any);
 
       const result = await service.resumeJob('job-1');
       expect(result.stage).toBe(JobStage.ENCODING);
@@ -328,26 +381,35 @@ describe('QueueJobStateService', () => {
       const job = makeJob({ stage: JobStage.PAUSED });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.resumeEncoding.mockResolvedValue(false);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       const result = await service.resumeJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({ stage: JobStage.QUEUED }),
       );
       expect(result.stage).toBe(JobStage.QUEUED);
     });
 
     it('should throw BadRequestException when job is not paused', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.QUEUED }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.QUEUED }) as any,
+      );
 
-      await expect(service.resumeJob('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.resumeJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.resumeJob('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.resumeJob('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -355,7 +417,9 @@ describe('QueueJobStateService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.pauseJob('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.pauseJob('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when pause fails', async () => {
@@ -363,8 +427,12 @@ describe('QueueJobStateService', () => {
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockFfmpegService.pauseEncoding.mockResolvedValue(false);
 
-      await expect(service.pauseJob('job-1')).rejects.toThrow(BadRequestException);
-      await expect(service.pauseJob('job-1')).rejects.toThrow('Failed to pause encoding process');
+      await expect(service.pauseJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.pauseJob('job-1')).rejects.toThrow(
+        'Failed to pause encoding process',
+      );
     });
   });
 
@@ -378,7 +446,7 @@ describe('QueueJobStateService', () => {
       const result = await service.unblacklistJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ isBlacklisted: false })
+        expect.objectContaining({ isBlacklisted: false }),
       );
       expect(result.isBlacklisted).toBe(false);
     });
@@ -386,25 +454,35 @@ describe('QueueJobStateService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.unblacklistJob('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.unblacklistJob('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when job is not cancelled', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.FAILED }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.FAILED }) as any,
+      );
 
-      await expect(service.unblacklistJob('job-1')).rejects.toThrow(BadRequestException);
       await expect(service.unblacklistJob('job-1')).rejects.toThrow(
-        'Only cancelled jobs can be unblacklisted'
+        BadRequestException,
+      );
+      await expect(service.unblacklistJob('job-1')).rejects.toThrow(
+        'Only cancelled jobs can be unblacklisted',
       );
     });
 
     it('should throw BadRequestException when job is not blacklisted', async () => {
       mockJobRepository.findById.mockResolvedValue(
-        makeJob({ stage: JobStage.CANCELLED, isBlacklisted: false }) as any
+        makeJob({ stage: JobStage.CANCELLED, isBlacklisted: false }) as any,
       );
 
-      await expect(service.unblacklistJob('job-1')).rejects.toThrow(BadRequestException);
-      await expect(service.unblacklistJob('job-1')).rejects.toThrow('Job is not blacklisted');
+      await expect(service.unblacklistJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.unblacklistJob('job-1')).rejects.toThrow(
+        'Job is not blacklisted',
+      );
     });
 
     it('should clear processedFileRecord when contentFingerprint exists', async () => {
@@ -414,7 +492,10 @@ describe('QueueJobStateService', () => {
         contentFingerprint: 'fp-abc123',
       });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, isBlacklisted: false } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        isBlacklisted: false,
+      } as any);
 
       await service.unblacklistJob('job-1');
 
@@ -428,12 +509,15 @@ describe('QueueJobStateService', () => {
     it('should force-start a queued job', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.DETECTED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.DETECTED,
+      } as any);
 
       const result = await service.forceStartJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ stage: JobStage.DETECTED })
+        expect.objectContaining({ stage: JobStage.DETECTED }),
       );
       expect(result.stage).toBe(JobStage.DETECTED);
     });
@@ -448,15 +532,21 @@ describe('QueueJobStateService', () => {
     });
 
     it('should throw BadRequestException when job stage is not queued or detected', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.ENCODING }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.ENCODING }) as any,
+      );
 
-      await expect(service.forceStartJob('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.forceStartJob('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.forceStartJob('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.forceStartJob('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -464,7 +554,11 @@ describe('QueueJobStateService', () => {
     it('should reset job health fields and set stage to DETECTED', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      const updated = { ...job, stage: JobStage.DETECTED, healthStatus: 'UNKNOWN' };
+      const updated = {
+        ...job,
+        stage: JobStage.DETECTED,
+        healthStatus: 'UNKNOWN',
+      };
       mockJobRepository.updateById.mockResolvedValue(updated as any);
 
       const result = await service.recheckHealth('job-1');
@@ -473,7 +567,7 @@ describe('QueueJobStateService', () => {
         expect.objectContaining({
           stage: JobStage.DETECTED,
           healthStatus: 'UNKNOWN',
-        })
+        }),
       );
       expect(result.stage).toBe(JobStage.DETECTED);
     });
@@ -481,7 +575,9 @@ describe('QueueJobStateService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.recheckHealth('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.recheckHealth('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -498,7 +594,7 @@ describe('QueueJobStateService', () => {
       const result = await service.retryJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({ stage: JobStage.QUEUED }),
       );
       expect(result.stage).toBe(JobStage.QUEUED);
     });
@@ -506,7 +602,9 @@ describe('QueueJobStateService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.retryJob('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.retryJob('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should preserve progress and resumeTimestamp when temp file exists', async () => {
@@ -533,7 +631,7 @@ describe('QueueJobStateService', () => {
           stage: JobStage.QUEUED,
           progress: 0,
           retryCount: 3,
-        })
+        }),
       );
     });
   });
@@ -542,7 +640,9 @@ describe('QueueJobStateService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.cancelJob('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.cancelJob('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should cancel with blacklist=true', async () => {
@@ -558,14 +658,16 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ isBlacklisted: true })
+        expect.objectContaining({ isBlacklisted: true }),
       );
     });
 
     it('should handle FFmpeg kill failure gracefully', async () => {
       const job = makeJob({ stage: JobStage.ENCODING });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockFfmpegService.killProcess.mockRejectedValue(new Error('process not found'));
+      mockFfmpegService.killProcess.mockRejectedValue(
+        new Error('process not found'),
+      );
       mockJobRepository.updateById.mockResolvedValue({
         ...job,
         stage: JobStage.CANCELLED,
@@ -575,7 +677,10 @@ describe('QueueJobStateService', () => {
     });
 
     it('should cancel transferring job and clean up remote temp file', async () => {
-      const job = makeJob({ stage: 'TRANSFERRING' as JobStage, remoteTempPath: '/tmp/job-1.mkv' });
+      const job = makeJob({
+        stage: 'TRANSFERRING' as JobStage,
+        remoteTempPath: '/tmp/job-1.mkv',
+      });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.updateById.mockResolvedValue({
         ...job,
@@ -584,12 +689,19 @@ describe('QueueJobStateService', () => {
 
       await service.cancelJob('job-1');
 
-      expect(mockFileTransferService.cancelTransfer).toHaveBeenCalledWith('job-1');
-      expect(mockFileTransferService.cleanupRemoteTempFile).toHaveBeenCalledWith('job-1');
+      expect(mockFileTransferService.cancelTransfer).toHaveBeenCalledWith(
+        'job-1',
+      );
+      expect(
+        mockFileTransferService.cleanupRemoteTempFile,
+      ).toHaveBeenCalledWith('job-1');
     });
 
     it('should cancel transferring job without remoteTempPath', async () => {
-      const job = makeJob({ stage: 'TRANSFERRING' as JobStage, remoteTempPath: null });
+      const job = makeJob({
+        stage: 'TRANSFERRING' as JobStage,
+        remoteTempPath: null,
+      });
       mockJobRepository.findById.mockResolvedValue(job as any);
       mockJobRepository.updateById.mockResolvedValue({
         ...job,
@@ -598,8 +710,12 @@ describe('QueueJobStateService', () => {
 
       await service.cancelJob('job-1');
 
-      expect(mockFileTransferService.cancelTransfer).toHaveBeenCalledWith('job-1');
-      expect(mockFileTransferService.cleanupRemoteTempFile).not.toHaveBeenCalled();
+      expect(mockFileTransferService.cancelTransfer).toHaveBeenCalledWith(
+        'job-1',
+      );
+      expect(
+        mockFileTransferService.cleanupRemoteTempFile,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -607,20 +723,32 @@ describe('QueueJobStateService', () => {
     it('should record auto-blacklist warning when file is blacklisted', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.FAILED } as any);
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.FAILED,
+      } as any);
       mockFileFailureTracking.recordFailure.mockResolvedValue(true);
 
       // Should not throw even though wasBlacklisted=true
-      await expect(service.failJob('job-1', 'error')).resolves.not.toBeUndefined();
+      await expect(
+        service.failJob('job-1', 'error'),
+      ).resolves.not.toBeUndefined();
     });
 
     it('should not throw when fileFailureTracking.recordFailure throws', async () => {
       const job = makeJob({ stage: JobStage.QUEUED });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateById.mockResolvedValue({ ...job, stage: JobStage.FAILED } as any);
-      mockFileFailureTracking.recordFailure.mockRejectedValue(new Error('tracking error'));
+      mockJobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.FAILED,
+      } as any);
+      mockFileFailureTracking.recordFailure.mockRejectedValue(
+        new Error('tracking error'),
+      );
 
-      await expect(service.failJob('job-1', 'error')).resolves.not.toBeUndefined();
+      await expect(
+        service.failJob('job-1', 'error'),
+      ).resolves.not.toBeUndefined();
     });
   });
 
@@ -628,13 +756,19 @@ describe('QueueJobStateService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.resolveDecision('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.resolveDecision('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when job is not in NEEDS_DECISION stage', async () => {
-      mockJobRepository.findById.mockResolvedValue(makeJob({ stage: JobStage.QUEUED }) as any);
+      mockJobRepository.findById.mockResolvedValue(
+        makeJob({ stage: JobStage.QUEUED }) as any,
+      );
 
-      await expect(service.resolveDecision('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.resolveDecision('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should skip job when action is "skip"', async () => {
@@ -651,7 +785,7 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ stage: JobStage.COMPLETED })
+        expect.objectContaining({ stage: JobStage.COMPLETED }),
       );
     });
 
@@ -669,27 +803,33 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ stage: JobStage.CANCELLED })
+        expect.objectContaining({ stage: JobStage.CANCELLED }),
       );
     });
 
     it('should queue job for encoding when no specific action', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1');
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({ stage: JobStage.QUEUED }),
       );
     });
 
     it('should apply targetContainer when actionConfig has it', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { targetContainer: 'mkv' },
@@ -697,14 +837,17 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ targetContainer: 'mkv' })
+        expect.objectContaining({ targetContainer: 'mkv' }),
       );
     });
 
     it('should set type to REMUX when audioAction is "copy"', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { audioAction: 'copy' },
@@ -712,14 +855,17 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ type: 'REMUX' })
+        expect.objectContaining({ type: 'REMUX' }),
       );
     });
 
     it('should set type to ENCODE when audioAction is "transcode_aac"', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { audioAction: 'transcode_aac' },
@@ -727,14 +873,17 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ type: 'ENCODE' })
+        expect.objectContaining({ type: 'ENCODE' }),
       );
     });
 
     it('should set type to ENCODE when action is "force_encode"', async () => {
       const job = makeJob({ stage: JobStage.NEEDS_DECISION });
       mockJobRepository.findById.mockResolvedValue(job as any);
-      mockJobRepository.updateRaw.mockResolvedValue({ ...job, stage: JobStage.QUEUED } as any);
+      mockJobRepository.updateRaw.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      } as any);
 
       await service.resolveDecision('job-1', {
         actionConfig: { action: 'force_encode' },
@@ -742,7 +891,7 @@ describe('QueueJobStateService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ type: 'ENCODE' })
+        expect.objectContaining({ type: 'ENCODE' }),
       );
     });
   });
@@ -750,9 +899,13 @@ describe('QueueJobStateService', () => {
   describe('multi-node proxy paths', () => {
     it('completeJob should proxy to MAIN when mainApiUrl is set', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
-      mockJobCrudService.validateJobOwnership.mockResolvedValue(undefined as any);
+      mockJobCrudService.validateJobOwnership.mockResolvedValue(
+        undefined as any,
+      );
       const { of } = await import('rxjs');
-      mockHttpService.post.mockReturnValue(of({ data: makeJob({ stage: JobStage.COMPLETED }) }));
+      mockHttpService.post.mockReturnValue(
+        of({ data: makeJob({ stage: JobStage.COMPLETED }) }),
+      );
 
       const result = await service.completeJob('job-1', {
         afterSizeBytes: '1000',
@@ -766,9 +919,13 @@ describe('QueueJobStateService', () => {
 
     it('failJob should proxy to MAIN when mainApiUrl is set', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
-      mockJobCrudService.validateJobOwnership.mockResolvedValue(undefined as any);
+      mockJobCrudService.validateJobOwnership.mockResolvedValue(
+        undefined as any,
+      );
       const { of } = await import('rxjs');
-      mockHttpService.post.mockReturnValue(of({ data: makeJob({ stage: JobStage.FAILED }) }));
+      mockHttpService.post.mockReturnValue(
+        of({ data: makeJob({ stage: JobStage.FAILED }) }),
+      );
 
       const result = await service.failJob('job-1', 'error msg');
 
@@ -779,7 +936,9 @@ describe('QueueJobStateService', () => {
     it('cancelJob should proxy to MAIN when mainApiUrl is set', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
       const { of } = await import('rxjs');
-      mockHttpService.post.mockReturnValue(of({ data: makeJob({ stage: JobStage.CANCELLED }) }));
+      mockHttpService.post.mockReturnValue(
+        of({ data: makeJob({ stage: JobStage.CANCELLED }) }),
+      );
 
       const result = await service.cancelJob('job-1');
 
@@ -790,7 +949,9 @@ describe('QueueJobStateService', () => {
 
   describe('delegation methods', () => {
     it('cancelAllQueued delegates to jobBulkOperationsService', async () => {
-      mockJobBulkOperationsService.cancelAllQueued.mockResolvedValue({ cancelledCount: 5 });
+      mockJobBulkOperationsService.cancelAllQueued.mockResolvedValue({
+        cancelledCount: 5,
+      });
 
       const result = await service.cancelAllQueued();
       expect(result.cancelledCount).toBe(5);
@@ -838,17 +999,23 @@ describe('QueueJobStateService', () => {
     });
 
     it('categorizeError delegates to jobBulkOperationsService', () => {
-      mockJobBulkOperationsService.categorizeError.mockReturnValue('codec_error');
+      mockJobBulkOperationsService.categorizeError.mockReturnValue(
+        'codec_error',
+      );
 
       const result = service.categorizeError('some error');
       expect(result).toBe('codec_error');
     });
 
     it('requestKeepOriginal delegates to jobFileOperationsService', async () => {
-      mockJobFileOperationsService.requestKeepOriginal.mockResolvedValue(makeJob() as any);
+      mockJobFileOperationsService.requestKeepOriginal.mockResolvedValue(
+        makeJob() as any,
+      );
 
       await service.requestKeepOriginal('job-1');
-      expect(mockJobFileOperationsService.requestKeepOriginal).toHaveBeenCalledWith('job-1');
+      expect(
+        mockJobFileOperationsService.requestKeepOriginal,
+      ).toHaveBeenCalledWith('job-1');
     });
 
     it('deleteOriginalBackup delegates to jobFileOperationsService', async () => {
@@ -861,28 +1028,36 @@ describe('QueueJobStateService', () => {
     });
 
     it('restoreOriginal delegates to jobFileOperationsService', async () => {
-      mockJobFileOperationsService.restoreOriginal.mockResolvedValue(makeJob() as any);
+      mockJobFileOperationsService.restoreOriginal.mockResolvedValue(
+        makeJob() as any,
+      );
 
       await service.restoreOriginal('job-1');
-      expect(mockJobFileOperationsService.restoreOriginal).toHaveBeenCalledWith('job-1');
+      expect(mockJobFileOperationsService.restoreOriginal).toHaveBeenCalledWith(
+        'job-1',
+      );
     });
 
     it('recheckFailedJob delegates to jobFileOperationsService', async () => {
-      mockJobFileOperationsService.recheckFailedJob.mockResolvedValue(makeJob() as any);
+      mockJobFileOperationsService.recheckFailedJob.mockResolvedValue(
+        makeJob() as any,
+      );
 
       await service.recheckFailedJob('job-1');
-      expect(mockJobFileOperationsService.recheckFailedJob).toHaveBeenCalledWith('job-1');
+      expect(
+        mockJobFileOperationsService.recheckFailedJob,
+      ).toHaveBeenCalledWith('job-1');
     });
 
     it('detectAndRequeueIfUncompressed delegates to jobFileOperationsService', async () => {
       mockJobFileOperationsService.detectAndRequeueIfUncompressed.mockResolvedValue(
-        makeJob() as any
+        makeJob() as any,
       );
 
       await service.detectAndRequeueIfUncompressed('job-1');
-      expect(mockJobFileOperationsService.detectAndRequeueIfUncompressed).toHaveBeenCalledWith(
-        'job-1'
-      );
+      expect(
+        mockJobFileOperationsService.detectAndRequeueIfUncompressed,
+      ).toHaveBeenCalledWith('job-1');
     });
   });
 });

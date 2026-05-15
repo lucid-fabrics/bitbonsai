@@ -14,7 +14,8 @@
             class="nodes-count__icon"
           ></fa-icon>
           <span
-            >{{ totalNodes }} {{ totalNodes === 1 ? ('nodes.nodeSingular' | transloco) : ('nodes.title' | transloco) }}</span
+            >{{ totalNodes }} {{ totalNodes === 1 ? ('nodes.nodeSingular' |
+            transloco) : ('nodes.title' | transloco) }}</span
           >
           <span class="nodes-count__status-indicator online"
             >{{ onlineNodes }} {{ 'nodes.online' | transloco }}</span
@@ -151,7 +152,9 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">{{ 'nodes.containerType' | transloco }}</div>
+                <div class="info-label">
+                  {{ 'nodes.containerType' | transloco }}
+                </div>
                 <div class="info-value">
                   {{ getContainerTypeLabel(request.containerType) }}
                 </div>
@@ -165,7 +168,9 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">{{ 'nodeSetup.cpuCores' | transloco }}</div>
+                <div class="info-label">
+                  {{ 'nodeSetup.cpuCores' | transloco }}
+                </div>
                 <div class="info-value">
                   {{ request.hardwareSpecs.cpuCores }}
                 </div>
@@ -193,7 +198,9 @@
                 class="info-item__icon"
               ></fa-icon>
               <div class="info-content">
-                <div class="info-label">{{ 'nodes.acceleration' | transloco }}</div>
+                <div class="info-label">
+                  {{ 'nodes.acceleration' | transloco }}
+                </div>
                 <div class="info-value">
                   {{ request.acceleration || ('common.none' | transloco) }}
                 </div>
@@ -373,7 +380,9 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">{{ 'nodeStats.lastHeartbeat' | transloco }}</div>
+              <div class="info-label">
+                {{ 'nodeStats.lastHeartbeat' | transloco }}
+              </div>
               <div class="info-value">
                 {{ NodeBo.formatLastHeartbeat(node.lastHeartbeat) }}
               </div>
@@ -387,7 +396,9 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">{{ 'nodeStats.activeJobs' | transloco }}</div>
+              <div class="info-label">
+                {{ 'nodeStats.activeJobs' | transloco }}
+              </div>
               <div class="info-value">{{ node.activeJobCount || 0 }}</div>
             </div>
           </div>
@@ -411,7 +422,9 @@
               class="info-item__icon"
             ></fa-icon>
             <div class="info-content">
-              <div class="info-label">{{ 'nodeConfig.cpuLimit' | transloco }}</div>
+              <div class="info-label">
+                {{ 'nodeConfig.cpuLimit' | transloco }}
+              </div>
               <div class="info-value">{{ node.cpuLimit }}%</div>
             </div>
           </div>
@@ -427,7 +440,9 @@
 
           <div class="score-summary">
             <div class="total-score">
-              <span class="score-label">{{ 'nodes.totalScore' | transloco }}</span>
+              <span class="score-label"
+                >{{ 'nodes.totalScore' | transloco }}</span
+              >
               <span class="score-value"
                 >{{ score.totalScore.toFixed(1) }}/100</span
               >
@@ -556,7 +571,8 @@
             [icon]="deletingNodeId === node.id ? ['fas', 'spinner'] : ['fas', 'trash']"
             [animation]="deletingNodeId === node.id ? 'spin' : undefined"
           ></fa-icon>
-          {{ deletingNodeId === node.id ? ('nodes.removing' | transloco) : ('nodes.remove' | transloco) }}
+          {{ deletingNodeId === node.id ? ('nodes.removing' | transloco) :
+          ('nodes.remove' | transloco) }}
         </button>
       </div>
     </div>

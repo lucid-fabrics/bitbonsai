@@ -7,9 +7,11 @@
 ## 🎯 VALUE PROPOSITION
 
 **Main Hook:**
+
 > "Intelligent multi-node video encoding that reduces storage by 40-60% with zero friction. Self-healing, distributed, and built for Plex/Jellyfin servers."
 
 **Problem → Solution:**
+
 - 4K libraries eating disk space → Automatic HEVC/AV1 conversion
 - Crashes losing hours of progress → TRUE RESUME from exact timestamp
 - Complex configuration hell → Zero-config smart defaults
@@ -20,19 +22,20 @@
 
 ## 🏆 HERO FEATURES (Above-the-fold)
 
-| Feature | Marketing Copy | Visual Hook |
-|---------|----------------|-------------|
-| **TRUE RESUME™** | "Crash at 98%? Resume at 98%. Not 0%." | Progress bar jumping back to 98% after crash |
-| **Auto-Healing** | "Self-recovers from crashes. Zero manual intervention." | Red error → auto-retry → green success animation |
-| **Zero Configuration** | "Point at your library. We handle the rest." | 3-step setup: connect → scan → encode |
-| **Multi-Node Distribution** | "Turn 2 weeks into 2 days. Scale across servers." | Single server → 5 nodes parallel encoding visual |
-| **Storage Savings** | "Same quality. Half the size." | File size: 50GB → 22GB comparison |
+| Feature                     | Marketing Copy                                          | Visual Hook                                      |
+| --------------------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| **TRUE RESUME™**           | "Crash at 98%? Resume at 98%. Not 0%."                  | Progress bar jumping back to 98% after crash     |
+| **Auto-Healing**            | "Self-recovers from crashes. Zero manual intervention." | Red error → auto-retry → green success animation |
+| **Zero Configuration**      | "Point at your library. We handle the rest."            | 3-step setup: connect → scan → encode            |
+| **Multi-Node Distribution** | "Turn 2 weeks into 2 days. Scale across servers."       | Single server → 5 nodes parallel encoding visual |
+| **Storage Savings**         | "Same quality. Half the size."                          | File size: 50GB → 22GB comparison                |
 
 ---
 
 ## 💎 CORE FEATURES (Feature Grid Section)
 
 ### **Encoding Intelligence**
+
 - ✅ Smart codec detection (H.264, HEVC, AV1, VP9)
 - ✅ Hardware acceleration (NVIDIA, Intel QSV, AMD, Apple Silicon)
 - ✅ Container compatibility checks (AC3 + MP4 warnings)
@@ -41,6 +44,7 @@
 - ✅ Keep original option (backup until confident)
 
 ### **Queue Management**
+
 - ✅ 3-tier priority system (Normal, High, Top)
 - ✅ Batch operations (cancel all, retry failed, clear completed)
 - ✅ Advanced filtering (status, node, library, codec, search)
@@ -49,6 +53,7 @@
 - ✅ Codec match skip (bulk-complete already-encoded files)
 
 ### **Library Organization**
+
 - ✅ Multiple libraries (Movies, TV, Anime, other)
 - ✅ Smart policies (Balanced HEVC, Fast HEVC, Quality AV1)
 - ✅ File blacklisting (never auto-encode)
@@ -56,6 +61,7 @@
 - ✅ Health-check system (pre-encode file validation)
 
 ### **Reliability**
+
 - ✅ Exponential backoff retry (3 max attempts)
 - ✅ Stuck job watchdog (detects frozen jobs)
 - ✅ CORRUPTED job re-validation (hourly auto-recovery)
@@ -69,20 +75,22 @@
 **Tagline:** "Enterprise-grade workload balancing. Homelab pricing."
 
 ### **Distribution v2 Algorithm**
-| Feature | Benefit |
-|---------|---------|
-| **11-Factor Scoring** | Intelligent job assignment (not dumb round-robin) |
-| **Real-Time Load Monitoring** | CPU, memory, queue depth tracked every 10s |
-| **ETA-Based Balancing** | All nodes finish at same time (no idle workers) |
-| **Job Stickiness** | Prevents ping-ponging between nodes (5-min lock) |
-| **Reliability Tracking** | Bad nodes get fewer jobs automatically (24h failure rate) |
-| **Hardware Affinity** | GPU jobs → GPU nodes automatically |
-| **Library Affinity** | Local jobs prioritized (faster starts) |
-| **Per-Node Scheduling** | Encode off-peak hours only (8pm-6am) |
-| **Load Throttling** | Pauses jobs when thresholds exceeded |
-| **Fast SSD Temp Cache** | 10-100x faster encoding vs HDD |
+
+| Feature                       | Benefit                                                   |
+| ----------------------------- | --------------------------------------------------------- |
+| **11-Factor Scoring**         | Intelligent job assignment (not dumb round-robin)         |
+| **Real-Time Load Monitoring** | CPU, memory, queue depth tracked every 10s                |
+| **ETA-Based Balancing**       | All nodes finish at same time (no idle workers)           |
+| **Job Stickiness**            | Prevents ping-ponging between nodes (5-min lock)          |
+| **Reliability Tracking**      | Bad nodes get fewer jobs automatically (24h failure rate) |
+| **Hardware Affinity**         | GPU jobs → GPU nodes automatically                        |
+| **Library Affinity**          | Local jobs prioritized (faster starts)                    |
+| **Per-Node Scheduling**       | Encode off-peak hours only (8pm-6am)                      |
+| **Load Throttling**           | Pauses jobs when thresholds exceeded                      |
+| **Fast SSD Temp Cache**       | 10-100x faster encoding vs HDD                            |
 
 ### **Zero-Config Node Discovery**
+
 - **mDNS Auto-Discovery**: Workers announce themselves (Bonjour/Avahi)
 - **Manual Pairing**: 6-digit token for VLANs/VPNs
 - **SSH Key Auto-Exchange**: One-click passwordless auth
@@ -96,21 +104,23 @@
 **Tagline:** "The encoder that never gives up."
 
 ### **4-Layer Recovery**
+
 1. **Initial Delay (2s)**: Container startup time
 2. **Volume Mount Probing (10 retries × 1s)**: Docker/Unraid mount wait
 3. **Stabilization Delay (3s)**: NFS/FUSE settling
 4. **Temp File Validation (10 retries × 2s)**: Verify partial encodes exist
 
 ### **Self-Healing Scenarios**
-| Scenario | Auto-Recovery Action |
-|----------|---------------------|
-| Container restarts | Resume from exact timestamp |
-| NFS mount delay | Wait 20s with exponential backoff |
-| Job orphaned (stuck ENCODING) | Reset to QUEUED on startup |
-| Encoding crashes | 3 automatic retries with delays |
-| File marked CORRUPTED | Hourly re-validation, auto-requeue if fixed |
-| Job frozen (no progress 5+ min) | Watchdog auto-restarts |
-| Node unreliable (high failure rate) | Fewer jobs assigned automatically |
+
+| Scenario                            | Auto-Recovery Action                        |
+| ----------------------------------- | ------------------------------------------- |
+| Container restarts                  | Resume from exact timestamp                 |
+| NFS mount delay                     | Wait 20s with exponential backoff           |
+| Job orphaned (stuck ENCODING)       | Reset to QUEUED on startup                  |
+| Encoding crashes                    | 3 automatic retries with delays             |
+| File marked CORRUPTED               | Hourly re-validation, auto-requeue if fixed |
+| Job frozen (no progress 5+ min)     | Watchdog auto-restarts                      |
+| Node unreliable (high failure rate) | Fewer jobs assigned automatically           |
 
 ---
 
@@ -119,18 +129,21 @@
 **Tagline:** "Plays nice with your entire media stack."
 
 ### **Fully Integrated**
-| Service | Features |
-|---------|----------|
-| **Jellyfin** | Auto-refresh libraries, find renamed files, file path search |
-| **Plex** | Auto-pause during playback, library refresh, session monitoring |
-| **qBittorrent** | Skip files being seeded |
-| **Transmission** | Skip files being seeded |
-| **Deluge** | Skip files being seeded |
+
+| Service          | Features                                                        |
+| ---------------- | --------------------------------------------------------------- |
+| **Jellyfin**     | Auto-refresh libraries, find renamed files, file path search    |
+| **Plex**         | Auto-pause during playback, library refresh, session monitoring |
+| **qBittorrent**  | Skip files being seeded                                         |
+| **Transmission** | Skip files being seeded                                         |
+| **Deluge**       | Skip files being seeded                                         |
 
 ### **Partial Integration**
+
 - **Radarr/Sonarr/Whisparr**: Quality profile checks, skip if quality met
 
 ### **Coming Soon**
+
 - Discord/Slack webhooks
 - Email (SMTP) notifications
 - Generic webhooks with signature verification
@@ -141,23 +154,24 @@
 
 ### **Patreon Tiers** (Community Support)
 
-| Tier | Price | Max Nodes | Max Concurrent Jobs | Best For |
-|------|-------|-----------|---------------------|----------|
-| **FREE** | $0/mo | 1 node | 2 concurrent | Testing, small libraries (< 500 files) |
-| **Supporter** | $3/mo | 2 nodes | 3 concurrent | Home users, 1-2 servers |
-| **Plus** | $5/mo | 3 nodes | 5 concurrent | Homelab enthusiasts |
-| **Pro** | $10/mo | 5 nodes | 10 concurrent | Power users, multi-server setups |
-| **Ultimate** | $20/mo | 10 nodes | 20 concurrent | Data hoarders, large libraries (5000+ files) |
+| Tier          | Price  | Max Nodes | Max Concurrent Jobs | Best For                                     |
+| ------------- | ------ | --------- | ------------------- | -------------------------------------------- |
+| **FREE**      | $0/mo  | 1 node    | 2 concurrent        | Testing, small libraries (< 500 files)       |
+| **Supporter** | $3/mo  | 2 nodes   | 3 concurrent        | Home users, 1-2 servers                      |
+| **Plus**      | $5/mo  | 3 nodes   | 5 concurrent        | Homelab enthusiasts                          |
+| **Pro**       | $10/mo | 5 nodes   | 10 concurrent       | Power users, multi-server setups             |
+| **Ultimate**  | $20/mo | 10 nodes  | 20 concurrent       | Data hoarders, large libraries (5000+ files) |
 
 ### **Commercial Tiers** (Stripe - Coming Soon)
 
-| Tier | Features | Target Audience |
-|------|----------|-----------------|
-| **Starter** | Basic multi-node, community support | Small teams, media agencies |
-| **Pro** | Advanced features, priority support | Production environments |
-| **Enterprise** | Unlimited nodes/jobs, SLA, custom integrations | Large organizations, MSPs |
+| Tier           | Features                                       | Target Audience             |
+| -------------- | ---------------------------------------------- | --------------------------- |
+| **Starter**    | Basic multi-node, community support            | Small teams, media agencies |
+| **Pro**        | Advanced features, priority support            | Production environments     |
+| **Enterprise** | Unlimited nodes/jobs, SLA, custom integrations | Large organizations, MSPs   |
 
 ### **Feature Flags by Tier**
+
 - Node limits enforced via license validation
 - Concurrent job limits per tier
 - Patreon OAuth auto-activation
@@ -168,32 +182,35 @@
 
 ## 🎯 COMPETITIVE ADVANTAGES (vs Tdarr/FileFlows)
 
-| Feature | BitBonsai | Tdarr/FileFlows |
-|---------|-----------|-----------------|
-| **Setup Complexity** | Zero plugins, 5-min setup | 47+ plugins to configure |
-| **Resume After Crash** | TRUE RESUME (exact timestamp) | Restart from 0% |
-| **Crash Recovery** | Auto-heal (4-layer) | Manual retry |
-| **UI/UX** | Clean, minimal, intuitive | Complex, overwhelming |
-| **Multi-Node** | Distributed, load-balanced | Single machine |
-| **Default Behavior** | Smart defaults, works out-of-box | Requires tuning |
-| **Error Handling** | Decision-Required UX (asks for help) | Silent failures |
-| **Scheduling** | Per-node time windows | No time controls |
-| **Resource Management** | Load throttling, auto-pauses | Can crush servers |
+| Feature                 | BitBonsai                            | Tdarr/FileFlows          |
+| ----------------------- | ------------------------------------ | ------------------------ |
+| **Setup Complexity**    | Zero plugins, 5-min setup            | 47+ plugins to configure |
+| **Resume After Crash**  | TRUE RESUME (exact timestamp)        | Restart from 0%          |
+| **Crash Recovery**      | Auto-heal (4-layer)                  | Manual retry             |
+| **UI/UX**               | Clean, minimal, intuitive            | Complex, overwhelming    |
+| **Multi-Node**          | Distributed, load-balanced           | Single machine           |
+| **Default Behavior**    | Smart defaults, works out-of-box     | Requires tuning          |
+| **Error Handling**      | Decision-Required UX (asks for help) | Silent failures          |
+| **Scheduling**          | Per-node time windows                | No time controls         |
+| **Resource Management** | Load throttling, auto-pauses         | Can crush servers        |
 
 ---
 
 ## 📊 KEY METRICS (Social Proof Section)
 
 **Storage Savings:**
+
 - 40-60% reduction (H.264 → HEVC typical)
 - 50-70% reduction (H.264 → AV1 coming soon)
 
 **Performance:**
+
 - 10-100x faster encoding with SSD temp cache vs HDD
 - 5-minute setup from Docker pull to first encode
 - 10-second polling for real-time node health
 
 **Reliability:**
+
 - Zero manual intervention for crash recovery
 - 24-hour failure rate tracking per node
 - 11-factor scoring algorithm for distribution
@@ -203,30 +220,37 @@
 ## 💡 PAIN POINTS SOLVED (Problem-Agitate-Solve Section)
 
 ### **Problem 1: Storage Crisis**
+
 **Pain:** "My 4K library is 50GB per movie - I'm out of disk space!"
 **Solution:** Automatic HEVC/AV1 conversion reduces files to 20-30GB with same quality.
 
 ### **Problem 2: Crash Anxiety**
+
 **Pain:** "Tdarr crashed at 98% - lost 12 hours of encoding!"
 **Solution:** TRUE RESUME picks up at 98%, not 0%. Progress saved every 10 seconds.
 
 ### **Problem 3: Configuration Hell**
+
 **Pain:** "I've been configuring plugins for 3 days and it still doesn't work."
 **Solution:** Zero plugins. Smart defaults. Works out-of-box in 5 minutes.
 
 ### **Problem 4: Manual Babysitting**
+
 **Pain:** "I have to manually retry failed jobs every morning."
 **Solution:** 4-layer auto-healing. Self-recovers from crashes. Hourly CORRUPTED job re-validation.
 
 ### **Problem 5: Single-Node Bottleneck**
+
 **Pain:** "My server takes 2 weeks to encode my library."
 **Solution:** Multi-node distribution. Turn 2 weeks into 2 days by scaling across servers.
 
 ### **Problem 6: Compatibility Issues**
+
 **Pain:** "My files won't play after encoding - wrong container?"
 **Solution:** Container compatibility checks. Warns about AC3 + MP4, suggests remux to MKV.
 
 ### **Problem 7: Resource Overload**
+
 **Pain:** "Encoding crushed my server - Plex streams stuttered."
 **Solution:** Load throttling, auto-pauses when thresholds exceeded. Per-node scheduling for off-peak hours.
 
@@ -235,11 +259,13 @@
 ## 🎨 MARKETING TAGLINES
 
 **Primary:**
+
 - "Trim your library. Not your quality."
 - "The encoder that never gives up."
 - "Zero plugins. Zero config. Just results."
 
 **Feature-Specific:**
+
 - "Crash at 98%? Resume at 98%." (TRUE RESUME)
 - "Distributed encoding that just works." (Multi-Node)
 - "Your media library, half the size, same quality." (Storage Savings)
@@ -250,12 +276,14 @@
 ## 🎯 TARGET AUDIENCE
 
 ### **Primary**
+
 - Plex/Jellyfin/Emby users with large libraries (500+ files)
 - Homelab enthusiasts with multi-server setups
 - r/DataHoarder community optimizing storage
 - Unraid users (official Community Apps integration)
 
 ### **Secondary**
+
 - Media production teams encoding dailies/proxies
 - Content creators batch-processing video libraries
 - SMBs with video asset management needs
@@ -265,26 +293,31 @@
 ## 📸 VISUAL CONTENT IDEAS (Screenshots/Mockups Needed)
 
 ### **Hero Section**
+
 1. Dashboard showing multi-node encoding (5 nodes, progress bars)
 2. TRUE RESUME demo: crash → auto-resume at 98% animation
 3. Before/After storage comparison (50GB → 22GB)
 
 ### **Feature Sections**
+
 4. Clean queue UI (filtering, batch operations, status colors)
 5. Library management (multiple libraries, policies)
 6. Node management dashboard (load graphs, health status)
 7. Integration cards (Jellyfin, Plex, qBittorrent logos)
 
 ### **Technical Sections**
+
 8. Distribution v2 algorithm visualization (job assignment flow)
 9. Auto-healing flowchart (4-layer recovery)
 10. Hardware acceleration icons (NVIDIA, Intel, AMD, Apple)
 
 ### **Comparison Section**
+
 11. Side-by-side BitBonsai vs Tdarr UI screenshots
 12. Setup complexity comparison (1 screen vs 10 screens)
 
 ### **Testimonials** (Future)
+
 13. User quotes with storage savings metrics
 14. Before/After library size graphs
 
@@ -306,16 +339,19 @@
 ## 📝 CALL-TO-ACTION VARIATIONS
 
 **Primary CTA:**
+
 - "Start Encoding in 5 Minutes" → Docker install docs
 - "Try Free (No Credit Card)" → Free tier signup
 - "See Live Demo" → Interactive demo or video walkthrough
 
 **Secondary CTA:**
+
 - "Join Discord Community" → Discord invite
 - "Read Documentation" → Docs site
 - "Compare to Tdarr" → Comparison page
 
 **Tertiary CTA:**
+
 - "Support on Patreon" → Patreon page
 - "Star on GitHub" → GitHub repo
 - "View Pricing" → Pricing page
@@ -345,14 +381,13 @@
 **End of Feature Inventory**
 
 This document contains everything extractable from the codebase for marketing purposes. Next steps:
+
 1. Create website structure based on these features
 2. Write copy for each section
 3. Design mockups/wireframes
 4. Plan screenshot/video production
 
-
 ---
-
 
 # BitBonsai Website & License API - Implementation Progress
 
@@ -366,19 +401,20 @@ This document contains everything extractable from the codebase for marketing pu
 
 ### Created Components
 
-| Component | Path | Purpose |
-|-----------|------|---------|
-| ButtonComponent | `libs/shared-ui/src/lib/components/button/` | Golden accent buttons (primary, outline, danger) |
-| CardComponent | `libs/shared-ui/src/lib/components/card/` | Dark theme cards with headers |
-| BadgeComponent | `libs/shared-ui/src/lib/components/badge/` | Status badges (success, warning, danger, info) |
-| StatCardComponent | `libs/shared-ui/src/lib/components/stat-card/` | Metrics display with trends |
-| LoadingSpinnerComponent | `libs/shared-ui/src/lib/components/loading-spinner/` | Golden spinner animation |
+| Component               | Path                                                 | Purpose                                          |
+| ----------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| ButtonComponent         | `libs/shared-ui/src/lib/components/button/`          | Golden accent buttons (primary, outline, danger) |
+| CardComponent           | `libs/shared-ui/src/lib/components/card/`            | Dark theme cards with headers                    |
+| BadgeComponent          | `libs/shared-ui/src/lib/components/badge/`           | Status badges (success, warning, danger, info)   |
+| StatCardComponent       | `libs/shared-ui/src/lib/components/stat-card/`       | Metrics display with trends                      |
+| LoadingSpinnerComponent | `libs/shared-ui/src/lib/components/loading-spinner/` | Golden spinner animation                         |
 
 ### Theming
+
 - **Primary Color:** #f9be03 (golden yellow)
 - **Dark Backgrounds:** #1a1a1a, #252525, #2a2a2a
 - **Status Colors:** Success (#4ade80), Warning (#fbbf24), Danger (#ff6b6b)
-- **Files:** `libs/shared-ui/src/lib/styles/` (_variables.scss, _mixins.scss, _theme.scss)
+- **Files:** `libs/shared-ui/src/lib/styles/` (\_variables.scss, \_mixins.scss, \_theme.scss)
 
 ---
 
@@ -388,14 +424,14 @@ This document contains everything extractable from the codebase for marketing pu
 
 **File:** `apps/license-api/prisma/schema.prisma`
 
-| Table | Purpose |
-|-------|---------|
-| `pricing_tiers` | Database-driven pricing (auto-creates Stripe prices on publish) |
-| `promo_codes` | Validation, expiry, usage tracking |
-| `donations` | Ko-fi donations (not licenses) |
-| `app_config` | Encrypted config storage (AES-256-GCM) |
-| `audit_log` | Admin action tracking |
-| `email_templates` | Template management |
+| Table             | Purpose                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| `pricing_tiers`   | Database-driven pricing (auto-creates Stripe prices on publish) |
+| `promo_codes`     | Validation, expiry, usage tracking                              |
+| `donations`       | Ko-fi donations (not licenses)                                  |
+| `app_config`      | Encrypted config storage (AES-256-GCM)                          |
+| `audit_log`       | Admin action tracking                                           |
+| `email_templates` | Template management                                             |
 
 **Migration:** `apps/license-api/prisma/migrations/20251223_add_pricing_promo_donation_config_audit_tables/`
 
@@ -404,11 +440,13 @@ This document contains everything extractable from the codebase for marketing pu
 #### 1. Pricing Module (`apps/license-api/src/pricing/`)
 
 **Files:**
+
 - `pricing.service.ts` - Tier CRUD, Stripe price creation
 - `pricing.controller.ts` - Admin + public endpoints
 - `pricing.module.ts`
 
 **Key Features:**
+
 - Create/update pricing tiers (draft mode)
 - Publish tier → auto-creates Stripe monthly/yearly prices
 - Database lookup for Stripe webhooks (no hardcoded mapping)
@@ -416,16 +454,19 @@ This document contains everything extractable from the codebase for marketing pu
 - Audit logging
 
 **Updated:**
+
 - `apps/license-api/src/webhook/stripe.controller.ts` - Now uses `pricingService.getTierByStripePriceId()`
 
 #### 2. Promo Module (`apps/license-api/src/promo/`)
 
 **Files:**
+
 - `promo.service.ts` - CRUD, validation, usage tracking
 - `promo.controller.ts` - Admin + public validation endpoint
 - `promo.module.ts`
 
 **Key Features:**
+
 - Discount types: PERCENTAGE | FIXED
 - Expiry dates + max uses
 - Usage counter increments
@@ -436,6 +477,7 @@ This document contains everything extractable from the codebase for marketing pu
 **Updated:** `apps/license-api/src/webhook/kofi.controller.ts`
 
 **Changes:**
+
 - Ko-fi = donations ONLY (no licenses)
 - Stores in `donations` table (status: PENDING)
 - Sends thank-you email clarifying no license included
@@ -444,18 +486,21 @@ This document contains everything extractable from the codebase for marketing pu
 #### 4. Config Module (`apps/license-api/src/config/`)
 
 **Files:**
+
 - `config-crypto.service.ts` - AES-256-GCM encryption/decryption
 - `app-config.service.ts` - Config CRUD with encryption
 - `app-config.controller.ts` - Admin endpoints
 - `app-config.module.ts`
 
 **Key Features:**
+
 - Encrypted storage (ENCRYPTION_KEY in .env bootstraps system)
 - Masked display for secrets: `sk_live_****...abc123`
 - Unmask endpoint (admin only)
 - Audit logging for all config changes
 
 **Config Keys:**
+
 - STRIPE_SECRET_KEY (secret)
 - STRIPE_WEBHOOK_SECRET (secret)
 - PATREON_CLIENT_ID, PATREON_CLIENT_SECRET (secret)
@@ -465,6 +510,7 @@ This document contains everything extractable from the codebase for marketing pu
 #### 5. Audit Module (`apps/license-api/src/audit/`)
 
 **Files:**
+
 - `audit.service.ts` - Log creation + queries
 - `audit.decorator.ts` - `@Audited(entityType, action?)` decorator
 - `audit.interceptor.ts` - Global interceptor
@@ -472,6 +518,7 @@ This document contains everything extractable from the codebase for marketing pu
 - `audit.module.ts` (registers APP_INTERCEPTOR)
 
 **Features:**
+
 - Automatic logging via decorator
 - Tracks: action, entityType, entityId, userId, changes, ipAddress, userAgent
 - Query endpoints: all logs, by entity, by user
@@ -497,17 +544,20 @@ model Settings {
 ### License Client Module (`apps/backend/src/license/`)
 
 **New Files:**
+
 - `license-client.service.ts` - Remote verification client
 - `guards/node-limit.guard.ts` - Enforce node limits
 - `guards/job-limit.guard.ts` - Enforce concurrent job limits
 
 **Updated:**
+
 - `license.controller.ts` - Added client endpoints (GET /licenses/current, /limits, PUT /key)
 - `license.module.ts` - Added HttpModule, ScheduleModule, guards
 
 ### Key Features
 
 #### LicenseClientService
+
 - **24h cache** with graceful degradation (uses cache if API unreachable)
 - **FREE tier fallback** if no license key configured
 - **Daily verification cron** (3 AM)
@@ -515,11 +565,13 @@ model Settings {
 - **Database storage** (not .env, seamless UX)
 
 #### Enforcement Guards
+
 - `@UseGuards(NodeLimitGuard)` on node creation endpoints
 - `@UseGuards(JobLimitGuard)` on job creation endpoints
 - Throws `ForbiddenException` with upgrade message when limits exceeded
 
 #### Endpoints (Consumer Mode)
+
 - `GET /api/v1/licenses/current` - Current license info
 - `GET /api/v1/licenses/limits` - Node/job limits
 - `PUT /api/v1/licenses/key` - Set license key (immediately verifies)
@@ -528,15 +580,15 @@ model Settings {
 
 ## 📊 Implementation Status
 
-| Phase | Status | Completion |
-|-------|--------|------------|
-| **Phase 0** | ✅ Complete | 100% |
-| **Phase 1** | ✅ Complete | 100% |
-| **Phase 2** | ✅ Complete | 100% |
-| **Phase 3** | ✅ Complete | 100% |
-| **Phase 4** | ✅ Complete | 100% |
-| **Phase 5** | ✅ Complete | 100% |
-| **Phase 5.5** | ✅ Complete | 100% |
+| Phase         | Status      | Completion |
+| ------------- | ----------- | ---------- |
+| **Phase 0**   | ✅ Complete | 100%       |
+| **Phase 1**   | ✅ Complete | 100%       |
+| **Phase 2**   | ✅ Complete | 100%       |
+| **Phase 3**   | ✅ Complete | 100%       |
+| **Phase 4**   | ✅ Complete | 100%       |
+| **Phase 5**   | ✅ Complete | 100%       |
+| **Phase 5.5** | ✅ Complete | 100%       |
 
 **Overall:** 🎉 100% COMPLETE (7/7 phases)
 
@@ -548,13 +600,14 @@ model Settings {
 
 **File:** `apps/license-api/src/analytics/`
 
-| Component | Purpose |
-|-----------|---------|
-| `analytics.service.ts` | MRR/ARR, churn rate, CLV calculations |
-| `analytics.controller.ts` | Admin-only REST endpoints |
-| `analytics.module.ts` | Module registration |
+| Component                 | Purpose                               |
+| ------------------------- | ------------------------------------- |
+| `analytics.service.ts`    | MRR/ARR, churn rate, CLV calculations |
+| `analytics.controller.ts` | Admin-only REST endpoints             |
+| `analytics.module.ts`     | Module registration                   |
 
 **Endpoints:**
+
 - `GET /analytics/revenue-metrics` - MRR, ARR, churn, CLV, subscription health
 - `GET /analytics/daily-revenue?days=30` - Daily revenue for charts
 - `GET /analytics/tier-distribution` - Active subscriptions by tier
@@ -564,15 +617,16 @@ model Settings {
 
 **App:** `apps/admin-dashboard/`
 
-| Component | Path | Purpose |
-|-----------|------|---------|
-| LayoutComponent | `src/app/components/layout/` | Sidebar navigation + router outlet |
-| DashboardComponent | `src/app/pages/dashboard/` | Revenue metrics, subscription health |
-| LicensesComponent | `src/app/pages/licenses/` | License list, search, create, revoke |
-| ApiService | `src/app/services/api.service.ts` | Analytics API client |
-| LicenseApiService | `src/app/services/license-api.service.ts` | License API client |
+| Component          | Path                                      | Purpose                              |
+| ------------------ | ----------------------------------------- | ------------------------------------ |
+| LayoutComponent    | `src/app/components/layout/`              | Sidebar navigation + router outlet   |
+| DashboardComponent | `src/app/pages/dashboard/`                | Revenue metrics, subscription health |
+| LicensesComponent  | `src/app/pages/licenses/`                 | License list, search, create, revoke |
+| ApiService         | `src/app/services/api.service.ts`         | Analytics API client                 |
+| LicenseApiService  | `src/app/services/license-api.service.ts` | License API client                   |
 
 **Routes:**
+
 - `/dashboard` - Revenue dashboard
 - `/licenses` - License management
 - `/pricing` - Pricing tiers (placeholder)
@@ -584,6 +638,7 @@ model Settings {
 - `/webhooks` - Webhook replay (placeholder)
 
 **Styling:**
+
 - Golden dark theme (#f9be03)
 - Shared variables from `libs/shared-ui`
 - Material Icons font
@@ -592,6 +647,7 @@ model Settings {
 ### 3.3 License Management UI ✅
 
 **Features:**
+
 - Paginated license list (20 per page)
 - Search by email
 - Filter by tier
@@ -600,6 +656,7 @@ model Settings {
 - View license details (key, tier, limits, dates)
 
 **API Integration:**
+
 - Uses existing license-api endpoints
 - Requires AdminApiKeyGuard authentication
 
@@ -619,23 +676,25 @@ model Settings {
 
 Created Angular 21+ standalone application with golden dark theme.
 
-| Component | Path | Purpose |
-|-----------|------|---------|
-| HeaderComponent | `src/app/components/header/` | Sticky navigation with logo, nav links, CTA button |
-| FooterComponent | `src/app/components/footer/` | Footer with product/community/support links |
-| HomeComponent | `src/app/pages/home/` | Hero section, features grid, CTA section |
-| PricingComponent | `src/app/pages/pricing/` | Dynamic pricing tiers from API |
-| DownloadComponent | `src/app/pages/download/` | Installation methods (Docker, direct, source) |
-| DocsComponent | `src/app/pages/docs/` | Documentation index page |
-| PricingApiService | `src/app/services/pricing-api.service.ts` | Fetch active pricing tiers |
+| Component         | Path                                      | Purpose                                            |
+| ----------------- | ----------------------------------------- | -------------------------------------------------- |
+| HeaderComponent   | `src/app/components/header/`              | Sticky navigation with logo, nav links, CTA button |
+| FooterComponent   | `src/app/components/footer/`              | Footer with product/community/support links        |
+| HomeComponent     | `src/app/pages/home/`                     | Hero section, features grid, CTA section           |
+| PricingComponent  | `src/app/pages/pricing/`                  | Dynamic pricing tiers from API                     |
+| DownloadComponent | `src/app/pages/download/`                 | Installation methods (Docker, direct, source)      |
+| DocsComponent     | `src/app/pages/docs/`                     | Documentation index page                           |
+| PricingApiService | `src/app/services/pricing-api.service.ts` | Fetch active pricing tiers                         |
 
 **Routes:**
+
 - `/` - Home page (hero, features, stats)
 - `/pricing` - Dynamic pricing (loads from license-api)
 - `/download` - Installation guide
 - `/docs` - Documentation hub
 
 **Styling:**
+
 - Shared variables from `libs/shared-ui`
 - Golden accent (#f9be03) on dark theme
 - Responsive grid layouts
@@ -649,22 +708,24 @@ Created Angular 21+ standalone application with golden dark theme.
 
 **Files Created:**
 
-| File | Purpose |
-|------|---------|
-| `docker-compose.license.yml` | License stack orchestration (license-api, admin-dashboard, website, postgres) |
-| `apps/license-api/Dockerfile` | Multi-stage Node.js build for license-api |
-| `apps/admin-dashboard/Dockerfile` | Multi-stage Angular build with nginx |
-| `apps/website/Dockerfile` | Multi-stage Angular build with nginx |
-| `apps/admin-dashboard/nginx.conf` | Nginx config with API proxy |
-| `apps/website/nginx.conf` | Nginx config with API proxy |
+| File                              | Purpose                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| `docker-compose.license.yml`      | License stack orchestration (license-api, admin-dashboard, website, postgres) |
+| `apps/license-api/Dockerfile`     | Multi-stage Node.js build for license-api                                     |
+| `apps/admin-dashboard/Dockerfile` | Multi-stage Angular build with nginx                                          |
+| `apps/website/Dockerfile`         | Multi-stage Angular build with nginx                                          |
+| `apps/admin-dashboard/nginx.conf` | Nginx config with API proxy                                                   |
+| `apps/website/nginx.conf`         | Nginx config with API proxy                                                   |
 
 **Services:**
+
 - `license-db` - PostgreSQL 15 Alpine
 - `license-api` - NestJS API (port 3000)
 - `admin-dashboard` - Angular + nginx (port 4200)
 - `website` - Angular + nginx (port 4201)
 
 **Features:**
+
 - Multi-stage builds for minimal image size
 - Health checks for all services
 - Named volumes for database persistence
@@ -675,6 +736,7 @@ Created Angular 21+ standalone application with golden dark theme.
 ### 5.2 Environment Configuration ✅
 
 **Updated `.env.example`** with license-specific variables:
+
 - `LICENSE_DB_PASSWORD` - PostgreSQL password
 - `ENCRYPTION_KEY` - AES-256-GCM encryption key
 - `ADMIN_API_KEY` - Admin authentication
@@ -686,6 +748,7 @@ Created Angular 21+ standalone application with golden dark theme.
 ### 5.3 Deployment Scripts ✅
 
 **`deploy-license-stack.sh`** - Automated deployment script:
+
 - Validates .env file exists
 - Checks all required environment variables
 - Builds Docker images
@@ -695,6 +758,7 @@ Created Angular 21+ standalone application with golden dark theme.
 - Displays service URLs and next steps
 
 **Usage:**
+
 ```bash
 ./deploy-license-stack.sh
 ```
@@ -706,11 +770,13 @@ Created Angular 21+ standalone application with golden dark theme.
 ### 5.5.1 PM2 Configuration ✅
 
 **`ecosystem.config.js`** - Production process management:
+
 - `license-api` - Cluster mode, 2 instances
 - `admin-dashboard` - Fork mode, serve static files
 - `website` - Fork mode, serve static files
 
 **Features:**
+
 - Auto-restart on failure
 - Log rotation and aggregation
 - Memory limits (500MB API, 200MB frontend)
@@ -722,15 +788,18 @@ Created Angular 21+ standalone application with golden dark theme.
 **`MONITORING.md`** - Comprehensive ops guide covering:
 
 **PM2 Monitoring:**
+
 - Process status, logs, real-time monitoring
 - Restart strategies
 
 **Docker Monitoring:**
+
 - Container status and health
 - Resource usage tracking
 - Log aggregation
 
 **Key Metrics:**
+
 - License API health and performance
 - MRR/ARR tracking
 - Churn rate monitoring
@@ -738,22 +807,26 @@ Created Angular 21+ standalone application with golden dark theme.
 - API response times
 
 **Alert Conditions:**
+
 - Critical: API down, database failure, webhook errors
 - Warning: High churn, slow queries, memory usage
 
 **Backup & Recovery:**
+
 - Automated daily database backups
 - Configuration backups
 - Retention policy (7 days daily, 4 weeks weekly, 12 months monthly)
 - Restore procedures
 
 **Maintenance Tasks:**
+
 - Daily: Process status, error logs, backup verification
 - Weekly: Trends analysis, query optimization, disk usage
 - Monthly: Secret rotation, dependency updates, security review
 - Quarterly: Full audit, DR drill, performance review
 
 **Troubleshooting:**
+
 - License API startup issues
 - High memory usage
 - Slow database queries
@@ -767,17 +840,18 @@ Created Angular 21+ standalone application with golden dark theme.
 
 ### Applications Built
 
-| Application | Tech Stack | Purpose | Port |
-|-------------|-----------|---------|------|
-| **License API** | NestJS + Prisma + PostgreSQL | License validation, payments, analytics | 3000 |
-| **Admin Dashboard** | Angular 21+ Standalone | Revenue analytics, license management | 4200 |
-| **Marketing Website** | Angular 21+ Standalone | Public website, pricing, downloads | 4201 |
-| **BitBonsai Backend** | NestJS + Prisma | Video transcoding (existing) | 3100 |
-| **BitBonsai Frontend** | Angular 21+ | Video management (existing) | 4210 |
+| Application            | Tech Stack                   | Purpose                                 | Port |
+| ---------------------- | ---------------------------- | --------------------------------------- | ---- |
+| **License API**        | NestJS + Prisma + PostgreSQL | License validation, payments, analytics | 3000 |
+| **Admin Dashboard**    | Angular 21+ Standalone       | Revenue analytics, license management   | 4200 |
+| **Marketing Website**  | Angular 21+ Standalone       | Public website, pricing, downloads      | 4201 |
+| **BitBonsai Backend**  | NestJS + Prisma              | Video transcoding (existing)            | 3100 |
+| **BitBonsai Frontend** | Angular 21+                  | Video management (existing)             | 4210 |
 
 ### Key Features Implemented
 
 **E-Commerce:**
+
 - Database-driven pricing (auto-creates Stripe prices)
 - Promo code system with validation
 - Ko-fi donation handling (non-license)
@@ -786,6 +860,7 @@ Created Angular 21+ standalone application with golden dark theme.
 - Audit logging for admin actions
 
 **Analytics:**
+
 - MRR/ARR calculation
 - Churn rate tracking
 - Customer Lifetime Value (CLV)
@@ -794,6 +869,7 @@ Created Angular 21+ standalone application with golden dark theme.
 - Daily/monthly charts
 
 **License Management:**
+
 - Remote license verification (24h cache)
 - Machine ID binding
 - Node and job limit enforcement
@@ -802,6 +878,7 @@ Created Angular 21+ standalone application with golden dark theme.
 - Multi-tier support (FREE → ENTERPRISE)
 
 **Marketing:**
+
 - Dynamic pricing page (loads from API)
 - Hero landing page
 - Feature showcase
@@ -809,6 +886,7 @@ Created Angular 21+ standalone application with golden dark theme.
 - Golden dark theme consistency
 
 **Operations:**
+
 - Docker Compose orchestration
 - Multi-stage builds
 - PM2 process management
@@ -828,15 +906,15 @@ Created Angular 21+ standalone application with golden dark theme.
 
 ### Technology Stack
 
-| Layer | Technologies |
-|-------|-------------|
-| **Frontend** | Angular 21+, Standalone Components, SCSS, Material (dialogs only) |
-| **Backend** | NestJS, Prisma ORM, PostgreSQL |
-| **Payments** | Stripe API, Patreon OAuth, Ko-fi Webhooks |
-| **Email** | Resend API |
-| **Deployment** | Docker, Docker Compose, nginx, PM2 |
-| **Security** | AES-256-GCM encryption, JWT, AdminApiKeyGuard, audit logging |
-| **Monitoring** | PM2, Docker stats, PostgreSQL logs |
+| Layer          | Technologies                                                      |
+| -------------- | ----------------------------------------------------------------- |
+| **Frontend**   | Angular 21+, Standalone Components, SCSS, Material (dialogs only) |
+| **Backend**    | NestJS, Prisma ORM, PostgreSQL                                    |
+| **Payments**   | Stripe API, Patreon OAuth, Ko-fi Webhooks                         |
+| **Email**      | Resend API                                                        |
+| **Deployment** | Docker, Docker Compose, nginx, PM2                                |
+| **Security**   | AES-256-GCM encryption, JWT, AdminApiKeyGuard, audit logging      |
+| **Monitoring** | PM2, Docker stats, PostgreSQL logs                                |
 
 ---
 
@@ -869,6 +947,7 @@ npx prisma generate
 ### Required Environment Variables
 
 **License API (.env):**
+
 ```bash
 LICENSE_DATABASE_URL="postgresql://..."
 ENCRYPTION_KEY="..." # openssl rand -hex 32
@@ -883,6 +962,7 @@ ADMIN_API_KEY="..."
 ```
 
 **BitBonsai Backend (.env):**
+
 ```bash
 LICENSE_API_URL="https://api.bitbonsai.io"
 ```
@@ -946,6 +1026,7 @@ pm2 logs
 ## 📝 Code Conventions
 
 Following `~/git/code-conventions/`:
+
 - **NgRx** for state management
 - **Standalone components** (no modules except root)
 - **Signals** for local reactive state
@@ -958,6 +1039,7 @@ Following `~/git/code-conventions/`:
 ## 🎨 Design System
 
 **Golden Dark Theme:**
+
 - Primary: #f9be03
 - Dark backgrounds: #1a1a1a, #252525, #2a2a2a
 - Success: #4ade80, Warning: #fbbf24, Danger: #ff6b6b
@@ -983,6 +1065,7 @@ Following `~/git/code-conventions/`:
    - Set up Resend email
 
 2. **Deploy License Stack**
+
    ```bash
    ./deploy-license-stack.sh
    ```

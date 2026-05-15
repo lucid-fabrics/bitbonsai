@@ -17,7 +17,10 @@ describe('DistributionController', () => {
     updateConfig: jest.Mock;
     getNodesCapacity: jest.Mock;
   };
-  let reliabilityTracker: { getFailureSummary: jest.Mock; isUnreliable: jest.Mock };
+  let reliabilityTracker: {
+    getFailureSummary: jest.Mock;
+    isUnreliable: jest.Mock;
+  };
 
   beforeEach(async () => {
     orchestrator = {
@@ -31,7 +34,10 @@ describe('DistributionController', () => {
       updateConfig: jest.fn(),
       getNodesCapacity: jest.fn(),
     };
-    reliabilityTracker = { getFailureSummary: jest.fn(), isUnreliable: jest.fn() };
+    reliabilityTracker = {
+      getFailureSummary: jest.fn(),
+      isUnreliable: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DistributionController],
@@ -60,7 +66,10 @@ describe('DistributionController', () => {
         },
       ];
       orchestrator.getAllNodeScores.mockResolvedValue(mockScores);
-      orchestrator.getScoreBreakdown.mockReturnValue({ hardware: 50, load: 35.7 });
+      orchestrator.getScoreBreakdown.mockReturnValue({
+        hardware: 50,
+        load: 35.7,
+      });
 
       const result = (await controller.getNodeScores('job-1')) as any;
 
@@ -72,7 +81,9 @@ describe('DistributionController', () => {
     it('should throw 404 when no scores found', async () => {
       orchestrator.getAllNodeScores.mockResolvedValue([]);
 
-      await expect(controller.getNodeScores('job-1')).rejects.toThrow(HttpException);
+      await expect(controller.getNodeScores('job-1')).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 
@@ -90,7 +101,10 @@ describe('DistributionController', () => {
       orchestrator.getAllNodeScores.mockResolvedValue(mockScores);
       orchestrator.getScoreBreakdown.mockReturnValue({});
 
-      const result = (await controller.getNodeScoreDetail('job-1', 'node-1')) as any;
+      const result = (await controller.getNodeScoreDetail(
+        'job-1',
+        'node-1',
+      )) as any;
 
       expect(result.nodeId).toBe('node-1');
       expect(result.totalScore).toBe(90);
@@ -99,15 +113,19 @@ describe('DistributionController', () => {
     it('should throw 404 when node score not found', async () => {
       orchestrator.getAllNodeScores.mockResolvedValue([]);
 
-      await expect(controller.getNodeScoreDetail('job-1', 'node-999')).rejects.toThrow(
-        HttpException
-      );
+      await expect(
+        controller.getNodeScoreDetail('job-1', 'node-999'),
+      ).rejects.toThrow(HttpException);
     });
   });
 
   describe('assignJob', () => {
     it('should assign job successfully', async () => {
-      const mockResult = { jobId: 'job-1', nodeId: 'node-1', status: 'assigned' };
+      const mockResult = {
+        jobId: 'job-1',
+        nodeId: 'node-1',
+        status: 'assigned',
+      };
       orchestrator.assignJob.mockResolvedValue(mockResult);
 
       const result = await controller.assignJob('job-1', { nodeId: 'node-1' });
@@ -119,9 +137,9 @@ describe('DistributionController', () => {
     it('should throw 404 when assignment fails', async () => {
       orchestrator.assignJob.mockResolvedValue(null);
 
-      await expect(controller.assignJob('job-1', { nodeId: 'node-1' })).rejects.toThrow(
-        HttpException
-      );
+      await expect(
+        controller.assignJob('job-1', { nodeId: 'node-1' }),
+      ).rejects.toThrow(HttpException);
     });
   });
 
@@ -152,10 +170,16 @@ describe('DistributionController', () => {
 
   describe('updateConfig', () => {
     it('should update existing config', async () => {
-      const updatedConfig = { id: 'default', isActive: true, weightRealTimeLoad: 3 };
+      const updatedConfig = {
+        id: 'default',
+        isActive: true,
+        weightRealTimeLoad: 3,
+      };
       orchestrator.updateConfig.mockResolvedValue(updatedConfig);
 
-      const result = (await controller.updateConfig({ weightRealTimeLoad: 3 })) as any;
+      const result = (await controller.updateConfig({
+        weightRealTimeLoad: 3,
+      })) as any;
 
       expect(result.weightRealTimeLoad).toBe(3);
     });
@@ -224,7 +248,10 @@ describe('DistributionController', () => {
 
   describe('simulateAssignment', () => {
     it('should return simulation result', async () => {
-      orchestrator.findOptimalNode.mockResolvedValue({ nodeId: 'node-1', score: 95 });
+      orchestrator.findOptimalNode.mockResolvedValue({
+        nodeId: 'node-1',
+        score: 95,
+      });
 
       const result = (await controller.simulateAssignment('job-1')) as any;
 
@@ -235,7 +262,9 @@ describe('DistributionController', () => {
     it('should throw 404 when no eligible nodes', async () => {
       orchestrator.findOptimalNode.mockResolvedValue(null);
 
-      await expect(controller.simulateAssignment('job-1')).rejects.toThrow(HttpException);
+      await expect(controller.simulateAssignment('job-1')).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 });

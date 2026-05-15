@@ -17,7 +17,7 @@ export class DebugService {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly nodeRepository: NodeRepository
+    private readonly nodeRepository: NodeRepository,
   ) {}
 
   /**
@@ -41,15 +41,19 @@ export class DebugService {
     const freeMemory = os.freemem();
 
     // Get load threshold from current node or use default
-    let loadThresholdMultiplier = parseFloat(process.env.LOAD_THRESHOLD_MULTIPLIER || '5.0');
+    let loadThresholdMultiplier = parseFloat(
+      process.env.LOAD_THRESHOLD_MULTIPLIER || '5.0',
+    );
     try {
-      const node = (await this.getCurrentNode()) as { loadThresholdMultiplier?: number } | null;
+      const node = (await this.getCurrentNode()) as {
+        loadThresholdMultiplier?: number;
+      } | null;
       if (node?.loadThresholdMultiplier) {
         loadThresholdMultiplier = node.loadThresholdMultiplier;
       }
     } catch (error: unknown) {
       this.logger.warn(
-        `[getSystemLoad] Failed to read node load threshold, using default: ${error instanceof Error ? error.message : String(error)}`
+        `[getSystemLoad] Failed to read node load threshold, using default: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
@@ -103,7 +107,10 @@ export class DebugService {
       id: string;
       startedAt: Date | null;
       progress: number | null;
-    }>({ stage: JobStage.ENCODING }, { id: true, startedAt: true, progress: true });
+    }>(
+      { stage: JobStage.ENCODING },
+      { id: true, startedAt: true, progress: true },
+    );
 
     // Get system FFmpeg processes
     const systemProcesses = await this.findSystemFfmpegProcesses();
@@ -135,7 +142,9 @@ export class DebugService {
   /**
    * Kill a specific FFmpeg process by PID
    */
-  async killProcessByPid(pid: number): Promise<{ success: boolean; message: string }> {
+  async killProcessByPid(
+    pid: number,
+  ): Promise<{ success: boolean; message: string }> {
     // SECURITY: Validate PID before using in process operations
     this.validatePid(pid);
 
@@ -147,7 +156,7 @@ export class DebugService {
         execFileSync('kill', ['-TERM', pid.toString()], { timeout: 2000 });
       } catch (error: unknown) {
         this.logger.warn(
-          `[killProcessByPid] SIGTERM failed for PID ${pid}: ${error instanceof Error ? error.message : String(error)}`
+          `[killProcessByPid] SIGTERM failed for PID ${pid}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -160,7 +169,7 @@ export class DebugService {
         execFileSync('kill', ['-KILL', pid.toString()], { timeout: 2000 });
       } catch (error: unknown) {
         this.logger.warn(
-          `[killProcessByPid] Process PID ${pid} already dead: ${error instanceof Error ? error.message : String(error)}`
+          `[killProcessByPid] Process PID ${pid} already dead: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -180,7 +189,8 @@ export class DebugService {
     details: Array<{ pid: number; success: boolean; message: string }>;
   }> {
     const processes = await this.findSystemFfmpegProcesses();
-    const details: Array<{ pid: number; success: boolean; message: string }> = [];
+    const details: Array<{ pid: number; success: boolean; message: string }> =
+      [];
     let killed = 0;
     let failed = 0;
 
@@ -217,7 +227,9 @@ export class DebugService {
         return { success: false, message: 'Current node not found' };
       }
 
-      await this.nodeRepository.updateById(node.id, { loadThresholdMultiplier });
+      await this.nodeRepository.updateById(node.id, {
+        loadThresholdMultiplier,
+      });
 
       const cpuCount = os.cpus().length;
       return {
@@ -292,14 +304,21 @@ export class DebugService {
 
           let runtimeSeconds = 0;
           const timeParts = etime.split(/[-:]/).reverse();
-          if (timeParts.length >= 1) runtimeSeconds += parseInt(timeParts[0], 10) || 0;
-          if (timeParts.length >= 2) runtimeSeconds += (parseInt(timeParts[1], 10) || 0) * 60;
-          if (timeParts.length >= 3) runtimeSeconds += (parseInt(timeParts[2], 10) || 0) * 3600;
-          if (timeParts.length >= 4) runtimeSeconds += (parseInt(timeParts[3], 10) || 0) * 86400;
+          if (timeParts.length >= 1)
+            runtimeSeconds += parseInt(timeParts[0], 10) || 0;
+          if (timeParts.length >= 2)
+            runtimeSeconds += (parseInt(timeParts[1], 10) || 0) * 60;
+          if (timeParts.length >= 3)
+            runtimeSeconds += (parseInt(timeParts[2], 10) || 0) * 3600;
+          if (timeParts.length >= 4)
+            runtimeSeconds += (parseInt(timeParts[3], 10) || 0) * 86400;
 
           processes.push({
             pid,
-            command: command.length > 200 ? `${command.substring(0, 200)}...` : command,
+            command:
+              command.length > 200
+                ? `${command.substring(0, 200)}...`
+                : command,
             cpuPercent,
             memPercent,
             runtimeSeconds,

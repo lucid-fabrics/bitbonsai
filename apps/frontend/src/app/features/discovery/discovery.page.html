@@ -68,9 +68,7 @@
 
       <div class="help-text">
         <i class="fas fa-info-circle"></i>
-        <p>
-          {{ 'discovery.requestHelpText' | transloco }}
-        </p>
+        <p>{{ 'discovery.requestHelpText' | transloco }}</p>
       </div>
     </div>
 
@@ -97,7 +95,10 @@
     <div class="section-header">
       <h2>{{ 'discovery.discoveredMainNodes' | transloco }}</h2>
       @if (discoveredMainNodes.length > 0) {
-      <span class="count-badge">{{ discoveredMainNodes.length }} {{ 'discovery.found' | transloco }}</span>
+      <span class="count-badge"
+        >{{ discoveredMainNodes.length }} {{ 'discovery.found' | transloco
+        }}</span
+      >
       }
     </div>
 
@@ -135,7 +136,9 @@
     <div class="loading-state">
       <i class="fas fa-spinner fa-spin"></i>
       <p>{{ 'discovery.searchingNetwork' | transloco }}</p>
-      <p class="loading-subtext">{{ 'discovery.searchingSubtext' | transloco }}</p>
+      <p class="loading-subtext">
+        {{ 'discovery.searchingSubtext' | transloco }}
+      </p>
     </div>
     }
 
@@ -159,21 +162,27 @@
             <div class="detail-row">
               <i class="fas fa-network-wired"></i>
               <div class="detail-content">
-                <span class="detail-label">{{ 'discovery.network' | transloco }}</span>
+                <span class="detail-label"
+                  >{{ 'discovery.network' | transloco }}</span
+                >
                 <span class="detail-value">{{ node.ipAddress }}</span>
               </div>
             </div>
             <div class="detail-row">
               <i class="fas fa-server"></i>
               <div class="detail-content">
-                <span class="detail-label">{{ 'discovery.apiEndpoint' | transloco }}</span>
+                <span class="detail-label"
+                  >{{ 'discovery.apiEndpoint' | transloco }}</span
+                >
                 <span class="detail-value">{{ node.apiUrl }}</span>
               </div>
             </div>
             <div class="detail-row">
               <i class="fas fa-plug"></i>
               <div class="detail-content">
-                <span class="detail-label">{{ 'discovery.port' | transloco }}</span>
+                <span class="detail-label"
+                  >{{ 'discovery.port' | transloco }}</span
+                >
                 <span class="detail-value">{{ node.port }}</span>
               </div>
             </div>

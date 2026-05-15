@@ -39,7 +39,10 @@ describe('AuthController', () => {
       };
       mockAuthService.login.mockResolvedValue(authResponse);
 
-      const result = await controller.login({ username: 'admin', password: 'pass123' });
+      const result = await controller.login({
+        username: 'admin',
+        password: 'pass123',
+      });
 
       expect(result).toEqual(authResponse);
       expect(mockAuthService.login).toHaveBeenCalledWith({
@@ -51,9 +54,9 @@ describe('AuthController', () => {
     it('should propagate auth errors', async () => {
       mockAuthService.login.mockRejectedValue(new Error('Invalid credentials'));
 
-      await expect(controller.login({ username: 'admin', password: 'wrong' })).rejects.toThrow(
-        'Invalid credentials'
-      );
+      await expect(
+        controller.login({ username: 'admin', password: 'wrong' }),
+      ).rejects.toThrow('Invalid credentials');
     });
   });
 
@@ -66,7 +69,9 @@ describe('AuthController', () => {
       };
       mockAuthService.refreshToken.mockResolvedValue(authResponse);
 
-      const result = await controller.refreshToken({ refreshToken: 'old-refresh-token' });
+      const result = await controller.refreshToken({
+        refreshToken: 'old-refresh-token',
+      });
 
       expect(result).toEqual(authResponse);
       expect(mockAuthService.refreshToken).toHaveBeenCalledWith({
@@ -75,11 +80,13 @@ describe('AuthController', () => {
     });
 
     it('should propagate errors for expired token', async () => {
-      mockAuthService.refreshToken.mockRejectedValue(new Error('Token expired'));
-
-      await expect(controller.refreshToken({ refreshToken: 'expired-token' })).rejects.toThrow(
-        'Token expired'
+      mockAuthService.refreshToken.mockRejectedValue(
+        new Error('Token expired'),
       );
+
+      await expect(
+        controller.refreshToken({ refreshToken: 'expired-token' }),
+      ).rejects.toThrow('Token expired');
     });
   });
 

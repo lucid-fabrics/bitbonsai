@@ -220,7 +220,11 @@
     flex-shrink: 0;
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, variables.$accent-primary 0%, #fcd34d 100%);
+    background: linear-gradient(
+      135deg,
+      variables.$accent-primary 0%,
+      #fcd34d 100%
+    );
     color: #000;
     border-radius: 50%;
     display: flex;

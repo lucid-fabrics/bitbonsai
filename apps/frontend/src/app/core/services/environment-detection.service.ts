@@ -28,19 +28,25 @@ export class EnvironmentDetectionService {
    */
   getStorageRecommendation(
     sourceNodeId: string,
-    targetNodeId: string
+    targetNodeId: string,
   ): Observable<StorageRecommendation> {
-    return this.http.post<StorageRecommendation>(`${this.baseUrl}/storage-recommendation`, {
-      sourceNodeId,
-      targetNodeId,
-    });
+    return this.http.post<StorageRecommendation>(
+      `${this.baseUrl}/storage-recommendation`,
+      {
+        sourceNodeId,
+        targetNodeId,
+      },
+    );
   }
 
   /**
    * Update a node's environment information
    * Typically called after detecting environment to persist results
    */
-  updateNodeEnvironment(nodeId: string, environment: EnvironmentInfo): Observable<void> {
+  updateNodeEnvironment(
+    nodeId: string,
+    environment: EnvironmentInfo,
+  ): Observable<void> {
     return this.http.patch<void>(`${this.baseUrl}/${nodeId}/environment`, {
       containerType: environment.containerType,
       isPrivileged: environment.isPrivileged,

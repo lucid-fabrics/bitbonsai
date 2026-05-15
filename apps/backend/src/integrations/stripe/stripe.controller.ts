@@ -8,7 +8,12 @@ import {
   RawBodyRequest,
   Req,
 } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { StripeService } from './stripe.service';
 
@@ -29,12 +34,13 @@ export class StripeController {
   @Post('checkout')
   @ApiOperation({
     summary: 'Create Stripe checkout session',
-    description: 'Creates a checkout session for purchasing a commercial license.',
+    description:
+      'Creates a checkout session for purchasing a commercial license.',
   })
   @ApiOkResponse({ description: 'Checkout session created' })
   @ApiBadRequestResponse({ description: 'Stripe not configured' })
   async createCheckout(
-    @Body() body: { email: string; priceId: string; returnUrl?: string }
+    @Body() body: { email: string; priceId: string; returnUrl?: string },
   ): Promise<{ sessionId: string; url: string }> {
     if (!this.stripeService.isConfigured()) {
       throw new BadRequestException('Stripe is not configured');
@@ -60,7 +66,7 @@ export class StripeController {
   @ApiBadRequestResponse({ description: 'Invalid signature or body' })
   async handleWebhook(
     @Headers('stripe-signature') signature: string,
-    @Req() req: RawBodyRequest<Request>
+    @Req() req: RawBodyRequest<Request>,
   ): Promise<{ received: boolean }> {
     if (!signature) {
       throw new BadRequestException('Missing Stripe signature');
@@ -110,7 +116,7 @@ export class StripeController {
   @ApiOkResponse({ description: 'Portal URL generated' })
   @ApiBadRequestResponse({ description: 'Stripe not configured' })
   async getPortalUrl(
-    @Body() body: { customerId: string; returnUrl?: string }
+    @Body() body: { customerId: string; returnUrl?: string },
   ): Promise<{ url: string }> {
     if (!this.stripeService.isConfigured()) {
       throw new BadRequestException('Stripe is not configured');
@@ -119,7 +125,10 @@ export class StripeController {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
     const returnUrl = body.returnUrl || `${baseUrl}/settings?tab=license`;
 
-    const url = await this.stripeService.getCustomerPortalUrl(body.customerId, returnUrl);
+    const url = await this.stripeService.getCustomerPortalUrl(
+      body.customerId,
+      returnUrl,
+    );
 
     return { url };
   }

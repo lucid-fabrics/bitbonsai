@@ -8,7 +8,10 @@ import { FileRelocatorService } from '../../../core/services/file-relocator.serv
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { QueueService } from '../../../queue/queue.service';
-import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
+import {
+  createMockJob,
+  createMockPolicy,
+} from '../../../testing/mock-factories';
 import {
   mockDataAccessProvider,
   mockEventEmitterProvider,
@@ -133,7 +136,9 @@ describe('EncodingProcessorService', () => {
             findOne: jest.fn(),
             findAll: jest.fn().mockResolvedValue([]),
             update: jest.fn(),
-            getCurrentNode: jest.fn().mockResolvedValue({ id: 'node-1', maxWorkers: 4 }),
+            getCurrentNode: jest
+              .fn()
+              .mockResolvedValue({ id: 'node-1', maxWorkers: 4 }),
           },
         },
         {
@@ -142,11 +147,15 @@ describe('EncodingProcessorService', () => {
             defaultWorkersPerNode: 4,
             maxWorkersPerNode: 12,
             calculateOptimalWorkers: jest.fn().mockReturnValue(4),
-            checkSystemLoad: jest
-              .fn()
-              .mockReturnValue({ isOverloaded: false, reason: '', details: '' }),
+            checkSystemLoad: jest.fn().mockReturnValue({
+              isOverloaded: false,
+              reason: '',
+              details: '',
+            }),
             waitForSystemLoad: jest.fn().mockResolvedValue(undefined),
-            performResourcePreflightChecks: jest.fn().mockResolvedValue(undefined),
+            performResourcePreflightChecks: jest
+              .fn()
+              .mockResolvedValue(undefined),
             reloadLoadThreshold: jest.fn().mockResolvedValue(undefined),
             getLoadThresholdMultiplier: jest.fn().mockReturnValue(2.0),
             getEncodingTempPath: jest.fn().mockReturnValue(null),
@@ -170,7 +179,9 @@ describe('EncodingProcessorService', () => {
             initialize: jest.fn(),
             acquire: jest.fn().mockResolvedValue(undefined),
             release: jest.fn(),
-            withLock: jest.fn().mockImplementation((_nodeId, _holder, fn) => fn()),
+            withLock: jest
+              .fn()
+              .mockImplementation((_nodeId, _holder, fn) => fn()),
           },
         },
         {
@@ -214,7 +225,9 @@ describe('EncodingProcessorService', () => {
           useValue: {
             startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
             manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
-            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+            getSystemDiagnostics: jest
+              .fn()
+              .mockResolvedValue('System Diagnostics:\n- No issues'),
           },
         },
       ],
@@ -255,7 +268,10 @@ describe('EncodingProcessorService', () => {
   describe('stopWorker', () => {
     it('should delegate to WorkerPoolService', async () => {
       await service.stopWorker('node-1');
-      expect(workerPoolService.stopWorker).toHaveBeenCalledWith('node-1', undefined);
+      expect(workerPoolService.stopWorker).toHaveBeenCalledWith(
+        'node-1',
+        undefined,
+      );
     });
 
     it('should handle stopping non-existent worker gracefully', async () => {
@@ -360,9 +376,9 @@ describe('EncodingProcessorService', () => {
       queueService.completeJob.mockRejectedValue(new Error('Database error'));
 
       // handleJobCompletion re-throws errors from completeJob
-      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(
-        'Database error'
-      );
+      await expect(
+        service.handleJobCompletion(mockJob as any, result),
+      ).rejects.toThrow('Database error');
     });
   });
 
@@ -376,7 +392,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Invalid codec')
+        expect.stringContaining('Invalid codec'),
       );
     });
 
@@ -385,7 +401,10 @@ describe('EncodingProcessorService', () => {
 
       queueService.update.mockResolvedValue(mockJob as any);
 
-      await service.handleJobFailure(createMockJob({ id: 'job-123', retryCount: 0 }) as any, error);
+      await service.handleJobFailure(
+        createMockJob({ id: 'job-123', retryCount: 0 }) as any,
+        error,
+      );
 
       expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
@@ -393,7 +412,7 @@ describe('EncodingProcessorService', () => {
           stage: 'QUEUED',
           progress: 0,
           retryCount: 1,
-        })
+        }),
       );
     });
 
@@ -402,11 +421,14 @@ describe('EncodingProcessorService', () => {
 
       queueService.failJob.mockResolvedValue(mockJob as any);
 
-      await service.handleJobFailure(createMockJob({ id: 'job-123', retryCount: 3 }) as any, error);
+      await service.handleJobFailure(
+        createMockJob({ id: 'job-123', retryCount: 3 }) as any,
+        error,
+      );
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('retry attempts exhausted')
+        expect.stringContaining('retry attempts exhausted'),
       );
     });
   });
@@ -424,7 +446,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Non-retriable error')
+        expect.stringContaining('Non-retriable error'),
       );
       expect(queueService.update).not.toHaveBeenCalled();
     });
@@ -437,7 +459,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Non-retriable error')
+        expect.stringContaining('Non-retriable error'),
       );
     });
 
@@ -449,7 +471,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Non-retriable error')
+        expect.stringContaining('Non-retriable error'),
       );
     });
   });
@@ -462,11 +484,14 @@ describe('EncodingProcessorService', () => {
       const jobWithRetry = createMockJob({ id: 'job-123', retryCount: 1 });
       queueService.update.mockResolvedValue(jobWithRetry as any);
 
-      await service.handleJobFailure({ ...jobWithRetry, policy: mockPolicy } as any, error);
+      await service.handleJobFailure(
+        { ...jobWithRetry, policy: mockPolicy } as any,
+        error,
+      );
 
       expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ stage: 'QUEUED', retryCount: 2 })
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 2 }),
       );
     });
 
@@ -475,11 +500,14 @@ describe('EncodingProcessorService', () => {
       const exhaustedJob = createMockJob({ id: 'job-123', retryCount: 3 });
       queueService.failJob.mockResolvedValue(exhaustedJob as any);
 
-      await service.handleJobFailure({ ...exhaustedJob, policy: mockPolicy } as any, error);
+      await service.handleJobFailure(
+        { ...exhaustedJob, policy: mockPolicy } as any,
+        error,
+      );
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('retry attempts exhausted')
+        expect.stringContaining('retry attempts exhausted'),
       );
     });
 
@@ -488,11 +516,14 @@ describe('EncodingProcessorService', () => {
       const freshJob = createMockJob({ id: 'job-123', retryCount: 0 });
       queueService.failJob.mockResolvedValue(freshJob as any);
 
-      await service.handleJobFailure({ ...freshJob, policy: mockPolicy } as any, error);
+      await service.handleJobFailure(
+        { ...freshJob, policy: mockPolicy } as any,
+        error,
+      );
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Non-retriable error after 1 attempt(s)')
+        expect.stringContaining('Non-retriable error after 1 attempt(s)'),
       );
     });
   });
@@ -514,7 +545,7 @@ describe('EncodingProcessorService', () => {
 
       expect(encodingFileService.updateLibraryStats).toHaveBeenCalledWith(
         'library-1',
-        BigInt(800_000_000)
+        BigInt(800_000_000),
       );
     });
 
@@ -571,7 +602,7 @@ describe('EncodingProcessorService', () => {
       expect(result).toBeNull();
       expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ stage: 'PAUSED' })
+        expect.objectContaining({ stage: 'PAUSED' }),
       );
     });
   });
@@ -593,7 +624,7 @@ describe('EncodingProcessorService', () => {
       expect(workerPoolService.startWorkerPool).toHaveBeenCalledWith(
         'node-1',
         4,
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -603,7 +634,7 @@ describe('EncodingProcessorService', () => {
       expect(workerPoolService.startWorkerPool).toHaveBeenCalledWith(
         'node-1',
         8,
-        expect.any(Function)
+        expect.any(Function),
       );
     });
   });
@@ -613,7 +644,10 @@ describe('EncodingProcessorService', () => {
   describe('stopWorker — with specific workerId', () => {
     it('passes workerId to WorkerPoolService', async () => {
       await service.stopWorker('node-1', 'worker-abc');
-      expect(workerPoolService.stopWorker).toHaveBeenCalledWith('node-1', 'worker-abc');
+      expect(workerPoolService.stopWorker).toHaveBeenCalledWith(
+        'node-1',
+        'worker-abc',
+      );
     });
   });
 
@@ -636,7 +670,7 @@ describe('EncodingProcessorService', () => {
 
         expect(queueService.failJob).toHaveBeenCalledWith(
           'job-123',
-          expect.stringContaining('Non-retriable error')
+          expect.stringContaining('Non-retriable error'),
         );
         expect(queueService.update).not.toHaveBeenCalled();
       });
@@ -646,7 +680,11 @@ describe('EncodingProcessorService', () => {
   // ── handleJobFailure — transient error all patterns ──────────────────────
 
   describe('handleJobFailure — transient error patterns', () => {
-    const transientCases = ['ENOTFOUND host', 'temporarily unavailable', 'network error'];
+    const transientCases = [
+      'ENOTFOUND host',
+      'temporarily unavailable',
+      'network error',
+    ];
 
     for (const msg of transientCases) {
       it(`re-queues job for transient error "${msg}"`, async () => {
@@ -658,7 +696,7 @@ describe('EncodingProcessorService', () => {
 
         expect(queueService.update).toHaveBeenCalledWith(
           'job-123',
-          expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
+          expect.objectContaining({ stage: 'QUEUED', retryCount: 1 }),
         );
       });
     }
@@ -676,9 +714,9 @@ describe('EncodingProcessorService', () => {
       };
       queueService.completeJob.mockRejectedValue(new Error('DB write failed'));
 
-      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(
-        'DB write failed'
-      );
+      await expect(
+        service.handleJobCompletion(mockJob as any, result),
+      ).rejects.toThrow('DB write failed');
     });
   });
 
@@ -694,9 +732,12 @@ describe('EncodingProcessorService', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const fileRelocatorService = module.get<{ relocateFile: jest.Mock }>(
-        FileRelocatorService as unknown as Parameters<typeof module.get>[0]
+        FileRelocatorService as unknown as Parameters<typeof module.get>[0],
       );
-      fileRelocatorService.relocateFile.mockResolvedValue({ found: false, searchedPaths: 0 });
+      fileRelocatorService.relocateFile.mockResolvedValue({
+        found: false,
+        searchedPaths: 0,
+      });
 
       queueService.getNextJob.mockResolvedValue(mockJob as any);
       queueService.failJob.mockResolvedValue(mockJob as any);
@@ -748,15 +789,15 @@ describe('EncodingProcessorService', () => {
       queueService.update.mockResolvedValue(mockJob as any);
 
       const systemResourceService = module.get(SystemResourceService);
-      (systemResourceService.performResourcePreflightChecks as jest.Mock).mockResolvedValue(
-        undefined
-      );
+      (
+        systemResourceService.performResourcePreflightChecks as jest.Mock
+      ).mockResolvedValue(undefined);
 
       const result = await service.processNextJob('node-1');
 
       expect(queueService.completeJob).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ savedPercent: 30.0 })
+        expect.objectContaining({ savedPercent: 30.0 }),
       );
       expect(result).not.toBeNull();
     });
@@ -774,7 +815,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ stage: 'QUEUED', retryCount: 2 })
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 2 }),
       );
     });
 
@@ -787,7 +828,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ stage: 'QUEUED', retryCount: 3 })
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 3 }),
       );
     });
 
@@ -800,7 +841,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('retry attempts exhausted')
+        expect.stringContaining('retry attempts exhausted'),
       );
     });
   });
@@ -829,7 +870,7 @@ describe('EncodingProcessorService', () => {
     beforeEach(() => {
       registerWorker();
       fileRelocatorService = module.get<{ relocateFile: jest.Mock }>(
-        FileRelocatorService as unknown as Parameters<typeof module.get>[0]
+        FileRelocatorService as unknown as Parameters<typeof module.get>[0],
       );
       fileRelocatorService.relocateFile.mockReset();
     });
@@ -875,7 +916,7 @@ describe('EncodingProcessorService', () => {
 
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ filePath: '/media/test-video-renamed.mkv' })
+        expect.objectContaining({ filePath: '/media/test-video-renamed.mkv' }),
       );
       expect(result).not.toBeNull();
     });
@@ -884,7 +925,7 @@ describe('EncodingProcessorService', () => {
       // handleJobFailure with a "Source file not found" error should call failJob
       // (non-transient, non-retriable error → permanent failure on first attempt)
       const error = new Error(
-        'Source file not found: /media/test-video.mkv\n\nThe file may have been moved'
+        'Source file not found: /media/test-video.mkv\n\nThe file may have been moved',
       );
       queueService.failJob.mockResolvedValue(mockJob as any);
 
@@ -892,14 +933,14 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Source file not found')
+        expect.stringContaining('Source file not found'),
       );
     });
 
     it('calls handleJobFailure when dir is missing (unmounted library error)', async () => {
       // handleJobFailure with a "parent directory does not exist" error → permanent failure
       const error = new Error(
-        'Source file not found: /media/test-video.mkv\n\nThe parent directory does not exist.\n- The library path was unmounted'
+        'Source file not found: /media/test-video.mkv\n\nThe parent directory does not exist.\n- The library path was unmounted',
       );
       queueService.failJob.mockResolvedValue(mockJob as any);
 
@@ -907,7 +948,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('does not exist')
+        expect.stringContaining('does not exist'),
       );
     });
   });
@@ -932,9 +973,9 @@ describe('EncodingProcessorService', () => {
       });
 
       const systemResourceService = module.get(SystemResourceService);
-      (systemResourceService.performResourcePreflightChecks as jest.Mock).mockRejectedValue(
-        new Error('Insufficient disk space')
-      );
+      (
+        systemResourceService.performResourcePreflightChecks as jest.Mock
+      ).mockRejectedValue(new Error('Insufficient disk space'));
 
       queueService.getNextJob.mockResolvedValue(mockJob as any);
       queueService.failJob.mockResolvedValue(mockJob as any);
@@ -944,7 +985,7 @@ describe('EncodingProcessorService', () => {
       expect(result).toBeNull();
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Insufficient disk space')
+        expect.stringContaining('Insufficient disk space'),
       );
     });
   });
@@ -998,7 +1039,11 @@ describe('EncodingProcessorService', () => {
     it('uses library default policy when job policy is missing', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
-      const defaultPolicy = { ...mockPolicy, id: 'default-policy', name: 'Default' };
+      const defaultPolicy = {
+        ...mockPolicy,
+        id: 'default-policy',
+        name: 'Default',
+      };
 
       const policyRepository = module.get(PolicyRepository);
       (policyRepository.findById as jest.Mock).mockResolvedValue(null);
@@ -1038,7 +1083,7 @@ describe('EncodingProcessorService', () => {
       expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
         'job-123',
         expect.objectContaining({ policyId: defaultPolicy.id }),
-        { policy: true }
+        { policy: true },
       );
     });
 
@@ -1085,14 +1130,18 @@ describe('EncodingProcessorService', () => {
       expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
         'job-123',
         expect.objectContaining({ policyId: firstPolicy.id }),
-        { policy: true }
+        { policy: true },
       );
     });
 
     it('uses system fallback policy when library has no policies', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
-      const systemPolicy = { ...mockPolicy, id: 'system-policy', name: 'System' };
+      const systemPolicy = {
+        ...mockPolicy,
+        id: 'system-policy',
+        name: 'System',
+      };
 
       const policyRepository = module.get(PolicyRepository);
       (policyRepository.findById as jest.Mock).mockResolvedValue(null);
@@ -1133,7 +1182,7 @@ describe('EncodingProcessorService', () => {
       expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
         'job-123',
         expect.objectContaining({ policyId: systemPolicy.id }),
-        { policy: true }
+        { policy: true },
       );
     });
   });
@@ -1153,12 +1202,12 @@ describe('EncodingProcessorService', () => {
 
       const encodingFileService = module.get(EncodingFileService);
       (encodingFileService.updateLibraryStats as jest.Mock).mockRejectedValue(
-        new Error('Library stats update failed')
+        new Error('Library stats update failed'),
       );
 
-      await expect(service.handleJobCompletion(mockJob as any, result)).rejects.toThrow(
-        'Library stats update failed'
-      );
+      await expect(
+        service.handleJobCompletion(mockJob as any, result),
+      ).rejects.toThrow('Library stats update failed');
     });
   });
 
@@ -1172,14 +1221,18 @@ describe('EncodingProcessorService', () => {
       queueService.update.mockRejectedValue(new Error('DB write error'));
 
       // Should not propagate (inner catch swallows it)
-      await expect(service.handleJobFailure(job as any, error)).resolves.not.toThrow();
+      await expect(
+        service.handleJobFailure(job as any, error),
+      ).resolves.not.toThrow();
     });
 
     it('does not throw when queueService.failJob throws in permanent failure path', async () => {
       const error = new Error('moov atom not found');
       queueService.failJob.mockRejectedValue(new Error('DB connection lost'));
 
-      await expect(service.handleJobFailure(mockJob as any, error)).resolves.not.toThrow();
+      await expect(
+        service.handleJobFailure(mockJob as any, error),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -1195,7 +1248,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringMatching(/retry attempts exhausted/i)
+        expect.stringMatching(/retry attempts exhausted/i),
       );
     });
 
@@ -1210,7 +1263,7 @@ describe('EncodingProcessorService', () => {
         'job-123',
         expect.objectContaining({
           error: expect.stringContaining('1/3'),
-        })
+        }),
       );
     });
   });
@@ -1227,7 +1280,9 @@ describe('EncodingProcessorService', () => {
 
       const policyRepository = module.get(PolicyRepository);
       const mismatchedPolicy = { ...mockPolicy, targetCodec: 'AV1' };
-      (policyRepository.findById as jest.Mock).mockResolvedValue(mismatchedPolicy);
+      (policyRepository.findById as jest.Mock).mockResolvedValue(
+        mismatchedPolicy,
+      );
 
       const jobRepository = module.get(JobRepository);
       (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
@@ -1257,7 +1312,7 @@ describe('EncodingProcessorService', () => {
       expect(jobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
         'job-123',
         { targetCodec: 'AV1' },
-        { policy: true }
+        { policy: true },
       );
     });
 
@@ -1269,7 +1324,9 @@ describe('EncodingProcessorService', () => {
       (policyRepository.findAll as jest.Mock).mockResolvedValue([]);
 
       const libraryRepository = module.get(LibraryRepository);
-      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue(null);
+      (libraryRepository.findUniqueWithInclude as jest.Mock).mockResolvedValue(
+        null,
+      );
 
       const jobRepository = module.get(JobRepository);
       (jobRepository.findUniqueSelect as jest.Mock).mockResolvedValue({
@@ -1312,7 +1369,9 @@ describe('EncodingProcessorService', () => {
   describe('onModuleInit — encoding temp path set (SystemResourceService check)', () => {
     it('getEncodingTempPath returns a path value without throwing', () => {
       const systemResourceService = module.get(SystemResourceService);
-      (systemResourceService.getEncodingTempPath as jest.Mock).mockReturnValue('/tmp/encoding');
+      (systemResourceService.getEncodingTempPath as jest.Mock).mockReturnValue(
+        '/tmp/encoding',
+      );
 
       const result = systemResourceService.getEncodingTempPath();
       expect(result).toBe('/tmp/encoding');
@@ -1348,11 +1407,13 @@ describe('EncodingProcessorService', () => {
       const stringError = 'Something went wrong';
       queueService.failJob.mockResolvedValue(mockJob as any);
 
-      await expect(service.handleJobFailure(mockJob as any, stringError)).resolves.not.toThrow();
+      await expect(
+        service.handleJobFailure(mockJob as any, stringError),
+      ).resolves.not.toThrow();
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Something went wrong')
+        expect.stringContaining('Something went wrong'),
       );
     });
 
@@ -1360,7 +1421,9 @@ describe('EncodingProcessorService', () => {
       const objError = { code: 'ERR_UNKNOWN', detail: 'disk full' };
       queueService.failJob.mockResolvedValue(mockJob as any);
 
-      await expect(service.handleJobFailure(mockJob as any, objError)).resolves.not.toThrow();
+      await expect(
+        service.handleJobFailure(mockJob as any, objError),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -1385,7 +1448,7 @@ describe('EncodingProcessorService', () => {
 
       const encodingFileService = module.get(EncodingFileService);
       (encodingFileService.encodeFile as jest.Mock).mockRejectedValue(
-        new Error('ETIMEDOUT: connection timed out')
+        new Error('ETIMEDOUT: connection timed out'),
       );
 
       const freshJob = { ...mockJob, retryCount: 0 };
@@ -1397,7 +1460,7 @@ describe('EncodingProcessorService', () => {
       expect(result).toBeNull();
       expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 1 }),
       );
     });
   });
@@ -1423,7 +1486,7 @@ describe('EncodingProcessorService', () => {
 
       const encodingFileService = module.get(EncodingFileService);
       (encodingFileService.encodeFile as jest.Mock).mockRejectedValue(
-        new Error('Non-retriable codec error')
+        new Error('Non-retriable codec error'),
       );
 
       queueService.getNextJob.mockResolvedValue(mockJob as any);
@@ -1431,7 +1494,10 @@ describe('EncodingProcessorService', () => {
 
       await service.processNextJob('node-1');
 
-      expect(workerPoolService.setWorkerJob).toHaveBeenCalledWith('node-1', null);
+      expect(workerPoolService.setWorkerJob).toHaveBeenCalledWith(
+        'node-1',
+        null,
+      );
     });
   });
 
@@ -1447,7 +1513,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Non-retriable error')
+        expect.stringContaining('Non-retriable error'),
       );
       expect(queueService.update).not.toHaveBeenCalled();
     });

@@ -11,6 +11,7 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 **Total Tests:** 15
 
 **Critical Focus Areas:**
+
 1. Frozen FFmpeg Process Recovery (5 tests)
 2. Health Check Recovery (1 test)
 3. Verifying Recovery (1 test)
@@ -28,23 +29,28 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 1. Frozen FFmpeg Process Recovery (5 tests)
 
 #### Test 1.1: Detect and kill frozen FFmpeg processes
+
 **Purpose:** Verify worker detects jobs stuck >10min and kills frozen FFmpeg processes
 
 **Scenario:**
+
 - Job stuck in ENCODING for 15 minutes
 - FFmpeg process is still active but frozen (no progress)
 - Worker should forcefully kill the process
 
 **Assertions:**
+
 - `ffmpegService.killProcess()` called with correct job ID
 - Process termination verified
 
 ---
 
 #### Test 1.2: Preserve resume state when recovering frozen jobs (🔥 CRITICAL CAPA FIX)
+
 **Purpose:** Verify worker preserves resume capability when recovering frozen jobs
 
 **Scenario:**
+
 - Job frozen at 30.56% progress with resume data:
   - `tempFilePath`: `/tmp/3-body-problem.tmp.mp4`
   - `resumeTimestamp`: `00:12:45.50`
@@ -52,6 +58,7 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
   - `progress`: 30.56%
 
 **Assertions:**
+
 - Job stage changed to `QUEUED`
 - Error message includes "will resume from 30.56%"
 - **CRITICAL:** The following fields are NOT reset:
@@ -65,13 +72,16 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ---
 
 #### Test 1.3: Skip recovery if FFmpeg process was already killed
+
 **Purpose:** Verify worker handles jobs where FFmpeg already terminated
 
 **Scenario:**
+
 - Job stuck in ENCODING for 15 minutes
 - No active FFmpeg process (already killed externally)
 
 **Assertions:**
+
 - `killProcess()` NOT called
 - Job still reset to QUEUED for retry
 - Resume state preserved
@@ -79,13 +89,16 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ---
 
 #### Test 1.4: NOT reset job if FFmpeg process kill fails
+
 **Purpose:** Verify worker doesn't reset job if it can't kill the process
 
 **Scenario:**
+
 - Job stuck with frozen FFmpeg process
 - `killProcess()` returns `false` (kill failed)
 
 **Assertions:**
+
 - `killProcess()` attempted
 - Job update NOT called
 - Job remains in stuck state (safer than partial recovery)
@@ -93,14 +106,17 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ---
 
 #### Test 1.5: Mixed scenarios - some with active processes, some without
+
 **Purpose:** Verify batch recovery handles mixed FFmpeg process states
 
 **Scenario:**
+
 - 2 stuck jobs:
   - Job 1: Has active frozen process
   - Job 2: No active process (already killed)
 
 **Assertions:**
+
 - `killProcess()` called only for Job 1
 - Both jobs updated to QUEUED
 - Correct handling of each scenario
@@ -110,13 +126,16 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 2. Health Check Recovery (1 test)
 
 #### Test 2.1: Reset jobs stuck in HEALTH_CHECK
+
 **Purpose:** Verify worker recovers jobs stuck in health check >5min
 
 **Scenario:**
+
 - Job stuck in HEALTH_CHECK for 10 minutes
 - `healthCheckRetries`: 2
 
 **Assertions:**
+
 - Job stage changed to `DETECTED`
 - `healthCheckRetries` incremented to 3
 - Job returned to queue for retry
@@ -128,12 +147,15 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 3. Verifying Recovery (1 test)
 
 #### Test 3.1: Reset jobs stuck in VERIFYING
+
 **Purpose:** Verify worker recovers jobs stuck in verification >30min
 
 **Scenario:**
+
 - Job stuck in VERIFYING for 45 minutes
 
 **Assertions:**
+
 - Job stage changed to `QUEUED`
 - `progress` reset to 0 (verification failed, start fresh)
 - `startedAt` reset to null
@@ -148,15 +170,18 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 4. Progress Detection (1 test)
 
 #### Test 4.1: Use lastProgressUpdate instead of updatedAt for stuck detection
+
 **Purpose:** Verify worker uses `lastProgressUpdate` for accurate detection
 
 **Scenario:**
+
 - Job with:
   - `updatedAt`: 2 minutes ago (recent)
   - `lastProgressUpdate`: 15 minutes ago (old)
   - `progress`: 5.0%
 
 **Assertions:**
+
 - Job detected as stuck based on `lastProgressUpdate`, not `updatedAt`
 - FFmpeg process killed
 - Job recovered
@@ -168,15 +193,18 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 5. Multiple Stuck Jobs (2 tests)
 
 #### Test 5.1: Recover all stuck jobs in a single run
+
 **Purpose:** Verify worker processes multiple stuck jobs in one iteration
 
 **Scenario:**
+
 - 3 jobs stuck at different progress levels:
   - Job 1: 20% (stuck 15min)
   - Job 2: 40% (stuck 20min)
   - Job 3: 60% (stuck 25min)
 
 **Assertions:**
+
 - `killProcess()` called 3 times
 - `job.update()` called 3 times
 - All jobs recovered in single worker run
@@ -190,14 +218,17 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 6. Edge Cases - Progress Levels (2 tests)
 
 #### Test 6.1: Handle job frozen at 0% progress
+
 **Purpose:** Verify worker preserves resume state even at 0% progress
 
 **Scenario:**
+
 - Job froze immediately after starting
 - `progress`: 0.0%
 - `resumeTimestamp`: `00:00:00.00`
 
 **Assertions:**
+
 - Resume state preserved (even though resume will likely restart from scratch)
 - Error message includes "will resume from 0%"
 - Consistent behavior regardless of progress level
@@ -205,14 +236,17 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ---
 
 #### Test 6.2: Handle job frozen near completion (99%)
+
 **Purpose:** Verify worker preserves resume state for nearly-complete jobs
 
 **Scenario:**
+
 - Job froze at 99.23% progress
 - Only 0.77% remaining
 - `resumeTimestamp`: `01:45:30.50`
 
 **Assertions:**
+
 - Resume state preserved to finish the last 0.77%
 - Error message includes "will resume from 99.23%"
 - Prevents re-encoding 99% of the file
@@ -224,35 +258,42 @@ This document outlines the **15 comprehensive integration tests** for the `Stuck
 ### 7. Edge Cases - Null Fields (2 tests)
 
 #### Test 7.1: Handle job with null lastProgressUpdate (fallback to updatedAt)
+
 **Purpose:** Verify worker handles rare case where `lastProgressUpdate` is null
 
 **Scenario:**
+
 - `lastProgressUpdate`: null
 - `updatedAt`: 15 minutes ago
 
 **Assertions:**
+
 - Job still detected as stuck using `updatedAt` fallback
 - Job recovered successfully
 
 **Database Query Logic:**
+
 ```typescript
 OR: [
   { lastProgressUpdate: { lt: encodingCutoff } },
-  { lastProgressUpdate: null, updatedAt: { lt: encodingCutoff } }
-]
+  { lastProgressUpdate: null, updatedAt: { lt: encodingCutoff } },
+];
 ```
 
 ---
 
 #### Test 7.2: Handle job with missing resume data fields
+
 **Purpose:** Verify worker handles jobs missing `tempFilePath` or `resumeTimestamp`
 
 **Scenario:**
+
 - Job frozen at 15% progress
 - `tempFilePath`: null
 - `resumeTimestamp`: null
 
 **Assertions:**
+
 - FFmpeg process still killed
 - Job still reset to QUEUED
 - Error message still includes progress (even though resume won't work)
@@ -264,9 +305,11 @@ OR: [
 ### 8. Edge Cases - Previously Auto-Healed Jobs (1 test)
 
 #### Test 8.1: Handle jobs that were previously auto-healed
+
 **Purpose:** Verify worker recovers jobs that froze again after being auto-healed
 
 **Scenario:**
+
 - Job was auto-healed 2 hours ago at 30% progress
 - Job made progress to 45%
 - Job froze again at 45%
@@ -276,6 +319,7 @@ OR: [
   - `progress`: 45.0%
 
 **Assertions:**
+
 - Job recovered again (auto-heal history doesn't prevent re-recovery)
 - FFmpeg process killed
 - Job reset to QUEUED
@@ -288,9 +332,11 @@ OR: [
 ### 9. Stage-Specific Timeout Verification (1 test)
 
 #### Test 9.1: Use correct timeout thresholds for each stage
+
 **Purpose:** Verify worker uses correct timeout for each job stage
 
 **Test Structure:**
+
 ```
 ┌─────────────────┬──────────┬────────────────┐
 │ Stage           │ Timeout  │ Target Stage   │
@@ -302,16 +348,19 @@ OR: [
 ```
 
 **Scenario 1: HEALTH_CHECK**
+
 - Job stuck for exactly 5 minutes
 - Should reset to `DETECTED`
 - Should increment `healthCheckRetries`
 
 **Scenario 2: ENCODING**
+
 - Job stuck for exactly 10 minutes
 - Should reset to `QUEUED`
 - Should preserve resume state
 
 **Scenario 3: VERIFYING**
+
 - Job stuck for exactly 30 minutes
 - Should reset to `QUEUED`
 - Should reset `progress` to 0
@@ -372,6 +421,7 @@ npx nx test backend --testPathPattern="stuck-job-recovery.worker.e2e.spec.ts" --
 ### Known Issues
 
 ⚠️ **Current Status:** Tests cannot run yet due to compilation errors in other test files:
+
 - `encoding-processor.service.spec.ts` has type errors (lines 124-284)
 - These errors prevent the entire test suite from compiling
 - The stuck-job-recovery tests are correctly written and will run once other test compilation errors are fixed
@@ -381,6 +431,7 @@ npx nx test backend --testPathPattern="stuck-job-recovery.worker.e2e.spec.ts" --
 ## Test Coverage Summary
 
 ✅ **Covered Scenarios:**
+
 - Frozen FFmpeg process detection and termination
 - Resume state preservation (CRITICAL)
 - Multiple stuck jobs batch processing
@@ -391,12 +442,14 @@ npx nx test backend --testPathPattern="stuck-job-recovery.worker.e2e.spec.ts" --
 - Mixed FFmpeg process states
 
 🔬 **Test Quality:**
+
 - All tests use mocked dependencies (isolated unit tests)
 - Clear arrange-act-assert structure
 - Comprehensive assertions including negative checks (NOT properties)
 - Realistic test data matching production scenarios
 
 📊 **Coverage Metrics:**
+
 - **Total Tests:** 15
 - **CAPA Critical Tests:** 6
 - **Edge Case Tests:** 5

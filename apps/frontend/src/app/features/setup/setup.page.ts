@@ -1,5 +1,11 @@
 import { animate, style, transition, trigger } from '@angular/animations';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -16,7 +22,9 @@ import { SetupService } from '../../core/services/setup.service';
 /**
  * Custom validator to ensure password confirmation matches
  */
-function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
+function passwordMatchValidator(
+  control: AbstractControl,
+): ValidationErrors | null {
   const password = control.get('password');
   const confirmPassword = control.get('confirmPassword');
 
@@ -24,7 +32,9 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
     return null;
   }
 
-  return password.value === confirmPassword.value ? null : { passwordMismatch: true };
+  return password.value === confirmPassword.value
+    ? null
+    : { passwordMismatch: true };
 }
 
 /**
@@ -69,7 +79,10 @@ enum NodeType {
     trigger('stepTransition', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateX(20px)' }),
-        animate('300ms ease-out', style({ opacity: 1, transform: 'translateX(0)' })),
+        animate(
+          '300ms ease-out',
+          style({ opacity: 1, transform: 'translateX(0)' }),
+        ),
       ]),
     ]),
   ],
@@ -109,7 +122,7 @@ export class SetupComponent {
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
     },
-    { validators: passwordMatchValidator }
+    { validators: passwordMatchValidator },
   );
 
   /**
@@ -247,16 +260,21 @@ export class SetupComponent {
           // Provide user-friendly error messages
           if (error.status === 400) {
             this.errorMessage.set(
-              error.error?.message || 'Invalid setup data. Please check your inputs.'
+              error.error?.message ||
+                'Invalid setup data. Please check your inputs.',
             );
           } else if (error.status === 409) {
             this.errorMessage.set('Setup has already been completed.');
           } else if (error.status === 0) {
-            this.errorMessage.set('Unable to connect to server. Please check your connection.');
+            this.errorMessage.set(
+              'Unable to connect to server. Please check your connection.',
+            );
           } else if (error.status >= 500) {
             this.errorMessage.set('Server error. Please try again later.');
           } else {
-            this.errorMessage.set('An unexpected error occurred. Please try again.');
+            this.errorMessage.set(
+              'An unexpected error occurred. Please try again.',
+            );
           }
         },
       });
@@ -293,7 +311,10 @@ export class SetupComponent {
       return `Must be at least ${minLength} characters`;
     }
 
-    if (fieldName === 'confirmPassword' && this.adminForm.errors?.passwordMismatch) {
+    if (
+      fieldName === 'confirmPassword' &&
+      this.adminForm.errors?.passwordMismatch
+    ) {
       return 'Passwords do not match';
     }
 

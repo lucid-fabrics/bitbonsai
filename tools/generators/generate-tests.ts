@@ -26,7 +26,13 @@ interface ServiceConfig {
 }
 
 function analyzeService(serviceName: string): ServiceConfig {
-  const baseDir = path.join(process.cwd(), 'apps', 'backend', 'src', serviceName);
+  const baseDir = path.join(
+    process.cwd(),
+    'apps',
+    'backend',
+    'src',
+    serviceName,
+  );
   const serviceFile = path.join(baseDir, `${serviceName}.service.ts`);
 
   if (!fs.existsSync(serviceFile)) {
@@ -37,7 +43,9 @@ function analyzeService(serviceName: string): ServiceConfig {
 
   // Extract class name
   const classMatch = serviceContent.match(/export class (\w+Service)/);
-  const className = classMatch ? classMatch[1] : `${capitalize(serviceName)}Service`;
+  const className = classMatch
+    ? classMatch[1]
+    : `${capitalize(serviceName)}Service`;
 
   // Extract entity name (singular)
   const entityName = serviceName.endsWith('ies')
@@ -47,7 +55,8 @@ function analyzeService(serviceName: string): ServiceConfig {
 
   // Detect foreign keys
   const hasNodeFK = serviceContent.includes('nodeId');
-  const hasLibraryFK = serviceContent.includes('libraryId') && !serviceName.includes('librar');
+  const hasLibraryFK =
+    serviceContent.includes('libraryId') && !serviceName.includes('librar');
 
   // Detect unique constraints
   const uniqueConstraints: string[] = [];
@@ -75,7 +84,8 @@ function analyzeService(serviceName: string): ServiceConfig {
 }
 
 function generateIntegrationTests(config: ServiceConfig): string {
-  const { name, className, entityName, hasNodeFK, hasLibraryFK, methods } = config;
+  const { name, className, entityName, hasNodeFK, hasLibraryFK, methods } =
+    config;
 
   return `import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -376,8 +386,12 @@ function writeTestFile(filePath: string, content: string): void {
 const serviceName = process.argv[2];
 
 if (!serviceName) {
-  console.error('Usage: npx ts-node tools/generators/generate-tests.ts <service-name>');
-  console.error('Example: npx ts-node tools/generators/generate-tests.ts libraries');
+  console.error(
+    'Usage: npx ts-node tools/generators/generate-tests.ts <service-name>',
+  );
+  console.error(
+    'Example: npx ts-node tools/generators/generate-tests.ts libraries',
+  );
   process.exit(1);
 }
 
@@ -389,7 +403,7 @@ try {
   console.log(`   - Class: ${config.className}`);
   console.log(`   - Entity: ${config.entityName}`);
   console.log(
-    `   - Foreign Keys: ${config.hasNodeFK ? 'Node' : ''} ${config.hasLibraryFK ? 'Library' : ''}`
+    `   - Foreign Keys: ${config.hasNodeFK ? 'Node' : ''} ${config.hasLibraryFK ? 'Library' : ''}`,
   );
   console.log(`   - Methods: ${config.methods.join(', ')}`);
 
@@ -402,7 +416,7 @@ try {
     'backend',
     'src',
     serviceName,
-    `${serviceName}.service.integration.spec.ts`
+    `${serviceName}.service.integration.spec.ts`,
   );
 
   writeTestFile(outputPath, integrationTests);
@@ -411,7 +425,7 @@ try {
   console.log(`\nNext steps:`);
   console.log(`  1. Review generated tests: ${outputPath}`);
   console.log(
-    `  2. Run tests: npx nx test backend --testFile=${serviceName}.service.integration.spec.ts`
+    `  2. Run tests: npx nx test backend --testFile=${serviceName}.service.integration.spec.ts`,
   );
   console.log(`  3. Adjust test data if needed\n`);
 } catch (error) {

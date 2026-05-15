@@ -55,7 +55,8 @@ export class OverviewController {
     type: OverviewResponseDto,
   })
   @ApiInternalServerErrorResponse({
-    description: 'Internal server error occurred while fetching overview statistics',
+    description:
+      'Internal server error occurred while fetching overview statistics',
   })
   async getOverview(): Promise<OverviewResponseDto> {
     return this.overviewService.getOverview();

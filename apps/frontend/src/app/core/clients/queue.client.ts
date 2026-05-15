@@ -43,7 +43,9 @@ export class QueueClient {
         limit: number;
         totalPages: number;
       }>(this.apiUrl, { params }),
-      this.http.get<QueueStats>(`${this.apiUrl}/stats`, { params: statsParams }),
+      this.http.get<QueueStats>(`${this.apiUrl}/stats`, {
+        params: statsParams,
+      }),
     ]).pipe(
       map(([response, stats]) => ({
         jobs: response.jobs,
@@ -52,16 +54,21 @@ export class QueueClient {
         page: response.page,
         limit: response.limit,
         totalPages: response.totalPages,
-      }))
+      })),
     );
   }
 
   cancelJob(jobId: string, blacklist = false): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${jobId}/cancel`, { blacklist });
+    return this.http.post<void>(`${this.apiUrl}/${jobId}/cancel`, {
+      blacklist,
+    });
   }
 
   cancelAllQueued(): Observable<{ cancelledCount: number }> {
-    return this.http.post<{ cancelledCount: number }>(`${this.apiUrl}/cancel-all`, {});
+    return this.http.post<{ cancelledCount: number }>(
+      `${this.apiUrl}/cancel-all`,
+      {},
+    );
   }
 
   retryJob(jobId: string): Observable<void> {
@@ -69,11 +76,17 @@ export class QueueClient {
   }
 
   recheckJob(jobId: string): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/recheck`, {});
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/recheck`,
+      {},
+    );
   }
 
   detectAndRequeue(jobId: string): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/detect-and-requeue`, {});
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/detect-and-requeue`,
+      {},
+    );
   }
 
   retryAllCancelled(): Observable<{
@@ -119,31 +132,52 @@ export class QueueClient {
   }
 
   clearJobs(stages?: string[]): Observable<{ deleted: number }> {
-    const options = stages && stages.length > 0 ? { params: { stages: stages.join(',') } } : {};
-    return this.http.post<{ deleted: number }>(`${this.apiUrl}/clear`, {}, options);
+    const options =
+      stages && stages.length > 0
+        ? { params: { stages: stages.join(',') } }
+        : {};
+    return this.http.post<{ deleted: number }>(
+      `${this.apiUrl}/clear`,
+      {},
+      options,
+    );
   }
 
   rebalanceJobs(): Observable<{ jobsRebalanced: number; message: string }> {
     return this.http.post<{ jobsRebalanced: number; message: string }>(
       `${this.apiUrl}/rebalance`,
-      {}
+      {},
     );
   }
 
-  updateJobPriority(jobId: string, priority: number): Observable<QueueJobApiModel> {
-    return this.http.patch<QueueJobApiModel>(`${this.apiUrl}/${jobId}/priority`, { priority });
+  updateJobPriority(
+    jobId: string,
+    priority: number,
+  ): Observable<QueueJobApiModel> {
+    return this.http.patch<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/priority`,
+      { priority },
+    );
   }
 
   keepOriginal(jobId: string): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/keep-original`, {});
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/keep-original`,
+      {},
+    );
   }
 
   deleteOriginal(jobId: string): Observable<{ freedSpace: string }> {
-    return this.http.delete<{ freedSpace: string }>(`${this.apiUrl}/${jobId}/original`);
+    return this.http.delete<{ freedSpace: string }>(
+      `${this.apiUrl}/${jobId}/original`,
+    );
   }
 
   restoreOriginal(jobId: string): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/restore-original`, {});
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/restore-original`,
+      {},
+    );
   }
 
   deleteJob(jobId: string): Observable<void> {
@@ -152,11 +186,14 @@ export class QueueClient {
 
   resolveDecision(
     jobId: string,
-    actionConfig: Record<string, unknown>
+    actionConfig: Record<string, unknown>,
   ): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/resolve-decision`, {
-      decisionData: { actionConfig },
-    });
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/resolve-decision`,
+      {
+        decisionData: { actionConfig },
+      },
+    );
   }
 
   /**
@@ -169,11 +206,21 @@ export class QueueClient {
    */
   skipAllCodecMatch(): Observable<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.http.post<{
       skippedCount: number;
-      jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+      jobs: Array<{
+        id: string;
+        fileLabel: string;
+        sourceCodec: string;
+        targetCodec: string;
+      }>;
     }>(`${this.apiUrl}/skip-codec-match`, {});
   }
 
@@ -187,11 +234,21 @@ export class QueueClient {
    */
   forceEncodeAllCodecMatch(): Observable<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.http.post<{
       queuedCount: number;
-      jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+      jobs: Array<{
+        id: string;
+        fileLabel: string;
+        sourceCodec: string;
+        targetCodec: string;
+      }>;
     }>(`${this.apiUrl}/force-encode-codec-match`, {});
   }
 
@@ -204,8 +261,14 @@ export class QueueClient {
    * @param targetNodeId - ID of the node to delegate the job to
    * @returns Observable of updated job
    */
-  delegateJob(jobId: string, targetNodeId: string): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/delegate`, { targetNodeId });
+  delegateJob(
+    jobId: string,
+    targetNodeId: string,
+  ): Observable<QueueJobApiModel> {
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/delegate`,
+      { targetNodeId },
+    );
   }
 
   /**
@@ -231,7 +294,10 @@ export class QueueClient {
    * @returns Observable of updated job with new preview path
    */
   capturePreview(jobId: string): Observable<QueueJobApiModel> {
-    return this.http.post<QueueJobApiModel>(`${this.apiUrl}/${jobId}/preview/capture`, {});
+    return this.http.post<QueueJobApiModel>(
+      `${this.apiUrl}/${jobId}/preview/capture`,
+      {},
+    );
   }
 
   /**

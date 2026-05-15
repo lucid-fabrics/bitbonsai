@@ -3,6 +3,7 @@ name: PR Validation
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,7 +12,7 @@ concurrency:
 jobs:
   lint:
     name: Lint (auto-fix)
-    runs-on: self-hosted
+    runs-on: [self-hosted, macbook]
     permissions:
       contents: write
     steps:
@@ -22,7 +23,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
       - name: Lint with auto-fix
@@ -41,7 +41,7 @@ jobs:
 
   test:
     name: Test (retry)
-    runs-on: self-hosted
+    runs-on: [self-hosted, macbook]
     needs: lint
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
       - name: Test (attempt 1)
@@ -68,7 +67,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: self-hosted
+    runs-on: [self-hosted, macbook]
     needs: test
     steps:
       - uses: actions/checkout@v4
@@ -77,9 +76,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
-      - run: npx nx build frontend --configuration=production
-      - run: npx nx build backend --configuration=production
-      - run: npx nx build website --configuration=production
+      - run: npx nx build frontend --configuration=production --skip-nx-cache
+      - run: npx nx build backend --configuration=production --skip-nx-cache
+      - run: npx nx build website --configuration=production --skip-nx-cache

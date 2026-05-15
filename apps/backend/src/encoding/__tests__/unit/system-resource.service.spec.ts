@@ -32,13 +32,18 @@ describe('SystemResourceService', () => {
     jest.clearAllMocks();
 
     // Default OS mocks
-    (os.cpus as jest.Mock).mockReturnValue(new Array(8).fill({ model: 'Intel' }));
+    (os.cpus as jest.Mock).mockReturnValue(
+      new Array(8).fill({ model: 'Intel' }),
+    );
     (os.loadavg as jest.Mock).mockReturnValue([1.0, 1.0, 1.0]);
     (os.freemem as jest.Mock).mockReturnValue(16 * 1024 ** 3);
     (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 ** 3);
 
     module = await Test.createTestingModule({
-      providers: [SystemResourceService, { provide: NodesService, useValue: mockNodesService }],
+      providers: [
+        SystemResourceService,
+        { provide: NodesService, useValue: mockNodesService },
+      ],
     }).compile();
 
     service = module.get(SystemResourceService);
@@ -178,7 +183,9 @@ describe('SystemResourceService', () => {
   describe('performResourcePreflightChecks', () => {
     beforeEach(() => {
       (fs.promises.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.promises.stat as jest.Mock).mockResolvedValue({ size: 1 * 1024 ** 3 });
+      (fs.promises.stat as jest.Mock).mockResolvedValue({
+        size: 1 * 1024 ** 3,
+      });
       (fs.promises.statfs as jest.Mock).mockResolvedValue({
         bavail: 10_000_000, // ~40 GB available
         bsize: 4096,
@@ -189,7 +196,7 @@ describe('SystemResourceService', () => {
 
     it('completes without error when all resources are sufficient', async () => {
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).resolves.toBeUndefined();
     });
 
@@ -197,7 +204,7 @@ describe('SystemResourceService', () => {
       (fs.promises.access as jest.Mock).mockRejectedValue(new Error('EACCES'));
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).rejects.toThrow('Cannot read source file');
     });
 
@@ -209,7 +216,7 @@ describe('SystemResourceService', () => {
       });
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).rejects.toThrow('Insufficient disk space');
     });
 
@@ -217,19 +224,21 @@ describe('SystemResourceService', () => {
       (fs.promises.statfs as jest.Mock).mockRejectedValue(new Error('ENOSYS'));
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).resolves.toBeUndefined();
     });
 
     it('logs low memory warning when free memory percent is below 10%', async () => {
-      const logWarnSpy = jest.spyOn(service.logger, 'warn');
+      const logWarnSpy = jest.spyOn((service as any).logger, 'warn');
 
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 ** 3);
       (os.freemem as jest.Mock).mockReturnValue(2 * 1024 ** 3); // ~6% — below 10%
 
       await service.performResourcePreflightChecks('/media/video.mkv', 'job-1');
 
-      expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Low memory warning'));
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Low memory warning'),
+      );
     });
   });
 
@@ -248,7 +257,9 @@ describe('SystemResourceService', () => {
     });
 
     it('uses default multiplier when node has no loadThresholdMultiplier', async () => {
-      nodesService.getCurrentNode.mockResolvedValueOnce({ id: 'node-1' } as never);
+      nodesService.getCurrentNode.mockResolvedValueOnce({
+        id: 'node-1',
+      } as never);
 
       await service.reloadLoadThreshold();
 
@@ -268,7 +279,9 @@ describe('SystemResourceService', () => {
 
     it('falls back to ENV for encodingTempPath when not in database', async () => {
       process.env.ENCODING_TEMP_PATH = '/tmp/encode';
-      nodesService.getCurrentNode.mockResolvedValueOnce({ id: 'node-1' } as never);
+      nodesService.getCurrentNode.mockResolvedValueOnce({
+        id: 'node-1',
+      } as never);
 
       await service.reloadLoadThreshold();
 
@@ -278,7 +291,9 @@ describe('SystemResourceService', () => {
 
     it('sets encodingTempPath to null when neither DB nor ENV configured', async () => {
       process.env.ENCODING_TEMP_PATH = '';
-      nodesService.getCurrentNode.mockResolvedValueOnce({ id: 'node-1' } as never);
+      nodesService.getCurrentNode.mockResolvedValueOnce({
+        id: 'node-1',
+      } as never);
 
       await service.reloadLoadThreshold();
 
@@ -287,7 +302,9 @@ describe('SystemResourceService', () => {
 
     it('uses defaults and sets encodingTempPath from ENV when getCurrentNode throws', async () => {
       process.env.ENCODING_TEMP_PATH = '/fallback';
-      nodesService.getCurrentNode.mockRejectedValueOnce(new Error('DB connection error'));
+      nodesService.getCurrentNode.mockRejectedValueOnce(
+        new Error('DB connection error'),
+      );
 
       await service.reloadLoadThreshold();
 

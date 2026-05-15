@@ -30,6 +30,11 @@ import { SystemService } from './system.service';
     NodeRepository,
     JobRepository,
   ],
-  exports: [SystemService, HardwareDetectionService, HealthDashboardService, DebugService],
+  exports: [
+    SystemService,
+    HardwareDetectionService,
+    HealthDashboardService,
+    DebugService,
+  ],
 })
 export class SystemModule {}

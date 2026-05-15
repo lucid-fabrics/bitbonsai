@@ -7,6 +7,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 ## User Personas
 
 ### Primary User: Media Server Administrator
+
 - Manages large video collections across multiple storage locations
 - Needs to apply encoding policies to different libraries
 - Monitors encoding progress and library statistics
@@ -19,6 +20,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Display all configured libraries with their current status and statistics.
 
 **Requirements:**
+
 - Display libraries in a data table/grid format
 - Show the following columns for each library:
   - **Name** - User-friendly library name
@@ -31,6 +33,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
   - **Actions** - Edit, Delete, Scan Now buttons
 
 **Visual Elements:**
+
 - Search/filter box to find libraries by name or path
 - Sort capability on all columns
 - Status indicators with color coding (green=active, yellow=scanning, red=error)
@@ -38,6 +41,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 - "Create New Library" button prominently displayed
 
 **Empty State:**
+
 - When no libraries exist, show helpful message: "No libraries configured. Create your first library to start encoding."
 - Display "Create Library" call-to-action button
 
@@ -46,6 +50,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Add a new library to the system.
 
 **Form Fields:**
+
 - **Library Name** (required)
   - Text input, max 100 characters
   - Must be unique across all libraries
@@ -68,6 +73,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
   - Must select a policy before saving
 
 **Validation:**
+
 - Name cannot be empty
 - Name must be unique
 - Path must exist on selected node
@@ -76,6 +82,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 - Show inline validation errors as user types
 
 **Behavior:**
+
 - On success: Close dialog, show success toast, refresh library list
 - On error: Show error message, keep dialog open for correction
 - Cancel button discards changes and closes dialog
@@ -85,6 +92,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Modify an existing library's configuration.
 
 **Requirements:**
+
 - Same form fields as Create Library
 - Pre-populate with current library values
 - Allow changing name, path, node, and policy
@@ -92,6 +100,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 - Show confirmation dialog if policy is changed: "Changing the policy will re-process all videos in this library. Continue?"
 
 **Validation:**
+
 - Same rules as Create Library
 - Name must be unique (excluding current library)
 
@@ -100,6 +109,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Remove a library from monitoring.
 
 **Requirements:**
+
 - Show confirmation dialog before deletion
 - Dialog shows:
   - Library name and path
@@ -108,6 +118,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
   - Checkbox: "Also cancel any pending encoding jobs for this library"
 
 **Behavior:**
+
 - On confirm: Delete library, show success toast, refresh list
 - On cancel: Close dialog, no changes
 
@@ -116,12 +127,14 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Trigger an immediate rescan of a library to detect new/changed files.
 
 **Requirements:**
+
 - Available as action button on each library row
 - Shows loading indicator while scanning
 - Updates file count and total size when complete
 - Shows toast notification: "Scan complete. Found X new files."
 
 **Error Handling:**
+
 - If node is offline: Show error "Cannot scan - node [name] is offline"
 - If path no longer exists: Show error "Path not found on node"
 
@@ -130,6 +143,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Display aggregate statistics across all libraries.
 
 **Requirements:**
+
 - Summary cards at top of page showing:
   - **Total Libraries** - Count of all libraries
   - **Total Files** - Sum of files across all libraries
@@ -137,6 +151,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
   - **Active Jobs** - Number of files currently encoding from all libraries
 
 **Refresh:**
+
 - Auto-refresh every 30 seconds when page is active
 - Manual refresh button
 
@@ -145,6 +160,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 **Purpose:** Allow users to browse and select filesystem paths on remote nodes.
 
 **Requirements:**
+
 - Modal dialog with directory tree browser
 - Shows folder structure of selected node
 - Navigate by clicking folders (expand/collapse)
@@ -155,6 +171,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 - Must handle paths with special characters, spaces, unicode
 
 **Accessibility:**
+
 - Keyboard navigation (arrow keys, enter, escape)
 - Screen reader support for folder tree
 - Focus management in modal dialog
@@ -162,36 +179,44 @@ The Libraries feature allows users to manage video libraries that are monitored 
 ## API Endpoints Used
 
 ### GET /api/libraries
+
 - Fetches all libraries
 - Returns array of library objects with statistics
 
 ### POST /api/libraries
+
 - Creates new library
 - Body: `{ name, path, policyId }` (nodeId auto-assigned)
 - Returns created library object
 
 ### PATCH /api/libraries/:id
+
 - Updates existing library
 - Body: `{ name?, path?, nodeId?, policyId? }`
 - Returns updated library object
 
 ### DELETE /api/libraries/:id
+
 - Deletes library
 - Returns success/error status
 
 ### POST /api/libraries/:id/scan
+
 - Triggers immediate library scan
 - Returns scan results (new files found, updated counts)
 
 ### GET /api/nodes
+
 - Fetches available nodes for selection
 - Returns array of node objects
 
 ### GET /api/policies
+
 - Fetches available encoding policies
 - Returns array of policy objects
 
 ### GET /api/nodes/:id/browse
+
 - Browse filesystem on specific node
 - Query param: `path` (directory to list)
 - Returns array of subdirectories
@@ -199,6 +224,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 ## User Workflows
 
 ### Workflow 1: Create First Library
+
 1. User lands on empty libraries page
 2. Clicks "Create Library" button
 3. Enters library name: "TV Shows"
@@ -212,6 +238,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 11. Success toast shown: "Library created successfully"
 
 ### Workflow 2: Edit Library Policy
+
 1. User finds library "Movies" in the list
 2. Clicks "Edit" action button
 3. Changes policy from "BALANCED_HEVC" to "QUALITY_HEVC"
@@ -221,6 +248,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 7. Success toast shown: "Library updated. Re-encoding queued for 150 files."
 
 ### Workflow 3: Delete Library
+
 1. User finds library "Old Archive" in the list
 2. Clicks "Delete" action button
 3. Confirmation dialog shows: "This library has 45 files. Delete?"
@@ -230,6 +258,7 @@ The Libraries feature allows users to manage video libraries that are monitored 
 7. Success toast shown: "Library deleted. 12 pending jobs cancelled."
 
 ### Workflow 4: Manual Scan
+
 1. User notices new files added to library directory
 2. Clicks "Scan Now" button on library row
 3. Loading indicator appears on that row
@@ -240,25 +269,30 @@ The Libraries feature allows users to manage video libraries that are monitored 
 ## Error Scenarios
 
 ### Network Error
+
 - **Trigger:** API request fails due to network/server error
 - **Response:** Show error toast: "Failed to load libraries. Please try again."
 - **Retry:** Show "Retry" button in empty state
 
 ### Validation Error
+
 - **Trigger:** User submits form with invalid data
 - **Response:** Show inline error messages on form fields
 - **Example:** "Path does not exist on node 'pve-ai'"
 
 ### Permission Error
+
 - **Trigger:** User lacks permission to access node path
 - **Response:** Show error: "Permission denied. Cannot access path on node."
 
 ### Node Offline
+
 - **Trigger:** Selected node is not reachable
 - **Response:** Show warning icon on library row, disable "Scan Now" button
 - **Tooltip:** "Node offline - library cannot be scanned"
 
 ### Duplicate Name
+
 - **Trigger:** User tries to create library with existing name
 - **Response:** Show error on name field: "A library with this name already exists"
 

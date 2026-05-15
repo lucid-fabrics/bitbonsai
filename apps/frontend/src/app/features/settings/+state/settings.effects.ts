@@ -18,10 +18,12 @@ export class SettingsEffects {
       switchMap(() =>
         this.licenseService.getCurrentLicense().pipe(
           map((license) => SettingsActions.loadLicenseSuccess({ license })),
-          catchError((error) => of(SettingsActions.loadLicenseFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(SettingsActions.loadLicenseFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   activateLicense$ = createEffect(() =>
@@ -31,11 +33,13 @@ export class SettingsEffects {
         this.licenseService.activateLicense(request).pipe(
           map((license) => SettingsActions.activateLicenseSuccess({ license })),
           catchError((error) =>
-            of(SettingsActions.activateLicenseFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.activateLicenseFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadEnvironmentInfo$ = createEffect(() =>
@@ -45,11 +49,15 @@ export class SettingsEffects {
         this.settingsService.getEnvironmentInfo().pipe(
           map((info) => SettingsActions.loadEnvironmentInfoSuccess({ info })),
           catchError((error) =>
-            of(SettingsActions.loadEnvironmentInfoFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.loadEnvironmentInfoFailure({
+                error: error.message,
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadSystemSettings$ = createEffect(() =>
@@ -57,13 +65,19 @@ export class SettingsEffects {
       ofType(SettingsActions.loadSystemSettings),
       switchMap(() =>
         this.settingsService.getSystemSettings().pipe(
-          map((settings) => SettingsActions.loadSystemSettingsSuccess({ settings })),
+          map((settings) =>
+            SettingsActions.loadSystemSettingsSuccess({ settings }),
+          ),
           catchError((error) =>
-            of(SettingsActions.loadSystemSettingsFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.loadSystemSettingsFailure({
+                error: error.message,
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   updateSystemSettings$ = createEffect(() =>
@@ -71,13 +85,19 @@ export class SettingsEffects {
       ofType(SettingsActions.updateSystemSettings),
       switchMap(({ updates }) =>
         this.settingsService.updateSystemSettings(updates).pipe(
-          map((settings) => SettingsActions.updateSystemSettingsSuccess({ settings })),
+          map((settings) =>
+            SettingsActions.updateSystemSettingsSuccess({ settings }),
+          ),
           catchError((error) =>
-            of(SettingsActions.updateSystemSettingsFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.updateSystemSettingsFailure({
+                error: error.message,
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   backupDatabase$ = createEffect(() =>
@@ -86,10 +106,12 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.backupDatabase().pipe(
           map((result) => SettingsActions.backupDatabaseSuccess(result)),
-          catchError((error) => of(SettingsActions.backupDatabaseFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(SettingsActions.backupDatabaseFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   resetToDefaults$ = createEffect(() =>
@@ -99,11 +121,13 @@ export class SettingsEffects {
         this.settingsService.resetToDefaults().pipe(
           map((result) => SettingsActions.resetToDefaultsSuccess(result)),
           catchError((error) =>
-            of(SettingsActions.resetToDefaultsFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.resetToDefaultsFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   regenerateApiKey$ = createEffect(() =>
@@ -113,11 +137,13 @@ export class SettingsEffects {
         this.settingsService.regenerateApiKey().pipe(
           map((result) => SettingsActions.regenerateAPIKeySuccess(result)),
           catchError((error) =>
-            of(SettingsActions.regenerateAPIKeyFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.regenerateAPIKeyFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadAdvancedMode$ = createEffect(() =>
@@ -126,14 +152,18 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.getAdvancedMode().pipe(
           map((result) =>
-            SettingsActions.loadAdvancedModeSuccess({ enabled: result.advancedModeEnabled })
+            SettingsActions.loadAdvancedModeSuccess({
+              enabled: result.advancedModeEnabled,
+            }),
           ),
           catchError((error) =>
-            of(SettingsActions.loadAdvancedModeFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.loadAdvancedModeFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   updateAdvancedMode$ = createEffect(() =>
@@ -142,13 +172,19 @@ export class SettingsEffects {
       switchMap(({ enabled }) =>
         this.settingsService.updateAdvancedMode(enabled).pipe(
           map((result) =>
-            SettingsActions.updateAdvancedModeSuccess({ enabled: result.advancedModeEnabled })
+            SettingsActions.updateAdvancedModeSuccess({
+              enabled: result.advancedModeEnabled,
+            }),
           ),
           catchError((error) =>
-            of(SettingsActions.updateAdvancedModeFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              SettingsActions.updateAdvancedModeFailure({
+                error: error.message,
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }

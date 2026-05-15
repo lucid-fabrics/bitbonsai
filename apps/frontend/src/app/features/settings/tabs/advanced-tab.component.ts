@@ -1,5 +1,11 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -92,9 +98,11 @@ import { SettingsService } from '../services/settings.service';
             <div class="setting-note">
               <i class="fa fa-info-circle"></i>
               @if (qualityMetricsEnabled()) {
-                Calculating quality metrics after each encode (adds CPU overhead)
+                Calculating quality metrics after each encode (adds CPU
+                overhead)
               } @else {
-                Enable to measure encoding quality with industry-standard metrics
+                Enable to measure encoding quality with industry-standard
+                metrics
               }
             </div>
           </div>
@@ -406,7 +414,9 @@ export class AdvancedTabComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
-          this.localNetworkBypassEnabled.set(settings.allowLocalNetworkWithoutAuth);
+          this.localNetworkBypassEnabled.set(
+            settings.allowLocalNetworkWithoutAuth,
+          );
         },
         error: () => {
           // Silent fail - security settings have safe defaults
@@ -481,7 +491,9 @@ export class AdvancedTabComponent implements OnInit {
       .subscribe({
         next: () => {
           this.loading.set(false);
-          this.successMessage.set(enabled ? 'Quality metrics enabled' : 'Quality metrics disabled');
+          this.successMessage.set(
+            enabled ? 'Quality metrics enabled' : 'Quality metrics disabled',
+          );
         },
         error: () => {
           this.loading.set(false);
@@ -503,9 +515,13 @@ export class AdvancedTabComponent implements OnInit {
       .subscribe({
         next: () => {
           this.loading.set(false);
-          this.successMessage.set(enabled ? 'Advanced mode enabled' : 'Minimal mode enabled');
+          this.successMessage.set(
+            enabled ? 'Advanced mode enabled' : 'Minimal mode enabled',
+          );
           // Sync to NgRx store so Queue page and other components get the update
-          this.store.dispatch(SettingsActions.updateAdvancedModeSuccess({ enabled }));
+          this.store.dispatch(
+            SettingsActions.updateAdvancedModeSuccess({ enabled }),
+          );
         },
         error: () => {
           this.loading.set(false);
@@ -529,7 +545,7 @@ export class AdvancedTabComponent implements OnInit {
         next: () => {
           this.loading.set(false);
           this.successMessage.set(
-            `Local network auth bypass ${this.localNetworkBypassEnabled() ? 'enabled' : 'disabled'} successfully`
+            `Local network auth bypass ${this.localNetworkBypassEnabled() ? 'enabled' : 'disabled'} successfully`,
           );
         },
         error: () => {
@@ -657,34 +673,36 @@ export class AdvancedTabComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
-      if (confirmed === true) {
-        this.loading.set(true);
-        this.error.set(null);
-        this.successMessage.set(null);
+    dialogRef.closed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed === true) {
+          this.loading.set(true);
+          this.error.set(null);
+          this.successMessage.set(null);
 
-        this.settingsService
-          .regenerateApiKey()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (result: { apiKey: string }) => {
-              const currentSettings = this.systemSettings();
-              if (currentSettings) {
-                this.systemSettings.set({
-                  ...currentSettings,
-                  apiKey: result.apiKey,
-                });
-              }
-              this.loading.set(false);
-              this.successMessage.set('API key regenerated successfully!');
-            },
-            error: () => {
-              this.error.set('Failed to regenerate API key');
-              this.loading.set(false);
-            },
-          });
-      }
-    });
+          this.settingsService
+            .regenerateApiKey()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (result: { apiKey: string }) => {
+                const currentSettings = this.systemSettings();
+                if (currentSettings) {
+                  this.systemSettings.set({
+                    ...currentSettings,
+                    apiKey: result.apiKey,
+                  });
+                }
+                this.loading.set(false);
+                this.successMessage.set('API key regenerated successfully!');
+              },
+              error: () => {
+                this.error.set('Failed to regenerate API key');
+                this.loading.set(false);
+              },
+            });
+        }
+      });
   }
 
   toggleApiKeyVisibility(): void {

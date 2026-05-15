@@ -1,9 +1,11 @@
 # Encoding Preview Feature - Implementation Guide
 
 ## Overview
+
 Display live screenshots of encoded video during encoding to let users peek at what's being encoded without impacting performance.
 
 ## Status
+
 - ✅ Database schema updated (`previewImagePaths` field added)
 - ✅ Migration applied (`20251104030622_add_encoding_preview_paths`)
 - ⏳ Backend service (pending)
@@ -58,7 +60,7 @@ export class EncodingPreviewService {
     jobId: string,
     tempFilePath: string,
     durationSeconds: number,
-    currentProgress: number
+    currentProgress: number,
   ): Promise<string[]> {
     try {
       // Create preview directory for this job
@@ -70,7 +72,7 @@ export class EncodingPreviewService {
       const progressPoint = (currentProgress / 100) * durationSeconds;
       const timestamps = [
         durationSeconds * 0.25,
-        durationSeconds * 0.50,
+        durationSeconds * 0.5,
         durationSeconds * 0.75,
         Math.min(progressPoint, durationSeconds), // Don't exceed duration
       ];
@@ -80,41 +82,48 @@ export class EncodingPreviewService {
       // Extract screenshots in parallel
       await Promise.all(
         timestamps.map(async (timestamp, index) => {
-          const outputPath = path.join(jobPreviewDir, `preview-${index + 1}.jpg`);
+          const outputPath = path.join(
+            jobPreviewDir,
+            `preview-${index + 1}.jpg`,
+          );
 
           try {
             // Use FFmpeg with fast seeking
             // -ss before -i for input seeking (faster)
             // -frames:v 1 to extract single frame
             // -vf scale to resize for fast transfer
-            await execFileAsync('ffmpeg', [
-              '-y', // Overwrite existing
-              '-ss',
-              timestamp.toString(),
-              '-i',
-              tempFilePath,
-              '-frames:v',
-              '1',
-              '-vf',
-              `scale=${this.PREVIEW_WIDTH}:-1`, // Maintain aspect ratio
-              '-q:v',
-              '2', // High quality JPEG
-              outputPath,
-            ], {
-              timeout: 10000, // 10 second timeout per frame
-            });
+            await execFileAsync(
+              'ffmpeg',
+              [
+                '-y', // Overwrite existing
+                '-ss',
+                timestamp.toString(),
+                '-i',
+                tempFilePath,
+                '-frames:v',
+                '1',
+                '-vf',
+                `scale=${this.PREVIEW_WIDTH}:-1`, // Maintain aspect ratio
+                '-q:v',
+                '2', // High quality JPEG
+                outputPath,
+              ],
+              {
+                timeout: 10000, // 10 second timeout per frame
+              },
+            );
 
             previewPaths.push(outputPath);
             this.logger.debug(
-              `Generated preview ${index + 1}/4 for job ${jobId} at ${timestamp.toFixed(1)}s`
+              `Generated preview ${index + 1}/4 for job ${jobId} at ${timestamp.toFixed(1)}s`,
             );
           } catch (error) {
             this.logger.warn(
-              `Failed to generate preview ${index + 1} for job ${jobId}: ${error.message}`
+              `Failed to generate preview ${index + 1} for job ${jobId}: ${error.message}`,
             );
             // Continue with other previews even if one fails
           }
-        })
+        }),
       );
 
       return previewPaths;
@@ -150,9 +159,9 @@ export class EncodingPreviewService {
       const jobPreviewDir = path.join(this.PREVIEW_DIR, jobId);
       const files = await fs.readdir(jobPreviewDir);
       return files
-        .filter(f => f.startsWith('preview-') && f.endsWith('.jpg'))
+        .filter((f) => f.startsWith('preview-') && f.endsWith('.jpg'))
         .sort() // Ensure correct order
-        .map(f => path.join(jobPreviewDir, f));
+        .map((f) => path.join(jobPreviewDir, f));
     } catch {
       return []; // Directory doesn't exist or is empty
     }
@@ -209,7 +218,12 @@ export class FfmpegService {
 
     if (shouldGeneratePreviews) {
       // Run preview generation asynchronously (don't await)
-      this.generatePreviewsAsync(job.id, job.tempFilePath, videoDuration, progress);
+      this.generatePreviewsAsync(
+        job.id,
+        job.tempFilePath,
+        videoDuration,
+        progress,
+      );
     }
   }
 
@@ -217,14 +231,14 @@ export class FfmpegService {
     jobId: string,
     tempFilePath: string,
     durationSeconds: number,
-    currentProgress: number
+    currentProgress: number,
   ): Promise<void> {
     try {
       const previewPaths = await this.previewService.generatePreviews(
         jobId,
         tempFilePath,
         durationSeconds,
-        currentProgress
+        currentProgress,
       );
 
       // Update job with preview paths
@@ -359,8 +373,9 @@ export class JobDetailsModalComponent implements OnInit, OnDestroy {
 
     try {
       const paths = JSON.parse(this.job.previewImagePaths) as string[];
-      this.previewUrls = paths.map((_, index) =>
-        `/api/v1/queue/${this.job.id}/preview/${index + 1}?t=${Date.now()}`
+      this.previewUrls = paths.map(
+        (_, index) =>
+          `/api/v1/queue/${this.job.id}/preview/${index + 1}?t=${Date.now()}`,
       );
     } catch (error) {
       console.error('Failed to parse preview paths:', error);
@@ -368,12 +383,14 @@ export class JobDetailsModalComponent implements OnInit, OnDestroy {
   }
 
   nextPreview(): void {
-    this.currentPreviewIndex = (this.currentPreviewIndex + 1) % this.previewUrls.length;
+    this.currentPreviewIndex =
+      (this.currentPreviewIndex + 1) % this.previewUrls.length;
   }
 
   prevPreview(): void {
     this.currentPreviewIndex =
-      (this.currentPreviewIndex - 1 + this.previewUrls.length) % this.previewUrls.length;
+      (this.currentPreviewIndex - 1 + this.previewUrls.length) %
+      this.previewUrls.length;
   }
 
   selectPreview(index: number): void {
@@ -388,7 +405,10 @@ Add preview section after job details:
 
 ```html
 <!-- Encoding Previews (only show if encoding) -->
-<div *ngIf="job.stage === 'ENCODING' && previewUrls.length > 0" class="preview-section">
+<div
+  *ngIf="job.stage === 'ENCODING' && previewUrls.length > 0"
+  class="preview-section"
+>
   <h4 class="preview-title">
     <i class="fas fa-images"></i>
     Encoding Preview
@@ -396,7 +416,11 @@ Add preview section after job details:
 
   <!-- Main preview image -->
   <div class="preview-carousel">
-    <button class="preview-nav prev" (click)="prevPreview()" *ngIf="previewUrls.length > 1">
+    <button
+      class="preview-nav prev"
+      (click)="prevPreview()"
+      *ngIf="previewUrls.length > 1"
+    >
       <i class="fas fa-chevron-left"></i>
     </button>
 
@@ -412,7 +436,11 @@ Add preview section after job details:
       </div>
     </div>
 
-    <button class="preview-nav next" (click)="nextPreview()" *ngIf="previewUrls.length > 1">
+    <button
+      class="preview-nav next"
+      (click)="nextPreview()"
+      *ngIf="previewUrls.length > 1"
+    >
       <i class="fas fa-chevron-right"></i>
     </button>
   </div>
@@ -570,6 +598,7 @@ Add preview section after job details:
 ### Manual Testing Steps
 
 1. **Start an encoding job**
+
    ```bash
    # Start a job through the UI or API
    curl -X POST http://localhost:3100/api/v1/queue \
@@ -597,6 +626,7 @@ Add preview section after job details:
 ### Performance Testing
 
 Monitor encoding FPS before and after preview generation:
+
 - Should have minimal impact (<2% FPS drop)
 - Preview generation runs asynchronously
 - Failures don't crash encoding
@@ -633,12 +663,14 @@ Monitor encoding FPS before and after preview generation:
 - [ ] Allow user to select specific timestamps for preview
 - [ ] Add fullscreen preview mode
 - [ ] Generate preview GIF animation
+
 # Deep Technical Audit: Manual Preview Capture Feature
 
 **Date**: 2025-11-03
 **Feature**: "Capture Now" button for manual screenshot extraction during encoding
 **Status**: FAILING
 **Files Analyzed**:
+
 - `/apps/backend/src/queue/queue.controller.ts` (lines 337-395)
 - `/apps/backend/src/encoding/ffmpeg.service.ts` (buildFfmpegCommand, line 398)
 - `/apps/frontend/src/app/features/queue/queue.page.ts` (captureCurrentFrame, lines 564-582)
@@ -662,6 +694,7 @@ The manual preview capture feature fails because **MP4 files are not readable un
 ### 1. MP4 File Structure Problem
 
 MP4 files contain a critical metadata structure called the **"moov atom"** that describes:
+
 - Video stream codec, dimensions, frame rate
 - Audio stream codec, sample rate, channels
 - Index of all frames and their timestamps
@@ -669,20 +702,22 @@ MP4 files contain a critical metadata structure called the **"moov atom"** that 
 
 **Two MP4 Encoding Modes:**
 
-| Mode | Moov Atom Location | Readable During Encoding? | FFmpeg Flag |
-|------|-------------------|---------------------------|-------------|
-| **Standard MP4** | END of file | NO | `-f mp4` (current) |
-| **Fragmented MP4** | START of file | YES | `-movflags +frag_keyframe+empty_moov` (solution) |
+| Mode               | Moov Atom Location | Readable During Encoding? | FFmpeg Flag                                      |
+| ------------------ | ------------------ | ------------------------- | ------------------------------------------------ |
+| **Standard MP4**   | END of file        | NO                        | `-f mp4` (current)                               |
+| **Fragmented MP4** | START of file      | YES                       | `-movflags +frag_keyframe+empty_moov` (solution) |
 
 ### 2. Current Implementation (BROKEN)
 
 **File**: `apps/backend/src/encoding/ffmpeg.service.ts`
 **Line 398**:
+
 ```typescript
 args.push('-f', 'mp4', '-y', outputPath);
 ```
 
 This creates a **standard MP4** where:
+
 1. FFmpeg writes video frames sequentially
 2. FFmpeg builds the moov atom in memory
 3. **Only when encoding finishes** does FFmpeg write the moov atom to the END of the file
@@ -690,20 +725,30 @@ This creates a **standard MP4** where:
 
 **File**: `apps/backend/src/queue/queue.controller.ts`
 **Lines 364-377**:
+
 ```typescript
-await execFileAsync('ffmpeg', [
-  '-y',
-  '-i', job.tempFilePath,  // ← This file is UNREADABLE during encoding
-  '-vf', 'reverse,scale=640:-1',
-  '-frames:v', '1',
-  '-q:v', '2',
-  manualPreviewPath,
-], {
-  timeout: 15000,
-});
+await execFileAsync(
+  'ffmpeg',
+  [
+    '-y',
+    '-i',
+    job.tempFilePath, // ← This file is UNREADABLE during encoding
+    '-vf',
+    'reverse,scale=640:-1',
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
+    manualPreviewPath,
+  ],
+  {
+    timeout: 15000,
+  },
+);
 ```
 
 **Error Output** (when temp file is being actively encoded):
+
 ```
 [mov,mp4,m4a,3gp,3g2,mj2 @ 0x...] moov atom not found
 [in#0 @ 0x...] Error opening input: Invalid data found when processing input
@@ -712,25 +757,33 @@ await execFileAsync('ffmpeg', [
 ### 3. Why Previous Attempts Failed
 
 #### Attempt 1: `-ss <timestamp>` (Seeking to specific time)
+
 ```typescript
-'-ss', '0:00:05', '-i', job.tempFilePath
+('-ss', '0:00:05', '-i', job.tempFilePath);
 ```
+
 **Why it failed**: Can't seek to timestamp that doesn't exist in moov atom (moov atom not written yet)
 
 #### Attempt 2: `-sseof -5` (Seek from end of file)
+
 ```typescript
-'-sseof', '-5', '-i', job.tempFilePath
+('-sseof', '-5', '-i', job.tempFilePath);
 ```
+
 **Why it failed**:
+
 - Requires knowing file duration (stored in moov atom)
 - Moov atom not written yet
 - `-sseof` not fully supported with incomplete files
 
 #### Attempt 3: `reverse` filter (Current implementation)
+
 ```typescript
-'-vf', 'reverse,scale=640:-1'
+('-vf', 'reverse,scale=640:-1');
 ```
+
 **Why it fails**:
+
 - Still requires reading the moov atom to know total frames
 - FFmpeg can't even OPEN the file without moov atom
 - Fails before video filter is even applied
@@ -740,6 +793,7 @@ await execFileAsync('ffmpeg', [
 I conducted comprehensive FFmpeg experiments to validate the root cause:
 
 **Test 1: Regular MP4 (actively encoding)**
+
 ```bash
 # Start encoding
 ffmpeg -i source.mp4 -c:v libx265 -f mp4 temp.mp4 &
@@ -750,6 +804,7 @@ ffmpeg -i temp.mp4 -frames:v 1 output.jpg
 ```
 
 **Test 2: Fragmented MP4 (actively encoding)**
+
 ```bash
 # Start encoding with fragmented mode
 ffmpeg -i source.mp4 -c:v libx265 \
@@ -762,6 +817,7 @@ ffmpeg -i temp_frag.mp4 -frames:v 1 output.jpg
 ```
 
 **Test 3: Error recovery flags (all failed)**
+
 - `-err_detect ignore_err` → FAILED (moov still missing)
 - `-fflags +genpts+igndts` → FAILED (moov still missing)
 - `-analyzeduration 0 -probesize 10M` → FAILED (moov still missing)
@@ -775,6 +831,7 @@ ffmpeg -i temp_frag.mp4 -frames:v 1 output.jpg
 ### Option 1: Fragmented MP4 for Temp Files (RECOMMENDED)
 
 **Pros:**
+
 - Solves the problem completely
 - Minimal code changes (2 lines)
 - No performance impact
@@ -782,6 +839,7 @@ ffmpeg -i temp_frag.mp4 -frames:v 1 output.jpg
 - Works with all existing preview extraction code
 
 **Cons:**
+
 - Slightly larger file size during encoding (~1-2% overhead)
 - Final file is automatically converted back to standard MP4 (no issue)
 
@@ -789,48 +847,71 @@ ffmpeg -i temp_frag.mp4 -frames:v 1 output.jpg
 
 **File**: `apps/backend/src/encoding/ffmpeg.service.ts`
 **Line 398** (modify):
+
 ```typescript
 // BEFORE:
 args.push('-f', 'mp4', '-y', outputPath);
 
 // AFTER:
 args.push(
-  '-movflags', '+frag_keyframe+empty_moov+default_base_moof',
-  '-f', 'mp4',
-  '-y', outputPath
+  '-movflags',
+  '+frag_keyframe+empty_moov+default_base_moof',
+  '-f',
+  'mp4',
+  '-y',
+  outputPath,
 );
 ```
 
 **Explanation of flags:**
+
 - `+frag_keyframe` - Fragment file at keyframes (enables streaming/seeking)
 - `+empty_moov` - Write empty moov atom at start (file immediately readable)
 - `+default_base_moof` - Use relative offsets (better compatibility)
 
 **File**: `apps/backend/src/queue/queue.controller.ts`
 **Lines 364-377** (simplify):
+
 ```typescript
 // BEFORE:
-await execFileAsync('ffmpeg', [
-  '-y',
-  '-i', job.tempFilePath,
-  '-vf', 'reverse,scale=640:-1',  // ← Remove reverse filter
-  '-frames:v', '1',
-  '-q:v', '2',
-  manualPreviewPath,
-], { timeout: 15000 });
+await execFileAsync(
+  'ffmpeg',
+  [
+    '-y',
+    '-i',
+    job.tempFilePath,
+    '-vf',
+    'reverse,scale=640:-1', // ← Remove reverse filter
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
+    manualPreviewPath,
+  ],
+  { timeout: 15000 },
+);
 
 // AFTER (simpler and more reliable):
-await execFileAsync('ffmpeg', [
-  '-y',
-  '-i', job.tempFilePath,
-  '-vf', 'scale=640:-1',  // Just scale, no reverse
-  '-frames:v', '1',
-  '-q:v', '2',
-  manualPreviewPath,
-], { timeout: 5000 }); // Faster timeout since no reverse
+await execFileAsync(
+  'ffmpeg',
+  [
+    '-y',
+    '-i',
+    job.tempFilePath,
+    '-vf',
+    'scale=640:-1', // Just scale, no reverse
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
+    manualPreviewPath,
+  ],
+  { timeout: 5000 },
+); // Faster timeout since no reverse
 ```
 
 **Why remove reverse filter:**
+
 - Fragmented MP4 is readable from start, can extract ANY frame
 - First available frame is more than adequate for preview
 - Significantly faster (no need to read entire file backwards)
@@ -841,26 +922,38 @@ await execFileAsync('ffmpeg', [
 ### Option 2: Extract from Original File (FALLBACK)
 
 **Pros:**
+
 - Guaranteed to work (original file is complete)
 - No changes to encoding process
 
 **Cons:**
+
 - Doesn't show current encoding progress
 - Shows original video, not encoded version
 - Defeats the purpose of "Capture Now" during encoding
 
 **Implementation:**
+
 ```typescript
 // Use job.filePath instead of job.tempFilePath
-await execFileAsync('ffmpeg', [
-  '-y',
-  '-ss', `${job.progress * totalDuration / 100}`,  // Seek to current progress
-  '-i', job.filePath,  // Original file
-  '-vf', 'scale=640:-1',
-  '-frames:v', '1',
-  '-q:v', '2',
-  manualPreviewPath,
-], { timeout: 5000 });
+await execFileAsync(
+  'ffmpeg',
+  [
+    '-y',
+    '-ss',
+    `${(job.progress * totalDuration) / 100}`, // Seek to current progress
+    '-i',
+    job.filePath, // Original file
+    '-vf',
+    'scale=640:-1',
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
+    manualPreviewPath,
+  ],
+  { timeout: 5000 },
+);
 ```
 
 **Not recommended** - User expects to see the encoded output, not the original.
@@ -870,10 +963,12 @@ await execFileAsync('ffmpeg', [
 ### Option 3: Periodic Frame Dumping (COMPLEX)
 
 **Pros:**
+
 - Most accurate representation of encoding progress
 - Can capture exact frame being encoded
 
 **Cons:**
+
 - Requires significant refactoring
 - FFmpeg command becomes complex
 - Disk I/O overhead during encoding
@@ -881,11 +976,14 @@ await execFileAsync('ffmpeg', [
 
 **Implementation:**
 Modify FFmpeg command to dump frames periodically:
+
 ```typescript
 args.push(
-  '-vf', 'select=not(mod(n\\,300)),scale=640:-1',  // Every 300 frames
-  '-vsync', 'vfr',
-  '/tmp/frames/job-${jobId}-%04d.jpg'
+  '-vf',
+  'select=not(mod(n\\,300)),scale=640:-1', // Every 300 frames
+  '-vsync',
+  'vfr',
+  '/tmp/frames/job-${jobId}-%04d.jpg',
 );
 ```
 
@@ -897,16 +995,17 @@ args.push(
 
 ### Fragmented MP4 vs Standard MP4
 
-| Metric | Standard MP4 | Fragmented MP4 | Difference |
-|--------|-------------|----------------|------------|
-| **Encoding Speed** | Baseline | -1 to 3% slower | Negligible |
-| **Temp File Size** | Baseline | +1-2% larger | Negligible |
-| **Final File Size** | Same | Same | No difference |
-| **Readability** | After completion only | Immediately | CRITICAL |
-| **Seek Performance** | Excellent | Excellent | Same |
-| **Compatibility** | Universal | Universal | Same |
+| Metric               | Standard MP4          | Fragmented MP4  | Difference    |
+| -------------------- | --------------------- | --------------- | ------------- |
+| **Encoding Speed**   | Baseline              | -1 to 3% slower | Negligible    |
+| **Temp File Size**   | Baseline              | +1-2% larger    | Negligible    |
+| **Final File Size**  | Same                  | Same            | No difference |
+| **Readability**      | After completion only | Immediately     | CRITICAL      |
+| **Seek Performance** | Excellent             | Excellent       | Same          |
+| **Compatibility**    | Universal             | Universal       | Same          |
 
 **Benchmark** (tested on Apple M4):
+
 ```
 Standard MP4:   60s video → 82s encoding, 105KB temp file
 Fragmented MP4: 60s video → 81s encoding, 105KB temp file
@@ -918,24 +1017,28 @@ Difference: <1% (within margin of error)
 ## Edge Cases
 
 ### 1. Encoding at 1% Progress
+
 **Scenario**: User clicks "Capture Now" 1 second after encoding starts
 
 **Standard MP4**: FAILS (moov atom not written)
 **Fragmented MP4**: SUCCESS (at least 1 fragment written)
 
 ### 2. Encoding at 99% Progress
+
 **Scenario**: User clicks "Capture Now" right before encoding finishes
 
 **Standard MP4**: FAILS (moov atom written only at 100%)
 **Fragmented MP4**: SUCCESS (readable throughout)
 
 ### 3. Backend Crash During Encoding
+
 **Scenario**: Backend crashes, temp file is orphaned
 
 **Standard MP4**: File is CORRUPTED (no moov atom, unreadable)
 **Fragmented MP4**: File is PARTIALLY READABLE (can recover frames)
 
 ### 4. Slow Network Storage
+
 **Scenario**: Temp file on NFS/SMB share with high latency
 
 **Standard MP4**: Preview extraction FAILS (timeout waiting for moov)
@@ -946,14 +1049,28 @@ Difference: <1% (within margin of error)
 ## Security Considerations
 
 ### Current Implementation
+
 ```typescript
-await execFileAsync('ffmpeg', [
-  '-y', '-i', job.tempFilePath, '-vf', 'reverse,scale=640:-1',
-  '-frames:v', '1', '-q:v', '2', manualPreviewPath
-], { timeout: 15000 });
+await execFileAsync(
+  'ffmpeg',
+  [
+    '-y',
+    '-i',
+    job.tempFilePath,
+    '-vf',
+    'reverse,scale=640:-1',
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
+    manualPreviewPath,
+  ],
+  { timeout: 15000 },
+);
 ```
 
 **Security Issues:**
+
 - ✓ Uses `execFileAsync` (safe, no shell injection)
 - ✓ Uses whitelisted flags
 - ✓ Validates job.tempFilePath exists
@@ -961,6 +1078,7 @@ await execFileAsync('ffmpeg', [
 - ✗ No validation that temp file belongs to job (minor)
 
 **Recommended Security Additions:**
+
 ```typescript
 // Validate temp file path is within expected directory
 if (!job.tempFilePath.startsWith('/tmp/bitbonsai-encoding/')) {
@@ -1107,6 +1225,7 @@ async capturePreview(@Param('id') id: string): Promise<Job> {
 **File**: `apps/backend/src/encoding/ffmpeg.service.ts` (line 122)
 
 Verify `-movflags` is in the whitelist:
+
 ```typescript
 private readonly ALLOWED_FFMPEG_FLAGS = new Set([
   // ... existing flags ...
@@ -1153,8 +1272,9 @@ describe('Preview Capture (Fragmented MP4)', () => {
   it('should fail gracefully if encoding just started (< 1%)', async () => {
     const encoding = startEncoding(job, policy);
     // Don't wait, try immediately
-    await expect(controller.capturePreview(job.id))
-      .rejects.toThrow('Failed to capture preview');
+    await expect(controller.capturePreview(job.id)).rejects.toThrow(
+      'Failed to capture preview',
+    );
   });
 });
 ```
@@ -1171,16 +1291,20 @@ describe('Preview Capture (Fragmented MP4)', () => {
 ## Migration Notes
 
 ### Breaking Changes
+
 None. Fragmented MP4 is fully compatible with all players and tools.
 
 ### Rollback Plan
+
 If issues arise, revert the single line change:
+
 ```typescript
 // Rollback to standard MP4
 args.push('-f', 'mp4', '-y', outputPath);
 ```
 
 ### Data Migration
+
 Not required. Existing jobs will complete with standard MP4, new jobs use fragmented MP4.
 
 ---
@@ -1188,16 +1312,19 @@ Not required. Existing jobs will complete with standard MP4, new jobs use fragme
 ## References
 
 ### FFmpeg Documentation
+
 - [MP4 Muxer Options](https://ffmpeg.org/ffmpeg-formats.html#mp4)
 - [Fragmented MP4](https://developer.apple.com/documentation/http-live-streaming/about-the-ext-x-i-frame-stream-inf-tag)
 - [moov atom structure](https://www.cimarronsystems.com/wp-content/uploads/2017/04/ISO-IEC-14496-12-2015-mp4-file-format.pdf)
 
 ### Industry Best Practices
+
 - **HTTP Live Streaming (HLS)**: Uses fragmented MP4 for same reason
 - **DASH Streaming**: Requires fragmented MP4
 - **YouTube/Twitch**: Use fragmented MP4 for live streams
 
 ### Related Issues
+
 - FFmpeg Issue #4883: "moov atom not found when reading incomplete files"
 - Stack Overflow: "Extract frame from file being written by FFmpeg"
 
@@ -1208,6 +1335,7 @@ Not required. Existing jobs will complete with standard MP4, new jobs use fragme
 The manual preview capture feature fails due to a fundamental limitation of standard MP4 encoding: the metadata (moov atom) required to read the file is only written when encoding completes.
 
 **The solution is simple and proven**: Switch temp files to fragmented MP4 format using `-movflags +frag_keyframe+empty_moov`. This is a **2-line code change** with:
+
 - ✅ Zero performance impact
 - ✅ Universal compatibility
 - ✅ Enables preview capture at ANY progress

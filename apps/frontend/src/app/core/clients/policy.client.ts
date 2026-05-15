@@ -29,8 +29,14 @@ export class PolicyClient {
     return this.http.post<PolicyModel>(`${this.apiUrl}/policies`, request);
   }
 
-  updatePolicy(id: string, request: UpdatePolicyRequest): Observable<PolicyModel> {
-    return this.http.patch<PolicyModel>(`${this.apiUrl}/policies/${id}`, request);
+  updatePolicy(
+    id: string,
+    request: UpdatePolicyRequest,
+  ): Observable<PolicyModel> {
+    return this.http.patch<PolicyModel>(
+      `${this.apiUrl}/policies/${id}`,
+      request,
+    );
   }
 
   deletePolicy(id: string): Observable<void> {

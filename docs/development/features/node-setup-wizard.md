@@ -1,9 +1,11 @@
 # Child Node Setup Wizard - Implementation Summary
 
 ## Overview
+
 The Child Node Setup Wizard is a beautiful, multi-step wizard that guides users through connecting a child node to a BitBonsai main node. The wizard features stunning animations, real-time network discovery, and a seamless pairing flow.
 
 ## Location
+
 - **Component**: `/apps/frontend/src/app/features/node-setup/node-setup-wizard.component.ts`
 - **Template**: `/apps/frontend/src/app/features/node-setup/node-setup-wizard.component.html`
 - **Styles**: `/apps/frontend/src/app/features/node-setup/node-setup-wizard.component.scss`
@@ -14,15 +16,18 @@ The Child Node Setup Wizard is a beautiful, multi-step wizard that guides users 
 ## Features Implemented
 
 ### 1. Multi-Step Wizard Flow
+
 The wizard guides users through 5 distinct steps:
 
 #### Step 1: Welcome
+
 - Beautiful welcome screen with network icon
 - Introduction message explaining the setup process
 - Feature highlights (automatic discovery, secure pairing, hardware detection)
 - "Scan for Nodes" button to start the process
 
 #### Step 2: Scanning
+
 - **Animated radar scanning effect** with pulsing rings
 - Real-time network scan for BitBonsai main nodes
 - Live discovery counter showing nodes as they're found
@@ -30,6 +35,7 @@ The wizard guides users through 5 distinct steps:
 - Retry functionality
 
 #### Step 3: Select Main Node
+
 - List of discovered main nodes with detailed information:
   - Node name and IP address
   - Hardware acceleration type
@@ -40,6 +46,7 @@ The wizard guides users through 5 distinct steps:
 - Validation before proceeding
 
 #### Step 4: Pairing
+
 - **Animated connection icon** with pulse effect
 - Pairing code display (large, monospace font for easy reading)
 - Real-time pairing status polling
@@ -48,6 +55,7 @@ The wizard guides users through 5 distinct steps:
 - Cancel button to go back
 
 #### Step 5: Complete
+
 - **Success checkmark animation** with glow effect
 - Hardware detection summary showing:
   - Acceleration type (NVIDIA, Intel QSV, AMD, Apple M-Series, CPU)
@@ -59,21 +67,25 @@ The wizard guides users through 5 distinct steps:
 ### 2. Beautiful Animations
 
 #### Radar Scanning Animation
+
 ```scss
 .radar-ping {
   animation: radarPing 2s ease-out infinite;
 }
 ```
+
 - Three concentric radar pings emanating from center
 - Staggered delays for visual depth
 - Smooth fade-out as rings expand
 
 #### Pulse Animations
+
 - Welcome icon pulses gently
 - Connection icon during pairing
 - Success checkmark scales in with bounce
 
 #### Smooth Transitions
+
 - Step transitions with fade-in-up animation
 - Progress bar fills smoothly as steps advance
 - Button hover effects with lift and shadow
@@ -81,38 +93,47 @@ The wizard guides users through 5 distinct steps:
 ### 3. Discovery Service
 
 #### Network Scanning
+
 ```typescript
 startScan(): Observable<ScanResult>
 ```
+
 - Calls `/api/v1/discovery/scan`
 - Updates `discoveredNodes$` BehaviorSubject
 - Real-time updates as nodes are discovered
 
 #### Pairing Flow
+
 ```typescript
 initiatePairing(request: PairingRequest): Observable<PairingResponse>
 pollPairingStatus(pairingId: string): Observable<PairingResponse>
 ```
+
 - Initiates pairing with selected main node
 - Polls status every 2 seconds for up to 2 minutes
 - Automatic timeout handling
 - Stores connection token on success
 
 #### Hardware Detection
+
 ```typescript
 getHardwareDetection(): Observable<HardwareDetection>
 ```
+
 - Retrieves child node hardware capabilities
 - Displays in completion summary
 
 ### 4. Progress Indicator
+
 - Visual progress bar showing 0-100% completion
 - 5 step indicators with numbers and labels
 - Active step highlighting
 - Current step emphasized with golden accent
 
 ### 5. Error Handling
+
 Comprehensive error states for:
+
 - Network connection failures
 - No nodes found during scan
 - Pairing rejection
@@ -120,11 +141,13 @@ Comprehensive error states for:
 - Server errors (500+)
 
 Each error shows:
+
 - Appropriate icon (warning/error)
 - User-friendly message
 - Retry/back buttons
 
 ### 6. Responsive Design
+
 - Desktop-optimized layout (max-width: 800px)
 - Mobile-responsive breakpoints
 - Touch-friendly button sizes
@@ -135,6 +158,7 @@ Each error shows:
 The wizard expects the following backend endpoints:
 
 ### 1. Scan for Main Nodes
+
 ```
 GET /api/v1/discovery/scan
 Response: {
@@ -144,6 +168,7 @@ Response: {
 ```
 
 ### 2. Initiate Pairing
+
 ```
 POST /api/v1/discovery/pair
 Body: {
@@ -160,6 +185,7 @@ Response: {
 ```
 
 ### 3. Poll Pairing Status
+
 ```
 GET /api/v1/discovery/pair/:pairingId/status
 Response: {
@@ -171,6 +197,7 @@ Response: {
 ```
 
 ### 4. Get Hardware Detection
+
 ```
 GET /api/v1/discovery/hardware
 Response: {
@@ -186,6 +213,7 @@ Response: {
 ## Design Patterns Used
 
 ### Angular Best Practices
+
 - ✅ Standalone component (no NgModules)
 - ✅ Modern control flow (@if, @for)
 - ✅ Signals for local component state
@@ -194,10 +222,12 @@ Response: {
 - ✅ ChangeDetectionStrategy.OnPush for performance
 
 ### Business Object Pattern
+
 - ✅ Uses `NodeBo.getAccelerationLabel()` for formatting
 - ✅ Separates presentation logic from component
 
 ### Service Architecture
+
 - ✅ Injectable service with providedIn: 'root'
 - ✅ BehaviorSubject for real-time state updates
 - ✅ Observable-based API calls
@@ -206,6 +236,7 @@ Response: {
 ## Styling Details
 
 ### Color Scheme
+
 - **Primary Accent**: Golden yellow (#f9be03)
 - **Background**: Dark theme (#1a1a1a, #252525, #2a2a2a)
 - **Success**: Green (#4ade80)
@@ -213,11 +244,13 @@ Response: {
 - **Danger**: Red (#ff6b6b)
 
 ### Typography
+
 - **Headings**: Bold weight (700), white color
 - **Body**: Normal weight (400), light gray (#e0e0e0)
 - **Secondary**: Medium gray (#888)
 
 ### Animations
+
 - All animations use CSS keyframes
 - Smooth easing functions (ease, ease-in-out, ease-out)
 - Performance-optimized (GPU-accelerated transforms)
@@ -225,9 +258,11 @@ Response: {
 ## Usage
 
 ### Access the Wizard
+
 Navigate to: `http://192.168.1.100:4210/node-setup`
 
 ### Test the Flow
+
 1. Click "Scan for Nodes" on welcome screen
 2. Watch the radar animation as it scans
 3. Select a discovered node from the list
@@ -240,6 +275,7 @@ Navigate to: `http://192.168.1.100:4210/node-setup`
 ## Future Enhancements
 
 ### Possible Improvements
+
 1. **Auto-retry scan** if no nodes found after initial scan
 2. **Manual IP entry** option if auto-discovery fails
 3. **QR code pairing** for mobile-friendly setup
@@ -249,6 +285,7 @@ Navigate to: `http://192.168.1.100:4210/node-setup`
 7. **Setup history** showing previous connections
 
 ### Backend Integration Needed
+
 - Implement the 4 discovery API endpoints
 - Add mDNS/Bonjour service discovery for network scanning
 - Implement pairing approval flow on main node
@@ -258,18 +295,21 @@ Navigate to: `http://192.168.1.100:4210/node-setup`
 ## Code Quality
 
 ### TypeScript Strictness
+
 - ✅ No `any` types used
 - ✅ Explicit type annotations throughout
 - ✅ Proper interface definitions
 - ✅ Enum usage for constants
 
 ### Modern SCSS
+
 - ✅ Uses `color.adjust()` instead of deprecated `lighten()`
 - ✅ BEM-like naming conventions
 - ✅ Responsive breakpoints
 - ✅ CSS custom properties via SCSS variables
 
 ### Component Architecture
+
 - ✅ Single Responsibility Principle
 - ✅ Clean separation of concerns
 - ✅ Reusable service layer
@@ -278,6 +318,7 @@ Navigate to: `http://192.168.1.100:4210/node-setup`
 ## Testing Recommendations
 
 ### Unit Tests (Not Yet Implemented)
+
 ```typescript
 describe('NodeSetupWizardComponent', () => {
   it('should start at Welcome step');
@@ -298,6 +339,7 @@ describe('DiscoveryService', () => {
 ```
 
 ### E2E Tests (Not Yet Implemented)
+
 ```typescript
 test('Complete node setup wizard flow', async ({ page }) => {
   await page.goto('/node-setup');
@@ -315,11 +357,13 @@ test('Complete node setup wizard flow', async ({ page }) => {
 ## Deployment
 
 ### Deployed To
+
 - **Server**: Unraid (192.168.1.100)
 - **Frontend**: http://192.168.1.100:4210
 - **Backend**: http://192.168.1.100:3100
 
 ### Deployment Command
+
 ```bash
 cd ~/git/bitbonsai && ./deploy-unraid.sh
 ```
@@ -327,6 +371,7 @@ cd ~/git/bitbonsai && ./deploy-unraid.sh
 ## Screenshots / UI Description
 
 ### Welcome Screen
+
 - Large golden network icon (6rem) with glow effect
 - Centered heading: "Connect to Main Node"
 - Description paragraph
@@ -334,12 +379,14 @@ cd ~/git/bitbonsai && ./deploy-unraid.sh
 - Large golden "Scan for Nodes" button
 
 ### Scanning Screen
+
 - Animated radar with 3 pulsing rings
 - Golden broadcast icon in center
 - "Scanning Network" heading
 - Real-time counter badge (pulsing green)
 
 ### Selection Screen
+
 - List of node cards with:
   - Server icon on left
   - Node name and IP in center
@@ -350,6 +397,7 @@ cd ~/git/bitbonsai && ./deploy-unraid.sh
 - Back and Connect buttons at bottom
 
 ### Pairing Screen
+
 - Large animated link icon
 - "Requesting Connection" heading
 - Large monospace pairing code (3rem)
@@ -358,6 +406,7 @@ cd ~/git/bitbonsai && ./deploy-unraid.sh
 - Cancel button
 
 ### Complete Screen
+
 - Large green checkmark with glow
 - "Connection Successful!" heading
 - Hardware summary grid (2x2 on desktop)
@@ -377,6 +426,7 @@ cd ~/git/bitbonsai && ./deploy-unraid.sh
 ## Support
 
 For issues or questions:
+
 1. Check backend logs: `ssh root@unraid 'docker logs -f bitbonsai-backend'`
 2. Check frontend logs: `ssh root@unraid 'docker logs -f bitbonsai-frontend'`
 3. Verify network connectivity between nodes

@@ -49,6 +49,7 @@ wrangler pages deploy dist/apps/website/browser \
 ```
 
 After first deployment, add custom domain in dashboard:
+
 - https://dash.cloudflare.com → Pages → bitbonsai-website → Custom domains
 - Add: `bitbonsai.app`
 
@@ -71,6 +72,7 @@ netlify deploy --prod --dir=dist/apps/website/browser
 ```
 
 Then configure custom domain in Netlify dashboard:
+
 - Set domain to: `bitbonsai.app`
 - Update Cloudflare DNS to point to Netlify (they'll provide IP/CNAME)
 
@@ -90,6 +92,7 @@ open https://bitbonsai.app/
 ```
 
 **Expected:**
+
 - HTTP status: 200 OK
 - Page loads with BitBonsai branding
 - No Cloudflare error page
@@ -103,9 +106,11 @@ After manual deployment, set up GitHub Actions:
 ### 1. Get Cloudflare Credentials
 
 **Account ID:**
+
 - Dashboard → Account → Copy Account ID
 
 **API Token:**
+
 - Dashboard → My Profile → API Tokens → Create Token
 - Template: "Edit Cloudflare Workers"
 - Permissions: `Account.Cloudflare Pages:Edit`
@@ -116,6 +121,7 @@ After manual deployment, set up GitHub Actions:
 Go to: https://github.com/YOUR_USERNAME/bitbonsai/settings/secrets/actions
 
 Add:
+
 - `CLOUDFLARE_API_TOKEN` = (token from step 1)
 - `CLOUDFLARE_ACCOUNT_ID` = (account ID from step 1)
 
@@ -138,24 +144,24 @@ git push origin main
 
 ## What Was Wrong
 
-| Issue | Impact | Fix |
-|-------|--------|-----|
-| No origin server | Cloudflare can't serve requests (502) | Deployed to Cloudflare Pages |
-| No CI/CD pipeline | Manual deployments required | Added GitHub Actions workflow |
-| No documentation | Unclear how to deploy | Created WEBSITE_DEPLOYMENT.md |
-| Domain confusion | Docs say `bitbonsai.io` but domain is `.app` | Clarified in README |
+| Issue             | Impact                                       | Fix                           |
+| ----------------- | -------------------------------------------- | ----------------------------- |
+| No origin server  | Cloudflare can't serve requests (502)        | Deployed to Cloudflare Pages  |
+| No CI/CD pipeline | Manual deployments required                  | Added GitHub Actions workflow |
+| No documentation  | Unclear how to deploy                        | Created WEBSITE_DEPLOYMENT.md |
+| Domain confusion  | Docs say `bitbonsai.io` but domain is `.app` | Clarified in README           |
 
 ---
 
 ## Files Created
 
-| File | Purpose |
-|------|---------|
-| `.github/workflows/deploy-website.yml` | Auto-deploy on push |
-| `deploy-website.sh` | Manual deployment script |
-| `WEBSITE_DEPLOYMENT.md` | Comprehensive deployment guide |
-| `DEPLOY_WEBSITE_NOW.md` | This urgent fix guide |
-| `.nvmrc` | Node version lock (20) |
+| File                                   | Purpose                        |
+| -------------------------------------- | ------------------------------ |
+| `.github/workflows/deploy-website.yml` | Auto-deploy on push            |
+| `deploy-website.sh`                    | Manual deployment script       |
+| `WEBSITE_DEPLOYMENT.md`                | Comprehensive deployment guide |
+| `DEPLOY_WEBSITE_NOW.md`                | This urgent fix guide          |
+| `.nvmrc`                               | Node version lock (20)         |
 
 ---
 
@@ -173,16 +179,19 @@ git push origin main
 If site goes down again after deployment:
 
 **Check Cloudflare Pages:**
+
 - Dashboard: https://dash.cloudflare.com → Pages
 - Status: Should show recent deployment
 - Logs: Check build/deployment logs
 
 **Redeploy:**
+
 ```bash
 cd ~/git/bitbonsai
 ./deploy-website.sh
 ```
 
 **Rollback:**
+
 - Cloudflare dashboard → Pages → bitbonsai-website → Deployments
 - Click previous deployment → "Rollback to this deployment"

@@ -97,7 +97,9 @@ describe('Security Validation Tests', () => {
     });
 
     it('should exclude apiKey from heartbeat response', async () => {
-      const result = await controller.heartbeat('test-node-1', { status: 'ONLINE' });
+      const result = await controller.heartbeat('test-node-1', {
+        status: 'ONLINE',
+      });
 
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('status', 'ONLINE');
@@ -129,7 +131,12 @@ describe('Security Validation Tests', () => {
       const nodes = await controller.findAll();
 
       nodes.forEach((node) => {
-        const sensitiveFields = ['apiKey', 'pairingToken', 'pairingExpiresAt', 'licenseId'];
+        const sensitiveFields = [
+          'apiKey',
+          'pairingToken',
+          'pairingExpiresAt',
+          'licenseId',
+        ];
         sensitiveFields.forEach((field) => {
           expect(node).not.toHaveProperty(field);
         });

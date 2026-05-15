@@ -27,11 +27,15 @@ export class CurrentNodeEffects {
           }),
           map((node) => CurrentNodeActions.loadCurrentNodeSuccess({ node })),
           catchError((error) =>
-            of(CurrentNodeActions.loadCurrentNodeFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              CurrentNodeActions.loadCurrentNodeFailure({
+                error: error.message,
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   // Load main node (for linked nodes)
@@ -40,12 +44,16 @@ export class CurrentNodeEffects {
       ofType(CurrentNodeActions.loadMainNode),
       switchMap(() =>
         this.nodeService.getMainNode().pipe(
-          map((mainNode) => CurrentNodeActions.loadMainNodeSuccess({ mainNode })),
+          map((mainNode) =>
+            CurrentNodeActions.loadMainNodeSuccess({ mainNode }),
+          ),
           catchError((error) =>
-            of(CurrentNodeActions.loadMainNodeFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              CurrentNodeActions.loadMainNodeFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }

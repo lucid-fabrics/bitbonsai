@@ -172,11 +172,15 @@ describe('EnvironmentService', () => {
       const recommendations = await service.getRecommendations();
 
       if (environment === 'UNRAID') {
-        expect(recommendations.some((rec: string) => rec.includes('Unraid array storage'))).toBe(
-          true
-        );
+        expect(
+          recommendations.some((rec: string) =>
+            rec.includes('Unraid array storage'),
+          ),
+        ).toBe(true);
       } else if (environment === 'DOCKER') {
-        expect(recommendations.some((rec: string) => rec.includes('Docker volumes'))).toBe(true);
+        expect(
+          recommendations.some((rec: string) => rec.includes('Docker volumes')),
+        ).toBe(true);
       }
     });
 
@@ -185,16 +189,26 @@ describe('EnvironmentService', () => {
       const recommendations = await service.getRecommendations();
 
       if (hardware.nvidia) {
-        expect(recommendations.some((rec: string) => rec.includes('NVIDIA'))).toBe(true);
+        expect(
+          recommendations.some((rec: string) => rec.includes('NVIDIA')),
+        ).toBe(true);
       }
       if (hardware.intelQsv) {
-        expect(recommendations.some((rec: string) => rec.includes('Intel Quick Sync'))).toBe(true);
+        expect(
+          recommendations.some((rec: string) =>
+            rec.includes('Intel Quick Sync'),
+          ),
+        ).toBe(true);
       }
       if (hardware.amd) {
-        expect(recommendations.some((rec: string) => rec.includes('AMD'))).toBe(true);
+        expect(recommendations.some((rec: string) => rec.includes('AMD'))).toBe(
+          true,
+        );
       }
       if (hardware.appleVideoToolbox) {
-        expect(recommendations.some((rec: string) => rec.includes('Apple Silicon'))).toBe(true);
+        expect(
+          recommendations.some((rec: string) => rec.includes('Apple Silicon')),
+        ).toBe(true);
       }
     });
   });
@@ -236,7 +250,9 @@ describe('EnvironmentService', () => {
       expect(typeof result.hardwareAcceleration.nvidia).toBe('boolean');
       expect(typeof result.hardwareAcceleration.intelQsv).toBe('boolean');
       expect(typeof result.hardwareAcceleration.amd).toBe('boolean');
-      expect(typeof result.hardwareAcceleration.appleVideoToolbox).toBe('boolean');
+      expect(typeof result.hardwareAcceleration.appleVideoToolbox).toBe(
+        'boolean',
+      );
 
       expect(typeof result.defaultPaths.mediaPath).toBe('string');
       expect(typeof result.defaultPaths.downloadsPath).toBe('string');
@@ -263,8 +279,10 @@ describe('EnvironmentService (mocked service methods)', () => {
 
     service = module.get<EnvironmentService>(EnvironmentService);
     // Reset cache between tests
-    (service as unknown as { cachedEnvironment: null }).cachedEnvironment = null;
-    (service as unknown as { cachedHardwareInfo: null }).cachedHardwareInfo = null;
+    (service as unknown as { cachedEnvironment: null }).cachedEnvironment =
+      null;
+    (service as unknown as { cachedHardwareInfo: null }).cachedHardwareInfo =
+      null;
   });
 
   afterEach(() => {
@@ -352,17 +370,23 @@ describe('EnvironmentService (mocked service methods)', () => {
   describe('getDocsLink with mocked environment', () => {
     it('returns unraid link', async () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('UNRAID');
-      expect(await service.getDocsLink()).toBe('https://docs.bitbonsai.com/setup/unraid');
+      expect(await service.getDocsLink()).toBe(
+        'https://docs.bitbonsai.com/setup/unraid',
+      );
     });
 
     it('returns docker link', async () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('DOCKER');
-      expect(await service.getDocsLink()).toBe('https://docs.bitbonsai.com/setup/docker');
+      expect(await service.getDocsLink()).toBe(
+        'https://docs.bitbonsai.com/setup/docker',
+      );
     });
 
     it('returns installation link for bare metal', async () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
-      expect(await service.getDocsLink()).toBe('https://docs.bitbonsai.com/setup/installation');
+      expect(await service.getDocsLink()).toBe(
+        'https://docs.bitbonsai.com/setup/installation',
+      );
     });
   });
 
@@ -371,8 +395,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('UNRAID');
       jest.spyOn(service, 'isDocker').mockResolvedValue(true);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 4,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 16,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -384,8 +418,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('DOCKER');
       jest.spyOn(service, 'isDocker').mockResolvedValue(true);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 2, architecture: 'x64', platform: 'linux', totalMemoryGb: 8 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 2,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 8,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -396,8 +440,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 2, architecture: 'x64', platform: 'linux', totalMemoryGb: 8 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 2,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 8,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -408,8 +462,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: true, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 8, architecture: 'x64', platform: 'linux', totalMemoryGb: 32 },
+        acceleration: {
+          nvidia: true,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 8,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 32,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -420,8 +484,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: true, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: true,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 4,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 16,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -432,8 +506,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: true, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 8, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: true,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 8,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 16,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -444,8 +528,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: true },
-        systemInfo: { cpuCores: 10, architecture: 'arm64', platform: 'darwin', totalMemoryGb: 16 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: true,
+        },
+        systemInfo: {
+          cpuCores: 10,
+          architecture: 'arm64',
+          platform: 'darwin',
+          totalMemoryGb: 16,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -468,23 +562,39 @@ describe('EnvironmentService (mocked service methods)', () => {
         totalMemoryGb: 8,
       };
 
-      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue(mockAcceleration);
+      jest
+        .spyOn(service, 'detectHardwareAcceleration')
+        .mockResolvedValue(mockAcceleration);
       jest.spyOn(service, 'getSystemInfo').mockResolvedValue(mockSystemInfo);
 
       const r1 = await service.getHardwareInfo();
       const r2 = await service.getHardwareInfo();
 
       expect(r1).toBe(r2);
-      expect((service.detectHardwareAcceleration as jest.Mock).mock.calls.length).toBe(1);
+      expect(
+        (service.detectHardwareAcceleration as jest.Mock).mock.calls.length,
+      ).toBe(1);
     });
   });
 
   describe('detectHardwareAcceleration caching', () => {
     it('returns cached result on second call', async () => {
-      const acceleration = { nvidia: true, intelQsv: false, amd: false, appleVideoToolbox: false };
-      const systemInfo = { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 8 };
+      const acceleration = {
+        nvidia: true,
+        intelQsv: false,
+        amd: false,
+        appleVideoToolbox: false,
+      };
+      const systemInfo = {
+        cpuCores: 4,
+        architecture: 'x64',
+        platform: 'linux',
+        totalMemoryGb: 8,
+      };
       // Pre-populate the cache via getHardwareInfo
-      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue(acceleration);
+      jest
+        .spyOn(service, 'detectHardwareAcceleration')
+        .mockResolvedValue(acceleration);
       jest.spyOn(service, 'getSystemInfo').mockResolvedValue(systemInfo);
       await service.getHardwareInfo(); // populates cachedHardwareInfo
 
@@ -496,14 +606,21 @@ describe('EnvironmentService (mocked service methods)', () => {
 
   describe('getSystemInfo caching', () => {
     it('returns cached system info when hardware cache is populated', async () => {
-      const acceleration = { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false };
+      const acceleration = {
+        nvidia: false,
+        intelQsv: false,
+        amd: false,
+        appleVideoToolbox: false,
+      };
       const systemInfo = {
         cpuCores: 8,
         architecture: 'arm64',
         platform: 'darwin',
         totalMemoryGb: 32,
       };
-      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue(acceleration);
+      jest
+        .spyOn(service, 'detectHardwareAcceleration')
+        .mockResolvedValue(acceleration);
       jest.spyOn(service, 'getSystemInfo').mockResolvedValue(systemInfo);
       await service.getHardwareInfo(); // populates cachedHardwareInfo
 
@@ -552,8 +669,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'isUnraid').mockResolvedValue(false);
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: true, intelQsv: true, amd: true, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 16, architecture: 'x64', platform: 'linux', totalMemoryGb: 64 },
+        acceleration: {
+          nvidia: true,
+          intelQsv: true,
+          amd: true,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 16,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 64,
+        },
       });
       jest.spyOn(service, 'getStoragePaths').mockResolvedValue({
         mediaPath: '/m',
@@ -578,8 +705,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('UNRAID');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 16 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 4,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 16,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -593,8 +730,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('BARE_METAL');
       jest.spyOn(service, 'isDocker').mockResolvedValue(false);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: true, intelQsv: true, amd: true, appleVideoToolbox: true },
-        systemInfo: { cpuCores: 12, architecture: 'x64', platform: 'linux', totalMemoryGb: 32 },
+        acceleration: {
+          nvidia: true,
+          intelQsv: true,
+          amd: true,
+          appleVideoToolbox: true,
+        },
+        systemInfo: {
+          cpuCores: 12,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 32,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -634,9 +781,16 @@ describe('EnvironmentService (mocked service methods)', () => {
         appleVideoToolbox: false,
       };
       // Directly inject into private cache
-      (service as unknown as { cachedHardwareInfo: object }).cachedHardwareInfo = {
+      (
+        service as unknown as { cachedHardwareInfo: object }
+      ).cachedHardwareInfo = {
         acceleration: cachedAcceleration,
-        systemInfo: { cpuCores: 4, architecture: 'x64', platform: 'linux', totalMemoryGb: 8 },
+        systemInfo: {
+          cpuCores: 4,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 8,
+        },
       };
 
       const result = await service.detectHardwareAcceleration();
@@ -657,8 +811,15 @@ describe('EnvironmentService (mocked service methods)', () => {
         containerRuntime: undefined,
         unraidVersion: undefined,
       };
-      (service as unknown as { cachedHardwareInfo: object }).cachedHardwareInfo = {
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
+      (
+        service as unknown as { cachedHardwareInfo: object }
+      ).cachedHardwareInfo = {
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
         systemInfo: cachedSystemInfo,
       };
 
@@ -688,7 +849,9 @@ describe('EnvironmentService (mocked service methods)', () => {
   // ==========================================================================
   describe('detectEnvironment - short-circuits on Unraid', () => {
     it('does not check Docker when Unraid is detected', async () => {
-      const isUnraidSpy = jest.spyOn(service, 'isUnraid').mockResolvedValue(true);
+      const isUnraidSpy = jest
+        .spyOn(service, 'isUnraid')
+        .mockResolvedValue(true);
       const isDockerSpy = jest.spyOn(service, 'isDocker');
 
       const result = await service.detectEnvironment();
@@ -708,8 +871,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'isUnraid').mockResolvedValue(true);
       jest.spyOn(service, 'isDocker').mockResolvedValue(true);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 8, architecture: 'x64', platform: 'linux', totalMemoryGb: 32 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 8,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 32,
+        },
       });
       jest.spyOn(service, 'getStoragePaths').mockResolvedValue({
         mediaPath: '/mnt/user/media',
@@ -719,7 +892,9 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest
         .spyOn(service, 'getDocsLink')
         .mockResolvedValue('https://docs.bitbonsai.com/setup/unraid');
-      jest.spyOn(service, 'getRecommendations').mockResolvedValue(['use Unraid paths']);
+      jest
+        .spyOn(service, 'getRecommendations')
+        .mockResolvedValue(['use Unraid paths']);
 
       const info = await service.getEnvironmentInfo();
 
@@ -734,7 +909,12 @@ describe('EnvironmentService (mocked service methods)', () => {
   // ==========================================================================
   describe('getHardwareInfo - populates cache', () => {
     it('stores result in cachedHardwareInfo so subsequent calls are instant', async () => {
-      const accel = { nvidia: false, intelQsv: true, amd: false, appleVideoToolbox: false };
+      const accel = {
+        nvidia: false,
+        intelQsv: true,
+        amd: false,
+        appleVideoToolbox: false,
+      };
       const sysInfo = {
         cpuCores: 6,
         architecture: 'x64',
@@ -744,13 +924,17 @@ describe('EnvironmentService (mocked service methods)', () => {
         unraidVersion: undefined,
       };
 
-      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue(accel);
+      jest
+        .spyOn(service, 'detectHardwareAcceleration')
+        .mockResolvedValue(accel);
       jest.spyOn(service, 'getSystemInfo').mockResolvedValue(sysInfo);
 
       await service.getHardwareInfo();
 
       const cache = (
-        service as unknown as { cachedHardwareInfo: { acceleration: object; systemInfo: object } }
+        service as unknown as {
+          cachedHardwareInfo: { acceleration: object; systemInfo: object };
+        }
       ).cachedHardwareInfo;
       expect(cache).not.toBeNull();
       expect(cache.acceleration).toEqual(accel);
@@ -766,8 +950,18 @@ describe('EnvironmentService (mocked service methods)', () => {
       jest.spyOn(service, 'detectEnvironment').mockResolvedValue('DOCKER');
       jest.spyOn(service, 'isDocker').mockResolvedValue(true);
       jest.spyOn(service, 'getHardwareInfo').mockResolvedValue({
-        acceleration: { nvidia: false, intelQsv: false, amd: false, appleVideoToolbox: false },
-        systemInfo: { cpuCores: 2, architecture: 'x64', platform: 'linux', totalMemoryGb: 4 },
+        acceleration: {
+          nvidia: false,
+          intelQsv: false,
+          amd: false,
+          appleVideoToolbox: false,
+        },
+        systemInfo: {
+          cpuCores: 2,
+          architecture: 'x64',
+          platform: 'linux',
+          totalMemoryGb: 4,
+        },
       });
 
       const recs = await service.getRecommendations();
@@ -787,7 +981,6 @@ describe('EnvironmentService (mocked service methods)', () => {
 jest.mock('node:fs');
 
 describe('EnvironmentService (fs mocked)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fsMock = require('node:fs') as jest.Mocked<typeof import('node:fs')>;
   let service: EnvironmentService;
 
@@ -807,7 +1000,7 @@ describe('EnvironmentService (fs mocked)', () => {
 
     it('returns true when /boot/config and /usr/local/emhttp exist', async () => {
       fsMock.existsSync.mockImplementation(
-        (p) => p === '/boot/config' || p === '/usr/local/emhttp'
+        (p) => p === '/boot/config' || p === '/usr/local/emhttp',
       );
       expect(await service.isUnraid()).toBe(true);
     });
@@ -865,19 +1058,23 @@ describe('EnvironmentService (fs mocked)', () => {
   describe('getContainerRuntime', () => {
     it('returns "podman" when /run/.containerenv exists and isDocker=true', async () => {
       fsMock.existsSync.mockImplementation(
-        (p) => p === '/.dockerenv' || p === '/run/.containerenv'
+        (p) => p === '/.dockerenv' || p === '/run/.containerenv',
       );
       expect(await service.getContainerRuntime()).toBe('podman');
     });
 
     it('returns "docker" when cgroup contains "docker"', async () => {
-      fsMock.existsSync.mockImplementation((p) => p === '/.dockerenv' || p === '/proc/1/cgroup');
+      fsMock.existsSync.mockImplementation(
+        (p) => p === '/.dockerenv' || p === '/proc/1/cgroup',
+      );
       fsMock.readFileSync.mockReturnValue('12:devices:/docker/abc\n');
       expect(await service.getContainerRuntime()).toBe('docker');
     });
 
     it('returns "containerd" when cgroup contains "containerd"', async () => {
-      fsMock.existsSync.mockImplementation((p) => p === '/.dockerenv' || p === '/proc/1/cgroup');
+      fsMock.existsSync.mockImplementation(
+        (p) => p === '/.dockerenv' || p === '/proc/1/cgroup',
+      );
       fsMock.readFileSync.mockReturnValue('0:: containerd\n');
       expect(await service.getContainerRuntime()).toBe('containerd');
     });
