@@ -1767,24 +1767,21 @@
         <i class="fas fa-filter"></i>
       </div>
       <h2>{{ 'queue2.noJobsMatchFilter' | transloco }}</h2>
+      <!-- prettier-ignore -->
       <p class="empty-description">
-        @if (selectedStatus === JobStatus.COMPLETED) { {{
-        'queue2.noCompletedYet' | transloco }} } @else if (selectedStatus ===
-        JobStatus.ENCODING) { {{ 'queue2.noEncodingNow' | transloco }} } @else
-        if (selectedStatus === JobStatus.PAUSED) { {{ 'queue2.noPausedJobs' |
-        transloco }} } @else if (selectedStatus === JobStatus.QUEUED) { {{
-        'queue2.noQueuedJobs' | transloco }} } @else if (selectedStatus ===
-        JobStatus.FAILED) { {{ 'queue2.noFailedJobs' | transloco }} } @else if
-        (selectedStatus === JobStatus.CANCELLED) { {{ 'queue2.noCancelledJobs' |
-        transloco }} } @else if (selectedStatus === JobStatus.DETECTED) { {{
-        'queue2.noDetectedJobs' | transloco }} } @else if (selectedStatus ===
-        JobStatus.HEALTH_CHECK) { {{ 'queue2.noHealthCheckJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.VERIFYING) { {{
-        'queue2.noVerifyingJobs' | transloco }} } @else if (searchQuery) { {{
-        'queue2.noSearchResults' | transloco : { query: searchQuery } }} } @else
-        if (selectedNodeId) { {{ 'queue2.noNodeJobs' | transloco }} } @else if
-        (selectedLibraryId) { {{ 'queue2.noLibraryJobs' | transloco }} } @else {
-        {{ 'queue2.noFilterMatch' | transloco }} }
+        @if (selectedStatus === JobStatus.COMPLETED) { {{ 'queue2.noCompletedYet' | transloco }} }
+        @else if (selectedStatus === JobStatus.ENCODING) { {{ 'queue2.noEncodingNow' | transloco }} }
+        @else if (selectedStatus === JobStatus.PAUSED) { {{ 'queue2.noPausedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.QUEUED) { {{ 'queue2.noQueuedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.FAILED) { {{ 'queue2.noFailedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.CANCELLED) { {{ 'queue2.noCancelledJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.DETECTED) { {{ 'queue2.noDetectedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.HEALTH_CHECK) { {{ 'queue2.noHealthCheckJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.VERIFYING) { {{ 'queue2.noVerifyingJobs' | transloco }} }
+        @else if (searchQuery) { {{ 'queue2.noSearchResults' | transloco : { query: searchQuery } }} }
+        @else if (selectedNodeId) { {{ 'queue2.noNodeJobs' | transloco }} }
+        @else if (selectedLibraryId) { {{ 'queue2.noLibraryJobs' | transloco }} }
+        @else { {{ 'queue2.noFilterMatch' | transloco }} }
       </p>
       <div class="filter-summary">
         @if (selectedStatus !== 'ALL') {
