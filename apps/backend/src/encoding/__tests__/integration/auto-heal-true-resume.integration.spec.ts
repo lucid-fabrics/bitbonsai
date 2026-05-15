@@ -111,7 +111,9 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
           useValue: {
             startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
             manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
-            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+            getSystemDiagnostics: jest
+              .fn()
+              .mockResolvedValue('System Diagnostics:\n- No issues'),
           },
         },
       ],

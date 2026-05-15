@@ -425,9 +425,13 @@ describe('OverviewService', () => {
     });
 
     it('should handle errors gracefully when individual methods fail', async () => {
-      mockNodeRepository.groupByStatusCount.mockRejectedValue(new Error('Database error'));
+      mockNodeRepository.groupByStatusCount.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getOverviewStats()).rejects.toThrow('Database error');
+      await expect(service.getOverviewStats()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -549,7 +553,9 @@ describe('OverviewService', () => {
       expect(result.recent_activity[0].file_name).toBe('Movie.mkv');
       expect(result.recent_activity[0].library).toBe('Movies');
       expect(result.recent_activity[0].source_codec).toBe('H.264');
-      expect(result.recent_activity[0].completed_at).toBe('2025-09-30T21:45:32.123Z');
+      expect(result.recent_activity[0].completed_at).toBe(
+        '2025-09-30T21:45:32.123Z',
+      );
 
       // Verify top libraries
       expect(result.top_libraries).toHaveLength(1);
@@ -571,10 +577,12 @@ describe('OverviewService', () => {
 
     it('should handle errors from underlying methods', async () => {
       mockNodeRepository.groupByStatusCount.mockRejectedValue(
-        new Error('Database connection failed')
+        new Error('Database connection failed'),
       );
 
-      await expect(service.getOverview()).rejects.toThrow('Database connection failed');
+      await expect(service.getOverview()).rejects.toThrow(
+        'Database connection failed',
+      );
     });
   });
 });

@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -40,7 +49,7 @@ export class NodeRegistrationController {
     private readonly nodesService: NodesService,
     private readonly nodeDiscoveryService: NodeDiscoveryService,
     private readonly registrationRequestService: RegistrationRequestService,
-    private readonly sshKeyService: SshKeyService
+    private readonly sshKeyService: SshKeyService,
   ) {}
 
   /**
@@ -83,7 +92,9 @@ export class NodeRegistrationController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred during registration',
   })
-  async register(@Body() registerNodeDto: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
+  async register(
+    @Body() registerNodeDto: RegisterNodeDto,
+  ): Promise<NodeRegistrationResponseDto> {
     return this.nodesService.registerNode(registerNodeDto);
   }
 
@@ -157,7 +168,9 @@ export class NodeRegistrationController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while generating token',
   })
-  async generatePairingToken(@Param('id') id: string): Promise<NodeRegistrationResponseDto> {
+  async generatePairingToken(
+    @Param('id') id: string,
+  ): Promise<NodeRegistrationResponseDto> {
     return this.nodesService.generatePairingTokenForNode(id);
   }
 
@@ -263,9 +276,12 @@ export class NodeRegistrationController {
     description: 'Internal server error occurred while creating request',
   })
   async createRegistrationRequest(
-    @Body() createDto: CreateRegistrationRequestDto
+    @Body() createDto: CreateRegistrationRequestDto,
   ): Promise<RegistrationRequestResponseDto> {
-    const request = await this.registrationRequestService.createRegistrationRequest(createDto);
+    const request =
+      await this.registrationRequestService.createRegistrationRequest(
+        createDto,
+      );
     return toRegistrationRequestResponseDto(request);
   }
 
@@ -292,7 +308,9 @@ export class NodeRegistrationController {
   })
   async getPendingRequests(): Promise<RegistrationRequestResponseDto[]> {
     const currentNode = await this.nodesService.getCurrentNode();
-    const requests = await this.registrationRequestService.getPendingRequests(currentNode.id);
+    const requests = await this.registrationRequestService.getPendingRequests(
+      currentNode.id,
+    );
     return toRegistrationRequestResponseDtoArray(requests);
   }
 
@@ -302,7 +320,8 @@ export class NodeRegistrationController {
   @Get('registration-requests/:id')
   @ApiOperation({
     summary: 'Get registration request details',
-    description: 'Retrieves detailed information about a specific registration request.',
+    description:
+      'Retrieves detailed information about a specific registration request.',
   })
   @ApiParam({
     name: 'id',
@@ -319,7 +338,9 @@ export class NodeRegistrationController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while fetching request',
   })
-  async getRegistrationRequest(@Param('id') id: string): Promise<RegistrationRequestResponseDto> {
+  async getRegistrationRequest(
+    @Param('id') id: string,
+  ): Promise<RegistrationRequestResponseDto> {
     const request = await this.registrationRequestService.getRequest(id);
     return toRegistrationRequestResponseDto(request);
   }
@@ -363,9 +384,12 @@ export class NodeRegistrationController {
   })
   async approveRegistrationRequest(
     @Param('id') id: string,
-    @Body() approveDto?: ApproveRequestDto
+    @Body() approveDto?: ApproveRequestDto,
   ): Promise<RegistrationRequestResponseDto> {
-    const request = await this.registrationRequestService.approveRequest(id, approveDto);
+    const request = await this.registrationRequestService.approveRequest(
+      id,
+      approveDto,
+    );
     return toRegistrationRequestResponseDto(request);
   }
 
@@ -403,9 +427,12 @@ export class NodeRegistrationController {
   })
   async rejectRegistrationRequest(
     @Param('id') id: string,
-    @Body() rejectDto: RejectRequestDto
+    @Body() rejectDto: RejectRequestDto,
   ): Promise<RegistrationRequestResponseDto> {
-    const request = await this.registrationRequestService.rejectRequest(id, rejectDto);
+    const request = await this.registrationRequestService.rejectRequest(
+      id,
+      rejectDto,
+    );
     return toRegistrationRequestResponseDto(request);
   }
 
@@ -442,7 +469,7 @@ export class NodeRegistrationController {
     description: 'Internal server error occurred while cancelling request',
   })
   async cancelRegistrationRequest(
-    @Param('id') id: string
+    @Param('id') id: string,
   ): Promise<RegistrationRequestResponseDto> {
     const request = await this.registrationRequestService.cancelRequest(id);
     return toRegistrationRequestResponseDto(request);
@@ -479,9 +506,10 @@ export class NodeRegistrationController {
     description: 'Internal server error occurred while cancelling request',
   })
   async cancelRegistrationRequestByToken(
-    @Param('token') token: string
+    @Param('token') token: string,
   ): Promise<RegistrationRequestResponseDto> {
-    const request = await this.registrationRequestService.cancelRequestByToken(token);
+    const request =
+      await this.registrationRequestService.cancelRequestByToken(token);
     return toRegistrationRequestResponseDto(request);
   }
 
@@ -507,7 +535,8 @@ export class NodeRegistrationController {
       properties: {
         publicKey: {
           type: 'string',
-          example: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... bitbonsai-cluster-node',
+          example:
+            'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... bitbonsai-cluster-node',
         },
       },
     },
@@ -549,7 +578,7 @@ export class NodeRegistrationController {
     description: 'Invalid SSH public key format',
   })
   async addAuthorizedKey(
-    @Body() body: { publicKey: string; comment?: string }
+    @Body() body: { publicKey: string; comment?: string },
   ): Promise<{ success: boolean; message: string }> {
     this.sshKeyService.addAuthorizedKey(body.publicKey, body.comment);
     return {

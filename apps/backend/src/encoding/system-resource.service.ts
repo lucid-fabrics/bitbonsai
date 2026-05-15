@@ -49,16 +49,18 @@ export class SystemResourceService {
   // Load-based throttling
   private readonly DEFAULT_LOAD_THRESHOLD_MULTIPLIER = Math.min(
     parseFloat(process.env.LOAD_THRESHOLD_MULTIPLIER || '2.0'),
-    2.0
+    2.0,
   );
-  private loadThresholdMultiplier: number = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
+  private loadThresholdMultiplier: number =
+    this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
   private readonly MIN_FREE_MEMORY_GB = 4;
   private readonly THROTTLE_CHECK_INTERVAL_MS = 10000;
   private readonly THROTTLE_LOG_INTERVAL_MS = 60000;
   private lastThrottleLogTime = 0;
 
   // Encoding temp path (SSD cache pool)
-  private encodingTempPath: string | null = process.env.ENCODING_TEMP_PATH || null;
+  private encodingTempPath: string | null =
+    process.env.ENCODING_TEMP_PATH || null;
 
   // Calculated optimal workers
   readonly defaultWorkersPerNode: number;
@@ -76,20 +78,24 @@ export class SystemResourceService {
   calculateOptimalWorkers(): number {
     let cpuCount = os.cpus().length;
     if (!cpuCount || cpuCount < 1) {
-      this.logger.warn(`Invalid CPU count detected: ${cpuCount}, using fallback of 8 cores`);
+      this.logger.warn(
+        `Invalid CPU count detected: ${cpuCount}, using fallback of 8 cores`,
+      );
       cpuCount = 8;
     } else if (cpuCount < 4) {
       this.logger.warn(
-        `Low CPU count detected: ${cpuCount}, using minimum of 4 cores for worker calculation`
+        `Low CPU count detected: ${cpuCount}, using minimum of 4 cores for worker calculation`,
       );
       cpuCount = 4;
     }
 
     const theoreticalMax = Math.floor(cpuCount / this.CORES_PER_HEVC_JOB);
-    const optimalWorkers = Math.floor(theoreticalMax * this.WORKER_SAFETY_MARGIN);
+    const optimalWorkers = Math.floor(
+      theoreticalMax * this.WORKER_SAFETY_MARGIN,
+    );
     const clampedWorkers = Math.max(
       this.MIN_WORKERS_PER_NODE,
-      Math.min(optimalWorkers, this.MAX_WORKERS_PER_NODE)
+      Math.min(optimalWorkers, this.MAX_WORKERS_PER_NODE),
     );
 
     this.logger.log('CPU-Aware Worker Calculation:');
@@ -99,7 +105,7 @@ export class SystemResourceService {
     this.logger.log(`  Safety Margin: ${this.WORKER_SAFETY_MARGIN * 100}%`);
     this.logger.log(`  Optimal Workers (after margin): ${optimalWorkers}`);
     this.logger.log(
-      `  Final Workers (clamped ${this.MIN_WORKERS_PER_NODE}-${this.MAX_WORKERS_PER_NODE}): ${clampedWorkers}`
+      `  Final Workers (clamped ${this.MIN_WORKERS_PER_NODE}-${this.MAX_WORKERS_PER_NODE}): ${clampedWorkers}`,
     );
     this.logger.log(`  Using ${clampedWorkers} concurrent workers per node`);
 
@@ -153,11 +159,15 @@ export class SystemResourceService {
       if (now - this.lastThrottleLogTime > this.THROTTLE_LOG_INTERVAL_MS) {
         this.logger.warn(`THROTTLING: ${check.reason}`);
         this.logger.warn(`   ${check.details}`);
-        this.logger.warn(`   Waiting for system to stabilize before starting new jobs...`);
+        this.logger.warn(
+          `   Waiting for system to stabilize before starting new jobs...`,
+        );
         this.lastThrottleLogTime = now;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, this.THROTTLE_CHECK_INTERVAL_MS));
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.THROTTLE_CHECK_INTERVAL_MS),
+      );
       check = this.checkSystemLoad();
     }
   }
@@ -172,7 +182,10 @@ export class SystemResourceService {
    *
    * @throws Error if resources are insufficient
    */
-  async performResourcePreflightChecks(filePath: string, jobId: string): Promise<void> {
+  async performResourcePreflightChecks(
+    filePath: string,
+    jobId: string,
+  ): Promise<void> {
     const checks: string[] = [];
 
     // Check 1: File accessibility
@@ -185,7 +198,7 @@ export class SystemResourceService {
           `Possible causes:\n` +
           `- File permissions deny read access\n` +
           `- File is locked by another process\n` +
-          `- Network share disconnected`
+          `- Network share disconnected`,
       );
     }
 
@@ -198,9 +211,13 @@ export class SystemResourceService {
       const stats = await fs.promises.statfs(outputDir);
       const availableBytes = stats.bavail * stats.bsize;
       const availableGB = availableBytes / 1024 ** 3;
-      const requiredBytes = fileSizeBytes * (1 + this.DISK_SPACE_BUFFER_PERCENT / 100);
+      const requiredBytes =
+        fileSizeBytes * (1 + this.DISK_SPACE_BUFFER_PERCENT / 100);
       const requiredGB = requiredBytes / 1024 ** 3;
-      const minimumRequiredBytes = Math.max(requiredBytes, this.MIN_FREE_DISK_SPACE_GB * 1024 ** 3);
+      const minimumRequiredBytes = Math.max(
+        requiredBytes,
+        this.MIN_FREE_DISK_SPACE_GB * 1024 ** 3,
+      );
       const minimumRequiredGB = minimumRequiredBytes / 1024 ** 3;
 
       if (availableBytes < minimumRequiredBytes) {
@@ -209,15 +226,18 @@ export class SystemResourceService {
             `Available: ${availableGB.toFixed(2)} GB\n` +
             `Required: ${minimumRequiredGB.toFixed(2)} GB (source file + ${this.DISK_SPACE_BUFFER_PERCENT}% buffer)\n` +
             `Minimum: ${this.MIN_FREE_DISK_SPACE_GB} GB\n\n` +
-            `Please free up disk space before retrying this job.`
+            `Please free up disk space before retrying this job.`,
         );
       }
 
       checks.push(
-        `Disk space sufficient (${availableGB.toFixed(1)}GB available, ${requiredGB.toFixed(1)}GB needed)`
+        `Disk space sufficient (${availableGB.toFixed(1)}GB available, ${requiredGB.toFixed(1)}GB needed)`,
       );
     } catch (error: unknown) {
-      if (error instanceof Error && error.message.includes('Insufficient disk space')) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Insufficient disk space')
+      ) {
         throw error;
       }
       this.logger.warn(`Could not check disk space for ${outputDir}: ${error}`);
@@ -233,18 +253,20 @@ export class SystemResourceService {
     if (freeMemoryPercent < this.MIN_FREE_MEMORY_PERCENT) {
       this.logger.warn(
         `Low memory warning: ${freeMemoryGB.toFixed(2)}GB (${freeMemoryPercent.toFixed(1)}%) free. ` +
-          `Job may be slower or fail if system runs out of memory.`
+          `Job may be slower or fail if system runs out of memory.`,
       );
       checks.push(
-        `Low memory (${freeMemoryGB.toFixed(1)}GB / ${freeMemoryPercent.toFixed(1)}% free)`
+        `Low memory (${freeMemoryGB.toFixed(1)}GB / ${freeMemoryPercent.toFixed(1)}% free)`,
       );
     } else {
       checks.push(
-        `Memory sufficient (${freeMemoryGB.toFixed(1)}GB / ${freeMemoryPercent.toFixed(1)}% free)`
+        `Memory sufficient (${freeMemoryGB.toFixed(1)}GB / ${freeMemoryPercent.toFixed(1)}% free)`,
       );
     }
 
-    this.logger.log(`Resource preflight checks for job ${jobId}:\n  ${checks.join('\n  ')}`);
+    this.logger.log(
+      `Resource preflight checks for job ${jobId}:\n  ${checks.join('\n  ')}`,
+    );
   }
 
   /**
@@ -261,29 +283,38 @@ export class SystemResourceService {
       if (nodeWithSettings?.loadThresholdMultiplier) {
         this.loadThresholdMultiplier = nodeWithSettings.loadThresholdMultiplier;
         this.logger.log(
-          `Load threshold loaded from database: ${this.loadThresholdMultiplier}x (${os.cpus().length} cores = max load ${(os.cpus().length * this.loadThresholdMultiplier).toFixed(0)})`
+          `Load threshold loaded from database: ${this.loadThresholdMultiplier}x (${os.cpus().length} cores = max load ${(os.cpus().length * this.loadThresholdMultiplier).toFixed(0)})`,
         );
       } else {
         this.loadThresholdMultiplier = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
         this.logger.log(
-          `Load threshold using default: ${this.loadThresholdMultiplier}x (${os.cpus().length} cores = max load ${(os.cpus().length * this.loadThresholdMultiplier).toFixed(0)})`
+          `Load threshold using default: ${this.loadThresholdMultiplier}x (${os.cpus().length} cores = max load ${(os.cpus().length * this.loadThresholdMultiplier).toFixed(0)})`,
         );
       }
 
       if (nodeWithSettings?.encodingTempPath) {
         this.encodingTempPath = nodeWithSettings.encodingTempPath;
-        this.logger.log(`Encoding temp path loaded from database: ${this.encodingTempPath}`);
+        this.logger.log(
+          `Encoding temp path loaded from database: ${this.encodingTempPath}`,
+        );
       } else if (process.env.ENCODING_TEMP_PATH) {
         this.encodingTempPath = process.env.ENCODING_TEMP_PATH;
-        this.logger.log(`Encoding temp path from ENV: ${this.encodingTempPath}`);
+        this.logger.log(
+          `Encoding temp path from ENV: ${this.encodingTempPath}`,
+        );
       } else {
         this.encodingTempPath = null;
-        this.logger.debug('No encoding temp path configured, using source directory');
+        this.logger.debug(
+          'No encoding temp path configured, using source directory',
+        );
       }
     } catch (error: unknown) {
       this.loadThresholdMultiplier = this.DEFAULT_LOAD_THRESHOLD_MULTIPLIER;
       this.encodingTempPath = process.env.ENCODING_TEMP_PATH || null;
-      this.logger.warn(`Failed to load settings from database, using defaults`, error);
+      this.logger.warn(
+        `Failed to load settings from database, using defaults`,
+        error,
+      );
     }
   }
 

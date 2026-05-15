@@ -85,8 +85,12 @@ describe('LicenseService', () => {
     it('should throw NotFoundException when license does not exist', async () => {
       mockLicenseRepository.findUnique.mockResolvedValue(null);
 
-      await expect(service.validateLicense('INVALID-KEY')).rejects.toThrow(NotFoundException);
-      await expect(service.validateLicense('INVALID-KEY')).rejects.toThrow('License not found');
+      await expect(service.validateLicense('INVALID-KEY')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.validateLicense('INVALID-KEY')).rejects.toThrow(
+        'License not found',
+      );
     });
 
     it('should throw BadRequestException when license status is not ACTIVE', async () => {
@@ -102,8 +106,12 @@ describe('LicenseService', () => {
 
       mockLicenseRepository.findUnique.mockResolvedValue(mockLicense);
 
-      await expect(service.validateLicense('REV-test123')).rejects.toThrow(BadRequestException);
-      await expect(service.validateLicense('REV-test123')).rejects.toThrow('License is not active');
+      await expect(service.validateLicense('REV-test123')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.validateLicense('REV-test123')).rejects.toThrow(
+        'License is not active',
+      );
     });
 
     it('should throw BadRequestException when license has expired', async () => {
@@ -119,8 +127,12 @@ describe('LicenseService', () => {
 
       mockLicenseRepository.findUnique.mockResolvedValue(mockLicense);
 
-      await expect(service.validateLicense('EXP-test123')).rejects.toThrow(BadRequestException);
-      await expect(service.validateLicense('EXP-test123')).rejects.toThrow('License has expired');
+      await expect(service.validateLicense('EXP-test123')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.validateLicense('EXP-test123')).rejects.toThrow(
+        'License has expired',
+      );
     });
 
     it('should not throw when validUntil is in the future', async () => {
@@ -231,7 +243,7 @@ describe('LicenseService', () => {
           maxNodes: 1,
           maxConcurrentJobs: 2,
           status: LicenseStatus.ACTIVE,
-        })
+        }),
       );
     });
 
@@ -270,7 +282,7 @@ describe('LicenseService', () => {
         expect.objectContaining({
           multiNode: true,
           advancedPresets: true,
-        })
+        }),
       );
       expect(result.maxNodes).toBe(2);
     });
@@ -312,7 +324,7 @@ describe('LicenseService', () => {
           priorityQueue: true,
           cloudStorage: true,
           webhooks: true,
-        })
+        }),
       );
       expect(result.maxNodes).toBe(50);
       expect(result.maxConcurrentJobs).toBe(100);
@@ -343,7 +355,7 @@ describe('LicenseService', () => {
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
         expect.objectContaining({
           key: expect.stringMatching(/^FRE-/),
-        })
+        }),
       );
     });
 
@@ -372,7 +384,7 @@ describe('LicenseService', () => {
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
         expect.objectContaining({
           validUntil: null,
-        })
+        }),
       );
     });
 
@@ -402,7 +414,7 @@ describe('LicenseService', () => {
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
         expect.objectContaining({
           validUntil: new Date('2026-06-30T00:00:00.000Z'),
-        })
+        }),
       );
     });
   });
@@ -444,8 +456,12 @@ describe('LicenseService', () => {
     it('should throw NotFoundException when license does not exist', async () => {
       mockLicenseRepository.findUnique.mockResolvedValue(null);
 
-      await expect(service.checkCanAddNode('invalid-id')).rejects.toThrow(NotFoundException);
-      await expect(service.checkCanAddNode('invalid-id')).rejects.toThrow('License not found');
+      await expect(service.checkCanAddNode('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.checkCanAddNode('invalid-id')).rejects.toThrow(
+        'License not found',
+      );
     });
 
     it('should call findUnique with correct licenseId', async () => {

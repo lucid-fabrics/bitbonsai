@@ -23,7 +23,7 @@ export class FileFailureTrackingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly fileFailureRecordRepository: FileFailureRecordRepository
+    private readonly fileFailureRecordRepository: FileFailureRecordRepository,
   ) {}
 
   /**
@@ -37,7 +37,7 @@ export class FileFailureTrackingService {
     filePath: string,
     libraryId: string,
     error?: string,
-    contentFingerprint?: string
+    contentFingerprint?: string,
   ): Promise<boolean> {
     const id = randomUUID();
     const threshold = this.AUTO_BLACKLIST_THRESHOLD;
@@ -66,7 +66,9 @@ export class FileFailureTrackingService {
     if (!record) return false;
 
     if (record.autoBlacklisted && record.totalFailures >= threshold) {
-      this.logger.warn(`Auto-blacklisted file after ${record.totalFailures} failures: ${filePath}`);
+      this.logger.warn(
+        `Auto-blacklisted file after ${record.totalFailures} failures: ${filePath}`,
+      );
       return true;
     }
 
@@ -79,17 +81,27 @@ export class FileFailureTrackingService {
   async isBlacklisted(
     filePath: string,
     libraryId: string,
-    contentFingerprint?: string
+    contentFingerprint?: string,
   ): Promise<boolean> {
-    return this.fileFailureRecordRepository.isBlacklisted(filePath, libraryId, contentFingerprint);
+    return this.fileFailureRecordRepository.isBlacklisted(
+      filePath,
+      libraryId,
+      contentFingerprint,
+    );
   }
 
   /**
    * Batch check which file paths are auto-blacklisted.
    * Returns a Set of blacklisted paths for efficient lookup.
    */
-  async getBlacklistedPaths(filePaths: string[], libraryId: string): Promise<Set<string>> {
-    return this.fileFailureRecordRepository.getBlacklistedPaths(filePaths, libraryId);
+  async getBlacklistedPaths(
+    filePaths: string[],
+    libraryId: string,
+  ): Promise<Set<string>> {
+    return this.fileFailureRecordRepository.getBlacklistedPaths(
+      filePaths,
+      libraryId,
+    );
   }
 
   /**
@@ -105,6 +117,9 @@ export class FileFailureTrackingService {
    * Get failure count for a file.
    */
   async getFailureCount(filePath: string, libraryId: string): Promise<number> {
-    return this.fileFailureRecordRepository.getFailureCount(filePath, libraryId);
+    return this.fileFailureRecordRepository.getFailureCount(
+      filePath,
+      libraryId,
+    );
   }
 }

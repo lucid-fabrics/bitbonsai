@@ -23,7 +23,8 @@ describe('EncodingHistoryService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    mockJobRepository = mockJobRepositoryInstance as unknown as jest.Mocked<JobRepository>;
+    mockJobRepository =
+      mockJobRepositoryInstance as unknown as jest.Mocked<JobRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -163,13 +164,16 @@ describe('EncodingHistoryService', () => {
       expect(profiles.length).toBe(3);
 
       const hevcNvidia = profiles.find(
-        (p) => p.codec === 'HEVC' && p.accelerationType === AccelerationType.NVIDIA
+        (p) =>
+          p.codec === 'HEVC' && p.accelerationType === AccelerationType.NVIDIA,
       );
       const hevcCpu = profiles.find(
-        (p) => p.codec === 'HEVC' && p.accelerationType === AccelerationType.CPU
+        (p) =>
+          p.codec === 'HEVC' && p.accelerationType === AccelerationType.CPU,
       );
       const av1Nvidia = profiles.find(
-        (p) => p.codec === 'AV1' && p.accelerationType === AccelerationType.NVIDIA
+        (p) =>
+          p.codec === 'AV1' && p.accelerationType === AccelerationType.NVIDIA,
       );
 
       expect(hevcNvidia).not.toBeUndefined();
@@ -181,7 +185,9 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockJobRepository.findManyWithInclude.mockRejectedValue(new Error('Database error'));
+      mockJobRepository.findManyWithInclude.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       // Should not throw
       await expect(service.loadHistoricalData()).resolves.not.toThrow();
@@ -223,7 +229,7 @@ describe('EncodingHistoryService', () => {
         'HEVC',
         AccelerationType.NVIDIA,
         1024 * 1024 * 100, // 100MB remaining
-        30 // 30 FPS
+        30, // 30 FPS
       );
 
       expect(result.basedOn).toBe('current_speed');
@@ -235,7 +241,7 @@ describe('EncodingHistoryService', () => {
       const result = service.calculateETA(
         'HEVC',
         AccelerationType.NVIDIA,
-        1024 * 1024 * 100 // 100MB remaining
+        1024 * 1024 * 100, // 100MB remaining
       );
 
       expect(result.basedOn).toBe('historical');
@@ -250,7 +256,7 @@ describe('EncodingHistoryService', () => {
       const result = service.calculateETA(
         'VP9', // No historical data for VP9
         AccelerationType.CPU,
-        1024 * 1024 * 100 // 100MB remaining
+        1024 * 1024 * 100, // 100MB remaining
       );
 
       expect(result.basedOn).toBe('estimate');
@@ -275,7 +281,11 @@ describe('EncodingHistoryService', () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
       await service.loadHistoricalData();
 
-      const result = service.calculateETA('AV1', AccelerationType.CPU, 1024 * 1024 * 100);
+      const result = service.calculateETA(
+        'AV1',
+        AccelerationType.CPU,
+        1024 * 1024 * 100,
+      );
 
       expect(result.basedOn).toBe('historical');
       expect(result.confidence).toBe('medium');
@@ -298,7 +308,11 @@ describe('EncodingHistoryService', () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue(mockJobs);
       await service.loadHistoricalData();
 
-      const result = service.calculateETA('H264', AccelerationType.INTEL_QSV, 1024 * 1024 * 100);
+      const result = service.calculateETA(
+        'H264',
+        AccelerationType.INTEL_QSV,
+        1024 * 1024 * 100,
+      );
 
       expect(result.basedOn).toBe('historical');
       expect(result.confidence).toBe('low');
@@ -312,7 +326,7 @@ describe('EncodingHistoryService', () => {
         'HEVC',
         AccelerationType.NVIDIA,
         100, // 100 seconds
-        1024 * 1024 * 100 // 100MB = 1MB/s
+        1024 * 1024 * 100, // 100MB = 1MB/s
       );
 
       const profiles = service.getSpeedProfiles();
@@ -325,14 +339,19 @@ describe('EncodingHistoryService', () => {
 
     it('should update existing profile with rolling average', async () => {
       // First update
-      await service.updateSpeedProfile('HEVC', AccelerationType.NVIDIA, 100, 1024 * 1024 * 100);
+      await service.updateSpeedProfile(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        100,
+        1024 * 1024 * 100,
+      );
 
       // Second update with different speed
       await service.updateSpeedProfile(
         'HEVC',
         AccelerationType.NVIDIA,
         50, // Faster encoding
-        1024 * 1024 * 100 // Same size = 2MB/s
+        1024 * 1024 * 100, // Same size = 2MB/s
       );
 
       const profiles = service.getSpeedProfiles();
@@ -344,7 +363,12 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should ignore updates with zero duration', async () => {
-      await service.updateSpeedProfile('HEVC', AccelerationType.NVIDIA, 0, 1024 * 1024 * 100);
+      await service.updateSpeedProfile(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        0,
+        1024 * 1024 * 100,
+      );
 
       const profiles = service.getSpeedProfiles();
       expect(profiles.length).toBe(0);
@@ -358,8 +382,18 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should ignore updates with negative values', async () => {
-      await service.updateSpeedProfile('HEVC', AccelerationType.NVIDIA, -100, 1024 * 1024 * 100);
-      await service.updateSpeedProfile('HEVC', AccelerationType.NVIDIA, 100, -1024 * 1024 * 100);
+      await service.updateSpeedProfile(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        -100,
+        1024 * 1024 * 100,
+      );
+      await service.updateSpeedProfile(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        100,
+        -1024 * 1024 * 100,
+      );
 
       const profiles = service.getSpeedProfiles();
       expect(profiles.length).toBe(0);
@@ -373,9 +407,24 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should return all profiles', async () => {
-      await service.updateSpeedProfile('HEVC', AccelerationType.NVIDIA, 100, 1024 * 1024 * 100);
-      await service.updateSpeedProfile('AV1', AccelerationType.CPU, 200, 1024 * 1024 * 100);
-      await service.updateSpeedProfile('H264', AccelerationType.INTEL_QSV, 50, 1024 * 1024 * 100);
+      await service.updateSpeedProfile(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        100,
+        1024 * 1024 * 100,
+      );
+      await service.updateSpeedProfile(
+        'AV1',
+        AccelerationType.CPU,
+        200,
+        1024 * 1024 * 100,
+      );
+      await service.updateSpeedProfile(
+        'H264',
+        AccelerationType.INTEL_QSV,
+        50,
+        1024 * 1024 * 100,
+      );
 
       const profiles = service.getSpeedProfiles();
       expect(profiles.length).toBe(3);
@@ -390,14 +439,22 @@ describe('EncodingHistoryService', () => {
 
     it('should format seconds correctly', () => {
       // Small file that will take ~30 seconds
-      const result = service.calculateETA('HEVC', AccelerationType.NVIDIA, 30 * 5 * 1024 * 1024);
+      const result = service.calculateETA(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        30 * 5 * 1024 * 1024,
+      );
 
       expect(result.etaFormatted).toMatch(/\d+s$/);
     });
 
     it('should format minutes correctly', () => {
       // Larger file that will take ~5 minutes
-      const result = service.calculateETA('HEVC', AccelerationType.NVIDIA, 300 * 5 * 1024 * 1024);
+      const result = service.calculateETA(
+        'HEVC',
+        AccelerationType.NVIDIA,
+        300 * 5 * 1024 * 1024,
+      );
 
       expect(result.etaFormatted).toMatch(/\d+m \d+s$/);
     });
@@ -405,7 +462,11 @@ describe('EncodingHistoryService', () => {
     it('should format hours correctly', () => {
       // Large file that will take ~2 hours (use CPU for slower encoding)
       // HEVC CPU fallback is ~5MB/s, so 36GB should take ~2 hours
-      const result = service.calculateETA('HEVC', AccelerationType.CPU, 36 * 1024 * 1024 * 1024);
+      const result = service.calculateETA(
+        'HEVC',
+        AccelerationType.CPU,
+        36 * 1024 * 1024 * 1024,
+      );
 
       expect(result.etaFormatted).toMatch(/\d+h \d+m$/);
     });
@@ -418,11 +479,15 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should provide faster estimates for GPU acceleration', () => {
-      const cpuResult = service.calculateETA('HEVC', AccelerationType.CPU, 1024 * 1024 * 1000);
+      const cpuResult = service.calculateETA(
+        'HEVC',
+        AccelerationType.CPU,
+        1024 * 1024 * 1000,
+      );
       const nvidiaResult = service.calculateETA(
         'HEVC',
         AccelerationType.NVIDIA,
-        1024 * 1024 * 1000
+        1024 * 1024 * 1000,
       );
 
       // NVIDIA should be faster (lower ETA)
@@ -430,8 +495,16 @@ describe('EncodingHistoryService', () => {
     });
 
     it('should provide slower estimates for AV1 vs HEVC', () => {
-      const hevcResult = service.calculateETA('HEVC', AccelerationType.CPU, 1024 * 1024 * 1000);
-      const av1Result = service.calculateETA('AV1', AccelerationType.CPU, 1024 * 1024 * 1000);
+      const hevcResult = service.calculateETA(
+        'HEVC',
+        AccelerationType.CPU,
+        1024 * 1024 * 1000,
+      );
+      const av1Result = service.calculateETA(
+        'AV1',
+        AccelerationType.CPU,
+        1024 * 1024 * 1000,
+      );
 
       // AV1 should be slower (higher ETA)
       expect(av1Result.etaSeconds).toBeGreaterThan(hevcResult.etaSeconds);

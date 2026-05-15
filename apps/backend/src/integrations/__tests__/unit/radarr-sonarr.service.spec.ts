@@ -2,7 +2,10 @@ import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
 import { SettingsRepository } from '../../../common/repositories/settings.repository';
-import { MediaServerType, RadarrSonarrIntegrationService } from '../../radarr-sonarr.service';
+import {
+  MediaServerType,
+  RadarrSonarrIntegrationService,
+} from '../../radarr-sonarr.service';
 
 describe('RadarrSonarrIntegrationService', () => {
   let service: RadarrSonarrIntegrationService;
@@ -28,7 +31,9 @@ describe('RadarrSonarrIntegrationService', () => {
       ],
     }).compile();
 
-    service = module.get<RadarrSonarrIntegrationService>(RadarrSonarrIntegrationService);
+    service = module.get<RadarrSonarrIntegrationService>(
+      RadarrSonarrIntegrationService,
+    );
   });
 
   it('should be defined', () => {
@@ -62,7 +67,7 @@ describe('RadarrSonarrIntegrationService', () => {
               qualityProfileId: 1,
             },
           ],
-        })
+        }),
       );
 
       const result = await service.getRadarrMovies();
@@ -84,7 +89,9 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       const result = await service.getRadarrMovies();
 
@@ -128,7 +135,7 @@ describe('RadarrSonarrIntegrationService', () => {
               qualityProfileId: 1,
             },
           ],
-        })
+        }),
       );
 
       const result = await service.getSonarrSeries();
@@ -161,7 +168,7 @@ describe('RadarrSonarrIntegrationService', () => {
         { name: 'RescanMovie', movieId: 42 },
         expect.objectContaining({
           headers: { 'X-Api-Key': 'api-key' },
-        })
+        }),
       );
     });
 
@@ -170,7 +177,9 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
-      mockHttpService.post.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.post.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       await expect(service.triggerRadarrRescan(1)).resolves.not.toThrow();
     });
@@ -189,7 +198,7 @@ describe('RadarrSonarrIntegrationService', () => {
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'http://sonarr:8989/api/v3/command',
         { name: 'RescanSeries', seriesId: 7 },
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -229,7 +238,7 @@ describe('RadarrSonarrIntegrationService', () => {
               },
             },
           ],
-        })
+        }),
       );
 
       const result = await service.shouldSkipFile('/movies/test.mkv');
@@ -263,7 +272,7 @@ describe('RadarrSonarrIntegrationService', () => {
               },
             },
           ],
-        })
+        }),
       );
 
       const result = await service.shouldSkipFile('/movies/test.mkv');
@@ -274,12 +283,14 @@ describe('RadarrSonarrIntegrationService', () => {
 
   describe('testConnection', () => {
     it('should return success with version', async () => {
-      mockHttpService.get.mockReturnValue(of({ data: { version: '4.7.5.7726' } }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: { version: '4.7.5.7726' } }),
+      );
 
       const result = await service.testConnection(
         MediaServerType.RADARR,
         'http://radarr:7878',
-        'api-key'
+        'api-key',
       );
 
       expect(result.success).toBe(true);
@@ -287,12 +298,14 @@ describe('RadarrSonarrIntegrationService', () => {
     });
 
     it('should return error on failure', async () => {
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Connection refused')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Connection refused')),
+      );
 
       const result = await service.testConnection(
         MediaServerType.SONARR,
         'http://sonarr:8989',
-        'bad-key'
+        'bad-key',
       );
 
       expect(result.success).toBe(false);
@@ -320,7 +333,7 @@ describe('RadarrSonarrIntegrationService', () => {
             { id: 1, name: 'HD-1080p' },
             { id: 2, name: '4K' },
           ],
-        })
+        }),
       );
 
       const result = await service.getRadarrQualityProfiles();
@@ -338,7 +351,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
       const result = await service.registerWebhooks(
         MediaServerType.RADARR,
-        'http://localhost:3000/webhook'
+        'http://localhost:3000/webhook',
       );
 
       expect(result.success).toBe(false);
@@ -357,14 +370,14 @@ describe('RadarrSonarrIntegrationService', () => {
 
       const result = await service.registerWebhooks(
         MediaServerType.RADARR,
-        'http://localhost:3000/webhook'
+        'http://localhost:3000/webhook',
       );
 
       expect(result.success).toBe(true);
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'http://radarr:7878/api/v3/notification',
         expect.objectContaining({ name: 'BitBonsai' }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -373,19 +386,21 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(of({ data: [{ id: 99, name: 'BitBonsai' }] }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: [{ id: 99, name: 'BitBonsai' }] }),
+      );
       mockHttpService.put.mockReturnValue(of({ data: {} }));
 
       const result = await service.registerWebhooks(
         MediaServerType.RADARR,
-        'http://localhost:3000/webhook'
+        'http://localhost:3000/webhook',
       );
 
       expect(result.success).toBe(true);
       expect(mockHttpService.put).toHaveBeenCalledWith(
         'http://radarr:7878/api/v3/notification/99',
         expect.objectContaining({ id: 99, name: 'BitBonsai' }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -394,11 +409,13 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Unauthorized')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Unauthorized')),
+      );
 
       const result = await service.registerWebhooks(
         MediaServerType.RADARR,
-        'http://localhost:3000/webhook'
+        'http://localhost:3000/webhook',
       );
 
       expect(result.success).toBe(false);
@@ -414,7 +431,7 @@ describe('RadarrSonarrIntegrationService', () => {
 
       const result = await service.registerWebhooks(
         MediaServerType.RADARR,
-        'http://localhost:3000/webhook'
+        'http://localhost:3000/webhook',
       );
 
       expect(result.success).toBe(false);
@@ -429,7 +446,10 @@ describe('RadarrSonarrIntegrationService', () => {
       mockHttpService.get.mockReturnValue(of({ data: [] }));
       mockHttpService.post.mockReturnValue(of({ data: {} }));
 
-      await service.registerWebhooks(MediaServerType.RADARR, 'http://cb/webhook');
+      await service.registerWebhooks(
+        MediaServerType.RADARR,
+        'http://cb/webhook',
+      );
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
         expect.any(String),
@@ -437,7 +457,7 @@ describe('RadarrSonarrIntegrationService', () => {
           onMovieFileDelete: true,
           onEpisodeFileDelete: false,
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -449,7 +469,10 @@ describe('RadarrSonarrIntegrationService', () => {
       mockHttpService.get.mockReturnValue(of({ data: [] }));
       mockHttpService.post.mockReturnValue(of({ data: {} }));
 
-      await service.registerWebhooks(MediaServerType.SONARR, 'http://cb/webhook');
+      await service.registerWebhooks(
+        MediaServerType.SONARR,
+        'http://cb/webhook',
+      );
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
         expect.any(String),
@@ -457,7 +480,7 @@ describe('RadarrSonarrIntegrationService', () => {
           onEpisodeFileDelete: true,
           onMovieFileDelete: false,
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -476,7 +499,9 @@ describe('RadarrSonarrIntegrationService', () => {
         sonarrUrl: 'http://sonarr:8989',
         sonarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(of({ data: [{ id: 3, name: 'WEB-DL 1080p' }] }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: [{ id: 3, name: 'WEB-DL 1080p' }] }),
+      );
 
       const result = await service.getSonarrQualityProfiles();
 
@@ -488,7 +513,9 @@ describe('RadarrSonarrIntegrationService', () => {
         sonarrUrl: 'http://sonarr:8989',
         sonarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       const result = await service.getSonarrQualityProfiles();
 
@@ -502,7 +529,9 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       const result = await service.getRadarrQualityProfiles();
 
@@ -525,7 +554,7 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrApiKey: 'api-key',
       });
       mockHttpService.get.mockReturnValue(
-        of({ data: [{ movieFile: { path: '/movies/other.mkv' } }] })
+        of({ data: [{ movieFile: { path: '/movies/other.mkv' } }] }),
       );
 
       const result = await service.getRadarrMovieFile('/movies/test.mkv');
@@ -563,7 +592,9 @@ describe('RadarrSonarrIntegrationService', () => {
         radarrUrl: 'http://radarr:7878',
         radarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('network error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('network error')),
+      );
 
       const result = await service.getRadarrMovieFile('/movies/test.mkv');
 
@@ -600,7 +631,7 @@ describe('RadarrSonarrIntegrationService', () => {
               qualityProfileId: 1,
             },
           ],
-        })
+        }),
       );
       mockHttpService.post.mockReturnValue(of({ data: {} }));
 
@@ -609,7 +640,7 @@ describe('RadarrSonarrIntegrationService', () => {
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'http://radarr:7878/api/v3/command',
         { name: 'RescanMovie', movieId: 10 },
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -635,7 +666,7 @@ describe('RadarrSonarrIntegrationService', () => {
               qualityProfileId: 2,
             },
           ],
-        })
+        }),
       );
       mockHttpService.post.mockReturnValue(of({ data: {} }));
 
@@ -644,7 +675,7 @@ describe('RadarrSonarrIntegrationService', () => {
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'http://sonarr:8989/api/v3/command',
         { name: 'RescanSeries', seriesId: 7 },
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -693,7 +724,7 @@ describe('RadarrSonarrIntegrationService', () => {
               },
             },
           ],
-        })
+        }),
       );
 
       const result = await service.shouldSkipFile('/movies/test.mkv');
@@ -730,7 +761,9 @@ describe('RadarrSonarrIntegrationService', () => {
         sonarrUrl: 'http://sonarr:8989',
         sonarrApiKey: 'api-key',
       });
-      mockHttpService.post.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.post.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       await expect(service.triggerSonarrRescan(1)).resolves.not.toThrow();
     });
@@ -742,7 +775,9 @@ describe('RadarrSonarrIntegrationService', () => {
         sonarrUrl: 'http://sonarr:8989',
         sonarrApiKey: 'api-key',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       const result = await service.getSonarrSeries();
 
@@ -767,7 +802,7 @@ describe('RadarrSonarrIntegrationService', () => {
               // statistics intentionally absent
             },
           ],
-        })
+        }),
       );
 
       const result = await service.getSonarrSeries();
@@ -786,7 +821,10 @@ describe('RadarrSonarrIntegrationService', () => {
       // testConnection with Whisparr uses httpService directly, so proxy via
       // getRadarrMovies to indirectly test getConfig returning null for missing URL
       // Instead, confirm registerWebhooks returns "Not configured" for Whisparr
-      const result = await service.registerWebhooks(MediaServerType.WHISPARR, 'http://cb/webhook');
+      const result = await service.registerWebhooks(
+        MediaServerType.WHISPARR,
+        'http://cb/webhook',
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Not configured');
@@ -804,7 +842,7 @@ describe('RadarrSonarrIntegrationService', () => {
       expect(result).toEqual([]);
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://radarr:7878/api/v3/movie',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -823,7 +861,10 @@ describe('RadarrSonarrIntegrationService', () => {
         whisparrApiKey: null,
       });
 
-      const result = await service.registerWebhooks(MediaServerType.WHISPARR, 'http://cb/webhook');
+      const result = await service.registerWebhooks(
+        MediaServerType.WHISPARR,
+        'http://cb/webhook',
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Not configured');
@@ -837,13 +878,16 @@ describe('RadarrSonarrIntegrationService', () => {
       mockHttpService.get.mockReturnValue(of({ data: [] }));
       mockHttpService.post.mockReturnValue(of({ data: {} }));
 
-      const result = await service.registerWebhooks(MediaServerType.WHISPARR, 'http://cb/webhook');
+      const result = await service.registerWebhooks(
+        MediaServerType.WHISPARR,
+        'http://cb/webhook',
+      );
 
       expect(result.success).toBe(true);
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'http://whisparr:6969/api/v3/notification',
         expect.objectContaining({ name: 'BitBonsai' }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -891,7 +935,7 @@ describe('RadarrSonarrIntegrationService', () => {
                 qualityProfileId: 1,
               },
             ],
-          })
+          }),
         );
       mockHttpService.post.mockReturnValue(of({ data: {} }));
 
@@ -900,7 +944,7 @@ describe('RadarrSonarrIntegrationService', () => {
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'http://sonarr:8989/api/v3/command',
         { name: 'RescanSeries', seriesId: 5 },
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 

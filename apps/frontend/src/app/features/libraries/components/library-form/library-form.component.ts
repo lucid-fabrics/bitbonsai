@@ -24,7 +24,11 @@ import { environment } from '../../../../../environments/environment';
 import type { Node } from '../../../nodes/models/node.model';
 import { PoliciesActions } from '../../../policies/+state/policies.actions';
 import { PoliciesSelectors } from '../../../policies/+state/policies.selectors';
-import type { CreateLibraryDto, Library, UpdateLibraryDto } from '../../models/library.model';
+import type {
+  CreateLibraryDto,
+  Library,
+  UpdateLibraryDto,
+} from '../../models/library.model';
 import { MediaType } from '../../models/library.model';
 
 interface LibraryFormControls {
@@ -39,7 +43,12 @@ interface LibraryFormControls {
 @Component({
   selector: 'app-library-form',
   standalone: true,
-  imports: [AsyncPipe, ReactiveFormsModule, PathSelectorComponent, TranslocoModule],
+  imports: [
+    AsyncPipe,
+    ReactiveFormsModule,
+    PathSelectorComponent,
+    TranslocoModule,
+  ],
   templateUrl: './library-form.component.html',
   styleUrls: ['./library-form.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -147,21 +156,23 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
 
   private buildUpdateDto(
     formValue: ReturnType<typeof this.libraryForm.getRawValue>,
-    lib: Library
+    lib: Library,
   ): UpdateLibraryDto {
     const updates: UpdateLibraryDto = {};
     if (formValue.name !== lib.name) updates.name = formValue.name;
     if (formValue.path !== lib.path) updates.path = formValue.path;
-    if (formValue.mediaType !== lib.mediaType) updates.mediaType = formValue.mediaType;
+    if (formValue.mediaType !== lib.mediaType)
+      updates.mediaType = formValue.mediaType;
     if (formValue.enabled !== lib.enabled) updates.enabled = formValue.enabled;
-    if (formValue.watchEnabled !== lib.watchEnabled) updates.watchEnabled = formValue.watchEnabled;
+    if (formValue.watchEnabled !== lib.watchEnabled)
+      updates.watchEnabled = formValue.watchEnabled;
     if (formValue.defaultPolicyId !== lib.defaultPolicyId)
       updates.defaultPolicyId = formValue.defaultPolicyId;
     return updates;
   }
 
   private buildCreateDto(
-    formValue: ReturnType<typeof this.libraryForm.getRawValue>
+    formValue: ReturnType<typeof this.libraryForm.getRawValue>,
   ): CreateLibraryDto {
     return {
       name: formValue.name,

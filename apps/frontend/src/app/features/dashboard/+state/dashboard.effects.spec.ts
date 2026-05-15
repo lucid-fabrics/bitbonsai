@@ -26,7 +26,9 @@ describe('MediaStatsEffects', () => {
     });
 
     effects = TestBed.inject(MediaStatsEffects);
-    service = TestBed.inject(MediaStatsService) as jest.Mocked<MediaStatsService>;
+    service = TestBed.inject(
+      MediaStatsService,
+    ) as jest.Mocked<MediaStatsService>;
   });
 
   it('should be created', () => {

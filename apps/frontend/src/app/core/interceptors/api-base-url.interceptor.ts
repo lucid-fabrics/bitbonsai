@@ -1,4 +1,8 @@
-import { HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import {
+  HttpHandlerFn,
+  HttpInterceptorFn,
+  HttpRequest,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { NodeConfigService } from '../services/node-config.service';
@@ -136,7 +140,7 @@ function getApiBaseUrl(nodeConfigService: NodeConfigService): string {
  */
 export const apiBaseUrlInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
-  next: HttpHandlerFn
+  next: HttpHandlerFn,
 ) => {
   // Only transform requests that start with /api/
   if (req.url.startsWith('/api/')) {
@@ -154,10 +158,14 @@ export const apiBaseUrlInterceptor: HttpInterceptorFn = (
     ];
 
     // Check if this request should always go to local backend
-    const isLocalOnly = localOnlyEndpoints.some((endpoint) => req.url.startsWith(endpoint));
+    const isLocalOnly = localOnlyEndpoints.some((endpoint) =>
+      req.url.startsWith(endpoint),
+    );
 
     // Get base URL - use environment.apiUrl for local-only endpoints
-    const baseUrl = isLocalOnly ? environment.apiUrl : getApiBaseUrl(nodeConfigService);
+    const baseUrl = isLocalOnly
+      ? environment.apiUrl
+      : getApiBaseUrl(nodeConfigService);
 
     // Construct absolute URL
     // If baseUrl already includes /api/v1, don't duplicate it

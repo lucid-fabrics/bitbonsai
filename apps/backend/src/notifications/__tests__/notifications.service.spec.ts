@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsService } from '../notifications.service';
-import { NotificationPriority, NotificationType } from '../types/notification.types';
+import {
+  NotificationPriority,
+  NotificationType,
+} from '../types/notification.types';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -57,7 +60,9 @@ describe('NotificationsService', () => {
 
       const now = new Date();
       const expectedExpiration = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      const timeDiff = Math.abs(notification.expiresAt.getTime() - expectedExpiration.getTime());
+      const timeDiff = Math.abs(
+        notification.expiresAt.getTime() - expectedExpiration.getTime(),
+      );
 
       // Allow 1 second difference due to processing time
       expect(timeDiff).toBeLessThan(1000);
@@ -173,7 +178,9 @@ describe('NotificationsService', () => {
     });
 
     it('should not throw error for non-existent notification', async () => {
-      await expect(service.markAsRead('non-existent-id')).resolves.not.toThrow();
+      await expect(
+        service.markAsRead('non-existent-id'),
+      ).resolves.not.toThrow();
     });
   });
 

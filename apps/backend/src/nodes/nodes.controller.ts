@@ -27,8 +27,15 @@ import { NodeStatsDto } from './dto/node-stats.dto';
 import { OptimalConfigDto } from './dto/optimal-config.dto';
 import type { UpdateNodeDto } from './dto/update-node.dto';
 import { NodesService } from './nodes.service';
-import { JobAttributionService, type NodeScore } from './services/job-attribution.service';
-import { toCurrentNodeDto, toNodeResponseDto, toNodeResponseDtoArray } from './utils/node.mapper';
+import {
+  JobAttributionService,
+  type NodeScore,
+} from './services/job-attribution.service';
+import {
+  toCurrentNodeDto,
+  toNodeResponseDto,
+  toNodeResponseDtoArray,
+} from './utils/node.mapper';
 
 @ApiTags('nodes')
 @ApiBearerAuth('JWT-auth')
@@ -36,7 +43,7 @@ import { toCurrentNodeDto, toNodeResponseDto, toNodeResponseDtoArray } from './u
 export class NodesController {
   constructor(
     private readonly nodesService: NodesService,
-    private readonly jobAttribution: JobAttributionService
+    private readonly jobAttribution: JobAttributionService,
   ) {}
 
   /**
@@ -77,7 +84,7 @@ export class NodesController {
   })
   async heartbeat(
     @Param('id') id: string,
-    @Body() heartbeatDto?: HeartbeatDto
+    @Body() heartbeatDto?: HeartbeatDto,
   ): Promise<NodeResponseDto> {
     const node = await this.nodesService.heartbeat(id, heartbeatDto);
     return toNodeResponseDto(node);
@@ -252,9 +259,12 @@ export class NodesController {
     },
   })
   async getStorageRecommendation(
-    @Body() body: { sourceNodeId: string; targetNodeId: string }
+    @Body() body: { sourceNodeId: string; targetNodeId: string },
   ): Promise<unknown> {
-    return this.nodesService.recommendStorageMethod(body.sourceNodeId, body.targetNodeId);
+    return this.nodesService.recommendStorageMethod(
+      body.sourceNodeId,
+      body.targetNodeId,
+    );
   }
 
   /**
@@ -355,9 +365,12 @@ export class NodesController {
     description: 'Node not found',
   })
   @ApiInternalServerErrorResponse({
-    description: 'Internal server error occurred while calculating optimal configuration',
+    description:
+      'Internal server error occurred while calculating optimal configuration',
   })
-  async getRecommendedConfig(@Param('id') id: string): Promise<OptimalConfigDto> {
+  async getRecommendedConfig(
+    @Param('id') id: string,
+  ): Promise<OptimalConfigDto> {
     return this.nodesService.getRecommendedConfig(id);
   }
 
@@ -395,7 +408,7 @@ export class NodesController {
   })
   async update(
     @Param('id') id: string,
-    @Body() updateNodeDto: UpdateNodeDto
+    @Body() updateNodeDto: UpdateNodeDto,
   ): Promise<NodeResponseDto> {
     const node = await this.nodesService.update(id, updateNodeDto);
     return toNodeResponseDto(node);
@@ -467,7 +480,9 @@ export class NodesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during capability test',
   })
-  async testNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
+  async testNodeCapabilities(
+    @Param('id') id: string,
+  ): Promise<Record<string, unknown>> {
     return this.nodesService.testNodeCapabilities(id);
   }
 
@@ -490,7 +505,9 @@ export class NodesController {
   @ApiNotFoundResponse({
     description: 'Node not found',
   })
-  async getNodeCapabilities(@Param('id') id: string): Promise<Record<string, unknown>> {
+  async getNodeCapabilities(
+    @Param('id') id: string,
+  ): Promise<Record<string, unknown>> {
     const node = await this.nodesService.findOne(id);
 
     return {

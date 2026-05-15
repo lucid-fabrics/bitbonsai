@@ -44,7 +44,9 @@ describe('InsightsComponent', () => {
 
     fixture = TestBed.createComponent(InsightsComponent);
     component = fixture.componentInstance;
-    insightsService = TestBed.inject(InsightsService) as jest.Mocked<InsightsService>;
+    insightsService = TestBed.inject(
+      InsightsService,
+    ) as jest.Mocked<InsightsService>;
     _cdr = TestBed.inject(ChangeDetectorRef) as jest.Mocked<ChangeDetectorRef>;
   });
 
@@ -117,11 +119,15 @@ describe('InsightsComponent', () => {
     });
 
     it('should handle null gracefully', () => {
-      expect(component.formatStorageSize(null as unknown as number)).toBe('0.00 GB');
+      expect(component.formatStorageSize(null as unknown as number)).toBe(
+        '0.00 GB',
+      );
     });
 
     it('should handle undefined gracefully', () => {
-      expect(component.formatStorageSize(undefined as unknown as number)).toBe('0.00 GB');
+      expect(component.formatStorageSize(undefined as unknown as number)).toBe(
+        '0.00 GB',
+      );
     });
 
     it('should handle NaN gracefully', () => {
@@ -131,7 +137,9 @@ describe('InsightsComponent', () => {
 
   describe('error handling', () => {
     it('should set empty savings trend data on error', async () => {
-      insightsService.getSavingsTrend.mockReturnValue(throwError(() => new Error('API error')));
+      insightsService.getSavingsTrend.mockReturnValue(
+        throwError(() => new Error('API error')),
+      );
       insightsService.getCodecDistribution.mockReturnValue(of([]));
       insightsService.getNodePerformance.mockReturnValue(of([]));
       insightsService.getStats.mockReturnValue(of(mockStats));
@@ -143,7 +151,9 @@ describe('InsightsComponent', () => {
     });
 
     it('should keep default stats on getStats error', async () => {
-      insightsService.getStats.mockReturnValue(throwError(() => new Error('Stats unavailable')));
+      insightsService.getStats.mockReturnValue(
+        throwError(() => new Error('Stats unavailable')),
+      );
 
       const defaultStats = component.stats;
       component.ngOnInit();

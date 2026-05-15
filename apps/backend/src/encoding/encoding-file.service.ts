@@ -49,7 +49,7 @@ export class EncodingFileService {
     private readonly queueService: QueueService,
     private readonly qualityMetricsService: QualityMetricsService,
     readonly fileReplacement: EncodingFileReplacementService,
-    readonly outputVerification: EncodingOutputVerificationService
+    readonly outputVerification: EncodingOutputVerificationService,
   ) {}
 
   /**
@@ -57,27 +57,31 @@ export class EncodingFileService {
    */
   async checkTempFileWithRetry(tempFilePath: string | null): Promise<boolean> {
     if (!tempFilePath) {
-      this.logger.log('  ℹ️  TRUE RESUME: No temp file path provided, skipping check');
+      this.logger.log(
+        '  ℹ️  TRUE RESUME: No temp file path provided, skipping check',
+      );
       return false;
     }
 
-    this.logger.log(`  🔍 TRUE RESUME: Checking if temp file exists: ${tempFilePath}`);
+    this.logger.log(
+      `  🔍 TRUE RESUME: Checking if temp file exists: ${tempFilePath}`,
+    );
 
     for (let attempt = 1; attempt <= TEMP_FILE_MAX_RETRIES; attempt++) {
       try {
         if (fs.existsSync(tempFilePath)) {
           this.logger.log(
-            `  ✅ TRUE RESUME: Temp file found on attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}`
+            `  ✅ TRUE RESUME: Temp file found on attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}`,
           );
           return true;
         }
         this.logger.log(
-          `  ⏳ TRUE RESUME: Temp file not found (attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}), retrying...`
+          `  ⏳ TRUE RESUME: Temp file not found (attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}), retrying...`,
         );
       } catch (error: unknown) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         this.logger.warn(
-          `  ⚠️  TRUE RESUME: Error checking temp file (attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}): ${errorMsg}`
+          `  ⚠️  TRUE RESUME: Error checking temp file (attempt ${attempt}/${TEMP_FILE_MAX_RETRIES}): ${errorMsg}`,
         );
       }
 
@@ -87,7 +91,7 @@ export class EncodingFileService {
     }
 
     this.logger.warn(
-      `  ❌ TRUE RESUME: Temp file not found after ${TEMP_FILE_MAX_RETRIES} attempts - will restart from 0%`
+      `  ❌ TRUE RESUME: Temp file not found after ${TEMP_FILE_MAX_RETRIES} attempts - will restart from 0%`,
     );
     return false;
   }
@@ -123,7 +127,7 @@ export class EncodingFileService {
       // If tempFilePath is set but file doesn't exist, clear resume state and start fresh
       if (job.tempFilePath && !fs.existsSync(job.tempFilePath)) {
         this.logger.warn(
-          `⚠️  TEMP FILE LOST: Job ${job.id} has tempFilePath="${job.tempFilePath}" but file doesn't exist. Clearing resume state and starting fresh.`
+          `⚠️  TEMP FILE LOST: Job ${job.id} has tempFilePath="${job.tempFilePath}" but file doesn't exist. Clearing resume state and starting fresh.`,
         );
 
         // Reset job to fresh QUEUED state
@@ -147,7 +151,7 @@ export class EncodingFileService {
 
       if (job.progress > 0 && fs.existsSync(tmpPath) && job.resumeTimestamp) {
         this.logger.log(
-          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress and resumeTimestamp=${job.resumeTimestamp}`
+          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress and resumeTimestamp=${job.resumeTimestamp}`,
         );
 
         try {
@@ -157,32 +161,45 @@ export class EncodingFileService {
             const hours = Number.parseInt(parts[0], 10);
             const minutes = Number.parseInt(parts[1], 10);
             const seconds = Number.parseFloat(parts[2]);
-            startedFromSeconds = Math.floor(hours * 3600 + minutes * 60 + seconds);
+            startedFromSeconds = Math.floor(
+              hours * 3600 + minutes * 60 + seconds,
+            );
 
             this.logger.log(
-              `  ✅ TRUE RESUME: Using resumeTimestamp from auto-heal: ${job.resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}%)`
+              `  ✅ TRUE RESUME: Using resumeTimestamp from auto-heal: ${job.resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}%)`,
             );
           } else {
             this.logger.warn(
-              `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${job.resumeTimestamp}`
+              `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${job.resumeTimestamp}`,
             );
           }
         } catch (error: unknown) {
-          this.logger.warn(`  ⚠️  TRUE RESUME: Error parsing resumeTimestamp:`, error);
+          this.logger.warn(
+            `  ⚠️  TRUE RESUME: Error parsing resumeTimestamp:`,
+            error,
+          );
           // Continue without resume - will restart from 0%
         }
-      } else if (job.progress > 0 && fs.existsSync(tmpPath) && !job.resumeTimestamp) {
+      } else if (
+        job.progress > 0 &&
+        fs.existsSync(tmpPath) &&
+        !job.resumeTimestamp
+      ) {
         // Fallback: Calculate resume position if temp file exists but no resumeTimestamp
         this.logger.log(
-          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress but no resumeTimestamp, calculating...`
+          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress but no resumeTimestamp, calculating...`,
         );
 
         try {
           // Get video duration to calculate exact resume position
-          const durationSeconds = await this.ffmpegService.getVideoDuration(job.filePath);
+          const durationSeconds = await this.ffmpegService.getVideoDuration(
+            job.filePath,
+          );
 
           if (durationSeconds > 0) {
-            startedFromSeconds = Math.floor((job.progress / 100) * durationSeconds);
+            startedFromSeconds = Math.floor(
+              (job.progress / 100) * durationSeconds,
+            );
 
             // Convert seconds to HH:MM:SS format for resumeTimestamp field
             const hours = Math.floor(startedFromSeconds / 3600);
@@ -195,22 +212,29 @@ export class EncodingFileService {
             await this.queueService.update(job.id, { resumeTimestamp });
 
             this.logger.log(
-              `  ✅ TRUE RESUME: Calculated resumeTimestamp: ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`
+              `  ✅ TRUE RESUME: Calculated resumeTimestamp: ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`,
             );
           } else {
             this.logger.warn(
-              `  ⚠️  TRUE RESUME: Could not determine video duration, starting from beginning`
+              `  ⚠️  TRUE RESUME: Could not determine video duration, starting from beginning`,
             );
           }
         } catch (error: unknown) {
-          this.logger.warn(`  ⚠️  TRUE RESUME: Error calculating resume position:`, error);
+          this.logger.warn(
+            `  ⚠️  TRUE RESUME: Error calculating resume position:`,
+            error,
+          );
           // Continue without resume - will restart from 0%
         }
       }
 
       // CRITICAL: Get original duration BEFORE encoding for validation
-      const originalDuration = await this.ffmpegService.getVideoDuration(job.filePath);
-      this.logger.log(`Original file duration: ${originalDuration.toFixed(2)}s`);
+      const originalDuration = await this.ffmpegService.getVideoDuration(
+        job.filePath,
+      );
+      this.logger.log(
+        `Original file duration: ${originalDuration.toFixed(2)}s`,
+      );
 
       // Perform encoding
       await this.performEncoding(job, tmpPath, policy, startedFromSeconds);
@@ -222,15 +246,27 @@ export class EncodingFileService {
 
       // CRITICAL FIX: Validate output duration matches original to prevent truncated files
       // This prevents catastrophic data loss from incomplete/interrupted encodings
-      await this.outputVerification.validateOutputDuration(tmpPath, originalDuration, job.filePath);
+      await this.outputVerification.validateOutputDuration(
+        tmpPath,
+        originalDuration,
+        job.filePath,
+      );
 
       // Calculate file size changes
       const afterSizeBytes = BigInt(fs.statSync(tmpPath).size);
-      const { savedBytes, savedPercent } = this.calculateSavings(beforeSizeBytes, afterSizeBytes);
+      const { savedBytes, savedPercent } = this.calculateSavings(
+        beforeSizeBytes,
+        afterSizeBytes,
+      );
 
       // CRITICAL FIX: Size sanity check - encoded file shouldn't be suspiciously small
       // This catches edge cases where duration might pass but file is clearly incomplete
-      this.validateOutputSize(beforeSizeBytes, afterSizeBytes, originalDuration, job.filePath);
+      this.validateOutputSize(
+        beforeSizeBytes,
+        afterSizeBytes,
+        originalDuration,
+        job.filePath,
+      );
 
       // AUDIT FIX: Capture file stats for integrity check before replacement
       // This detects if file was modified between validation and replacement (race condition)
@@ -245,18 +281,21 @@ export class EncodingFileService {
         job.filePath,
         tmpPath,
         beforeSizeBytes,
-        afterSizeBytes
+        afterSizeBytes,
       );
 
       // AUDIT FIX: Verify file wasn't modified during disk space check (race condition protection)
       const postCheckStats = fs.statSync(tmpPath);
-      if (postCheckStats.mtimeMs !== preReplaceMtime || postCheckStats.size !== preReplaceSize) {
+      if (
+        postCheckStats.mtimeMs !== preReplaceMtime ||
+        postCheckStats.size !== preReplaceSize
+      ) {
         throw new Error(
           `CRITICAL: Temp file was modified between validation and replacement!\n` +
             `Before: mtime=${preReplaceMtime}, size=${preReplaceSize}\n` +
             `After: mtime=${postCheckStats.mtimeMs}, size=${postCheckStats.size}\n` +
             `This could indicate file corruption or a race condition.\n` +
-            `The original file will NOT be replaced to prevent data loss.`
+            `The original file will NOT be replaced to prevent data loss.`,
         );
       }
 
@@ -264,7 +303,11 @@ export class EncodingFileService {
       await this.calculateQualityMetricsIfEnabled(job, job.filePath, tmpPath);
 
       // Replace original file with encoded version (with Keep Original support)
-      await this.fileReplacement.replaceFile(job, tmpPath, policy.atomicReplace);
+      await this.fileReplacement.replaceFile(
+        job,
+        tmpPath,
+        policy.atomicReplace,
+      );
 
       return {
         beforeSizeBytes,
@@ -275,7 +318,8 @@ export class EncodingFileService {
     } catch (error: unknown) {
       // TRUE RESUME: Only delete temp file on validation/corruption errors
       // Keep temp file for resumable errors (interrupts, crashes, EXDEV, etc.)
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       // AUDIT FIX: Added validation error patterns to ensure temp files are cleaned up
       const isCorruptionError =
         errorMessage.includes('verification failed') ||
@@ -288,12 +332,16 @@ export class EncodingFileService {
         errorMessage.includes('Cannot determine output file duration');
 
       if (isCorruptionError) {
-        this.logger.warn(`Temp file corrupted or invalid, deleting for fresh restart: ${tmpPath}`);
+        this.logger.warn(
+          `Temp file corrupted or invalid, deleting for fresh restart: ${tmpPath}`,
+        );
         if (fs.existsSync(tmpPath)) {
           fs.unlinkSync(tmpPath);
         }
       } else {
-        this.logger.log(`Keeping temp file for auto-heal resume capability: ${tmpPath}`);
+        this.logger.log(
+          `Keeping temp file for auto-heal resume capability: ${tmpPath}`,
+        );
       }
       throw error;
     } finally {
@@ -309,7 +357,10 @@ export class EncodingFileService {
             fs.unlinkSync(tmpPath);
             this.logger.debug(`Cleaned up temp file: ${tmpPath}`);
           } catch (cleanupError: unknown) {
-            this.logger.warn(`Failed to clean temp file ${tmpPath}:`, cleanupError);
+            this.logger.warn(
+              `Failed to clean temp file ${tmpPath}:`,
+              cleanupError,
+            );
           }
         }
       }
@@ -323,15 +374,20 @@ export class EncodingFileService {
     job: JobWithPolicy,
     tmpPath: string,
     policy: JobWithPolicy['policy'],
-    startedFromSeconds?: number
+    startedFromSeconds?: number,
   ): Promise<void> {
     if (!policy) {
       throw new Error('Policy is required for encoding');
     }
 
-    const advancedSettings = policy.advancedSettings as Record<string, unknown> | null;
+    const advancedSettings = policy.advancedSettings as Record<
+      string,
+      unknown
+    > | null;
     const hwaccel =
-      advancedSettings && typeof advancedSettings === 'object' && 'hwaccel' in advancedSettings
+      advancedSettings &&
+      typeof advancedSettings === 'object' &&
+      'hwaccel' in advancedSettings
         ? String(advancedSettings.hwaccel)
         : 'auto';
 
@@ -358,10 +414,11 @@ export class EncodingFileService {
    */
   calculateSavings(
     beforeSizeBytes: bigint,
-    afterSizeBytes: bigint
+    afterSizeBytes: bigint,
   ): { savedBytes: bigint; savedPercent: number } {
     const savedBytes = beforeSizeBytes - afterSizeBytes;
-    const savedPercent = Number((savedBytes * BigInt(10000)) / beforeSizeBytes) / 100;
+    const savedPercent =
+      Number((savedBytes * BigInt(10000)) / beforeSizeBytes) / 100;
     return { savedBytes, savedPercent };
   }
 
@@ -369,7 +426,9 @@ export class EncodingFileService {
    * AUDIT FIX: Get adaptive duration tolerance based on file length
    */
   getAdaptiveDurationTolerance(durationSeconds: number): number {
-    return this.outputVerification.getAdaptiveDurationTolerance(durationSeconds);
+    return this.outputVerification.getAdaptiveDurationTolerance(
+      durationSeconds,
+    );
   }
 
   // ── Delegations to extracted services (kept for backward-compat with callers/tests) ──
@@ -381,12 +440,12 @@ export class EncodingFileService {
   async validateOutputDuration(
     outputPath: string,
     originalDuration: number,
-    originalPath: string
+    originalPath: string,
   ): Promise<void> {
     return this.outputVerification.validateOutputDuration(
       outputPath,
       originalDuration,
-      originalPath
+      originalPath,
     );
   }
 
@@ -394,13 +453,13 @@ export class EncodingFileService {
     originalPath: string,
     tmpPath: string,
     originalSize: bigint,
-    tmpSize: bigint
+    tmpSize: bigint,
   ): Promise<void> {
     return this.fileReplacement.verifyDiskSpaceForReplacement(
       originalPath,
       tmpPath,
       originalSize,
-      tmpSize
+      tmpSize,
     );
   }
 
@@ -408,11 +467,21 @@ export class EncodingFileService {
     this.fileReplacement.crossFsSafeRenameSync(sourcePath, destPath);
   }
 
-  async atomicReplaceFileWithVerification(originalPath: string, tmpPath: string): Promise<void> {
-    return this.fileReplacement.atomicReplaceFileWithVerification(originalPath, tmpPath);
+  async atomicReplaceFileWithVerification(
+    originalPath: string,
+    tmpPath: string,
+  ): Promise<void> {
+    return this.fileReplacement.atomicReplaceFileWithVerification(
+      originalPath,
+      tmpPath,
+    );
   }
 
-  async replaceFile(job: JobWithPolicy, tmpPath: string, atomicReplace: boolean): Promise<void> {
+  async replaceFile(
+    job: JobWithPolicy,
+    tmpPath: string,
+    atomicReplace: boolean,
+  ): Promise<void> {
     return this.fileReplacement.replaceFile(job, tmpPath, atomicReplace);
   }
 
@@ -429,7 +498,7 @@ export class EncodingFileService {
     beforeSizeBytes: bigint,
     afterSizeBytes: bigint,
     durationSeconds: number,
-    filePath: string
+    filePath: string,
   ): void {
     // AUDIT FIX: Use bigint throughout to prevent precision loss on huge files (>9PB)
     // Calculate minimum reasonable size based on duration
@@ -470,7 +539,11 @@ export class EncodingFileService {
 
     // AUDIT FIX: Block extreme compression (was just warning before)
     // 95%+ reduction with output <100MB and original >1GB is almost always corruption
-    if (reductionPercent > 95 && afterSizeBytes < hundredMB && beforeSizeBytes > oneGB) {
+    if (
+      reductionPercent > 95 &&
+      afterSizeBytes < hundredMB &&
+      beforeSizeBytes > oneGB
+    ) {
       const afterSizeMB = Number(afterSizeBytes / 1024n / 1024n);
       const beforeSizeMB = Number(beforeSizeBytes / 1024n / 1024n);
 
@@ -496,7 +569,7 @@ export class EncodingFileService {
 
       this.logger.warn(
         `⚠️  High compression detected: ${beforeSizeMB.toFixed(2)}MB → ${afterSizeMB.toFixed(2)}MB ` +
-          `(${reductionPercent.toFixed(1)}% reduction). File: ${filePath}`
+          `(${reductionPercent.toFixed(1)}% reduction). File: ${filePath}`,
       );
     }
   }
@@ -504,17 +577,18 @@ export class EncodingFileService {
   private async calculateQualityMetricsIfEnabled(
     job: JobWithPolicy,
     originalPath: string,
-    encodedPath: string
+    encodedPath: string,
   ): Promise<void> {
     try {
       const settings = await this.settingsRepository.findFirst();
       if (!settings?.qualityMetricsEnabled) return;
 
       this.logger.log(`Calculating quality metrics for job ${job.id}...`);
-      const metrics = await this.qualityMetricsService.calculateAllQualityMetrics(
-        originalPath,
-        encodedPath
-      );
+      const metrics =
+        await this.qualityMetricsService.calculateAllQualityMetrics(
+          originalPath,
+          encodedPath,
+        );
 
       await this.jobRepository.updateById(job.id, {
         qualityMetrics: {
@@ -526,12 +600,15 @@ export class EncodingFileService {
       });
     } catch (error: unknown) {
       this.logger.warn(
-        `Quality metrics calculation failed for job ${job.id}, continuing: ${error instanceof Error ? error.message : String(error)}`
+        `Quality metrics calculation failed for job ${job.id}, continuing: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
 
-  async updateLibraryStats(libraryId: string, savedBytes: bigint): Promise<void> {
+  async updateLibraryStats(
+    libraryId: string,
+    savedBytes: bigint,
+  ): Promise<void> {
     try {
       const library = await this.librariesService.findOne(libraryId);
 
@@ -542,7 +619,10 @@ export class EncodingFileService {
         totalSizeBytes: newTotalSize,
       });
     } catch (error: unknown) {
-      this.logger.error(`Failed to update library stats for ${libraryId}:`, error);
+      this.logger.error(
+        `Failed to update library stats for ${libraryId}:`,
+        error,
+      );
       // Don't throw - library stats update failure shouldn't fail job
     }
   }

@@ -17,11 +17,13 @@ export class InsightsEffects {
         this.insightsService.getSavingsTrend(days).pipe(
           map((data) => InsightsActions.loadSavingsTrendSuccess({ data })),
           catchError((error) =>
-            of(InsightsActions.loadSavingsTrendFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              InsightsActions.loadSavingsTrendFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadCodecDistribution$ = createEffect(() =>
@@ -34,12 +36,12 @@ export class InsightsEffects {
             of(
               InsightsActions.loadCodecDistributionFailure({
                 error: error.message,
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadNodePerformance$ = createEffect(() =>
@@ -52,12 +54,12 @@ export class InsightsEffects {
             of(
               InsightsActions.loadNodePerformanceFailure({
                 error: error.message,
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadStats$ = createEffect(() =>
@@ -66,9 +68,11 @@ export class InsightsEffects {
       switchMap(() =>
         this.insightsService.getStats().pipe(
           map((data) => InsightsActions.loadStatsSuccess({ data })),
-          catchError((error) => of(InsightsActions.loadStatsFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(InsightsActions.loadStatsFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 }

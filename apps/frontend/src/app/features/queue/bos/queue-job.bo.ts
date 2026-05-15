@@ -87,8 +87,12 @@ export class QueueJobBo {
     this.progress = model.progress;
     this.etaSeconds = model.etaSeconds;
     this.fps = model.fps;
-    this.originalSize = this.parseSize(model.beforeSizeBytes || model.originalSize);
-    this.currentSize = this.parseSize(model.afterSizeBytes || model.currentSize);
+    this.originalSize = this.parseSize(
+      model.beforeSizeBytes || model.originalSize,
+    );
+    this.currentSize = this.parseSize(
+      model.afterSizeBytes || model.currentSize,
+    );
     this.savedSize = this.parseSize(model.savedBytes || model.savedSize);
     this.savedPercentage = model.savedPercent ?? model.savedPercentage ?? 0;
     this.nodeId = this.extractNodeId(model);
@@ -192,7 +196,11 @@ export class QueueJobBo {
     // 1. Job was auto-healed (autoHealedAt exists)
     // 2. Job had made progress before (autoHealedProgress > 0)
     // 3. But current progress is 0 (had to start fresh)
-    return !!this.autoHealedAt && (this.autoHealedProgress || 0) > 0 && this.progress === 0;
+    return (
+      !!this.autoHealedAt &&
+      (this.autoHealedProgress || 0) > 0 &&
+      this.progress === 0
+    );
   }
 
   /**
@@ -232,7 +240,8 @@ export class QueueJobBo {
     // - Are PAUSED mid-encoding (temp files exist only on original node)
     // - Have progress > 0 (partial encoding means local temp files exist)
     return (
-      this.progress === 0 && (this.status === JobStatus.QUEUED || this.status === JobStatus.FAILED)
+      this.progress === 0 &&
+      (this.status === JobStatus.QUEUED || this.status === JobStatus.FAILED)
     );
   }
 }

@@ -35,7 +35,8 @@ export class JobRetryStrategyService {
 
     try {
       const isNonRetriable = this.isNonRetriableError(errorMessage);
-      const shouldRetry = !isNonRetriable && this.isTransientError(errorMessage);
+      const shouldRetry =
+        !isNonRetriable && this.isTransientError(errorMessage);
 
       const currentAttempt = job.retryCount || 0;
       const nextAttempt = currentAttempt + 1;
@@ -50,7 +51,7 @@ export class JobRetryStrategyService {
 
         this.logger.log(
           `Retrying job ${job.id}: Attempt ${totalAttempts} of ${this.MAX_RETRIES} failed. ` +
-            `Next retry (attempt ${nextAttempt}) in ${delayMinutes} minute(s) at ${nextRetryAt.toISOString()}`
+            `Next retry (attempt ${nextAttempt}) in ${delayMinutes} minute(s) at ${nextRetryAt.toISOString()}`,
         );
 
         // MULTI-NODE: Use QueueService proxy to support LINKED nodes
@@ -65,7 +66,9 @@ export class JobRetryStrategyService {
         let failureReason: string;
         if (isNonRetriable) {
           failureReason = `Non-retriable error (corrupted source file): ${errorMessage}`;
-          this.logger.error(`Job ${job.id} permanently failed - corrupted source file detected`);
+          this.logger.error(
+            `Job ${job.id} permanently failed - corrupted source file detected`,
+          );
         } else if (shouldRetry) {
           failureReason = `All ${this.MAX_RETRIES} retry attempts exhausted (${totalAttempts} total failures). Last error: ${errorMessage}`;
         } else {
@@ -97,7 +100,9 @@ export class JobRetryStrategyService {
     ];
 
     const errorLower = errorMessage.toLowerCase();
-    return nonRetriablePatterns.some((pattern) => errorLower.includes(pattern.toLowerCase()));
+    return nonRetriablePatterns.some((pattern) =>
+      errorLower.includes(pattern.toLowerCase()),
+    );
   }
 
   /**
@@ -113,6 +118,8 @@ export class JobRetryStrategyService {
       'network',
     ];
 
-    return transientErrors.some((err) => errorMessage.toLowerCase().includes(err.toLowerCase()));
+    return transientErrors.some((err) =>
+      errorMessage.toLowerCase().includes(err.toLowerCase()),
+    );
   }
 }

@@ -38,7 +38,7 @@ export class JobPreviewController {
     private readonly queueService: QueueService,
     private readonly nodeConfig: NodeConfigService,
     private readonly httpService: HttpService,
-    private readonly previewService: EncodingPreviewService
+    private readonly previewService: EncodingPreviewService,
   ) {}
 
   /**
@@ -84,20 +84,22 @@ export class JobPreviewController {
   async getPreviewImage(
     @Param('id') id: string,
     @Param('index') index: string,
-    @Res({ passthrough: false }) res: Response
+    @Res({ passthrough: false }) res: Response,
   ): Promise<void> {
     // MULTI-NODE: LINKED nodes should proxy preview requests to MAIN node
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/${id}/preview/${index}`;
-      this.logger.debug(`🔍 MULTI-NODE: Proxying preview request to MAIN: ${url}`);
+      this.logger.debug(
+        `🔍 MULTI-NODE: Proxying preview request to MAIN: ${url}`,
+      );
 
       try {
         const response = await firstValueFrom(
           this.httpService.get(url, {
             responseType: 'arraybuffer',
             timeout: 30000,
-          })
+          }),
         );
 
         // If no content (204), return same
@@ -107,7 +109,10 @@ export class JobPreviewController {
         }
 
         // Forward the image
-        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+        res.setHeader(
+          'Content-Type',
+          response.headers['content-type'] || 'image/jpeg',
+        );
         res.setHeader('Cache-Control', 'no-store');
         res.send(Buffer.from(response.data));
         return;
@@ -132,7 +137,9 @@ export class JobPreviewController {
     // Parse and validate preview index
     const previewIndex = parseInt(index, 10);
     if (Number.isNaN(previewIndex) || previewIndex < 1 || previewIndex > 9) {
-      throw new NotFoundException(`Invalid preview index. Must be between 1 and 9.`);
+      throw new NotFoundException(
+        `Invalid preview index. Must be between 1 and 9.`,
+      );
     }
 
     // MEDIUM #8 FIX: Safe JSON parsing for preview paths
@@ -141,7 +148,9 @@ export class JobPreviewController {
       try {
         previewPaths = JSON.parse(job.previewImagePaths);
       } catch (parseError: unknown) {
-        this.logger.warn(`Failed to parse preview paths for job ${id}: ${parseError}`);
+        this.logger.warn(
+          `Failed to parse preview paths for job ${id}: ${parseError}`,
+        );
         previewPaths = [];
       }
     }
@@ -154,7 +163,7 @@ export class JobPreviewController {
     // Frontend already handles image loading errors gracefully
     if (!previewPath || !existsSync(previewPath)) {
       this.logger.debug(
-        `Preview image ${previewIndex} not available for job ${id} (path: ${previewPath || 'undefined'})`
+        `Preview image ${previewIndex} not available for job ${id} (path: ${previewPath || 'undefined'})`,
       );
 
       // Clean up only the missing paths from DB (not all of them)
@@ -163,10 +172,13 @@ export class JobPreviewController {
         const validPaths = previewPaths.filter((p) => existsSync(p));
         if (validPaths.length !== previewPaths.length) {
           this.logger.debug(
-            `Cleaning ${previewPaths.length - validPaths.length} stale preview paths for job ${id} (keeping ${validPaths.length} valid)`
+            `Cleaning ${previewPaths.length - validPaths.length} stale preview paths for job ${id} (keeping ${validPaths.length} valid)`,
           );
           this.queueService.updateJobPreview(id, validPaths).catch((err) => {
-            this.logger.warn(`Failed to clean stale preview paths for job ${id}:`, err);
+            this.logger.warn(
+              `Failed to clean stale preview paths for job ${id}:`,
+              err,
+            );
           });
         }
       }
@@ -180,7 +192,9 @@ export class JobPreviewController {
     const resolvedPath = path.resolve(previewPath);
     const resolvedPreviewDir = path.resolve(previewDir);
     if (!resolvedPath.startsWith(resolvedPreviewDir)) {
-      this.logger.warn(`Path traversal attempt blocked for job ${id}: ${previewPath}`);
+      this.logger.warn(
+        `Path traversal attempt blocked for job ${id}: ${previewPath}`,
+      );
       res.status(204).send();
       return;
     }
@@ -191,7 +205,9 @@ export class JobPreviewController {
 
     const fileStream = createReadStream(previewPath);
     fileStream.on('error', (err) => {
-      this.logger.debug(`Failed to stream preview for job ${id}: ${err.message}`);
+      this.logger.debug(
+        `Failed to stream preview for job ${id}: ${err.message}`,
+      );
       if (!res.headersSent) {
         res.status(204).send();
       }
@@ -234,17 +250,21 @@ export class JobPreviewController {
     // Verify job is in ENCODING stage
     if (job.stage !== JobStage.ENCODING) {
       throw new BadRequestException(
-        `Cannot capture preview. Job is in ${job.stage} stage (must be ENCODING)`
+        `Cannot capture preview. Job is in ${job.stage} stage (must be ENCODING)`,
       );
     }
 
     // Verify source file exists
     if (!job.filePath || !existsSync(job.filePath)) {
-      throw new BadRequestException('Cannot capture preview. Source file does not exist');
+      throw new BadRequestException(
+        'Cannot capture preview. Source file does not exist',
+      );
     }
 
     if (job.progress === null || job.progress === undefined) {
-      throw new BadRequestException('Cannot capture preview. Missing progress information');
+      throw new BadRequestException(
+        'Cannot capture preview. Missing progress information',
+      );
     }
 
     // Delegate ffprobe + ffmpeg work to EncodingPreviewService
@@ -253,10 +273,11 @@ export class JobPreviewController {
       manualPreviewPath = await this.previewService.captureManualPreview(
         job.id,
         job.filePath,
-        job.progress
+        job.progress,
       );
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new BadRequestException(errorMessage);
     }
 
@@ -266,7 +287,9 @@ export class JobPreviewController {
       try {
         existingPaths = JSON.parse(job.previewImagePaths);
       } catch (parseError: unknown) {
-        this.logger.warn(`Failed to parse existing preview paths for job ${id}: ${parseError}`);
+        this.logger.warn(
+          `Failed to parse existing preview paths for job ${id}: ${parseError}`,
+        );
         existingPaths = [];
       }
     }

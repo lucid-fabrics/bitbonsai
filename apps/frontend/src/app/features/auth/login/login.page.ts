@@ -59,13 +59,16 @@ export class LoginComponent implements OnInit {
    */
   ngOnInit(): void {
     this.http
-      .get<{ allowLocalNetworkWithoutAuth: boolean }>('/api/v1/settings/security')
+      .get<{ allowLocalNetworkWithoutAuth: boolean }>(
+        '/api/v1/settings/security',
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (settings) => {
           if (settings.allowLocalNetworkWithoutAuth) {
             // Local network bypass is enabled, redirect to main app
-            const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+            const returnUrl =
+              this.route.snapshot.queryParamMap.get('returnUrl') || '/';
             this.router.navigate([returnUrl]);
           }
         },
@@ -106,7 +109,8 @@ export class LoginComponent implements OnInit {
           this.isLoading.set(false);
 
           // Get returnUrl from query params or default to overview
-          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/overview';
+          const returnUrl =
+            this.route.snapshot.queryParamMap.get('returnUrl') || '/overview';
 
           // Navigate after short delay
           setTimeout(() => {
@@ -118,13 +122,19 @@ export class LoginComponent implements OnInit {
 
           // Provide user-friendly error messages
           if (error.status === 401) {
-            this.errorMessage.set('Invalid username or password. Please try again.');
+            this.errorMessage.set(
+              'Invalid username or password. Please try again.',
+            );
           } else if (error.status === 0) {
-            this.errorMessage.set('Unable to connect to server. Please check your connection.');
+            this.errorMessage.set(
+              'Unable to connect to server. Please check your connection.',
+            );
           } else if (error.status >= 500) {
             this.errorMessage.set('Server error. Please try again later.');
           } else {
-            this.errorMessage.set('An unexpected error occurred. Please try again.');
+            this.errorMessage.set(
+              'An unexpected error occurred. Please try again.',
+            );
           }
         },
       });

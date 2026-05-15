@@ -234,7 +234,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T09:30:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, startMinute: 30, endHour: 17 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, startMinute: 30, endHour: 17 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -247,7 +249,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T09:29:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, startMinute: 30, endHour: 17 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, startMinute: 30, endHour: 17 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -260,7 +264,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T16:45:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, endHour: 17, endMinute: 30 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, endHour: 17, endMinute: 30 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -273,7 +279,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T17:30:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, endHour: 17, endMinute: 30 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, endHour: 17, endMinute: 30 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -307,7 +315,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T17:30:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, endHour: 17, endMinute: 30 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, endHour: 17, endMinute: 30 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -320,7 +330,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T09:15:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, startMinute: 15, endHour: 17 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, startMinute: 15, endHour: 17 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -497,7 +509,9 @@ describe('schedule-checker', () => {
         it(`should exclude ${dayNames[dayOfWeek]} if day does not match`, () => {
           const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
             scheduleEnabled: true,
-            scheduleWindows: [{ dayOfWeek: (dayOfWeek + 1) % 7, startHour: 9, endHour: 17 }],
+            scheduleWindows: [
+              { dayOfWeek: (dayOfWeek + 1) % 7, startHour: 9, endHour: 17 },
+            ],
           };
 
           const result = isNodeInAllowedWindow(node, date);
@@ -536,7 +550,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T10:00:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: JSON.stringify([{ dayOfWeek: 1, startHour: 9, endHour: 17 }]) as any,
+          scheduleWindows: JSON.stringify([
+            { dayOfWeek: 1, startHour: 9, endHour: 17 },
+          ]) as any,
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);
@@ -707,7 +723,9 @@ describe('schedule-checker', () => {
         const mockDate = new Date('2024-01-01T00:01:00');
         const node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'> = {
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 0, startMinute: 0, endHour: 2 }],
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 0, startMinute: 0, endHour: 2 },
+          ],
         };
 
         const result = isNodeInAllowedWindow(node, mockDate);

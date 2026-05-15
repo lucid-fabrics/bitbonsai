@@ -34,7 +34,7 @@ describe('LibrariesController (E2E)', () => {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
-      })
+      }),
     );
 
     await app.init();
@@ -82,7 +82,10 @@ describe('LibrariesController (E2E)', () => {
 
   describe('GET /api/v1/libraries', () => {
     it('should return empty array when no libraries exist', () => {
-      return request(app.getHttpServer()).get('/api/v1/libraries').expect(200).expect([]);
+      return request(app.getHttpServer())
+        .get('/api/v1/libraries')
+        .expect(200)
+        .expect([]);
     });
 
     it('should return all libraries', async () => {
@@ -295,7 +298,9 @@ describe('LibrariesController (E2E)', () => {
         },
       });
 
-      await request(app.getHttpServer()).delete(`/api/v1/libraries/${library.id}`).expect(200);
+      await request(app.getHttpServer())
+        .delete(`/api/v1/libraries/${library.id}`)
+        .expect(200);
 
       const deleted = await prisma.library.findUnique({
         where: { id: library.id },
@@ -305,7 +310,9 @@ describe('LibrariesController (E2E)', () => {
     });
 
     it('should return 404 for non-existent library', () => {
-      return request(app.getHttpServer()).delete('/api/v1/libraries/non-existent-id').expect(404);
+      return request(app.getHttpServer())
+        .delete('/api/v1/libraries/non-existent-id')
+        .expect(404);
     });
   });
 
@@ -320,7 +327,9 @@ describe('LibrariesController (E2E)', () => {
         },
       });
 
-      return request(app.getHttpServer()).post(`/api/v1/libraries/${library.id}/scan`).expect(200);
+      return request(app.getHttpServer())
+        .post(`/api/v1/libraries/${library.id}/scan`)
+        .expect(200);
     });
 
     it('should return 404 for non-existent library', () => {

@@ -40,11 +40,15 @@ describe('NotificationsController', () => {
   describe('getNotifications', () => {
     it('should pass include=true when query is "true" (default)', async () => {
       const notifications = [{ id: 'n1' }, { id: 'n2' }];
-      mockNotificationsService.getNotifications.mockResolvedValue(notifications);
+      mockNotificationsService.getNotifications.mockResolvedValue(
+        notifications,
+      );
 
       const result = await controller.getNotifications('true');
 
-      expect(mockNotificationsService.getNotifications).toHaveBeenCalledWith(true);
+      expect(mockNotificationsService.getNotifications).toHaveBeenCalledWith(
+        true,
+      );
       expect(result).toEqual(notifications);
     });
 
@@ -53,7 +57,9 @@ describe('NotificationsController', () => {
 
       await controller.getNotifications('false');
 
-      expect(mockNotificationsService.getNotifications).toHaveBeenCalledWith(false);
+      expect(mockNotificationsService.getNotifications).toHaveBeenCalledWith(
+        false,
+      );
     });
 
     it('should default to include=true when query is any truthy string', async () => {
@@ -61,12 +67,18 @@ describe('NotificationsController', () => {
 
       await controller.getNotifications('true');
 
-      expect(mockNotificationsService.getNotifications).toHaveBeenCalledWith(true);
+      expect(mockNotificationsService.getNotifications).toHaveBeenCalledWith(
+        true,
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockNotificationsService.getNotifications.mockRejectedValue(new Error('fetch error'));
-      await expect(controller.getNotifications('true')).rejects.toThrow('fetch error');
+      mockNotificationsService.getNotifications.mockRejectedValue(
+        new Error('fetch error'),
+      );
+      await expect(controller.getNotifications('true')).rejects.toThrow(
+        'fetch error',
+      );
     });
   });
 
@@ -89,7 +101,9 @@ describe('NotificationsController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockNotificationsService.getUnreadCount.mockRejectedValue(new Error('count error'));
+      mockNotificationsService.getUnreadCount.mockRejectedValue(
+        new Error('count error'),
+      );
       await expect(controller.getUnreadCount()).rejects.toThrow('count error');
     });
   });
@@ -97,11 +111,15 @@ describe('NotificationsController', () => {
   describe('getNotificationById', () => {
     it('should call service with id and return notification', async () => {
       const notification = { id: 'n1', message: 'Test' };
-      mockNotificationsService.getNotificationById.mockResolvedValue(notification);
+      mockNotificationsService.getNotificationById.mockResolvedValue(
+        notification,
+      );
 
       const result = await controller.getNotificationById('n1');
 
-      expect(mockNotificationsService.getNotificationById).toHaveBeenCalledWith('n1');
+      expect(mockNotificationsService.getNotificationById).toHaveBeenCalledWith(
+        'n1',
+      );
       expect(result).toEqual(notification);
     });
 
@@ -114,8 +132,12 @@ describe('NotificationsController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockNotificationsService.getNotificationById.mockRejectedValue(new Error('not found'));
-      await expect(controller.getNotificationById('n1')).rejects.toThrow('not found');
+      mockNotificationsService.getNotificationById.mockRejectedValue(
+        new Error('not found'),
+      );
+      await expect(controller.getNotificationById('n1')).rejects.toThrow(
+        'not found',
+      );
     });
   });
 
@@ -127,19 +149,30 @@ describe('NotificationsController', () => {
         message: 'New notification',
         type: 'INFO',
       };
-      mockNotificationsService.createNotification.mockResolvedValue(notification);
+      mockNotificationsService.createNotification.mockResolvedValue(
+        notification,
+      );
 
       const result = await controller.createNotification(dto);
 
-      expect(mockNotificationsService.createNotification).toHaveBeenCalledWith(dto);
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('notification.created', notification);
+      expect(mockNotificationsService.createNotification).toHaveBeenCalledWith(
+        dto,
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'notification.created',
+        notification,
+      );
       expect(result).toEqual(notification);
     });
 
     it('should propagate service errors without emitting event', async () => {
-      mockNotificationsService.createNotification.mockRejectedValue(new Error('create error'));
+      mockNotificationsService.createNotification.mockRejectedValue(
+        new Error('create error'),
+      );
 
-      await expect(controller.createNotification({} as never)).rejects.toThrow('create error');
+      await expect(controller.createNotification({} as never)).rejects.toThrow(
+        'create error',
+      );
       expect(mockEventEmitter.emit).not.toHaveBeenCalled();
     });
   });
@@ -151,11 +184,16 @@ describe('NotificationsController', () => {
       await controller.markAsRead('n1');
 
       expect(mockNotificationsService.markAsRead).toHaveBeenCalledWith('n1');
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('notification.read', 'n1');
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'notification.read',
+        'n1',
+      );
     });
 
     it('should propagate service errors without emitting event', async () => {
-      mockNotificationsService.markAsRead.mockRejectedValue(new Error('mark error'));
+      mockNotificationsService.markAsRead.mockRejectedValue(
+        new Error('mark error'),
+      );
 
       await expect(controller.markAsRead('n1')).rejects.toThrow('mark error');
       expect(mockEventEmitter.emit).not.toHaveBeenCalled();
@@ -169,11 +207,16 @@ describe('NotificationsController', () => {
       await controller.dismiss('n1');
 
       expect(mockNotificationsService.dismiss).toHaveBeenCalledWith('n1');
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('notification.dismissed', 'n1');
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'notification.dismissed',
+        'n1',
+      );
     });
 
     it('should propagate service errors without emitting event', async () => {
-      mockNotificationsService.dismiss.mockRejectedValue(new Error('dismiss error'));
+      mockNotificationsService.dismiss.mockRejectedValue(
+        new Error('dismiss error'),
+      );
 
       await expect(controller.dismiss('n1')).rejects.toThrow('dismiss error');
       expect(mockEventEmitter.emit).not.toHaveBeenCalled();

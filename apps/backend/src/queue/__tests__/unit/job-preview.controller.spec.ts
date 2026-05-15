@@ -92,7 +92,7 @@ describe('JobPreviewController', () => {
           status: 200,
           headers: { 'content-type': 'image/jpeg' },
           data: Buffer.from('img'),
-        })
+        }),
       );
 
       const res = makeRes();
@@ -104,7 +104,9 @@ describe('JobPreviewController', () => {
 
     it('proxies 204 from MAIN node as 204', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
-      mockHttpService.get.mockReturnValue(of({ status: 204, headers: {}, data: null }));
+      mockHttpService.get.mockReturnValue(
+        of({ status: 204, headers: {}, data: null }),
+      );
 
       const res = makeRes();
       await controller.getPreviewImage('job-1', '1', res);
@@ -115,7 +117,9 @@ describe('JobPreviewController', () => {
 
     it('returns 204 when MAIN node proxy fails', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Network error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Network error')),
+      );
 
       const res = makeRes();
       await controller.getPreviewImage('job-1', '1', res);
@@ -125,7 +129,9 @@ describe('JobPreviewController', () => {
 
     it('handles MAIN node 204 error response', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
-      mockHttpService.get.mockReturnValue(throwError(() => ({ response: { status: 204 } })));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => ({ response: { status: 204 } })),
+      );
 
       const res = makeRes();
       await controller.getPreviewImage('job-1', '1', res);
@@ -136,29 +142,31 @@ describe('JobPreviewController', () => {
     it('throws NotFoundException for invalid index (0)', async () => {
       mockQueueService.findOne.mockResolvedValue(makeJob());
       const res = makeRes();
-      await expect(controller.getPreviewImage('job-1', '0', res)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        controller.getPreviewImage('job-1', '0', res),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException for invalid index (10)', async () => {
       mockQueueService.findOne.mockResolvedValue(makeJob());
       const res = makeRes();
-      await expect(controller.getPreviewImage('job-1', '10', res)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        controller.getPreviewImage('job-1', '10', res),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException for non-numeric index', async () => {
       mockQueueService.findOne.mockResolvedValue(makeJob());
       const res = makeRes();
-      await expect(controller.getPreviewImage('job-1', 'abc', res)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        controller.getPreviewImage('job-1', 'abc', res),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('returns 204 when previewImagePaths is null', async () => {
-      mockQueueService.findOne.mockResolvedValue(makeJob({ previewImagePaths: null }));
+      mockQueueService.findOne.mockResolvedValue(
+        makeJob({ previewImagePaths: null }),
+      );
       const res = makeRes();
       await controller.getPreviewImage('job-1', '1', res);
       expect(res.status).toHaveBeenCalledWith(204);
@@ -168,7 +176,7 @@ describe('JobPreviewController', () => {
       mockQueueService.findOne.mockResolvedValue(
         makeJob({
           previewImagePaths: JSON.stringify(['/previews/job-1/preview_1.jpg']),
-        })
+        }),
       );
       const res = makeRes();
       await controller.getPreviewImage('job-1', '5', res);
@@ -178,7 +186,7 @@ describe('JobPreviewController', () => {
     it('returns 204 and blocks path traversal attempt', async () => {
       const evilPath = '/etc/passwd';
       mockQueueService.findOne.mockResolvedValue(
-        makeJob({ previewImagePaths: JSON.stringify([evilPath]) })
+        makeJob({ previewImagePaths: JSON.stringify([evilPath]) }),
       );
       existsSyncMock.mockReturnValue(true);
       process.env.PREVIEW_DIR = '/previews';
@@ -192,7 +200,7 @@ describe('JobPreviewController', () => {
     it('streams preview image when path is valid', async () => {
       const previewPath = '/previews/job-1/preview_1.jpg';
       mockQueueService.findOne.mockResolvedValue(
-        makeJob({ previewImagePaths: JSON.stringify([previewPath]) })
+        makeJob({ previewImagePaths: JSON.stringify([previewPath]) }),
       );
       existsSyncMock.mockReturnValue(true);
       process.env.PREVIEW_DIR = '/previews';
@@ -208,7 +216,9 @@ describe('JobPreviewController', () => {
     });
 
     it('handles malformed previewImagePaths JSON gracefully', async () => {
-      mockQueueService.findOne.mockResolvedValue(makeJob({ previewImagePaths: '{bad json' }));
+      mockQueueService.findOne.mockResolvedValue(
+        makeJob({ previewImagePaths: '{bad json' }),
+      );
       const res = makeRes();
       await controller.getPreviewImage('job-1', '1', res);
       expect(res.status).toHaveBeenCalledWith(204);
@@ -219,14 +229,22 @@ describe('JobPreviewController', () => {
 
   describe('capturePreview', () => {
     it('throws BadRequestException when job is not in ENCODING stage', async () => {
-      mockQueueService.findOne.mockResolvedValue(makeJob({ stage: JobStage.QUEUED }));
-      await expect(controller.capturePreview('job-1')).rejects.toThrow(BadRequestException);
+      mockQueueService.findOne.mockResolvedValue(
+        makeJob({ stage: JobStage.QUEUED }),
+      );
+      await expect(controller.capturePreview('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException when filePath does not exist', async () => {
-      mockQueueService.findOne.mockResolvedValue(makeJob({ stage: JobStage.ENCODING }));
+      mockQueueService.findOne.mockResolvedValue(
+        makeJob({ stage: JobStage.ENCODING }),
+      );
       existsSyncMock.mockReturnValue(false);
-      await expect(controller.capturePreview('job-1')).rejects.toThrow(BadRequestException);
+      await expect(controller.capturePreview('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException when progress is null', async () => {
@@ -234,26 +252,34 @@ describe('JobPreviewController', () => {
         makeJob({
           stage: JobStage.ENCODING,
           progress: null as unknown as number,
-        })
+        }),
       );
       existsSyncMock.mockReturnValue(true);
-      await expect(controller.capturePreview('job-1')).rejects.toThrow(BadRequestException);
+      await expect(controller.capturePreview('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException when previewService throws', async () => {
       mockQueueService.findOne.mockResolvedValue(makeJob());
       existsSyncMock.mockReturnValue(true);
-      mockPreviewService.captureManualPreview.mockRejectedValue(new Error('ffmpeg failed'));
-      await expect(controller.capturePreview('job-1')).rejects.toThrow(BadRequestException);
+      mockPreviewService.captureManualPreview.mockRejectedValue(
+        new Error('ffmpeg failed'),
+      );
+      await expect(controller.capturePreview('job-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('appends new preview path and calls queueService.update', async () => {
       const existing = '/previews/job-1/preview_1.jpg';
       mockQueueService.findOne.mockResolvedValue(
-        makeJob({ previewImagePaths: JSON.stringify([existing]) })
+        makeJob({ previewImagePaths: JSON.stringify([existing]) }),
       );
       existsSyncMock.mockReturnValue(true);
-      mockPreviewService.captureManualPreview.mockResolvedValue('/previews/job-1/manual_1.jpg');
+      mockPreviewService.captureManualPreview.mockResolvedValue(
+        '/previews/job-1/manual_1.jpg',
+      );
       mockQueueService.update.mockResolvedValue(makeJob());
 
       await controller.capturePreview('job-1');
@@ -265,9 +291,13 @@ describe('JobPreviewController', () => {
     });
 
     it('creates new paths array when previewImagePaths is null', async () => {
-      mockQueueService.findOne.mockResolvedValue(makeJob({ previewImagePaths: null }));
+      mockQueueService.findOne.mockResolvedValue(
+        makeJob({ previewImagePaths: null }),
+      );
       existsSyncMock.mockReturnValue(true);
-      mockPreviewService.captureManualPreview.mockResolvedValue('/previews/job-1/manual_1.jpg');
+      mockPreviewService.captureManualPreview.mockResolvedValue(
+        '/previews/job-1/manual_1.jpg',
+      );
       mockQueueService.update.mockResolvedValue(makeJob());
 
       await controller.capturePreview('job-1');

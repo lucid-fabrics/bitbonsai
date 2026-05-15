@@ -26,7 +26,7 @@ export class EncodingWatchdogService {
     private readonly nodesService: NodesService,
     private readonly ffmpegService: FfmpegService,
     private readonly systemResourceService: SystemResourceService,
-    private readonly workerPoolService: WorkerPoolService
+    private readonly workerPoolService: WorkerPoolService,
   ) {}
 
   /**
@@ -45,7 +45,7 @@ export class EncodingWatchdogService {
    */
   startStuckJobWatchdog(): NodeJS.Timeout {
     this.logger.log(
-      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size, load-based auto-pause)'
+      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size, load-based auto-pause)',
     );
 
     return setInterval(async () => {
@@ -120,17 +120,18 @@ export class EncodingWatchdogService {
 
         if (stuckJobs.length > 0) {
           this.logger.warn(
-            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (dynamic timeout: 5-15min based on file size)`
+            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (dynamic timeout: 5-15min based on file size)`,
           );
 
           for (const job of stuckJobs) {
-            const stuckDurationMs = Date.now() - new Date(job.updatedAt).getTime();
+            const stuckDurationMs =
+              Date.now() - new Date(job.updatedAt).getTime();
             const stuckMinutes = Math.floor(stuckDurationMs / 60000);
             const fileSizeGB = Number(job.beforeSizeBytes) / 1024 ** 3;
             const timeoutUsed = job.beforeSizeBytes < tenGB ? '5min' : '15min';
 
             this.logger.warn(
-              `  - ${job.fileLabel} (${fileSizeGB.toFixed(2)}GB) stuck at ${job.progress}% for ${stuckMinutes} minutes (timeout: ${timeoutUsed})`
+              `  - ${job.fileLabel} (${fileSizeGB.toFixed(2)}GB) stuck at ${job.progress}% for ${stuckMinutes} minutes (timeout: ${timeoutUsed})`,
             );
 
             // STEP 1: Try to kill the ffmpeg process
@@ -190,7 +191,7 @@ export class EncodingWatchdogService {
       if (result.killed > 0 || result.failed > 0) {
         this.logger.log(
           `🧹 Auto-cleanup: Killed ${result.killed} zombie FFmpeg process(es)` +
-            (result.failed > 0 ? ` (${result.failed} failed)` : '')
+            (result.failed > 0 ? ` (${result.failed} failed)` : ''),
         );
       }
     } catch (error: unknown) {
@@ -218,7 +219,10 @@ export class EncodingWatchdogService {
       this.logger.debug(`  - No active FFmpeg process found for job ${jobId}`);
       return false;
     } catch (error: unknown) {
-      this.logger.error(`  ✗ Failed to kill FFmpeg process for job ${jobId}:`, error);
+      this.logger.error(
+        `  ✗ Failed to kill FFmpeg process for job ${jobId}:`,
+        error,
+      );
       return false;
     }
   }
@@ -257,16 +261,20 @@ export class EncodingWatchdogService {
     // Determine target worker limit based on load ratio (load per CPU)
     // Use node's configured maxWorkers, not the calculated default
     const nodeMaxWorkers =
-      currentNode.maxWorkers || this.systemResourceService.defaultWorkersPerNode;
+      currentNode.maxWorkers ||
+      this.systemResourceService.defaultWorkersPerNode;
     let targetWorkers: number;
     let loadLevel: string;
     const loadRatio = loadAvg / cpuCount;
 
     // HIGH #9 FIX: Apply loadThresholdMultiplier to all thresholds
     // Default multiplier is 5.0, making thresholds: 5.0, 10.0, 15.0
-    const normalThreshold = 1.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 5.0
-    const moderateThreshold = 2.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 10.0
-    const highThreshold = 3.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 15.0
+    const normalThreshold =
+      1.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 5.0
+    const moderateThreshold =
+      2.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 10.0
+    const highThreshold =
+      3.0 * this.systemResourceService.getLoadThresholdMultiplier(); // Default: 15.0
 
     if (loadRatio < normalThreshold) {
       // Normal operation - all workers (load < 1x multiplier)
@@ -295,10 +303,10 @@ export class EncodingWatchdogService {
     // SCENARIO 1: Load is high, need to pause jobs
     if (jobsToPause > 0 && encodingJobs > targetWorkers) {
       this.logger.warn(
-        `🔥 High system load detected: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`
+        `🔥 High system load detected: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`,
       );
       this.logger.warn(
-        `   Pausing ${jobsToPause} job(s) to reduce load from ${encodingJobs} to ${targetWorkers} workers`
+        `   Pausing ${jobsToPause} job(s) to reduce load from ${encodingJobs} to ${targetWorkers} workers`,
       );
 
       // Get lowest priority QUEUED jobs to pause (don't interrupt encoding jobs)
@@ -322,7 +330,7 @@ export class EncodingWatchdogService {
         });
 
         this.logger.log(
-          `  ⏸️  Paused job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`
+          `  ⏸️  Paused job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`,
         );
       }
     }
@@ -332,10 +340,10 @@ export class EncodingWatchdogService {
       const jobsToResume = Math.min(pausedJobs, targetWorkers - encodingJobs);
 
       this.logger.log(
-        `✅ System load acceptable: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`
+        `✅ System load acceptable: ${loadAvg.toFixed(1)} (${loadLevel} level, ratio ${loadRatio.toFixed(1)}x, ${cpuCount} CPUs)`,
       );
       this.logger.log(
-        `   Resuming ${jobsToResume} paused job(s) (${pausedJobs} paused, ${targetWorkers} target workers)`
+        `   Resuming ${jobsToResume} paused job(s) (${pausedJobs} paused, ${targetWorkers} target workers)`,
       );
 
       // Get highest priority paused jobs to resume
@@ -359,7 +367,7 @@ export class EncodingWatchdogService {
         });
 
         this.logger.log(
-          `  ▶️  Resumed job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`
+          `  ▶️  Resumed job: ${job.fileLabel} (priority: ${job.priority}, load: ${loadAvg.toFixed(1)})`,
         );
       }
     }
@@ -378,21 +386,28 @@ export class EncodingWatchdogService {
       // Memory status
       const totalMemory = os.totalmem();
       const freeMemory = os.freemem();
-      const usedMemoryPercent = ((totalMemory - freeMemory) / totalMemory) * 100;
+      const usedMemoryPercent =
+        ((totalMemory - freeMemory) / totalMemory) * 100;
       diagnostics.push(
-        `- Memory: ${usedMemoryPercent.toFixed(1)}% used (${(freeMemory / 1024 ** 3).toFixed(2)}GB free)`
+        `- Memory: ${usedMemoryPercent.toFixed(1)}% used (${(freeMemory / 1024 ** 3).toFixed(2)}GB free)`,
       );
 
       // Load average (Linux/macOS only)
       if (process.platform !== 'win32') {
         const loadAvg = os.loadavg();
-        diagnostics.push(`- Load average: ${loadAvg.map((l) => l.toFixed(2)).join(', ')}`);
+        diagnostics.push(
+          `- Load average: ${loadAvg.map((l) => l.toFixed(2)).join(', ')}`,
+        );
       }
 
       // Active worker count
-      const allWorkers = Array.from(this.workerPoolService.getAllWorkers().values());
+      const allWorkers = Array.from(
+        this.workerPoolService.getAllWorkers().values(),
+      );
       const activeWorkers = allWorkers.filter((w) => w.currentJobId !== null);
-      diagnostics.push(`- Active workers: ${activeWorkers.length}/${allWorkers.length}`);
+      diagnostics.push(
+        `- Active workers: ${activeWorkers.length}/${allWorkers.length}`,
+      );
 
       // FFmpeg process status
       const hasProcess = this.ffmpegService.hasActiveProcess(jobId);

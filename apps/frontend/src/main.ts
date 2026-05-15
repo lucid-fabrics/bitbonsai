@@ -1,5 +1,9 @@
 import 'zone.js';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -44,7 +48,11 @@ bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([apiBaseUrlInterceptor, authInterceptor, apiErrorInterceptor])
+      withInterceptors([
+        apiBaseUrlInterceptor,
+        authInterceptor,
+        apiErrorInterceptor,
+      ]),
     ),
     provideAnimations(),
     provideTransloco({

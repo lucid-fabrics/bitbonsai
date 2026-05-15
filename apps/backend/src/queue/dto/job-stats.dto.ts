@@ -17,7 +17,8 @@ export class JobStatsDto {
   healthCheck!: number;
 
   @ApiProperty({
-    description: 'Number of jobs requiring user attention/decision before proceeding',
+    description:
+      'Number of jobs requiring user attention/decision before proceeding',
     example: 3,
   })
   needsDecision!: number;

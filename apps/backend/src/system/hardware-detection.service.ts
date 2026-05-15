@@ -65,7 +65,9 @@ export class HardwareDetectionService {
       this.cachedResult = result;
       this.cacheTimestamp = now;
 
-      this.logger.log(`✅ Hardware detection complete - Acceleration: ${accelerationType}`);
+      this.logger.log(
+        `✅ Hardware detection complete - Acceleration: ${accelerationType}`,
+      );
       return result;
     } catch (error: unknown) {
       this.logger.error('Failed to detect hardware:', error);
@@ -114,7 +116,9 @@ export class HardwareDetectionService {
       }
 
       if (gpus.length === 0) {
-        this.logger.warn('No GPU acceleration detected - falling back to CPU-only');
+        this.logger.warn(
+          'No GPU acceleration detected - falling back to CPU-only',
+        );
       }
     } catch (error: unknown) {
       this.logger.error('Error during GPU detection:', error);
@@ -134,7 +138,9 @@ export class HardwareDetectionService {
       ]);
 
       if (output) {
-        const [model, memoryStr, driverVersion] = output.split(',').map((s) => s.trim());
+        const [model, memoryStr, driverVersion] = output
+          .split(',')
+          .map((s) => s.trim());
         const memory = parseInt(memoryStr.replace(/\D/g, ''), 10); // Extract number from "24576 MiB"
 
         this.logger.log(`   ✓ NVIDIA GPU detected: ${model}`);
@@ -168,7 +174,9 @@ export class HardwareDetectionService {
             if (vainfo?.toLowerCase().includes('intel')) {
               // Extract driver version from vainfo output
               const driverMatch = vainfo.match(/Driver version: (.+)/);
-              const driverVersion = driverMatch ? driverMatch[1].trim() : 'unknown';
+              const driverVersion = driverMatch
+                ? driverMatch[1].trim()
+                : 'unknown';
 
               this.logger.log('   ✓ Intel Quick Sync detected');
 
@@ -181,7 +189,9 @@ export class HardwareDetectionService {
             }
           } catch {
             // vainfo not available, but renderD exists
-            this.logger.log('   ✓ Intel Quick Sync detected (vainfo unavailable)');
+            this.logger.log(
+              '   ✓ Intel Quick Sync detected (vainfo unavailable)',
+            );
             return {
               vendor: GPUVendor.INTEL,
               model: 'Intel Quick Sync',
@@ -208,7 +218,10 @@ export class HardwareDetectionService {
         if (output) {
           const lines = output.split('\n');
           for (const line of lines) {
-            if (line.toLowerCase().includes('vga') && line.toLowerCase().includes('amd')) {
+            if (
+              line.toLowerCase().includes('vga') &&
+              line.toLowerCase().includes('amd')
+            ) {
               // Extract GPU model name
               const modelMatch = line.match(/:\s*(.+?)(?:\(|$)/);
               const model = modelMatch ? modelMatch[1].trim() : 'AMD GPU';
@@ -333,7 +346,10 @@ export class HardwareDetectionService {
    * Execute a command and return stdout
    * Returns null if command fails or is not found
    */
-  private executeCommand(command: string, args: string[] = []): Promise<string | null> {
+  private executeCommand(
+    command: string,
+    args: string[] = [],
+  ): Promise<string | null> {
     return new Promise((resolve) => {
       const child = spawn(command, args);
       let stdout = '';

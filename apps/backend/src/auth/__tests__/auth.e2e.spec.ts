@@ -25,7 +25,7 @@ describe('Auth E2E Tests', () => {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
-      })
+      }),
     );
     await app.init();
   });

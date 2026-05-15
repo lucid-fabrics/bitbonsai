@@ -18,7 +18,7 @@ export class InsightsService {
 
   constructor(
     private readonly metricsRepository: MetricsRepository,
-    private readonly nodeRepository: NodeRepository
+    private readonly nodeRepository: NodeRepository,
   ) {}
 
   /**
@@ -31,7 +31,7 @@ export class InsightsService {
     licenseId?: string;
   }): Promise<Metric[]> {
     this.logger.log(
-      `Fetching time-series metrics from ${params.startDate.toISOString()} to ${params.endDate.toISOString()}`
+      `Fetching time-series metrics from ${params.startDate.toISOString()} to ${params.endDate.toISOString()}`,
     );
 
     return this.metricsRepository.findByDateRange(params);
@@ -41,7 +41,9 @@ export class InsightsService {
    * Get aggregated statistics across all jobs and nodes
    */
   async getAggregatedStats(licenseId?: string): Promise<InsightsStatsDto> {
-    this.logger.log(`Calculating aggregated stats${licenseId ? ` for license ${licenseId}` : ''}`);
+    this.logger.log(
+      `Calculating aggregated stats${licenseId ? ` for license ${licenseId}` : ''}`,
+    );
 
     const result = await this.metricsRepository.aggregateByLicense(licenseId);
 
@@ -59,7 +61,8 @@ export class InsightsService {
       totalJobsFailed: totalFailed,
       totalSavedBytes: totalSavedBytes.toString(),
       totalSavedGB: Math.round(totalSavedGB * 100) / 100,
-      avgThroughput: Math.round((result._avg.avgThroughputFilesPerHour || 0) * 100) / 100,
+      avgThroughput:
+        Math.round((result._avg.avgThroughputFilesPerHour || 0) * 100) / 100,
       successRate: Math.round(successRate * 100) / 100,
       timestamp: new Date().toISOString(),
     };
@@ -68,13 +71,16 @@ export class InsightsService {
   /**
    * Get codec distribution chart data
    */
-  async getCodecDistribution(licenseId?: string): Promise<CodecDistributionDto> {
+  async getCodecDistribution(
+    licenseId?: string,
+  ): Promise<CodecDistributionDto> {
     this.logger.log(
-      `Calculating codec distribution${licenseId ? ` for license ${licenseId}` : ''}`
+      `Calculating codec distribution${licenseId ? ` for license ${licenseId}` : ''}`,
     );
 
     // Aggregate codec counts from metrics
-    const metrics = await this.metricsRepository.findCodecDistributions(licenseId);
+    const metrics =
+      await this.metricsRepository.findCodecDistributions(licenseId);
 
     // Merge all codec distributions
     const codecCounts: Record<string, number> = {};
@@ -93,7 +99,8 @@ export class InsightsService {
       .map(([codec, count]) => ({
         codec,
         count,
-        percentage: totalFiles > 0 ? Math.round((count / totalFiles) * 10000) / 100 : 0,
+        percentage:
+          totalFiles > 0 ? Math.round((count / totalFiles) * 10000) / 100 : 0,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -107,9 +114,12 @@ export class InsightsService {
   /**
    * Get savings trend over a specified number of days
    */
-  async getSavingsTrend(days: number, licenseId?: string): Promise<SavingsTrendDto> {
+  async getSavingsTrend(
+    days: number,
+    licenseId?: string,
+  ): Promise<SavingsTrendDto> {
     this.logger.log(
-      `Calculating savings trend for ${days} days${licenseId ? ` for license ${licenseId}` : ''}`
+      `Calculating savings trend for ${days} days${licenseId ? ` for license ${licenseId}` : ''}`,
     );
 
     const startDate = new Date();
@@ -126,7 +136,10 @@ export class InsightsService {
     });
 
     // Group by date and sum metrics
-    const dailyMetrics = new Map<string, { savedBytes: bigint; jobsCompleted: number }>();
+    const dailyMetrics = new Map<
+      string,
+      { savedBytes: bigint; jobsCompleted: number }
+    >();
 
     for (const metric of metrics) {
       const dateKey = metric.date.toISOString().split('T')[0];
@@ -146,7 +159,8 @@ export class InsightsService {
       .map(([date, data]) => ({
         date,
         savedBytes: data.savedBytes.toString(),
-        savedGB: Math.round((Number(data.savedBytes) / this.BYTES_PER_GB) * 100) / 100,
+        savedGB:
+          Math.round((Number(data.savedBytes) / this.BYTES_PER_GB) * 100) / 100,
         jobsCompleted: data.jobsCompleted,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -157,7 +171,8 @@ export class InsightsService {
       totalSavedBytes += BigInt(point.savedBytes);
     }
 
-    const totalSavedGB = Math.round((Number(totalSavedBytes) / this.BYTES_PER_GB) * 100) / 100;
+    const totalSavedGB =
+      Math.round((Number(totalSavedBytes) / this.BYTES_PER_GB) * 100) / 100;
 
     return {
       trend,
@@ -172,11 +187,13 @@ export class InsightsService {
    * Get performance comparison across nodes
    */
   async getNodeComparison(licenseId?: string): Promise<NodeComparisonDto> {
-    this.logger.log(`Calculating node comparison${licenseId ? ` for license ${licenseId}` : ''}`);
+    this.logger.log(
+      `Calculating node comparison${licenseId ? ` for license ${licenseId}` : ''}`,
+    );
 
     // Get all nodes with their metrics
     const nodes = await this.nodeRepository.findAllWithMetrics(
-      licenseId ? { licenseId } : undefined
+      licenseId ? { licenseId } : undefined,
     );
 
     const nodeMetrics = nodes.map((node) => {
@@ -215,7 +232,9 @@ export class InsightsService {
     });
 
     // Sort by total saved bytes (descending)
-    nodeMetrics.sort((a, b) => Number(BigInt(b.totalSavedBytes) - BigInt(a.totalSavedBytes)));
+    nodeMetrics.sort((a, b) =>
+      Number(BigInt(b.totalSavedBytes) - BigInt(a.totalSavedBytes)),
+    );
 
     return {
       nodes: nodeMetrics,

@@ -1,11 +1,19 @@
 import type { AccelerationType } from '@prisma/client';
-import { calculateOptimalWorkers, getRecommendationSummary } from '../../optimal-worker-calculator';
+import {
+  calculateOptimalWorkers,
+  getRecommendationSummary,
+} from '../../optimal-worker-calculator';
 
 describe('calculateOptimalWorkers', () => {
   // ── GPU acceleration ──────────────────────────────────────────────────────
 
   describe('GPU acceleration (NVIDIA, INTEL_QSV, AMD, APPLE_M)', () => {
-    const gpuTypes: AccelerationType[] = ['NVIDIA', 'INTEL_QSV', 'AMD', 'APPLE_M'];
+    const gpuTypes: AccelerationType[] = [
+      'NVIDIA',
+      'INTEL_QSV',
+      'AMD',
+      'APPLE_M',
+    ];
 
     for (const acc of gpuTypes) {
       it(`${acc}: uses 2 CPU cores per job`, () => {
@@ -34,7 +42,7 @@ describe('calculateOptimalWorkers', () => {
     it('GPU: estimatedLoadAverage = cpuCoresPerJob * recommendedMaxWorkers', () => {
       const result = calculateOptimalWorkers(16, 'NVIDIA');
       expect(result.estimatedLoadAverage).toBe(
-        result.cpuCoresPerJob * result.recommendedMaxWorkers
+        result.cpuCoresPerJob * result.recommendedMaxWorkers,
       );
     });
 
@@ -151,7 +159,7 @@ describe('calculateOptimalWorkers', () => {
     it('equals cpuCoresPerJob * recommendedMaxWorkers', () => {
       const result = calculateOptimalWorkers(24, 'CPU');
       expect(result.estimatedLoadAverage).toBe(
-        result.cpuCoresPerJob * result.recommendedMaxWorkers
+        result.cpuCoresPerJob * result.recommendedMaxWorkers,
       );
     });
   });

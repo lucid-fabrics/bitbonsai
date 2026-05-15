@@ -37,7 +37,8 @@ export class OptimalConfigDto {
 
   @ApiProperty({
     description: 'Summary of recommendation with action advice',
-    example: '⚠️ Consider reducing from 10 → 4 workers to prevent CPU overload and job failures',
+    example:
+      '⚠️ Consider reducing from 10 → 4 workers to prevent CPU overload and job failures',
   })
   summary!: string;
 

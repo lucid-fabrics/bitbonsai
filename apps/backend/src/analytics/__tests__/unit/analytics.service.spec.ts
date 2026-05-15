@@ -55,7 +55,7 @@ describe('AnalyticsService', () => {
         expect.objectContaining({
           name: expect.any(String),
           costPerGB: expect.any(Number),
-        })
+        }),
       );
     });
 
@@ -129,7 +129,9 @@ describe('AnalyticsService', () => {
       mockJobRepository.aggregateCount.mockResolvedValue({
         _count: { id: 100 },
       });
-      mockPrismaService.$queryRaw.mockResolvedValue([{ avg_duration_ms: 3600000 }]); // 1 hour avg
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        { avg_duration_ms: 3600000 },
+      ]); // 1 hour avg
       mockJobRepository.groupByTargetCodecAvg.mockResolvedValue([
         { targetCodec: 'HEVC', _avg: { savedPercent: 50 }, _count: 80 },
         { targetCodec: 'AV1', _avg: { savedPercent: 60 }, _count: 20 },

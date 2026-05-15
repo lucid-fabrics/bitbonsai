@@ -13,11 +13,13 @@ const mockOpen = open as jest.MockedFunction<typeof open>;
 
 function createMockFileHandle(content: Buffer) {
   return {
-    read: jest.fn((buffer: Buffer, offset: number, length: number, position: number) => {
-      const src = content.subarray(position, position + length);
-      src.copy(buffer, offset);
-      return Promise.resolve({ bytesRead: src.length, buffer });
-    }),
+    read: jest.fn(
+      (buffer: Buffer, offset: number, length: number, position: number) => {
+        const src = content.subarray(position, position + length);
+        src.copy(buffer, offset);
+        return Promise.resolve({ bytesRead: src.length, buffer });
+      },
+    ),
     close: jest.fn().mockResolvedValue(undefined),
   };
 }
@@ -71,7 +73,12 @@ describe('ContentFingerprintService', () => {
 
       expect(result).not.toBeNull();
       expect(mockFh.read).toHaveBeenCalledTimes(1);
-      expect(mockFh.read).toHaveBeenCalledWith(expect.any(Buffer), 0, fileSize, 0);
+      expect(mockFh.read).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        0,
+        fileSize,
+        0,
+      );
       expect(mockFh.close).toHaveBeenCalled();
     });
 

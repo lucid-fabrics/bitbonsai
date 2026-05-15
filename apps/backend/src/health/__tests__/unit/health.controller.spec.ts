@@ -69,8 +69,12 @@ describe('HealthController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockHealthService.getDetailedHealth.mockRejectedValue(new Error('service fail'));
-      await expect(controller.getDetailedHealth()).rejects.toThrow('service fail');
+      mockHealthService.getDetailedHealth.mockRejectedValue(
+        new Error('service fail'),
+      );
+      await expect(controller.getDetailedHealth()).rejects.toThrow(
+        'service fail',
+      );
     });
   });
 
@@ -86,13 +90,19 @@ describe('HealthController', () => {
 
       const response = await controller.getDiskSpaceMonitoring();
 
-      expect(mockHealthService.monitorLibraryDiskSpace).toHaveBeenCalledTimes(1);
+      expect(mockHealthService.monitorLibraryDiskSpace).toHaveBeenCalledTimes(
+        1,
+      );
       expect(response).toEqual(result);
     });
 
     it('should propagate service errors', async () => {
-      mockHealthService.monitorLibraryDiskSpace.mockRejectedValue(new Error('disk error'));
-      await expect(controller.getDiskSpaceMonitoring()).rejects.toThrow('disk error');
+      mockHealthService.monitorLibraryDiskSpace.mockRejectedValue(
+        new Error('disk error'),
+      );
+      await expect(controller.getDiskSpaceMonitoring()).rejects.toThrow(
+        'disk error',
+      );
     });
   });
 
@@ -111,7 +121,9 @@ describe('HealthController', () => {
       const result = { ready: false, reason: 'Database connection failed' };
       mockHealthService.isReady.mockResolvedValue(result);
 
-      await expect(controller.getReadiness()).rejects.toThrow(ServiceUnavailableException);
+      await expect(controller.getReadiness()).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
 
     it('should propagate service errors', async () => {
@@ -135,7 +147,9 @@ describe('HealthController', () => {
       const result = { alive: false };
       mockHealthService.isLive.mockResolvedValue(result);
 
-      await expect(controller.getLiveness()).rejects.toThrow(ServiceUnavailableException);
+      await expect(controller.getLiveness()).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
 
     it('should propagate service errors', async () => {

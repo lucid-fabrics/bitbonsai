@@ -17,7 +17,9 @@ describe('HttpLoggerMiddleware', () => {
       logWithData: jest.fn(),
     };
 
-    middleware = new HttpLoggerMiddleware(mockLogger as unknown as LoggerService);
+    middleware = new HttpLoggerMiddleware(
+      mockLogger as unknown as LoggerService,
+    );
   });
 
   afterEach(() => {
@@ -79,7 +81,7 @@ describe('HttpLoggerMiddleware', () => {
 
     expect(mockLogger.http).toHaveBeenCalledWith(
       'Incoming request',
-      expect.objectContaining({ correlationId: 'corr-123' })
+      expect.objectContaining({ correlationId: 'corr-123' }),
     );
   });
 
@@ -103,7 +105,7 @@ describe('HttpLoggerMiddleware', () => {
 
     expect(mockLogger.http).toHaveBeenCalledWith(
       'Incoming request',
-      expect.objectContaining({ correlationId: 'req-456' })
+      expect.objectContaining({ correlationId: 'req-456' }),
     );
   });
 
@@ -124,7 +126,7 @@ describe('HttpLoggerMiddleware', () => {
 
     expect(mockLogger.http).toHaveBeenCalledWith(
       'Incoming request',
-      expect.objectContaining({ userAgent: 'Unknown' })
+      expect.objectContaining({ userAgent: 'Unknown' }),
     );
   });
 
@@ -155,7 +157,7 @@ describe('HttpLoggerMiddleware', () => {
         url: '/api/test',
         statusCode: 200,
         ip: '10.0.0.1',
-      })
+      }),
     );
   });
 
@@ -179,7 +181,7 @@ describe('HttpLoggerMiddleware', () => {
     expect(mockLogger.logWithData).toHaveBeenCalledWith(
       'warn',
       'Request completed',
-      expect.objectContaining({ statusCode: 404 })
+      expect.objectContaining({ statusCode: 404 }),
     );
   });
 
@@ -203,7 +205,7 @@ describe('HttpLoggerMiddleware', () => {
     expect(mockLogger.logWithData).toHaveBeenCalledWith(
       'error',
       'Request completed',
-      expect.objectContaining({ statusCode: 500 })
+      expect.objectContaining({ statusCode: 500 }),
     );
   });
 });

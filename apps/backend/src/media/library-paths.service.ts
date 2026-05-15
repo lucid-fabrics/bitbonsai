@@ -25,11 +25,13 @@ export class LibraryPathsService {
    */
   async getAllLibraryPaths(nodeId?: string): Promise<string[]> {
     const libraries = await this.libraryRepository.findAllLibraries(
-      nodeId ? { nodeId } : undefined
+      nodeId ? { nodeId } : undefined,
     );
 
     const paths = [...new Set(libraries.map((lib) => lib.path))];
-    this.logger.debug(`Retrieved ${paths.length} library path(s) from database`);
+    this.logger.debug(
+      `Retrieved ${paths.length} library path(s) from database`,
+    );
     return paths;
   }
 }

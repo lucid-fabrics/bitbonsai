@@ -25,7 +25,7 @@ export class StorageInitService implements OnModuleInit {
   constructor(
     private readonly nodeRepository: NodeRepository,
     private readonly nfsAutoExport: NFSAutoExportService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async onModuleInit() {
@@ -42,7 +42,9 @@ export class StorageInitService implements OnModuleInit {
       const currentNode = await this.nodeRepository.findFirstNode();
 
       if (!currentNode) {
-        this.logger.debug('No node found in database - skipping storage initialization');
+        this.logger.debug(
+          'No node found in database - skipping storage initialization',
+        );
         return;
       }
 
@@ -53,13 +55,17 @@ export class StorageInitService implements OnModuleInit {
         this.logger.log('✅ MAIN node storage initialization complete');
       } else if (currentNode.role === 'LINKED') {
         // LINKED node: Verify NFS mounts and set hasSharedStorage
-        this.logger.log('🗂️  Detected LINKED node - verifying shared storage...');
+        this.logger.log(
+          '🗂️  Detected LINKED node - verifying shared storage...',
+        );
 
         // Check for NFS mounts FIRST (from deploy script or manual setup)
         const hasNFSMounts = await this.verifyNFSMounts();
 
         if (hasNFSMounts) {
-          this.logger.log('✅ NFS mounts detected - enabling shared storage mode');
+          this.logger.log(
+            '✅ NFS mounts detected - enabling shared storage mode',
+          );
 
           // Update node to enable shared storage
           await this.nodeRepository.updateData(currentNode.id, {
@@ -69,7 +75,9 @@ export class StorageInitService implements OnModuleInit {
 
           this.logger.log('✅ LINKED node: Zero-copy shared storage ENABLED');
         } else {
-          this.logger.warn('⚠️  No NFS mounts detected - will use file transfer mode');
+          this.logger.warn(
+            '⚠️  No NFS mounts detected - will use file transfer mode',
+          );
 
           // Ensure hasSharedStorage is false
           await this.nodeRepository.updateData(currentNode.id, {
@@ -78,20 +86,24 @@ export class StorageInitService implements OnModuleInit {
 
           // Try to auto-detect and mount shares from main node (via event)
           if (currentNode.mainNodeUrl) {
-            this.logger.log('Emitting auto-detect-mount event for linked node...');
+            this.logger.log(
+              'Emitting auto-detect-mount event for linked node...',
+            );
             this.eventEmitter.emit(
               StorageAutoDetectMountEvent.event,
-              new StorageAutoDetectMountEvent(currentNode.id)
+              new StorageAutoDetectMountEvent(currentNode.id),
             );
           } else {
-            this.logger.warn('No mainNodeUrl configured - cannot fetch share info');
+            this.logger.warn(
+              'No mainNodeUrl configured - cannot fetch share info',
+            );
           }
         }
       }
     } catch (error: unknown) {
       this.logger.error(
         '❌ Failed to initialize storage:',
-        error instanceof Error ? error.stack : error
+        error instanceof Error ? error.stack : error,
       );
       // Don't throw - allow app to continue even if storage init fails
     }
@@ -103,7 +115,9 @@ export class StorageInitService implements OnModuleInit {
    */
   private async verifyNFSMounts(): Promise<boolean> {
     try {
-      const { stdout } = await execAsync('mount -t nfs,nfs4 2>/dev/null || true');
+      const { stdout } = await execAsync(
+        'mount -t nfs,nfs4 2>/dev/null || true',
+      );
       const nfsMounts = stdout
         .trim()
         .split('\n')

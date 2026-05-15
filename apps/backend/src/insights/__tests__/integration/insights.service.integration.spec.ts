@@ -127,7 +127,9 @@ describe('InsightsService Integration Tests', () => {
       const result = await service.getSavingsTrend(7);
 
       expect(result.length).toBeGreaterThan(0);
-      expect(result.every((item) => item.date && typeof item.savingsGB === 'number')).toBe(true);
+      expect(
+        result.every((item) => item.date && typeof item.savingsGB === 'number'),
+      ).toBe(true);
     });
 
     it('should filter by date range correctly', async () => {

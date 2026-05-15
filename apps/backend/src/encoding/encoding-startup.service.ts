@@ -26,7 +26,7 @@ export class EncodingStartupService {
     private readonly queueService: QueueService,
     private readonly librariesService: LibrariesService,
     private readonly ffmpegService: FfmpegService,
-    private readonly encodingFileService: EncodingFileService
+    private readonly encodingFileService: EncodingFileService,
   ) {}
 
   /**
@@ -48,7 +48,7 @@ export class EncodingStartupService {
         for (const testPath of mediaPaths) {
           if (fs.existsSync(testPath)) {
             this.logger.log(
-              `✅ Volume mount ready: ${testPath} (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`
+              `✅ Volume mount ready: ${testPath} (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`,
             );
             return;
           }
@@ -59,14 +59,16 @@ export class EncodingStartupService {
 
       if (attempt < this.VOLUME_MOUNT_MAX_RETRIES) {
         this.logger.debug(
-          `⏳ Waiting for volume mounts... (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`
+          `⏳ Waiting for volume mounts... (attempt ${attempt}/${this.VOLUME_MOUNT_MAX_RETRIES})`,
         );
-        await new Promise((resolve) => setTimeout(resolve, this.VOLUME_MOUNT_PROBE_DELAY_MS));
+        await new Promise((resolve) =>
+          setTimeout(resolve, this.VOLUME_MOUNT_PROBE_DELAY_MS),
+        );
       }
     }
 
     this.logger.warn(
-      `⚠️  Volume mounts not detected after ${this.VOLUME_MOUNT_MAX_RETRIES} attempts - proceeding anyway`
+      `⚠️  Volume mounts not detected after ${this.VOLUME_MOUNT_MAX_RETRIES} attempts - proceeding anyway`,
     );
   }
 
@@ -88,7 +90,9 @@ export class EncodingStartupService {
    * @param nodeId - Only heal jobs belonging to this node (prevents cross-node interference)
    */
   async autoHealOrphanedJobs(nodeId: string): Promise<void> {
-    this.logger.log(`🏥 Auto-heal: Checking for orphaned jobs on this node (${nodeId})...`);
+    this.logger.log(
+      `🏥 Auto-heal: Checking for orphaned jobs on this node (${nodeId})...`,
+    );
 
     try {
       // CRITICAL FIX #2: Check for jobs with recent heartbeats (< 2min old)
@@ -192,17 +196,19 @@ export class EncodingStartupService {
       });
       if (manuallyPausedJobs.length > 0) {
         this.logger.log(
-          `ℹ️ Preserving ${manuallyPausedJobs.length} manually paused job(s) on this node - will NOT auto-resume`
+          `ℹ️ Preserving ${manuallyPausedJobs.length} manually paused job(s) on this node - will NOT auto-resume`,
         );
       }
 
       if (orphanedJobs.length === 0) {
-        this.logger.log('✅ No orphaned jobs found on this node - system is healthy');
+        this.logger.log(
+          '✅ No orphaned jobs found on this node - system is healthy',
+        );
         return;
       }
 
       this.logger.warn(
-        `🔧 Found ${orphanedJobs.length} orphaned job(s) on this node from backend restart - recovering...`
+        `🔧 Found ${orphanedJobs.length} orphaned job(s) on this node from backend restart - recovering...`,
       );
 
       // Reset each orphaned job to QUEUED
@@ -228,18 +234,21 @@ export class EncodingStartupService {
             {
               autoHealClaimedAt: new Date(),
               autoHealClaimedBy: nodeId,
-            }
+            },
           );
 
           if (claimResult.count === 0) {
-            this.logger.debug(`  ⏭️ Job ${job.id} already claimed by another node, skipping`);
+            this.logger.debug(
+              `  ⏭️ Job ${job.id} already claimed by another node, skipping`,
+            );
             continue; // Another node claimed this job
           }
 
           // TRUE RESUME: Check if temp file still exists (with retry logic)
-          const tempFileExists = await this.encodingFileService.checkTempFileWithRetry(
-            job.tempFilePath
-          );
+          const tempFileExists =
+            await this.encodingFileService.checkTempFileWithRetry(
+              job.tempFilePath,
+            );
 
           // Log temp file check result for debugging
           if (job.tempFilePath) {
@@ -269,7 +278,8 @@ export class EncodingStartupService {
               const filePath = videoJob?.filePath;
               if (filePath) {
                 // Get video duration
-                const videoDuration = await this.ffmpegService.getVideoDuration(filePath);
+                const videoDuration =
+                  await this.ffmpegService.getVideoDuration(filePath);
 
                 // Calculate resume time in seconds based on current progress
                 const resumeSeconds = (job.progress / 100) * videoDuration;
@@ -279,12 +289,12 @@ export class EncodingStartupService {
                   this.ffmpegService.formatSecondsToTimestamp(resumeSeconds);
 
                 this.logger.log(
-                  `  🔄 Recalculated resumeTimestamp for job ${job.fileLabel}: progress=${job.progress.toFixed(1)}%, videoDuration=${videoDuration.toFixed(2)}s, resumeSeconds=${resumeSeconds.toFixed(2)}s, resumeTimestamp=${recalculatedResumeTimestamp}`
+                  `  🔄 Recalculated resumeTimestamp for job ${job.fileLabel}: progress=${job.progress.toFixed(1)}%, videoDuration=${videoDuration.toFixed(2)}s, resumeSeconds=${resumeSeconds.toFixed(2)}s, resumeTimestamp=${recalculatedResumeTimestamp}`,
                 );
               }
             } catch (error: unknown) {
               this.logger.warn(
-                `  ⚠️  Failed to recalculate resumeTimestamp for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`
+                `  ⚠️  Failed to recalculate resumeTimestamp for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
               );
               // Continue with existing resumeTimestamp (better than nothing)
             }
@@ -320,14 +330,16 @@ export class EncodingStartupService {
           });
 
           this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, ${tempFileExists ? `will resume from ${job.progress.toFixed(1)}%` : 'restarting from 0%'})`
+            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, ${tempFileExists ? `will resume from ${job.progress.toFixed(1)}%` : 'restarting from 0%'})`,
           );
         } catch (error: unknown) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);
         }
       }
 
-      this.logger.log(`✅ Auto-heal complete - recovered ${orphanedJobs.length} job(s)`);
+      this.logger.log(
+        `✅ Auto-heal complete - recovered ${orphanedJobs.length} job(s)`,
+      );
     } catch (error: unknown) {
       this.logger.error('Auto-heal failed:', error);
     }

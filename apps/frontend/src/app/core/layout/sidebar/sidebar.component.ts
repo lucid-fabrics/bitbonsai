@@ -1,5 +1,10 @@
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  OnInit,
+} from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -59,7 +64,7 @@ export class SidebarComponent implements OnInit {
   readonly isAuthenticationRequired$: Observable<boolean> = this.settingsService
     .getSecuritySettings()
     .pipe(
-      map((settings) => !settings.allowLocalNetworkWithoutAuth)
+      map((settings) => !settings.allowLocalNetworkWithoutAuth),
       // Default to true (require auth) on error for security
       // catchError(() => of(true)) // We can add this if needed
     );
@@ -103,7 +108,7 @@ export class SidebarComponent implements OnInit {
       }
       // LINKED nodes only see non-restricted items
       return this.allMenuItems.filter((item) => !item.mainNodeOnly);
-    })
+    }),
   );
 
   /**

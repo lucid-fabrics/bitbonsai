@@ -47,7 +47,9 @@ export class SetupController {
   @ApiBadRequestResponse({
     description: 'Setup has already been completed or validation failed',
   })
-  async initializeSetup(@Body() dto: InitializeSetupDto): Promise<{ message: string }> {
+  async initializeSetup(
+    @Body() dto: InitializeSetupDto,
+  ): Promise<{ message: string }> {
     return this.setupService.initializeSetup(dto);
   }
 
