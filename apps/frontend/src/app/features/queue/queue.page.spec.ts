@@ -40,8 +40,10 @@ describe('QueueComponent', () => {
       retryJob: jest.fn().mockReturnValue(of(void 0)),
     } as unknown as jest.Mocked<QueueClient>;
 
+    TestBed.overrideComponent(QueueComponent, { set: { template: '<div></div>' } });
+
     await TestBed.configureTestingModule({
-      imports: [QueueComponent, TranslocoTestingModule.forRoot({})],
+      imports: [TranslocoTestingModule.forRoot({})],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         provideHttpClient(),
@@ -49,9 +51,7 @@ describe('QueueComponent', () => {
         provideRouter([]),
         { provide: QueueClient, useValue: queueClientMock },
       ],
-    })
-      .overrideTemplate(QueueComponent, '<div></div>')
-      .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(QueueComponent);
     component = fixture.componentInstance;
