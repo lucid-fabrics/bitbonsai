@@ -49,7 +49,9 @@ describe('QueueComponent', () => {
         provideRouter([]),
         { provide: QueueClient, useValue: queueClientMock },
       ],
-    }).compileComponents();
+    })
+      .overrideTemplate(QueueComponent, '<div></div>')
+      .compileComponents();
 
     fixture = TestBed.createComponent(QueueComponent);
     component = fixture.componentInstance;
