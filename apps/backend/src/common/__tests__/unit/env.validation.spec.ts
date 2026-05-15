@@ -24,9 +24,9 @@ describe('envValidationSchema', () => {
     });
 
     it('should throw when DATABASE_URL is missing', () => {
-      expect(() =>
-        envValidationSchema({ JWT_SECRET: validConfig.JWT_SECRET }),
-      ).toThrow(/validation failed/i);
+      expect(() => envValidationSchema({ JWT_SECRET: validConfig.JWT_SECRET })).toThrow(
+        /validation failed/i
+      );
     });
   });
 
@@ -41,7 +41,7 @@ describe('envValidationSchema', () => {
         envValidationSchema({
           DATABASE_URL: validConfig.DATABASE_URL,
           NODE_ENV: 'production',
-        }),
+        })
       ).toThrow(/validation failed/i);
     });
 
@@ -50,7 +50,7 @@ describe('envValidationSchema', () => {
         envValidationSchema({
           DATABASE_URL: validConfig.DATABASE_URL,
           JWT_SECRET: 'short',
-        }),
+        })
       ).toThrow(/validation failed/i);
     });
 
@@ -69,9 +69,7 @@ describe('envValidationSchema', () => {
         ...validConfig,
         ENCRYPTION_KEY: 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=',
       });
-      expect(result.ENCRYPTION_KEY).toBe(
-        'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=',
-      );
+      expect(result.ENCRYPTION_KEY).toBe('YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=');
     });
 
     it('should throw when ENCRYPTION_KEY is too short', () => {
@@ -79,7 +77,7 @@ describe('envValidationSchema', () => {
         envValidationSchema({
           ...validConfig,
           ENCRYPTION_KEY: 'short',
-        }),
+        })
       ).toThrow(/validation failed/i);
     });
   });
@@ -100,15 +98,15 @@ describe('envValidationSchema', () => {
     });
 
     it('should throw for invalid NODE_ROLE', () => {
-      expect(() =>
-        envValidationSchema({ ...validConfig, NODE_ROLE: 'INVALID' }),
-      ).toThrow(/validation failed/i);
+      expect(() => envValidationSchema({ ...validConfig, NODE_ROLE: 'INVALID' })).toThrow(
+        /validation failed/i
+      );
     });
 
     it('should throw when LINKED role lacks MAIN_API_URL', () => {
-      expect(() =>
-        envValidationSchema({ ...validConfig, NODE_ROLE: 'LINKED' }),
-      ).toThrow(/validation failed/i);
+      expect(() => envValidationSchema({ ...validConfig, NODE_ROLE: 'LINKED' })).toThrow(
+        /validation failed/i
+      );
     });
   });
 
@@ -122,21 +120,21 @@ describe('envValidationSchema', () => {
     });
 
     it('should throw for invalid MAIN_API_URL', () => {
-      expect(() =>
-        envValidationSchema({ ...validConfig, MAIN_API_URL: 'not-a-url' }),
-      ).toThrow(/validation failed/i);
+      expect(() => envValidationSchema({ ...validConfig, MAIN_API_URL: 'not-a-url' })).toThrow(
+        /validation failed/i
+      );
     });
 
     it('should throw for invalid LICENSE_API_URL', () => {
-      expect(() =>
-        envValidationSchema({ ...validConfig, LICENSE_API_URL: 'not-a-url' }),
-      ).toThrow(/validation failed/i);
+      expect(() => envValidationSchema({ ...validConfig, LICENSE_API_URL: 'not-a-url' })).toThrow(
+        /validation failed/i
+      );
     });
 
     it('should throw for invalid FRONTEND_URL', () => {
-      expect(() =>
-        envValidationSchema({ ...validConfig, FRONTEND_URL: 'not-a-url' }),
-      ).toThrow(/validation failed/i);
+      expect(() => envValidationSchema({ ...validConfig, FRONTEND_URL: 'not-a-url' })).toThrow(
+        /validation failed/i
+      );
     });
 
     it('should pass with valid LICENSE_API_URL', () => {

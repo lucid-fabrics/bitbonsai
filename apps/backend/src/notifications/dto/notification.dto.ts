@@ -1,15 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsEnum,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator';
-import {
-  NotificationPriority,
-  NotificationType,
-} from '../types/notification.types';
+import { IsBoolean, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { NotificationPriority, NotificationType } from '../types/notification.types';
 
 export class NotificationDto {
   @ApiProperty({

@@ -114,7 +114,7 @@ describe('PoliciesService Integration Tests', () => {
           deviceProfiles: {},
           advancedSettings: {},
           libraryId: 'non-existent-id',
-        }),
+        })
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -260,9 +260,7 @@ describe('PoliciesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.findOne('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -287,9 +285,9 @@ describe('PoliciesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(
-        service.update('non-existent-id', { name: 'Test' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent-id', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should update updatedAt timestamp', async () => {
@@ -304,9 +302,7 @@ describe('PoliciesService Integration Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       const updated = await service.update(created.id, { name: 'Updated' });
 
-      expect(updated.updatedAt.getTime()).toBeGreaterThan(
-        created.updatedAt.getTime(),
-      );
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(created.updatedAt.getTime());
     });
   });
 
@@ -330,9 +326,7 @@ describe('PoliciesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.remove('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
     });
 
     it('should cascade delete related jobs', async () => {

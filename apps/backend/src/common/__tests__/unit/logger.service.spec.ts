@@ -132,12 +132,9 @@ describe('LoggerService', () => {
     it('should call winston verbose', () => {
       service.verbose('verbose message');
 
-      expect(mockWinstonLogger.verbose).toHaveBeenCalledWith(
-        'verbose message',
-        {
-          context: undefined,
-        },
-      );
+      expect(mockWinstonLogger.verbose).toHaveBeenCalledWith('verbose message', {
+        context: undefined,
+      });
     });
   });
 
@@ -170,15 +167,11 @@ describe('LoggerService', () => {
         count: 42,
       });
 
-      expect(mockWinstonLogger.log).toHaveBeenCalledWith(
-        'info',
-        'structured log',
-        {
-          context: 'MyService',
-          key: 'value',
-          count: 42,
-        },
-      );
+      expect(mockWinstonLogger.log).toHaveBeenCalledWith('info', 'structured log', {
+        context: 'MyService',
+        key: 'value',
+        count: 42,
+      });
     });
 
     it('should handle error level', () => {

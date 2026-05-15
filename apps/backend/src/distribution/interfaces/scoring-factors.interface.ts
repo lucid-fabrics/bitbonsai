@@ -133,9 +133,7 @@ export interface DistributionSettings {
 /**
  * Full distribution config
  */
-export interface DistributionConfigData
-  extends DistributionWeights,
-    DistributionSettings {
+export interface DistributionConfigData extends DistributionWeights, DistributionSettings {
   id: string;
   isActive: boolean;
 }

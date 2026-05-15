@@ -86,7 +86,7 @@ export class FileRelocatorService {
   async relocateFile(
     originalPath: string,
     expectedSizeBytes: bigint | number,
-    searchDepth = 2,
+    searchDepth = 2
   ): Promise<RelocationResult> {
     const startTime = Date.now();
     const expectedSize = BigInt(expectedSizeBytes);
@@ -102,7 +102,7 @@ export class FileRelocatorService {
     try {
       const jellyfinResult = await this.jellyfinService.findFileByNameAndSize(
         originalPath,
-        expectedSizeBytes,
+        expectedSizeBytes
       );
 
       if (jellyfinResult.found && jellyfinResult.path) {
@@ -122,21 +122,15 @@ export class FileRelocatorService {
             source: 'jellyfin',
           };
         } else {
-          this.logger.warn(
-            `Jellyfin reported path doesn't exist: ${jellyfinResult.path}`,
-          );
+          this.logger.warn(`Jellyfin reported path doesn't exist: ${jellyfinResult.path}`);
         }
       }
     } catch (error: unknown) {
-      this.logger.debug(
-        `Jellyfin lookup failed, falling back to filesystem: ${error}`,
-      );
+      this.logger.debug(`Jellyfin lookup failed, falling back to filesystem: ${error}`);
     }
 
     // STEP 2: Fall back to filesystem search
-    this.logger.log(
-      `📂 Jellyfin lookup failed or not configured, searching filesystem...`,
-    );
+    this.logger.log(`📂 Jellyfin lookup failed or not configured, searching filesystem...`);
 
     let searchedPaths = 0;
     const candidates: Array<{
@@ -175,7 +169,7 @@ export class FileRelocatorService {
             const normalizedCandidate = this.normalizeFilename(entry.name);
             const nameSimilarity = this.calculateSimilarity(
               normalizedOriginal,
-              normalizedCandidate,
+              normalizedCandidate
             );
 
             // Only consider if size matches OR name is very similar
@@ -220,9 +214,7 @@ export class FileRelocatorService {
           : 85
         : Math.round(best.nameSimilarity * 70);
 
-      this.logger.log(
-        `✅ File relocated in ${elapsed}ms (searched ${searchedPaths} files)`,
-      );
+      this.logger.log(`✅ File relocated in ${elapsed}ms (searched ${searchedPaths} files)`);
       this.logger.log(`   Original: ${originalPath}`);
       this.logger.log(`   Found at: ${best.path}`);
       this.logger.log(`   Match: ${matchType} (${confidence}% confidence)`);
@@ -237,9 +229,7 @@ export class FileRelocatorService {
       };
     }
 
-    this.logger.warn(
-      `❌ File not found after searching ${searchedPaths} files in ${elapsed}ms`,
-    );
+    this.logger.warn(`❌ File not found after searching ${searchedPaths} files in ${elapsed}ms`);
     return {
       found: false,
       newPath: null,
@@ -373,7 +363,7 @@ export class FileRelocatorService {
         matrix[i][j] = Math.min(
           matrix[i - 1][j] + 1,
           matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] + cost,
+          matrix[i - 1][j - 1] + cost
         );
       }
     }

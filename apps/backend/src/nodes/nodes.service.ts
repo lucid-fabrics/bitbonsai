@@ -39,7 +39,7 @@ export class NodesService implements OnModuleInit {
     private readonly dataAccessService: DataAccessService,
     private readonly systemInfoService: SystemInfoService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
-    private readonly nodeRegistration: NodeRegistrationService,
+    private readonly nodeRegistration: NodeRegistrationService
   ) {}
 
   /**
@@ -68,9 +68,7 @@ export class NodesService implements OnModuleInit {
       const currentNode = await this.nodeRepository.findFirstNode();
 
       if (!currentNode) {
-        this.logger.warn(
-          '⚠️  No node found in local database - skipping heartbeat',
-        );
+        this.logger.warn('⚠️  No node found in local database - skipping heartbeat');
         return;
       }
 
@@ -82,13 +80,10 @@ export class NodesService implements OnModuleInit {
       } else {
         // LINKED node: Send heartbeat to MAIN node via API
         await this.dataAccessService.sendHeartbeat(currentNode.id);
-        this.logger.debug(
-          `💓 [LINKED] Heartbeat sent for ${currentNode.name} to MAIN API`,
-        );
+        this.logger.debug(`💓 [LINKED] Heartbeat sent for ${currentNode.name} to MAIN API`);
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`❌ Failed to send auto-heartbeat: ${errorMessage}`);
       if (errorStack) {
@@ -113,9 +108,7 @@ export class NodesService implements OnModuleInit {
    * @throws BadRequestException if license is invalid or inactive
    * @throws ConflictException if maximum nodes reached for license
    */
-  async registerNode(
-    data: RegisterNodeDto,
-  ): Promise<NodeRegistrationResponseDto> {
+  async registerNode(data: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
     return this.nodeRegistration.registerNode(data);
   }
 
@@ -145,9 +138,7 @@ export class NodesService implements OnModuleInit {
    * @returns Updated node with new pairing token
    * @throws NotFoundException if node doesn't exist
    */
-  async generatePairingTokenForNode(
-    nodeId: string,
-  ): Promise<NodeRegistrationResponseDto> {
+  async generatePairingTokenForNode(nodeId: string): Promise<NodeRegistrationResponseDto> {
     return this.nodeRegistration.generatePairingTokenForNode(nodeId);
   }
 
@@ -181,22 +172,18 @@ export class NodesService implements OnModuleInit {
     if (data?.ipAddress) {
       // LINKED node sent its IP address - use it directly
       ipAddressToUpdate = data.ipAddress;
-      this.logger.debug(
-        `📍 Using IP from heartbeat payload for ${node.name}: ${data.ipAddress}`,
-      );
+      this.logger.debug(`📍 Using IP from heartbeat payload for ${node.name}: ${data.ipAddress}`);
     } else if (node.role === NodeRole.MAIN) {
       // MAIN node heartbeat - auto-detect IP
       const systemInfo = await this.systemInfoService.collectSystemInfo();
       ipAddressToUpdate = systemInfo.ipAddress;
-      this.logger.debug(
-        `📍 Auto-detected IP for MAIN node ${node.name}: ${systemInfo.ipAddress}`,
-      );
+      this.logger.debug(`📍 Auto-detected IP for MAIN node ${node.name}: ${systemInfo.ipAddress}`);
     }
 
     // Log IP address update if it changed
     if (ipAddressToUpdate && node.ipAddress !== ipAddressToUpdate) {
       this.logger.log(
-        `📍 Updating IP address for ${node.name}: ${node.ipAddress || 'none'} → ${ipAddressToUpdate}`,
+        `📍 Updating IP address for ${node.name}: ${node.ipAddress || 'none'} → ${ipAddressToUpdate}`
       );
     }
 
@@ -230,9 +217,7 @@ export class NodesService implements OnModuleInit {
 
     // Calculate uptime dynamically based on createdAt timestamp
     const now = new Date();
-    const uptimeSeconds = Math.floor(
-      (now.getTime() - node.createdAt.getTime()) / 1000,
-    );
+    const uptimeSeconds = Math.floor((now.getTime() - node.createdAt.getTime()) / 1000);
 
     return {
       id: node.id,
@@ -276,11 +261,7 @@ export class NodesService implements OnModuleInit {
     const ramGb = Math.round(os.totalmem() / (1024 * 1024 * 1024));
 
     // Calculate optimal configuration
-    const optimalConfig = calculateOptimalWorkers(
-      cpuCores,
-      node.acceleration,
-      ramGb,
-    );
+    const optimalConfig = calculateOptimalWorkers(cpuCores, node.acceleration, ramGb);
 
     // Generate summary comparing current vs recommended
     const summary = getRecommendationSummary(node.maxWorkers, optimalConfig);
@@ -310,9 +291,7 @@ export class NodesService implements OnModuleInit {
     const now = new Date();
     return nodes.map((node) => ({
       ...node,
-      uptimeSeconds: Math.floor(
-        (now.getTime() - node.createdAt.getTime()) / 1000,
-      ),
+      uptimeSeconds: Math.floor((now.getTime() - node.createdAt.getTime()) / 1000),
     }));
   }
 
@@ -373,7 +352,7 @@ export class NodesService implements OnModuleInit {
         currentIpAddress !== '127.0.0.1'
       ) {
         this.logger.warn(
-          `🔄 AUTO-IP-UPDATE: Node "${node.name}" IP changed from ${node.ipAddress} to ${currentIpAddress}`,
+          `🔄 AUTO-IP-UPDATE: Node "${node.name}" IP changed from ${node.ipAddress} to ${currentIpAddress}`
         );
         return this.nodeRepository.updateData(node.id, {
           ipAddress: currentIpAddress,
@@ -387,9 +366,7 @@ export class NodesService implements OnModuleInit {
       const node = await this.nodeRepository.findById(nodeId);
 
       if (!node) {
-        throw new NotFoundException(
-          `Node with ID ${nodeId} (from NODE_ID env) not found`,
-        );
+        throw new NotFoundException(`Node with ID ${nodeId} (from NODE_ID env) not found`);
       }
 
       return autoUpdateIpIfNeeded(node);
@@ -399,8 +376,7 @@ export class NodesService implements OnModuleInit {
 
     if (currentIpAddress) {
       // Try to find nodes matching this IP address
-      const nodesByIp =
-        await this.nodeRepository.findManyByIp(currentIpAddress);
+      const nodesByIp = await this.nodeRepository.findManyByIp(currentIpAddress);
 
       if (nodesByIp.length > 0) {
         // Prefer MAIN node over LINKED node (fixes duplicate node bug)
@@ -410,21 +386,21 @@ export class NodesService implements OnModuleInit {
         // Warn if multiple nodes with same IP exist
         if (nodesByIp.length > 1) {
           this.logger.warn(
-            `⚠️  Multiple nodes detected with IP ${currentIpAddress} (${nodesByIp.length} total)`,
+            `⚠️  Multiple nodes detected with IP ${currentIpAddress} (${nodesByIp.length} total)`
           );
           this.logger.warn(
-            `   Using ${selectedNode.role} node: ${selectedNode.name} (${selectedNode.id})`,
+            `   Using ${selectedNode.role} node: ${selectedNode.name} (${selectedNode.id})`
           );
           this.logger.warn(
             `   Duplicates: ${nodesByIp
               .filter((n) => n.id !== selectedNode.id)
               .map((n) => `${n.name} (${n.role})`)
-              .join(', ')}`,
+              .join(', ')}`
           );
         }
 
         this.logger.debug(
-          `✅ Detected current node by IP address: ${selectedNode.name} (${selectedNode.role}) at ${currentIpAddress}`,
+          `✅ Detected current node by IP address: ${selectedNode.name} (${selectedNode.role}) at ${currentIpAddress}`
         );
         return selectedNode; // IP already matches, no update needed
       }
@@ -441,16 +417,16 @@ export class NodesService implements OnModuleInit {
     // Warn if multiple MAIN nodes exist (data inconsistency)
     if (mainNodes.length > 1) {
       this.logger.warn(
-        `⚠️  Multiple MAIN nodes detected (${mainNodes.length})! This is a data inconsistency.`,
+        `⚠️  Multiple MAIN nodes detected (${mainNodes.length})! This is a data inconsistency.`
       );
       this.logger.warn(
-        `   Using newest MAIN node: ${mainNodes[mainNodes.length - 1].name} (${mainNodes[mainNodes.length - 1].id})`,
+        `   Using newest MAIN node: ${mainNodes[mainNodes.length - 1].name} (${mainNodes[mainNodes.length - 1].id})`
       );
       this.logger.warn(
         `   Consider cleaning up old MAIN nodes: ${mainNodes
           .slice(0, -1)
           .map((n) => n.id)
-          .join(', ')}`,
+          .join(', ')}`
       );
       // Return the NEWEST main node (most likely to be correct) and auto-update its IP
       return autoUpdateIpIfNeeded(mainNodes[mainNodes.length - 1]);
@@ -461,12 +437,9 @@ export class NodesService implements OnModuleInit {
     }
 
     // No MAIN node found - check if this is a child-only instance (has LINKED node but no MAIN)
-    const linkedNode = await this.nodeRepository.findFirstByRole(
-      NodeRole.LINKED,
-      {
-        orderBy: { createdAt: 'desc' },
-      },
-    );
+    const linkedNode = await this.nodeRepository.findFirstByRole(NodeRole.LINKED, {
+      orderBy: { createdAt: 'desc' },
+    });
 
     if (linkedNode) {
       return autoUpdateIpIfNeeded(linkedNode);
@@ -494,10 +467,7 @@ export class NodesService implements OnModuleInit {
     // If updating maxWorkers, validate against recommended settings
     if (data.maxWorkers !== undefined) {
       const cpuCores = os.cpus().length;
-      const optimalConfig = calculateOptimalWorkers(
-        cpuCores,
-        node.acceleration,
-      );
+      const optimalConfig = calculateOptimalWorkers(cpuCores, node.acceleration);
 
       // Warn if significantly higher than recommended (2x threshold)
       if (data.maxWorkers > optimalConfig.recommendedMaxWorkers * 2) {
@@ -505,7 +475,7 @@ export class NodesService implements OnModuleInit {
           `⚠️ Setting ${data.maxWorkers} workers is too high for your ${cpuCores}-core system! ` +
             `Recommended maximum: ${optimalConfig.recommendedMaxWorkers} workers (${optimalConfig.cpuCoresPerJob} cores per job). ` +
             `Setting too many workers will cause job failures due to resource starvation. ` +
-            `Estimated load: ${data.maxWorkers * optimalConfig.cpuCoresPerJob} (your system has ${cpuCores} cores).`,
+            `Estimated load: ${data.maxWorkers * optimalConfig.cpuCoresPerJob} (your system has ${cpuCores} cores).`
         );
       }
 
@@ -513,7 +483,7 @@ export class NodesService implements OnModuleInit {
       if (data.maxWorkers > optimalConfig.recommendedMaxWorkers) {
         this.logger.warn(
           `Node ${id}: maxWorkers (${data.maxWorkers}) is higher than recommended (${optimalConfig.recommendedMaxWorkers}). ` +
-            `This may cause resource contention and job failures.`,
+            `This may cause resource contention and job failures.`
         );
       }
     }
@@ -580,7 +550,7 @@ export class NodesService implements OnModuleInit {
       if (childUrl) {
         try {
           this.logger.log(
-            `🔔 Notifying child node ${node.name} (${childUrl}) to reset after unlink from main node`,
+            `🔔 Notifying child node ${node.name} (${childUrl}) to reset after unlink from main node`
           );
 
           // RACE CONDITION FIX: Add timeout to prevent hanging
@@ -590,61 +560,52 @@ export class NodesService implements OnModuleInit {
 
           try {
             // Call the child node's unregister-self endpoint to make it reset
-            const response = await fetch(
-              `${childUrl}/api/v1/nodes/unregister-self`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${node.apiKey}`, // Use stored API key for auth
-                },
-                signal: controller.signal, // Add abort signal for timeout
+            const response = await fetch(`${childUrl}/api/v1/nodes/unregister-self`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${node.apiKey}`, // Use stored API key for auth
               },
-            );
+              signal: controller.signal, // Add abort signal for timeout
+            });
 
             clearTimeout(timeoutId);
 
             if (response.ok) {
               this.logger.log(
-                `✅ Child node ${node.name} successfully notified to reset (will redirect to setup)`,
+                `✅ Child node ${node.name} successfully notified to reset (will redirect to setup)`
               );
             } else {
               this.logger.warn(
-                `⚠️ Child node ${node.name} returned status ${response.status} - may need manual reset`,
+                `⚠️ Child node ${node.name} returned status ${response.status} - may need manual reset`
               );
             }
           } catch (fetchError: unknown) {
             clearTimeout(timeoutId);
-            if (
-              fetchError instanceof Error &&
-              fetchError.name === 'AbortError'
-            ) {
+            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
               this.logger.warn(
-                `⚠️ Timeout notifying child node ${node.name} (>5s) - proceeding with deletion`,
+                `⚠️ Timeout notifying child node ${node.name} (>5s) - proceeding with deletion`
               );
             } else {
               // FIX: Don't re-throw errors - child may be self-unregistering (circular call)
               // Just log a warning and continue with deletion
               const errorMessage =
-                fetchError instanceof Error
-                  ? fetchError.message
-                  : 'Unknown error';
+                fetchError instanceof Error ? fetchError.message : 'Unknown error';
               this.logger.warn(
-                `⚠️ Failed to notify child node ${node.name}: ${errorMessage} - proceeding with deletion`,
+                `⚠️ Failed to notify child node ${node.name}: ${errorMessage} - proceeding with deletion`
               );
             }
           }
         } catch (error: unknown) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error';
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           this.logger.warn(
-            `⚠️ Failed to notify child node ${node.name} to reset: ${errorMessage} - child may need manual reset`,
+            `⚠️ Failed to notify child node ${node.name} to reset: ${errorMessage} - child may need manual reset`
           );
           // Continue with deletion even if notification fails
         }
       } else {
         this.logger.warn(
-          `⚠️ Child node ${node.name} has no URL configured - cannot notify to reset`,
+          `⚠️ Child node ${node.name} has no URL configured - cannot notify to reset`
         );
       }
     }
@@ -653,9 +614,7 @@ export class NodesService implements OnModuleInit {
     // This will cascade delete all associated libraries and jobs
     await this.nodeRepository.deleteById(id);
 
-    this.logger.log(
-      `🗑️ Node ${node.name} (${id}) deleted from main node's database`,
-    );
+    this.logger.log(`🗑️ Node ${node.name} (${id}) deleted from main node's database`);
   }
 
   /**
@@ -680,45 +639,35 @@ export class NodesService implements OnModuleInit {
       throw new BadRequestException('MAIN nodes cannot unregister');
     }
 
-    this.logger.log(
-      `🔄 Unregistering node: ${currentNode.name} (${currentNode.id})`,
-    );
+    this.logger.log(`🔄 Unregistering node: ${currentNode.name} (${currentNode.id})`);
 
     // Notify main node to remove this child node from its database
     if (currentNode.mainNodeUrl) {
       try {
         this.logger.log(
-          `📡 Notifying main node at ${currentNode.mainNodeUrl} to remove this child node`,
+          `📡 Notifying main node at ${currentNode.mainNodeUrl} to remove this child node`
         );
-        const response = await fetch(
-          `${currentNode.mainNodeUrl}/api/v1/nodes/${currentNode.id}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+        const response = await fetch(`${currentNode.mainNodeUrl}/api/v1/nodes/${currentNode.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        );
+        });
 
         if (response.ok) {
-          this.logger.log(
-            `✅ Main node successfully removed child node ${currentNode.id}`,
-          );
+          this.logger.log(`✅ Main node successfully removed child node ${currentNode.id}`);
         } else {
           this.logger.warn(
-            `⚠️ Main node returned status ${response.status} when removing child node`,
+            `⚠️ Main node returned status ${response.status} when removing child node`
           );
         }
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         this.logger.error(`❌ Failed to notify main node: ${errorMessage}`);
         // Continue with local unregistration even if main node notification fails
       }
     } else {
-      this.logger.warn(
-        `⚠️ No mainNodeUrl found - cannot notify main node of unregistration`,
-      );
+      this.logger.warn(`⚠️ No mainNodeUrl found - cannot notify main node of unregistration`);
     }
 
     // Clear local configuration and reset to unconfigured state
@@ -729,8 +678,7 @@ export class NodesService implements OnModuleInit {
       mainNodeUrl: null, // Clear main node URL
     });
 
-    const message =
-      'Node unregistered successfully. Please reconfigure this node.';
+    const message = 'Node unregistered successfully. Please reconfigure this node.';
 
     this.logger.log(`✅ Node reset to unconfigured state`);
 
@@ -747,10 +695,7 @@ export class NodesService implements OnModuleInit {
    * @param targetNodeId Target node identifier
    * @returns Storage method recommendation
    */
-  async recommendStorageMethod(
-    sourceNodeId: string,
-    targetNodeId: string,
-  ): Promise<unknown> {
+  async recommendStorageMethod(sourceNodeId: string, targetNodeId: string): Promise<unknown> {
     const { EnvironmentDetectorService, ContainerType } = await import(
       '../core/services/environment-detector.service'
     );
@@ -759,12 +704,8 @@ export class NodesService implements OnModuleInit {
     const sourceNode = await this.findOne(sourceNodeId);
     const targetNode = await this.findOne(targetNodeId);
 
-    const sourceSubnet = sourceNode.networkLocation
-      ? String(sourceNode.networkLocation)
-      : null;
-    const targetSubnet = targetNode.networkLocation
-      ? String(targetNode.networkLocation)
-      : null;
+    const sourceSubnet = sourceNode.networkLocation ? String(sourceNode.networkLocation) : null;
+    const targetSubnet = targetNode.networkLocation ? String(targetNode.networkLocation) : null;
 
     const containerValues = Object.values(ContainerType) as string[];
     const toContainerType = (val: string | null) =>
@@ -782,7 +723,7 @@ export class NodesService implements OnModuleInit {
         subnet: targetSubnet,
         containerType: toContainerType(targetNode.containerType),
         canMountNFS: targetNode.canMountNFS || false,
-      },
+      }
     );
   }
 
@@ -805,7 +746,7 @@ export class NodesService implements OnModuleInit {
           nodeIp = url.hostname;
         } catch (error: unknown) {
           this.logger.warn(
-            `Failed to parse node URL "${urlToUse}", falling back to localhost: ${error instanceof Error ? error.message : String(error)}`,
+            `Failed to parse node URL "${urlToUse}", falling back to localhost: ${error instanceof Error ? error.message : String(error)}`
           );
         }
       }
@@ -823,9 +764,7 @@ export class NodesService implements OnModuleInit {
         },
       },
       sharedStorage: {
-        status: result.hasSharedStorage
-          ? ('success' as const)
-          : ('warning' as const),
+        status: result.hasSharedStorage ? ('success' as const) : ('warning' as const),
         message: result.hasSharedStorage
           ? `Accessible at ${result.storageBasePath}`
           : 'No shared storage access',

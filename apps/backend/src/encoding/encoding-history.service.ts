@@ -106,12 +106,10 @@ export class EncodingHistoryService {
       >();
 
       for (const job of completedJobs) {
-        if (!job.startedAt || !job.completedAt || !job.node?.acceleration)
-          continue;
+        if (!job.startedAt || !job.completedAt || !job.node?.acceleration) continue;
 
         const key = `${job.targetCodec}-${job.node.acceleration}`;
-        const durationSeconds =
-          (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
+        const durationSeconds = (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
         const bytes = Number(job.beforeSizeBytes);
 
         if (durationSeconds <= 0 || bytes <= 0) continue;
@@ -146,7 +144,7 @@ export class EncodingHistoryService {
       }
 
       this.logger.log(
-        `Loaded ${this.speedProfiles.size} encoding speed profile(s) from ${completedJobs.length} historical job(s)`,
+        `Loaded ${this.speedProfiles.size} encoding speed profile(s) from ${completedJobs.length} historical job(s)`
       );
     } catch (error: unknown) {
       this.logger.error('Failed to load historical encoding data:', error);
@@ -166,7 +164,7 @@ export class EncodingHistoryService {
     targetCodec: string,
     accelerationType: AccelerationType,
     remainingBytes: number,
-    currentFps?: number,
+    currentFps?: number
   ): ETAResult {
     const key = `${targetCodec}-${accelerationType}`;
     const profile = this.speedProfiles.get(key);
@@ -207,10 +205,7 @@ export class EncodingHistoryService {
     }
 
     // Strategy 3: Fallback estimate based on codec
-    const fallbackBytesPerSecond = this.getFallbackSpeed(
-      targetCodec,
-      accelerationType,
-    );
+    const fallbackBytesPerSecond = this.getFallbackSpeed(targetCodec, accelerationType);
     const etaSeconds = remainingBytes / fallbackBytesPerSecond;
 
     return {
@@ -234,7 +229,7 @@ export class EncodingHistoryService {
     targetCodec: string,
     accelerationType: AccelerationType,
     durationSeconds: number,
-    sizeBytes: number,
+    sizeBytes: number
   ): Promise<void> {
     if (durationSeconds <= 0 || sizeBytes <= 0) return;
 
@@ -267,9 +262,7 @@ export class EncodingHistoryService {
       });
     }
 
-    this.logger.debug(
-      `Updated speed profile for ${key}: ${bytesPerSecond.toFixed(0)} bytes/sec`,
-    );
+    this.logger.debug(`Updated speed profile for ${key}: ${bytesPerSecond.toFixed(0)} bytes/sec`);
   }
 
   /**
@@ -283,10 +276,7 @@ export class EncodingHistoryService {
    * Get fallback encoding speed estimate
    * @private
    */
-  private getFallbackSpeed(
-    codec: string,
-    acceleration: AccelerationType,
-  ): number {
+  private getFallbackSpeed(codec: string, acceleration: AccelerationType): number {
     // Rough estimates in bytes per second
     const baseSpeed: Record<string, number> = {
       HEVC: 5 * 1024 * 1024, // ~5 MB/s

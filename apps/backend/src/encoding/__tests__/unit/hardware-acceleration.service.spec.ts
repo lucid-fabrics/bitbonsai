@@ -53,9 +53,7 @@ describe('HardwareAccelerationService', () => {
       providers: [HardwareAccelerationService],
     }).compile();
 
-    service = module.get<HardwareAccelerationService>(
-      HardwareAccelerationService,
-    );
+    service = module.get<HardwareAccelerationService>(HardwareAccelerationService);
   });
 
   afterEach(() => {
@@ -75,12 +73,7 @@ describe('HardwareAccelerationService', () => {
 
       expect(result.type).toBe('NVIDIA');
       expect(result.videoCodec).toBe('hevc_nvenc');
-      expect(result.flags).toEqual([
-        '-hwaccel',
-        'cuda',
-        '-hwaccel_output_format',
-        'cuda',
-      ]);
+      expect(result.flags).toEqual(['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']);
       expect(mockSpawn).toHaveBeenCalledWith('nvidia-smi', [
         '--query-gpu=name',
         '--format=csv,noheader',
@@ -89,9 +82,7 @@ describe('HardwareAccelerationService', () => {
 
     it('should return INTEL_QSV config when nvidia-smi fails and /dev/dri/renderD128 exists', async () => {
       mockSpawn.mockReturnValue(makeSpawnMock(1));
-      mockExistsSync.mockImplementation(
-        (path: string) => path === '/dev/dri/renderD128',
-      );
+      mockExistsSync.mockImplementation((path: string) => path === '/dev/dri/renderD128');
 
       const result = await service.detectHardwareAcceleration();
 
@@ -102,9 +93,7 @@ describe('HardwareAccelerationService', () => {
 
     it('should return AMD config when nvidia-smi fails, no renderD128, but renderD129 exists', async () => {
       mockSpawn.mockReturnValue(makeSpawnMock(1));
-      mockExistsSync.mockImplementation(
-        (path: string) => path === '/dev/dri/renderD129',
-      );
+      mockExistsSync.mockImplementation((path: string) => path === '/dev/dri/renderD129');
 
       const result = await service.detectHardwareAcceleration();
 
@@ -156,9 +145,7 @@ describe('HardwareAccelerationService', () => {
     });
 
     it('should return hevc_qsv for HEVC + INTEL_QSV', () => {
-      expect(service.selectCodecForPolicy('HEVC', 'INTEL_QSV')).toBe(
-        'hevc_qsv',
-      );
+      expect(service.selectCodecForPolicy('HEVC', 'INTEL_QSV')).toBe('hevc_qsv');
     });
 
     it('should return libx265 for HEVC + CPU', () => {
@@ -178,9 +165,7 @@ describe('HardwareAccelerationService', () => {
     });
 
     it('should return h264_videotoolbox for H264 + APPLE_M', () => {
-      expect(service.selectCodecForPolicy('H264', 'APPLE_M')).toBe(
-        'h264_videotoolbox',
-      );
+      expect(service.selectCodecForPolicy('H264', 'APPLE_M')).toBe('h264_videotoolbox');
     });
 
     it('should return libvpx-vp9 for VP9 on all hardware types (no HW encoder)', () => {
@@ -191,16 +176,12 @@ describe('HardwareAccelerationService', () => {
     });
 
     it('should return libx265 as final fallback for unknown codec', () => {
-      expect(service.selectCodecForPolicy('UNKNOWN_CODEC', 'NVIDIA')).toBe(
-        'libx265',
-      );
+      expect(service.selectCodecForPolicy('UNKNOWN_CODEC', 'NVIDIA')).toBe('libx265');
     });
 
     it('should return CPU codec when hwType is unrecognised but codec is known', () => {
       // HEVC + unknown hwType → falls back to HEVC/CPU → libx265
-      expect(service.selectCodecForPolicy('HEVC', 'UNKNOWN_HW')).toBe(
-        'libx265',
-      );
+      expect(service.selectCodecForPolicy('HEVC', 'UNKNOWN_HW')).toBe('libx265');
     });
   });
 });

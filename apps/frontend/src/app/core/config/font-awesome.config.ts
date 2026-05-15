@@ -205,7 +205,7 @@ export function configureFontAwesome(library: FaIconLibrary): void {
     faTv,
     faUsers,
     faWrench,
-    faXmark,
+    faXmark
   );
 
   // Add regular icons (1 icon)

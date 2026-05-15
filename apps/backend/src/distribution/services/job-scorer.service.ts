@@ -49,10 +49,7 @@ export class JobScorerService {
   private readonly logger = new Logger(JobScorerService.name);
 
   // Score cache (nodeId -> score)
-  private scoreCache = new Map<
-    string,
-    { score: NodeScore; expiresAt: number }
-  >();
+  private scoreCache = new Map<string, { score: NodeScore; expiresAt: number }>();
 
   // Config cache
   private configCache: {
@@ -67,16 +64,13 @@ export class JobScorerService {
     private readonly jobRepository: JobRepository,
     private readonly nodeRepository: NodeRepository,
     private readonly distributionConfigRepository: DistributionConfigRepository,
-    private readonly loadMonitor: LoadMonitorService,
+    private readonly loadMonitor: LoadMonitorService
   ) {}
 
   /**
    * Calculate comprehensive score for a node-job pair
    */
-  async calculateScore(
-    node: NodeWithCounts,
-    job: JobWithRelations,
-  ): Promise<NodeScore> {
+  async calculateScore(node: NodeWithCounts, job: JobWithRelations): Promise<NodeScore> {
     const config = await this.getConfig();
     const factors = await this.calculateFactors(node, job, config);
 
@@ -109,7 +103,7 @@ export class JobScorerService {
   private async calculateFactors(
     node: NodeWithCounts,
     job: JobWithRelations,
-    config: DistributionConfigData,
+    config: DistributionConfigData
   ): Promise<ScoringFactors> {
     // Get load data
     const loadData = await this.loadMonitor.getNodeLoad(node.id);
@@ -133,9 +127,7 @@ export class JobScorerService {
       this.calculateHardware(node),
       this.calculatePerformance(node),
       this.calculateCodecMatch(node, job),
-      config.enableLibraryAffinity
-        ? this.calculateLibraryAffinity(node, job)
-        : 0,
+      config.enableLibraryAffinity ? this.calculateLibraryAffinity(node, job) : 0,
       config.enableETABalancing ? this.calculateETABalance(node) : 0,
       config.enableFileSizeSpread ? this.calculateFileSizeSpread(node, job) : 0,
       this.calculateStickiness(node, job, config),
@@ -162,10 +154,7 @@ export class JobScorerService {
   /**
    * Calculate weighted total score
    */
-  private calculateWeightedTotal(
-    factors: ScoringFactors,
-    config: DistributionConfigData,
-  ): number {
+  private calculateWeightedTotal(factors: ScoringFactors, config: DistributionConfigData): number {
     return (
       factors.realTimeLoad * config.weightRealTimeLoad +
       factors.queueDepth * config.weightQueueDepth +
@@ -191,7 +180,7 @@ export class JobScorerService {
    */
   private async calculateRealTimeLoad(
     node: Node,
-    loadData: HeartbeatLoadData | null,
+    loadData: HeartbeatLoadData | null
   ): Promise<number> {
     return this.loadMonitor.calculateLoadScore(node, loadData);
   }
@@ -300,14 +289,8 @@ export class JobScorerService {
    * Factor 6: Library Affinity (0-10 points)
    * Bonus for keeping jobs from same library together
    */
-  private async calculateLibraryAffinity(
-    node: Node,
-    job: JobWithRelations,
-  ): Promise<number> {
-    const sameLibraryJobs = await this.jobRepository.countByLibraryAndNode(
-      node.id,
-      job.libraryId,
-    );
+  private async calculateLibraryAffinity(node: Node, job: JobWithRelations): Promise<number> {
+    const sameLibraryJobs = await this.jobRepository.countByLibraryAndNode(node.id, job.libraryId);
 
     // Bonus: 5 points if any jobs from same library, up to 10 for 3+
     if (sameLibraryJobs >= 3) return 10;
@@ -326,8 +309,7 @@ export class JobScorerService {
     }
 
     const now = new Date();
-    const hoursUntilFree =
-      (node.estimatedFreeAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const hoursUntilFree = (node.estimatedFreeAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     if (hoursUntilFree <= 0) return 15; // Available now
     if (hoursUntilFree <= 1) return 12; // Free within 1 hour
@@ -351,7 +333,7 @@ export class JobScorerService {
 
     const largeFilesOnNode = await this.jobRepository.countLargeFilesForNode(
       node.id,
-      BigInt(5 * 1024 * 1024 * 1024),
+      BigInt(5 * 1024 * 1024 * 1024)
     );
 
     // Penalty for nodes with many large files
@@ -369,11 +351,7 @@ export class JobScorerService {
    * Factor 9: Stickiness (-20 to 0 points)
    * Penalty for migrating jobs that are already assigned
    */
-  private calculateStickiness(
-    node: Node,
-    job: Job,
-    config: DistributionConfigData,
-  ): number {
+  private calculateStickiness(node: Node, job: Job, config: DistributionConfigData): number {
     // No penalty if job is not assigned yet
     if (!job.nodeId) return 0;
 
@@ -435,8 +413,7 @@ export class JobScorerService {
       return this.configCache.config;
     }
 
-    const config =
-      await this.distributionConfigRepository.findOrCreateDefault();
+    const config = await this.distributionConfigRepository.findOrCreateDefault();
 
     this.configCache = {
       config: config as DistributionConfigData,
@@ -470,7 +447,7 @@ export class JobScorerService {
   async shouldMigrate(
     job: JobWithRelations,
     currentNode: NodeWithCounts,
-    candidateNode: NodeWithCounts,
+    candidateNode: NodeWithCounts
   ): Promise<MigrationDecision> {
     const config = await this.getConfig();
 

@@ -1,9 +1,6 @@
 import { Dialog, type DialogRef } from '@angular/cdk/dialog';
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -16,11 +13,7 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
 import { NodesActions } from '../nodes/+state/nodes.actions';
 import { LibrariesActions } from './+state/libraries.actions';
 import { LibrariesComponent } from './libraries.page';
-import type {
-  CreateLibraryDto,
-  Library,
-  UpdateLibraryDto,
-} from './models/library.model';
+import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/library.model';
 
 describe('LibrariesComponent', () => {
   let component: LibrariesComponent;
@@ -87,9 +80,7 @@ describe('LibrariesComponent', () => {
       const dispatchSpy = jest.spyOn(store, 'dispatch');
       fixture.detectChanges();
 
-      expect(dispatchSpy).toHaveBeenCalledWith(
-        LibrariesActions.loadLibraries(),
-      );
+      expect(dispatchSpy).toHaveBeenCalledWith(LibrariesActions.loadLibraries());
       expect(dispatchSpy).toHaveBeenCalledWith(NodesActions.loadNodes());
     });
 
@@ -131,7 +122,7 @@ describe('LibrariesComponent', () => {
       component.onFormSubmit(createData);
 
       expect(dispatchSpy).toHaveBeenCalledWith(
-        LibrariesActions.createLibrary({ library: createData }),
+        LibrariesActions.createLibrary({ library: createData })
       );
       expect(component.showForm).toBe(false);
       expect(component.selectedLibrary).toBeUndefined();
@@ -150,7 +141,7 @@ describe('LibrariesComponent', () => {
         LibrariesActions.updateLibrary({
           id: '1',
           library: updateData,
-        }),
+        })
       );
       expect(component.showForm).toBe(false);
       expect(component.selectedLibrary).toBeUndefined();
@@ -186,7 +177,7 @@ describe('LibrariesComponent', () => {
             itemName: 'Test Library',
             irreversible: true,
           }),
-        }),
+        })
       );
     });
 
@@ -199,9 +190,7 @@ describe('LibrariesComponent', () => {
 
       component.onDeleteLibrary(mockLibrary);
 
-      expect(dispatchSpy).toHaveBeenCalledWith(
-        LibrariesActions.deleteLibrary({ id: '1' }),
-      );
+      expect(dispatchSpy).toHaveBeenCalledWith(LibrariesActions.deleteLibrary({ id: '1' }));
     });
 
     it('should not dispatch delete when cancelled', () => {
@@ -214,7 +203,7 @@ describe('LibrariesComponent', () => {
       component.onDeleteLibrary(mockLibrary);
 
       expect(dispatchSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: expect.stringContaining('delete') }),
+        expect.objectContaining({ type: expect.stringContaining('delete') })
       );
     });
   });
@@ -226,9 +215,7 @@ describe('LibrariesComponent', () => {
 
       component.onScanLibrary(mockLibrary);
 
-      expect(dispatchSpy).toHaveBeenCalledWith(
-        LibrariesActions.scanLibrary({ id: '1' }),
-      );
+      expect(dispatchSpy).toHaveBeenCalledWith(LibrariesActions.scanLibrary({ id: '1' }));
       expect(component.scanningLibraryId).toBe('1');
 
       jest.advanceTimersByTime(1000);
@@ -248,7 +235,7 @@ describe('LibrariesComponent', () => {
         LibrariesActions.updateLibrary({
           id: '1',
           library: { watchEnabled: false },
-        }),
+        })
       );
     });
 
@@ -262,7 +249,7 @@ describe('LibrariesComponent', () => {
         LibrariesActions.updateLibrary({
           id: '1',
           library: { watchEnabled: true },
-        }),
+        })
       );
     });
   });

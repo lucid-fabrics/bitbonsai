@@ -46,10 +46,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const { statusCode, errorResponse } = this.buildErrorResponse(
-      exception,
-      request,
-    );
+    const { statusCode, errorResponse } = this.buildErrorResponse(exception, request);
 
     // Log the error
     this.logError(exception, request, statusCode);
@@ -63,7 +60,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
    */
   private buildErrorResponse(
     exception: unknown,
-    request: Request,
+    request: Request
   ): { statusCode: number; errorResponse: ErrorResponse } {
     const timestamp = new Date().toISOString();
     const path = request.url;
@@ -95,8 +92,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       const message =
         typeof exceptionResponse === 'string'
           ? exceptionResponse
-          : (exceptionResponse as Record<string, unknown>).message ||
-            exception.message;
+          : (exceptionResponse as Record<string, unknown>).message || exception.message;
 
       return {
         statusCode: status,
@@ -105,9 +101,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           timestamp,
           path,
           method,
-          message: Array.isArray(message)
-            ? message.join(', ')
-            : String(message),
+          message: Array.isArray(message) ? message.join(', ') : String(message),
           errorCode: 'HTTP_EXCEPTION',
           ...(isDevelopment && { stack: exception.stack }),
         },
@@ -133,15 +127,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   /**
    * Logs error details for debugging and monitoring
    */
-  private logError(
-    exception: unknown,
-    request: Request,
-    statusCode: number,
-  ): void {
+  private logError(exception: unknown, request: Request, statusCode: number): void {
     const { method, url, ip, headers } = request;
     const userAgent = headers['user-agent'] || 'Unknown';
-    const correlationId =
-      headers['x-correlation-id'] || headers['x-request-id'] || 'none';
+    const correlationId = headers['x-correlation-id'] || headers['x-request-id'] || 'none';
 
     // Build context for structured logging
     const context = {

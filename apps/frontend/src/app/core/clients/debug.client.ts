@@ -80,31 +80,20 @@ export class DebugClient {
   }
 
   getFfmpegProcesses(): Observable<FfmpegProcessesResponse> {
-    return this.http.get<FfmpegProcessesResponse>(
-      `${this.baseUrl}/ffmpeg-processes`,
-    );
+    return this.http.get<FfmpegProcessesResponse>(`${this.baseUrl}/ffmpeg-processes`);
   }
 
   killFfmpegProcess(pid: number): Observable<KillResult> {
-    return this.http.delete<KillResult>(
-      `${this.baseUrl}/ffmpeg-processes/${pid}`,
-    );
+    return this.http.delete<KillResult>(`${this.baseUrl}/ffmpeg-processes/${pid}`);
   }
 
   killAllZombies(): Observable<KillAllZombiesResult> {
-    return this.http.delete<KillAllZombiesResult>(
-      `${this.baseUrl}/ffmpeg-processes/zombies`,
-    );
+    return this.http.delete<KillAllZombiesResult>(`${this.baseUrl}/ffmpeg-processes/zombies`);
   }
 
-  updateLoadThreshold(
-    multiplier: number,
-  ): Observable<UpdateLoadThresholdResult> {
-    return this.http.post<UpdateLoadThresholdResult>(
-      `${this.baseUrl}/load-threshold`,
-      {
-        loadThresholdMultiplier: multiplier,
-      },
-    );
+  updateLoadThreshold(multiplier: number): Observable<UpdateLoadThresholdResult> {
+    return this.http.post<UpdateLoadThresholdResult>(`${this.baseUrl}/load-threshold`, {
+      loadThresholdMultiplier: multiplier,
+    });
   }
 }

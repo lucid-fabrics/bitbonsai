@@ -1,10 +1,6 @@
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
-import {
-  CreatePolicyDto,
-  PolicyPreset,
-  TargetCodec,
-} from './create-policy.dto';
+import { CreatePolicyDto, PolicyPreset, TargetCodec } from './create-policy.dto';
 
 describe('CreatePolicyDto', () => {
   const validPolicyData = {
@@ -27,9 +23,7 @@ describe('CreatePolicyDto', () => {
         });
 
         const errors = await validate(dto);
-        const containerErrors = errors.filter(
-          (e) => e.property === 'targetContainer',
-        );
+        const containerErrors = errors.filter((e) => e.property === 'targetContainer');
 
         expect(containerErrors).toHaveLength(0);
       }
@@ -45,15 +39,11 @@ describe('CreatePolicyDto', () => {
         });
 
         const errors = await validate(dto);
-        const containerErrors = errors.filter(
-          (e) => e.property === 'targetContainer',
-        );
+        const containerErrors = errors.filter((e) => e.property === 'targetContainer');
 
         expect(containerErrors.length).toBeGreaterThan(0);
         expect(containerErrors[0].constraints).toHaveProperty('isIn');
-        expect(containerErrors[0].constraints?.isIn).toContain(
-          'mkv, mp4, webm, or null',
-        );
+        expect(containerErrors[0].constraints?.isIn).toContain('mkv, mp4, webm, or null');
       }
     });
 
@@ -64,9 +54,7 @@ describe('CreatePolicyDto', () => {
       });
 
       const errors = await validate(dto);
-      const containerErrors = errors.filter(
-        (e) => e.property === 'targetContainer',
-      );
+      const containerErrors = errors.filter((e) => e.property === 'targetContainer');
 
       expect(containerErrors).toHaveLength(0);
     });
@@ -119,9 +107,7 @@ describe('CreatePolicyDto', () => {
         });
 
         const errors = await validate(dto);
-        const skipErrors = errors.filter(
-          (e) => e.property === 'skipReencoding',
-        );
+        const skipErrors = errors.filter((e) => e.property === 'skipReencoding');
 
         expect(skipErrors.length).toBeGreaterThan(0);
       }
@@ -184,9 +170,7 @@ describe('CreatePolicyDto', () => {
       });
 
       const errors = await validate(dto);
-      const qualityErrors = errors.filter(
-        (e) => e.property === 'targetQuality',
-      );
+      const qualityErrors = errors.filter((e) => e.property === 'targetQuality');
 
       expect(qualityErrors.length).toBe(0);
     });
@@ -203,9 +187,7 @@ describe('CreatePolicyDto', () => {
         });
 
         const errors = await validate(dto);
-        const qualityErrors = errors.filter(
-          (e) => e.property === 'targetQuality',
-        );
+        const qualityErrors = errors.filter((e) => e.property === 'targetQuality');
 
         expect(qualityErrors).toHaveLength(0);
       }
@@ -218,9 +200,7 @@ describe('CreatePolicyDto', () => {
       });
 
       const errors = await validate(dto);
-      const qualityErrors = errors.filter(
-        (e) => e.property === 'targetQuality',
-      );
+      const qualityErrors = errors.filter((e) => e.property === 'targetQuality');
 
       expect(qualityErrors.length).toBeGreaterThan(0);
     });
@@ -232,9 +212,7 @@ describe('CreatePolicyDto', () => {
       });
 
       const errors = await validate(dto);
-      const qualityErrors = errors.filter(
-        (e) => e.property === 'targetQuality',
-      );
+      const qualityErrors = errors.filter((e) => e.property === 'targetQuality');
 
       expect(qualityErrors.length).toBeGreaterThan(0);
     });

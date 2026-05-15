@@ -37,10 +37,7 @@ export class JobAttributionService {
   private readonly logger = new Logger(JobAttributionService.name);
 
   // Cache node scores for 1 minute to avoid recalculation overhead
-  private scoreCache = new Map<
-    string,
-    { score: NodeScore; expiresAt: number }
-  >();
+  private scoreCache = new Map<string, { score: NodeScore; expiresAt: number }>();
   private readonly CACHE_TTL_MS = 60 * 1000; // 1 minute
 
   // CRITICAL FIX #1: Mutex locks to prevent cache race conditions
@@ -53,7 +50,7 @@ export class JobAttributionService {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly nodeRepository: NodeRepository,
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   /**
@@ -85,9 +82,7 @@ export class JobAttributionService {
     }
 
     // Score all nodes
-    const scores = await Promise.all(
-      nodes.map((node) => this.calculateNodeScore(node)),
-    );
+    const scores = await Promise.all(nodes.map((node) => this.calculateNodeScore(node)));
 
     // Filter out nodes with score 0 (outside schedule or unavailable)
     const availableScores = scores.filter((s) => s.totalScore > 0);
@@ -102,7 +97,7 @@ export class JobAttributionService {
 
     const winner = availableScores[0];
     this.logger.log(
-      `Optimal node for job ${jobId}: ${winner.nodeName} (score: ${winner.totalScore.toFixed(2)})`,
+      `Optimal node for job ${jobId}: ${winner.nodeName} (score: ${winner.totalScore.toFixed(2)})`
     );
 
     // Return the winning node
@@ -113,9 +108,7 @@ export class JobAttributionService {
    * Calculate weighted score for a node
    * CRITICAL FIX #1: Atomic cache operations to prevent race conditions
    */
-  async calculateNodeScore(
-    node: Node & { _count: { jobs: number } },
-  ): Promise<NodeScore> {
+  async calculateNodeScore(node: Node & { _count: { jobs: number } }): Promise<NodeScore> {
     // Check cache first (still fast path for hits)
     const cached = this.scoreCache.get(node.id);
     if (cached && Date.now() < cached.expiresAt) {
@@ -156,7 +149,7 @@ export class JobAttributionService {
    * CRITICAL FIX #1: Separated from public method to enable mutex pattern
    */
   private async performScoreCalculation(
-    node: Node & { _count: { jobs: number } },
+    node: Node & { _count: { jobs: number } }
   ): Promise<NodeScore> {
     let totalScore = 0;
     const breakdown = {

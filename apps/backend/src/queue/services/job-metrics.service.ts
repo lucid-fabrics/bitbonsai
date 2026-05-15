@@ -24,11 +24,11 @@ export class JobMetricsService {
    */
   async updateMetrics(
     job: Job & { node?: { licenseId: string } },
-    tx?: Prisma.TransactionClient,
+    tx?: Prisma.TransactionClient
   ): Promise<void> {
     if (!job.node?.licenseId) {
       this.logger.warn(
-        `Cannot update metrics for job ${job.id}: missing node relation or licenseId`,
+        `Cannot update metrics for job ${job.id}: missing node relation or licenseId`
       );
       return;
     }
@@ -41,7 +41,7 @@ export class JobMetricsService {
 
     if (alreadyProcessed) {
       this.logger.debug(
-        `Metrics already processed for job ${job.id} at ${alreadyProcessed.processedAt}, skipping to prevent double-count`,
+        `Metrics already processed for job ${job.id} at ${alreadyProcessed.processedAt}, skipping to prevent double-count`
       );
       return;
     }
@@ -91,7 +91,7 @@ export class JobMetricsService {
           });
 
           this.logger.debug(
-            `Updated node ${job.nodeId} avgEncodingSpeed: ${currentNode.avgEncodingSpeed?.toFixed(2)} → ${newSpeed.toFixed(2)} FPS`,
+            `Updated node ${job.nodeId} avgEncodingSpeed: ${currentNode.avgEncodingSpeed?.toFixed(2)} → ${newSpeed.toFixed(2)} FPS`
           );
         }
       }

@@ -29,7 +29,7 @@ const EXTERNAL_TO_INTERNAL_TIER: Record<string, LicenseTier> = {
  */
 export function mapExternalTier(
   externalTier: string,
-  logger?: { warn: (msg: string) => void },
+  logger?: { warn: (msg: string) => void }
 ): LicenseTier {
   const tier = EXTERNAL_TO_INTERNAL_TIER[externalTier?.toUpperCase()];
   if (!tier) {

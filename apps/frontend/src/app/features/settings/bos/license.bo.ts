@@ -122,9 +122,7 @@ export class LicenseBo {
    * Check if targetTier is an upgrade from currentTier
    */
   static isUpgrade(currentTier: LicenseTier, targetTier: LicenseTier): boolean {
-    return (
-      LicenseBo.getTierOrder(targetTier) > LicenseBo.getTierOrder(currentTier)
-    );
+    return LicenseBo.getTierOrder(targetTier) > LicenseBo.getTierOrder(currentTier);
   }
 
   /**
@@ -153,10 +151,7 @@ export class LicenseBo {
   /**
    * Mask license key for display
    */
-  static formatLicenseKeyDisplay(
-    licenseKey: string,
-    revealed: boolean,
-  ): string {
+  static formatLicenseKeyDisplay(licenseKey: string, revealed: boolean): string {
     return revealed ? licenseKey : '****-****-****-****';
   }
 

@@ -45,5 +45,5 @@ export const mediaStatsReducer = createReducer(
     ...state,
     isLoading: false,
     error,
-  })),
+  }))
 );

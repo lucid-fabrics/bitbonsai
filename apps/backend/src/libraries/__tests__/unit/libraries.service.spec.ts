@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MediaType, NodeRole, NodeStatus } from '@prisma/client';
@@ -50,8 +46,7 @@ describe('LibrariesService', () => {
       const normalizedPath = normalize(path);
       const { BadRequestException: BRE } =
         require('@nestjs/common') as typeof import('@nestjs/common');
-      if (!normalizedPath.startsWith('/'))
-        throw new BRE('Library path must be an absolute path');
+      if (!normalizedPath.startsWith('/')) throw new BRE('Library path must be an absolute path');
       if (normalizedPath.includes('..'))
         throw new BRE('Path traversal sequences (..) are not allowed');
       const ALLOWED = [
@@ -65,7 +60,7 @@ describe('LibrariesService', () => {
       ];
       if (!ALLOWED.some((b) => normalizedPath.startsWith(b)))
         throw new BRE(
-          `Library path must start with one of the allowed base directories: ${ALLOWED.join(', ')}`,
+          `Library path must start with one of the allowed base directories: ${ALLOWED.join(', ')}`
         );
       return normalizedPath;
     }),
@@ -144,33 +139,29 @@ describe('LibrariesService', () => {
     Object.values(mockLibraryScannerService).forEach((fn) => {
       (fn as jest.Mock).mockReset();
     });
-    mockLibraryScannerService.validateLibraryPath.mockImplementation(
-      (path: string) => {
-        const { normalize } =
-          require('node:path') as typeof import('node:path');
-        const normalizedPath = normalize(path);
-        const { BadRequestException: BRE } =
-          require('@nestjs/common') as typeof import('@nestjs/common');
-        if (!normalizedPath.startsWith('/'))
-          throw new BRE('Library path must be an absolute path');
-        if (normalizedPath.includes('..'))
-          throw new BRE('Path traversal sequences (..) are not allowed');
-        const ALLOWED = [
-          '/mnt/user',
-          '/mnt/cache',
-          '/media',
-          '/downloads',
-          '/data',
-          '/home',
-          '/Users',
-        ];
-        if (!ALLOWED.some((b) => normalizedPath.startsWith(b)))
-          throw new BRE(
-            `Library path must start with one of the allowed base directories: ${ALLOWED.join(', ')}`,
-          );
-        return normalizedPath;
-      },
-    );
+    mockLibraryScannerService.validateLibraryPath.mockImplementation((path: string) => {
+      const { normalize } = require('node:path') as typeof import('node:path');
+      const normalizedPath = normalize(path);
+      const { BadRequestException: BRE } =
+        require('@nestjs/common') as typeof import('@nestjs/common');
+      if (!normalizedPath.startsWith('/')) throw new BRE('Library path must be an absolute path');
+      if (normalizedPath.includes('..'))
+        throw new BRE('Path traversal sequences (..) are not allowed');
+      const ALLOWED = [
+        '/mnt/user',
+        '/mnt/cache',
+        '/media',
+        '/downloads',
+        '/data',
+        '/home',
+        '/Users',
+      ];
+      if (!ALLOWED.some((b) => normalizedPath.startsWith(b)))
+        throw new BRE(
+          `Library path must start with one of the allowed base directories: ${ALLOWED.join(', ')}`
+        );
+      return normalizedPath;
+    });
 
     prisma = {
       node: {
@@ -273,13 +264,9 @@ describe('LibrariesService', () => {
     };
 
     it('should create a library successfully', async () => {
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
-      jest
-        .spyOn(prisma.library, 'create')
-        .mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'create').mockResolvedValue(mockLibrary as never);
 
       const result = await service.create(createDto);
 
@@ -290,27 +277,17 @@ describe('LibrariesService', () => {
     it('should throw NotFoundException if node does not exist', async () => {
       jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(createDto)).rejects.toThrow(
-        'Node with ID "node-1" not found',
-      );
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(createDto)).rejects.toThrow('Node with ID "node-1" not found');
     });
 
     it('should throw ConflictException if library path already exists on node', async () => {
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
 
+      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow(
-        ConflictException,
-      );
-      await expect(service.create(createDto)).rejects.toThrow(
-        'Library with path "/mnt/user/media/Movies" already exists on node "Main Server"',
+        'Library with path "/mnt/user/media/Movies" already exists on node "Main Server"'
       );
     });
   });
@@ -318,9 +295,7 @@ describe('LibrariesService', () => {
   describe('findAll', () => {
     it('should return all libraries', async () => {
       const mockLibraries = [mockLibraryWithStats];
-      jest
-        .spyOn(prisma.library, 'findMany')
-        .mockResolvedValue(mockLibraries as never);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue(mockLibraries as never);
 
       const result = await service.findAll();
 
@@ -331,9 +306,7 @@ describe('LibrariesService', () => {
 
   describe('findOne', () => {
     it('should return a library with statistics', async () => {
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibraryWithStats as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibraryWithStats as never);
 
       const result = await service.findOne('lib-1');
 
@@ -344,11 +317,9 @@ describe('LibrariesService', () => {
     it('should throw NotFoundException if library does not exist', async () => {
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
 
+      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.findOne('non-existent')).rejects.toThrow(
-        'Library with ID "non-existent" not found',
+        'Library with ID "non-existent" not found'
       );
     });
   });
@@ -361,12 +332,8 @@ describe('LibrariesService', () => {
 
     it('should update a library successfully', async () => {
       const updatedLibrary = { ...mockLibrary, ...updateDto };
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibrary as never);
-      jest
-        .spyOn(prisma.library, 'update')
-        .mockResolvedValue(updatedLibrary as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'update').mockResolvedValue(updatedLibrary as never);
 
       const result = await service.update('lib-1', updateDto);
 
@@ -377,23 +344,17 @@ describe('LibrariesService', () => {
     it('should throw NotFoundException if library does not exist', async () => {
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
 
+      await expect(service.update('non-existent', updateDto)).rejects.toThrow(NotFoundException);
       await expect(service.update('non-existent', updateDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.update('non-existent', updateDto)).rejects.toThrow(
-        'Library with ID "non-existent" not found',
+        'Library with ID "non-existent" not found'
       );
     });
   });
 
   describe('remove', () => {
     it('should delete a library successfully', async () => {
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibrary as never);
-      jest
-        .spyOn(prisma.library, 'delete')
-        .mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'delete').mockResolvedValue(mockLibrary as never);
 
       await service.remove('lib-1');
 
@@ -403,11 +364,9 @@ describe('LibrariesService', () => {
     it('should throw NotFoundException if library does not exist', async () => {
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
 
+      await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.remove('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.remove('non-existent')).rejects.toThrow(
-        'Library with ID "non-existent" not found',
+        'Library with ID "non-existent" not found'
       );
     });
   });
@@ -428,14 +387,12 @@ describe('LibrariesService', () => {
 
     it('should throw NotFoundException if library does not exist', async () => {
       mockLibraryScannerService.scan.mockRejectedValue(
-        new NotFoundException('Library with ID "non-existent" not found'),
+        new NotFoundException('Library with ID "non-existent" not found')
       );
 
+      await expect(service.scan('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.scan('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.scan('non-existent')).rejects.toThrow(
-        'Library with ID "non-existent" not found',
+        'Library with ID "non-existent" not found'
       );
     });
   });
@@ -469,13 +426,9 @@ describe('LibrariesService', () => {
       };
 
       jest.spyOn(prisma.node, 'findFirst').mockResolvedValue(mockNode as never);
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
-      jest
-        .spyOn(prisma.library, 'create')
-        .mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'create').mockResolvedValue(mockLibrary as never);
 
       const result = await service.create(dto);
       expect(result).toEqual(mockLibrary);
@@ -520,9 +473,7 @@ describe('LibrariesService', () => {
     });
 
     it('should filter by nodeId when provided', async () => {
-      jest
-        .spyOn(prisma.library, 'findMany')
-        .mockResolvedValue([mockLibrary] as never);
+      jest.spyOn(prisma.library, 'findMany').mockResolvedValue([mockLibrary] as never);
 
       const result = await service.getAllLibraryPaths('node-1');
       expect(result).toHaveLength(1);
@@ -542,12 +493,8 @@ describe('LibrariesService', () => {
       const libraryDisabled = { ...mockLibrary, watchEnabled: false };
       const libraryEnabled = { ...mockLibrary, watchEnabled: true };
 
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(libraryDisabled as never);
-      jest
-        .spyOn(prisma.library, 'update')
-        .mockResolvedValue(libraryEnabled as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(libraryDisabled as never);
+      jest.spyOn(prisma.library, 'update').mockResolvedValue(libraryEnabled as never);
 
       // get the event emitter from the module
       const module2: TestingModule = await Test.createTestingModule({
@@ -606,9 +553,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -628,18 +573,14 @@ describe('LibrariesService', () => {
       }).compile();
 
       const svc2 = module2.get<LibrariesService>(LibrariesService);
-      mockLibraryRepo.findByWhere = jest
-        .fn()
-        .mockResolvedValue(libraryDisabled);
-      mockLibraryRepo.updateWithInclude = jest
-        .fn()
-        .mockResolvedValue(libraryEnabled);
+      mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(libraryDisabled);
+      mockLibraryRepo.updateWithInclude = jest.fn().mockResolvedValue(libraryEnabled);
 
       await svc2.update('lib-1', { watchEnabled: true });
 
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         expect.stringContaining('library'),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -704,9 +645,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -727,15 +666,13 @@ describe('LibrariesService', () => {
 
       const svc3 = module3.get<LibrariesService>(LibrariesService);
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(libraryEnabled);
-      mockLibraryRepo.updateWithInclude = jest
-        .fn()
-        .mockResolvedValue(libraryDisabled);
+      mockLibraryRepo.updateWithInclude = jest.fn().mockResolvedValue(libraryDisabled);
 
       await svc3.update('lib-1', { watchEnabled: false });
 
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         expect.stringContaining('library'),
-        expect.anything(),
+        expect.anything()
       );
     });
   });
@@ -801,9 +738,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -824,15 +759,13 @@ describe('LibrariesService', () => {
 
       const svc4 = module4.get<LibrariesService>(LibrariesService);
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(watchedLibrary);
-      mockLibraryRepo.deleteLibrary = jest
-        .fn()
-        .mockResolvedValue(watchedLibrary);
+      mockLibraryRepo.deleteLibrary = jest.fn().mockResolvedValue(watchedLibrary);
 
       await svc4.remove('lib-1');
 
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         expect.stringContaining('library'),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -840,12 +773,8 @@ describe('LibrariesService', () => {
       const mockEventEmitter = { emit: jest.fn() };
       const unwatchedLibrary = { ...mockLibrary, watchEnabled: false };
 
-      mockLibraryRepo.findByWhere = jest
-        .fn()
-        .mockResolvedValue(unwatchedLibrary);
-      mockLibraryRepo.deleteLibrary = jest
-        .fn()
-        .mockResolvedValue(unwatchedLibrary);
+      mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(unwatchedLibrary);
+      mockLibraryRepo.deleteLibrary = jest.fn().mockResolvedValue(unwatchedLibrary);
 
       await service.remove('lib-1');
 
@@ -865,9 +794,7 @@ describe('LibrariesService', () => {
   describe('getCacheMetadata', () => {
     it('should return cacheValid=false when cache is empty', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -921,9 +848,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -955,91 +880,81 @@ describe('LibrariesService', () => {
   describe('createJobsFromScan', () => {
     it('should throw NotFoundException when library not found', async () => {
       mockLibraryScannerService.createJobsFromScan.mockRejectedValue(
-        new NotFoundException('Library not found'),
+        new NotFoundException('Library not found')
       );
 
-      await expect(
-        service.createJobsFromScan('non-existent', 'policy-1'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.createJobsFromScan('non-existent', 'policy-1')).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw BadRequestException when no policy available', async () => {
       mockLibraryScannerService.createJobsFromScan.mockRejectedValue(
-        new BadRequestException('No encoding policy'),
+        new BadRequestException('No encoding policy')
       );
 
-      await expect(service.createJobsFromScan('lib-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.createJobsFromScan('lib-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when policy not found', async () => {
       mockLibraryScannerService.createJobsFromScan.mockRejectedValue(
-        new NotFoundException('Policy not found'),
+        new NotFoundException('Policy not found')
       );
 
-      await expect(
-        service.createJobsFromScan('lib-1', 'policy-1'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.createJobsFromScan('lib-1', 'policy-1')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
   describe('createAllJobs', () => {
     it('should throw NotFoundException when library not found', async () => {
       mockLibraryScannerService.createAllJobs.mockRejectedValue(
-        new NotFoundException('Library not found'),
+        new NotFoundException('Library not found')
       );
 
-      await expect(
-        service.createAllJobs('non-existent', 'policy-1'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.createAllJobs('non-existent', 'policy-1')).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw NotFoundException when policy not found', async () => {
       mockLibraryScannerService.createAllJobs.mockRejectedValue(
-        new NotFoundException('Policy not found'),
+        new NotFoundException('Policy not found')
       );
 
-      await expect(
-        service.createAllJobs('lib-1', 'non-existent-policy'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.createAllJobs('lib-1', 'non-existent-policy')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
   describe('getLibraryFiles', () => {
     it('should throw NotFoundException when library not found', async () => {
       mockLibraryScannerService.getLibraryFiles.mockRejectedValue(
-        new NotFoundException('Library not found'),
+        new NotFoundException('Library not found')
       );
 
-      await expect(service.getLibraryFiles('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getLibraryFiles('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('scanPreview', () => {
     it('should throw NotFoundException when library not found', async () => {
       mockLibraryScannerService.scanPreview.mockRejectedValue(
-        new NotFoundException('Library not found'),
+        new NotFoundException('Library not found')
       );
 
-      await expect(service.scanPreview('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.scanPreview('non-existent')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when library has no policy', async () => {
       mockLibraryScannerService.scanPreview.mockRejectedValue(
-        new BadRequestException('Library has no encoding policy'),
+        new BadRequestException('Library has no encoding policy')
       );
 
-      await expect(service.scanPreview('lib-1')).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.scanPreview('lib-1')).rejects.toThrow(
-        'Library has no encoding policy',
-      );
+      await expect(service.scanPreview('lib-1')).rejects.toThrow(BadRequestException);
+      await expect(service.scanPreview('lib-1')).rejects.toThrow('Library has no encoding policy');
     });
   });
 
@@ -1063,9 +978,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const mediaLib = { ...mockLibrary, path: '/media/movies' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(mediaLib as never);
 
@@ -1081,9 +994,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const dataLib = { ...mockLibrary, path: '/data/videos' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(dataLib as never);
 
@@ -1099,9 +1010,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const dlLib = { ...mockLibrary, path: '/downloads/movies' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(dlLib as never);
 
@@ -1182,9 +1091,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -1205,9 +1112,7 @@ describe('LibrariesService', () => {
 
       const svc = mod.get<LibrariesService>(LibrariesService);
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(mockLibrary);
-      mockLibraryRepo.updateWithInclude = jest
-        .fn()
-        .mockResolvedValue(updatedLibrary);
+      mockLibraryRepo.updateWithInclude = jest.fn().mockResolvedValue(updatedLibrary);
 
       await svc.update('lib-1', { name: 'New Name' });
       expect(mockEventEmitter.emit).not.toHaveBeenCalled();
@@ -1273,9 +1178,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -1296,9 +1199,7 @@ describe('LibrariesService', () => {
 
       const svc = mod.get<LibrariesService>(LibrariesService);
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(watchedLibrary);
-      mockLibraryRepo.updateWithInclude = jest
-        .fn()
-        .mockResolvedValue(watchedLibrary);
+      mockLibraryRepo.updateWithInclude = jest.fn().mockResolvedValue(watchedLibrary);
 
       await svc.update('lib-1', { watchEnabled: true });
       expect(mockEventEmitter.emit).not.toHaveBeenCalled();
@@ -1309,18 +1210,14 @@ describe('LibrariesService', () => {
     it('should throw NotFoundException when trying to remove non-existent library', async () => {
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(null);
 
-      await expect(service.remove('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('getAllReadyFiles', () => {
     it('should return empty array when no libraries have policies', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -1374,9 +1271,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -1407,9 +1302,7 @@ describe('LibrariesService', () => {
 
     it('should return cached result on second call within TTL', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -1463,9 +1356,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -1500,9 +1391,7 @@ describe('LibrariesService', () => {
   describe('getCacheMetadata - with populated cache', () => {
     it('should return cacheValid=true when cache is populated and fresh', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -1556,9 +1445,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -1598,9 +1485,7 @@ describe('LibrariesService', () => {
         node: mockNode,
       };
       const mockPolicy = { id: 'policy-1', name: 'Test', targetCodec: 'hevc' };
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(libWithPolicy as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(libWithPolicy as never);
       mockPolicyRepo.findById = jest.fn().mockResolvedValue(mockPolicy);
       mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
 
@@ -1610,9 +1495,7 @@ describe('LibrariesService', () => {
         jobs: [],
       });
 
-      const result = await service.createJobsFromScan('lib-1', 'policy-1', [
-        '/media/movie.mkv',
-      ]);
+      const result = await service.createJobsFromScan('lib-1', 'policy-1', ['/media/movie.mkv']);
       expect(result).not.toBeNull();
       expect(result.jobsCreated).toBe(0);
     });
@@ -1635,13 +1518,9 @@ describe('LibrariesService', () => {
 
   describe('create - repository error propagation', () => {
     it('should re-throw error when createLibrary fails', async () => {
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
-      jest
-        .spyOn(prisma.library, 'create')
-        .mockRejectedValue(new Error('DB write failed'));
+      jest.spyOn(prisma.library, 'create').mockRejectedValue(new Error('DB write failed'));
 
       await expect(
         service.create({
@@ -1649,7 +1528,7 @@ describe('LibrariesService', () => {
           path: '/mnt/user/media/Movies',
           mediaType: MediaType.MOVIE,
           nodeId: 'node-1',
-        }),
+        })
       ).rejects.toThrow('DB write failed');
     });
   });
@@ -1663,9 +1542,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const homeLib = { ...mockLibrary, path: '/home/user/videos' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(homeLib as never);
 
@@ -1681,9 +1558,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const usersLib = { ...mockLibrary, path: '/Users/john/Movies' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(usersLib as never);
 
@@ -1699,9 +1574,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const cacheLib = { ...mockLibrary, path: '/mnt/cache/media' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(cacheLib as never);
 
@@ -1712,26 +1585,18 @@ describe('LibrariesService', () => {
 
   describe('update - error propagation', () => {
     it('should re-throw error when updateWithInclude fails', async () => {
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibrary as never);
-      jest
-        .spyOn(prisma.library, 'update')
-        .mockRejectedValue(new Error('DB update failed'));
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'update').mockRejectedValue(new Error('DB update failed'));
 
-      await expect(
-        service.update('lib-1', { name: 'New Name' }),
-      ).rejects.toThrow('DB update failed');
+      await expect(service.update('lib-1', { name: 'New Name' })).rejects.toThrow(
+        'DB update failed'
+      );
     });
 
     it('should not emit event when watchEnabled is undefined in update dto', async () => {
       const updatedLibrary = { ...mockLibrary, name: 'Updated' };
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibrary as never);
-      jest
-        .spyOn(prisma.library, 'update')
-        .mockResolvedValue(updatedLibrary as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'update').mockResolvedValue(updatedLibrary as never);
 
       const result = await service.update('lib-1', { name: 'Updated' });
       expect(result).toEqual(updatedLibrary);
@@ -1740,12 +1605,8 @@ describe('LibrariesService', () => {
 
   describe('remove - error propagation', () => {
     it('should re-throw error when deleteLibrary fails', async () => {
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(mockLibrary as never);
-      jest
-        .spyOn(prisma.library, 'delete')
-        .mockRejectedValue(new Error('DB delete failed'));
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(mockLibrary as never);
+      jest.spyOn(prisma.library, 'delete').mockRejectedValue(new Error('DB delete failed'));
 
       await expect(service.remove('lib-1')).rejects.toThrow('DB delete failed');
     });
@@ -1753,9 +1614,7 @@ describe('LibrariesService', () => {
 
   describe('scan - error propagation', () => {
     it('should re-throw error when updateWithInclude fails during scan', async () => {
-      mockLibraryScannerService.scan.mockRejectedValue(
-        new Error('Scan update failed'),
-      );
+      mockLibraryScannerService.scan.mockRejectedValue(new Error('Scan update failed'));
 
       await expect(service.scan('lib-1')).rejects.toThrow('Scan update failed');
     });
@@ -1772,9 +1631,7 @@ describe('LibrariesService', () => {
           preset: 'BALANCED_HEVC',
         },
       };
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(libWithPolicy as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(libWithPolicy as never);
       mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
 
       const mockMediaAnalysis = {
@@ -1866,9 +1723,7 @@ describe('LibrariesService', () => {
         ],
       }).compile();
 
-      mockLibraryRepo.findUniqueWithInclude = jest
-        .fn()
-        .mockResolvedValue(libWithPolicy);
+      mockLibraryRepo.findUniqueWithInclude = jest.fn().mockResolvedValue(libWithPolicy);
 
       const svc = mod.get<LibrariesService>(LibrariesService);
       const result = await svc.scanPreview('lib-1');
@@ -1882,9 +1737,7 @@ describe('LibrariesService', () => {
   describe('getCacheMetadata - expired cache', () => {
     it('should return cacheValid=false when cache is expired', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -1938,9 +1791,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -1983,9 +1834,7 @@ describe('LibrariesService', () => {
   describe('autoRefreshReadyFilesCache', () => {
     it('should call getAllReadyFiles and complete without throwing', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 5 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -2039,9 +1888,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -2063,17 +1910,13 @@ describe('LibrariesService', () => {
       mockLibraryRepo.findAllLibraries = jest.fn().mockResolvedValue([]);
 
       await expect(
-        mod
-          .get<LibraryScannerService>(LibraryScannerService)
-          .autoRefreshReadyFilesCache(),
+        mod.get<LibraryScannerService>(LibraryScannerService).autoRefreshReadyFilesCache()
       ).resolves.toBeUndefined();
     });
 
     it('should swallow errors thrown by getAllReadyFiles', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockRejectedValue(new Error('Settings unavailable')),
+        getReadyFilesCacheTtl: jest.fn().mockRejectedValue(new Error('Settings unavailable')),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -2127,9 +1970,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -2150,9 +1991,7 @@ describe('LibrariesService', () => {
 
       // Should NOT throw - cron handler catches errors internally
       await expect(
-        mod
-          .get<LibraryScannerService>(LibraryScannerService)
-          .autoRefreshReadyFilesCache(),
+        mod.get<LibraryScannerService>(LibraryScannerService).autoRefreshReadyFilesCache()
       ).resolves.toBeUndefined();
     });
   });
@@ -2249,9 +2088,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -2270,9 +2107,7 @@ describe('LibrariesService', () => {
         ],
       }).compile();
 
-      mockLibraryRepo.findUniqueWithInclude = jest
-        .fn()
-        .mockResolvedValue(libWithPolicy);
+      mockLibraryRepo.findUniqueWithInclude = jest.fn().mockResolvedValue(libWithPolicy);
       mockPolicyRepo.findById = jest.fn().mockResolvedValue(mockPolicy);
       mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
 
@@ -2313,13 +2148,9 @@ describe('LibrariesService', () => {
   describe('update — re-throws updateWithInclude error', () => {
     it('throws when updateWithInclude rejects', async () => {
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(mockLibrary);
-      mockLibraryRepo.updateWithInclude = jest
-        .fn()
-        .mockRejectedValue(new Error('DB constraint'));
+      mockLibraryRepo.updateWithInclude = jest.fn().mockRejectedValue(new Error('DB constraint'));
 
-      await expect(service.update('lib-1', { name: 'New' })).rejects.toThrow(
-        'DB constraint',
-      );
+      await expect(service.update('lib-1', { name: 'New' })).rejects.toThrow('DB constraint');
     });
   });
 
@@ -2328,9 +2159,7 @@ describe('LibrariesService', () => {
   describe('remove — re-throws deleteLibrary error', () => {
     it('throws when deleteLibrary rejects', async () => {
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(mockLibrary);
-      mockLibraryRepo.deleteLibrary = jest
-        .fn()
-        .mockRejectedValue(new Error('FK violation'));
+      mockLibraryRepo.deleteLibrary = jest.fn().mockRejectedValue(new Error('FK violation'));
 
       await expect(service.remove('lib-1')).rejects.toThrow('FK violation');
     });
@@ -2347,17 +2176,11 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
 
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
-      jest
-        .spyOn(prisma.library, 'create')
-        .mockRejectedValue(new Error('Unique constraint failed'));
+      jest.spyOn(prisma.library, 'create').mockRejectedValue(new Error('Unique constraint failed'));
 
-      await expect(service.create(dto)).rejects.toThrow(
-        'Unique constraint failed',
-      );
+      await expect(service.create(dto)).rejects.toThrow('Unique constraint failed');
     });
   });
 
@@ -2372,9 +2195,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const homeLib = { ...mockLibrary, path: '/home/user/media' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(homeLib as never);
 
@@ -2390,9 +2211,7 @@ describe('LibrariesService', () => {
         nodeId: 'node-1',
       };
       const macLib = { ...mockLibrary, path: '/Users/john/Movies' };
-      jest
-        .spyOn(prisma.node, 'findUnique')
-        .mockResolvedValue(mockNode as never);
+      jest.spyOn(prisma.node, 'findUnique').mockResolvedValue(mockNode as never);
       jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.library, 'create').mockResolvedValue(macLib as never);
 
@@ -2406,14 +2225,12 @@ describe('LibrariesService', () => {
   describe('scan — NotFoundException', () => {
     it('throws NotFoundException when library does not exist', async () => {
       mockLibraryScannerService.scan.mockRejectedValue(
-        new NotFoundException('Library with ID "non-existent" not found'),
+        new NotFoundException('Library with ID "non-existent" not found')
       );
 
+      await expect(service.scan('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.scan('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.scan('non-existent')).rejects.toThrow(
-        'Library with ID "non-existent" not found',
+        'Library with ID "non-existent" not found'
       );
     });
   });
@@ -2423,9 +2240,7 @@ describe('LibrariesService', () => {
   describe('getCacheMetadata — expired cache', () => {
     it('returns cacheValid=false when cache timestamp is stale beyond TTL', async () => {
       const mockSettingsService = {
-        getReadyFilesCacheTtl: jest
-          .fn()
-          .mockResolvedValue({ readyFilesCacheTtlMinutes: 1 }),
+        getReadyFilesCacheTtl: jest.fn().mockResolvedValue({ readyFilesCacheTtlMinutes: 1 }),
         get: jest.fn(),
         set: jest.fn(),
         getAll: jest.fn(),
@@ -2479,9 +2294,7 @@ describe('LibrariesService', () => {
           {
             provide: LibraryBulkJobService,
             useValue: {
-              createJobsFromScan: jest
-                .fn()
-                .mockResolvedValue({ jobsCreated: 0, jobs: [] }),
+              createJobsFromScan: jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] }),
               createAllJobs: jest.fn().mockResolvedValue({
                 jobsCreated: 0,
                 filesSkipped: 0,
@@ -2528,18 +2341,13 @@ describe('LibrariesService', () => {
       };
       const mockPol = { id: 'policy-1', name: 'Test', targetCodec: 'hevc' };
 
-      jest
-        .spyOn(prisma.library, 'findUnique')
-        .mockResolvedValue(libWithPolicy as never);
+      jest.spyOn(prisma.library, 'findUnique').mockResolvedValue(libWithPolicy as never);
       mockPolicyRepo.findById = jest.fn().mockResolvedValue(mockPol);
       mockJobRepo.findManySelect = jest.fn().mockResolvedValue([]);
 
       // createJobsFromScan delegates to libraryScanner — stub the scanner mock's return value
-      (
-        service.libraryScanner as unknown as { createJobsFromScan: jest.Mock }
-      ).createJobsFromScan = jest
-        .fn()
-        .mockResolvedValue({ jobsCreated: 0, jobs: [] });
+      (service.libraryScanner as unknown as { createJobsFromScan: jest.Mock }).createJobsFromScan =
+        jest.fn().mockResolvedValue({ jobsCreated: 0, jobs: [] });
 
       const result = await service.createJobsFromScan('lib-1', 'policy-1', [
         '/media/movie1.mkv',
@@ -2594,7 +2402,7 @@ describe('LibrariesService', () => {
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(null);
 
       await expect(service.update('missing-id', { name: 'X' })).rejects.toThrow(
-        'Library with ID "missing-id" not found',
+        'Library with ID "missing-id" not found'
       );
     });
   });
@@ -2606,7 +2414,7 @@ describe('LibrariesService', () => {
       mockLibraryRepo.findByWhere = jest.fn().mockResolvedValue(null);
 
       await expect(service.remove('ghost-id')).rejects.toThrow(
-        'Library with ID "ghost-id" not found',
+        'Library with ID "ghost-id" not found'
       );
     });
   });

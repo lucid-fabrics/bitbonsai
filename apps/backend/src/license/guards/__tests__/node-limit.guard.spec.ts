@@ -84,11 +84,9 @@ describe('NodeLimitGuard', () => {
     });
     prisma.node.count.mockResolvedValue(2);
 
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
     await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
-      ForbiddenException,
-    );
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
-      /Node limit reached \(2\/2\)/,
+      /Node limit reached \(2\/2\)/
     );
   });
 
@@ -99,9 +97,7 @@ describe('NodeLimitGuard', () => {
     });
     prisma.node.count.mockResolvedValue(5);
 
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(ForbiddenException);
   });
 
   it('should allow when at zero nodes with limit of 1', async () => {
@@ -143,19 +139,13 @@ describe('NodeLimitGuard', () => {
       await guard.canActivate(mockExecutionContext());
       fail('Should have thrown');
     } catch (error: unknown) {
-      expect((error as ForbiddenException).message).toContain(
-        'Upgrade your license',
-      );
+      expect((error as ForbiddenException).message).toContain('Upgrade your license');
     }
   });
 
   it('should propagate errors from license client', async () => {
-    licenseClient.getCurrentLimits.mockRejectedValue(
-      new Error('License service down'),
-    );
+    licenseClient.getCurrentLimits.mockRejectedValue(new Error('License service down'));
 
-    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow(
-      'License service down',
-    );
+    await expect(guard.canActivate(mockExecutionContext())).rejects.toThrow('License service down');
   });
 });

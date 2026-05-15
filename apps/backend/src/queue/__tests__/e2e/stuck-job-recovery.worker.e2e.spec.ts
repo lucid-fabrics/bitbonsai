@@ -56,9 +56,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
     worker = module.get<StuckJobRecoveryWorker>(StuckJobRecoveryWorker);
     prismaService = module.get<PrismaService>(PrismaService);
     ffmpegService = module.get<FfmpegService>(FfmpegService);
-    fileFailureTrackingService = module.get<FileFailureTrackingService>(
-      FileFailureTrackingService,
-    );
+    fileFailureTrackingService = module.get<FileFailureTrackingService>(FileFailureTrackingService);
   });
 
   afterEach(async () => {
@@ -82,9 +80,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -110,9 +106,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([frozenJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(frozenJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(frozenJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -127,8 +121,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
       });
 
       // Critical: Ensure these fields were NOT reset
-      const updateCall = (prismaService.job.update as jest.Mock).mock
-        .calls[0][0];
+      const updateCall = (prismaService.job.update as jest.Mock).mock.calls[0][0];
       expect(updateCall.data).not.toHaveProperty('progress');
       expect(updateCall.data).not.toHaveProperty('startedAt');
       expect(updateCall.data).not.toHaveProperty('tempFilePath');
@@ -149,9 +142,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(false);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -177,14 +168,10 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([stubbornJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stubbornJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(false); // Kill fails
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stubbornJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stubbornJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -206,12 +193,8 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         healthCheckRetries: 2,
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([stuckHealthCheck]);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckHealthCheck as any);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckHealthCheck]);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckHealthCheck as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -237,12 +220,8 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         updatedAt: new Date(Date.now() - 45 * 60 * 1000), // 45 min ago
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([stuckVerifying]);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckVerifying as any);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckVerifying]);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckVerifying as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -272,14 +251,10 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000), // No progress for 15 min
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([recentlyUpdatedButStuck]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([recentlyUpdatedButStuck]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(recentlyUpdatedButStuck as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(recentlyUpdatedButStuck as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -365,9 +340,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
 
       // Assert: Only job with active process gets killed
       expect(ffmpegService.killProcess).toHaveBeenCalledTimes(1);
-      expect(ffmpegService.killProcess).toHaveBeenCalledWith(
-        'job-with-process',
-      );
+      expect(ffmpegService.killProcess).toHaveBeenCalledWith('job-with-process');
 
       // Both jobs get updated
       expect(prismaService.job.update).toHaveBeenCalledTimes(2);
@@ -388,14 +361,10 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([zeroProgressJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([zeroProgressJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(zeroProgressJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(zeroProgressJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -409,8 +378,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         }),
       });
 
-      const updateCall = (prismaService.job.update as jest.Mock).mock
-        .calls[0][0];
+      const updateCall = (prismaService.job.update as jest.Mock).mock.calls[0][0];
       expect(updateCall.data).not.toHaveProperty('progress');
       expect(updateCall.data).not.toHaveProperty('tempFilePath');
     });
@@ -428,14 +396,10 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([nearCompleteJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([nearCompleteJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(nearCompleteJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(nearCompleteJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -449,8 +413,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         }),
       });
 
-      const updateCall = (prismaService.job.update as jest.Mock).mock
-        .calls[0][0];
+      const updateCall = (prismaService.job.update as jest.Mock).mock.calls[0][0];
       expect(updateCall.data).not.toHaveProperty('progress');
       expect(updateCall.data).not.toHaveProperty('tempFilePath');
     });
@@ -468,13 +431,9 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: null,
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([nullProgressUpdateJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([nullProgressUpdateJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(nullProgressUpdateJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(nullProgressUpdateJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -501,14 +460,10 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([missingResumeDataJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([missingResumeDataJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(missingResumeDataJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(missingResumeDataJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -541,14 +496,10 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         lastProgressUpdate: new Date(Date.now() - 15 * 60 * 1000),
       };
 
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValue([previouslyHealedJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([previouslyHealedJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(previouslyHealedJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(previouslyHealedJob as any);
 
       // Act: Run recovery
       await (worker as any).recoverStuckJobs();
@@ -582,9 +533,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
 
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
 
       await (worker as any).recoverStuckJobs();
 
@@ -601,7 +550,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         '/test/video.mkv',
         'lib-1',
         expect.stringContaining('repeatedly gets stuck'),
-        'abc123',
+        'abc123'
       );
     });
 
@@ -622,9 +571,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(true);
       jest.spyOn(ffmpegService, 'killProcess').mockResolvedValue(true);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
 
       await (worker as any).recoverStuckJobs();
 
@@ -655,9 +602,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
 
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
 
       await (worker as any).recoverStuckJobs();
 
@@ -686,9 +631,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
 
       jest.spyOn(prismaService.job, 'findMany').mockResolvedValue([stuckJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
-      jest
-        .spyOn(prismaService.job, 'update')
-        .mockResolvedValue(stuckJob as any);
+      jest.spyOn(prismaService.job, 'update').mockResolvedValue(stuckJob as any);
 
       await (worker as any).recoverStuckJobs();
 
@@ -696,7 +639,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
         '/test/fingerprint.mkv',
         'lib-2',
         expect.stringContaining('repeatedly gets stuck'),
-        'fingerprint123',
+        'fingerprint123'
       );
     });
   });
@@ -730,9 +673,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
       };
 
       // Test HEALTH_CHECK timeout
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValueOnce([healthCheckJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValueOnce([healthCheckJob]);
       jest.spyOn(prismaService.job, 'update').mockResolvedValue({} as any);
 
       await (worker as any).recoverStuckJobs();
@@ -747,9 +688,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
 
       // Test ENCODING timeout
       jest.clearAllMocks();
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValueOnce([encodingJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValueOnce([encodingJob]);
       jest.spyOn(ffmpegService, 'hasActiveProcess').mockReturnValue(false);
       jest.spyOn(prismaService.job, 'update').mockResolvedValue({} as any);
 
@@ -764,9 +703,7 @@ describe('StuckJobRecoveryWorker (e2e)', () => {
 
       // Test VERIFYING timeout
       jest.clearAllMocks();
-      jest
-        .spyOn(prismaService.job, 'findMany')
-        .mockResolvedValueOnce([verifyingJob]);
+      jest.spyOn(prismaService.job, 'findMany').mockResolvedValueOnce([verifyingJob]);
       jest.spyOn(prismaService.job, 'update').mockResolvedValue({} as any);
 
       await (worker as any).recoverStuckJobs();

@@ -6,11 +6,7 @@ import { Directive, ElementRef, Input, OnDestroy, OnInit } from '@angular/core';
 })
 export class ScrollRevealDirective implements OnInit, OnDestroy {
   @Input() delay = 0;
-  @Input() animation:
-    | 'fade-in-up'
-    | 'fade-in'
-    | 'slide-in-left'
-    | 'slide-in-right' = 'fade-in-up';
+  @Input() animation: 'fade-in-up' | 'fade-in' | 'slide-in-left' | 'slide-in-right' = 'fade-in-up';
 
   private observer: IntersectionObserver | null = null;
 
@@ -39,7 +35,7 @@ export class ScrollRevealDirective implements OnInit, OnDestroy {
       {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px',
-      },
+      }
     );
 
     this.observer.observe(this.el.nativeElement);

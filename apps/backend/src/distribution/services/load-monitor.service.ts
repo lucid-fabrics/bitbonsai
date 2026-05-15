@@ -2,10 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Node } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
-import type {
-  HeartbeatLoadData,
-  NodeCapacity,
-} from '../interfaces/scoring-factors.interface';
+import type { HeartbeatLoadData, NodeCapacity } from '../interfaces/scoring-factors.interface';
 
 /**
  * Load Monitor Service
@@ -22,7 +19,7 @@ export class LoadMonitorService {
 
   constructor(
     private readonly nodeRepository: NodeRepository,
-    private readonly jobRepository: JobRepository,
+    private readonly jobRepository: JobRepository
   ) {}
 
   /**
@@ -38,7 +35,7 @@ export class LoadMonitorService {
       memFreeGB: number;
       memTotalGB: number;
       cpuCount: number;
-    },
+    }
   ): Promise<void> {
     const heartbeatData: HeartbeatLoadData = {
       ...loadData,
@@ -56,7 +53,7 @@ export class LoadMonitorService {
     });
 
     this.logger.debug(
-      `Updated load for node ${nodeId}: load=${loadData.load1m.toFixed(2)}, mem=${loadData.memFreeGB.toFixed(1)}GB`,
+      `Updated load for node ${nodeId}: load=${loadData.load1m.toFixed(2)}, mem=${loadData.memFreeGB.toFixed(1)}GB`
     );
   }
 
@@ -126,7 +123,7 @@ export class LoadMonitorService {
    */
   isOverloaded(
     node: Node,
-    loadData: HeartbeatLoadData | null,
+    loadData: HeartbeatLoadData | null
   ): { isOverloaded: boolean; reason?: string } {
     if (!loadData) {
       return { isOverloaded: false };

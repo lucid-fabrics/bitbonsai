@@ -20,10 +20,7 @@ describe('WorkerPoolService', () => {
     poolLockService = {
       withLock: jest
         .fn()
-        .mockImplementation(
-          (_nodeId: string, _holder: string, fn: () => Promise<unknown>) =>
-            fn(),
-        ),
+        .mockImplementation((_nodeId: string, _holder: string, fn: () => Promise<unknown>) => fn()),
     };
 
     systemResourceService = {
@@ -123,11 +120,7 @@ describe('WorkerPoolService', () => {
 
     it('should clamp maxWorkers to systemResourceService.maxWorkersPerNode', async () => {
       const startWorkerFn = jest.fn().mockResolvedValue(undefined);
-      const started = await service.startWorkerPool(
-        'node-1',
-        99,
-        startWorkerFn,
-      );
+      const started = await service.startWorkerPool('node-1', 99, startWorkerFn);
 
       expect(started).toBe(4); // maxWorkersPerNode = 4
     });
@@ -139,7 +132,7 @@ describe('WorkerPoolService', () => {
 
       expect(started).toBe(0);
       expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('already at capacity'),
+        expect.stringContaining('already at capacity')
       );
     });
 
@@ -155,43 +148,37 @@ describe('WorkerPoolService', () => {
     it('should rollback worker from activeWorkers when startWorker throws', async () => {
       const startWorkerFn = jest.fn().mockResolvedValue(undefined);
       let startWorkerCallCount = 0;
-      jest
-        .spyOn(service, 'startWorker')
-        .mockImplementation(async (wId, nId, fn) => {
-          startWorkerCallCount++;
-          if (startWorkerCallCount === 2) throw new Error('start failure');
-          // Call real method via the prototype but without recursion risk
-          const worker = {
-            workerId: wId,
-            nodeId: nId,
-            isRunning: true,
-            currentJobId: null,
-            startedAt: new Date(),
-            shutdownPromise: Promise.resolve(),
-            shutdownResolve: jest.fn(),
-          };
-          (service as any).workers.set(wId, worker);
-          fn(wId, nId).catch(() => {
-            /* noop */
-          });
+      jest.spyOn(service, 'startWorker').mockImplementation(async (wId, nId, fn) => {
+        startWorkerCallCount++;
+        if (startWorkerCallCount === 2) throw new Error('start failure');
+        // Call real method via the prototype but without recursion risk
+        const worker = {
+          workerId: wId,
+          nodeId: nId,
+          isRunning: true,
+          currentJobId: null,
+          startedAt: new Date(),
+          shutdownPromise: Promise.resolve(),
+          shutdownResolve: jest.fn(),
+        };
+        (service as any).workers.set(wId, worker);
+        fn(wId, nId).catch(() => {
+          /* noop */
         });
+      });
 
       const started = await service.startWorkerPool('node-1', 2, startWorkerFn);
 
       expect(started).toBe(1);
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to start worker'),
-        expect.any(Error),
+        expect.any(Error)
       );
     });
 
     it('should use defaultWorkersPerNode when no maxWorkers provided', async () => {
       const startWorkerFn = jest.fn().mockResolvedValue(undefined);
-      const started = await service.startWorkerPool(
-        'node-1',
-        undefined,
-        startWorkerFn,
-      );
+      const started = await service.startWorkerPool('node-1', undefined, startWorkerFn);
 
       expect(started).toBe(systemResourceService.defaultWorkersPerNode);
     });
@@ -215,7 +202,7 @@ describe('WorkerPoolService', () => {
       await service.startWorker('node-1-worker-1', 'node-1', startWorkerFn);
 
       expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('already running'),
+        expect.stringContaining('already running')
       );
       expect(startWorkerFn).not.toHaveBeenCalled();
     });
@@ -241,7 +228,7 @@ describe('WorkerPoolService', () => {
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Worker crashed:'),
-        crashError,
+        crashError
       );
       expect(service.getWorker('node-1-worker-1')).toBeUndefined();
     });
@@ -255,9 +242,7 @@ describe('WorkerPoolService', () => {
         callCount++;
         if (callCount === 1) {
           // Delay rejection so we can set currentJobId first
-          return new Promise<void>((_, reject) =>
-            setTimeout(() => reject(crashError), 20),
-          );
+          return new Promise<void>((_, reject) => setTimeout(() => reject(crashError), 20));
         }
         return Promise.resolve();
       });
@@ -288,10 +273,7 @@ describe('WorkerPoolService', () => {
       const startWorkerFn = jest
         .fn()
         .mockImplementation(
-          () =>
-            new Promise<void>((_, reject) =>
-              setTimeout(() => reject(crashError), 20),
-            ),
+          () => new Promise<void>((_, reject) => setTimeout(() => reject(crashError), 20))
         );
 
       setNoRestartPool('node-1', ['node-1-worker-1']);
@@ -304,7 +286,7 @@ describe('WorkerPoolService', () => {
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to kill FFmpeg'),
-        expect.any(Error),
+        expect.any(Error)
       );
     });
 
@@ -315,10 +297,7 @@ describe('WorkerPoolService', () => {
       const startWorkerFn = jest
         .fn()
         .mockImplementation(
-          () =>
-            new Promise<void>((_, reject) =>
-              setTimeout(() => reject(crashError), 20),
-            ),
+          () => new Promise<void>((_, reject) => setTimeout(() => reject(crashError), 20))
         );
 
       setNoRestartPool('node-1', ['node-1-worker-1']);
@@ -331,7 +310,7 @@ describe('WorkerPoolService', () => {
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to reset job'),
-        expect.any(Error),
+        expect.any(Error)
       );
     });
 
@@ -344,9 +323,7 @@ describe('WorkerPoolService', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Worker or pool not found during crash cleanup',
-        ),
+        expect.stringContaining('Worker or pool not found during crash cleanup')
       );
     });
 
@@ -362,9 +339,7 @@ describe('WorkerPoolService', () => {
 
       // Worker must be fully cleaned up (no leak)
       expect(service.getWorker('node-1-worker-1')).toBeUndefined();
-      expect(
-        service.getPool('node-1')!.activeWorkers.has('node-1-worker-1'),
-      ).toBe(false);
+      expect(service.getPool('node-1')!.activeWorkers.has('node-1-worker-1')).toBe(false);
     });
   });
 
@@ -377,7 +352,7 @@ describe('WorkerPoolService', () => {
       await service.stopWorker('nonexistent-node');
 
       expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('No worker pool found'),
+        expect.stringContaining('No worker pool found')
       );
     });
 
@@ -391,7 +366,7 @@ describe('WorkerPoolService', () => {
       await service.stopWorker('node-1', 'node-1-worker-99');
 
       expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('not found'),
+        expect.stringContaining('not found')
       );
     });
 
@@ -440,7 +415,7 @@ describe('WorkerPoolService', () => {
       await service.stopWorker('node-1', 'node-1-worker-1');
 
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('Waiting for worker'),
+        expect.stringContaining('Waiting for worker')
       );
     });
 
@@ -455,14 +430,8 @@ describe('WorkerPoolService', () => {
         shutdownResolve: jest.fn(),
       });
 
-      (service as any).workers.set(
-        'node-1-worker-1',
-        makeWorker('node-1-worker-1'),
-      );
-      (service as any).workers.set(
-        'node-1-worker-2',
-        makeWorker('node-1-worker-2'),
-      );
+      (service as any).workers.set('node-1-worker-1', makeWorker('node-1-worker-1'));
+      (service as any).workers.set('node-1-worker-2', makeWorker('node-1-worker-2'));
       (service as any).workerPools.set('node-1', {
         nodeId: 'node-1',
         maxWorkers: 2,
@@ -497,7 +466,7 @@ describe('WorkerPoolService', () => {
       await service.stopWorker('node-1');
 
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('Waiting for worker'),
+        expect.stringContaining('Waiting for worker')
       );
     });
   });
@@ -528,9 +497,7 @@ describe('WorkerPoolService', () => {
       service.removeWorker('node-1-worker-1');
 
       expect(service.getWorker('node-1-worker-1')).toBeUndefined();
-      expect(
-        service.getPool('node-1')!.activeWorkers.has('node-1-worker-1'),
-      ).toBe(false);
+      expect(service.getPool('node-1')!.activeWorkers.has('node-1-worker-1')).toBe(false);
     });
 
     it('should still delete from workers map when pool not found', () => {
@@ -563,9 +530,7 @@ describe('WorkerPoolService', () => {
 
       service.setWorkerJob('node-1-worker-1', 'job-abc');
 
-      expect(service.getWorker('node-1-worker-1')!.currentJobId).toBe(
-        'job-abc',
-      );
+      expect(service.getWorker('node-1-worker-1')!.currentJobId).toBe('job-abc');
     });
 
     it('should clear currentJobId when set to null', async () => {

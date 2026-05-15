@@ -110,8 +110,7 @@ export const mockApiResponses = {
     {
       preset: 'BALANCED_HEVC',
       name: 'Balanced HEVC (Recommended)',
-      description:
-        'Best balance of quality and file size. Works on most devices.',
+      description: 'Best balance of quality and file size. Works on most devices.',
       codec: 'HEVC',
       crf: 23,
       use_case: 'General purpose encoding for all content types',
@@ -121,8 +120,7 @@ export const mockApiResponses = {
     {
       preset: 'QUALITY_AV1',
       name: 'Quality AV1',
-      description:
-        'Maximum quality with latest AV1 codec. Requires modern devices.',
+      description: 'Maximum quality with latest AV1 codec. Requires modern devices.',
       codec: 'AV1',
       crf: 28,
       use_case: 'High quality archival and future-proofing',

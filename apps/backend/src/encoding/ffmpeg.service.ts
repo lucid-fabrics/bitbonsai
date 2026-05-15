@@ -1,11 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Job, Policy } from '@prisma/client';
 import {
@@ -112,10 +107,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
   // Cache stderr output for recently completed/failed jobs
   // This persists even after the job is removed from activeEncodings
-  private readonly stderrCache = new Map<
-    string,
-    { stderr: string; timestamp: Date }
-  >();
+  private readonly stderrCache = new Map<string, { stderr: string; timestamp: Date }>();
   private readonly STDERR_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   private stderrCleanupInterval?: NodeJS.Timeout; // CRITICAL #2 FIX
 
@@ -142,7 +134,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     private readonly progressParser: FfmpegProgressParserService,
     private readonly ffprobe: FfprobeService,
     private readonly processCleanup: FfmpegProcessCleanupService,
-    private readonly fileVerification: FfmpegFileVerificationService,
+    private readonly fileVerification: FfmpegFileVerificationService
   ) {}
 
   /**
@@ -157,7 +149,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       () => {
         this.cleanupStaleStderrCache();
       },
-      15 * 60 * 1000,
+      15 * 60 * 1000
     );
 
     // Start codec cache cleanup every 15 minutes
@@ -194,9 +186,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * Prevents zombie FFmpeg processes when backend shuts down or restarts
    */
   async onModuleDestroy(): Promise<void> {
-    this.logger.log(
-      'FfmpegService shutting down - killing all active FFmpeg processes',
-    );
+    this.logger.log('FfmpegService shutting down - killing all active FFmpeg processes');
 
     // CRITICAL #2 & #9 FIX: Clear cleanup intervals
     if (this.stderrCleanupInterval) {
@@ -211,9 +201,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     if (activeJobIds.length === 0) {
       this.logger.log('No active FFmpeg processes to kill');
     } else {
-      this.logger.log(
-        `Killing ${activeJobIds.length} active FFmpeg process(es)...`,
-      );
+      this.logger.log(`Killing ${activeJobIds.length} active FFmpeg process(es)...`);
 
       // Kill all active processes
       const killPromises = activeJobIds.map(async (jobId) => {
@@ -226,7 +214,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
             // Kill entire process group (negative PID)
             process.kill(-encoding.process.pid, 'SIGTERM');
             this.logger.log(
-              `Killed FFmpeg process group for job ${jobId} (PID: ${encoding.process.pid})`,
+              `Killed FFmpeg process group for job ${jobId} (PID: ${encoding.process.pid})`
             );
           }
 
@@ -237,18 +225,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           if (!encoding.process.killed) {
             if (encoding.process.pid) {
               process.kill(-encoding.process.pid, 'SIGKILL');
-              this.logger.log(
-                `Force killed FFmpeg process group for job ${jobId}`,
-              );
+              this.logger.log(`Force killed FFmpeg process group for job ${jobId}`);
             }
           }
         } catch (error: unknown) {
           // ESRCH error means process already dead - that's fine
           const err = error as NodeJS.ErrnoException;
           if (err.code !== 'ESRCH') {
-            this.logger.warn(
-              `Failed to kill FFmpeg for job ${jobId}: ${error}`,
-            );
+            this.logger.warn(`Failed to kill FFmpeg for job ${jobId}: ${error}`);
           }
         }
       });
@@ -321,14 +305,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     policy: Policy,
     hwaccel: HardwareAccelConfig,
     outputPath: string,
-    resumeFromTimestamp?: string,
+    resumeFromTimestamp?: string
   ): string[] {
     return this.flagBuilder.buildFfmpegCommand(
       job,
       policy,
       hwaccel,
       outputPath,
-      resumeFromTimestamp,
+      resumeFromTimestamp
     );
   }
 
@@ -343,9 +327,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param line - Single line from ffmpeg stderr
    * @returns Parsed progress data or null if not a progress line
    */
-  parseProgress(
-    line: string,
-  ): Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'> | null {
+  parseProgress(line: string): Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'> | null {
     return this.progressParser.parseProgress(line);
   }
 
@@ -359,14 +341,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param totalDurationSeconds - Total video duration in seconds
    * @returns Progress percentage (0-100)
    */
-  private calculateProgressPercentage(
-    currentTime: string,
-    totalDurationSeconds: number,
-  ): number {
-    return this.progressParser.calculateProgressPercentage(
-      currentTime,
-      totalDurationSeconds,
-    );
+  private calculateProgressPercentage(currentTime: string, totalDurationSeconds: number): number {
+    return this.progressParser.calculateProgressPercentage(currentTime, totalDurationSeconds);
   }
 
   /**
@@ -389,21 +365,17 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     activeEncoding: ActiveEncoding,
     estimatedDurationSeconds: number,
     tempOutput: string,
-    resumeFromPercent = 0,
+    resumeFromPercent = 0
   ): Promise<void> {
     // CRITICAL #1 FIX: Check for pause/cancel requests before processing progress
     const jobStatus = await this.jobRepository.findStatusFields(job.id);
     if (jobStatus?.pauseRequestedAt && !jobStatus.pauseProcessedAt) {
-      this.logger.warn(
-        `[${job.id}] Pause requested, killing FFmpeg gracefully...`,
-      );
+      this.logger.warn(`[${job.id}] Pause requested, killing FFmpeg gracefully...`);
       await this.killProcess(job.id);
       return;
     }
     if (jobStatus?.cancelRequestedAt && !jobStatus.cancelProcessedAt) {
-      this.logger.warn(
-        `[${job.id}] Cancel requested, killing FFmpeg gracefully...`,
-      );
+      this.logger.warn(`[${job.id}] Cancel requested, killing FFmpeg gracefully...`);
       await this.killProcess(job.id);
       return;
     }
@@ -411,29 +383,22 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // Calculate current progress based on time position
     let currentProgress = this.calculateProgressPercentage(
       progressData.currentTime,
-      estimatedDurationSeconds,
+      estimatedDurationSeconds
     );
 
     // FALLBACK: Use frame-based progress when time-based returns 0 but frames ARE being encoded
     // This handles the case where out_time=N/A during FFmpeg's initial buffering/seeking phase
     // For large 4K files (80-90GB), FFmpeg can output frames before reporting valid out_time
-    if (
-      currentProgress === 0 &&
-      progressData.frame > 0 &&
-      estimatedDurationSeconds > 0
-    ) {
+    if (currentProgress === 0 && progressData.frame > 0 && estimatedDurationSeconds > 0) {
       // Estimate total frames using standard movie FPS (most are 23.976, 24, 25, or 29.97)
       // Using 24fps as conservative estimate - slightly overestimates progress which is acceptable
       const assumedSourceFps = 24;
       const estimatedTotalFrames = estimatedDurationSeconds * assumedSourceFps;
 
       if (estimatedTotalFrames > 0) {
-        currentProgress = Math.min(
-          100,
-          (progressData.frame / estimatedTotalFrames) * 100,
-        );
+        currentProgress = Math.min(100, (progressData.frame / estimatedTotalFrames) * 100);
         this.logger.debug(
-          `[${job.id}] Frame-based progress fallback: ${currentProgress.toFixed(2)}% (${progressData.frame}/${Math.round(estimatedTotalFrames)} frames, out_time=${progressData.currentTime})`,
+          `[${job.id}] Frame-based progress fallback: ${currentProgress.toFixed(2)}% (${progressData.frame}/${Math.round(estimatedTotalFrames)} frames, out_time=${progressData.currentTime})`
         );
       }
     }
@@ -441,21 +406,14 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // TRUE RESUME: Adjust progress to account for already-encoded portion
     // If we resumed from 60%, and current position is 70%, actual progress is 70% (not 10%)
     // FFmpeg -ss skips input frames, so progress is relative to full duration
-    const adjustedProgress = Math.min(
-      100,
-      Math.max(resumeFromPercent, currentProgress),
-    );
+    const adjustedProgress = Math.min(100, Math.max(resumeFromPercent, currentProgress));
 
     // Calculate ETA
     const elapsed = Date.now() - activeEncoding.startTime.getTime();
     const remainingPercent = 100 - adjustedProgress;
     const eta =
       adjustedProgress > resumeFromPercent
-        ? Math.round(
-            ((elapsed / (adjustedProgress - resumeFromPercent)) *
-              remainingPercent) /
-              1000,
-          )
+        ? Math.round(((elapsed / (adjustedProgress - resumeFromPercent)) * remainingPercent) / 1000)
         : 0;
 
     // Emit progress event
@@ -473,14 +431,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // TRUE RESUME: Save resume state every 0.1% for crash recovery
     // Stores: progress, timestamp (for -ss seek), temp file path
     // CRITICAL FIX: Also update on first progress event to handle out_time=N/A at encoding start
-    const isFirstProgressEvent =
-      activeEncoding.lastProgress === 0 && progressData.frame > 0;
-    if (
-      adjustedProgress - activeEncoding.lastProgress >= 0.1 ||
-      isFirstProgressEvent
-    ) {
+    const isFirstProgressEvent = activeEncoding.lastProgress === 0 && progressData.frame > 0;
+    if (adjustedProgress - activeEncoding.lastProgress >= 0.1 || isFirstProgressEvent) {
       this.logger.debug(
-        `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)${isFirstProgressEvent ? ' [FIRST]' : ''}`,
+        `[${job.id}] Updating database: ${adjustedProgress.toFixed(2)}% @ ${progressData.currentTime} (ETA: ${eta}s)${isFirstProgressEvent ? ' [FIRST]' : ''}`
       );
       // Fire-and-forget: emit event for QueueService to persist progress
       this.eventEmitter.emit(
@@ -491,7 +445,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           fps: progressData.fps,
           resumeTimestamp: progressData.currentTime,
           tempFilePath: tempOutput,
-        }),
+        })
       );
       activeEncoding.lastProgress = adjustedProgress;
 
@@ -505,33 +459,24 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       ) {
         this.lastPreviewGeneration.set(job.id, now);
         this.logger.debug(
-          `[${job.id}] Generating encoding previews at ${adjustedProgress.toFixed(2)}%`,
+          `[${job.id}] Generating encoding previews at ${adjustedProgress.toFixed(2)}%`
         );
 
         // Generate previews asynchronously (don't block progress updates)
         this.previewService
-          .generatePreviews(
-            job.id,
-            tempOutput,
-            estimatedDurationSeconds,
-            adjustedProgress,
-          )
+          .generatePreviews(job.id, tempOutput, estimatedDurationSeconds, adjustedProgress)
           .then((previewPaths) => {
             if (previewPaths.length > 0) {
               // Fire-and-forget: emit event to update preview paths
               this.eventEmitter.emit(
                 EncodingPreviewUpdateEvent.event,
-                new EncodingPreviewUpdateEvent(job.id, previewPaths),
+                new EncodingPreviewUpdateEvent(job.id, previewPaths)
               );
-              this.logger.debug(
-                `[${job.id}] Generated ${previewPaths.length} preview screenshots`,
-              );
+              this.logger.debug(`[${job.id}] Generated ${previewPaths.length} preview screenshots`);
             }
           })
           .catch((error) => {
-            this.logger.warn(
-              `Failed to generate previews for job ${job.id}: ${error.message}`,
-            );
+            this.logger.warn(`Failed to generate previews for job ${job.id}: ${error.message}`);
           });
       }
     }
@@ -548,44 +493,31 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param tempOutput - Temporary output file path
    * @private
    */
-  private async handleEncodingSuccess(
-    job: Job,
-    policy: Policy,
-    tempOutput: string,
-  ): Promise<void> {
+  private async handleEncodingSuccess(job: Job, policy: Policy, tempOutput: string): Promise<void> {
     // ROCK SOLID FIX: Wait for filesystem to flush (FFmpeg may not have fully closed the file)
-    this.logger.log(
-      `Waiting 5 seconds for filesystem flush after FFmpeg completion...`,
-    );
+    this.logger.log(`Waiting 5 seconds for filesystem flush after FFmpeg completion...`);
     await this.fileVerification.sleep(5000);
 
     // ROCK SOLID FIX: Verify temp file EXISTS with retries (filesystem may need time to sync)
-    const fileExists = await this.fileVerification.waitForFileExists(
-      tempOutput,
-      10,
-      2000,
-    );
+    const fileExists = await this.fileVerification.waitForFileExists(tempOutput, 10, 2000);
     if (!fileExists) {
       throw new Error(
         `Temp file missing after 20 seconds: ${tempOutput}\n` +
-          `FFmpeg reported success but file was not written to disk.`,
+          `FFmpeg reported success but file was not written to disk.`
       );
     }
 
     // ROCK SOLID FIX: Verify temp file is VALID before rename with retries
     if (policy.verifyOutput) {
       this.logger.log(`Verifying temp file with retries: ${tempOutput}`);
-      const verifyResult = await this.fileVerification.verifyFileWithRetries(
-        tempOutput,
-        10,
-      );
+      const verifyResult = await this.fileVerification.verifyFileWithRetries(tempOutput, 10);
       if (!verifyResult.isValid) {
         throw new Error(
-          `Temp file verification failed after retries: ${verifyResult.error || 'File is not playable'}`,
+          `Temp file verification failed after retries: ${verifyResult.error || 'File is not playable'}`
         );
       }
       this.logger.log(
-        `✓ Temp file verified successfully after ${verifyResult.attempts || 1} attempt(s)`,
+        `✓ Temp file verified successfully after ${verifyResult.attempts || 1} attempt(s)`
       );
     }
 
@@ -619,7 +551,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     job: Job,
     tempOutput: string,
     errorMessage: string,
-    deleteTemp = false,
+    deleteTemp = false
   ): Promise<void> {
     this.logger.error(`Encoding failed for job ${job.id}: ${errorMessage}`);
 
@@ -644,7 +576,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
     this.eventEmitter.emit(
       EncodingFailedEvent.event,
-      new EncodingFailedEvent(job.id, errorMessage),
+      new EncodingFailedEvent(job.id, errorMessage)
     );
   }
 
@@ -666,9 +598,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param filePath - Path to video file
    * @returns Object with codec name and container format
    */
-  async getVideoInfo(
-    filePath: string,
-  ): Promise<{ codec: string; container: string }> {
+  async getVideoInfo(filePath: string): Promise<{ codec: string; container: string }> {
     return this.ffprobe.getVideoInfo(filePath);
   }
 
@@ -679,9 +609,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param filePath - Path to video file
    * @returns Object with codec name and container format
    */
-  async getVideoInfoCached(
-    filePath: string,
-  ): Promise<{ codec: string; container: string }> {
+  async getVideoInfoCached(filePath: string): Promise<{ codec: string; container: string }> {
     return this.ffprobe.getVideoInfoCached(filePath);
   }
 
@@ -729,12 +657,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         throw new Error(`File path '${filePath}' is outside library boundary`);
       }
     } catch (err: unknown) {
-      if (
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        err.code === 'ENOENT'
-      ) {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
         // File doesn't exist yet - validate parent directory
         const parent = path.dirname(resolvedFile);
         try {
@@ -742,13 +665,10 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
           const realLibrary = fs.realpathSync(resolvedLibrary);
 
           if (!realParent.startsWith(realLibrary + path.sep)) {
-            throw new Error(
-              `File path '${filePath}' is outside library boundary`,
-            );
+            throw new Error(`File path '${filePath}' is outside library boundary`);
           }
         } catch (parentErr: unknown) {
-          const message =
-            parentErr instanceof Error ? parentErr.message : 'Unknown error';
+          const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
           throw new Error(`Invalid file path: ${message}`);
         }
       } else {
@@ -824,23 +744,16 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const niceValue = this.getNiceValue(priority);
     const pid = activeEncoding.process.pid;
 
-    this.logger.log(
-      `Renicing FFmpeg process ${pid} (job ${jobId}) to nice ${niceValue}`,
-    );
+    this.logger.log(`Renicing FFmpeg process ${pid} (job ${jobId}) to nice ${niceValue}`);
 
     return new Promise((resolve, reject) => {
       // Use renice command to change priority of running process
-      const renice = spawn('renice', [
-        '-n',
-        niceValue.toString(),
-        '-p',
-        pid.toString(),
-      ]);
+      const renice = spawn('renice', ['-n', niceValue.toString(), '-p', pid.toString()]);
 
       renice.on('close', (code) => {
         if (code === 0) {
           this.logger.log(
-            `Successfully reniced FFmpeg process ${pid} (job ${jobId}) to nice ${niceValue}`,
+            `Successfully reniced FFmpeg process ${pid} (job ${jobId}) to nice ${niceValue}`
           );
           resolve(true);
         } else {
@@ -883,11 +796,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @returns Promise that resolves when encoding completes
    * @throws Error if ffmpeg fails or process error occurs
    */
-  async encodeFile(
-    job: Job,
-    policy: Policy,
-    customOutputPath?: string,
-  ): Promise<void> {
+  async encodeFile(job: Job, policy: Policy, customOutputPath?: string): Promise<void> {
     this.logger.log(`Starting encoding for job ${job.id}: ${job.fileLabel}`);
     this.logger.debug(`[${job.id}] encodeFile() called - setting up FFmpeg`);
 
@@ -898,9 +807,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         this.validateFilePath(job.filePath, jobWithLibrary.library.path);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `[${job.id}] File path validation failed: ${message}`,
-        );
+        this.logger.error(`[${job.id}] File path validation failed: ${message}`);
         throw new Error(`Security validation failed: ${message}`);
       }
     }
@@ -913,7 +820,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // ISSUE #11 FIX: Get actual video duration from FFprobe
     const estimatedDurationSeconds = await this.getVideoDuration(job.filePath);
     this.logger.log(
-      `[${job.id}] Using duration: ${estimatedDurationSeconds.toFixed(2)}s for progress calculation`,
+      `[${job.id}] Using duration: ${estimatedDurationSeconds.toFixed(2)}s for progress calculation`
     );
 
     // TRUE RESUME: Check if we can resume from previous encoding attempt
@@ -925,36 +832,29 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     // APPROACH 1: Resume from auto-heal (temp file may not exist yet, but resumeTimestamp is set)
     if (jobWithResume.resumeTimestamp && job.progress > 0) {
       // Parse HH:MM:SS.MS to seconds
-      resumeFromSeconds = this.parseTimestampToSeconds(
-        jobWithResume.resumeTimestamp,
-      );
+      resumeFromSeconds = this.parseTimestampToSeconds(jobWithResume.resumeTimestamp);
       resumeFromPercent = (resumeFromSeconds / estimatedDurationSeconds) * 100;
 
       this.logger.log(
-        `🔄 TRUE RESUME: Job ${job.id} will resume from ${jobWithResume.resumeTimestamp} (${resumeFromPercent.toFixed(1)}%) - auto-healed from ${job.progress.toFixed(1)}%`,
+        `🔄 TRUE RESUME: Job ${job.id} will resume from ${jobWithResume.resumeTimestamp} (${resumeFromPercent.toFixed(1)}%) - auto-healed from ${job.progress.toFixed(1)}%`
       );
     }
     // APPROACH 2: Resume from existing temp file (legacy approach)
-    else if (
-      jobWithResume.tempFilePath &&
-      existsSync(jobWithResume.tempFilePath)
-    ) {
+    else if (jobWithResume.tempFilePath && existsSync(jobWithResume.tempFilePath)) {
       // Verify temp file is valid (not corrupted)
-      const isValid = await this.verifyPartialEncode(
-        jobWithResume.tempFilePath,
-      );
+      const isValid = await this.verifyPartialEncode(jobWithResume.tempFilePath);
 
       if (isValid) {
         // Calculate resume position from temp file metadata
         // This is a fallback if resumeTimestamp wasn't set
         this.logger.log(
-          `🔄 TRUE RESUME: Found existing temp file for job ${job.id}, but no resumeTimestamp - restarting from 0%`,
+          `🔄 TRUE RESUME: Found existing temp file for job ${job.id}, but no resumeTimestamp - restarting from 0%`
         );
         // Note: We could add logic here to extract the last encoded timestamp from the temp file
         // using ffprobe, but for now we'll just restart from 0% if resumeTimestamp is missing
       } else {
         this.logger.warn(
-          `Temp file corrupted for job ${job.id}, restarting from 0%: ${jobWithResume.tempFilePath}`,
+          `Temp file corrupted for job ${job.id}, restarting from 0%: ${jobWithResume.tempFilePath}`
         );
         // Delete corrupted temp file
         try {
@@ -969,7 +869,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
             progress: 0,
             etaSeconds: 0,
             fps: 0,
-          }),
+          })
         );
       }
     }
@@ -978,10 +878,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const hwaccel = await this.detectHardwareAcceleration();
 
     // Use custom output path if provided, otherwise use existing temp path or create new
-    const tempOutput =
-      customOutputPath ||
-      jobWithResume.tempFilePath ||
-      `${job.filePath}.tmp.mp4`;
+    const tempOutput = customOutputPath || jobWithResume.tempFilePath || `${job.filePath}.tmp.mp4`;
     this.logger.debug(`[${job.id}] Output path: ${tempOutput}`);
 
     // Build ffmpeg command (with resume timestamp if resuming)
@@ -991,7 +888,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       policy,
       hwaccel,
       tempOutput,
-      resumeFromSeconds > 0 ? resumeTimestampValue : undefined,
+      resumeFromSeconds > 0 ? resumeTimestampValue : undefined
     );
 
     // Get nice value based on job priority
@@ -1002,17 +899,13 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     let ffmpegProcess: ChildProcess;
     if (niceValue !== 0) {
       this.logger.log(
-        `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${job.priority})`,
+        `[${job.id}] Spawning FFmpeg with nice ${niceValue} (priority ${job.priority})`
       );
       // Spawn with nice for CPU priority control
-      ffmpegProcess = spawn(
-        'nice',
-        ['-n', niceValue.toString(), 'ffmpeg', ...args],
-        {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          detached: true, // CRITICAL: Prevent process leak - allows child to run independently
-        },
-      );
+      ffmpegProcess = spawn('nice', ['-n', niceValue.toString(), 'ffmpeg', ...args], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true, // CRITICAL: Prevent process leak - allows child to run independently
+      });
     } else {
       // Spawn ffmpeg directly (no priority adjustment needed)
       ffmpegProcess = spawn('ffmpeg', args, {
@@ -1022,7 +915,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.logger.debug(
-      `[${job.id}] FFmpeg process spawned (PID: ${ffmpegProcess.pid}), attaching stderr listener...`,
+      `[${job.id}] FFmpeg process spawned (PID: ${ffmpegProcess.pid}), attaching stderr listener...`
     );
 
     // Track active encoding
@@ -1104,11 +997,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
                     activeEncoding,
                     estimatedDurationSeconds,
                     tempOutput,
-                    resumeFromPercent,
+                    resumeFromPercent
                   ).catch((error) => {
-                    this.logger.error(
-                      `[${job.id}] Progress update error: ${error.message}`,
-                    );
+                    this.logger.error(`[${job.id}] Progress update error: ${error.message}`);
                   });
                 }
                 break;
@@ -1135,8 +1026,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
             await this.handleEncodingSuccess(job, policy, tempOutput);
             resolve();
           } catch (error: unknown) {
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error';
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             await this.handleEncodingFailure(job, tempOutput, errorMessage);
             reject(error);
           }
@@ -1149,7 +1039,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
             code as number,
             stderr,
             progress,
-            retryCount,
+            retryCount
           );
           await this.handleEncodingFailure(job, tempOutput, errorMessage);
           reject(new Error(errorMessage));
@@ -1214,7 +1104,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         if (Object.keys(updateData).length > 0) {
           this.eventEmitter.emit(
             EncodingProcessMarkedEvent.event,
-            new EncodingProcessMarkedEvent(jobId, updateData),
+            new EncodingProcessMarkedEvent(jobId, updateData)
           );
         }
       }
@@ -1232,11 +1122,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
 
       return true;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(
-        `Failed to kill FFmpeg process for job ${jobId}: ${errorMessage}`,
-      );
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to kill FFmpeg process for job ${jobId}: ${errorMessage}`);
       return false;
     }
   }
@@ -1278,9 +1165,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         startTime: encoding.startTime,
         lastProgress: encoding.lastProgress,
         lastOutputTime: encoding.lastOutputTime,
-        runtimeSeconds: Math.floor(
-          (Date.now() - encoding.startTime.getTime()) / 1000,
-        ),
+        runtimeSeconds: Math.floor((Date.now() - encoding.startTime.getTime()) / 1000),
       });
     }
 
@@ -1325,8 +1210,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       trackedJobId: string | null;
     }>
   > {
-    const systemProcesses =
-      await this.processCleanup.findSystemFfmpegProcesses();
+    const systemProcesses = await this.processCleanup.findSystemFfmpegProcesses();
     const trackedPids = new Set<number>();
 
     // Build set of PIDs we're tracking
@@ -1359,9 +1243,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param pid - Process ID to kill
    * @returns True if killed successfully, false otherwise
    */
-  async killFfmpegByPid(
-    pid: number,
-  ): Promise<{ success: boolean; message: string }> {
+  async killFfmpegByPid(pid: number): Promise<{ success: boolean; message: string }> {
     // Build tracked PID sets to pass as safety guards
     const trackedPids = new Set<number>();
     const trackedPidToJobId = new Map<number, string>();
@@ -1371,11 +1253,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
         trackedPidToJobId.set(encoding.process.pid, jobId);
       }
     }
-    return this.processCleanup.killFfmpegByPid(
-      pid,
-      trackedPids,
-      trackedPidToJobId,
-    );
+    return this.processCleanup.killFfmpegByPid(pid, trackedPids, trackedPidToJobId);
   }
 
   /**
@@ -1393,8 +1271,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const zombies = await this.detectZombieFfmpegProcesses();
     const zombieProcesses = zombies.filter((p) => p.isZombie);
 
-    const details: Array<{ pid: number; success: boolean; message: string }> =
-      [];
+    const details: Array<{ pid: number; success: boolean; message: string }> = [];
     let killed = 0;
     let failed = 0;
 
@@ -1408,9 +1285,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    this.logger.log(
-      `Zombie cleanup complete: ${killed} killed, ${failed} failed`,
-    );
+    this.logger.log(`Zombie cleanup complete: ${killed} killed, ${failed} failed`);
     return { killed, failed, details };
   }
 
@@ -1428,8 +1303,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     const allProcesses = await this.detectZombieFfmpegProcesses();
     // Don't filter by isZombie - kill ALL ffmpeg processes
 
-    const details: Array<{ pid: number; success: boolean; message: string }> =
-      [];
+    const details: Array<{ pid: number; success: boolean; message: string }> = [];
     let killed = 0;
     let failed = 0;
 
@@ -1443,9 +1317,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    this.logger.log(
-      `All ffmpeg processes cleanup: ${killed} killed, ${failed} failed`,
-    );
+    this.logger.log(`All ffmpeg processes cleanup: ${killed} killed, ${failed} failed`);
     return { killed, failed, details };
   }
 
@@ -1477,8 +1349,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     }
 
     const now = new Date();
-    const minutesSinceOutput =
-      (now.getTime() - encoding.lastOutputTime.getTime()) / 1000 / 60;
+    const minutesSinceOutput = (now.getTime() - encoding.lastOutputTime.getTime()) / 1000 / 60;
     return minutesSinceOutput >= timeoutMinutes;
   }
 
@@ -1513,10 +1384,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Mark job as cancelled via event
-      this.eventEmitter.emit(
-        EncodingCancelledEvent.event,
-        new EncodingCancelledEvent(jobId),
-      );
+      this.eventEmitter.emit(EncodingCancelledEvent.event, new EncodingCancelledEvent(jobId));
 
       // Cache stderr before removing from active encodings
       if (activeEncoding.lastStderr) {
@@ -1527,8 +1395,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Encoding cancelled for job ${jobId}`);
       return true;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to cancel job ${jobId}: ${errorMessage}`);
       return false;
     }
@@ -1557,8 +1424,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Encoding paused for job ${jobId}`);
       return true;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to pause job ${jobId}: ${errorMessage}`);
       return false;
     }
@@ -1587,8 +1453,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Encoding resumed for job ${jobId}`);
       return true;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to resume job ${jobId}: ${errorMessage}`);
       return false;
     }
@@ -1666,7 +1531,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     code: number,
     stderr: string,
     progress = 0,
-    retryCount = 0,
+    retryCount = 0
   ): string {
     // Use new error analyzer for human-readable explanations
     const {
@@ -1703,9 +1568,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
 
-    const elapsedSeconds = Math.floor(
-      (Date.now() - activeEncoding.startTime.getTime()) / 1000,
-    );
+    const elapsedSeconds = Math.floor((Date.now() - activeEncoding.startTime.getTime()) / 1000);
 
     return {
       jobId: activeEncoding.jobId,
@@ -1730,7 +1593,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       hwAccel?: string;
       advancedSettings?: Record<string, unknown>;
       startedFromSeconds?: number; // TRUE RESUME: FFmpeg input seeking position
-    },
+    }
   ): Promise<void> {
     // TRUE RESUME: Calculate progress and resumeTimestamp if startedFromSeconds is provided
     let progress = 0;
@@ -1741,13 +1604,11 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       // Get video duration to calculate progress percentage
       const durationSeconds = await this.getVideoDuration(options.inputPath);
       progress = (options.startedFromSeconds / durationSeconds) * 100;
-      resumeTimestamp = this.formatSecondsToTimestamp(
-        options.startedFromSeconds,
-      );
+      resumeTimestamp = this.formatSecondsToTimestamp(options.startedFromSeconds);
       tempFilePath = options.outputPath; // Temp file path is the output path
 
       this.logger.log(
-        `TRUE RESUME: encode() called with startedFromSeconds=${options.startedFromSeconds}, progress=${progress.toFixed(1)}%, resumeTimestamp=${resumeTimestamp}`,
+        `TRUE RESUME: encode() called with startedFromSeconds=${options.startedFromSeconds}, progress=${progress.toFixed(1)}%, resumeTimestamp=${resumeTimestamp}`
       );
     }
 
@@ -1875,9 +1736,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
    * @param filePath - Path to file to verify
    * @returns Object with isValid flag and optional error details
    */
-  async verifyFile(
-    filePath: string,
-  ): Promise<{ isValid: boolean; error?: string }> {
+  async verifyFile(filePath: string): Promise<{ isValid: boolean; error?: string }> {
     return this.ffprobe.verifyFile(filePath);
   }
 }

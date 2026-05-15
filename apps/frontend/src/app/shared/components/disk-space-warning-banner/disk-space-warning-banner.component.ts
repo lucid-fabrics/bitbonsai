@@ -22,7 +22,7 @@ export class DiskSpaceWarningBannerComponent implements OnInit {
     // Poll disk space every 2 minutes
     this.diskSpaceData$ = interval(2 * 60 * 1000).pipe(
       startWith(0), // Trigger immediately on init
-      switchMap(() => this.healthClient.getDiskSpaceMonitoring()),
+      switchMap(() => this.healthClient.getDiskSpaceMonitoring())
     );
   }
 

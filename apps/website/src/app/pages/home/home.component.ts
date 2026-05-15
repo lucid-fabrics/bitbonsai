@@ -365,18 +365,15 @@ export class HomeComponent {
   steps = [
     {
       title: 'Connect',
-      description:
-        'Point BitBonsai to your media library. Supports NFS, SMB, local paths.',
+      description: 'Point BitBonsai to your media library. Supports NFS, SMB, local paths.',
     },
     {
       title: 'Scan',
-      description:
-        'Auto-detect files that need encoding. Smart filtering by codec and quality.',
+      description: 'Auto-detect files that need encoding. Smart filtering by codec and quality.',
     },
     {
       title: 'Encode',
-      description:
-        'Watch your library shrink automatically. Real-time progress tracking.',
+      description: 'Watch your library shrink automatically. Real-time progress tracking.',
     },
   ];
 

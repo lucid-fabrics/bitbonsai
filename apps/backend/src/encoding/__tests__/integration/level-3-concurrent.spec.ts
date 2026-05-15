@@ -44,9 +44,7 @@ describe('Level 3: Concurrent Encoding', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(
-      EncodingProcessorService,
-    );
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();
@@ -77,10 +75,7 @@ describe('Level 3: Concurrent Encoding', () => {
   describe('Worker Pool Management', () => {
     it('should start multiple workers for a node', async () => {
       // ACT: Start worker pool with 4 workers
-      const workersStarted = await encodingProcessor.startWorkerPool(
-        testNodeId,
-        4,
-      );
+      const workersStarted = await encodingProcessor.startWorkerPool(testNodeId, 4);
 
       // ASSERT
       expect(workersStarted).toBe(4);
@@ -184,10 +179,7 @@ describe('Level 3: Concurrent Encoding', () => {
       await encodingProcessor.startWorkerPool(testNodeId, 2);
 
       // Resize to 4 workers
-      const additionalWorkers = await encodingProcessor.startWorkerPool(
-        testNodeId,
-        4,
-      );
+      const additionalWorkers = await encodingProcessor.startWorkerPool(testNodeId, 4);
 
       expect(additionalWorkers).toBe(2); // Added 2 more workers
 
@@ -229,7 +221,7 @@ describe('Level 3: Concurrent Encoding', () => {
 
       // Wait for all jobs to complete
       const completedJobs = await Promise.all(
-        jobs.map((job) => waitForJobCompletion(prisma, job.id, 180000)),
+        jobs.map((job) => waitForJobCompletion(prisma, job.id, 180000))
       );
 
       // ASSERT: All 5 jobs completed successfully

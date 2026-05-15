@@ -23,7 +23,7 @@ export class JobFileOperationsService {
     private readonly jobRepository: JobRepository,
     private readonly jobCrudService: QueueJobCrudService,
     private readonly ffmpegService: FfmpegService,
-    private readonly jobMetricsService: JobMetricsService,
+    private readonly jobMetricsService: JobMetricsService
   ) {}
 
   /**
@@ -35,9 +35,7 @@ export class JobFileOperationsService {
     const job = await this.jobCrudService.findOne(id);
 
     if (job.stage !== JobStage.ENCODING) {
-      throw new BadRequestException(
-        'Can only request keep-original for ENCODING jobs',
-      );
+      throw new BadRequestException('Can only request keep-original for ENCODING jobs');
     }
 
     const updatedJob = await this.jobRepository.updateById(id, {
@@ -67,12 +65,9 @@ export class JobFileOperationsService {
     try {
       await fs.unlink(job.originalBackupPath);
     } catch (error: unknown) {
-      this.logger.error(
-        `Failed to delete original backup file: ${job.originalBackupPath}`,
-        error,
-      );
+      this.logger.error(`Failed to delete original backup file: ${job.originalBackupPath}`, error);
       throw new BadRequestException(
-        `Failed to delete original backup file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to delete original backup file: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
 
@@ -81,9 +76,7 @@ export class JobFileOperationsService {
       originalSizeBytes: null,
     });
 
-    this.logger.log(
-      `Original backup deleted for job: ${id} (freed ${size} bytes)`,
-    );
+    this.logger.log(`Original backup deleted for job: ${id} (freed ${size} bytes)`);
     return { freedSpace: size };
   }
 
@@ -106,12 +99,9 @@ export class JobFileOperationsService {
       await fs.rename(job.filePath, encodedPath);
       await fs.rename(job.originalBackupPath, job.filePath);
     } catch (error: unknown) {
-      this.logger.error(
-        `Failed to restore original file for job: ${id}`,
-        error,
-      );
+      this.logger.error(`Failed to restore original file for job: ${id}`, error);
       throw new BadRequestException(
-        `Failed to restore original file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to restore original file: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
 
@@ -133,9 +123,7 @@ export class JobFileOperationsService {
     const job = await this.jobCrudService.findOne(id);
 
     if (job.stage !== JobStage.FAILED) {
-      throw new BadRequestException(
-        `Can only recheck FAILED jobs (current stage: ${job.stage})`,
-      );
+      throw new BadRequestException(`Can only recheck FAILED jobs (current stage: ${job.stage})`);
     }
 
     const fs = await import('fs/promises');
@@ -149,7 +137,7 @@ export class JobFileOperationsService {
       this.logger.log(`File exists at ${job.filePath} (${fileSize} bytes)`);
     } catch (error: unknown) {
       this.logger.warn(
-        `File not found at ${job.filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `File not found at ${job.filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
 
@@ -187,7 +175,7 @@ export class JobFileOperationsService {
       });
 
       this.logger.log(
-        `Recheck rejected: File did not compress (before: ${beforeSizeBytes}, after: ${afterSizeBytes})`,
+        `Recheck rejected: File did not compress (before: ${beforeSizeBytes}, after: ${afterSizeBytes})`
       );
       return updatedJob;
     }
@@ -221,9 +209,7 @@ export class JobFileOperationsService {
       return updated;
     });
 
-    this.logger.log(
-      `Job ${id} rechecked and moved to COMPLETED (saved ${savedPercentRounded}%)`,
-    );
+    this.logger.log(`Job ${id} rechecked and moved to COMPLETED (saved ${savedPercentRounded}%)`);
     return completedJob;
   }
 
@@ -237,7 +223,7 @@ export class JobFileOperationsService {
 
     if (job.stage !== JobStage.COMPLETED) {
       throw new BadRequestException(
-        `Can only detect compression for COMPLETED jobs (current stage: ${job.stage})`,
+        `Can only detect compression for COMPLETED jobs (current stage: ${job.stage})`
       );
     }
 
@@ -245,13 +231,11 @@ export class JobFileOperationsService {
 
     if (savedBytes > BigInt(0)) {
       throw new BadRequestException(
-        `Job successfully compressed the file by ${Number(savedBytes).toLocaleString()} bytes (${job.savedPercent}%). Cannot requeue.`,
+        `Job successfully compressed the file by ${Number(savedBytes).toLocaleString()} bytes (${job.savedPercent}%). Cannot requeue.`
       );
     }
 
-    this.logger.log(
-      `No compression detected (savedBytes: ${savedBytes}). Requeuing job ${id}...`,
-    );
+    this.logger.log(`No compression detected (savedBytes: ${savedBytes}). Requeuing job ${id}...`);
 
     const requeuedJob = await this.jobRepository.updateByIdWithInclude<Job>(
       id,
@@ -266,11 +250,11 @@ export class JobFileOperationsService {
         priority: 0,
         prioritySetAt: null,
       },
-      { node: { include: { license: true } } },
+      { node: { include: { license: true } } }
     );
 
     this.logger.log(
-      `Job ${id} requeued (no compression detected - before: ${Number(job.beforeSizeBytes).toLocaleString()} bytes, after: ${Number(job.afterSizeBytes).toLocaleString()} bytes)`,
+      `Job ${id} requeued (no compression detected - before: ${Number(job.beforeSizeBytes).toLocaleString()} bytes, after: ${Number(job.afterSizeBytes).toLocaleString()} bytes)`
     );
 
     return requeuedJob;

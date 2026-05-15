@@ -1,12 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Logger,
-  Param,
-  Query,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Get, Logger, Param, Query } from '@nestjs/common';
 import {
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
@@ -30,7 +23,7 @@ export class JobMetricsController {
   constructor(
     private readonly queueService: QueueService,
     private readonly nodeConfig: NodeConfigService,
-    private readonly httpService: HttpService,
+    private readonly httpService: HttpService
   ) {}
 
   /**
@@ -56,8 +49,7 @@ export class JobMetricsController {
     name: 'stage',
     required: false,
     enum: JobStage,
-    description:
-      'Filter jobs by stage (QUEUED, ENCODING, COMPLETED, FAILED, etc.)',
+    description: 'Filter jobs by stage (QUEUED, ENCODING, COMPLETED, FAILED, etc.)',
     example: JobStage.QUEUED,
   })
   @ApiQuery({
@@ -105,7 +97,7 @@ export class JobMetricsController {
     @Query('search') search?: string,
     @Query('libraryId') libraryId?: string,
     @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ): Promise<{
     jobs: Job[];
     total: number;
@@ -129,28 +121,19 @@ export class JobMetricsController {
 
       try {
         const response = await firstValueFrom(
-          this.httpService.get(`${mainApiUrl}/api/v1/queue`, { params }),
+          this.httpService.get(`${mainApiUrl}/api/v1/queue`, { params })
         );
         return response.data;
       } catch (error: unknown) {
         this.logger.error('Failed to proxy queue request to main node', error);
-        throw new BadRequestException(
-          'Failed to fetch queue data from main node',
-        );
+        throw new BadRequestException('Failed to fetch queue data from main node');
       }
     }
 
     // MAIN nodes query their own database
     const pageNum = page ? Number(page) : undefined;
     const limitNum = limit ? Number(limit) : undefined;
-    return this.queueService.findAll(
-      stage,
-      nodeId,
-      search,
-      libraryId,
-      pageNum,
-      limitNum,
-    );
+    return this.queueService.findAll(stage, nodeId, search, libraryId, pageNum, limitNum);
   }
 
   /**
@@ -226,14 +209,12 @@ export class JobMetricsController {
     description: 'Internal server error occurred while fetching next job',
   })
   async getNextJob(@Param('nodeId') nodeId: string): Promise<Job | null> {
-    this.logger.log(
-      `🔍 MULTI-NODE: Received getNextJob request for nodeId: ${nodeId}`,
-    );
+    this.logger.log(`🔍 MULTI-NODE: Received getNextJob request for nodeId: ${nodeId}`);
     const job = await this.queueService.getNextJob(nodeId);
 
     if (job) {
       this.logger.log(
-        `✅ MULTI-NODE: Returning job ${job.id} (${job.fileLabel}) to node ${nodeId}`,
+        `✅ MULTI-NODE: Returning job ${job.id} (${job.fileLabel}) to node ${nodeId}`
       );
     } else {
       this.logger.debug(`🔍 MULTI-NODE: No jobs available for node ${nodeId}`);
@@ -269,9 +250,7 @@ export class JobMetricsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while fetching next job',
   })
-  async getNextJobByQuery(
-    @Query('nodeId') nodeId: string,
-  ): Promise<Job | null> {
+  async getNextJobByQuery(@Query('nodeId') nodeId: string): Promise<Job | null> {
     return this.queueService.getNextJob(nodeId);
   }
 }

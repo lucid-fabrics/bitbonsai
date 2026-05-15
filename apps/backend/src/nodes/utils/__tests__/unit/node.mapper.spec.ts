@@ -1,7 +1,4 @@
-import type {
-  NodeRegistrationRequest,
-  Node as PrismaNode,
-} from '@prisma/client';
+import type { NodeRegistrationRequest, Node as PrismaNode } from '@prisma/client';
 import {
   toCurrentNodeDto,
   toNodeResponseDto,
@@ -37,7 +34,7 @@ function makeNode(overrides: Partial<PrismaNode> = {}): PrismaNode {
 }
 
 function makeRegistrationRequest(
-  overrides: Partial<NodeRegistrationRequest> = {},
+  overrides: Partial<NodeRegistrationRequest> = {}
 ): NodeRegistrationRequest {
   const base = new Date('2024-01-01T00:00:00Z');
   return {
@@ -123,10 +120,7 @@ describe('toCurrentNodeDto', () => {
   });
 
   it('excludes sensitive fields', () => {
-    const dto = toCurrentNodeDto(makeNode()) as unknown as Record<
-      string,
-      unknown
-    >;
+    const dto = toCurrentNodeDto(makeNode()) as unknown as Record<string, unknown>;
     expect(dto.apiKey).toBeUndefined();
     expect(dto.uptimeSeconds).toBeUndefined();
     expect(dto.maxWorkers).toBeUndefined();
@@ -196,43 +190,37 @@ describe('toRegistrationRequestResponseDto', () => {
   });
 
   it('message is undefined when null', () => {
-    const dto = toRegistrationRequestResponseDto(
-      makeRegistrationRequest({ message: null }),
-    );
+    const dto = toRegistrationRequestResponseDto(makeRegistrationRequest({ message: null }));
     expect(dto.message).toBeUndefined();
   });
 
   it('message is returned when present', () => {
-    const dto = toRegistrationRequestResponseDto(
-      makeRegistrationRequest({ message: 'Approved' }),
-    );
+    const dto = toRegistrationRequestResponseDto(makeRegistrationRequest({ message: 'Approved' }));
     expect(dto.message).toBe('Approved');
   });
 
   it('rejectionReason is undefined when null', () => {
     const dto = toRegistrationRequestResponseDto(
-      makeRegistrationRequest({ rejectionReason: null }),
+      makeRegistrationRequest({ rejectionReason: null })
     );
     expect(dto.rejectionReason).toBeUndefined();
   });
 
   it('rejectionReason is returned when present', () => {
     const dto = toRegistrationRequestResponseDto(
-      makeRegistrationRequest({ rejectionReason: 'Quota exceeded' }),
+      makeRegistrationRequest({ rejectionReason: 'Quota exceeded' })
     );
     expect(dto.rejectionReason).toBe('Quota exceeded');
   });
 
   it('childNodeId is undefined when null', () => {
-    const dto = toRegistrationRequestResponseDto(
-      makeRegistrationRequest({ childNodeId: null }),
-    );
+    const dto = toRegistrationRequestResponseDto(makeRegistrationRequest({ childNodeId: null }));
     expect(dto.childNodeId).toBeUndefined();
   });
 
   it('childNodeId is returned when present', () => {
     const dto = toRegistrationRequestResponseDto(
-      makeRegistrationRequest({ childNodeId: 'node-99' }),
+      makeRegistrationRequest({ childNodeId: 'node-99' })
     );
     expect(dto.childNodeId).toBe('node-99');
   });
@@ -249,10 +237,7 @@ describe('toRegistrationRequestResponseDto', () => {
 
 describe('toRegistrationRequestResponseDtoArray', () => {
   it('maps array of requests', () => {
-    const requests = [
-      makeRegistrationRequest({ id: 'r1' }),
-      makeRegistrationRequest({ id: 'r2' }),
-    ];
+    const requests = [makeRegistrationRequest({ id: 'r1' }), makeRegistrationRequest({ id: 'r2' })];
     const dtos = toRegistrationRequestResponseDtoArray(requests);
     expect(dtos).toHaveLength(2);
     expect(dtos[0].id).toBe('r1');
